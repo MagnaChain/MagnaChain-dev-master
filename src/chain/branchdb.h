@@ -83,21 +83,21 @@ public:
         READWRITE(txHash);
         READWRITE(txIndex);
 
-    //    READWRITE(nChainWork);
+        READWRITE(nChainWork);
     }
 
 private:
 };
 
 //
-// typedef std::vector<uint256> VBRANCH_CHAIN;
+typedef std::vector<uint256> VBRANCH_CHAIN;
 typedef std::map<uint256, BranchBlockData> MAPBRANCH_HEADERS;
 
 class BranchData
 {
 public:
-    //VBRANCH_CHAIN vecHeadsChain;
     MAPBRANCH_HEADERS mapHeads;
+    VBRANCH_CHAIN vecHeadsChain;
 
     ADD_SERIALIZE_METHODS;
 
@@ -105,6 +105,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(mapHeads);
+        READWRITE(vecHeadsChain);
     }
 
     void InitBranchGenesisBlockData(const uint256 &branchid);

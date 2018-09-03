@@ -46,7 +46,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(code);
         if (ser_action.ForRead()) {
-            size_t size;
+            uint64_t size;
             READWRITE(size);
             for (int i = 0; i < size; ++i) {
                 DBContractInfo dbContractInfo;
@@ -55,7 +55,7 @@ public:
             }
         }
         else {
-            size_t size = data.size();
+            uint64_t size = data.size();
             READWRITE(size);
             for (DBContractList::iterator it = data.begin(); it != data.end(); ++it) {
                 READWRITE(*it);
