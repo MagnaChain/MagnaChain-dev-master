@@ -1,2 +1,1 @@
-# MagnaChain
-
+MagnaChain代码库

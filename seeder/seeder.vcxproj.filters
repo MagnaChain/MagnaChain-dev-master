@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{48e7f480-7963-451f-8552-a2584f0e5954}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="db.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="dns.c">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="netbase.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="protocol.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="util.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="celllink.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="compat.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="db.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="dns.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="netbase.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="protocol.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="serialize.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="strlcpy.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="uint256.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="util.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="celllink.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

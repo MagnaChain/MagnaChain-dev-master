@@ -1,0 +1,13 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=CellLink Core
+Comment=Connect to the CellLink P2P Network
+Comment[de]=Verbinde mit dem CellLink peer-to-peer Netzwerk
+Comment[fr]=CellLink, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=CellLink, eşten eşe kriptografik sanal para birimi
+Exec=celllink-qt %u
+Terminal=false
+Type=Application
+Icon=bitcoin128
+MimeType=x-scheme-handler/celllink;
+Categories=Office;Finance;
