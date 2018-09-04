@@ -1,0 +1,13 @@
+*.csproj
+*.suo
+*.obj
+/.vs/
+/Debug/
+/Release/
+/celllink-cli/
+/celllink-common/
+/celllinkd/
+/celllink-test/
+/celllink-tx/
+/db-4.8.30/
+/packages/
