@@ -1,0 +1,4 @@
+/Client/*.csproj
+/Client/*.suo
+/Client/Debug/
+/Client/Release/
