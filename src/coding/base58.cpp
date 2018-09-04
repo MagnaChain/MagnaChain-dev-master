@@ -304,7 +304,7 @@ bool CellLinkAddress::GetKeyID(CellKeyID& keyID) const
 
 bool CellLinkAddress::IsContractID() const
 {
-    return IsValid() || vchVersion != Params().Base58Prefix(CellChainParams::CONTRACT_ADDRESS);
+    return IsValid() && vchVersion == Params().Base58Prefix(CellChainParams::CONTRACT_ADDRESS);
 }
 
 bool CellLinkAddress::IsScript() const
