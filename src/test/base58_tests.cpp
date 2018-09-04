@@ -81,6 +81,10 @@ private:
     std::string exp_addrType;
 public:
     TestAddrTypeVisitor(const std::string &_exp_addrType) : exp_addrType(_exp_addrType) { }
+	bool operator()(const CellContractID &id) const
+	{
+		return (exp_addrType == "contractid");
+	}
     bool operator()(const CellKeyID &id) const
     {
         return (exp_addrType == "pubkey");
