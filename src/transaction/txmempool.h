@@ -674,8 +674,6 @@ private:
     void removeUnchecked(txiter entry, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
 
 public:
-    void SearchContractTransaction(const CellScript& kScript, std::vector<CellTransactionRef>& vec);
-    void SearchContractTransaction(const CellKeyID& kContractKey, std::vector<CellTransactionRef>& vec);
     int32_t GetCreateBranchChainTxCount()
     {
         return nCreateBranchTxCount;

@@ -104,6 +104,7 @@ public:
  */
 class CellLinkAddress : public CellBase58Data {
 public:
+    bool Set(const CellContractID &id);
     bool Set(const CellKeyID &id);
     bool Set(const CellScriptID &id);
     bool Set(const CellTxDestination &dest);
@@ -116,7 +117,9 @@ public:
     CellLinkAddress(const char* pszAddress) { SetString(pszAddress); }
 
     CellTxDestination Get() const;
+    bool GetContractID(CellContractID &contractID) const;
     bool GetKeyID(CellKeyID &keyID) const;
+    bool IsContractID() const;
     bool IsScript() const;
 };
 

@@ -417,9 +417,8 @@ void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellA
 	}
 }
 
-static void SendMoney(CellWallet * const pwallet, const CellTxDestination &address, CellAmount nValue, bool fSubtractFeeFromAmount, CellWalletTx& wtxNew, const CellCoinControl& coin_control)
+void SendMoney(CellWallet * const pwallet, const CellTxDestination &address, CellAmount nValue, bool fSubtractFeeFromAmount, CellWalletTx& wtxNew, const CellCoinControl& coin_control)
 {
-	// Parse CellLink address
 	CellScript scriptPubKey = GetScriptForDestination(address);
 	SendMoney(pwallet, scriptPubKey, nValue, fSubtractFeeFromAmount, wtxNew, coin_control);
 }
@@ -466,6 +465,8 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     CellLinkAddress address(request.params[0].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+    if (address.IsContractID())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "CellLink address can't be contract id");
 
     // Amount
     CellAmount nAmount = AmountFromValue(request.params[1]);
@@ -499,13 +500,13 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         }
     }
 
-
     EnsureWalletIsUnlocked(pwallet);
-
     SendMoney(pwallet, address.Get(), nAmount, fSubtractFeeFromAmount, wtx, coin_control);
 
     return wtx.GetHash().GetHex();
 }
+
+SmartLuaState RPCSLS;
 
 UniValue publishcontract(const JSONRPCRequest& request)
 {
@@ -599,8 +600,6 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
     return ret;
 }
 
-SmartLuaState RPCSLS;
-
 //sdk调用，编译代码，预先生成交易
 UniValue prepublishcode(const JSONRPCRequest& request)
 {
@@ -659,8 +658,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	else
         changeAddr = fundAddr;
 
-	CellKeyID contractKey = GenerateTempContractAddress(senderAddr, rawCode);
-	CellLinkAddress contractAddr(contractKey);
+	CellKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
+	CellLinkAddress contractAddr(contractId);
 
     std::string code;
     SmartContractRet scr;
@@ -669,18 +668,16 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     if (result != 0)
         throw JSONRPCError(RPC_MISC_ERROR, scr.result[0].get_str());
 
-    CellScript contractScript;
-    CellTxDestination contractDest = contractAddr.Get();
-    boost::apply_visitor(CellContractPublishScriptVisitor(&contractScript), contractDest);
+    CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-    RPCSLS.contractKeys.erase(contractKey);
+    RPCSLS.contractIds.erase(contractId);
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.contractCode = code;
     wtx.contractSenderKey = senderPubKey;
-    wtx.contractAddrs.emplace_back(contractKey);
-    wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractKeys.begin(), RPCSLS.contractKeys.end());
-    SendFromToOther(wtx, fundAddr, contractScript, changeAddr, amount, 0, &RPCSLS);
+    wtx.contractAddrs.emplace_back(contractId);
+    wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
+    SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
@@ -698,44 +695,6 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     ret.push_back(Pair("coins", uvalCoins));
 
 	return ret;
-}
-
-/*static void SearchContractTransaction(const std::string& strContractAddr, std::vector<CellTransactionRef>& vecTrans)
-{
-	CellScript script;
-	CellLinkAddress kAddr(strContractAddr);
-	CellTxDestination kDest = kAddr.Get();
-	boost::apply_visitor(CellContractPublishScriptVisitor(&script), kDest);
-	mempool.SearchContractTransaction(script, vecTrans);
-
-	boost::apply_visitor(CellContractCallScriptVisitor(&script), kDest);
-	mempool.SearchContractTransaction(script, vecTrans);
-}*/
-
-static void SearchContractTransaction(const CellKeyID& kContractKey, std::vector<CellTransactionRef>& vecTrans)
-{
-	mempool.SearchContractTransaction(kContractKey, vecTrans);
-}
-
-static bool ExtractContractSender(const CellTxOut& txo, CellKeyID& keyId, opcodetype& opcode )
-{
-	std::vector<unsigned char> vch;
-	CellScript::const_iterator pc1 = txo.scriptPubKey.begin();
-	txo.scriptPubKey.GetOp(pc1, opcode, vch);
-	if (opcode == OP_PUB_CONTRACT ) {
-		vch.clear();
-	//	vch.assign(txo.contractInfo.begin(), txo.contractInfo.begin() + 20);
-		keyId = CellKeyID(uint160(vch));
-		return true;
-	}
-	else if( opcode == OP_TRANS_CONTRACT ){
-		std::vector< std::string > vecStr;
-		std::string strSpt("\n");
-		CellLinkAddress kAddr(vecStr[0]);
-		kAddr.GetKeyID(keyId);
-		return true;
-	}
-	return false;
 }
 
 UniValue callcontract(const JSONRPCRequest& request)
@@ -779,11 +738,12 @@ UniValue callcontract(const JSONRPCRequest& request)
     CellLinkAddress senderAddr;
     if (!GetSenderAddr(pwallet, strSenderAddr, senderAddr))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
+
     CellKeyID senderKey;
     CellPubKey senderPubKey;
     senderAddr.GetKeyID(senderKey);
     if (!pwallet->GetPubKey(senderKey, senderPubKey))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Get sender public key fail.");
+        throw JSONRPCError(RPC_TYPE_ERROR, "Get sender public key fail");
 
     std::string strFuncName = request.params[4].get_str();
     if (strFuncName.empty())
@@ -803,26 +763,24 @@ UniValue callcontract(const JSONRPCRequest& request)
         RPCSLS.codeLen = 0;
 
         if (sendCall) {
-            CellScript scriptContract;
-            CellTxDestination contractDest = contractAddr.Get();
-            boost::apply_visitor(CellContractCallScriptVisitor(&scriptContract), contractDest);
+            CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            CellKeyID contractKey;
-            contractAddr.GetKeyID(contractKey);
+            CellKeyID contractId;
+            contractAddr.GetKeyID(contractId);
 
-            RPCSLS.contractKeys.erase(contractKey);
+            RPCSLS.contractIds.erase(contractId);
             CellWalletTx wtx;
             wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
             wtx.contractSenderKey = senderPubKey;
             wtx.contractCode = strFuncName;
             wtx.contractParams = args.write();
-            wtx.contractAddrs.emplace_back(contractKey);
-            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractKeys.begin(), RPCSLS.contractKeys.end());
+            wtx.contractAddrs.emplace_back(contractId);
+            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
 
             bool subtractFeeFromAmount = false;
             CellCoinControl coinCtrl;
             EnsureWalletIsUnlocked(pwallet);
-            SendMoney(pwallet, scriptContract, amount, subtractFeeFromAmount, wtx, coinCtrl, &RPCSLS);
+            SendMoney(pwallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, &RPCSLS);
             ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
         }
     }
@@ -927,22 +885,20 @@ UniValue precallcontract(const JSONRPCRequest& request)
     ret.push_back(Pair("call_return", scr.result));
     if (result == 0) {
         if (bSendCall) {
-            CellKeyID contractKey;
-            contractAddr.GetKeyID(contractKey);
+            CellKeyID contractId;
+            contractAddr.GetKeyID(contractId);
 
-            CellScript contractScript;
-            CellTxDestination contractDest = contractAddr.Get();
-            boost::apply_visitor(CellContractCallScriptVisitor(&contractScript), contractDest);
+            CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            RPCSLS.contractKeys.erase(contractKey);
+            RPCSLS.contractIds.erase(contractId);
             CellWalletTx wtx;
             wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
             wtx.contractSenderKey = senderPubKey;
             wtx.contractCode = strFuncName;
             wtx.contractParams = args.write();
-            wtx.contractAddrs.emplace_back(contractKey);
-            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractKeys.begin(), RPCSLS.contractKeys.end());
-            SendFromToOther(wtx, fundAddr, contractScript, changeAddr, amount, 0, &RPCSLS);
+            wtx.contractAddrs.emplace_back(contractId);
+            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
+            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
             UniValue coins(UniValue::VARR);
@@ -1357,12 +1313,17 @@ UniValue sendfrom(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     std::string strAccount = AccountFromValue(request.params[0]);
+
     CellLinkAddress address(request.params[1].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+    if (address.IsContractID())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "CellLink address can't be contract id");
+
     CellAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
     int nMinDepth = 1;
     if (request.params.size() > 3)
         nMinDepth = request.params[3].get_int();
@@ -1481,10 +1442,13 @@ UniValue sendmany(const JSONRPCRequest& request)
     {
         CellLinkAddress address(name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid CellLink address: ")+name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid CellLink address: ") + name_);
+
+        if (address.IsContractID())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("CellLink address can't be contract id: ") + name_);
 
         if (setAddress.count(address))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+name_);
+            throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ") + name_);
         setAddress.insert(address);
 
         CellScript scriptPubKey = GetScriptForDestination(address.Get());
@@ -1590,6 +1554,11 @@ public:
     Witnessifier(CellWallet *_pwallet) : pwallet(_pwallet) {}
 
     bool operator()(const CellNoDestination &dest) const { return false; }
+
+    bool operator()(const CellContractID &contractID) {
+        // TODO: fill logic
+        return false;
+    }
 
     bool operator()(const CellKeyID &keyID) {
         if (pwallet) {

@@ -184,15 +184,14 @@ enum opcodetype
     OP_NOP10 = 0xb9,
 
 	// smart contract
-	OP_PUB_CONTRACT = 0xc0,
-	OP_TRANS_CONTRACT = 0xc1,
+	OP_CONTRACT = 0xc0,
 
 	OP_CREATE_BRANCH = 0xd0,
-	OP_TRANS_BRANCH = 0xd1, // ฟ็มดฝปาื
+	OP_TRANS_BRANCH = 0xd1, // ยฟรงรยดยฝยปร’ร—
 	
-	OP_MINE_BRANCH_MORTGAGE = 0xd2, // ึ๗มดตึับอฺฟ๓
-    OP_MINE_BRANCH_COIN = 0xd3, // ฒเมดอฺฟ๓ฑา
-    OP_REDEEM_MORTGAGE = 0xd4, // ส๊ปุตึับ
+	OP_MINE_BRANCH_MORTGAGE = 0xd2, // ร–รทรยดยตร–ร‘ยบรรยฟรณ
+    OP_MINE_BRANCH_COIN = 0xd3, // ยฒร รยดรรยฟรณยฑร’
+    OP_REDEEM_MORTGAGE = 0xd4, // รรชยปรยตร–ร‘ยบ
 
     // template matching params
     OP_HASH256_DATA = 0xf4,

@@ -176,10 +176,10 @@ bool CellTxMemPool::CalculateMemPoolAncestors(const CellTxMemPoolEntry &entry, s
                 }
             }
         }
-        // 将调用的智能合约关联地址加入到ancestors中
+        // 陆芦碌梅脫脙碌脛脰脟脛脺潞脧脭录鹿脴脕陋碌脴脰路录脫脠毛碌陆ancestors脰脨
         for (unsigned int i = 0; i < tx.contractAddrs.size(); i++) {
-            const CellKeyID& contractKey = tx.contractAddrs[i];
-            auto it = contractLinksMap.find(contractKey);
+            const CellKeyID& contractId = tx.contractAddrs[i];
+            auto it = contractLinksMap.find(contractId);
             if (it != contractLinksMap.end()) {
                 txiter piter = mapTx.find(it->second.back());
                 if (piter != mapTx.end()) {
@@ -410,13 +410,13 @@ bool CellTxMemPool::addUnchecked(const uint256& hash, const CellTxMemPoolEntry &
         mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
         setParentTransactions.insert(tx.vin[i].prevout.hash);
     }
-    // 将关联合约地址的交易加入ancestors列表
+    // 陆芦鹿脴脕陋潞脧脭录碌脴脰路碌脛陆禄脪脳录脫脠毛ancestors脕脨卤铆
     for (unsigned int i = 0; i < tx.contractAddrs.size(); i++) {
-        const CellKeyID& contractKey = tx.contractAddrs[i];
-        auto it = contractLinksMap.find(contractKey);
+        const CellKeyID& contractId = tx.contractAddrs[i];
+        auto it = contractLinksMap.find(contractId);
         if (it != contractLinksMap.end())
             setParentTransactions.insert(it->second.back());
-        contractLinksMap[contractKey].emplace_back(hash);
+        contractLinksMap[contractId].emplace_back(hash);
     }
     // Don't bother worrying about child transactions of this one.
     // Normal case of a new transaction arriving is that there can't be any
@@ -445,37 +445,6 @@ bool CellTxMemPool::addUnchecked(const uint256& hash, const CellTxMemPoolEntry &
 	if (tx.IsBranchCreate())
 		nCreateBranchTxCount++;
     return true;
-}
-
-
-void CellTxMemPool::SearchContractTransaction(const CellScript& kScript, std::vector<CellTransactionRef>& vec)
-{
-	indexed_transaction_set::iterator i = mapTx.begin();
-	for (; i != mapTx.end(); ++i) {
-		const CellTxMemPoolEntry& entry = *i;
-		CellTransactionRef tx = entry.GetSharedTx();
-		for (int i = 0; i < tx->vout.size(); ++i) {
-			const CellScript kTest = tx->vout[i].scriptPubKey;
-			if (kTest == kScript) {
-				vec.push_back(tx);
-				break;
-			}
-		}
-	}
-}
-
-void CellTxMemPool::SearchContractTransaction(const CellKeyID& kContractKey, std::vector <CellTransactionRef>& vec)
-{
-	LOCK(cs);
-	indexed_transaction_set::iterator i = mapTx.begin();
-	for (; i != mapTx.end(); ++i) {
-		const CellTxMemPoolEntry& entry = *i;
-		CellTransactionRef tx = entry.GetSharedTx();
-  		if (tx->IsSmartContract() && tx->contractAddrs[0] == kContractKey)
-		{
-			vec.emplace_back(tx);
-		}
-	}
 }
 
 void CellTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)

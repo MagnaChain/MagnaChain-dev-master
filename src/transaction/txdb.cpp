@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2018 The CellLink Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -543,7 +543,7 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
         CellScript::const_iterator pc1 = coin.out.scriptPubKey.begin();
         coin.out.scriptPubKey.GetOp(pc1, opcode, vch);
 
-        if (opcode == OP_PUB_CONTRACT || opcode == OP_TRANS_CONTRACT) {
+        if (opcode == OP_CONTRACT) {
             vch.clear();
             vch.assign(pc1 + 1, coin.out.scriptPubKey.end());
             kDest = CellKeyID(uint160(vch));

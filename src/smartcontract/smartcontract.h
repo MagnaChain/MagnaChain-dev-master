@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef SMARTCONTRACT_H
-#define SMARTCONTEACT_H
+#define SMARTCONTRACT_H
 
 extern "C"
 {
@@ -45,13 +45,13 @@ public:
 
     std::vector<std::pair<Coin, CellOutPoint>> inputs;
     std::vector<CellTxOut> outputs;
-    std::set<CellKeyID> contractKeys;           // luaÖ´ĞĞÆÚ¼äËùÓĞµ÷ÓÃ¹ıµÄºÏÔ¼
-    std::stack<CellLinkAddress> contractAddrs;  // ÒÔÕ»ĞÎÊ½±íÊ¾µ±Ç°µ÷ÓÃºÏÔ¼µÄºÏÔ¼µØÖ·
-    std::stack<CellLinkAddress> senderAddrs;    // ÒÔÕ»ĞÎÊ½±íÊ¾µ±Ç°µ÷ÓÃºÏÔ¼µÄµ÷ÓÃÕßµØÖ·
+    std::set<CellContractID> contractIds;      // luaæ‰§è¡ŒæœŸé—´æ‰€æœ‰è°ƒç”¨è¿‡çš„åˆçº¦
+    std::stack<CellLinkAddress> contractAddrs;  // ä»¥æ ˆå½¢å¼è¡¨ç¤ºå½“å‰è°ƒç”¨åˆçº¦çš„åˆçº¦åœ°å€
+    std::stack<CellLinkAddress> senderAddrs;    // ä»¥æ ˆå½¢å¼è¡¨ç¤ºå½“å‰è°ƒç”¨åˆçº¦çš„è°ƒç”¨è€…åœ°å€
 
     int saveType;
-    int64_t timestamp;                          // Ö´ĞĞÊ±µÄÊ±¼ä´Á
-    int blockHeight;                            // Ö´ĞĞÊ±µÄÇø¿é¸ß¶È
+    int64_t timestamp;                          // æ‰§è¡Œæ—¶çš„æ—¶é—´æˆ³
+    int blockHeight;                            // æ‰§è¡Œæ—¶çš„åŒºå—é«˜åº¦
     CellAmount totalAmount = -1;
     CellAmount sendAmount = 0;
     uint32_t runningTimes = 0;
@@ -65,8 +65,8 @@ private:
     std::queue<lua_State*> _luaStates;
 
 public:
-    void SetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, bool cache);
-    bool GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo);
+    void SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache);
+    bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo);
 
     void Initialize(int64_t timestamp, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType);
     lua_State* GetLuaState(CellLinkAddress& contractAddr, CellLinkAddress& senderAddr);
@@ -74,7 +74,7 @@ public:
 };
 
 extern bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLinkAddress& senderAddr);
-extern uint160 GenerateTempContractAddress(const CellLinkAddress& kSender, const std::string &strCode);
+extern CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& code);
 
 extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
@@ -85,7 +85,7 @@ extern int PublishContract(lua_State* L, const std::string& rawCode, std::string
 extern int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount, CellLinkAddress& contractAddr, CellLinkAddress& senderAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& scr);
 extern int CallContract(lua_State* L, long maxCallNum, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, SmartContractRet& ret);
 
-// LuaÄÚÖÃº¯Êı
+// Luaå†…ç½®å‡½æ•°
 extern int InternalCallContract(lua_State *L);
 extern int SendCoins(lua_State* L);
 

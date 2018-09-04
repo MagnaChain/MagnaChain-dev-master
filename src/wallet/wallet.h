@@ -348,7 +348,7 @@ public:
 	CellPubKey contractSenderKey;
 	std::string contractCode;
     std::string contractParams;
-    std::vector<CellKeyID> contractAddrs;
+    std::vector<CellContractID> contractAddrs;
 
 	void ClearTempContractData()
 	{
@@ -1284,64 +1284,6 @@ public:
 			result = (m_ownKeys.count(address) > 0);
 		}
 		return result;
-	}
-
-//	isminetype IsMine(const CellTxOut& txout) const override;
-};
-//isminetype CellFakeWallet::IsMine(const CellTxOut& txout) const
-//{
-//	return ISMINE_SPENDABLE;
-//}
-
-class CellContractCallScriptVisitor : public boost::static_visitor<bool>
-{
-private:
-	CellScript * script;
-	//	CellKeyID* sender;
-public:
-	//	CellContractCallScriptVisitor(CellScript *scriptin, CellKeyID* kSender) { script = scriptin; sender = kSender;  }
-	CellContractCallScriptVisitor(CellScript *scriptin) { script = scriptin; }
-
-	bool operator()(const CellNoDestination &dest) const {
-		script->clear();
-		return false;
-	}
-
-	bool operator()(const CellKeyID &keyID) const {
-		script->clear();
-		*script << OP_TRANS_CONTRACT << ToByteVector(keyID); // CONTRACT ADDR
-															 //*script << OP_PUSHDATA1 << ToByteVector(sender); // SENDER ADDR
-		return true;
-	}
-
-	bool operator()(const CellScriptID &scriptID) const {
-		script->clear();
-		return false;
-	}
-};
-
-
-class CellContractPublishScriptVisitor : public boost::static_visitor<bool>
-{
-private:
-	CellScript * script;
-public:
-	CellContractPublishScriptVisitor(CellScript *scriptin) { script = scriptin; }
-
-	bool operator()(const CellNoDestination &dest) const {
-		script->clear();
-		return false;
-	}
-
-	bool operator()(const CellKeyID &keyID) const {
-		script->clear();
-		*script << OP_PUB_CONTRACT << ToByteVector(keyID);
-		return true;
-	}
-
-	bool operator()(const CellScriptID &scriptID) const {
-		script->clear();
-		return false;
 	}
 };
 

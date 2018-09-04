@@ -134,6 +134,17 @@ public:
 
     UniValue operator()(const CellNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
+    UniValue operator()(const CellContractID &contractID) const {
+        UniValue obj(UniValue::VOBJ);
+        CellPubKey vchPubKey;
+        obj.push_back(Pair("isscript", false));
+        if (pwallet && pwallet->GetPubKey(contractID, vchPubKey)) {
+            obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
+            obj.push_back(Pair("iscompressed", vchPubKey.IsCompressed()));
+        }
+        return obj;
+    }
+
     UniValue operator()(const CellKeyID &keyID) const {
         UniValue obj(UniValue::VOBJ);
         CellPubKey vchPubKey;

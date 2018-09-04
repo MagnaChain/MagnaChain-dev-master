@@ -221,12 +221,19 @@ private:
 public:
     CellLinkAddressVisitor(CellLinkAddress* addrIn) : addr(addrIn) {}
 
+    bool operator()(const CellContractID& id) const { return addr->Set(id); }
     bool operator()(const CellKeyID& id) const { return addr->Set(id); }
     bool operator()(const CellScriptID& id) const { return addr->Set(id); }
     bool operator()(const CellNoDestination& no) const { return false; }
 };
 
 } // namespace
+
+bool CellLinkAddress::Set(const CellContractID& id)
+{
+    SetData(Params().Base58Prefix(CellChainParams::CONTRACT_ADDRESS), &id, 20);
+    return true;
+}
 
 bool CellLinkAddress::Set(const CellKeyID& id)
 {
@@ -254,7 +261,8 @@ bool CellLinkAddress::IsValid(const CellChainParams& params) const
 {
     bool fCorrectSize = vchData.size() == 20;
     bool fKnownVersion = vchVersion == params.Base58Prefix(CellChainParams::PUBKEY_ADDRESS) ||
-                         vchVersion == params.Base58Prefix(CellChainParams::SCRIPT_ADDRESS);
+        vchVersion == params.Base58Prefix(CellChainParams::SCRIPT_ADDRESS) ||
+        vchVersion == params.Base58Prefix(CellChainParams::CONTRACT_ADDRESS);
     return fCorrectSize && fKnownVersion;
 }
 
@@ -268,8 +276,20 @@ CellTxDestination CellLinkAddress::Get() const
         return CellKeyID(id);
     else if (vchVersion == Params().Base58Prefix(CellChainParams::SCRIPT_ADDRESS))
         return CellScriptID(id);
+    else if (vchVersion == Params().Base58Prefix(CellChainParams::CONTRACT_ADDRESS))
+        return CellContractID(id);
     else
         return CellNoDestination();
+}
+
+bool CellLinkAddress::GetContractID(CellContractID& contractID) const
+{
+    if (!IsValid() || vchVersion != Params().Base58Prefix(CellChainParams::CONTRACT_ADDRESS))
+        return false;
+    uint160 id;
+    memcpy(&id, vchData.data(), 20);
+    contractID = CellContractID(id);
+    return true;
 }
 
 bool CellLinkAddress::GetKeyID(CellKeyID& keyID) const
@@ -280,6 +300,11 @@ bool CellLinkAddress::GetKeyID(CellKeyID& keyID) const
     memcpy(&id, vchData.data(), 20);
     keyID = CellKeyID(id);
     return true;
+}
+
+bool CellLinkAddress::IsContractID() const
+{
+    return IsValid() || vchVersion != Params().Base58Prefix(CellChainParams::CONTRACT_ADDRESS);
 }
 
 bool CellLinkAddress::IsScript() const

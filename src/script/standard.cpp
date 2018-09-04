@@ -293,40 +293,41 @@ bool ExtractDestinations(const CellScript& scriptPubKey, txnouttype& typeRet, st
 
 namespace
 {
-class CScriptVisitor : public boost::static_visitor<bool>
-{
-private:
-    CellScript *script;
-public:
-    CScriptVisitor(CellScript *scriptin) { script = scriptin; }
+    class CScriptVisitor : public boost::static_visitor<bool>
+    {
+    private:
+        CellScript* script;
+    public:
+        CScriptVisitor(CellScript *scriptin) { script = scriptin; }
 
-    bool operator()(const CellNoDestination &dest) const {
-        script->clear();
-        return false;
-    }
+        bool operator()(const CellNoDestination &dest) const {
+            script->clear();
+            return false;
+        }
 
-    bool operator()(const CellKeyID &keyID) const {
-        script->clear();
-        *script << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
-        return true;
-    }
+        bool operator()(const CellContractID &contractID) const {
+            script->clear();
+            *script << OP_CONTRACT << ToByteVector(contractID);
+            return true;
+        }
 
-    bool operator()(const CellScriptID &scriptID) const {
-        script->clear();
-        *script << OP_HASH160 << ToByteVector(scriptID) << OP_EQUAL;
-        return true;
-    }
-};
+        bool operator()(const CellKeyID &keyID) const {
+            script->clear();
+            *script << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
+            return true;
+        }
+
+        bool operator()(const CellScriptID &scriptID) const {
+            script->clear();
+            *script << OP_HASH160 << ToByteVector(scriptID) << OP_EQUAL;
+            return true;
+        }
+    };
 } // namespace
-
-
-
-
 
 CellScript GetScriptForDestination(const CellTxDestination& dest)
 {
     CellScript script;
-
     boost::apply_visitor(CScriptVisitor(&script), dest);
     return script;
 }

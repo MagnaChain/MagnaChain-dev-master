@@ -100,6 +100,7 @@ void CellChainParams::InitMainBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 75); //X
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 62); //S
+    base58Prefixes[CONTRACT_ADDRESS] = std::vector<unsigned char>(1, 69);
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 128);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x88, 0xB2, 0x1E };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x88, 0xAD, 0xE4 };
@@ -109,6 +110,7 @@ void CellChainParams::InitTestnetBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 110);
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 195);
+    base58Prefixes[CONTRACT_ADDRESS] = std::vector<unsigned char>(1, 199);
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
@@ -118,6 +120,7 @@ void CellChainParams::InitRegtestBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 110);
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 195);
+    base58Prefixes[CONTRACT_ADDRESS] = std::vector<unsigned char>(1, 199);
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
@@ -146,8 +149,8 @@ public:
         consensus.BIP65Height = 0; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0
         consensus.BIP66Height = 0; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 		consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks 难度调整时间 
-        consensus.nPowTargetSpacing = 30;// * 60;//10 * 60;
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks 脛脩露脠碌梅脮没脢卤录盲 
+        consensus.nPowTargetSpacing = 10;// * 60 * 60;
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
 		consensus.nRuleChangeActivationThreshold = 10;// 1916; // 95% of 2016
@@ -449,7 +452,7 @@ public:
 		//assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
 		//assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
-        //侧链跟主链的key一致,根据不同网络进行切换
+        //虏脿脕麓赂煤脰梅脕麓碌脛key脪禄脰脗,赂霉戮脻虏禄脥卢脥酶脗莽陆酶脨脨脟脨禄禄
         bool fRegTest = gArgs.GetBoolArg("-regtest", false);
         bool fTestNet = gArgs.GetBoolArg("-testnet", false);
         InitMainBase58Prefixes();

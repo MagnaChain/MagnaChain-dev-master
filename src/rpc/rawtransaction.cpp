@@ -437,7 +437,9 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
         } else {
             CellLinkAddress address(name_);
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Celllink address: ")+name_);
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Celllink address: ") + name_);
+            if (address.IsContractID())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("CellLink address can't be contract id: ") + name_);
 
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+name_);

@@ -26,6 +26,14 @@
 
 const unsigned int BIP32_EXTKEY_SIZE = 74;
 
+/** A reference to a CellContract: the Hash160 of its serialization (see script.h) */
+class CellContractID : public uint160
+{
+public:
+    CellContractID() : uint160() {}
+    CellContractID(const uint160& in) : uint160(in) {}
+};
+
 /** A reference to a CellKey: the Hash160 of its serialized public key */
 class CellKeyID : public uint160
 {

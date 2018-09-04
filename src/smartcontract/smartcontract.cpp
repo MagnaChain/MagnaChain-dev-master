@@ -26,22 +26,22 @@
 #endif
 
 /*
-º¯Êı regContract(filename)
-²ÎÊı filename ÖÇÄÜºÏÔ¼½Å±¾Â·¾¶
-ret1 bool ÊÇ·ñ×¢²á³É¹¦
-ret2 ret1=trueÊ±±íÊ¾Ö¸ÁîÖ´ĞĞÊı
-ret3 Èç¹û×¢²áÊ§°Ü,·µ»ØÊ§°ÜĞÅÏ¢,Èç¹û³É¹¦,·µ»Ø±àÒëºÃµÄ×Ö½ÚÂë
-ret4 Èç¹û×¢²áÊ§°Ü,·µ»Ønil,Èç¹û³É¹¦,³õÊ¼»¯µÄÊı¾İ,¿ÉÄÜÊÇnil
+å‡½æ•° regContract(filename)
+å‚æ•° filename æ™ºèƒ½åˆçº¦è„šæœ¬è·¯å¾„
+ret1 bool æ˜¯å¦æ³¨å†ŒæˆåŠŸ
+ret2 ret1=trueæ—¶è¡¨ç¤ºæŒ‡ä»¤æ‰§è¡Œæ•°
+ret3 å¦‚æœæ³¨å†Œå¤±è´¥,è¿”å›å¤±è´¥ä¿¡æ¯,å¦‚æœæˆåŠŸ,è¿”å›ç¼–è¯‘å¥½çš„å­—èŠ‚ç 
+ret4 å¦‚æœæ³¨å†Œå¤±è´¥,è¿”å›nil,å¦‚æœæˆåŠŸ,åˆå§‹åŒ–çš„æ•°æ®,å¯èƒ½æ˜¯nil
 
-º¯Êı callContract(strComplieFun, strData, funname, jsonparams)
-strComplieFun ºÏÔ¼´úÂë
-strData msgpackºóµÄÊı¾İ
-funname ÓÃµ÷ÓÃµÄºÏÔ¼º¯ÊıÃû
-jsonparams string json²ÎÊı
-ret1 µ÷ÓÃÊÇ·ñ³É¹¦
-ret2 ret1=trueÊ±±íÊ¾Ö¸ÁîÖ´ĞĞÊı
-ret3 ret1 = false,·µ»Ø´íÎóĞÅÏ¢,ret1 = true,·µ»ØĞÂµÄÊı¾İ
-ret4 ºÏÔ¼·µ»ØµÄjsonÊı¾İ
+å‡½æ•° callContract(strComplieFun, strData, funname, jsonparams)
+strComplieFun åˆçº¦ä»£ç 
+strData msgpackåçš„æ•°æ®
+funname ç”¨è°ƒç”¨çš„åˆçº¦å‡½æ•°å
+jsonparams string jsonå‚æ•°
+ret1 è°ƒç”¨æ˜¯å¦æˆåŠŸ
+ret2 ret1=trueæ—¶è¡¨ç¤ºæŒ‡ä»¤æ‰§è¡Œæ•°
+ret3 ret1 = false,è¿”å›é”™è¯¯ä¿¡æ¯,ret1 = true,è¿”å›æ–°çš„æ•°æ®
+ret4 åˆçº¦è¿”å›çš„jsonæ•°æ®
 */
 
 static const char* initscript = "                                               \n\
@@ -293,7 +293,7 @@ bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLi
 
 // generate contract address
 // format: sender address keyid + block address + new celllink address + contract script file hash
-CellKeyID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& strCode)
+CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& code)
 {
     CellHashWriter ss(SER_GETHASH, 0);
 
@@ -311,64 +311,35 @@ CellKeyID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& se
     ss << blockAddress;
 
     // new celllink address
-    CellPubKey newKey;
-    if (!pWallet->GetKeyFromPool(newKey))
-        throw std::runtime_error(strprintf("%s:%d Keypool ran out, please call keypoolrefill first", __FILE__, __LINE__));
-    CellKeyID keyID = newKey.GetID();
-    ss << (uint160)keyID;
+    if (pWallet != nullptr) {
+        CellPubKey newKey;
+        if (!pWallet->GetKeyFromPool(newKey))
+            throw std::runtime_error(strprintf("%s:%d Keypool ran out, please call keypoolrefill first", __FILE__, __LINE__));
+        ss << newKey.GetID();
+    }
+    else {
+        // sdkç”¨æˆ·æ²¡æœ‰é’±åŒ…åœ¨æœ¬åœ° 
+        ss << GetTimeMillis();
+        ss << (int64_t)(&senderAddr); // get random value by address point
+    }
 
     // contract script file hash
-    ss << Hash(strCode.begin(), strCode.end()).GetHex();
-
-    uint256 contractHash256 = ss.GetHash();
-    std::vector<unsigned char> vContract = ParseHex(contractHash256.ToString());
-    keyID = Hash160(vContract);
-    return keyID;
-}
-
-// sdkÓÃ»§Ã»ÓĞÇ®°üÔÚ±¾µØ 
-uint160 GenerateTempContractAddress(const CellLinkAddress& kSender, const std::string &strCode)
-{
-    CellHashWriter ss(SER_GETHASH, 0);
-
-    // sender address keyid
-    CellKeyID kSenderId;
-    kSender.GetKeyID(kSenderId);
-    ss << (uint160)kSenderId;
-
-    // block address
-    std::string blockAddress;
-    if (chainActive.Height() < COINBASE_MATURITY)
-        blockAddress = chainActive.Tip()->GetBlockHash().GetHex();
-    else
-        blockAddress = chainActive[chainActive.Height() - COINBASE_MATURITY]->GetBlockHash().GetHex();
-    ss << blockAddress;
-
-    // time
-    int64_t point = (int64_t)(&kSender); // get random value by address point
-    ss << GetTime();
-    ss << point;// pointer
-
-                // contract script file hash
-    ss << Hash(strCode.begin(), strCode.end()).GetHex();
-
-    uint256 contractHash256 = ss.GetHash();
-    std::vector<unsigned char> vContract = ParseHex(contractHash256.ToString());
-    return Hash160(vContract);
+    ss << Hash(code.begin(), code.end()).GetHex();
+    return Hash160(ParseHex(ss.GetHash().ToString()));
 }
 
 void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
 {
-    // ´´½¨msg±í
+    // åˆ›å»ºmsgè¡¨
     lua_newtable(L);
     lua_pushvalue(L, -1);
     lua_setglobal(L, "msg");
 
-    // ÉèÖÃÏà¹Ø²ÎÊı
+    // è®¾ç½®ç›¸å…³å‚æ•°
     lua_pushstring(L, contractAddr.c_str());
-    lua_setfield(L, -2, "thisAddress"); //ºÏÔ¼±¾ÉíµÄµØÖ·
+    lua_setfield(L, -2, "thisAddress"); //åˆçº¦æœ¬èº«çš„åœ°å€
     lua_pushstring(L, sender.c_str());
-    lua_setfield(L, -2, "sender"); // µ±Ç°·¢Æğµ÷ÓÃºÏÔ¼ÕßµØÖ·
+    lua_setfield(L, -2, "sender"); // å½“å‰å‘èµ·è°ƒç”¨åˆçº¦è€…åœ°å€
     lua_pushnumber(L, payment);
     lua_setfield(L, -2, "payment"); //msg.value: number of wei sent with the message
     lua_pushnumber(L, blockTime);
@@ -395,29 +366,27 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
         return -1;
     }
 
-    CellKeyID contractKey = GenerateContractAddress(pWallet, senderAddr, rawCode);// temp addresss, replace in CellWallet::CreateTransaction 
-    CellLinkAddress contractAddr(contractKey);
+    CellContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);// temp addresss, replace in CellWallet::CreateTransaction 
+    CellLinkAddress contractAddr(contractId);
 
     SmartContractRet scr;
     sls->Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
     int result = PublishContract(sls, amount, contractAddr, senderAddr, rawCode, code, scr);
     if (result == 0) {
-        CellScript contractScript;
-        CellTxDestination contractDest = contractAddr.Get();
-        boost::apply_visitor(CellContractPublishScriptVisitor(&contractScript), contractDest);
+        CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-        sls->contractKeys.erase(contractKey);
+        sls->contractIds.erase(contractId);
         CellWalletTx wtx;
         wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
         wtx.contractCode = rawCode;
         wtx.contractSenderKey = senderPubKey;
-        wtx.contractAddrs.emplace_back(contractKey);
-        wtx.contractAddrs.insert(wtx.contractAddrs.end(), sls->contractKeys.begin(), sls->contractKeys.end());
+        wtx.contractAddrs.emplace_back(contractId);
+        wtx.contractAddrs.insert(wtx.contractAddrs.end(), sls->contractIds.begin(), sls->contractIds.end());
 
         bool subtractFeeFromAmount = false;
         CellCoinControl coinCtrl;
         EnsureWalletIsUnlocked(pWallet);
-        SendMoney(pWallet, contractScript, amount, subtractFeeFromAmount, wtx, coinCtrl, sls);
+        SendMoney(pWallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, sls);
 
         ret.setObject();
         ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
@@ -435,10 +404,10 @@ int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& cont
         return -1;
     }
 
-    CellKeyID contractKey;
-    contractAddr.GetKeyID(contractKey);
+    CellContractID contractId;
+    contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (sls->GetContractInfo(contractKey, contractInfo)) {
+    if (sls->GetContractInfo(contractId, contractInfo)) {
         scr.result.push_back("Contract exists.");
         return -1;
     }
@@ -455,7 +424,7 @@ int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& cont
         if (sls->saveType > 0) {
             contractInfo.code = code;
             contractInfo.data = scr.data;
-            sls->SetContractInfo(contractKey, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
     sls->ReleaseLuaState(L);
@@ -502,10 +471,10 @@ int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount,
 {
     ret.result.clear();
 
-    CellKeyID contractKey;
-    contractAddr.GetKeyID(contractKey);
+    CellContractID contractId;
+    contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (!sls->GetContractInfo(contractKey, contractInfo) || contractInfo.code.size() <= 0) {
+    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0) {
         ret.result.push_back("GetContractInfo fail");
         return -1;
     }
@@ -520,7 +489,7 @@ int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount,
         sls->deltaDataLen += std::max(0u, (uint32_t)(ret.data.size() - contractInfo.data.size()));
         if (sls->saveType > 0) {
             contractInfo.data = ret.data;
-            sls->SetContractInfo(contractKey, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
     sls->ReleaseLuaState(L);
@@ -606,7 +575,7 @@ int CallContract(lua_State* L, long maxCallNum, const std::string& code, const s
     return result;
 }
 
-// LuaÄÚ²¿Ç¶Ì×µ÷ÓÃºÏÔ¼
+// Luaå†…éƒ¨åµŒå¥—è°ƒç”¨åˆçº¦
 int InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
@@ -674,7 +643,7 @@ int InternalCallContract(lua_State* L)
     return scr.result.size() + 1;
 }
 
-// LuaÄÚ²¿ÏòÖ¸¶¨µØÖ··¢ËÍ´ú±Ò
+// Luaå†…éƒ¨å‘æŒ‡å®šåœ°å€å‘é€ä»£å¸
 int SendCoins(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
@@ -693,9 +662,7 @@ int SendCoins(lua_State* L)
 
         sls->totalAmount = 0;
         if (!bGetCoinsFromCoinsDb) {
-            CellScript script;
-            CellTxDestination kContractDest = sls->contractAddrs.top().Get();
-            boost::apply_visitor(CellContractCallScriptVisitor(&script), kContractDest);
+            CellScript scriptPubKey = GetScriptForDestination(sls->contractAddrs.top().Get());
 
             CellCoinsViewCursor* pCursor = pcoinsdbview->Cursor();
             while (pCursor->Valid()) {
@@ -708,7 +675,7 @@ int SendCoins(lua_State* L)
                 if (coin.nHeight + delaySend > curHeight) {
                     continue;
                 }
-                if (coin.out.scriptPubKey != script) {
+                if (coin.out.scriptPubKey != scriptPubKey) {
                     continue;
                 }
                 sls->inputs.emplace_back(coin, outPoint);
@@ -771,7 +738,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, ContractConte
 
     this->inputs.clear();
     this->outputs.clear();
-    this->contractKeys.clear();
+    this->contractIds.clear();
     while (!this->contractAddrs.empty())
         this->contractAddrs.pop();
     while (!this->senderAddrs.empty())
@@ -815,9 +782,9 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr, CellLinkAdd
         L->userData = this;
     }
 
-    CellKeyID contractKey;
-    contractAddr.GetKeyID(contractKey);
-    contractKeys.insert(contractKey);
+    CellKeyID contractId;
+    contractAddr.GetKeyID(contractId);
+    contractIds.insert(contractId);
     contractAddrs.emplace(contractAddr);
     senderAddrs.emplace(senderAddr);
 
@@ -833,22 +800,22 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
     _luaStates.push(L);
 }
 
-void SmartLuaState::SetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, bool cache)
+void SmartLuaState::SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache)
 {
     LOCK(_contractCS);
     if (cache)
-        _pContractContext->SetCache(contractKey, contractInfo);
+        _pContractContext->SetCache(contractId, contractInfo);
     else
-        _pContractContext->SetData(contractKey, contractInfo);
+        _pContractContext->SetData(contractId, contractInfo);
 }
 
-bool SmartLuaState::GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo)
+bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo)
 {
     LOCK(_contractCS);
 
-    // Ö±½Ó´Ó¿ìÕÕ»º´æÖĞ¶ÁÈ¡
-    if (_pContractContext->GetData(contractKey, contractInfo))
+    // ç›´æ¥ä»å¿«ç…§ç¼“å­˜ä¸­è¯»å–
+    if (_pContractContext->GetData(contractId, contractInfo))
         return true;
 
-    return mpContractDb->GetContractInfo(contractKey, contractInfo, _pPrevBlockIndex);
+    return mpContractDb->GetContractInfo(contractId, contractInfo, _pPrevBlockIndex);
 }

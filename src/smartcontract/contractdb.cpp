@@ -21,7 +21,7 @@ CellAmount GetTxContractOut(const CellTransaction& tx)
         std::vector<unsigned char> vch;
         CellScript::const_iterator pc1 = kOut.scriptPubKey.begin();
         kOut.scriptPubKey.GetOp(pc1, opcode, vch);
-        if (opcode == OP_PUB_CONTRACT || opcode == OP_TRANS_CONTRACT) {
+        if (opcode == OP_CONTRACT) {
             out += kOut.nValue;
             break;
         }
@@ -38,22 +38,22 @@ struct CmpByBlockHeight {
     }
 };
 
-static std::map<CellKeyID, ContractInfo> cache;    // Êý¾Ý»º´æ£¬±ãÓÚ»Ø¹ö
+static std::map<CellContractID, ContractInfo> cache;    // æ•°æ®ç¼“å­˜ï¼Œç”¨äºŽå›žæ»š
 
-void ContractContext:: SetCache(const CellKeyID& key, ContractInfo& contractInfo)
+void ContractContext::SetCache(const CellContractID& contractId, ContractInfo& contractInfo)
 {
-    cache[key] = std::move(contractInfo);
+    cache[contractId] = std::move(contractInfo);
 }
 
-void ContractContext::SetData(const CellKeyID& key, ContractInfo& contractInfo)
+void ContractContext::SetData(const CellContractID& contractId, ContractInfo& contractInfo)
 {
-    _data[key] = std::move(contractInfo);
+    _data[contractId] = std::move(contractInfo);
 }
 
-bool ContractContext::GetData(const CellKeyID& key, ContractInfo& contractInfo)
+bool ContractContext::GetData(const CellContractID& contractId, ContractInfo& contractInfo)
 {
     if (cache.size() > 0) {
-        auto it = cache.find(key);
+        auto it = cache.find(contractId);
         if (it == cache.end()) {
             contractInfo.code = it->second.code;
             contractInfo.data = it->second.data;
@@ -61,7 +61,7 @@ bool ContractContext::GetData(const CellKeyID& key, ContractInfo& contractInfo)
         }
     }
 
-    auto it = _data.find(key);
+    auto it = _data.find(contractId);
     if (it != _data.end()) {
         contractInfo.code = it->second.code;
         contractInfo.data = it->second.data;
@@ -131,8 +131,8 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
         if (tx->IsNull() || !tx->IsSmartContract())
             continue;
 
-        CellKeyID contractKey = tx->contractAddrs[0];
-        CellLinkAddress contractAddrs(contractKey);
+        CellContractID contractId = tx->contractAddrs[0];
+        CellLinkAddress contractAddrs(contractId);
         CellLinkAddress senderAddr(tx->contractSender.GetID());
         CellAmount amount = GetTxContractOut(*tx);
 
@@ -204,7 +204,7 @@ void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, Contra
     int confirmBlockHeight = blockHeight - DEFAULT_CHECKBLOCKS;
 
     if (confirmBlockHeight > 0) {
-        // ±éÀú»º´æµÄºÏÔ¼Êý¾Ý£¬ÇåÀíÃ÷È·ÊÇÎÞÐ§·Ö²æµÄÊý¾Ý
+        // éåŽ†ç¼“å­˜çš„åˆçº¦æ•°æ®ï¼Œæ¸…ç†æ˜Žç¡®æ˜¯æ— æ•ˆåˆ†å‰çš„æ•°æ®
         CellBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
         for (auto ci : _contractData) {
             DBBlockContractInfo& dbBlockContractInfo = ci.second;
@@ -213,14 +213,14 @@ void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, Contra
             for (DBContractList::iterator it = dbBlockContractInfo.data.begin(); it != dbBlockContractInfo.data.end();) {
                 if (it->blockHeight <= confirmBlockHeight) {
                     BlockMap::iterator bi = mapBlockIndex.find(it->blockHash);
-                    // ½«Ð¡ÓÚÈ·ÈÏÇø¿éÒÔÏÂµÄ²»ÊôÓÚ¸ÃÁ´µÄÇø¿éÊý¾ÝÒÆ³ýµô
+                    // å°†å°äºŽç¡®è®¤åŒºå—ä»¥ä¸‹çš„ä¸å±žäºŽè¯¥é“¾çš„åŒºå—æ•°æ®ç§»é™¤æŽ‰
                     if (bi == mapBlockIndex.end() || newConfirmBlock->GetAncestor(it->blockHeight)->GetBlockHash() != it->blockHash) {
                         DBContractList::iterator temp = it++;
                         dbBlockContractInfo.data.erase(temp);
                         continue;
                     }
                     if (it->blockHeight < confirmBlockHeight) {
-                        // ±£Áôµ±Ç°È·ÈÏ¿éÒÔÏÂµÄ×î½üÒ»±ÊÊý¾Ý£¬·ÀÖ¹³ÌÐòÍË³öÊ±Çø¿éÁ´±£´æÐÅÏ¢²»ÍêÕûµ¼ÖÂ¼ÓÔØµ½´íÎóÊý¾Ý
+                        // ä¿ç•™å½“å‰ç¡®è®¤å—ä»¥ä¸‹çš„æœ€è¿‘ä¸€ç¬”æ•°æ®ï¼Œé˜²æ­¢ç¨‹åºé€€å‡ºæ—¶åŒºå—é“¾ä¿å­˜ä¿¡æ¯ä¸å®Œæ•´å¯¼è‡´åŠ è½½åˆ°é”™è¯¯æ•°æ®
                         if (saveIt != dbBlockContractInfo.data.end())
                             dbBlockContractInfo.data.erase(saveIt);
                         saveIt = it;
@@ -233,14 +233,14 @@ void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, Contra
         }
     }
 
-    // ½«Çø¿é²åÈë¶ÔÓ¦µÄ½áµãÖÐ
+    // å°†åŒºå—æ’å…¥å¯¹åº”çš„ç»“ç‚¹ä¸­
     for (auto ci : pContractContext->_data) {
         DBContractInfo dbContractInfo;
         dbContractInfo.blockHash = pBlockIndex->GetBlockHash();
         dbContractInfo.blockHeight = pBlockIndex->nHeight;
         dbContractInfo.data = ci.second.data;
 
-        // °´¸ß¶ÈÑ°ÕÒ²åÈëµã
+        // æŒ‰é«˜åº¦å¯»æ‰¾æ’å…¥ç‚¹
         DBBlockContractInfo& blockContractInfo = _contractData[ci.first];
         if (blockContractInfo.code.empty())
             blockContractInfo.code = ci.second.code;
@@ -269,14 +269,14 @@ void ContractDataDB::Flush()
     for (auto it : _contractData) {
         DBBlockContractInfo& dbBlockContractInfo = it.second;
         if (dbBlockContractInfo.data.size() == 0) {
-            // ¸ÃºÏÔ¼Ã»ÓÐÓÐÐ§µÄÊý¾Ý£¬ÔòÅÐ¶¨Îª·Ö²æºóÎÞÐ§µÄÊý¾Ý£¬ÒÆ³ýÖ®
+            // è¯¥åˆçº¦æ²¡æœ‰æœ‰æ•ˆçš„æ•°æ®ï¼Œåˆ™åˆ¤å®šä¸ºåˆ†å‰åŽæ— æ•ˆçš„æ•°æ®ï¼Œç§»é™¤ä¹‹
             batch.Erase(it.first);
             removes.emplace_back(it.first);
         }
         else
             batch.Write(it.first, it.second);
 
-        // ¸ÃÇø¿éÒÑ²»¿ÉÄæÇÒÖ»Ê£ÏÂÒ»±ÊÊý¾Ý£¬Ôò´æÅÌºó´ÓÄÚ´æÒÆ³ý
+        // è¯¥åŒºå—å·²ä¸å¯é€†ä¸”åªå‰©ä¸‹ä¸€ç¬”æ•°æ®ï¼Œåˆ™å­˜ç›˜åŽä»Žå†…å­˜ç§»é™¤
         if (dbBlockContractInfo.data.size() == 1) {
             BlockMap::iterator mi = mapBlockIndex.find(dbBlockContractInfo.data.begin()->blockHash);
             if (mi != mapBlockIndex.end() && mi->second->nHeight < confirmBlockHeight)
@@ -292,36 +292,36 @@ void ContractDataDB::Flush()
     db.WriteBatch(batch);
     batch.Clear();
 
-    for (uint160& contractKey : removes)
-        _contractData.erase(contractKey);
+    for (uint160& contractId : removes)
+        _contractData.erase(contractId);
 }
 
-bool ContractDataDB::GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex)
+bool ContractDataDB::GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex)
 {
     LOCK(cs_cache);
 
-    // ¼ì²éÊÇ·ñÔÚ»º´æÖÐ£¬²»´æÔÚÔò³¢ÊÔ¼ÓÔØ
-    DBContractMap::iterator di = _contractData.find(contractKey);
+    // æ£€æŸ¥æ˜¯å¦åœ¨ç¼“å­˜ä¸­ï¼Œä¸å­˜åœ¨åˆ™å°è¯•åŠ è½½
+    DBContractMap::iterator di = _contractData.find(contractId);
     if (di == _contractData.end()) {
         DBBlockContractInfo dbBlockContractInfo;
-        if (!db.Read(contractKey, dbBlockContractInfo))
+        if (!db.Read(contractId, dbBlockContractInfo))
             return false;
         else {
-            _contractData[contractKey] = dbBlockContractInfo;
-            di = _contractData.find(contractKey);
+            _contractData[contractId] = dbBlockContractInfo;
+            di = _contractData.find(contractId);
         }
     }
 
-    // ±éÀú»ñÈ¡ÏàÓ¦½ÚµãµÄÊý¾Ý
+    // éåŽ†èŽ·å–ç›¸åº”èŠ‚ç‚¹çš„æ•°æ®
     CellBlockIndex* prevBlock = (currentPrevBlockIndex ? currentPrevBlockIndex : chainActive.Tip());
     int blockHeight = prevBlock->nHeight;
-    // Á´±í×îÄ©Î²´æ´¢×î¸ßµÄÇø¿é
+    // é“¾è¡¨æœ€æœ«å°¾å­˜å‚¨æœ€é«˜çš„åŒºå—
     for (DBContractList::reverse_iterator it = di->second.data.rbegin(); it != di->second.data.rend(); ++it) {
         if (it->blockHeight <= blockHeight) {
             BlockMap::iterator bi = mapBlockIndex.find(it->blockHash);
             assert(bi != mapBlockIndex.end());
             CellBlockIndex* checkBlockIndex = prevBlock->GetAncestor(it->blockHeight);
-            // ÕÒµ½Í¬Ò»·Ö²æÊ±
+            // æ‰¾åˆ°åŒä¸€åˆ†å‰æ—¶
             if (checkBlockIndex == bi->second) {
                 contractInfo.code = di->second.code;
                 contractInfo.data = it->data;

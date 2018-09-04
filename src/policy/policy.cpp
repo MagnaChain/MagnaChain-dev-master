@@ -76,14 +76,12 @@ bool IsStandard(const CellScript& scriptPubKey, txnouttype& whichType, const boo
 {
     std::vector<std::vector<unsigned char> > vSolutions;
 	if (!Solver(scriptPubKey, whichType, vSolutions)) {
-		opcodetype opcode1;
-		std::vector<unsigned char> vch1;
-		CellScript::const_iterator pc1 = scriptPubKey.begin();
-		scriptPubKey.GetOp(pc1, opcode1, vch1);
-		if (opcode1 == OP_PUB_CONTRACT || opcode1 == OP_TRANS_CONTRACT)
-		{
+		opcodetype opcode;
+		std::vector<unsigned char> vch;
+		CellScript::const_iterator pc = scriptPubKey.begin();
+		scriptPubKey.GetOp(pc, opcode, vch);
+		if (opcode == OP_CONTRACT)
 			return true;
-		}
 		return false;
 	}
 

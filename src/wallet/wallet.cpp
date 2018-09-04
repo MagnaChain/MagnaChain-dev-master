@@ -104,6 +104,10 @@ public:
         }
     }
 
+    void operator()(const CellContractID &constractId) {
+        // TODO: fill logic
+    }
+
     void operator()(const CellKeyID &keyId) {
         if (keystore.HaveKey(keyId))
             vKeys.push_back(keyId);
@@ -1835,7 +1839,7 @@ CellAmount CellWalletTx::GetAvailableCredit(bool fUseCache) const
         if (!pwallet->IsSpent(hashTx, i))
         {
             const CellTxOut &txout = tx->vout[i];
-            if (QuickGetBranchScriptType(txout.scriptPubKey) != BST_INVALID)// µÖÑº±Ò¡¢ÍÚ¿ó±Ò²»ÄÜÊ¹ÓÃ
+            if (QuickGetBranchScriptType(txout.scriptPubKey) != BST_INVALID)// æŠµæŠ¼å¸ã€æŒ–çŸ¿å¸ä¸èƒ½ä½¿ç”¨
                 continue;
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
             if (!MoneyRange(nCredit))
@@ -2246,7 +2250,7 @@ void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, const CellTxDes
 					continue;
 				}
 
-                if (QuickGetBranchScriptType(pcoin->tx->vout[i].scriptPubKey) != BST_INVALID)//µÖÑº±Ò¡¢µÖÑº±Ò²»ÄÜÆÕÍ¨Ê¹ÓÃ
+                if (QuickGetBranchScriptType(pcoin->tx->vout[i].scriptPubKey) != BST_INVALID)//æŠµæŠ¼å¸ã€æŠµæŠ¼å¸ä¸èƒ½æ™®é€šä½¿ç”¨
                 {
                     continue;
                 }
@@ -2362,7 +2366,7 @@ void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, bool fOnlySafe,
                     continue;
                 }
 
-                if (QuickGetBranchScriptType(pcoin->tx->vout[i].scriptPubKey) != BST_INVALID)//µÖÑº±Ò¡¢ÍÚ¿ó±Ò²»ÄÜÆÕÍ¨Ê¹ÓÃ
+                if (QuickGetBranchScriptType(pcoin->tx->vout[i].scriptPubKey) != BST_INVALID)//æŠµæŠ¼å¸ã€æŒ–çŸ¿å¸ä¸èƒ½æ™®é€šä½¿ç”¨
                 {
                     continue;
                 }
@@ -2911,7 +2915,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
         if (toTx.sendToBranchid == CellBaseChainParams::MAIN)
             toTx.pPMT.reset(new CellSpvProof());
     }
-    else if (fromWtx.transaction_version == CellTransaction::TRANS_BRANCH_VERSION_S2)//ÕâÖÖÀàĞÍ²»ÊÇ´´½¨³öÀ´µÄ£¬ÊÇ°üº¬ÔÚÉÏÃæÁ½¸öÀàĞÍ
+    else if (fromWtx.transaction_version == CellTransaction::TRANS_BRANCH_VERSION_S2)//è¿™ç§ç±»å‹ä¸æ˜¯åˆ›å»ºå‡ºæ¥çš„ï¼Œæ˜¯åŒ…å«åœ¨ä¸Šé¢ä¸¤ä¸ªç±»å‹
     {
     }
     else if (fromWtx.transaction_version == CellTransaction::MINE_BRANCH_MORTGAGE)
@@ -2953,7 +2957,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
     return true;
 }
 
-// ½»Ò×ÖÁÉÙÒªÓĞÒ»¸öÊä³ö,µ±isDataTransaction=trueµÄÇé¿öÏÂ,ÖÁÉÙÓĞ¸öÕÒÁãÊä³ö 
+// äº¤æ˜“è‡³å°‘è¦æœ‰ä¸€ä¸ªè¾“å‡º,å½“isDataTransaction=trueçš„æƒ…å†µä¸‹,è‡³å°‘æœ‰ä¸ªæ‰¾é›¶è¾“å‡º 
 bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, CellWalletTx& wtxNew, CellReserveKey& reservekey, CellAmount& nFeeRet,
                                 int& nChangePosInOut, std::string& strFailReason, const CellCoinControl& coin_control, bool sign, SmartLuaState* sls)
 {
@@ -3030,7 +3034,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
             // change transaction isn't always pay-to-celllink-address
             CellScript scriptChange;
 
-			// »ñÈ¡Ò»¸öÕÒÁãµØÖ·
+			// è·å–ä¸€ä¸ªæ‰¾é›¶åœ°å€
             // coin control: send change to custom address
             if (!boost::get<CellNoDestination>(&coin_control.destChange)) {
                 scriptChange = GetScriptForDestination(coin_control.destChange);
@@ -3070,7 +3074,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                 wtxNew.fFromMe = true;
                 bool fFirst = true;
 
-				// Èç¹ûÊÇ´ÓÊäÈëÖĞ¿Û³ı½»Ò×·Ñ£¬ÔòÊäÈë»¹Òª¼ÓÉÏ½»Ò×·ÑÓÃ
+				// å¦‚æœæ˜¯ä»è¾“å…¥ä¸­æ‰£é™¤äº¤æ˜“è´¹ï¼Œåˆ™è¾“å…¥è¿˜è¦åŠ ä¸Šäº¤æ˜“è´¹ç”¨
                 CellAmount nValueToSelect = nValue;
                 if (nSubtractFeeFromAmount == 0)
                     nValueToSelect += nFeeRet;
@@ -3080,7 +3084,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                 {
                     CellTxOut txout(recipient.nAmount, recipient.scriptPubKey );
 
-					// ´Ó´øÓĞ"´ÓÕÊ»§¿Û³ı½»Ò×·Ñ"±ê¼ÇµÄÊä³ö½»Ò×ÖĞÆ½¾ù¿Û³ı½»Ò×·Ñ£¬µÚÒ»¸öÕÊ»§»¹Òª¿Û³ıÆ½¾ù½»Ò×·ÑºóµÄÓàÊı
+					// ä»å¸¦æœ‰"ä»å¸æˆ·æ‰£é™¤äº¤æ˜“è´¹"æ ‡è®°çš„è¾“å‡ºäº¤æ˜“ä¸­å¹³å‡æ‰£é™¤äº¤æ˜“è´¹ï¼Œç¬¬ä¸€ä¸ªå¸æˆ·è¿˜è¦æ‰£é™¤å¹³å‡äº¤æ˜“è´¹åçš„ä½™æ•°
                     if (recipient.fSubtractFeeFromAmount)
                     {
                         txout.nValue -= nFeeRet / nSubtractFeeFromAmount; // Subtract fee equally from each selected recipient
@@ -3092,7 +3096,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                         }
                     }
 
-					//Èç¹ûÊÇÎ¢¶î½»Ò×£¬·µ»Ø´íÎóĞÅÏ¢
+					//å¦‚æœæ˜¯å¾®é¢äº¤æ˜“ï¼Œè¿”å›é”™è¯¯ä¿¡æ¯
                     if (IsDust(txout, ::dustRelayFee))
                     {
                         if (recipient.fSubtractFeeFromAmount && nFeeRet > 0)
@@ -3120,7 +3124,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                     }
                 }
 
-				// ÇóÕÒÁãÊı¶î 
+				// æ±‚æ‰¾é›¶æ•°é¢ 
                 const CellAmount nChange = nValueIn - nValueToSelect;
                 if (nChange > 0)
                 {
@@ -3131,13 +3135,13 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                     // add the dust to the fee.
                     if (IsDust(newTxOut, discard_rate))
                     {
-						// Èç¹ûÊÇÎ¢¶î½»Ò×£¬ÔòÒÆ³ıÕÒÁã£¬Í¬Ê±½«ÕÒÁã·ÑÓÃ¼Óµ½½»Ò×·ÑÓÃÀï 
+						// å¦‚æœæ˜¯å¾®é¢äº¤æ˜“ï¼Œåˆ™ç§»é™¤æ‰¾é›¶ï¼ŒåŒæ—¶å°†æ‰¾é›¶è´¹ç”¨åŠ åˆ°äº¤æ˜“è´¹ç”¨é‡Œ 
                         nChangePosInOut = -1;
                         nFeeRet += nChange;
                     }
                     else
                     {
-						// ÔÚËæ»úÎ»ÖÃ²åÈëÕÒÁãÊä³ö
+						// åœ¨éšæœºä½ç½®æ’å…¥æ‰¾é›¶è¾“å‡º
                         if (nChangePosInOut == -1)
                         {
                             // Insert change txn at random position:
@@ -3171,17 +3175,17 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                     txNew.vin.push_back(CellTxIn(coin.outpoint,CellScript(),
                                               nSequence));
 
-				// ĞéÄâÇ©Ãû 
+				// è™šæ‹Ÿç­¾å 
                 // Fill in dummy signatures for fee calculation.
                 if (!DummySignTx(txNew, setCoins)) {
                     strFailReason = _("Signing transaction failed");
                     return false;
                 }
 
-				// »ñÈ¡½»Ò××Ö½Ú´óĞ¡ 
+				// è·å–äº¤æ˜“å­—èŠ‚å¤§å° 
                 nBytes = GetVirtualTransactionSize(txNew);
 
-				// ÒÆ³ıĞéÄâÇ©ÃûÊı¾İ
+				// ç§»é™¤è™šæ‹Ÿç­¾åæ•°æ®
                 // Remove scriptSigs to eliminate the fee calculation dummy signatures
                 for (auto& vin : txNew.vin) {
                     vin.scriptSig = CellScript();
@@ -3199,7 +3203,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                 }
 
                 if (nFeeRet >= nFeeNeeded) {
-					// Ô¤²âµÄ·ÑÓÃ´óÓÚÊµ¼ÊĞèÒªµÄ·ÑÓÃÊ± 
+					// é¢„æµ‹çš„è´¹ç”¨å¤§äºå®é™…éœ€è¦çš„è´¹ç”¨æ—¶ 
                     // Reduce fee to only the needed amount if possible. This
                     // prevents potential overpayment in fees if the coins
                     // selected to meet nFeeNeeded result in a transaction that
@@ -3211,7 +3215,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                     // (because of reduced tx size) and so we should add a
                     // change output. Only try this once.
                     if (nChangePosInOut == -1 && nSubtractFeeFromAmount == 0 && pick_new_inputs) {
-						// Ã»ÓĞÕÒÁãÊä³ö£¬Ôò´´½¨ÕÒÁã²¢¼ÆËãÏà¹Ø·ÑÓÃ 
+						// æ²¡æœ‰æ‰¾é›¶è¾“å‡ºï¼Œåˆ™åˆ›å»ºæ‰¾é›¶å¹¶è®¡ç®—ç›¸å…³è´¹ç”¨ 
                         unsigned int tx_size_with_change = nBytes + change_prototype_size + 2; // Add 2 as a buffer in case increasing # of outputs changes compact size
                         CellAmount fee_needed_with_change = GetMinimumFee(tx_size_with_change, coin_control, ::mempool, ::feeEstimator, nullptr, &txNew, sls);
                         CellAmount minimum_value_for_change = GetDustThreshold(change_prototype_txout, discard_rate);
@@ -3282,11 +3286,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 					if (totalSendAmount > sls->totalAmount) {
 						CellTxOut changeTxOut;
                         changeTxOut.nValue = totalSendAmount - sls->totalAmount;
-
-						CellScript script;
-						CellTxDestination contractDest = mtx.contractAddrs[0];
-						boost::apply_visitor(CellContractCallScriptVisitor(&script), contractDest);
-                        changeTxOut.scriptPubKey = script;
+                        changeTxOut.scriptPubKey = GetScriptForDestination(mtx.contractAddrs[0]);
 						mtx.vout.push_back(changeTxOut);
 					}
 					break;
@@ -3306,21 +3306,15 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 		{
 			//replace
 			CellKeyID oldKey = txNew.contractAddrs[0];
-			CellScript oldScript;
-			CellTxDestination kContractDest = CellLinkAddress(oldKey).Get();
-			boost::apply_visitor(CellContractPublishScriptVisitor(&oldScript), kContractDest);
+            CellScript oldScript = GetScriptForDestination(CellLinkAddress(oldKey).Get());
 
 			txNew.contractAddrs[0] = GenerateContractAddressByTx(txNew);
 			//replace vout
-			CellScript newScript;
-			kContractDest = CellLinkAddress(txNew.contractAddrs[0]).Get();
-			boost::apply_visitor(CellContractPublishScriptVisitor(&newScript), kContractDest);
+            CellScript newScript = GetScriptForDestination(CellLinkAddress(txNew.contractAddrs[0]).Get());
 			for (auto out : txNew.vout)
 			{
 				if (out.scriptPubKey == oldScript)
-				{
 					out.scriptPubKey = newScript;
-				}
 			}
 		}
 
@@ -3482,26 +3476,26 @@ CellAmount CellWallet::GetMinimumFee(unsigned int nTxBytes, const CellCoinContro
     */
     CellAmount fee_needed;
     if (coin_control.m_feerate) { // 1.
-		// ¸ù¾İÄ¬ÈÏ½»Ò×·ÑÂÊ¼ÆËã½»Ò×·ÑÓÃ
+		// æ ¹æ®é»˜è®¤äº¤æ˜“è´¹ç‡è®¡ç®—äº¤æ˜“è´¹ç”¨
         fee_needed = coin_control.m_feerate->GetFee(nTxBytes);
         if (feeCalc) feeCalc->reason = FeeReason::PAYTXFEE;
         // Allow to override automatic min/max check over coin control instance
         if (coin_control.fOverrideFeeRate) return fee_needed;
     }
     else if (!coin_control.m_confirm_target && ::payTxFee != CellFeeRate(0)) { // 3. TODO: remove magic value of 0 for global payTxFee
-		// È·ÈÏÊıÁ¿´óÓÚ0ÇÒÓÃ»§ÅäÖÃ±íÉèÖÃµÄ·ÑÂÊ´óÓÚ0Ê±£¬¸ù¾İÓÃ»§ÅäÖÃ±íÉèÖÃµÄ·ÑÂÊ¼ÆËã·ÑÓÃ
+		// ç¡®è®¤æ•°é‡å¤§äº0ä¸”ç”¨æˆ·é…ç½®è¡¨è®¾ç½®çš„è´¹ç‡å¤§äº0æ—¶ï¼Œæ ¹æ®ç”¨æˆ·é…ç½®è¡¨è®¾ç½®çš„è´¹ç‡è®¡ç®—è´¹ç”¨
         fee_needed = ::payTxFee.GetFee(nTxBytes);
         if (feeCalc) feeCalc->reason = FeeReason::PAYTXFEE;
     }
     else { // 2. or 4.
         // We will use smart fee estimation
-		// ĞèÒªÈ·ÈÏµÄ´ÎÊı
+		// éœ€è¦ç¡®è®¤çš„æ¬¡æ•°
         unsigned int target = coin_control.m_confirm_target ? *coin_control.m_confirm_target : ::nTxConfirmTarget;
         // By default estimates are economical if we are signaling opt-in-RBF
         bool conservative_estimate = !coin_control.signalRbf;
         // Allow to override the default fee estimate mode over the CoinControl instance
-        if (coin_control.m_fee_mode == FeeEstimateMode::CONSERVATIVE) conservative_estimate = true;			// ±£ÊØÄ£Ê½
-        else if (coin_control.m_fee_mode == FeeEstimateMode::ECONOMICAL) conservative_estimate = false;		// ¾­¼ÃÄ£Ê½
+        if (coin_control.m_fee_mode == FeeEstimateMode::CONSERVATIVE) conservative_estimate = true;			// ä¿å®ˆæ¨¡å¼
+        else if (coin_control.m_fee_mode == FeeEstimateMode::ECONOMICAL) conservative_estimate = false;		// ç»æµæ¨¡å¼
 
         fee_needed = estimator.estimateSmartFee(target, feeCalc, conservative_estimate).GetFee(nTxBytes);
         if (fee_needed == 0) {
@@ -3534,11 +3528,11 @@ CellAmount CellWallet::GetMinimumFee(unsigned int nTxBytes, const CellCoinContro
 		// fee of branch chain transaction 
         if (tx->IsPregnantTx() || tx->IsProve() || tx->IsReport())
         {
-            fee_needed *= 10;// TODO: ¿çÁ´½»Ò×µÄ·ÑÂÊÎÊÌâ 
+            fee_needed *= 10;// TODO: è·¨é“¾äº¤æ˜“çš„è´¹ç‡é—®é¢˜ 
         }
 
-		// ¸ù¾İÖ´ĞĞµÄÖ¸ÁîÊı¡¢´úÂë´óĞ¡ÒÔ¼°´æÅÌÊı¾İ±ä»¯Á¿¼ÆËã½»Ò×·ÑÓÃ
-		// TODO: Ïà¹Ø³£Á¿´ı¶¨£¬Ê¹ÆäÓënTxBytesÓĞ¹Ø
+		// æ ¹æ®æ‰§è¡Œçš„æŒ‡ä»¤æ•°ã€ä»£ç å¤§å°ä»¥åŠå­˜ç›˜æ•°æ®å˜åŒ–é‡è®¡ç®—äº¤æ˜“è´¹ç”¨
+		// TODO: ç›¸å…³å¸¸é‡å¾…å®šï¼Œä½¿å…¶ä¸nTxBytesæœ‰å…³
 		if (tx->IsSmartContract() && sls != nullptr)
 		{
 			fee_needed += sls->runningTimes * 0.1 + sls->codeLen * 0.1 + sls->deltaDataLen * 0.1;

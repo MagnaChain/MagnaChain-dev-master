@@ -76,7 +76,7 @@ public:
  *  * CellScriptID: TX_SCRIPTHASH destination
  *  A CellTxDestination is the internal data type encoded in a CellLinkAddress
  */
-typedef boost::variant<CellNoDestination, CellKeyID, CellScriptID> CellTxDestination;
+typedef boost::variant<CellNoDestination, CellKeyID, CellScriptID, CellContractID> CellTxDestination;
 
 const char* GetTxnOutputType(txnouttype t);
 

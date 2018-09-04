@@ -142,8 +142,7 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP9                   : return "OP_NOP9";
     case OP_NOP10                  : return "OP_NOP10";
 
-    case OP_PUB_CONTRACT           : return "OP_PUB_CONTRACT";
-    case OP_TRANS_CONTRACT         : return "OP_TRANS_CONTRACT";
+    case OP_CONTRACT               : return "OP_CONTRACT";
     case OP_CREATE_BRANCH          : return "OP_CREATE_BRANCH";
     case OP_TRANS_BRANCH           : return "OP_TRANS_BRANCH";
     case OP_MINE_BRANCH_MORTGAGE   : return "OP_MINE_BRANCH_MORTGAGE";
@@ -170,7 +169,7 @@ bool CellScript::GetContractAddr(CellKeyID& keyDest) const
 	CellScript::const_iterator pc1 = begin();
 	GetOp(pc1, opcode, vch);
 
-	if (opcode != OP_PUB_CONTRACT && opcode != OP_TRANS_CONTRACT) {
+	if (opcode != OP_CONTRACT) {
 		return false;
 	}
 	vch.clear();

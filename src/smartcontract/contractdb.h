@@ -8,7 +8,7 @@
 
 #include <boost/threadpool.hpp>
 
-// Ö´ĞĞÖÇÄÜºÏÔ¼Ê±µÄÉÏÏÂÎÄÊı¾İ
+// æ‰§è¡Œæ™ºèƒ½åˆçº¦æ—¶çš„ä¸Šä¸‹æ–‡æ•°æ®
 struct ContractInfo
 {
 public:
@@ -16,7 +16,7 @@ public:
     std::string data;
 };
 
-// ÖÇÄÜºÏÔ¼µÄ´æÅÌÊı¾İ
+// æ™ºèƒ½åˆçº¦çš„å­˜ç›˜æ•°æ®
 class DBContractInfo
 {
 public:
@@ -33,7 +33,7 @@ public:
     }
 };
 
-// Çø¿é¹ØÁªµÄÖÇÄÜºÏÔ¼´æÅÌÊı¾İ
+// åŒºå—å…³è”çš„æ™ºèƒ½åˆçº¦å­˜ç›˜æ•°æ®
 typedef std::list<DBContractInfo> DBContractList;
 class DBBlockContractInfo
 {
@@ -64,19 +64,21 @@ public:
         
     }
 };
-typedef std::map<uint160, DBBlockContractInfo> DBContractMap;
+
+class CellContractID;
+typedef std::map<CellContractID, DBBlockContractInfo> DBContractMap;
 
 class ContractContext
 {
     friend class ContractDataDB;
 
 private:
-    std::map<CellKeyID, ContractInfo> _data;
+    std::map<CellContractID, ContractInfo> _data;
 
 public:
-    void SetCache(const CellKeyID& key, ContractInfo& contractInfo);
-    void SetData(const CellKeyID& key, ContractInfo& contractInfo);
-    bool GetData(const CellKeyID& key, ContractInfo& contractInfo);
+    void SetCache(const CellContractID& key, ContractInfo& contractInfo);
+    void SetData(const CellContractID& key, ContractInfo& contractInfo);
+    bool GetData(const CellContractID& key, ContractInfo& contractInfo);
     void Commit();
     void ClearCache();
     void ClearData();
@@ -93,7 +95,7 @@ private:
     std::map<boost::thread::id, SmartLuaState*> threadId2SmartLuaState;
     mutable CellCriticalSection cs_cache;
 
-    // ºÏÔ¼»º´æ£¬Í¬Ê±°üº¬¶à¸öºÏÔ¼¶ÔÓ¦µÄ¶à¸ö¿éºÏÔ¼Êı¾İ¿ìÕÕ
+    // åˆçº¦ç¼“å­˜ï¼ŒåŒæ—¶åŒ…å«å¤šä¸ªåˆçº¦å¯¹åº”çš„å¤šä¸ªå—åˆçº¦æ•°æ®å¿«ç…§
     DBContractMap _contractData;
 
 public:
@@ -103,7 +105,7 @@ public:
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     static void InitializeThread(ContractDataDB* contractDB);
 
-    bool GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
+    bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
 
     bool RunBlockContract(const std::shared_ptr<const CellBlock> pblock, ContractContext* contractContext);
     static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock>& pblock,

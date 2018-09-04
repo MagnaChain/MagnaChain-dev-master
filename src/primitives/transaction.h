@@ -189,7 +189,7 @@ public:
 
     void SetNull();
 
-    //block header data 	//²»ÄÜÖ±½Óinclude block.h£¬°üº¬CBlockHeader³ÉÔ±£¬ÒòÎª»áµ¼ÖÂÍ·ÎÄ¼şÑ­»·include error
+    //block header data 	//ä¸èƒ½ç›´æ¥include block.hï¼ŒåŒ…å«CBlockHeaderæˆå‘˜ï¼Œå› ä¸ºä¼šå¯¼è‡´å¤´æ–‡ä»¶å¾ªç¯include error
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -533,21 +533,21 @@ public:
     static const int32_t CURRENT_VERSION=2;
 	static const int32_t PUBLISH_CONTRACT_VERSION = 3;
 	static const int32_t CALL_CONTRACT_VERSION = 4; 
-    static const int32_t CREATE_BRANCH_VERSION = 5;// ´´½¨Ö§Á´ 
-	static const int32_t TRANS_BRANCH_VERSION_S1 = 6;// ¿çÁ´½»Ò×µÄ·¢ÆğÁ´·½ 
-	static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// ¿çÁ´½»Ò×µÄ½ÓÊÕÁ´·½ 
+    static const int32_t CREATE_BRANCH_VERSION = 5;// åˆ›å»ºæ”¯é“¾ 
+	static const int32_t TRANS_BRANCH_VERSION_S1 = 6;// è·¨é“¾äº¤æ˜“çš„å‘èµ·é“¾æ–¹ 
+	static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// è·¨é“¾äº¤æ˜“çš„æ¥æ”¶é“¾æ–¹ 
 
-    static const int32_t MINE_BRANCH_MORTGAGE = 8; // ÍÚ¿óµÖÑº,like TRANS_BRANCH_VERSION_S1
-    static const int32_t SYNC_BRANCH_INFO = 9;     // Í¬²½²àÁ´Êı¾İ,¸øÖ÷Á´
-    static const int32_t REPORT_CHEAT = 10;        // ¾Ù±¨
-    static const int32_t PROVE = 11;               // Ö¤Ã÷
-    static const int32_t REDEEM_MORTGAGE_STATEMENT = 12;     // Êê»ØÍÚ¿óµÖÑº(ÔÚ²àÁ´ÉùÃ÷½×¶Î,°ÑÍÚ¿ó±ÒÏú»Ù)
-    static const int32_t REDEEM_MORTGAGE = 13;               // Êê»ØÍÚ¿óµÖÑº±Ò(°ÑÖ÷Á´ÉÏµÄµÖÑºÄÃ»ØÀ´)
+    static const int32_t MINE_BRANCH_MORTGAGE = 8; // æŒ–çŸ¿æŠµæŠ¼,like TRANS_BRANCH_VERSION_S1
+    static const int32_t SYNC_BRANCH_INFO = 9;     // åŒæ­¥ä¾§é“¾æ•°æ®,ç»™ä¸»é“¾
+    static const int32_t REPORT_CHEAT = 10;        // ä¸¾æŠ¥
+    static const int32_t PROVE = 11;               // è¯æ˜
+    static const int32_t REDEEM_MORTGAGE_STATEMENT = 12;     // èµå›æŒ–çŸ¿æŠµæŠ¼(åœ¨ä¾§é“¾å£°æ˜é˜¶æ®µ,æŠŠæŒ–çŸ¿å¸é”€æ¯)
+    static const int32_t REDEEM_MORTGAGE = 13;               // èµå›æŒ–çŸ¿æŠµæŠ¼å¸(æŠŠä¸»é“¾ä¸Šçš„æŠµæŠ¼æ‹¿å›æ¥)
 
     static const int32_t STAKE = 14; // mining stake transaction
-    static const int32_t REPORT_REWARD = 15; // ¾Ù±¨½±Àø
-    static const int32_t LOCK_MORTGAGE_MINE_COIN = 16; // Ëø¶¨ÍÚ¿ó±Ò
-    static const int32_t UNLOCK_MORTGAGE_MINE_COIN = 17; // ½âËøÍÚ¿ó±Ò
+    static const int32_t REPORT_REWARD = 15; // ä¸¾æŠ¥å¥–åŠ±
+    static const int32_t LOCK_MORTGAGE_MINE_COIN = 16; // é”å®šæŒ–çŸ¿å¸
+    static const int32_t UNLOCK_MORTGAGE_MINE_COIN = 17; // è§£é”æŒ–çŸ¿å¸
 
     // Changing the default transaction version requires a two step process: first
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
@@ -571,14 +571,14 @@ public:
 	const std::string contractFun;
 	const std::string contractParams;
     const CellScript scontractScriptSig;
-    const std::vector<CellKeyID> contractAddrs;
+    const std::vector<CellContractID> contractAddrs;
 
 	//branch create data
 	const std::string branchVSeeds;
 	const std::string branchSeedSpec6;
 	//branch trans start (step 1)
 	const std::string sendToBranchid;
-	const std::string sendToTxHexData;	//ÔÚ´´½¨²àÁ´£¬¿çÁ´½»Ò×ÖĞÓĞÓÃµ½ Ä¿±êÁ´½»Ò×µÄÊı¾İ
+	const std::string sendToTxHexData;	//åœ¨åˆ›å»ºä¾§é“¾ï¼Œè·¨é“¾äº¤æ˜“ä¸­æœ‰ç”¨åˆ° ç›®æ ‡é“¾äº¤æ˜“çš„æ•°æ®
 	//branch trans end (step 2)
 	const std::string fromBranchId;
 	const std::vector<unsigned char> fromTx;
@@ -589,9 +589,9 @@ public:
     const std::shared_ptr<const ReportData> pReportData;
     const std::vector<ProveData> vectProveData;
 
-    const uint256 reporttxid;// ´Óreported tx»ñÈ¡block coin£¬ÊÇ·ñ±»Ö¤Ã÷µÈĞÅÏ¢
+    const uint256 reporttxid;// ä»reported txè·å–block coinï¼Œæ˜¯å¦è¢«è¯æ˜ç­‰ä¿¡æ¯
     const uint256 coinpreouthash; // coin preout hash
-    const uint256 provetxid; // Ö¤Ã÷txid
+    const uint256 provetxid; // è¯æ˜txid
 
 	bool IsExistVin(const CellTxIn &txIn) const {
 		auto it = find(vin.begin(), vin.end(), txIn);
@@ -768,7 +768,7 @@ struct CellMutableTransaction
 	std::string contractFun;
 	std::string contractParams;
 	CellScript scontractScriptSig;
-    std::vector<CellKeyID> contractAddrs;
+    std::vector<CellContractID> contractAddrs;
 
 	//branch create data
 	std::string branchVSeeds;
@@ -923,7 +923,7 @@ inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(
     pReportData(std::move(tx.pReportData)), vectProveData(std::move(tx.vectProveData)),
     reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)), hash(ComputeHash()) {}
 
-// add copy constructor, Ìí¼ÓÁË²»¿É¸´ÖÆ³ÉÔ±±äÁ¿pBranchBlockDataºó£¬Ä¬ÈÏ¸´ÖÆ¹¹Ôìº¯Êı±»É¾³ıÁË
+// add copy constructor, æ·»åŠ äº†ä¸å¯å¤åˆ¶æˆå‘˜å˜é‡pBranchBlockDataåï¼Œé»˜è®¤å¤åˆ¶æ„é€ å‡½æ•°è¢«åˆ é™¤äº†
 inline CellTransaction::CellTransaction(const CellTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
       contractAddrs(tx.contractAddrs), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),

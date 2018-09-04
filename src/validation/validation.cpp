@@ -370,13 +370,9 @@ bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls)
 
 		if (totalAmount >= sls->sendAmount) {
 			if (totalAmount > sls->sendAmount) {
-				CellScript script;
-				CellTxDestination kContractDest = tx.contractAddrs[0];
-                boost::apply_visitor(CellContractCallScriptVisitor(&script), kContractDest);
-
                 CellTxOut changeOut;
                 changeOut.nValue = totalAmount - sls->sendAmount;
-                changeOut.scriptPubKey = script;
+                changeOut.scriptPubKey = GetScriptForDestination(tx.contractAddrs[0]);
 				if (!tx.IsExistVout(changeOut))
 					return false;
 			}
@@ -466,7 +462,7 @@ bool CheckReportTxProve(const CellTransaction& tx)
         else
             setHashs.insert(pTx->GetHash());            
     }
-    // 校验vin是否正确
+    // 脨拢脩茅vin脢脟路帽脮媒脠路
     for(CellTxIn vin: pProveTx->vin)
     {
         uint256 hash = vin.prevout.hash;
@@ -803,7 +799,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         if (tx.IsSmartContract()) {
             if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state)) {
                 mpContractDb->_contractContext.ClearCache();
-                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO: 这个分数需要考虑下,本地能成功执行，转发到其他节点未必能成功
+                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO: 脮芒赂枚路脰脢媒脨猫脪陋驴录脗脟脧脗,卤戮碌脴脛脺鲁脡鹿娄脰麓脨脨拢卢脳陋路垄碌陆脝盲脣没陆脷碌茫脦麓卤脴脛脺鲁脡鹿娄
             }
         }
 
@@ -1075,7 +1071,7 @@ static bool AcceptToMemoryPoolWithTime(const CellChainParams& chainparams, CellT
                 pcoinsTip->Uncache(hashTx);
         }
         else{//accept ok
-            //侧链头信息交易
+            //虏脿脕麓脥路脨脜脧垄陆禄脪脳
             if (tx->IsSyncBranchInfo()){
                 branchDataMemCache.AddToCache(*tx);
             }
@@ -2149,10 +2145,10 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
         if (tx.IsStake() && i != 1)
             return state.DoS(100, error("%s: stake tx in invalid index", __func__));
 
-        //侧链staketx检查
+        //虏脿脕麓staketx录矛虏茅
         if (tx.IsStake() && !Params().IsMainChain() && pindex->nHeight > 1)// genesis block and the 2nd block do not check
         {
-            //check input output,防止挖矿币被通过交易费的形式转走
+            //check input output,路脌脰鹿脥脷驴贸卤脪卤禄脥篓鹿媒陆禄脪脳路脩碌脛脨脦脢陆脳陋脳脽
             if (tx.vin.size() != 1 || tx.vout.size() != 1){
                 return state.DoS(100, error("Invalid branch chain stake's tx vin or vout invalid size"));
             }
@@ -3340,7 +3336,7 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
                 return state.DoS(100, false, REJECT_INVALID, "bad-bct-multiple", false, "more than one branch create transaction");
         }
         
-        //侧链第二个块,staketx的特殊处理
+        //虏脿脕麓碌脷露镁赂枚驴茅,staketx碌脛脤脴脢芒麓娄脌铆
         const bool isBranch2ndBlockTx = (i == 1 && pPreBlockIndex && pPreBlockIndex->nHeight == 0 && !Params().IsMainChain());
         if (isBranch2ndBlockTx)
         {
@@ -3769,7 +3765,7 @@ void UpdateContractTxAndProveTx(bool checkContract)
     for (auto it = mempool.mapTx.begin(); it != mempool.mapTx.end(); it++)
     {
         const CellTransaction& tx = it->GetTx();
-        // 处理证明交易
+        // 麓娄脌铆脰陇脙梅陆禄脪脳
         if (tx.IsProve())
         {
             if (CheckReportTxProve(tx))
@@ -5117,7 +5113,7 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
     /////////////////////////////////////////////////////
 
     //CellTransactionRef txOld;
-    //uint256 hashBlock; //TODO: GetTransaction在fTxIndex = false和上面检查重复
+    //uint256 hashBlock; //TODO: GetTransaction脭脷fTxIndex = false潞脥脡脧脙忙录矛虏茅脰脴赂麓
     //if (fTxIndex && GetTransaction(ptx->GetHash(), txOld, Params().GetConsensus(), hashBlock, true)) {
     //	return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-block");
     //}
@@ -5253,7 +5249,7 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
         return false;
     }
 
-    //找出当前交易的undo
+    //脮脪鲁枚碌卤脟掳陆禄脪脳碌脛undo
     CellTxUndo txundo;
     for (size_t i=1; i<block.vtx.size(); i++)
     {
