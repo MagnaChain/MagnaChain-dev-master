@@ -550,6 +550,11 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
             CellLinkAddress addrTest(kDest);
             std::string strTest = addrTest.ToString();
             LogPrint(BCLog::COINDB, "COIN_LIST, get contract addr : %s\n", strTest);
+        }
+        else if (opcode == OP_TRANS_BRANCH){
+            vch.clear();
+            vch.assign(pc1 + 1, coin.out.scriptPubKey.end());
+            kDest = CellKeyID(uint160(Hash160(vch)));
         } else
             return false;
     }
