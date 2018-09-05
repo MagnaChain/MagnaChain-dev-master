@@ -3156,7 +3156,7 @@ UniValue listunspent(const JSONRPCRequest& request)
     assert(pwallet != nullptr);
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    pwallet->AvailableCoins(vecOutputs, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
+    pwallet->AvailableCoins(vecOutputs, nullptr, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
     for (const CellOutput& out : vecOutputs) {
         CellTxDestination address;
         const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
@@ -3656,7 +3656,7 @@ UniValue generate(const JSONRPCRequest& request)
 		EnsureWalletIsUnlocked(pwallet);
 
         if (Params().IsMainChain())
-            pwallet->AvailableCoins(vecOutputs, false);
+            pwallet->AvailableCoins(vecOutputs, nullptr, false);
         else
             pwallet->AvailableMortgageCoins(vecOutputs, false);
 		/*
@@ -3687,7 +3687,7 @@ UniValue generate(const JSONRPCRequest& request)
 
 UniValue generateforbigboom(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
 
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;

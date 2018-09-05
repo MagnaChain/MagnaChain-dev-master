@@ -501,28 +501,6 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
 }
 
-template<typename TxType>
-CellKeyID GenerateContractAddressByTx(TxType& tx)
-{
-	CellHashWriter ss(SER_GETHASH, 0);
-	for (auto v : tx.vin)
-	{
-		ss << v.prevout;
-	}
-	for (auto v : tx.vout)
-	{
-		ss << v.nValue;
-	}
-	ss << tx.contractCode;
-	ss << tx.contractSender;
-
-	uint256 contractHash256 = ss.GetHash();
-	std::vector<unsigned char> vContract = ParseHex(contractHash256.ToString());
-	CellKeyID keyID = Hash160(vContract);
-	return keyID;
-}
-
-
 /** The basic transaction that is broadcasted on the network and contained in
  * blocks.  A transaction can contain multiple inputs and outputs.
  */

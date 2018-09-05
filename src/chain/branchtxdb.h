@@ -6,7 +6,7 @@
 
 #include "transaction/txdb.h"
 
-//¿çÁ´½»Ò×½ÓÊÕ·½½»Ò×µÄkey 
+//è·¨é“¾äº¤æ˜“æ¥æ”¶æ–¹äº¤æ˜“çš„key 
 static const char DB_BRANCH_CHAIN_TX_DATA = 'b';
 static const char DB_BRANCH_CHAIN_RECV_TX_DATA = 'r';
 static const std::string DB_BRANCH_CHAIN_LIST = "chainlist";
@@ -141,20 +141,20 @@ typedef std::map<BranchChainTxEntry, BranchChainTxInfo> BRANCH_CHAIN_INFO_MAP;//
 typedef std::map<BranchChainTxEntry, BranchChainTxRecvInfo> BRANCH_CHAIN_RECV_MAP; //[key, recvinfo]
 typedef std::map<uint256, std::vector<CoinReportInfo>> COIN_BE_REPORT;// [coinpreouthash,vector<un_prove_reporttxid>] 
 
-// ÔÚconnectblock »òÕßdisconnectblock Ê±,ĞèÒªÊı¾İ¿â²Ù×÷ÏÈĞ´µ½cacheÀïÃæ,
-// ´ıÕû¸ö¹ı³ÌÃ»´íºó²Å°ÑcacheµÄÊı¾İĞ´µ½Êı¾İ¿â
+// åœ¨connectblock æˆ–è€…disconnectblock æ—¶,éœ€è¦æ•°æ®åº“æ“ä½œå…ˆå†™åˆ°cacheé‡Œé¢,
+// å¾…æ•´ä¸ªè¿‡ç¨‹æ²¡é”™åæ‰æŠŠcacheçš„æ•°æ®å†™åˆ°æ•°æ®åº“
 class BranchChainTxRecordsCache
 {
 public:
-    //ÒÑ´´½¨µÄÖ§Á´ºÍ·¢Æğ¿çÁ´½»Ò×
+    //å·²åˆ›å»ºçš„æ”¯é“¾å’Œå‘èµ·è·¨é“¾äº¤æ˜“
     void AddBranchChainTxRecord(const CellTransactionRef& tx, const uint256& blockhash, uint32_t txindex);
     void DelBranchChainTxRecord(const CellTransactionRef& tx);
 
-    //ÒÑ½ÓÊÕµÄ¿çÁ´½»Ò×
+    //å·²æ¥æ”¶çš„è·¨é“¾äº¤æ˜“
     void AddBranchChainRecvTxRecord(const CellTransactionRef& tx, const uint256& blockhash);
     void DelBranchChainRecvTxRecord(const CellTransactionRef& tx);
 
-    //Ëø±Ò½âËø
+    //é”å¸è§£é”
     /**
      * fBlockConnect is in block connect or block disconnect
      */
@@ -165,7 +165,7 @@ public:
     COIN_BE_REPORT m_mapCoinBeReport;
 };
 
-//¿çÁ´½»Ò×µÄÏà¹Ø¼ÇÂ¼ 
+//è·¨é“¾äº¤æ˜“çš„ç›¸å…³è®°å½• 
 class BranchChainTxRecordsDb
 {
 public:

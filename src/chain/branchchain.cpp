@@ -218,7 +218,7 @@ UniValue CallRPC(const CellRPCConfig& rpccfg, const std::string& strMethod, cons
 		return NullUniValue;
 	}
 
-	// Ê¹ÓÃÏµÍ³µ÷ÓÃcliÀ´´¦ÀírpcÇëÇó 
+	// ä½¿ç”¨ç³»ç»Ÿè°ƒç”¨cliæ¥å¤„ç†rpcè¯·æ±‚ 
 //	std::string strCommand;
 //#ifdef  WIN32
 //	strCommand = "cell-cli.exe ";
@@ -393,7 +393,7 @@ CellAmount GetBranchChainTransOut(const CellTransaction& branchTransStep1Tx)
 	return nAmount;
 }
 
-//»ñÈ¡½»Ò×ÖĞµÄµÖÑº±ÒÊä³ö
+//è·å–äº¤æ˜“ä¸­çš„æŠµæŠ¼å¸è¾“å‡º
 CellAmount GetMortgageMineOut(const CellTransaction& tx, bool bWithBranchOut)
 {
 	CellAmount nAmount(0);
@@ -405,7 +405,7 @@ CellAmount GetMortgageMineOut(const CellTransaction& tx, bool bWithBranchOut)
 		txout.scriptPubKey.GetOp(pc1, opcode, vch);
 		if (opcode == OP_MINE_BRANCH_MORTGAGE)
 		{
-            //scriptµÄÆäËû²¿·ÖÅĞ¶Ï
+            //scriptçš„å…¶ä»–éƒ¨åˆ†åˆ¤æ–­
 			nAmount += txout.nValue;
 		}
         if (bWithBranchOut && opcode == OP_RETURN)
@@ -420,7 +420,7 @@ CellAmount GetMortgageMineOut(const CellTransaction& tx, bool bWithBranchOut)
 	return nAmount;
 }
 
-//»ñÈ¡½»Ò×ÖĞµÄÍÚ¿ó±ÒÊä³ö
+//è·å–äº¤æ˜“ä¸­çš„æŒ–çŸ¿å¸è¾“å‡º
 CellAmount GetMortgageCoinOut(const CellTransaction& tx, bool bWithBranchOut)
 {
     CellAmount nAmount(0);
@@ -432,7 +432,7 @@ CellAmount GetMortgageCoinOut(const CellTransaction& tx, bool bWithBranchOut)
         txout.scriptPubKey.GetOp(pc1, opcode, vch);
         if (opcode == OP_MINE_BRANCH_COIN)
         {
-            //scriptµÄÆäËû²¿·ÖÅĞ¶Ï
+            //scriptçš„å…¶ä»–éƒ¨åˆ†åˆ¤æ–­
             nAmount += txout.nValue;
         }
         if (bWithBranchOut && opcode == OP_RETURN)
@@ -509,7 +509,7 @@ void testgetint64()
     }
 }
 
-// »ñÈ¡µÖÑº±Ò½Å±¾ÖĞµÄÊı¾İ
+// è·å–æŠµæŠ¼å¸è„šæœ¬ä¸­çš„æ•°æ®
 //1. scriptPubKey (in)
 //2. pBranchHash (out)
 //3. pKeyID (out) the pubkey hash
@@ -551,7 +551,7 @@ bool GetMortgageMineData(const CellScript& scriptPubKey, uint256* pBranchHash /*
     return true;
 }
 
-// »ñÈ¡ÍÚ¿ó±Ò½Å±¾ÖĞµÄÊı¾İ
+// è·å–æŒ–çŸ¿å¸è„šæœ¬ä¸­çš„æ•°æ®
 //1. scriptPubKey (in)
 //2. pFromTxid (out)
 //3. pKeyID (out) the pubkey hash
@@ -665,7 +665,7 @@ bool CheckSpvProof(const uint256& frombranchid, CellValidationState &state, cons
     return true;
 }
 
-// ¿çÁ´½»Ò×´Ó·¢ÆğÁ´¹ã²¥µ½Ä¿±êÁ´ 
+// è·¨é“¾äº¤æ˜“ä»å‘èµ·é“¾å¹¿æ’­åˆ°ç›®æ ‡é“¾ 
 bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 {
 	if (!tx->IsPregnantTx())
@@ -686,7 +686,7 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 
     std::string strTxHexData;
     if (strToChainId == CellBaseChainParams::MAIN && tx->IsBranchChainTransStep1())
-    {//Ìí¼Ó ²¿·ÖÄ¬¿Ë¶ûÊ÷(spvÖ¤Ã÷)
+    {//æ·»åŠ  éƒ¨åˆ†é»˜å…‹å°”æ ‘(spvè¯æ˜)
         std::set<uint256> txids;
         txids.emplace(tx->GetHash());
 
@@ -722,7 +722,7 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 	return true;
 }
 
-//OP:ÒÆ¶¯¶ÀÁ¢µÄÏß³ÌÖĞÈ¥?»òÕßÂú×ã¸ß¶Èºó,ÏàÓ¦µÄÓµÓĞÕß×Ô¼ºµ÷ÓÃÏà¹ØÂß¼­,µ«ÊÇÕâÑù¿çÁ´×ªÕË±äµÃ¸üÂé·³
+//OP:ç§»åŠ¨ç‹¬ç«‹çš„çº¿ç¨‹ä¸­å»?æˆ–è€…æ»¡è¶³é«˜åº¦å,ç›¸åº”çš„æ‹¥æœ‰è€…è‡ªå·±è°ƒç”¨ç›¸å…³é€»è¾‘,ä½†æ˜¯è¿™æ ·è·¨é“¾è½¬è´¦å˜å¾—æ›´éº»çƒ¦
 void ProcessBlockBranchChain()
 {
 	{
@@ -746,7 +746,7 @@ void ProcessBlockBranchChain()
 			}
 		}
 */
-        // ±éÀúvCreated±ÈÉÏÃæ±éÀúblock.vtx¿ì
+        // éå†vCreatedæ¯”ä¸Šé¢éå†block.vtxå¿«
         const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
         for (auto v : vCreated){
             if (mapBlockIndex.count(v.blockhash)){
@@ -813,7 +813,7 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
 	}
 
     //-----------------------------------------------
-    //¼ì²éfromtx
+    //æ£€æŸ¥fromtx
     const CellTransaction& txTrans1 = *pFromTx;
     if (txTrans1.IsMortgage())
     {//
@@ -870,7 +870,7 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
     }
 
     //-----------------------------------------------
-    //rpc ²àÁ´ºË¶ÔĞÅÏ¢
+    //rpc ä¾§é“¾æ ¸å¯¹ä¿¡æ¯
     if (fVerifingDB && gArgs.GetBoolArg("-uncheckbranchtxinverifydb", true)) {
         LogPrintf("\nJump check branch tx in Verifing DB. From tx txid %s\n", fromTxHash);
         return true;
@@ -932,7 +932,7 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
 }
 
 #define SetStrErr(strMsg) {if (pStrErr) *pStrErr = (strMsg);}
-//Ìá½»²àÁ´Çø¿éÍ·
+//æäº¤ä¾§é“¾åŒºå—å¤´
 //call in branch chain
 bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::string *pStrErr)
 {
@@ -1036,21 +1036,21 @@ bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& stat
     //has in db
     if (branchdata.mapHeads.count(blockheader.GetHash())){
         return true;
-    //    return state.DoS(0, false, REJECT_INVALID, "blockheader info has include before");//TODO: ·ÀÖ¹ÖØ¸´,
+    //    return state.DoS(0, false, REJECT_INVALID, "blockheader info has include before");//TODO: é˜²æ­¢é‡å¤,
     }
     //ContextualCheckBlockHeader
     const CellChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
     if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache))
         return state.DoS(100, false, REJECT_INVALID, "branch-contextual-check-block-header-fail");
 
-    //¼ì²é¹¤×÷Á¿
+    //æ£€æŸ¥å·¥ä½œé‡
     if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache))
         return state.DoS(100, false, REJECT_INVALID, "BranchBlockInfo CheckBlockHeaderWork fail");
     
     return true;
 }
 
-// Èç¹ûÊÇ×Ô¼ºµÄ½»Ò×Ôò,Ïò×Ô¼ºµÄÖ÷Á´·¢ÆğÊê»ØÇëÇó,°ÑµÖÑº±Ò½âËø
+// å¦‚æœæ˜¯è‡ªå·±çš„äº¤æ˜“åˆ™,å‘è‡ªå·±çš„ä¸»é“¾å‘èµ·èµå›è¯·æ±‚,æŠŠæŠµæŠ¼å¸è§£é”
 bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& block, std::string *pStrErr)
 {
     SetStrErr("Unknow error");
@@ -1120,7 +1120,7 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     if (!ptxReport->IsReport() || ptxReport->pReportData == nullptr)
         return state.DoS(100, false, REJECT_INVALID, "invalid-report-tx");
 
-    // ¼ì²éÊÇ·ñÂú×ã¸ß¶È
+    // æ£€æŸ¥æ˜¯å¦æ»¡è¶³é«˜åº¦
     if (!mapBlockIndex.count(reporthashBlock))// block not exist any more ?
         return false;
     CellBlockIndex* rpBlockIndex = mapBlockIndex[reporthashBlock];
@@ -1129,7 +1129,7 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     if (rpBlockIndex->nHeight - pindex->nHeight < REPORT_OUTOF_HEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "");
 
-    //TODO: ¼ì²é¾Ù±¨ÓĞÃ»ÓĞ±»Ö¤Ã÷
+    //TODO: æ£€æŸ¥ä¸¾æŠ¥æœ‰æ²¡æœ‰è¢«è¯æ˜
 
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
@@ -1141,7 +1141,7 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     if (!branchdata.mapHeads.count(reportblockhash))// TODO: best chain check!
         return false;
 
-    // ´Óstake½»Ò×È¡³öprevout(µÖÑº±Ò)
+    // ä»stakeäº¤æ˜“å–å‡ºprevout(æŠµæŠ¼å¸)
     BranchBlockData blockdata = branchdata.mapHeads[reportblockhash];
     uint256 coinfromtxid;
     if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
@@ -1151,7 +1151,7 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
 
     CellAmount nValueIn = blockdata.pStakeTx->vout[0].nValue;
 
-    // ¾Ù±¨ÕßµØÖ·
+    // ä¸¾æŠ¥è€…åœ°å€
     const CellScript reporterAddress = ptxReport->vout[0].scriptPubKey;
     CellAmount nReporterValue = nValueIn / 2;
     CellAmount nMinerValue = nValueIn - nReporterValue;
@@ -1163,7 +1163,7 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     return true;
 }
 
-// ¼ì²éËøÍÚ¿ó±Ò½»Ò×
+// æ£€æŸ¥é”æŒ–çŸ¿å¸äº¤æ˜“
 bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state)
 {
     if (!tx.IsLockMortgageMineCoin())
@@ -1224,16 +1224,16 @@ bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState&
         return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
     }
 
-    //TODO: ÊÇ·ñÒª¼ÓÅĞ¶Ï»¹Ã»ÓĞ±»Ö¤Ã÷? ¼ÓÁË»á²»»áÒı³öÎÊÌâ£ºÖ÷Á´ÏÂÔØÊı¾İ±È²àÁ´ÁìÏÈÒ»½Ø£¬Ö÷Á´¼ÓÍêÖ¤Ã÷Êı¾İ£¬²àÁ´²Å¼ÓÔØËø¶¨½»Ò×£¬È»ºó½øÀ´´ËÅĞ¶Ï
+    //TODO: æ˜¯å¦è¦åŠ åˆ¤æ–­è¿˜æ²¡æœ‰è¢«è¯æ˜? åŠ äº†ä¼šä¸ä¼šå¼•å‡ºé—®é¢˜ï¼šä¸»é“¾ä¸‹è½½æ•°æ®æ¯”ä¾§é“¾é¢†å…ˆä¸€æˆªï¼Œä¸»é“¾åŠ å®Œè¯æ˜æ•°æ®ï¼Œä¾§é“¾æ‰åŠ è½½é”å®šäº¤æ˜“ï¼Œç„¶åè¿›æ¥æ­¤åˆ¤æ–­
 
-    //¾Ù±¨¿éÊÇ·ñÔÚ¼ÇÂ¼Àï?? ÀíÂÛÓĞÎóµÄ¿éÒ²²»»á±»²àÁ´¼ÇÂ¼
+    //ä¸¾æŠ¥å—æ˜¯å¦åœ¨è®°å½•é‡Œ?? ç†è®ºæœ‰è¯¯çš„å—ä¹Ÿä¸ä¼šè¢«ä¾§é“¾è®°å½•
  //   if (mapBlockIndex.count(mtxReport.pReportData->reportedBlockHash) == 0)
  //       return false;
 
     return true;
 }
 
-//¼ì²é½âËøÍÚ¿ó±Ò½»Ò×
+//æ£€æŸ¥è§£é”æŒ–çŸ¿å¸äº¤æ˜“
 bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state)
 {
     if (!tx.IsUnLockMortgageMineCoin())

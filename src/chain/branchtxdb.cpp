@@ -87,7 +87,7 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const CellTransaction
 void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx, bool fBlockConnect)
 {
     if (fBlockConnect){
-        if (ptx->IsLockMortgageMineCoin()) { // 锁定
+        if (ptx->IsLockMortgageMineCoin()) { // 閿佸畾
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -98,7 +98,7 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx
             }
             vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
         }
-        if (ptx->IsUnLockMortgageMineCoin()) { // 解锁
+        if (ptx->IsUnLockMortgageMineCoin()) { // 瑙ｉ攣
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -111,7 +111,7 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx
         }
     }
     else{// block disconnect
-        if (ptx->IsLockMortgageMineCoin()) {// 锁定回滚
+        if (ptx->IsLockMortgageMineCoin()) {// 閿佸畾鍥炴粴
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -122,7 +122,7 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx
             }
             vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
         }
-        if (ptx->IsUnLockMortgageMineCoin()) {// 解锁回滚
+        if (ptx->IsUnLockMortgageMineCoin()) {// 瑙ｉ攣鍥炴粴
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {

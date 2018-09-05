@@ -2145,10 +2145,10 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
         if (tx.IsStake() && i != 1)
             return state.DoS(100, error("%s: stake tx in invalid index", __func__));
 
-        //²àÁ´staketx¼ì²é
+        //侧链staketx检查
         if (tx.IsStake() && !Params().IsMainChain() && pindex->nHeight > 1)// genesis block and the 2nd block do not check
         {
-            //check input output,·ÀÖ¹ÍÚ¿ó±Ò±»Í¨¹ý½»Ò×·ÑµÄÐÎÊ½×ª×ß
+            //check input output,防止挖矿币被通过交易费的形式转走
             if (tx.vin.size() != 1 || tx.vout.size() != 1){
                 return state.DoS(100, error("Invalid branch chain stake's tx vin or vout invalid size"));
             }

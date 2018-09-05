@@ -864,8 +864,7 @@ public:
     /**
      * populate vCoins with vector of available COutputs.
      */
-    void AvailableCoins(std::vector<CellOutput>& vCoins, bool fOnlySafe=true, const CellCoinControl *coinControl = nullptr, const CellAmount& nMinimumAmount = 1, const CellAmount& nMaximumAmount = MAX_MONEY, const CellAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999) const;
-	void AvailableCoins(std::vector<CellOutput>& vCoins, const CellTxDestination& dest, bool fOnlySafe = true, const CellCoinControl *coinControl = nullptr, const CellAmount& nMinimumAmount = 1, const CellAmount& nMaximumAmount = MAX_MONEY, const CellAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999) const;
+	void AvailableCoins(std::vector<CellOutput>& vCoins, const CellTxDestination* dest = nullptr, bool fOnlySafe = true, const CellCoinControl *coinControl = nullptr, const CellAmount& nMinimumAmount = 1, const CellAmount& nMaximumAmount = MAX_MONEY, const CellAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999) const;
     void AvailableMortgageCoins(std::vector<CellOutput>& vCoins, bool fOnlySafe = true, branch_script_type bsptype = BST_MORTGAGE_COIN, const CellCoinControl *coinControl = nullptr, const CellAmount& nMinimumAmount = 1, const CellAmount& nMaximumAmount = MAX_MONEY, const CellAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999);
 
     /**
