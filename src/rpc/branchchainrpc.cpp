@@ -131,13 +131,64 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     //    branchTx.fromTx = ;//this value set later.
     branchTx.pPMT.reset(new CellSpvProof()); //will reset later, 这里防止序列化时报错
 
-    branchTx.vin.resize(1);// (CellTransaction::IsCoinBase function is amazing)
-    branchTx.vin[0].prevout.hash.SetNull();
-    branchTx.vin[0].prevout.n = 0;// make prevout is not Null any more
-    branchTx.vin[0].scriptSig.clear();
-    branchTx.vout.resize(1);
-    branchTx.vout[0].scriptPubKey = scriptPubKey;
-    branchTx.vout[0].nValue = nAmount;
+    if (strFromChain == CellBaseChainParams::MAIN)
+    {
+
+        branchTx.vin.resize(1);// (CellTransaction::IsCoinBase function is amazing)
+        branchTx.vin[0].prevout.hash.SetNull();
+        branchTx.vin[0].prevout.n = 0;// make prevout is not Null any more
+        branchTx.vin[0].scriptSig.clear();
+        branchTx.vout.resize(1);
+        branchTx.vout[0].scriptPubKey = scriptPubKey;
+        branchTx.vout[0].nValue = nAmount;
+    }
+    else
+    {
+        CoinListPtr plist = pcoinListDb->GetList(Hash160(ParseHex(strFromChain)));
+        std::set<CellOutPoint> setInOutPoints;
+        CellAmount nValue = 0;
+
+        if (plist != nullptr) {
+            BOOST_FOREACH(const CellOutPoint& outpoint, plist->coins) {
+                const Coin& coin = pcoinsTip->AccessCoin(outpoint);
+                if (coin.IsSpent()) {
+                    continue;
+                }
+                if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
+                    continue;
+                }
+
+                nValue += coin.out.nValue;
+                setInOutPoints.insert(outpoint);
+                if (nValue >= nAmount) 
+                    break;   
+            }
+        }
+
+        if (nValue < nAmount)
+        {
+            return false;
+        }
+
+        const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CellTxIn::SEQUENCE_FINAL - 1);
+        branchTx.vin.clear();
+        for (const auto& outpoint : setInOutPoints) {
+            branchTx.vin.push_back(CellTxIn(outpoint, CellScript(),
+                    nSequence));
+        }
+
+        branchTx.vout.resize(2);
+        branchTx.vout[0].scriptPubKey = scriptPubKey;
+        branchTx.vout[0].nValue = nAmount;
+
+        if (nValue > nAmount)
+        {
+            CellScript voutScriptKey;
+            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(strFromChain);
+            branchTx.vout[1].scriptPubKey = voutScriptKey;
+            branchTx.vout[1].nValue = nValue - nAmount; 
+        }
+    }
 
     unsigned int nBytes = GetVirtualTransactionSize(branchTx);
     FeeCalculation feeCalc;
@@ -504,7 +555,8 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
 
     CellScript scriptPubKey;
-    scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//lock the output,output trans to /dev/null 
+    //scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//lock the output,output trans to /dev/null 
+    scriptPubKey << OP_TRANS_BRANCH << ToByteVector(toBranchid);
 
     EnsureWalletIsUnlocked(pwallet);
 
