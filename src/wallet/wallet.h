@@ -502,6 +502,10 @@ public:
     // True if only scriptSigs are different
     bool IsEquivalentTo(const CellWalletTx& tx) const;
 
+    bool IsSmartContract() const {
+        return transaction_version == CellTransaction::PUBLISH_CONTRACT_VERSION || transaction_version == CellTransaction::CALL_CONTRACT_VERSION;
+    }
+
     bool InMempool() const;
     bool IsTrusted() const;
 
