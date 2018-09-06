@@ -14,7 +14,6 @@
 #include <vector>
 
 #include <boost/test/unit_test.hpp>
-#include "branchdb_tests.h"
 
 BOOST_FIXTURE_TEST_SUITE(branchdb_tests, BasicTestingSetup)
 

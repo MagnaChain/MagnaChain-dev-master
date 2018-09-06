@@ -235,7 +235,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\test\branchdb_tests.h" />
     <ClInclude Include="..\src\test\scriptnum10.h" />
     <ClInclude Include="..\src\test\testutil.h" />
     <ClInclude Include="..\src\test\test_celllink.h" />
