@@ -2486,6 +2486,7 @@ bool static DisconnectTip(CellValidationState& state, const CellChainParams& cha
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
+        pBranchDb->Flush(pblock, false);
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
     // Write the chain state to disk, if necessary.
@@ -2625,6 +2626,7 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
+        pBranchDb->Flush(pblock, true);
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
     LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);
@@ -3831,8 +3833,6 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
     // check and remove invalid contract transaction 
     UpdateContractTxAndProveTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
-    pBranchDb->Flush(pblock);
-
     printf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - start);
     return true;
 }

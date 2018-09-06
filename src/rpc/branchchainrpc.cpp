@@ -1001,13 +1001,9 @@ UniValue getbranchchainheight(const JSONRPCRequest& request)
     if (!pBranchChainTxRecordsDb->IsBranchCreated(branchid))
         throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
 
-    if (pBranchDb->mTopHashDatas.count(branchid) == 0)
-        throw JSONRPCError(RPC_WALLET_ERROR, "No top hash data");
-
-    TopHashData topHashData = pBranchDb->mTopHashDatas[branchid];
     UniValue retObj(UniValue::VOBJ);
-    retObj.push_back(Pair("blockhash", topHashData.topHash.ToString()));
-    retObj.push_back(Pair("height", (uint64_t)topHashData.topHeight));
+    retObj.push_back(Pair("blockhash", pBranchDb->GetBranchTipHash(branchid).ToString()));
+    retObj.push_back(Pair("height", (uint64_t)pBranchDb->GetBranchHeight(branchid)));
     return retObj;
 }
 
