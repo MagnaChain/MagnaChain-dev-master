@@ -181,7 +181,7 @@ UniValue generateBlocks(CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOu
 	uint64_t nTries = 0;
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
-    while (nHeight < nHeightEnd && nTries < nMaxTries )
+    while (nHeight < nHeightEnd && nTries < nMaxTries && !ShutdownRequested())
     {
 		if (nTries != 0 && nTries % 500 == 0)
 		{
@@ -358,6 +358,59 @@ UniValue mineblanch2ndblock(const JSONRPCRequest& request)
     EnsureWalletIsUnlocked(pwallet);
 
     return generateBranch2ndBlock(*pwallet);
+}
+
+bool CoinsComparer(const CellOutput& v1, const CellOutput& v2)
+{
+    int height = chainActive.Tip()->nHeight + 1;
+    return v1.tx->tx->vout[v1.i].nValue * (height - v1.nDepth) > v2.tx->tx->vout[v2.i].nValue * (height - v2.nDepth);
+}
+
+UniValue generate(const JSONRPCRequest& request)
+{
+    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
+        throw std::runtime_error(
+            "generate nblocks ( maxtries )\n"
+            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
+            "\nArguments:\n"
+            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
+            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
+            "\nResult:\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
+            "\nExamples:\n"
+            "\nGenerate 11 blocks\n"
+            + HelpExampleCli("generate", "11")
+        );
+    }
+
+    int num_generate = request.params[0].get_int();
+    uint64_t max_tries = 1000000;
+    if (request.params.size() > 1 && !request.params[1].isNull()) {
+        max_tries = request.params[1].get_int();
+    }
+
+    std::set<CellTxDestination> setAddress;
+    std::vector<CellOutput> vecOutputs;
+    {
+        assert(pwallet != nullptr);
+
+        LOCK2(cs_main, pwallet->cs_wallet);
+        EnsureWalletIsUnlocked(pwallet);
+
+        if (Params().IsMainChain())
+            pwallet->AvailableCoins(vecOutputs, nullptr, false);
+        else
+            pwallet->AvailableMortgageCoins(vecOutputs, false);
+
+        std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
+    }
+    return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
 }
 
 UniValue setgenerate(const JSONRPCRequest& request )
@@ -1234,6 +1287,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
 
+    { "generating",         "generate",               &generate,                 true,{ "nblocks","maxtries" } },
     { "generating",         "generatetoaddress",      &generatetoaddress,      true,  {"nblocks","address","maxtries"} },
 	{ "setgenerate",        "setgenerate",			  &setgenerate,			   true,  { "generate"} },
     { "mining",             "mineblanch2ndblock",     &mineblanch2ndblock,     true,  {"mineblanch2ndblock"}},
