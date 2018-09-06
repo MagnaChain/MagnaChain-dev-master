@@ -13,64 +13,64 @@
 #include <utility>
 #include <vector>
 
-class CandidateHash
-{
-public:
-    uint256 preHash;
-    uint256 hash;
-    uint32_t height;
+//class CandidateHash
+//{
+//public:
+//    uint256 preHash;
+//    uint256 hash;
+//    uint32_t height;
+//
+//
+//    ADD_SERIALIZE_METHODS;
+//
+//    template <typename Stream, typename Operation>
+//    inline void SerializationOp(Stream& s, Operation ser_action)
+//    {
+//        READWRITE(preHash);
+//        READWRITE(hash);
+//        READWRITE(height);
+//    }
+//};
+//
+//class TopHashData
+//{
+//public:
+//    uint256 topHash;
+//    uint32_t topHeight;
+//    uint256 forkHash;
+//    std::vector<CandidateHash> candidates;
+//
+//    ADD_SERIALIZE_METHODS;
+//
+//    template <typename Stream, typename Operation>
+//    inline void SerializationOp(Stream& s, Operation ser_action)
+//    {
+//        READWRITE(topHash);
+//        READWRITE(forkHash);
+//        READWRITE(candidates);
+//    }
+//
+//public:
+//};
 
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(preHash);
-        READWRITE(hash);
-        READWRITE(height);
-    }
-};
-
-class TopHashData
-{
-public:
-    uint256 topHash;
-	uint32_t topHeight;
-    uint256 forkHash;
-    std::vector<CandidateHash> candidates;
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(topHash);
-        READWRITE(forkHash);
-        READWRITE(candidates);
-    }
-
-public:
-};
-
-typedef std::map<uint256, TopHashData> MAPTOPHASHDATAS;
+//typedef std::map<uint256, TopHashData> MAPTOPHASHDATAS;
 
 class BranchBlockData
 {
 public:
-    CellBlockHeader header; // ²àÁ´spv
-    int32_t nHeight;     // ²àÁ´¿é¸ß¶È
+    CellBlockHeader header; // ä¾§é“¾spv
+    int32_t nHeight;     // ä¾§é“¾å—é«˜åº¦
     CellTransactionRef pStakeTx;
 
-    // mBlockHash ºÍ txIndex ÎªÁË²éÕÒµ½Ô­À´½»Ò×
-    uint256 mBlockHash; // Ö÷Á´´ò°ü¿éµÄhash
-    uint256 txHash; // ²àÁ´ÏòÖ÷Á´·¢ËÍ²àÁ´¿éspvµÄ½»Ò×hash
-    int txIndex;    // ½»Ò×ÔÚÖ÷Á´´ò°ü¿éµÄindex
+    // mBlockHash å’Œ txIndex ä¸ºäº†æŸ¥æ‰¾åˆ°åŸæ¥äº¤æ˜“
+    uint256 mBlockHash; // ä¸»é“¾æ‰“åŒ…å—çš„hash
+    uint256 txHash; // ä¾§é“¾å‘ä¸»é“¾å‘é€ä¾§é“¾å—spvçš„äº¤æ˜“hash
+    int txIndex;    // äº¤æ˜“åœ¨ä¸»é“¾æ‰“åŒ…å—çš„index
 
-    arith_uint256 nChainWork;// °üº¬È«²¿×æÏÈºÍ×Ô¼ºµÄwork
+    arith_uint256 nChainWork;// åŒ…å«å…¨éƒ¨ç¥–å…ˆå’Œè‡ªå·±çš„work
 
     void InitDataFromTx(const CellTransaction& tx);
-    
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
@@ -86,18 +86,25 @@ public:
         READWRITE(nChainWork);
     }
 
-private:
+    enum {
+        eADD,
+        eDELETE,
+    };
+    unsigned char flags; // memory only
 };
 
-//
 typedef std::vector<uint256> VBRANCH_CHAIN;
 typedef std::map<uint256, BranchBlockData> MAPBRANCH_HEADERS;
 
+//
 class BranchData
 {
 public:
     MAPBRANCH_HEADERS mapHeads;
-    VBRANCH_CHAIN vecHeadsChain;
+    VBRANCH_CHAIN vecChainActive;
+
+    void BuildBestChain(BranchBlockData& blockdata);
+    void RemoveBlock(const uint256& blockhash);
 
     ADD_SERIALIZE_METHODS;
 
@@ -105,10 +112,12 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(mapHeads);
-        READWRITE(vecHeadsChain);
+        READWRITE(vecChainActive);
     }
 
     void InitBranchGenesisBlockData(const uint256 &branchid);
+    uint256 TipHash(void);
+    uint32_t Height(void);
 };
 
 typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;
@@ -130,6 +139,12 @@ public:
 
 const uint16_t FLAG_REPORTED = 1;
 const uint16_t FLAG_PROVED = 2;
+
+/*
+ 1ã€ä¿è¯æ¯ä¸ªBranchDataçš„mapHeadsçš„BranchBlockDataçš„preblockæ•°æ®æ˜¯å­˜åœ¨çš„ã€‚
+    ä¹Ÿå°±æ˜¯æ¯ä¸ªæ•°æ®éƒ½æœ‰å®Œæ•´çš„åˆ°è¾¾åˆ›ä¸–å—çš„é“¾è·¯å¾„
+ */
+
 class BranchDb
 {
 public:
@@ -138,15 +153,25 @@ public:
     BranchDb(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     BranchDb& operator=(const BranchDb&) = delete;
 
-    void Flush(const std::shared_ptr<const CellBlock>& pblock);
-    void LoadData();
-    void SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader);
+    // flush data in connectblock and disconnnectblock, add or remove data.
+    void Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect);
+    void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
+    void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
 
+    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &blockHash, const size_t iTxVtxIndex);
+    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &blockHash, const size_t iTxVtxIndex);
+
+    void LoadData();
+
+    //void SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader);
+
+    uint256 GetBranchTipHash(const uint256& branchid);
+    uint32_t GetBranchHeight(const uint256& branchid);
 public:
-    MAPTOPHASHDATAS mTopHashDatas;
+ //   MAPTOPHASHDATAS mTopHashDatas;
     std::map<uint256, uint16_t> mReortTxFlag;
 
-    bool HasBranchData(const uint256& branchHash)
+    bool HasBranchData(const uint256& branchHash) const
     {
         return mapBranchsData.count(branchHash) > 0;
     }

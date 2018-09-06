@@ -178,6 +178,7 @@
     <ClCompile Include="..\src\test\bip32_tests.cpp" />
     <ClCompile Include="..\src\test\blockencodings_tests.cpp" />
     <ClCompile Include="..\src\test\bloom_tests.cpp" />
+    <ClCompile Include="..\src\test\branchdb_tests.cpp" />
     <ClCompile Include="..\src\test\bswap_tests.cpp" />
     <ClCompile Include="..\src\test\coins_tests.cpp" />
     <ClCompile Include="..\src\test\compress_tests.cpp" />
