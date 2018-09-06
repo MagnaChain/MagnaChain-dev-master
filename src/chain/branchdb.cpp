@@ -43,6 +43,45 @@ void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
     vecChainActive.push_back(blockdata.header.GetHash());
 }
 
+void BranchData::SnapshotBlockTip(const uint256& mainBlockHash)
+{
+    mapSnapshotBlockTip[mainBlockHash] = vecChainActive.back();
+
+    //prune snapshot data
+    if (mapSnapshotBlockTip.size() > 200)
+    {
+        MAP_MAINBLOCK_BRANCHTIP::iterator oldest = mapSnapshotBlockTip.begin();
+        for (MAP_MAINBLOCK_BRANCHTIP::iterator mit = mapSnapshotBlockTip.begin();
+            mit != mapSnapshotBlockTip.end(); mit++)
+        {
+            if (mapBlockIndex[oldest->first]->nHeight > mapBlockIndex[mit->first]->nHeight)
+            {
+                oldest = mit;
+            }
+        }
+        mapSnapshotBlockTip.erase(oldest);
+    }
+}
+
+void BranchData::RecoverTip(const uint256& mainBlockHash)
+{
+    uint256 preblockhash = mainBlockHash;
+    while (mapSnapshotBlockTip.count(preblockhash) == 0)// find last best tip
+    {
+        if (mapBlockIndex.count(preblockhash) == 0 || preblockhash.IsNull()){
+            //assert error
+            break;
+        }
+        preblockhash = mapBlockIndex[preblockhash]->GetBlockHeader().hashPrevBlock;
+    }
+    // 
+    if (mapSnapshotBlockTip.count(preblockhash))
+    {
+        const uint256 bestTip = mapSnapshotBlockTip[preblockhash];
+        ActivateBestChain(bestTip);
+    }
+}
+
 uint256 BranchData::TipHash(void)
 {
     if (vecChainActive.size() == 0)
@@ -72,19 +111,28 @@ void BranchData::BuildBestChain(BranchBlockData& blockdata)
         const BranchBlockData& tipBlock = mapHeads[vecChainActive.back()];
         if (blockdata.nChainWork > tipBlock.nChainWork)
         {
-            std::vector<uint256> forkChain;
-            forkChain.push_back(newTipHash);
-            uint256 forkHash = mapHeads[newTipHash].header.hashPrevBlock;
-            while (vecChainActive[mapHeads[forkHash].nHeight] != forkHash)
-            {
-                forkChain.push_back(forkHash);
-                forkHash = mapHeads[forkHash].header.hashPrevBlock;
-                vecChainActive.pop_back();
-            }
-            vecChainActive.insert(vecChainActive.end(), forkChain.rbegin(), forkChain.rend());
+            ActivateBestChain(newTipHash);
         }
         //else
     }
+}
+
+void BranchData::ActivateBestChain(const uint256 &bestTipHash)
+{
+    if (vecChainActive.back() == bestTipHash){
+        return;
+    }
+
+    std::vector<uint256> forkChain;
+    forkChain.push_back(bestTipHash);
+    uint256 forkHash = mapHeads[bestTipHash].header.hashPrevBlock;
+    while (vecChainActive[mapHeads[forkHash].nHeight] != forkHash)
+    {
+        forkChain.push_back(forkHash);
+        forkHash = mapHeads[forkHash].header.hashPrevBlock;
+        vecChainActive.pop_back();
+    }
+    vecChainActive.insert(vecChainActive.end(), forkChain.rbegin(), forkChain.rend());
 }
 
 void BranchData::RemoveBlock(const uint256& blockhash)
@@ -236,57 +284,76 @@ void BranchDb::Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConne
 
 void BranchDb::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 {
+    std::set<uint256> modifyBranch;
     const CellBlock& block = *pblock;
     const std::vector<CellTransactionRef>& trans = block.vtx;
-    const uint256 blockHash = block.GetHash();
+    const uint256 mainBlockHash = block.GetHash();
     for (size_t i = 0; i < trans.size(); ++i) {
         CellTransactionRef transaction = trans[i];
         if (transaction->IsSyncBranchInfo()) {
-            AddBlockInfoTxData(transaction, blockHash, i);
+            AddBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
         }
     }
+
+    for (const uint256& branchHash : modifyBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        bData.SnapshotBlockTip(mainBlockHash);
+    }
+
+    // after scan finish, save to db
+    bool retdb = WriteModifyToDB(modifyBranch);
 }
 
 void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 {
+    std::set<uint256> modifyBranch;
     const CellBlock& block = *pblock;
     const std::vector<CellTransactionRef>& trans = block.vtx;
-    const uint256 blockHash = block.GetHash();
+    const uint256 mainBlockHash = block.GetHash();
     for (int i = trans.size() - 1; i >= 0; i--) {
         CellTransactionRef transaction = trans[i];
         if (transaction->IsSyncBranchInfo()) {
-            DelBlockInfoTxData(transaction, blockHash, i);
+            DelBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
         }
     }
+
+    //recover branch best tip by snapshot
+    for (const uint256& branchHash : modifyBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        bData.RecoverTip(pblock->hashPrevBlock);// 恢复前一个块的
+    }
+
+    // after scan finish, save to db
+    bool retdb = WriteModifyToDB(modifyBranch);
 }
 
 //interface for test easy
-void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &blockHash, const size_t iTxVtxIndex)
+void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     BranchBlockData bBlockData;
     bBlockData.InitDataFromTx(*transaction);
 
-    //uint256 bBlockHash = bBlockData.header.GetHash();
     uint256 branchHash = transaction->pBranchBlockData->branchID;
     BranchData& bData = mapBranchsData[branchHash];
     bData.InitBranchGenesisBlockData(branchHash);
 
     const uint256& hashPrevBlock = bBlockData.header.hashPrevBlock;
     //tx from blockhash and vtx index
-    bBlockData.mBlockHash = blockHash;
+    bBlockData.mBlockHash = mainBlockHash;
     bBlockData.txIndex = iTxVtxIndex;
     bBlockData.nChainWork = (bData.mapHeads.count(hashPrevBlock) ? bData.mapHeads[hashPrevBlock].nChainWork : 0)
         + GetBlockProof(bBlockData.header.nBits);
 
     bData.BuildBestChain(bBlockData);
 
-    db.Write(branchHash, bData);
-
+    modifyBranch.insert(branchHash);
     //SetTopHash(branchHash, bBlockData.header);
 }
 
 //interface for test easy
-void BranchDb::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &blockHash, const size_t iTxVtxIndex)
+void BranchDb::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     BranchBlockData bBlockData;
     bBlockData.InitDataFromTx(*transaction);
@@ -297,7 +364,19 @@ void BranchDb::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256
 
     bData.RemoveBlock(bBlockHash);
 
-    db.Write(branchHash, bData);
+    modifyBranch.insert(branchHash);
+}
+
+bool BranchDb::WriteModifyToDB(const std::set<uint256>& modifyBranch)
+{
+    CellDBBatch batch(db);
+    for (const uint256& branchHash : modifyBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        batch.Write(branchHash, bData);
+    }
+    bool retdb = db.WriteBatch(batch);
+    return retdb;
 }
 
 uint256 BranchDb::GetBranchTipHash(const uint256& branchid)

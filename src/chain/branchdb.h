@@ -95,15 +95,17 @@ public:
 
 typedef std::vector<uint256> VBRANCH_CHAIN;
 typedef std::map<uint256, BranchBlockData> MAPBRANCH_HEADERS;
-
+typedef std::map<uint256, uint256> MAP_MAINBLOCK_BRANCHTIP;
 //
 class BranchData
 {
 public:
     MAPBRANCH_HEADERS mapHeads;
     VBRANCH_CHAIN vecChainActive;
+    MAP_MAINBLOCK_BRANCHTIP mapSnapshotBlockTip; // record connected main block, each branch tip
 
     void BuildBestChain(BranchBlockData& blockdata);
+    void ActivateBestChain(const uint256 &bestTipHash);
     void RemoveBlock(const uint256& blockhash);
 
     ADD_SERIALIZE_METHODS;
@@ -113,9 +115,13 @@ public:
     {
         READWRITE(mapHeads);
         READWRITE(vecChainActive);
+        READWRITE(mapSnapshotBlockTip);
     }
 
     void InitBranchGenesisBlockData(const uint256 &branchid);
+    void SnapshotBlockTip(const uint256& mainBlockHash);
+    void RecoverTip(const uint256& mainBlockHash);
+
     uint256 TipHash(void);
     uint32_t Height(void);
 };
@@ -158,8 +164,8 @@ public:
     void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
     void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
 
-    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &blockHash, const size_t iTxVtxIndex);
-    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &blockHash, const size_t iTxVtxIndex);
+    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
 
     void LoadData();
 
@@ -180,6 +186,8 @@ public:
         return mapBranchsData[branchHash];
     }
 private:
+    bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
+
     CellDBWrapper db;
     MAPBRANCHS_DATA mapBranchsData;
 };

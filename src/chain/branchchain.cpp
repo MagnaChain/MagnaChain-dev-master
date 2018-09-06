@@ -1035,8 +1035,8 @@ bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& stat
     branchdata.InitBranchGenesisBlockData(tx.pBranchBlockData->branchID);
     //has in db
     if (branchdata.mapHeads.count(blockheader.GetHash())){
-        return true;
-    //    return state.DoS(0, false, REJECT_INVALID, "blockheader info has include before");//TODO: 防止重复,
+    //    return true;
+        return state.DoS(0, false, REJECT_INVALID, "blockheader info has include before");//防止重复
     }
     //ContextualCheckBlockHeader
     const CellChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);

@@ -799,7 +799,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         if (tx.IsSmartContract()) {
             if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state)) {
                 mpContractDb->_contractContext.ClearCache();
-                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO: Õâ¸ö·ÖÊýÐèÒª¿¼ÂÇÏÂ,±¾µØÄÜ³É¹¦Ö´ÐÐ£¬×ª·¢µ½ÆäËû½ÚµãÎ´±ØÄÜ³É¹¦
+                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO:
             }
         }
 
@@ -1816,7 +1816,6 @@ static DisconnectResult DisconnectBlock(const CellBlock& block, const CellBlockI
                 pBranchTxRecordCache->UpdateLockMineCoin(ptx, false);
             }
         }
-        // TODO: pBranchCache->RemoveFromBlock
     }
 
     // move best block pointer to prevout block
