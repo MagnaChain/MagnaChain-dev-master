@@ -161,7 +161,7 @@ bool SignBlock(CellBlock *pblock, CellKeyStore* keystore)
 	return true;
 }
 
-UniValue generateBlocks( CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOutput, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf, CellChainParams*  params, CellCoinsViewCache *pcoinsCache )
+UniValue generateBlocks(CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOutput, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf, CellChainParams* params, CellCoinsViewCache *pcoinsCache)
 {
 	if( vecOutput.empty() )
 		throw JSONRPCError(RPC_INTERNAL_ERROR, "no address with enough coins\n");
@@ -439,7 +439,7 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
 	//ccontrol.destChange = address.Get();
 	std::vector<CellOutput> vecOutputs;
 	CellTxDestination dest = address.Get();
-	pwallet->AvailableCoins(vecOutputs, dest, true);
+	pwallet->AvailableCoins(vecOutputs, &dest, true);
 
 	//std::vector< CellScript> vecScript;
 	//vecScript.push_back(coinbaseScript->reserveScript);

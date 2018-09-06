@@ -241,9 +241,7 @@ bool CellWallet::AddKeyPubKeyWithDB(CWalletDB &walletdb, const CellKey& secret, 
     }
 
     if (!IsCrypted()) {
-        return walletdb.WriteKey(pubkey,
-                                                 secret.GetPrivKey(),
-                                                 mapKeyMetadata[pubkey.GetID()]);
+        return walletdb.WriteKey(pubkey, secret.GetPrivKey(), mapKeyMetadata[pubkey.GetID()]);
     }
     return true;
 }
@@ -2148,7 +2146,7 @@ CellAmount CellWallet::GetAvailableBalance(const CellCoinControl* coinControl) c
 
     CellAmount balance = 0;
     std::vector<CellOutput> vCoins;
-    AvailableCoins(vCoins, true, coinControl);
+    AvailableCoins(vCoins, nullptr, true, coinControl);
     for (const CellOutput& out : vCoins) {
         if (out.fSpendable) {
             balance += out.tx->tx->vout[out.i].nValue;
@@ -2157,128 +2155,7 @@ CellAmount CellWallet::GetAvailableBalance(const CellCoinControl* coinControl) c
     return balance;
 }
 
-void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, const CellTxDestination& dest, bool fOnlySafe, const CellCoinControl *coinControl, const CellAmount &nMinimumAmount, const CellAmount &nMaximumAmount, const CellAmount &nMinimumSumAmount, const uint64_t &nMaximumCount, const int &nMinDepth, const int &nMaxDepth) const
-{
-	vCoins.clear();
-
-	{
-		LOCK2(cs_main, cs_wallet);
-
-		CellAmount nTotal = 0;
-
-		for (std::map<uint256, CellWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
-		{
-			const uint256& wtxid = it->first;
-			const CellWalletTx* pcoin = &(*it).second;
-
-			if( pcoin->IsCoinBase())
-			if (!CheckFinalTx(*pcoin))
-				continue;
-
-			if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
-				continue;
-
-			int nDepth = pcoin->GetDepthInMainChain();
-			if (nDepth < 0)
-				continue;
-
-			// We should not consider coins which aren't at least in our mempool
-			// It's possible for these to be conflicted via ancestors which we may never be able to detect
-			if (nDepth == 0 && !pcoin->InMempool())
-				continue;
-
-			bool safeTx = pcoin->IsTrusted();
-
-			// We should not consider coins from transactions that are replacing
-			// other transactions.
-			//
-			// Example: There is a transaction A which is replaced by bumpfee
-			// transaction B. In this case, we want to prevent creation of
-			// a transaction B' which spends an output of B.
-			//
-			// Reason: If transaction A were initially confirmed, transactions B
-			// and B' would no longer be valid, so the user would have to create
-			// a new transaction C to replace B'. However, in the case of a
-			// one-block reorg, transactions B' and C might BOTH be accepted,
-			// when the user only wanted one of them. Specifically, there could
-			// be a 1-block reorg away from the chain where transactions A and C
-			// were accepted to another chain where B, B', and C were all
-			// accepted.
-			if (nDepth == 0 && pcoin->mapValue.count("replaces_txid")) {
-				safeTx = false;
-			}
-
-			// Similarly, we should not consider coins from transactions that
-			// have been replaced. In the example above, we would want to prevent
-			// creation of a transaction A' spending an output of A, because if
-			// transaction B were initially confirmed, conflicting with A and
-			// A', we wouldn't want to the user to create a transaction D
-			// intending to replace A', but potentially resulting in a scenario
-			// where A, A', and D could all be accepted (instead of just B and
-			// D, or just A and A' like the user would want).
-			if (nDepth == 0 && pcoin->mapValue.count("replaced_by_txid")) {
-				safeTx = false;
-			}
-
-			if (fOnlySafe && !safeTx) {
-				continue;
-			}
-
-			if (nDepth < nMinDepth || nDepth > nMaxDepth)
-				continue;
-
-			for (unsigned int i = 0; i < pcoin->tx->vout.size(); i++) {
-				if (pcoin->tx->vout[i].nValue < nMinimumAmount || pcoin->tx->vout[i].nValue > nMaximumAmount)
-					continue;
-
-				if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(CellOutPoint((*it).first, i)))
-					continue;
-
-				if (IsLockedCoin((*it).first, i))
-					continue;
-
-				if (IsSpent(wtxid, i))
-					continue;
-
-				CellTxDestination dest_test;
-				ExtractDestination(pcoin->tx->vout[i].scriptPubKey, dest_test);
-				if (!(dest_test == dest))
-					continue;
-				isminetype mine = IsMine(pcoin->tx->vout[i]);
-
-				if (mine == ISMINE_NO) {
-					continue;
-				}
-
-                if (QuickGetBranchScriptType(pcoin->tx->vout[i].scriptPubKey) != BST_INVALID)//抵押币、抵押币不能普通使用
-                {
-                    continue;
-                }
-
-				bool fSpendableIn = ((mine & ISMINE_SPENDABLE) != ISMINE_NO) || (coinControl && coinControl->fAllowWatchOnly && (mine & ISMINE_WATCH_SOLVABLE) != ISMINE_NO);
-				bool fSolvableIn = (mine & (ISMINE_SPENDABLE | ISMINE_WATCH_SOLVABLE)) != ISMINE_NO;
-
-				vCoins.push_back(CellOutput(pcoin, i, nDepth, fSpendableIn, fSolvableIn, safeTx));
-
-				// Checks the sum amount of all UTXO's.
-				if (nMinimumSumAmount != MAX_MONEY) {
-					nTotal += pcoin->tx->vout[i].nValue;
-
-					if (nTotal >= nMinimumSumAmount) {
-						return;
-					}
-				}
-
-				// Checks the maximum number of UTXO's.
-				if (nMaximumCount > 0 && vCoins.size() >= nMaximumCount) {
-					return;
-				}
-			}
-		}
-	}
-}
-
-void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, bool fOnlySafe, const CellCoinControl *coinControl, const CellAmount &nMinimumAmount, const CellAmount &nMaximumAmount, const CellAmount &nMinimumSumAmount, const uint64_t &nMaximumCount, const int &nMinDepth, const int &nMaxDepth) const
+void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, const CellTxDestination* dest, bool fOnlySafe, const CellCoinControl *coinControl, const CellAmount &nMinimumAmount, const CellAmount &nMaximumAmount, const CellAmount &nMinimumSumAmount, const uint64_t &nMaximumCount, const int &nMinDepth, const int &nMaxDepth) const
 {
     vCoins.clear();
 
@@ -2360,8 +2237,14 @@ void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, bool fOnlySafe,
                 if (IsSpent(wtxid, i))
                     continue;
 
-                isminetype mine = IsMine(pcoin->tx->vout[i]);
+                if (dest != nullptr) {
+                    CellTxDestination dest_test;
+                    ExtractDestination(pcoin->tx->vout[i].scriptPubKey, dest_test);
+                    if (dest_test != *dest)
+                        continue;
+                }
 
+                isminetype mine = IsMine(pcoin->tx->vout[i]);
                 if (mine == ISMINE_NO) {
                     continue;
                 }
@@ -3027,7 +2910,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
         LOCK2(cs_main, cs_wallet);
         {
             std::vector<CellOutput> vAvailableCoins;
-            AvailableCoins(vAvailableCoins, true, &coin_control);
+            AvailableCoins(vAvailableCoins, nullptr, true, &coin_control);
 
             // Create change script that will be used if we need change
             // TODO: pass in scriptChange instead of reservekey so
@@ -3305,7 +3188,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 		if (txNew.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
 		{
 			//replace
-			CellKeyID oldKey = txNew.contractAddrs[0];
+			CellContractID oldKey = txNew.contractAddrs[0];
             CellScript oldScript = GetScriptForDestination(CellLinkAddress(oldKey).Get());
 
 			txNew.contractAddrs[0] = GenerateContractAddressByTx(txNew);

@@ -24,6 +24,7 @@
 #include "utils/utilstrencodings.h"
 #include "transaction/txdb.h"
 #include "coding/base58.h"
+#include "smartcontract/smartcontract.h"
 
 #include "chain/branchdb.h"
 bool IsFinalTx(const CellTransaction &tx, int nBlockHeight, int64_t nBlockTime)
