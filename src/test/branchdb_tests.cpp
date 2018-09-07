@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
 
         branchdb.Flush(pblockNew, true);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == preHeader.GetHash());
-        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 6);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size()-1);
     }
     {//add block with branch fork 
         preHeader = forkHeader;
@@ -350,7 +350,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
 
         branchdb.Flush(pblockNew, true);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == preHeader.GetHash());
-        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 7);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size()-1);
 
         BranchData blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());
@@ -360,8 +360,8 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         }
 
         branchdb.Flush(pblockNew, false);
-        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 6);
         expertBranchChain = preBlockChain;
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size()-1);
         blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());
         for (int i = 0; i < expertBranchChain.size(); i++)
