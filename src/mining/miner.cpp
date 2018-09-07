@@ -556,8 +556,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             packageFees = modit->nModFeesWithAncestors;
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
-        bool fNeedFeeTx = !(iter->GetTx().IsSyncBranchInfo());//TODO
-		if (packageFees < blockMinFeeRate.GetFee(packageSize) /*&& fNeedFeeTx*/) {
+		if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
 			// Everything else we might consider has a lower fee rate
 			return;
 		}

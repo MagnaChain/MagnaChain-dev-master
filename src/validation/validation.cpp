@@ -785,9 +785,8 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool min fee not met", false, strprintf("%d < %d", nFees, mempoolRejectFee));
         }
 
-        bool fNeedFeeTx = !tx.IsSyncBranchInfo();
         // No transactions are allowed below minRelayTxFee except from disconnected blocks
-        if (fLimitFree && nModifiedFees < ::minRelayTxFee.GetFee(nSize) /*&& fNeedFeeTx*/) {
+        if (fLimitFree && nModifiedFees < ::minRelayTxFee.GetFee(nSize)) {
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
         }
 
