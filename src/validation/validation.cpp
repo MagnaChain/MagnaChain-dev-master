@@ -2625,7 +2625,7 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
-        pBranchDb->Flush(pblock, true);
+        pBranchDb->Flush(pthisBlock, true);
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
     LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);

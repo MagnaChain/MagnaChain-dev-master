@@ -209,6 +209,10 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
     BranchDb branchdb(fs::temp_directory_path() / fs::unique_path(), 8 << 20, false, false);
 
     uint256 branchid = uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e");
+    
+    BOOST_CHECK(branchid == uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e"));
+    BOOST_CHECK(branchid != uint256S("9af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e"));
+    
     const CellChainParams& bparams = BranchParams(branchid);
     const CellBlock& genesisblock = bparams.GenesisBlock();
 
@@ -280,7 +284,10 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         pblockNew->vtx.back()->pBranchBlockData->GetBlockHeader(preHeader);
         expertBranchChain.emplace_back(preHeader.GetHash());
         CreateTestTxToBlock(pblockNew, branchid, preHeader, nbits, preblockH, branchblocktime, vchStakeTxData);
-        pblockNew->vtx.back()->pBranchBlockData->GetBlockHeader(preHeader); forkHeader = preHeader; forkHeight = preblockH;
+        pblockNew->vtx.back()->pBranchBlockData->GetBlockHeader(preHeader);   forkHeader = preHeader; forkHeight = preblockH;
+        expertBranchChain.emplace_back(preHeader.GetHash());
+        CreateTestTxToBlock(pblockNew, branchid, preHeader, nbits, preblockH, branchblocktime, vchStakeTxData);
+        pblockNew->vtx.back()->pBranchBlockData->GetBlockHeader(preHeader);
         expertBranchChain.emplace_back(preHeader.GetHash());
         CreateTestTxToBlock(pblockNew, branchid, preHeader, nbits, preblockH, branchblocktime, vchStakeTxData);
         pblockNew->vtx.back()->pBranchBlockData->GetBlockHeader(preHeader);
@@ -289,7 +296,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         //connect a new block
         branchdb.Flush(pblockNew, true);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == preHeader.GetHash());
-        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 5);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size()-1);
         BranchData blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());
         for (int i = 0; i < expertBranchChain.size(); i++)
@@ -312,7 +319,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
 
         branchdb.Flush(pblockNew, true);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == preHeader.GetHash());
-        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 5);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 6);
     }
     {//add block with branch fork 
         preHeader = forkHeader;
@@ -329,7 +336,8 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         BlockMap::iterator mi = mapBlockIndex.insert(std::make_pair(pblockNew->GetHash(), pindexNew)).first;
         pindexNew->phashBlock = &((*mi).first);
 
-        expertBranchChain.pop_back();// pop number base fork node
+        expertBranchChain.pop_back(); expertBranchChain.pop_back();// pop number base fork node
+
         CreateTestTxToBlock(pblockNew, branchid, preHeader, nbits, preblockH, branchblocktime, vchStakeTxData);
         pblockNew->vtx.back()->pBranchBlockData->GetBlockHeader(preHeader);
         expertBranchChain.emplace_back(preHeader.GetHash());
@@ -352,7 +360,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         }
 
         branchdb.Flush(pblockNew, false);
-        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 5);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == 6);
         expertBranchChain = preBlockChain;
         blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());

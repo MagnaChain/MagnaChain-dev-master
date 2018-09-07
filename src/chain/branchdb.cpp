@@ -125,7 +125,19 @@ void BranchData::ActivateBestChain(const uint256 &bestTipHash)
 
     std::vector<uint256> forkChain;
     forkChain.push_back(bestTipHash);
+    int64_t besttipeheight = mapHeads[bestTipHash].nHeight;// for debug easy
+    while (besttipeheight < vecChainActive.size())
+    {
+        vecChainActive.pop_back();
+    }
     uint256 forkHash = mapHeads[bestTipHash].header.hashPrevBlock;
+    while (mapHeads[forkHash].nHeight >= vecChainActive.size())
+    {
+        assert(mapHeads[forkHash].nHeight > mapHeads[mapHeads[forkHash].header.hashPrevBlock].nHeight);
+        forkChain.push_back(forkHash);
+        forkHash = mapHeads[forkHash].header.hashPrevBlock;
+    }
+
     while (vecChainActive[mapHeads[forkHash].nHeight] != forkHash)
     {
         forkChain.push_back(forkHash);
