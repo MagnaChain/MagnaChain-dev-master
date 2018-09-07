@@ -144,7 +144,7 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     }
     else
     {
-        CoinListPtr plist = pcoinListDb->GetList(Hash160(ParseHex(strFromChain)));
+        CoinListPtr plist = pcoinListDb->GetList(uint160(Hash160(ParseHex(strFromChain))));
         std::set<CellOutPoint> setInOutPoints;
         CellAmount nValue = 0;
 
@@ -184,7 +184,7 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
         if (nValue > nAmount)
         {
             CellScript voutScriptKey;
-            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(strFromChain);
+            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(Hash(strFromChain.begin(), strFromChain.end()));
             branchTx.vout[1].scriptPubKey = voutScriptKey;
             branchTx.vout[1].nValue = nValue - nAmount; 
         }
@@ -555,8 +555,14 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
 
     CellScript scriptPubKey;
-    //scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//lock the output,output trans to /dev/null 
-    scriptPubKey << OP_TRANS_BRANCH << ToByteVector(toBranchid);
+    if (!Params().IsMainChain())
+    {
+        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//lock the output,output trans to /dev/null 
+    }
+    else
+    {
+        scriptPubKey << OP_TRANS_BRANCH << ToByteVector(Hash(toBranchid.begin(), toBranchid.end()));
+    }
 
     EnsureWalletIsUnlocked(pwallet);
 
