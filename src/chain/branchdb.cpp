@@ -20,7 +20,7 @@
 #include <boost/thread.hpp>
 #include "chain/chain.h"
 
-static const std::string DB_MAP_TOP_HASH_DATA = "db_map_top_hash_data";
+//static const std::string DB_MAP_TOP_HASH_DATA = "db_map_top_hash_data";
 static const std::string DB_MAP_REPORT_PROVE_DATA = "db_mao_report_prove_data";
 
 BranchDb* pBranchDb = nullptr;
@@ -39,6 +39,122 @@ void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
     blockdata.nHeight = 0;
     blockdata.pStakeTx = MakeTransactionRef();
     blockdata.nChainWork = GetBlockProof(genesisblock.nBits);
+
+    vecChainActive.push_back(blockdata.header.GetHash());
+}
+
+void BranchData::SnapshotBlockTip(const uint256& mainBlockHash)
+{
+    mapSnapshotBlockTip[mainBlockHash] = vecChainActive.back();
+
+    //prune snapshot data
+    if (mapSnapshotBlockTip.size() > 200)
+    {
+        MAP_MAINBLOCK_BRANCHTIP::iterator oldest = mapSnapshotBlockTip.begin();
+        for (MAP_MAINBLOCK_BRANCHTIP::iterator mit = mapSnapshotBlockTip.begin();
+            mit != mapSnapshotBlockTip.end(); mit++)
+        {
+            if (mapBlockIndex[oldest->first]->nHeight > mapBlockIndex[mit->first]->nHeight)
+            {
+                oldest = mit;
+            }
+        }
+        mapSnapshotBlockTip.erase(oldest);
+    }
+}
+
+void BranchData::RecoverTip(const uint256& mainBlockHash)
+{
+    uint256 preblockhash = mainBlockHash;
+    while (mapSnapshotBlockTip.count(preblockhash) == 0)// find last best tip
+    {
+        if (mapBlockIndex.count(preblockhash) == 0 || preblockhash.IsNull()){
+            //assert error
+            break;
+        }
+        preblockhash = mapBlockIndex[preblockhash]->GetBlockHeader().hashPrevBlock;
+    }
+    // 
+    if (mapSnapshotBlockTip.count(preblockhash))
+    {
+        const uint256 bestTip = mapSnapshotBlockTip[preblockhash];
+        ActivateBestChain(bestTip);
+    }
+}
+
+uint256 BranchData::TipHash(void)
+{
+    if (vecChainActive.size() == 0)
+    {
+        return uint256();
+    }
+    return vecChainActive.back();
+}
+
+uint32_t BranchData::Height(void)
+{
+    return vecChainActive.size() - 1;
+}
+
+void BranchData::BuildBestChain(BranchBlockData& blockdata)
+{
+    const uint256 newTipHash = blockdata.header.GetHash();
+
+    mapHeads[newTipHash] = blockdata;
+
+    if (vecChainActive.back() == blockdata.header.hashPrevBlock)
+    {
+        vecChainActive.push_back(newTipHash);
+    }
+    else
+    {
+        const BranchBlockData& tipBlock = mapHeads[vecChainActive.back()];
+        if (blockdata.nChainWork > tipBlock.nChainWork)
+        {
+            ActivateBestChain(newTipHash);
+        }
+        //else
+    }
+}
+
+void BranchData::ActivateBestChain(const uint256 &bestTipHash)
+{
+    if (vecChainActive.back() == bestTipHash){
+        return;
+    }
+
+    std::vector<uint256> forkChain;
+    forkChain.push_back(bestTipHash);
+    int64_t besttipeheight = mapHeads[bestTipHash].nHeight;// for debug easy
+    while (besttipeheight < vecChainActive.size())
+    {
+        vecChainActive.pop_back();
+    }
+    uint256 forkHash = mapHeads[bestTipHash].header.hashPrevBlock;
+    while (mapHeads[forkHash].nHeight >= vecChainActive.size())
+    {
+        assert(mapHeads[forkHash].nHeight > mapHeads[mapHeads[forkHash].header.hashPrevBlock].nHeight);
+        forkChain.push_back(forkHash);
+        forkHash = mapHeads[forkHash].header.hashPrevBlock;
+    }
+
+    while (vecChainActive[mapHeads[forkHash].nHeight] != forkHash)
+    {
+        forkChain.push_back(forkHash);
+        forkHash = mapHeads[forkHash].header.hashPrevBlock;
+        vecChainActive.pop_back();
+    }
+    vecChainActive.insert(vecChainActive.end(), forkChain.rbegin(), forkChain.rend());
+}
+
+void BranchData::RemoveBlock(const uint256& blockhash)
+{
+    mapHeads.erase(blockhash);
+
+    if (vecChainActive.back() == blockhash)
+    {
+        vecChainActive.pop_back();
+    }
 }
 
 bool BranchCache::HasInCache(const CellTransaction& tx)
@@ -49,24 +165,29 @@ bool BranchCache::HasInCache(const CellTransaction& tx)
     uint256 blockHash = blockData.header.GetHash();
     uint256 branchHash = tx.pBranchBlockData->branchID;
 
-    if (mapBranchCache.count(branchHash))
-        if (mapBranchCache[branchHash].mapHeads.count(blockHash))
-            return true;
+    if (mapBranchCache.count(branchHash)){
+        if (mapBranchCache[branchHash].mapHeads.count(blockHash)){
+            if (mapBranchCache[branchHash].mapHeads[blockHash].flags == BranchBlockData::eADD){
+                return true;
+            }
+        }
+    }
     return false;
 }
 
 void BranchCache::AddToCache(const CellTransaction& tx)
 {
     BranchBlockData blockData;
+    blockData.flags = BranchBlockData::eADD;
     blockData.InitDataFromTx(tx);
 
     blockData.txHash = tx.GetHash();
 
-    uint256 bBlockHash = blockData.header.GetHash();
+    uint256 blockHash = blockData.header.GetHash();
     uint256 branchHash = tx.pBranchBlockData->branchID;
 
     BranchData& bData = mapBranchCache[branchHash];
-    bData.mapHeads[bBlockHash] = blockData;
+    bData.mapHeads[blockHash] = blockData;
 }
 
 // Use in follow situation. 1.After finish build block
@@ -74,15 +195,19 @@ void BranchCache::AddToCache(const CellTransaction& tx)
 void BranchCache::RemoveFromCache(const CellTransaction& tx)
 {
     BranchBlockData blockData;
+    blockData.flags = BranchBlockData::eDELETE;
     blockData.InitDataFromTx(tx);
+
+    blockData.txHash = tx.GetHash();
 
     uint256 blockHash = blockData.header.GetHash();
     uint256 branchHash = tx.pBranchBlockData->branchID;
 
-    if (mapBranchCache.count(branchHash))
-        if (mapBranchCache[branchHash].mapHeads.count(blockHash))
-            mapBranchCache[branchHash].mapHeads.erase(blockHash);
-    return;
+    BranchData& bData = mapBranchCache[branchHash];
+    if (bData.mapHeads.count(blockHash))//update map data
+        bData.mapHeads[blockHash].flags = BranchBlockData::eDELETE;
+    else                                // set map data
+        bData.mapHeads[blockHash] = blockData;
 }
 
 void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
@@ -121,9 +246,14 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const CellTransaction& 
 
 const BranchBlockData* BranchCache::GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash)
 {
-    if (mapBranchCache.count(branchhash))
-        if (mapBranchCache[branchhash].mapHeads.count(blockhash))
-            return &mapBranchCache[branchhash].mapHeads[blockhash];
+    if (mapBranchCache.count(branchhash)){
+        if (mapBranchCache[branchhash].mapHeads.count(blockhash)){
+            if (mapBranchCache[branchhash].mapHeads[blockhash].flags == BranchBlockData::eADD)
+            {
+                return &mapBranchCache[branchhash].mapHeads[blockhash];
+            }
+        }
+    }
     return nullptr;
 }
 
@@ -146,52 +276,149 @@ void BranchBlockData::InitDataFromTx(const CellTransaction& tx)
     bBlockData.txHash = tx.GetHash();
 }
 
-void BranchDb::Flush(const std::shared_ptr<const CellBlock>& pblock)
+void BranchDb::Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect)
 {
-    if (!Params().IsMainChain() || pBranchDb == nullptr) {
+    if (!Params().IsMainChain()) {
         return;
     }
+
+    if (fConnect){
+        OnConnectBlock(pblock);
+    }
+    else {
+        OnDisconnectBlock(pblock);
+    }
+//    uint256 mtopKey = Hash(DB_MAP_TOP_HASH_DATA.begin(), DB_MAP_TOP_HASH_DATA.end());
+//    db.Write(mtopKey, mTopHashDatas);
+    uint256 mReportKey = Hash(DB_MAP_REPORT_PROVE_DATA.begin(), DB_MAP_REPORT_PROVE_DATA.end());
+    db.Write(mReportKey, mReortTxFlag);
+}
+
+void BranchDb::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
+{
+    std::set<uint256> modifyBranch;
     const CellBlock& block = *pblock;
     const std::vector<CellTransactionRef>& trans = block.vtx;
-    const uint256 blockHash = block.GetHash();
+    const uint256 mainBlockHash = block.GetHash();
     for (size_t i = 0; i < trans.size(); ++i) {
         CellTransactionRef transaction = trans[i];
         if (transaction->IsSyncBranchInfo()) {
-            BranchBlockData bBlockData;
-            bBlockData.InitDataFromTx(*transaction);
-
-            uint256 bBlockHash = bBlockData.header.GetHash();
-            uint256 branchHash = transaction->pBranchBlockData->branchID;
-            BranchData& bData = mapBranchsData[branchHash];
-            bData.InitBranchGenesisBlockData(branchHash);
-
-            const uint256& hashPrevBlock = bBlockData.header.hashPrevBlock;
-            //tx from blockhash and vtx index
-            bBlockData.mBlockHash = blockHash;
-            bBlockData.txIndex = i;
-            bBlockData.nChainWork = bData.mapHeads.count(hashPrevBlock) ? bData.mapHeads[hashPrevBlock].nChainWork : 0
-                + GetBlockProof(bBlockData.header.nBits);
-            
-            bData.mapHeads[bBlockHash] = bBlockData;
-
-            db.Write(branchHash, bData);
-            SetTopHash(branchHash, bBlockData.header);
+            AddBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
         }
     }
-    uint256 mtopKey = Hash(DB_MAP_TOP_HASH_DATA.begin(), DB_MAP_TOP_HASH_DATA.end());
-    db.Write(mtopKey, mTopHashDatas);
-    uint256 mReportKey = Hash(DB_MAP_REPORT_PROVE_DATA.begin(), DB_MAP_REPORT_PROVE_DATA.end());
-    db.Write(mReportKey, mReortTxFlag);
+
+    for (const uint256& branchHash : modifyBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        bData.SnapshotBlockTip(mainBlockHash);
+    }
+
+    // after scan finish, save to db
+    bool retdb = WriteModifyToDB(modifyBranch);
+}
+
+void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
+{
+    std::set<uint256> modifyBranch;
+    const CellBlock& block = *pblock;
+    const std::vector<CellTransactionRef>& trans = block.vtx;
+    const uint256 mainBlockHash = block.GetHash();
+    for (int i = trans.size() - 1; i >= 0; i--) {
+        CellTransactionRef transaction = trans[i];
+        if (transaction->IsSyncBranchInfo()) {
+            DelBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
+        }
+    }
+
+    //recover branch best tip by snapshot
+    for (const uint256& branchHash : modifyBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        bData.RecoverTip(pblock->hashPrevBlock);// 恢复前一个块的
+    }
+
+    // after scan finish, save to db
+    bool retdb = WriteModifyToDB(modifyBranch);
+}
+
+//interface for test easy
+void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+{
+    BranchBlockData bBlockData;
+    bBlockData.InitDataFromTx(*transaction);
+
+    uint256 branchHash = transaction->pBranchBlockData->branchID;
+    BranchData& bData = mapBranchsData[branchHash];
+    bData.InitBranchGenesisBlockData(branchHash);
+
+    const uint256& hashPrevBlock = bBlockData.header.hashPrevBlock;
+    //tx from blockhash and vtx index
+    bBlockData.mBlockHash = mainBlockHash;
+    bBlockData.txIndex = iTxVtxIndex;
+    bBlockData.nChainWork = (bData.mapHeads.count(hashPrevBlock) ? bData.mapHeads[hashPrevBlock].nChainWork : 0)
+        + GetBlockProof(bBlockData.header.nBits);
+
+    bData.BuildBestChain(bBlockData);
+
+    modifyBranch.insert(branchHash);
+    //SetTopHash(branchHash, bBlockData.header);
+}
+
+//interface for test easy
+void BranchDb::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+{
+    BranchBlockData bBlockData;
+    bBlockData.InitDataFromTx(*transaction);
+
+    uint256 bBlockHash = bBlockData.header.GetHash();
+    uint256 branchHash = transaction->pBranchBlockData->branchID;
+    BranchData& bData = mapBranchsData[branchHash];
+
+    bData.RemoveBlock(bBlockHash);
+
+    modifyBranch.insert(branchHash);
+}
+
+bool BranchDb::WriteModifyToDB(const std::set<uint256>& modifyBranch)
+{
+    CellDBBatch batch(db);
+    for (const uint256& branchHash : modifyBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        batch.Write(branchHash, bData);
+    }
+    bool retdb = db.WriteBatch(batch);
+    return retdb;
+}
+
+uint256 BranchDb::GetBranchTipHash(const uint256& branchid)
+{
+    if (!HasBranchData(branchid))
+    {
+        return uint256();
+    }
+    BranchData& branchdata = mapBranchsData[branchid];
+    return branchdata.TipHash();
+}
+
+uint32_t BranchDb::GetBranchHeight(const uint256& branchid)
+{
+    if (!HasBranchData(branchid))
+    {
+        return 0;
+    }
+    BranchData& branchdata = mapBranchsData[branchid];
+    return branchdata.Height();
 }
 
 void BranchDb::LoadData()
 {
     //LogPrintf("===== 1-branch db load data: %s \n", Params().GetBranchId()); 
-    if (!Params().IsMainChain() || pBranchDb == nullptr) {
+    if (!Params().IsMainChain()) {
         //LogPrintf("===== 2-branch db load data: %s \n", Params().GetBranchId());  
         return;
     }
-    uint256 mtopKey = Hash(DB_MAP_TOP_HASH_DATA.begin(), DB_MAP_TOP_HASH_DATA.end()); 
+    //uint256 mtopKey = Hash(DB_MAP_TOP_HASH_DATA.begin(), DB_MAP_TOP_HASH_DATA.end()); 
     uint256 mReportKey = Hash(DB_MAP_REPORT_PROVE_DATA.begin(), DB_MAP_REPORT_PROVE_DATA.end()); 
     CellDBIterator* it = db.NewIterator();
     for (it->SeekToFirst(); it->Valid(); it->Next()){
@@ -199,7 +426,7 @@ void BranchDb::LoadData()
         
         if (it->GetKey(keyHash))
         {
-            if (keyHash == mtopKey)
+            /*if (keyHash == mtopKey)
             {
                 MAPTOPHASHDATAS mtData;
                 if (it->GetValue(mtData))
@@ -208,7 +435,8 @@ void BranchDb::LoadData()
                     continue;
                 }
             }
-            else if (keyHash == mReportKey)
+            else */
+            if (keyHash == mReportKey)
             {
                 std::map<uint256, uint16_t> mrData;
                 if (it->GetValue(mrData))
@@ -233,71 +461,72 @@ void BranchDb::LoadData()
     */
 }
 
-void BranchDb::SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader)
-{
-    if (!Params().IsMainChain() || pBranchDb == nullptr) {
-        return;
-    }
-    TopHashData& tHashData = mTopHashDatas[branchHash];
-    std::vector<CandidateHash>& candidates = tHashData.candidates;
 
-    uint256 preBlockHash = bBlockHeader.hashPrevBlock;
-    uint256 blockHash = bBlockHeader.GetHash();
-    if (tHashData.topHash.IsNull() && candidates.size() <= 0 && tHashData.forkHash.IsNull()) {
-        tHashData.topHash = blockHash;
-        tHashData.topHeight += 1;
-        return;
-    }
-
-    if (preBlockHash == tHashData.topHash) {
-        tHashData.forkHash = tHashData.topHash;
-        tHashData.topHash = blockHash;
-        tHashData.topHeight += 1;
-        return;
-    }
-
-    if (preBlockHash == tHashData.forkHash) {
-        CandidateHash tmp;
-        tmp.hash = blockHash;
-        tmp.height = 1;
-        tmp.preHash = preBlockHash;
-        candidates.emplace_back(tmp);
-    }
-
-    bool IsFork = false;
-    CandidateHash fHash;
-    for (size_t i = 0; i < candidates.size(); ++i) {
-        if (preBlockHash == candidates[i].hash) {
-            candidates[i].hash = blockHash;
-            candidates[i].preHash = preBlockHash;
-            candidates[i].height = candidates[i].height + 1;
-            uint32_t cHeight = candidates[i].height;
-            if (tHashData.topHeight == cHeight) {
-                tHashData.topHash = tHashData.forkHash;
-                tHashData.topHeight = tHashData.topHeight - cHeight;
-            } else {
-                tHashData.topHash = blockHash;
-                tHashData.topHeight = tHashData.topHeight + 1;
-            }
-            break;
-        } else if (preBlockHash == candidates[i].preHash) {
-            IsFork = true;
-            fHash = candidates[i];
-            break;
-        }
-    }
-
-    if (IsFork) {
-        candidates.clear();
-        candidates.emplace_back(fHash);
-        CandidateHash tmp;
-        tmp.hash = blockHash;
-        tmp.height = 1;
-        tmp.preHash = preBlockHash;
-        candidates.emplace_back(tmp);
-
-        tHashData.forkHash = preBlockHash;
-        tHashData.topHash = preBlockHash;
-        tHashData.topHeight = tHashData.topHeight - 1;
-    }
-}
+//void BranchDb::SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader)
+//{
+//    if (!Params().IsMainChain()) {
+//        return;
+//    }
+//    TopHashData& tHashData = mTopHashDatas[branchHash];
+//    std::vector<CandidateHash>& candidates = tHashData.candidates;
+//
+//    uint256 preBlockHash = bBlockHeader.hashPrevBlock;
+//    uint256 blockHash = bBlockHeader.GetHash();
+//    if (tHashData.topHash.IsNull() && candidates.size() <= 0 && tHashData.forkHash.IsNull()) {
+//        tHashData.topHash = blockHash;
+//        tHashData.topHeight += 1;
+//        return;
+//    }
+//
+//    if (preBlockHash == tHashData.topHash) {
+//        tHashData.forkHash = tHashData.topHash;
+//        tHashData.topHash = blockHash;
+//        tHashData.topHeight += 1;
+//        return;
+//    }
+//
+//    if (preBlockHash == tHashData.forkHash) {
+//        CandidateHash tmp;
+//        tmp.hash = blockHash;
+//        tmp.height = 1;
+//        tmp.preHash = preBlockHash;
+//        candidates.emplace_back(tmp);
+//    }
+//
+//    bool IsFork = false;
+//    CandidateHash fHash;
+//    for (size_t i = 0; i < candidates.size(); ++i) {
+//        if (preBlockHash == candidates[i].hash) {
+//            candidates[i].hash = blockHash;
+//            candidates[i].preHash = preBlockHash;
+//            candidates[i].height = candidates[i].height + 1;
+//            uint32_t cHeight = candidates[i].height;
+//            if (tHashData.topHeight == cHeight) {
+//                tHashData.topHash = tHashData.forkHash;
+//                tHashData.topHeight = tHashData.topHeight - cHeight;
+//            } else {
+//                tHashData.topHash = blockHash;
+//                tHashData.topHeight = tHashData.topHeight + 1;
+//            }
+//            break;
+//        } else if (preBlockHash == candidates[i].preHash) {
+//            IsFork = true;
+//            fHash = candidates[i];
+//            break;
+//        }
+//    }
+//
+//    if (IsFork) {
+//        candidates.clear();
+//        candidates.emplace_back(fHash);
+//        CandidateHash tmp;
+//        tmp.hash = blockHash;
+//        tmp.height = 1;
+//        tmp.preHash = preBlockHash;
+//        candidates.emplace_back(tmp);
+//
+//        tHashData.forkHash = preBlockHash;
+//        tHashData.topHash = preBlockHash;
+//        tHashData.topHeight = tHashData.topHeight - 1;
+//    }
+//}

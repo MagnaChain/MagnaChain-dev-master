@@ -149,7 +149,7 @@ public:
         consensus.BIP65Height = 0; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0
         consensus.BIP66Height = 0; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 		consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks ÄÑ¶Èµ÷ÕûÊ±¼ä 
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
         consensus.nPowTargetSpacing = 10;// * 60 * 60;
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
@@ -452,7 +452,7 @@ public:
 		//assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
 		//assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
 
-        //²àÁ´¸úÖ÷Á´µÄkeyÒ»ÖÂ,¸ù¾Ý²»Í¬ÍøÂç½øÐÐÇÐ»»
+        //侧链跟主链的key一致,根据不同网络进行切换
         bool fRegTest = gArgs.GetBoolArg("-regtest", false);
         bool fTestNet = gArgs.GetBoolArg("-testnet", false);
         InitMainBase58Prefixes();

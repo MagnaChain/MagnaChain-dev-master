@@ -41,15 +41,15 @@
 
 const CellAmount CreateBranchChainMortgage = 20000*COIN;
 
-//TODO: for test,·¢³öÇ°ĞèÒª¸Ä³ÉºÏÊÊµÄÖµ 
-const uint32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // °ëÄê²ÅÄÜÊê»Ø, 527040¿é * 30s/¿é = 183Ìì 
-const uint32_t BRANCH_CHAIN_MATURITY = 2000;// ÖÁÉÙĞèÒª 2000 ¿é * 30s/¿é = 1000 ·ÖÖÓ = 16.67 hours
-const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // µÖÑºÍÚ¿ó×îĞ¡Öµ
+//TODO: for test,å‘å‡ºå‰éœ€è¦æ”¹æˆåˆé€‚çš„å€¼ 
+const uint32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // åŠå¹´æ‰èƒ½èµå›, 527040å— * 30s/å— = 183å¤© 
+const uint32_t BRANCH_CHAIN_MATURITY = 2000;// è‡³å°‘éœ€è¦ 2000 å— * 30s/å— = 1000 åˆ†é’Ÿ = 16.67 hours
+const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // æŠµæŠ¼æŒ–çŸ¿æœ€å°å€¼
 const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time)
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
 const uint32_t REPORT_LOCK_COIN_HEIGHT = 30; // 30 * 30s = 15 mins
 
-//´´½¨²àÁ´µÖÑº½ğ¼ÆËã
+//åˆ›å»ºä¾§é“¾æŠµæŠ¼é‡‘è®¡ç®—
 CellAmount GetCreateBranchMortgage(const CellBlock* pBlock, const CellBlockIndex* pBlockIndex)
 {
     if (pBlockIndex == nullptr && pBlock != nullptr)
@@ -70,7 +70,7 @@ CellAmount GetCreateBranchMortgage(const CellBlock* pBlock, const CellBlockIndex
         int64_t blockheigt = pBlockIndex->nHeight;
         for (auto v : vCreated)
         {
-            if (mapBlockIndex.count(v.blockhash))//verifydbµÄÊ±ºò»ádisconnect²¢¼ì²é×î½üµÄ¼¸¸ö¿é
+            if (mapBlockIndex.count(v.blockhash))//verifydbçš„æ—¶å€™ä¼šdisconnectå¹¶æ£€æŸ¥æœ€è¿‘çš„å‡ ä¸ªå—
             {
                 if (blockheigt > mapBlockIndex[v.blockhash]->nHeight)
                     nSize++;
@@ -129,7 +129,7 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     branchTx.nLockTime = 0;
     branchTx.fromBranchId = strFromChain;
     //    branchTx.fromTx = ;//this value set later.
-    branchTx.pPMT.reset(new CellSpvProof()); //will reset later, ÕâÀï·ÀÖ¹ĞòÁĞ»¯Ê±±¨´í
+    branchTx.pPMT.reset(new CellSpvProof()); //will reset later, è¿™é‡Œé˜²æ­¢åºåˆ—åŒ–æ—¶æŠ¥é”™
 
     if (strFromChain == CellBaseChainParams::MAIN)
     {
@@ -307,7 +307,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     return obj;
 }
 
-//»ñÈ¡´´½¨·ÖÖ§µÄĞÅÏ¢ 
+//è·å–åˆ›å»ºåˆ†æ”¯çš„ä¿¡æ¯ 
 UniValue getbranchchaininfo(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
@@ -403,7 +403,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
     return arr;
 }
 
-//Ìí¼Ó·ÖÖ§½Úµã
+//æ·»åŠ åˆ†æ”¯èŠ‚ç‚¹
 UniValue addbranchnode(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 5 || request.params.size() > 5)
@@ -498,7 +498,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
         }
 
         //check is branch exist
-        //´´½¨·ÖÖ§½»Ò×ÓĞÒ»¶¨µÄ¸ß¶Èºó²ÅÔÊĞí¿çÁ´½»Ò× 
+        //åˆ›å»ºåˆ†æ”¯äº¤æ˜“æœ‰ä¸€å®šçš„é«˜åº¦åæ‰å…è®¸è·¨é“¾äº¤æ˜“ 
         CellTransactionRef txBranch;
         CellBlockIndex* pblockindex = nullptr;
         uint32_t tx_vtx_index = 0;
@@ -672,7 +672,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
 
     std::string strFromtxid = mtxTrans1.GetHash().ToString();
     //set delay fields
-    if (mtxTrans1.IsMortgage())//change ½«Ö÷Á´µÖÑº±Ò×ª³ÉÍÚ¿ó±Ò
+    if (mtxTrans1.IsMortgage())//change å°†ä¸»é“¾æŠµæŠ¼å¸è½¬æˆæŒ–çŸ¿å¸
     {
         uint256 branchid;
         CellKeyID keyid;
@@ -713,8 +713,8 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     return "ok";
 }
 
-//»ñÈ¡·¢Æğ¿çÁ´½»Ò×µÄtxÊÇ·ñ´æÔÚ 
-//¿çÁ´½»Ò×²éÑ¯,ÓÃÓÚÑéÖ¤¿çÁ´ÑéÖ¤,ºË¶ÔÆäËûÁ´ÊÇ·ñÕæµÄ·¢Æğ¿çÁ¬½»Ò× 
+//è·å–å‘èµ·è·¨é“¾äº¤æ˜“çš„txæ˜¯å¦å­˜åœ¨ 
+//è·¨é“¾äº¤æ˜“æŸ¥è¯¢,ç”¨äºéªŒè¯è·¨é“¾éªŒè¯,æ ¸å¯¹å…¶ä»–é“¾æ˜¯å¦çœŸçš„å‘èµ·è·¨è¿äº¤æ˜“ 
 UniValue getbranchchaintransaction(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
@@ -809,10 +809,10 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
 }
 
 
-// ²àÁ´ÍÚ¿óµÖÑº¡£ÔÚÖ÷Á´²úÉúµÖÑº±Ò,²àÁ´²úÉú¶ÔÓÚµÄÍÚ¿ó±Ò
-// 1¡¢Ö÷Á´½«±ÒµÖÑºµ½µÖÑº½Å±¾,½Å±¾°üº¬²àÁ´µÄid,Êê»ØµØÖ·
-//    MINE_BRANCH_MORTGAGE½»Ò× 
-//         vout[0] ÊÇµÖÑº±Ò vout[1] ÊÇ²àÁ´ÊÖĞø·Ñ,·¢ËÍµ½nullµØÖ·ÉÏ vout[2] ¿ÉÄÜµÄÕÒÁã 
+// ä¾§é“¾æŒ–çŸ¿æŠµæŠ¼ã€‚åœ¨ä¸»é“¾äº§ç”ŸæŠµæŠ¼å¸,ä¾§é“¾äº§ç”Ÿå¯¹äºçš„æŒ–çŸ¿å¸
+// 1ã€ä¸»é“¾å°†å¸æŠµæŠ¼åˆ°æŠµæŠ¼è„šæœ¬,è„šæœ¬åŒ…å«ä¾§é“¾çš„id,èµå›åœ°å€
+//    MINE_BRANCH_MORTGAGEäº¤æ˜“ 
+//         vout[0] æ˜¯æŠµæŠ¼å¸ vout[1] æ˜¯ä¾§é“¾æ‰‹ç»­è´¹,å‘é€åˆ°nullåœ°å€ä¸Š vout[2] å¯èƒ½çš„æ‰¾é›¶ 
 //         
 UniValue mortgageminebranch(const JSONRPCRequest& request)
 {
@@ -886,8 +886,8 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid celllink keyid");
     }
 
-    int nCoinHeight = 0;//Ö¸¶¨±Ò¸ß¶È
-    // µÖÑºvout½Å±¾ branch id , celllink coin address
+    int nCoinHeight = 0;//æŒ‡å®šå¸é«˜åº¦
+    // æŠµæŠ¼voutè„šæœ¬ branch id , celllink coin address
     const CellScript scriptPubKey = CellScript() << OP_MINE_BRANCH_MORTGAGE << ToByteVector(branchHash) << (nCoinHeight) << OP_2DROP << OP_DUP << OP_HASH160 << ToByteVector(pubKeyId) << OP_EQUALVERIFY << OP_CHECKSIG;
 
     CellCoinControl coin_control;
@@ -899,7 +899,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     //make branch transaction output
     CellAmount fee2 = 0;
     const CellScript sendToScriptPubKey;// empty script, delay set in fucntion `makebranchtransaction` 
-    CellMutableTransaction branchStep2MTx;// ²àÁ´½»Ò×,½«µÖÑº±Ò×ª³ÉÍÚ¿ó±Ò,Êä³ö½Å±¾ÏÈÊÇ¸ö¿Õ½Å±¾,ÔÚ²àÁ´ÊÕÂ¼¸Ã½»Ò×Ê±,¸ÃÊä³öµØÖ·»á×ª³ÉÍÚ¿ó±Ò½Å±¾
+    CellMutableTransaction branchStep2MTx;// ä¾§é“¾äº¤æ˜“,å°†æŠµæŠ¼å¸è½¬æˆæŒ–çŸ¿å¸,è¾“å‡ºè„šæœ¬å…ˆæ˜¯ä¸ªç©ºè„šæœ¬,åœ¨ä¾§é“¾æ”¶å½•è¯¥äº¤æ˜“æ—¶,è¯¥è¾“å‡ºåœ°å€ä¼šè½¬æˆæŒ–çŸ¿å¸è„šæœ¬
     if (MakeBranchTransStep2Tx(branchStep2MTx, sendToScriptPubKey, nAmount, fee2, coin_control) == false) { 
         throw JSONRPCError(RPC_TYPE_ERROR, "Make branch step2 tx error.");
     }
@@ -915,7 +915,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
     }
 
-    // ÌØÊâÉè¶¨£ºvout 0ºÅÎ»ÊÇµÖÑº±Ò 1ºÅÎ»²àÁ´½»Ò×ÊÖĞø·Ñ 2ºÅÎ»¿ÉÄÜÊÇÕÒÁã¡¢Ò²¿ÉÄÜÊÇ¿Õ£¨Ã»ÕÒÁãµÄÇé¿ö£©¡£
+    // ç‰¹æ®Šè®¾å®šï¼švout 0å·ä½æ˜¯æŠµæŠ¼å¸ 1å·ä½ä¾§é“¾äº¤æ˜“æ‰‹ç»­è´¹ 2å·ä½å¯èƒ½æ˜¯æ‰¾é›¶ã€ä¹Ÿå¯èƒ½æ˜¯ç©ºï¼ˆæ²¡æ‰¾é›¶çš„æƒ…å†µï¼‰ã€‚
     bool fSubtractFeeFromAmount = false;
     // Create and send the transaction
     CellReserveKey reservekey(pwallet);
@@ -924,13 +924,13 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     std::vector<CellRecipient> vecSend;
 
     CellRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
-    vecSend.push_back(recipient);// vout 0 ÊÇµÖÑº±Ò
-    //²àÁ´ÊÖĞø·Ñ
+    vecSend.push_back(recipient);// vout 0 æ˜¯æŠµæŠ¼å¸
+    //ä¾§é“¾æ‰‹ç»­è´¹
     CellScript scriptNull;
     scriptNull << OP_RETURN << OP_TRANS_BRANCH;
-    vecSend.push_back({scriptNull, fee2, fSubtractFeeFromAmount}); // vout 1 ÊÇ²àÁ´ÊÖĞø·Ñ
+    vecSend.push_back({scriptNull, fee2, fSubtractFeeFromAmount}); // vout 1 æ˜¯ä¾§é“¾æ‰‹ç»­è´¹
 
-    int nChangePosRet = vecSend.size(); // vout end-1 ÕÒÁã, fixed change vout pos 
+    int nChangePosRet = vecSend.size(); // vout end-1 æ‰¾é›¶, fixed change vout pos 
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
         if (!fSubtractFeeFromAmount && nAmount + fee2 + nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
@@ -953,7 +953,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     return ret;
 }
 
-// ²àÁ´ÏòÖ÷Á´Ìá½»Çø¿éÍ·
+// ä¾§é“¾å‘ä¸»é“¾æäº¤åŒºå—å¤´
 UniValue submitbranchblockinfo(const JSONRPCRequest& request)
 {
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1029,9 +1029,9 @@ UniValue submitbranchblockinfo(const JSONRPCRequest& request)
     return ret;
 }
 
-// Êê»ØÍÚ¿óµÖÑº
+// èµå›æŒ–çŸ¿æŠµæŠ¼
 
-//²éÑ¯²àÁ´ÓĞĞ§Í·¸ß¶È
+//æŸ¥è¯¢ä¾§é“¾æœ‰æ•ˆå¤´é«˜åº¦
 UniValue getbranchchainheight(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
@@ -1059,17 +1059,13 @@ UniValue getbranchchainheight(const JSONRPCRequest& request)
     if (!pBranchChainTxRecordsDb->IsBranchCreated(branchid))
         throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
 
-    if (pBranchDb->mTopHashDatas.count(branchid) == 0)
-        throw JSONRPCError(RPC_WALLET_ERROR, "No top hash data");
-
-    TopHashData topHashData = pBranchDb->mTopHashDatas[branchid];
     UniValue retObj(UniValue::VOBJ);
-    retObj.push_back(Pair("blockhash", topHashData.topHash.ToString()));
-    retObj.push_back(Pair("height", (uint64_t)topHashData.topHeight));
+    retObj.push_back(Pair("blockhash", pBranchDb->GetBranchTipHash(branchid).ToString()));
+    retObj.push_back(Pair("height", (uint64_t)pBranchDb->GetBranchHeight(branchid)));
     return retObj;
 }
 
-//ÖØ·¢²àÁ´Í·µ½Ö÷Á´
+//é‡å‘ä¾§é“¾å¤´åˆ°ä¸»é“¾
 UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
@@ -1115,12 +1111,12 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
     return "OK";
 }
 
-//Êê»ØÍÚ¿ó±Ò, ²½Öè
-// 1).²àÁ´ÌáÆğÊê»ØÇëÇó.(²àÁ´ÏÈÏú»ÙÍÚ¿ó±Ò,·ÀÖ¹¼ÌĞøÍÚ¿ó)
-// 2).Ö÷Á´ÊÕµ½,´´ÔìĞÂµÄ½»Ò×,µÖÑº±Ò×÷ÎªÊäÈë,Êê»Øµ½Õı³£µØÖ·,ĞèÒªÖ¸¶¨À´×ÔÄÇ¸ö²àÁ´ÇëÇó
-// Èç¹ûÊÇÖ÷Á´ÏÈ·¢ÆğÇëÇóµÄ,¶øÇÒÊÇÏÈÄÃ»ØµÖÑº±ÒµÄ»°,¿ÉÄÜ²àÁ´»¹ÔÚ¼ÌĞøÍÚ¿ó.
-// Õâ¸ö½»Ò×ºÍÇ°Ãæ¿çÁ´½»Ò×²»Ò»Ñù,Ô­ÏÈ"×ªµ½"²àÁ´³ÉÎªÍÚ¿ó±ÒµÄÊäÈë²¢Ã»ÓĞÏú»Ù,¿ÉÒÔ×÷Îª×ªÈës2Ê±µÄÊäÈë.
-// Êê»ØÍÚ¿ó±Ò, ²½Öè1
+//èµå›æŒ–çŸ¿å¸, æ­¥éª¤
+// 1).ä¾§é“¾æèµ·èµå›è¯·æ±‚.(ä¾§é“¾å…ˆé”€æ¯æŒ–çŸ¿å¸,é˜²æ­¢ç»§ç»­æŒ–çŸ¿)
+// 2).ä¸»é“¾æ”¶åˆ°,åˆ›é€ æ–°çš„äº¤æ˜“,æŠµæŠ¼å¸ä½œä¸ºè¾“å…¥,èµå›åˆ°æ­£å¸¸åœ°å€,éœ€è¦æŒ‡å®šæ¥è‡ªé‚£ä¸ªä¾§é“¾è¯·æ±‚
+// å¦‚æœæ˜¯ä¸»é“¾å…ˆå‘èµ·è¯·æ±‚çš„,è€Œä¸”æ˜¯å…ˆæ‹¿å›æŠµæŠ¼å¸çš„è¯,å¯èƒ½ä¾§é“¾è¿˜åœ¨ç»§ç»­æŒ–çŸ¿.
+// è¿™ä¸ªäº¤æ˜“å’Œå‰é¢è·¨é“¾äº¤æ˜“ä¸ä¸€æ ·,åŸå…ˆ"è½¬åˆ°"ä¾§é“¾æˆä¸ºæŒ–çŸ¿å¸çš„è¾“å…¥å¹¶æ²¡æœ‰é”€æ¯,å¯ä»¥ä½œä¸ºè½¬å…¥s2æ—¶çš„è¾“å…¥.
+// èµå›æŒ–çŸ¿å¸, æ­¥éª¤1
 UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1164,7 +1160,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     const Coin& coin = pcoinsTip->AccessCoin(outpoint);
     if (coin.IsSpent())
         throw JSONRPCError(RPC_WALLET_ERROR, "Coin is spent!");
-    if (chainActive.Height() - coin.nHeight < REDEEM_SAFE_HEIGHT)// ÍÚ¿ó±ÒĞèÒªÂú×ãÒ»¶¨¸ß¶Èºó²ÅÄÜÊê»Ø,¸ø±ğÈË¾Ù±¨ÓĞÊ±¼ä´°¿Ú
+    if (chainActive.Height() - coin.nHeight < REDEEM_SAFE_HEIGHT)// æŒ–çŸ¿å¸éœ€è¦æ»¡è¶³ä¸€å®šé«˜åº¦åæ‰èƒ½èµå›,ç»™åˆ«äººä¸¾æŠ¥æœ‰æ—¶é—´çª—å£
         throw JSONRPCError(RPC_INVALID_REQUEST, "Coin need ");
 
     uint256 fromtxid;
@@ -1225,8 +1221,8 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     return obj;
 }
 
-//µ±²½Öè1½»Ò×Âú×ãÒ»¶¨¿é¸ß¶Èºó»á×Ô¶¯µ÷ÓÃÒ»´Î,Ö»ÓĞ±¾µØÇ®°ü°üº¬µÖÑºµØÖ·µÄË½Ô¿²ÅÄÜ³É¹¦, Ò²¿ÉÒÔÔÚÂú×ã¸ß¶ÈºóÊÖ¶¯µ÷ÓÃ
-//Êê»ØÍÚ¿ó±Ò,²½Öè2
+//å½“æ­¥éª¤1äº¤æ˜“æ»¡è¶³ä¸€å®šå—é«˜åº¦åä¼šè‡ªåŠ¨è°ƒç”¨ä¸€æ¬¡,åªæœ‰æœ¬åœ°é’±åŒ…åŒ…å«æŠµæŠ¼åœ°å€çš„ç§é’¥æ‰èƒ½æˆåŠŸ, ä¹Ÿå¯ä»¥åœ¨æ»¡è¶³é«˜åº¦åæ‰‹åŠ¨è°ƒç”¨
+//èµå›æŒ–çŸ¿å¸,æ­¥éª¤2
 UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1666,8 +1662,8 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
     return "ok";
 }
 
-// ¾Ù±¨ºó,ÔÚ¾Ù±¨½»Ò×±»´ò°üºó REPORT_LOCK_COIN_HEIGHT + 1¸ö¿éºóÊÖ¶¯ÔÚÖ§Á´µ÷ÓÃ¸Ã½Ó¿Ú
-// Ëø¶¨ÍÚ¿ó±Ò
+// ä¸¾æŠ¥å,åœ¨ä¸¾æŠ¥äº¤æ˜“è¢«æ‰“åŒ…å REPORT_LOCK_COIN_HEIGHT + 1ä¸ªå—åæ‰‹åŠ¨åœ¨æ”¯é“¾è°ƒç”¨è¯¥æ¥å£
+// é”å®šæŒ–çŸ¿å¸
 UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1701,7 +1697,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     // check: 
     // 1 branch, get report tx data
     // 2 coin preout hash
-    // 3 ÀúÊ·¾ÃÔ¶µÄ²»ÄÜ¾Ù±¨?
+    // 3 å†å²ä¹…è¿œçš„ä¸èƒ½ä¸¾æŠ¥?
     uint256 reporttxid = ParseHashV(request.params[0], "param 0");
     uint256 coinprevouthash = ParseHashV(request.params[1], "param 1");
 
@@ -1746,7 +1742,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     return ret;
 }
 
-//»ñÈ¡¾Ù±¨½»Ò×Êı¾İ
+//è·å–ä¸¾æŠ¥äº¤æ˜“æ•°æ®
 UniValue getreporttxdata(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -1797,7 +1793,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
     return ret;
 }
 
-// ½âËøÍÚ¿ó±Ò
+// è§£é”æŒ–çŸ¿å¸
 UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1875,7 +1871,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
     return ret;
 }
 
-//»ñÈ¡¾Ù±¨½»Ò×Êı¾İ
+//è·å–ä¸¾æŠ¥äº¤æ˜“æ•°æ®
 UniValue getprovetxdata(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -1949,7 +1945,7 @@ static const CRPCCommand commands[] =
     // report and provre api
     { "branchchain",        "sendreporttomain",          &sendreporttomain,            false, {"blockhash", "txid"}},
     { "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
-    // Ö¤Ã÷½»Ò×Êı¾İ»¹ĞèÒªĞŞ¸ÄºÍÍêÉÆ
+    // è¯æ˜äº¤æ˜“æ•°æ®è¿˜éœ€è¦ä¿®æ”¹å’Œå®Œå–„
     { "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
     { "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},
     { "branchchain",        "lockmortgageminecoin",      &lockmortgageminecoin,        false, { "txid", "coinpreouthash"}},

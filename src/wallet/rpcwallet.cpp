@@ -401,9 +401,11 @@ void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellA
 	CellAmount nFeeRequired;
 	std::string strError;
 	std::vector<CellRecipient> vecSend;
-	int nChangePosRet = -1;
-	CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
-	vecSend.push_back(recipient);
+    if (nValue > 0) {
+        CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
+        vecSend.push_back(recipient);
+    }
+    int nChangePosRet = -1;
 	if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true, sls)) {
 		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
 			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
@@ -543,17 +545,13 @@ UniValue publishcontract(const JSONRPCRequest& request)
 	fread((char*)&rawCode[0], flen, 1, fp);
 	fclose(fp);
 
-    CellAmount amount = 100000;
-    if (request.params.size() > 1)
-        amount = AmountFromValue(request.params[1]);
-
     std::string strSenderAddr;
-    if (request.params.size() > 2)
-        strSenderAddr = request.params[2].get_str();
+    if (request.params.size() > 1)
+        strSenderAddr = request.params[1].get_str();
 
     UniValue ret;
     std::string code;
-	int result = PublishContract(&RPCSLS, pwallet, amount, strSenderAddr, rawCode, code, ret);
+	int result = PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, code, ret);
     return ret;
 }
 
@@ -584,19 +582,15 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
 	}
 
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
-	std::string rawCode(vCode.begin(), vCode.end());
-
-    CellAmount amount = 100000;
-    if (request.params.size() > 1)
-        amount = AmountFromValue(request.params[1]);
+    std::string rawCode(vCode.begin(), vCode.end());
 
     std::string strSenderAddr;
-    if (request.params.size() > 2)
-        strSenderAddr = request.params[2].get_str();
+    if (request.params.size() > 1)
+        strSenderAddr = request.params[1].get_str();
 
     UniValue ret;
     std::string code;
-    int result = PublishContract(&RPCSLS, pwallet, amount, strSenderAddr, rawCode, code, ret);
+    int result = PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, code, ret);
     return ret;
 }
 
@@ -728,6 +722,8 @@ UniValue callcontract(const JSONRPCRequest& request)
         sendCall = true;
 
     CellAmount amount = AmountFromValue(request.params[1]);
+    if (amount < 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     std::string strContractAddr = request.params[2].get_str();
     CellLinkAddress contractAddr(strContractAddr);
@@ -847,7 +843,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
 	// Amount
 	CellAmount amount = AmountFromValue(request.params[2]);
-	if (amount <= 0)
+	if (amount < 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
 	std::vector<unsigned char> data(ParseHex(request.params[3].get_str()));
@@ -3156,7 +3152,7 @@ UniValue listunspent(const JSONRPCRequest& request)
     assert(pwallet != nullptr);
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    pwallet->AvailableCoins(vecOutputs, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
+    pwallet->AvailableCoins(vecOutputs, nullptr, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
     for (const CellOutput& out : vecOutputs) {
         CellTxDestination address;
         const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
@@ -3601,93 +3597,9 @@ UniValue bumpfee(const JSONRPCRequest& request)
     return result;
 }
 
-UniValue generate(const JSONRPCRequest& request)
-{
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
-
-    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
-        return NullUniValue;
-    }
-
-    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
-        throw std::runtime_error(
-            "generate nblocks ( maxtries )\n"
-            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
-            "\nArguments:\n"
-            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
-            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
-            "\nResult:\n"
-            "[ blockhashes ]     (array) hashes of blocks generated\n"
-            "\nExamples:\n"
-            "\nGenerate 11 blocks\n"
-            + HelpExampleCli("generate", "11")
-        );
-    }
-
-    int num_generate = request.params[0].get_int();
-    uint64_t max_tries = 1000000;
-    if (request.params.size() > 1 && !request.params[1].isNull()) {
-        max_tries = request.params[1].get_int();
-    }
-
-	/*
-    std::shared_ptr<CReserveScript> coinbase_script;
-    pwallet->GetScriptForMining(coinbase_script);
-
-    // If the keypool is exhausted, no script is returned at all.  Catch this.
-    if (!coinbase_script) {
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-    }
-
-    //throw an error if no script was provided
-    if (coinbase_script->reserveScript.empty()) {
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available");
-    }
-
-    return generateBlocks(coinbase_script, num_generate, max_tries, true);
-	*/
-	/// modified
-	std::set<CellTxDestination> setAddress;
-	std::vector<CellOutput> vecOutputs;
-	{
-		assert(pwallet != nullptr);
-
-		LOCK2(cs_main, pwallet->cs_wallet);
-		EnsureWalletIsUnlocked(pwallet);
-
-        if (Params().IsMainChain())
-            pwallet->AvailableCoins(vecOutputs, false);
-        else
-            pwallet->AvailableMortgageCoins(vecOutputs, false);
-		/*
-		for (const CellOutput& out : vecOutputs) {
-			CellTxDestination address;
-			const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-			bool fValidAddress = ExtractDestination(scriptPubKey, address);
-
-			if ( setAddress.count(address))
-				continue;
-
-			if (fValidAddress) {
-				if (!scriptPubKey.IsPayToScriptHash()) {
-					setAddress.insert(address);
-				}
-			}
-		}
-		*/
-	}
-	/*
-	std::vector< CellScript> vecScript;
-	BOOST_FOREACH( const CellTxDestination& addr, setAddress) {
-		vecScript.push_back(GetScriptForDestination( addr ));
-	}
-	*/
-	return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
-}
-
 UniValue generateforbigboom(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
 
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
@@ -4261,7 +4173,6 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrase",         &walletpassphrase,         true,   {"passphrase","timeout"} },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        true,   {"txid"} },
 
-    { "generating",         "generate",                 &generate,                 true,   {"nblocks","maxtries"} },
 	{ "generating",         "generateforbigboom",       &generateforbigboom,	   true,   {"nblocks","maxtries" } },
 
     { "wallet",             "getaddresscoins",          &getaddresscoins,          true,  { "address", "withscript",} },

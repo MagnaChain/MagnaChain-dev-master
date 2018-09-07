@@ -325,7 +325,7 @@ CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddres
 
     // contract script file hash
     ss << Hash(code.begin(), code.end()).GetHex();
-    return Hash160(ParseHex(ss.GetHash().ToString()));
+    return CellContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
 void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
@@ -366,7 +366,8 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
         return -1;
     }
 
-    CellContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);// temp addresss, replace in CellWallet::CreateTransaction 
+    // temp addresss, replace in CellWallet::CreateTransaction
+    CellContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);
     CellLinkAddress contractAddr(contractId);
 
     SmartContractRet scr;
@@ -683,7 +684,7 @@ int SendCoins(lua_State* L)
             }
         }
         else {
-            const CellKeyID& kAddr = boost::get<CellKeyID>(sls->contractAddrs.top().Get());
+            const CellContractID& kAddr = boost::get<CellContractID>(sls->contractAddrs.top().Get());
             CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
             CellLinkAddress addr(kAddr);
             //LogPrintf("Send contract address %s\n", addr.ToString());

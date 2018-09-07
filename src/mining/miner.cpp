@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2018 The CellLink Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -556,8 +556,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             packageFees = modit->nModFeesWithAncestors;
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
-        bool fNeedFeeTx = !(iter->GetTx().IsSyncBranchInfo());//TODO
-		if (packageFees < blockMinFeeRate.GetFee(packageSize) /*&& fNeedFeeTx*/) {
+		if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
 			// Everything else we might consider has a lower fee rate
 			return;
 		}
@@ -671,7 +670,7 @@ void static CellLinkMiner(const CellChainParams& chainparams)
 				LOCK2(cs_main, pwallet->cs_wallet);
 
                 if (Params().IsMainChain())
-                    pwallet->AvailableCoins(vecOutputs, false);
+                    pwallet->AvailableCoins(vecOutputs, nullptr, false);
                 else
                     pwallet->AvailableMortgageCoins(vecOutputs, false);
 				//for (const CellOutput& out : vecOutputs) {

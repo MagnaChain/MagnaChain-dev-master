@@ -785,9 +785,8 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool min fee not met", false, strprintf("%d < %d", nFees, mempoolRejectFee));
         }
 
-        bool fNeedFeeTx = !tx.IsSyncBranchInfo();
         // No transactions are allowed below minRelayTxFee except from disconnected blocks
-        if (fLimitFree && nModifiedFees < ::minRelayTxFee.GetFee(nSize) /*&& fNeedFeeTx*/) {
+        if (fLimitFree && nModifiedFees < ::minRelayTxFee.GetFee(nSize)) {
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
         }
 
@@ -799,7 +798,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         if (tx.IsSmartContract()) {
             if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state)) {
                 mpContractDb->_contractContext.ClearCache();
-                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO: Õâ¸ö·ÖÊýÐèÒª¿¼ÂÇÏÂ,±¾µØÄÜ³É¹¦Ö´ÐÐ£¬×ª·¢µ½ÆäËû½ÚµãÎ´±ØÄÜ³É¹¦
+                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO:
             }
         }
 
@@ -1816,7 +1815,6 @@ static DisconnectResult DisconnectBlock(const CellBlock& block, const CellBlockI
                 pBranchTxRecordCache->UpdateLockMineCoin(ptx, false);
             }
         }
-        // TODO: pBranchCache->RemoveFromBlock
     }
 
     // move best block pointer to prevout block
@@ -2145,10 +2143,10 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
         if (tx.IsStake() && i != 1)
             return state.DoS(100, error("%s: stake tx in invalid index", __func__));
 
-        //²àÁ´staketx¼ì²é
+        //侧链staketx检查
         if (tx.IsStake() && !Params().IsMainChain() && pindex->nHeight > 1)// genesis block and the 2nd block do not check
         {
-            //check input output,·ÀÖ¹ÍÚ¿ó±Ò±»Í¨¹ý½»Ò×·ÑµÄÐÎÊ½×ª×ß
+            //check input output,防止挖矿币被通过交易费的形式转走
             if (tx.vin.size() != 1 || tx.vout.size() != 1){
                 return state.DoS(100, error("Invalid branch chain stake's tx vin or vout invalid size"));
             }
@@ -2486,6 +2484,7 @@ bool static DisconnectTip(CellValidationState& state, const CellChainParams& cha
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
+        pBranchDb->Flush(pblock, false);
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
     // Write the chain state to disk, if necessary.
@@ -2625,6 +2624,7 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
+        pBranchDb->Flush(pthisBlock, true);
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
     LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);
@@ -3831,8 +3831,6 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
     // check and remove invalid contract transaction 
     UpdateContractTxAndProveTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
-    pBranchDb->Flush(pblock);
-
     printf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - start);
     return true;
 }

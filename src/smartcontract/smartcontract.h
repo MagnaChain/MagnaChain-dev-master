@@ -76,6 +76,20 @@ public:
 extern bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLinkAddress& senderAddr);
 extern CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& code);
 
+template<typename TxType>
+CellContractID GenerateContractAddressByTx(TxType& tx)
+{
+    CellHashWriter ss(SER_GETHASH, 0);
+    for (auto v : tx.vin)
+        ss << v.prevout;
+    for (auto v : tx.vout)
+        ss << v.nValue;
+
+    ss << tx.contractCode;
+    ss << tx.contractSender;
+    return CellContractID(Hash160(ParseHex(ss.GetHash().ToString())));
+}
+
 extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
 extern int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, const std::string& strSenderAddr, std::string& rawCode, std::string& code, UniValue& ret);

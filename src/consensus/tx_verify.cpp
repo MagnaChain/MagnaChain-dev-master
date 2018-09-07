@@ -24,6 +24,7 @@
 #include "utils/utilstrencodings.h"
 #include "transaction/txdb.h"
 #include "coding/base58.h"
+#include "smartcontract/smartcontract.h"
 
 #include "chain/branchdb.h"
 bool IsFinalTx(const CellTransaction &tx, int nBlockHeight, int64_t nBlockTime)
@@ -186,7 +187,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
-    if (tx.vout.empty())
+    if (tx.vout.empty() && !tx.IsSmartContract())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
     // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)

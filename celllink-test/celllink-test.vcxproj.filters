@@ -176,6 +176,9 @@
     <ClCompile Include="..\src\wallet\test\wallet_tests.cpp">
       <Filter>src\wallet\test</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\test\branchdb_tests.cpp">
+      <Filter>src\test</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\test\scriptnum10.h">
