@@ -44,6 +44,7 @@
 #include "mining/mining.h"
 #include "transaction/txdb.h"
 #include "rpc/server.h"
+#include "policy/rbf.h"
 
 #include <assert.h>
 #include <algorithm>
@@ -454,6 +455,57 @@ void BlockAssembler::GroupingTransaction(int offset)
     }
 }
 
+bool BlockAssembler::UpdateBranchTx(CellMutableTransaction& branchTx)
+{
+    const std::string strFromChain = branchTx.fromBranchId; 
+    CellAmount nAmount = branchTx.inAmount;
+     CoinListPtr plist = pcoinListDb->GetList(uint160(Hash160(ParseHex(strFromChain))));
+        std::set<CellOutPoint> setInOutPoints;
+        CellAmount nValue = 0;
+
+        if (plist != nullptr) {
+            BOOST_FOREACH(const CellOutPoint& outpoint, plist->coins) {
+                const Coin& coin = pcoinsTip->AccessCoin(outpoint);
+                if (coin.IsSpent()) {
+                    continue;
+                }
+                if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
+                    continue;
+                }
+
+                nValue += coin.out.nValue;
+                setInOutPoints.insert(outpoint);
+                if (nValue >= nAmount) 
+                    break;   
+            }
+        }
+
+        if (nValue < nAmount)
+        {
+            return false;
+        }
+        CellCoinControl coin_control;
+
+        const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CellTxIn::SEQUENCE_FINAL - 1);
+        branchTx.vin.clear();
+        for (const auto& outpoint : setInOutPoints) {
+            branchTx.vin.push_back(CellTxIn(outpoint, CellScript(),
+                    nSequence));
+        }
+
+        if (nValue > nAmount)
+        {
+            CellScript voutScriptKey;
+            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(Hash(strFromChain.begin(), strFromChain.end()));
+
+            CellTxOut tmpOut;
+            tmpOut.scriptPubKey = voutScriptKey;
+            tmpOut.nValue = nValue - nAmount;
+            branchTx.vout.push_back(tmpOut);
+        }
+        return true;
+}
+
 
 // This transaction selection algorithm orders the mempool based
 // on feerate of a transaction including all unconfirmed ancestors.
@@ -541,6 +593,19 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
                 else if (mipp)
                     --mi;//back to pre-iterator
                 break;
+            }
+        }
+
+        if (Params().IsMainChain() && iterTx->IsBranchChainTransStep2())
+        {
+            CellMutableTransaction tmpMulTx(*iterTx);
+            if (!UpdateBranchTx(tmpMulTx))
+            {
+                ++mi;
+            }
+            else
+            {
+               iterTx = MakeTransactionRef(tmpMulTx); 
             }
         }
 
