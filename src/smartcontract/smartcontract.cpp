@@ -328,7 +328,7 @@ CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddres
     return CellContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
-void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
+void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
 {
     // 创建msg表
     lua_newtable(L);
@@ -338,8 +338,10 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     // 设置相关参数
     lua_pushstring(L, contractAddr.c_str());
     lua_setfield(L, -2, "thisAddress"); //合约本身的地址
+    lua_pushstring(L, origin.c_str());
+    lua_setfield(L, -2, "origin"); // 原始发起调用合约者公钥地址
     lua_pushstring(L, sender.c_str());
-    lua_setfield(L, -2, "sender"); // 当前发起调用合约者地址
+    lua_setfield(L, -2, "sender"); // 当前发起调用合约者地址(可能为合约或公钥地址)
     lua_pushnumber(L, payment);
     lua_setfield(L, -2, "payment"); //msg.value: number of wei sent with the message
     lua_pushnumber(L, blockTime);
@@ -371,8 +373,8 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
     CellLinkAddress contractAddr(contractId);
 
     SmartContractRet scr;
-    sls->Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
-    int result = PublishContract(sls, amount, contractAddr, senderAddr, rawCode, code, scr);
+    sls->Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    int result = PublishContract(sls, amount, contractAddr, rawCode, code, scr);
     if (result == 0) {
         CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
@@ -380,7 +382,7 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
         CellWalletTx wtx;
         wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
         wtx.contractCode = rawCode;
-        wtx.contractSenderKey = senderPubKey;
+        wtx.contractSender = senderPubKey;
         wtx.contractAddrs.emplace_back(contractId);
         wtx.contractAddrs.insert(wtx.contractAddrs.end(), sls->contractIds.begin(), sls->contractIds.end());
 
@@ -394,13 +396,15 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
         ret.push_back(Pair("contractaddress", CellLinkAddress(wtx.tx->contractAddrs[0]).ToString()));
         ret.push_back(Pair("senderaddress", senderAddr.ToString()));
     }
+    else
+        ret.push_back(result);
 
     return result;
 }
 
-int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& contractAddr, CellLinkAddress& senderAddr, const std::string& rawCode, std::string& code, SmartContractRet& scr)
+int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& contractAddr, const std::string& rawCode, std::string& code, SmartContractRet& scr)
 {
-    if (amount <= 0) {
+    if (amount < 0) {
         scr.result.push_back("amount <= 0.");
         return -1;
     }
@@ -413,8 +417,8 @@ int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& cont
         return -1;
     }
 
-    lua_State* L = sls->GetLuaState(contractAddr, senderAddr);
-    SetContractMsg(L, contractAddr.ToString(), senderAddr.ToString(), amount, sls->timestamp, sls->blockHeight);
+    lua_State* L = sls->GetLuaState(contractAddr);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), amount, sls->timestamp, sls->blockHeight);
 
     int result = PublishContract(L, rawCode, code, scr);
     if (result == 0) {
@@ -467,8 +471,7 @@ int PublishContract(lua_State* L, const std::string& rawCode, std::string& code,
     return result;
 }
 
-int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount,
-    CellLinkAddress& contractAddr, CellLinkAddress& senderAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& ret)
+int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& ret)
 {
     ret.result.clear();
 
@@ -480,8 +483,9 @@ int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount,
         return -1;
     }
 
-    lua_State* L = sls->GetLuaState(contractAddr, senderAddr);
-    SetContractMsg(L, contractAddr.ToString(), senderAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
+    std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
+    lua_State* L = sls->GetLuaState(contractAddr);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, 0, sls->timestamp, sls->blockHeight);
     int result = CallContract(L, maxCallNum, contractInfo.code, contractInfo.data, strFuncName, args, ret);
     if (result == 0 && contractInfo.data != ret.data) {
         maxCallNum = L->limit_instruction;
@@ -590,11 +594,6 @@ int InternalCallContract(lua_State* L)
     if (!contractAddr.IsValid())
         throw std::runtime_error(strprintf("%s:%d contractAddr is invalid", __FILE__, __LINE__));
 
-    std::string strSenderAddr = lua_tostring(L, 3);
-    CellLinkAddress senderAddr(strSenderAddr);
-    if (!senderAddr.IsValid())
-        throw std::runtime_error(strprintf("%s:%d contractAddr is invalid", __FILE__, __LINE__));
-
     std::string strFuncName = lua_tostring(L, 4);
     if (strFuncName.empty())
         throw std::runtime_error(strprintf("%s:%d function name is empty", __FILE__, __LINE__));
@@ -619,7 +618,7 @@ int InternalCallContract(lua_State* L)
 
     SmartContractRet scr;
     long maxCallNum = L->limit_instruction;
-    int result = CallContract(sls, maxCallNum, amount, contractAddr, senderAddr, strFuncName, args, scr);
+    int result = CallContract(sls, maxCallNum, amount, contractAddr, strFuncName, args, scr);
     if (result == 0)
         L->limit_instruction = maxCallNum;
 
@@ -663,7 +662,7 @@ int SendCoins(lua_State* L)
 
         sls->totalAmount = 0;
         if (!bGetCoinsFromCoinsDb) {
-            CellScript scriptPubKey = GetScriptForDestination(sls->contractAddrs.top().Get());
+            CellScript scriptPubKey = GetScriptForDestination(sls->contractAddrs[sls->contractAddrs.size() - 1].Get());
 
             CellCoinsViewCursor* pCursor = pcoinsdbview->Cursor();
             while (pCursor->Valid()) {
@@ -684,7 +683,7 @@ int SendCoins(lua_State* L)
             }
         }
         else {
-            const CellContractID& kAddr = boost::get<CellContractID>(sls->contractAddrs.top().Get());
+            const CellContractID& kAddr = boost::get<CellContractID>(sls->contractAddrs[sls->contractAddrs.size() - 1].Get());
             CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
             CellLinkAddress addr(kAddr);
             //LogPrintf("Send contract address %s\n", addr.ToString());
@@ -726,10 +725,11 @@ int SendCoins(lua_State* L)
     return 1;
 }
 
-void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType)
+void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType)
 {
     this->timestamp = timestamp;
     this->blockHeight = blockHeight;
+    this->originAddr = originAddr;
     this->_pContractContext = pContractContext;
     this->_pPrevBlockIndex = pPrevBlockIndex;
     this->saveType = saveType;
@@ -740,10 +740,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, ContractConte
     this->inputs.clear();
     this->outputs.clear();
     this->contractIds.clear();
-    while (!this->contractAddrs.empty())
-        this->contractAddrs.pop();
-    while (!this->senderAddrs.empty())
-        this->senderAddrs.pop();
+    this->contractAddrs.clear();
     totalAmount = -1;
     sendAmount = 0;
     runningTimes = 0;
@@ -751,7 +748,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, ContractConte
     codeLen = 0;
 }
 
-lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr, CellLinkAddress& senderAddr)
+lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
 {
     lua_State* L = nullptr;
     if (_luaStates.size() > 0) {
@@ -786,16 +783,14 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr, CellLinkAdd
     CellKeyID contractId;
     contractAddr.GetKeyID(contractId);
     contractIds.insert(contractId);
-    contractAddrs.emplace(contractAddr);
-    senderAddrs.emplace(senderAddr);
+    contractAddrs.emplace_back(contractAddr);
 
     return L;
 }
 
 void SmartLuaState::ReleaseLuaState(lua_State* L)
 {
-    contractAddrs.pop();
-    senderAddrs.pop();
+    contractAddrs.resize(contractAddrs.size() - 1);
 
     lua_gc(L, LUA_GCSTOP, 0); /* stop collector during initialization */
     _luaStates.push(L);

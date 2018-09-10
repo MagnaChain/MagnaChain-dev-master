@@ -345,7 +345,7 @@ public:
     mutable CellAmount nChangeCached;
 	// temp data for contract
 	int32_t transaction_version = CellTransaction::CURRENT_VERSION;//special version
-	CellPubKey contractSenderKey;
+	CellPubKey contractSender;
 	std::string contractCode;
     std::string contractParams;
     std::vector<CellContractID> contractAddrs;
