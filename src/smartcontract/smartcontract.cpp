@@ -397,7 +397,7 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
         ret.push_back(Pair("senderaddress", senderAddr.ToString()));
     }
     else
-        ret.push_back(result);
+        ret.push_back(strprintf("PublishContract fail, code %d", result));
 
     return result;
 }
@@ -621,6 +621,8 @@ int InternalCallContract(lua_State* L)
     int result = CallContract(sls, maxCallNum, amount, contractAddr, strFuncName, args, scr);
     if (result == 0)
         L->limit_instruction = maxCallNum;
+    else
+        throw std::runtime_error(strprintf("InternalCallContract fail, error %d.", result));
 
     lua_pushnumber(L, result);
     for (int i = 0; i < scr.result.size(); ++i) {

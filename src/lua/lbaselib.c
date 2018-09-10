@@ -29,6 +29,7 @@
 ** (a console window or a log file, for instance).
 */
 static int luaB_print (lua_State *L) {
+#if _DEBUG
   int n = lua_gettop(L);  /* number of arguments */
   int i;
   lua_getglobal(L, "tostring");
@@ -46,6 +47,7 @@ static int luaB_print (lua_State *L) {
     lua_pop(L, 1);  /* pop result */
   }
   fputs("\n", stdout);
+#endif
   return 0;
 }
 
