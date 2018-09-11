@@ -96,6 +96,18 @@ uint32_t BranchData::Height(void)
     return vecChainActive.size() - 1;
 }
 
+bool BranchData::IsBlockInBestChain(const uint256& blockhash)
+{
+    if (!mapHeads.count(blockhash)){
+        return false;
+    }
+    uint32_t height = mapHeads[blockhash].nHeight;
+    if (height >= vecChainActive.size()){
+        return false;
+    }
+    return vecChainActive[height] == blockhash;
+}
+
 void BranchData::BuildBestChain(BranchBlockData& blockdata)
 {
     const uint256 newTipHash = blockdata.header.GetHash();
@@ -461,6 +473,14 @@ void BranchDb::LoadData()
     */
 }
 
+bool BranchDb::IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash)
+{
+    if (!HasBranchData(branchHash))
+        return false;
+
+    BranchData& branchdata = mapBranchsData[branchHash];
+    return branchdata.IsBlockInBestChain(blockHash);
+}
 
 //void BranchDb::SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader)
 //{

@@ -610,8 +610,6 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
 
     if (!CheckTransaction(tx, state,true, nullptr, nullptr, false, &branchDataMemCache))
         return false; // state filled in by CheckTransaction
-    //if (tx.IsSmartContract() && !CheckSmartContract(tx, , state)) // TODO
-    //    return false;
 
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
@@ -798,7 +796,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         if (tx.IsSmartContract()) {
             if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state)) {
                 mpContractDb->_contractContext.ClearCache();
-                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO:
+                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
             }
         }
 
@@ -5070,12 +5068,7 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
         state.DoS(100, false, REJECT_INVALID, "not a branch chain tx");
         return false;
     }
-    //follow check had moved in CheckTransaction
-    //	if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx))
-    //	{
-    //		return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
-    //	}
-
+    
     if (!CheckTransaction(tx, state))
         return false;
 
@@ -5109,13 +5102,6 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
     }
 
     /////////////////////////////////////////////////////
-
-    //CellTransactionRef txOld;
-    //uint256 hashBlock; //TODO: GetTransactionÔÚfTxIndex = falseºÍÉÏÃæ¼ì²éÖØ¸´
-    //if (fTxIndex && GetTransaction(ptx->GetHash(), txOld, Params().GetConsensus(), hashBlock, true)) {
-    //	return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-block");
-    //}
-
     std::set<uint256> setConflicts;
     {
         // Check for conflicts with in-memory transactions ? but no inputs.

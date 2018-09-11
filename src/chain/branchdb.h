@@ -124,6 +124,7 @@ public:
 
     uint256 TipHash(void);
     uint32_t Height(void);
+    bool IsBlockInBestChain(const uint256& blockhash);
 };
 
 typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;
@@ -185,6 +186,7 @@ public:
     {
         return mapBranchsData[branchHash];
     }
+    bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash);
 private:
     bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
 

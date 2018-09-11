@@ -303,12 +303,16 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     {
         CellDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pFromTx);
-        //spv check
         if (tx.fromBranchId != CellBaseChainParams::MAIN) {
+            //spv check
             uint256 frombranchid = uint256S(tx.fromBranchId);
             if (!CheckSpvProof(frombranchid, state, *tx.pPMT, pFromTx->GetHash()))
                 return false;
-        }
+
+            // best chain check
+            if (!pBranchDb->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
+                return state.DoS(0, false, REJECT_INVALID, "Branch-tx-not in best chain");
+        }   
     }
     if (tx.IsBranchChainTransStep2())
     {
