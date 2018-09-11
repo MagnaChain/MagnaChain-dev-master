@@ -36,10 +36,10 @@ public:
      * Note that this will call IsRelevantAndUpdate on the filter for each transaction,
      * thus the filter will likely be modified.
      */
-    CellMerkleBlock(const CellBlock& block, CellBloomFilter& filter);
+    CellMerkleBlock(const CellBlock& block, CellBloomFilter& filter) : CellMerkleBlock(block, &filter, nullptr) { }
 
     // Create from a CellBlock, matching the txids in the set
-    CellMerkleBlock(const CellBlock& block, const std::set<uint256>& txids);
+    CellMerkleBlock(const CellBlock& block, const std::set<uint256>& txids) : CellMerkleBlock(block, nullptr, &txids) { }
 
     CellMerkleBlock() {}
 
@@ -50,6 +50,10 @@ public:
         READWRITE(header);
         READWRITE(txn);
     }
+
+private:
+    // Combined constructor to consolidate code
+    CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter, const std::set<uint256>* txids);
 };
 
 #endif // CELLLINK_MERKLEBLOCK_H

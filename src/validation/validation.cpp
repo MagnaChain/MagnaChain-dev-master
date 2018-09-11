@@ -610,8 +610,6 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
 
     if (!CheckTransaction(tx, state,true, nullptr, nullptr, false, &branchDataMemCache))
         return false; // state filled in by CheckTransaction
-    //if (tx.IsSmartContract() && !CheckSmartContract(tx, , state)) // TODO
-    //    return false;
 
     // Coinbase is only valid in a block, not as a loose transaction
     if (tx.IsCoinBase())
@@ -798,7 +796,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         if (tx.IsSmartContract()) {
             if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state)) {
                 mpContractDb->_contractContext.ClearCache();
-                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");// TODO:
+                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
             }
         }
 
@@ -5070,12 +5068,7 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
         state.DoS(100, false, REJECT_INVALID, "not a branch chain tx");
         return false;
     }
-    //follow check had moved in CheckTransaction
-    //	if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx))
-    //	{
-    //		return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
-    //	}
-
+    
     if (!CheckTransaction(tx, state))
         return false;
 
@@ -5109,13 +5102,6 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
     }
 
     /////////////////////////////////////////////////////
-
-    //CellTransactionRef txOld;
-    //uint256 hashBlock; //TODO: GetTransactionÔÚfTxIndex = falseºÍÉÏÃæ¼ì²éÖØ¸´
-    //if (fTxIndex && GetTransaction(ptx->GetHash(), txOld, Params().GetConsensus(), hashBlock, true)) {
-    //	return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-block");
-    //}
-
     std::set<uint256> setConflicts;
     {
         // Check for conflicts with in-memory transactions ? but no inputs.
@@ -5276,24 +5262,12 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
 
             std::set<uint256> setTxids;
             setTxids.insert(tmpTx->GetHash());
-            std::vector<bool> vMatch;
-            std::vector<uint256> vHashes;
 
-            vMatch.reserve(inblock.vtx.size());
-            vHashes.reserve(inblock.vtx.size());
+            std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(inblock, setTxids));
 
-            for (size_t j = 0; j < inblock.vtx.size(); ++j)
-            {
-                const uint256& hash = inblock.vtx[j]->GetHash();
-                if (setTxids.count(hash))
-                    vMatch.push_back(true);
-                else
-                    vMatch.push_back(false);
-                vHashes.push_back(hash);
-            }
             ProveData pData;
             CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tmpTx };
-            pData.pCSP = CellSpvProof(vHashes, vMatch, inblock.GetHash());
+            pData.pCSP = *pSpvPf;
             pData.blockHash = block.GetHash();
             pData.branchId = uint256S(Params().GetBranchId());
             pData.txHash = tmpTx->GetHash();
@@ -5315,24 +5289,12 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
 
     if (!GetTransaction(txHash, tx, Params().GetConsensus(), hashBlock, true))
         return false;
-    std::vector<bool> vMatch;
-    std::vector<uint256> vHashes;
+    
+    std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(block, setTxids));
 
-    vMatch.reserve(block.vtx.size());
-    vHashes.reserve(block.vtx.size());
-
-    for (size_t i  = 0; i < block.vtx.size(); ++i)
-    {
-        const uint256& hash = block.vtx[i]->GetHash();
-        if (setTxids.count(hash))
-            vMatch.push_back(true);
-        else
-            vMatch.push_back(false);
-        vHashes.push_back(hash);
-    }
     ProveData pData;
     CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx };
-    pData.pCSP = CellSpvProof(vHashes, vMatch, block.GetHash());
+    pData.pCSP = *pSpvPf;
     pData.blockHash = block.GetHash();
     pData.branchId = uint256S(Params().GetBranchId());
     pData.txHash = txHash;

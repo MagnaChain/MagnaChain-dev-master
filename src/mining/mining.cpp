@@ -337,6 +337,8 @@ UniValue generateBranch2ndBlock(CellKeyStore& keystore)
         int nGenerate = 1;
         return generateBlocks(&keystore, vecOutput, nGenerate, vecOutput.size(), false, nullptr, nullptr, &view);
     }
+    else
+        throw std::runtime_error("No mortgagecoin in mempool");
     return NullUniValue;
 }
 UniValue mineblanch2ndblock(const JSONRPCRequest& request)
@@ -393,6 +395,11 @@ UniValue generate(const JSONRPCRequest& request)
     uint64_t max_tries = 1000000;
     if (request.params.size() > 1 && !request.params[1].isNull()) {
         max_tries = request.params[1].get_int();
+    }
+
+    // branch chain, first gen block
+    if (!Params().IsMainChain() && chainActive.Height() == 0){
+        return generateBranch2ndBlock(*pwallet);
     }
 
     std::set<CellTxDestination> setAddress;

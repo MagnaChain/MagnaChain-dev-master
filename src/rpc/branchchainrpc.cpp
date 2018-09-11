@@ -1326,25 +1326,9 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
 
-    std::vector<bool> vMatch;
-    std::vector<uint256> vHashes;
-
-    vMatch.reserve(block.vtx.size());
-    vHashes.reserve(block.vtx.size());
-
-    for (size_t i = 0; i < block.vtx.size(); ++i)
-    {
-        const uint256& hash = block.vtx[i]->GetHash();
-        if (setTxids.count(hash))
-            vMatch.push_back(true);
-        else
-            vMatch.push_back(false);
-        vHashes.push_back(hash);
-    }
-
     CellMutableTransaction mtx;
     mtx.nVersion = CellTransaction::REPORT_CHEAT;
-    mtx.pPMT.reset(new CellSpvProof(vHashes, vMatch, block.GetHash()));
+    mtx.pPMT.reset(NewSpvProof(block, setTxids));
 
     ReportData* pReportData = new ReportData;
     mtx.pReportData.reset(pReportData);
