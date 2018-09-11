@@ -794,7 +794,7 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
 {
     contractAddrs.resize(contractAddrs.size() - 1);
 
-    lua_gc(L, LUA_GCSTOP, 0); /* stop collector during initialization */
+    lua_gc(L, LUA_GCCOLLECT, 0); /* stop collector during initialization */
     _luaStates.push(L);
 }
 
