@@ -312,7 +312,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
             // best chain check
             if (!pBranchDb->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
                 return state.DoS(0, false, REJECT_INVALID, "Branch-tx-not in best chain");
-        }   
+        }
     }
     if (tx.IsBranchChainTransStep2())
     {

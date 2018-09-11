@@ -10,7 +10,7 @@
 #include "consensus/consensus.h"
 #include "utils/utilstrencodings.h"
 
-CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter& filter)
+CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter, const std::set<uint256>* txids)
 {
     header = block.GetBlockHeader();
 
@@ -23,36 +23,16 @@ CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter& filter
     for (unsigned int i = 0; i < block.vtx.size(); i++)
     {
         const uint256& hash = block.vtx[i]->GetHash();
-        if (filter.IsRelevantAndUpdate(*block.vtx[i]))
-        {
+        if (txids && txids->count(hash)) {
             vMatch.push_back(true);
-            vMatchedTxn.push_back(std::make_pair(i, hash));
         }
-        else
-            vMatch.push_back(false);
-        vHashes.push_back(hash);
-    }
-
-    txn = CellPartialMerkleTree(vHashes, vMatch);
-}
-
-CellMerkleBlock::CellMerkleBlock(const CellBlock& block, const std::set<uint256>& txids)
-{
-    header = block.GetBlockHeader();
-
-    std::vector<bool> vMatch;
-    std::vector<uint256> vHashes;
-
-    vMatch.reserve(block.vtx.size());
-    vHashes.reserve(block.vtx.size());
-
-    for (unsigned int i = 0; i < block.vtx.size(); i++)
-    {
-        const uint256& hash = block.vtx[i]->GetHash();
-        if (txids.count(hash))
+        else if (filter && filter->IsRelevantAndUpdate(*block.vtx[i])) {
             vMatch.push_back(true);
-        else
+            vMatchedTxn.emplace_back(i, hash);
+        }
+        else {
             vMatch.push_back(false);
+        }
         vHashes.push_back(hash);
     }
 

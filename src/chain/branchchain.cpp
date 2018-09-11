@@ -629,6 +629,7 @@ CellAmount GetBranchChainOut(const CellTransaction& tx)
     return 0;
 }
 
+//copy from merkleblock.cpp
 CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids)
 {
     std::vector<bool> vMatch;
