@@ -211,6 +211,7 @@ private:
     //
     void addReportProofTx(const CellTransactionRef &ptxReport, const CellScript &minerpkey, const CellCoinsViewCache* pCoinsCache);
     void addReportProofTxs(const CellScript& scriptPubKeyIn, CellCoinsViewCache *pcoinsCache);
+    bool UpdateBranchTx(CellMutableTransaction& branchTx);
 };
 
 /** Modify the extranonce in a block */

@@ -395,7 +395,7 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
     CellLinkAddress contractAddr;
     contractAddr.Set(tx.contractAddrs[0]);
 	CellLinkAddress senderAddr;
-	senderAddr.Set(tx.contractSender.GetID());
+    senderAddr.Set(tx.contractSender.GetID());
 	UniValue args;
 	args.read(tx.contractParams);
 	std::string strFuncName = tx.contractFun;
@@ -405,14 +405,14 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
         std::string code;
         std::string rawCode = tx.contractCode;
         SmartContractRet scr;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, saveType);
-        return (PublishContract(&checkSLS, amount, contractAddr, senderAddr, rawCode, code, scr) == 0);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType);
+        return (PublishContract(&checkSLS, amount, contractAddr, rawCode, code, scr) == 0);
 	}
     else if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
         SmartContractRet scr;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, saveType);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType);
         long callNum = MAX_CONTRACT_CALL;
-        int result = CallContract(&checkSLS, callNum, amount, contractAddr, senderAddr, strFuncName, args, scr);
+        int result = CallContract(&checkSLS, callNum, amount, contractAddr, strFuncName, args, scr);
         if (result == 0)
             return CheckContractVinVout(tx, &checkSLS);
         return false;

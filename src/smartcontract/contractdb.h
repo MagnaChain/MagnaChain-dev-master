@@ -102,6 +102,9 @@ public:
     ContractContext _contractContext;
 
 public:
+    ContractDataDB() = delete;
+    ContractDataDB(const ContractDataDB&) = delete;
+    ContractDataDB& operator=(const ContractDataDB&) = delete;
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     static void InitializeThread(ContractDataDB* contractDB);
 

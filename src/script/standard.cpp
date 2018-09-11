@@ -35,6 +35,7 @@ const char* GetTxnOutputType(txnouttype t)
 	case TX_TRANS_CONTRACT: return "trans_contract"; //call contract.
 	case TX_CREATE_BRANCH: return "create_branch";
 	case TX_TRANS_BRANCH: return "trans_branch";
+    case TX_SEND_BRANCH: return "send_branch";
     case TX_MINE_MORTGAGE: return "mine_mortgage";
     case TX_MORTGAGE_COIN: return "mortgage_coin";
     case TX_REDEEM_MORTGAGE: return "redeem_mortgage";
@@ -65,6 +66,9 @@ bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std
 
 		//cross chain send
         mTemplates.insert(std::make_pair(TX_TRANS_BRANCH, CellScript() << OP_RETURN << OP_TRANS_BRANCH));
+        
+        //send branch tx
+        mTemplates.insert(std::make_pair(TX_SEND_BRANCH, CellScript() << OP_TRANS_BRANCH << OP_HASH256_DATA));
 
         //mine branch chain mortgage(OP_HASH256_DATA is branch id of which chain will be mined)
         //前部分是数据，后部分是pay to pubkeyhash

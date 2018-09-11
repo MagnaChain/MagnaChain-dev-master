@@ -389,6 +389,10 @@ CellAmount GetBranchChainTransOut(const CellTransaction& branchTransStep1Tx)
 				nAmount += txout.nValue;
 			}
 		}
+        else if(opcode == OP_TRANS_BRANCH)
+        {
+            nAmount += txout.nValue;
+        }
 	}
 	return nAmount;
 }

@@ -387,7 +387,7 @@ void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellA
 	CellAmount curBalance = pwallet->GetBalance();
 
 	// Check amount
-	if (nValue <= 0)
+	if (nValue < 0)
 		throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
 
 	if (nValue > curBalance)
@@ -657,8 +657,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     std::string code;
     SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
-    int result = PublishContract(&RPCSLS, amount, contractAddr, senderAddr, rawCode, code, scr);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    int result = PublishContract(&RPCSLS, amount, contractAddr, rawCode, code, scr);
     if (result != 0)
         throw JSONRPCError(RPC_MISC_ERROR, scr.result[0].get_str());
 
@@ -668,7 +668,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.contractCode = code;
-    wtx.contractSenderKey = senderPubKey;
+    wtx.contractSender = senderPubKey;
     wtx.contractAddrs.emplace_back(contractId);
     wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
     SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
@@ -751,9 +751,9 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VType::VOBJ);
     SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
     long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, senderAddr, strFuncName, args, scr);
+    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, strFuncName, args, scr);
     if (result == 0) {
         RPCSLS.runningTimes = MAX_CONTRACT_CALL - callNum;
         RPCSLS.codeLen = 0;
@@ -761,13 +761,13 @@ UniValue callcontract(const JSONRPCRequest& request)
         if (sendCall) {
             CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            CellKeyID contractId;
-            contractAddr.GetKeyID(contractId);
+            CellContractID contractId;
+            contractAddr.GetContractID(contractId);
 
             RPCSLS.contractIds.erase(contractId);
             CellWalletTx wtx;
             wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
-            wtx.contractSenderKey = senderPubKey;
+            wtx.contractSender = senderPubKey;
             wtx.contractCode = strFuncName;
             wtx.contractParams = args.write();
             wtx.contractAddrs.emplace_back(contractId);
@@ -848,8 +848,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
 	std::vector<unsigned char> data(ParseHex(request.params[3].get_str()));
 	CellPubKey senderPubKey(data.begin(), data.end());
-	CellKeyID keyID = senderPubKey.GetID();
-	CellLinkAddress senderAddr(keyID);
+	CellKeyID senderKey = senderPubKey.GetID();
+	CellLinkAddress senderAddr(senderKey);
 	if (!senderAddr.IsValid())
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
 
@@ -873,9 +873,9 @@ UniValue precallcontract(const JSONRPCRequest& request)
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
 
     SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
     long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, senderAddr, strFuncName, args, scr);
+    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, strFuncName, args, scr);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("call_return", scr.result));
@@ -889,7 +889,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
             RPCSLS.contractIds.erase(contractId);
             CellWalletTx wtx;
             wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
-            wtx.contractSenderKey = senderPubKey;
+            wtx.contractSender = senderPubKey;
             wtx.contractCode = strFuncName;
             wtx.contractParams = args.write();
             wtx.contractAddrs.emplace_back(contractId);

@@ -2773,7 +2773,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
     {
         toTx.nVersion = CellTransaction::PUBLISH_CONTRACT_VERSION;
         toTx.contractCode = fromWtx.contractCode;
-        toTx.contractSender = fromWtx.contractSenderKey;
+        toTx.contractSender = fromWtx.contractSender;
         toTx.contractAddrs = fromWtx.contractAddrs;
         //	toTx.contractParams = fromWtx.contractParams;
     }
@@ -2781,7 +2781,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
     {
         toTx.nVersion = CellTransaction::CALL_CONTRACT_VERSION;
         toTx.contractFun = fromWtx.contractCode;
-        toTx.contractSender = fromWtx.contractSenderKey;
+        toTx.contractSender = fromWtx.contractSender;
         toTx.contractParams = fromWtx.contractParams;
         toTx.contractAddrs = fromWtx.contractAddrs;
     }
@@ -2859,7 +2859,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
         if (recipient.fSubtractFeeFromAmount)
             nSubtractFeeFromAmount++;
     }
-    if (vecSend.empty() && !wtxNew.isDataTransaction)
+    if (vecSend.empty() && !wtxNew.isDataTransaction && !wtxNew.IsSmartContract())
     {
         strFailReason = _("Transaction must have at least one recipient");
         return false;
