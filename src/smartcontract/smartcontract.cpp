@@ -373,8 +373,8 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
     CellLinkAddress contractAddr(contractId);
 
     SmartContractRet scr;
-    sls->Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
-    int result = PublishContract(sls, amount, contractAddr, rawCode, code, scr);
+    sls->Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
+    int result = PublishContract(sls, contractAddr, rawCode, code, scr);
     if (result == 0) {
         CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
@@ -402,9 +402,9 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
     return result;
 }
 
-int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& contractAddr, const std::string& rawCode, std::string& code, SmartContractRet& scr)
+int PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode, std::string& code, SmartContractRet& scr)
 {
-    if (amount < 0) {
+    if (sls->amount < 0) {
         scr.result.push_back("amount <= 0.");
         return -1;
     }
@@ -418,7 +418,7 @@ int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& cont
     }
 
     lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), amount, sls->timestamp, sls->blockHeight);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), sls->amount, sls->timestamp, sls->blockHeight);
 
     int result = PublishContract(L, rawCode, code, scr);
     if (result == 0) {
@@ -471,29 +471,34 @@ int PublishContract(lua_State* L, const std::string& rawCode, std::string& code,
     return result;
 }
 
-int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& ret)
+int CallContract(SmartLuaState* sls, long& maxCallNum, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& scr)
 {
-    ret.result.clear();
+    if (sls->amount < 0) {
+        scr.result.push_back("amount <= 0.");
+        return -1;
+    }
+
+    scr.result.clear();
 
     CellContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
     if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0) {
-        ret.result.push_back("GetContractInfo fail");
+        scr.result.push_back("GetContractInfo fail");
         return -1;
     }
 
     std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
     lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, 0, sls->timestamp, sls->blockHeight);
-    int result = CallContract(L, maxCallNum, contractInfo.code, contractInfo.data, strFuncName, args, ret);
-    if (result == 0 && contractInfo.data != ret.data) {
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, sls->amount, sls->timestamp, sls->blockHeight);
+    int result = CallContract(L, maxCallNum, contractInfo.code, contractInfo.data, strFuncName, args, scr);
+    if (result == 0 && contractInfo.data != scr.data) {
         maxCallNum = L->limit_instruction;
         assert(maxCallNum >= 0);
 
-        sls->deltaDataLen += std::max(0u, (uint32_t)(ret.data.size() - contractInfo.data.size()));
+        sls->deltaDataLen += std::max(0u, (uint32_t)(scr.data.size() - contractInfo.data.size()));
         if (sls->saveType > 0) {
-            contractInfo.data = ret.data;
+            contractInfo.data = scr.data;
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
@@ -587,20 +592,18 @@ int InternalCallContract(lua_State* L)
     if (sls == nullptr)
         throw std::runtime_error(strprintf("%s:%d smartLuaState == nullptr", __FILE__, __LINE__));
 
-    CellAmount amount = lua_tonumber(L, 1);
-
-    std::string strContractAddr = lua_tostring(L, 2);
+    std::string strContractAddr = lua_tostring(L, 1);
     CellLinkAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
         throw std::runtime_error(strprintf("%s:%d contractAddr is invalid", __FILE__, __LINE__));
 
-    std::string strFuncName = lua_tostring(L, 4);
+    std::string strFuncName = lua_tostring(L, 2);
     if (strFuncName.empty())
         throw std::runtime_error(strprintf("%s:%d function name is empty", __FILE__, __LINE__));
 
     int top = lua_gettop(L);
     UniValue args(UniValue::VType::VARR);
-    for (int i = 5; i <= top; ++i) {
+    for (int i = 3; i <= top; ++i) {
         switch (lua_type(L, i)) {
         case LUA_TSTRING:
             args.push_back(lua_tostring(L, i));
@@ -618,7 +621,7 @@ int InternalCallContract(lua_State* L)
 
     SmartContractRet scr;
     long maxCallNum = L->limit_instruction;
-    int result = CallContract(sls, maxCallNum, amount, contractAddr, strFuncName, args, scr);
+    int result = CallContract(sls, maxCallNum, contractAddr, strFuncName, args, scr);
     if (result == 0)
         L->limit_instruction = maxCallNum;
     else
@@ -727,7 +730,7 @@ int SendCoins(lua_State* L)
     return 1;
 }
 
-void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType)
+void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellAmount amount, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType)
 {
     this->timestamp = timestamp;
     this->blockHeight = blockHeight;
@@ -735,6 +738,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellLinkAddre
     this->_pContractContext = pContractContext;
     this->_pPrevBlockIndex = pPrevBlockIndex;
     this->saveType = saveType;
+    this->amount = amount;
 
     if (_pContractContext == nullptr)
         _pContractContext = &mpContractDb->_contractContext;

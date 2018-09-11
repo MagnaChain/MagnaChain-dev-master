@@ -657,8 +657,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     std::string code;
     SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
-    int result = PublishContract(&RPCSLS, amount, contractAddr, rawCode, code, scr);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
+    int result = PublishContract(&RPCSLS, contractAddr, rawCode, code, scr);
     if (result != 0)
         throw JSONRPCError(RPC_MISC_ERROR, scr.result[0].get_str());
 
@@ -751,9 +751,9 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VType::VOBJ);
     SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
     long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, strFuncName, args, scr);
+    int result = CallContract(&RPCSLS, callNum, contractAddr, strFuncName, args, scr);
     if (result == 0) {
         RPCSLS.runningTimes = MAX_CONTRACT_CALL - callNum;
         RPCSLS.codeLen = 0;
@@ -873,9 +873,9 @@ UniValue precallcontract(const JSONRPCRequest& request)
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
 
     SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
     long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, strFuncName, args, scr);
+    int result = CallContract(&RPCSLS, callNum, contractAddr, strFuncName, args, scr);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("call_return", scr.result));

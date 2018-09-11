@@ -140,8 +140,8 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
             std::string code;
             std::string rawCode = tx->contractCode;
             SmartContractRet scr;
-            sls->Initialize(pBlock->GetBlockTime(), blockHeight, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            int result = PublishContract(sls, amount, contractAddrs, rawCode, code, scr);
+            sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
+            int result = PublishContract(sls, contractAddrs, rawCode, code, scr);
             if (result != 0)
                 *interrupt = true;
         }
@@ -152,8 +152,8 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
 
             SmartContractRet scr;
             long callNum = MAX_CONTRACT_CALL;
-            sls->Initialize(pBlock->GetBlockTime(), blockHeight, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            int result = CallContract(sls, callNum, amount, contractAddrs, strFuncName, args, scr);
+            sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
+            int result = CallContract(sls, callNum, contractAddrs, strFuncName, args, scr);
             if (result != 0)
                 *interrupt = true;
         }
