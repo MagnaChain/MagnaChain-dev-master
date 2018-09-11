@@ -13,48 +13,6 @@
 #include <utility>
 #include <vector>
 
-//class CandidateHash
-//{
-//public:
-//    uint256 preHash;
-//    uint256 hash;
-//    uint32_t height;
-//
-//
-//    ADD_SERIALIZE_METHODS;
-//
-//    template <typename Stream, typename Operation>
-//    inline void SerializationOp(Stream& s, Operation ser_action)
-//    {
-//        READWRITE(preHash);
-//        READWRITE(hash);
-//        READWRITE(height);
-//    }
-//};
-//
-//class TopHashData
-//{
-//public:
-//    uint256 topHash;
-//    uint32_t topHeight;
-//    uint256 forkHash;
-//    std::vector<CandidateHash> candidates;
-//
-//    ADD_SERIALIZE_METHODS;
-//
-//    template <typename Stream, typename Operation>
-//    inline void SerializationOp(Stream& s, Operation ser_action)
-//    {
-//        READWRITE(topHash);
-//        READWRITE(forkHash);
-//        READWRITE(candidates);
-//    }
-//
-//public:
-//};
-
-//typedef std::map<uint256, TopHashData> MAPTOPHASHDATAS;
-
 class BranchBlockData
 {
 public:
@@ -170,12 +128,9 @@ public:
 
     void LoadData();
 
-    //void SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader);
-
     uint256 GetBranchTipHash(const uint256& branchid);
     uint32_t GetBranchHeight(const uint256& branchid);
 public:
- //   MAPTOPHASHDATAS mTopHashDatas;
     std::map<uint256, uint16_t> mReortTxFlag;
 
     bool HasBranchData(const uint256& branchHash) const

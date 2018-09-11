@@ -20,7 +20,6 @@
 #include <boost/thread.hpp>
 #include "chain/chain.h"
 
-//static const std::string DB_MAP_TOP_HASH_DATA = "db_map_top_hash_data";
 static const std::string DB_MAP_REPORT_PROVE_DATA = "db_mao_report_prove_data";
 
 BranchDb* pBranchDb = nullptr;
@@ -300,8 +299,6 @@ void BranchDb::Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConne
     else {
         OnDisconnectBlock(pblock);
     }
-//    uint256 mtopKey = Hash(DB_MAP_TOP_HASH_DATA.begin(), DB_MAP_TOP_HASH_DATA.end());
-//    db.Write(mtopKey, mTopHashDatas);
     uint256 mReportKey = Hash(DB_MAP_REPORT_PROVE_DATA.begin(), DB_MAP_REPORT_PROVE_DATA.end());
     db.Write(mReportKey, mReortTxFlag);
 }
@@ -373,7 +370,6 @@ void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256
     bData.BuildBestChain(bBlockData);
 
     modifyBranch.insert(branchHash);
-    //SetTopHash(branchHash, bBlockData.header);
 }
 
 //interface for test easy
@@ -438,16 +434,6 @@ void BranchDb::LoadData()
         
         if (it->GetKey(keyHash))
         {
-            /*if (keyHash == mtopKey)
-            {
-                MAPTOPHASHDATAS mtData;
-                if (it->GetValue(mtData))
-                {
-                    mTopHashDatas = mtData;
-                    continue;
-                }
-            }
-            else */
             if (keyHash == mReportKey)
             {
                 std::map<uint256, uint16_t> mrData;
@@ -466,11 +452,6 @@ void BranchDb::LoadData()
             }
         }
     }
-    /*
-    MAPTOPHASHDATAS mtData;
-    db.Read(mtopKey, mtData);
-    mTopHashDatas = mtData;
-    */
 }
 
 bool BranchDb::IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash)
@@ -481,72 +462,3 @@ bool BranchDb::IsBlockInActiveChain(const uint256& branchHash, const uint256& bl
     BranchData& branchdata = mapBranchsData[branchHash];
     return branchdata.IsBlockInBestChain(blockHash);
 }
-
-//void BranchDb::SetTopHash(const uint256& branchHash, const CellBlockHeader& bBlockHeader)
-//{
-//    if (!Params().IsMainChain()) {
-//        return;
-//    }
-//    TopHashData& tHashData = mTopHashDatas[branchHash];
-//    std::vector<CandidateHash>& candidates = tHashData.candidates;
-//
-//    uint256 preBlockHash = bBlockHeader.hashPrevBlock;
-//    uint256 blockHash = bBlockHeader.GetHash();
-//    if (tHashData.topHash.IsNull() && candidates.size() <= 0 && tHashData.forkHash.IsNull()) {
-//        tHashData.topHash = blockHash;
-//        tHashData.topHeight += 1;
-//        return;
-//    }
-//
-//    if (preBlockHash == tHashData.topHash) {
-//        tHashData.forkHash = tHashData.topHash;
-//        tHashData.topHash = blockHash;
-//        tHashData.topHeight += 1;
-//        return;
-//    }
-//
-//    if (preBlockHash == tHashData.forkHash) {
-//        CandidateHash tmp;
-//        tmp.hash = blockHash;
-//        tmp.height = 1;
-//        tmp.preHash = preBlockHash;
-//        candidates.emplace_back(tmp);
-//    }
-//
-//    bool IsFork = false;
-//    CandidateHash fHash;
-//    for (size_t i = 0; i < candidates.size(); ++i) {
-//        if (preBlockHash == candidates[i].hash) {
-//            candidates[i].hash = blockHash;
-//            candidates[i].preHash = preBlockHash;
-//            candidates[i].height = candidates[i].height + 1;
-//            uint32_t cHeight = candidates[i].height;
-//            if (tHashData.topHeight == cHeight) {
-//                tHashData.topHash = tHashData.forkHash;
-//                tHashData.topHeight = tHashData.topHeight - cHeight;
-//            } else {
-//                tHashData.topHash = blockHash;
-//                tHashData.topHeight = tHashData.topHeight + 1;
-//            }
-//            break;
-//        } else if (preBlockHash == candidates[i].preHash) {
-//            IsFork = true;
-//            fHash = candidates[i];
-//            break;
-//        }
-//    }
-//
-//    if (IsFork) {
-//        candidates.clear();
-//        candidates.emplace_back(fHash);
-//        CandidateHash tmp;
-//        tmp.hash = blockHash;
-//        tmp.height = 1;
-//        tmp.preHash = preBlockHash;
-//        candidates.emplace_back(tmp);
-//
-//        tHashData.forkHash = preBlockHash;
-//        tHashData.topHash = preBlockHash;
-//        tHashData.topHeight = tHashData.topHeight - 1;
-//    }
-//}
