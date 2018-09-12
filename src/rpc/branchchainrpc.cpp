@@ -421,11 +421,6 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, "can not send to this chain.");
     }
 
-    // comment following code
-    //    CellRPCConfig branchrpccfg;
-    //    if (g_branchChainMan->GetRpcConfig(toBranchid, branchrpccfg) == false || branchrpccfg.IsValid() == false)
-    //        throw JSONRPCError(RPC_WALLET_ERROR, "can not found branch rpc config");
-
     uint256 branchhash;
     branchhash.SetHex(toBranchid);
 
@@ -497,7 +492,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     CellScript scriptPubKey;
     if (!Params().IsMainChain())
     {
-        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//lock the output,output trans to /dev/null 
+        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//burn the output, trans output to /dev/null 
     }
     else
     {
@@ -1286,9 +1281,6 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 
 UniValue sendreporttomain(const JSONRPCRequest& request)
 {
-    if (Params().IsMainChain())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
-
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
         throw std::runtime_error(
                 "sendreporttomain \"blockhash\"  \"txid\"\n"
@@ -1303,6 +1295,9 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
                 + HelpExampleCli("sendprovetomain", "\"blockhash\" \"txid\"")
                 + HelpExampleRpc("sendprovetomain", "\"blockhash\" \"txid\"")
                 );
+
+    if (Params().IsMainChain())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 blockHash = ParseHashV(request.params[0], "param 0");
     if (!mapBlockIndex.count(blockHash))
@@ -1346,9 +1341,6 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
 UniValue handlebranchreport(const JSONRPCRequest& request)
 {
-    if (!Params().IsMainChain())
-        throw JSONRPCRequest();
-
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1366,6 +1358,8 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
                 + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
                 + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
                 );
+    if (!Params().IsMainChain())
+        throw JSONRPCRequest();
 
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
@@ -1444,9 +1438,6 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 
 UniValue sendprovetomain(const JSONRPCRequest& request)
 {
-    if (Params().IsMainChain())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
-
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
         throw std::runtime_error(
                 "sendreporttomain \"blockhash\"  \"txid\"\n"
@@ -1461,6 +1452,9 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
                 + HelpExampleCli("sendprovetomain", "\"blockhash\" \"txid\"")
                 + HelpExampleRpc("sendprovetomain", "\"blockhash\" \"txid\"")
                 );
+
+    if (Params().IsMainChain())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 blockHash = ParseHashV(request.params[0], "param 0");
     if (!mapBlockIndex.count(blockHash))
@@ -1502,8 +1496,6 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
 
 UniValue handlebranchprove(const JSONRPCRequest& request)
 {
-    if (!Params().IsMainChain())
-        throw JSONRPCRequest();
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1521,7 +1513,8 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
                 + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
                 + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
                 );
-
+    if (!Params().IsMainChain())
+        throw JSONRPCRequest();
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
     if (!DecodeHexTx(mtxTrans1, strTx1HexData))
