@@ -233,7 +233,6 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
 	{
 		entry.pushKV("branchVSeeds", tx.branchVSeeds);
 		entry.pushKV("branchSeedSpec6", tx.branchSeedSpec6);
-		entry.pushKV("sendToTxHexData", tx.sendToTxHexData);
 	}
 	if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1)
 	{

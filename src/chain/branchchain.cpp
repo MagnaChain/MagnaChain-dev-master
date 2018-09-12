@@ -357,13 +357,9 @@ CellAmount GetBranchChainCreateTxOut(const CellTransaction& tx)
 		std::vector<unsigned char> vch;
 		CellScript::const_iterator pc1 = txout.scriptPubKey.begin();
 		txout.scriptPubKey.GetOp(pc1, opcode, vch);
-		if (opcode == OP_RETURN)
+		if (opcode == OP_CREATE_BRANCH)
 		{
-			txout.scriptPubKey.GetOp(pc1, opcode, vch);
-			if (opcode == OP_CREATE_BRANCH)
-			{
-				nAmount += txout.nValue;
-			}
+			nAmount += txout.nValue;
 		}
 	}
 	return nAmount;
@@ -617,10 +613,10 @@ bool GetRedeemSriptData(const CellScript& scriptPubKey, uint256* pFromTxid)
 
 CellAmount GetBranchChainOut(const CellTransaction& tx)
 {
-    if (tx.IsBranchCreate()){
+    /*if (tx.IsBranchCreate()){
         return GetBranchChainCreateTxOut(tx);
     }
-    else if (tx.IsBranchChainTransStep1()){
+    else */if (tx.IsBranchChainTransStep1()){
         return GetBranchChainTransOut(tx);
     }
     else if (tx.IsMortgage()){
@@ -679,7 +675,7 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 	}
 
 	//broadcast to target chain.
-	const std::string strToChainId = tx->IsBranchCreate() ? tx->GetHash().GetHex() : tx->sendToBranchid;
+	const std::string strToChainId = tx->sendToBranchid;
 	if (strToChainId == Params().GetBranchId())
 		return error("%s: can not to this chain!", __func__);
 
@@ -730,47 +726,6 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 //OP:移动独立的线程中去?或者满足高度后,相应的拥有者自己调用相关逻辑,但是这样跨链转账变得更麻烦
 void ProcessBlockBranchChain()
 {
-	{
-/*
-		uint32_t nBlockHeight = BRANCH_CHAIN_CREATE_COIN_MATURITY;
-		CellBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nBlockHeight];
-		if (pbi != nullptr)
-		{
-			std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
-			CellBlock& block = *pblock;
-			if (ReadBlockFromDisk(block, pbi, Params().GetConsensus()))
-			{
-				for (int i = 1; i < block.vtx.size(); i++)
-				{
-					const CellTransactionRef& tx = block.vtx[i];
-					if (tx->IsBranchCreate())
-					{
-						BranchChainTransStep2(tx, block);
-					}
-				}
-			}
-		}
-*/
-        // 遍历vCreated比上面遍历block.vtx快
-        const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
-        for (auto v : vCreated){
-            if (mapBlockIndex.count(v.blockhash)){
-                int confirmations = chainActive.Height() - mapBlockIndex[v.blockhash]->nHeight + 1;
-                if (confirmations == BRANCH_CHAIN_CREATE_COIN_MATURITY) {
-                    CellTransactionRef ptx;
-                    uint256 hashBlock;
-                    bool retflag;
-                    bool retval = ReadTxDataByTxIndex(v.txid, ptx, hashBlock, retflag);
-                    if (ptx && ptx->IsBranchCreate()) {
-                        std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
-                        CellBlock& block = *pblock;
-                        if (ReadBlockFromDisk(block, mapBlockIndex[v.blockhash], Params().GetConsensus()))
-                            BranchChainTransStep2(ptx, block);
-                    }
-                }
-            }
-        }
-	}
 	{
 		uint32_t nBlockHeight = BRANCH_CHAIN_MATURITY;
 		CellBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nBlockHeight];
@@ -929,7 +884,7 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
         return state.DoS(100, false, REJECT_INVALID, strErr);
 	}
 
-	const uint32_t maturity = mtxTrans1.IsBranchCreate() ? BRANCH_CHAIN_CREATE_COIN_MATURITY : BRANCH_CHAIN_MATURITY;
+	const uint32_t maturity = BRANCH_CHAIN_MATURITY;
 	if(!confirmations.isNum() || confirmations.get_int() < maturity + 1){
 		return error(" %s RPC confirmations not satisfy.\n", __func__);
 	}

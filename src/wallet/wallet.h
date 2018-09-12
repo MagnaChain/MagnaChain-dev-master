@@ -256,6 +256,7 @@ public:
     int GetDepthInMainChain() const { const CellBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
     bool IsInMainChain() const { const CellBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet) > 0; }
     int GetBlocksToMaturity() const;
+    int GetBlocksToMaturityForCoinCreateBranch() const;
     /** Pass this transaction to the mempool. Fails if absolute fee exceeds absurd fee. */
     bool AcceptToMemoryPool(const CellAmount& nAbsurdFee, CellValidationState& state, bool executeSmartContract, bool* pfMissingInputs = nullptr);
     bool hashUnset() const { return (hashBlock.IsNull() || hashBlock == ABANDON_HASH); }

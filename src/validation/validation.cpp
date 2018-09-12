@@ -349,6 +349,16 @@ bool CheckSequenceLocks(const CellTransaction &tx, int flags, LockPoints* lp, bo
     return EvaluateSequenceLocks(index, lockPair);
 }
 
+bool IsCoinCreateBranchScript(const CellScript& script)
+{
+    opcodetype opcode;
+    CellScript::const_iterator pc1 = script.begin();
+    script.GetOp(pc1, opcode);
+    if (opcode == OP_CREATE_BRANCH)
+        return true;
+    return false;
+}
+
 bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls)
 {
 	if (sls == nullptr)
@@ -1803,7 +1813,7 @@ static DisconnectResult DisconnectBlock(const CellBlock& block, const CellBlockI
             // At this point, all of txundo.vprevout should have been moved out.
         }
         if (pBranchTxRecordCache) {
-            if (tx.IsPregnantTx()) {
+            if (tx.IsPregnantTx() || tx.IsBranchCreate()) {
                 pBranchTxRecordCache->DelBranchChainTxRecord(ptx);
             }
             if (tx.IsBranchChainTransStep2()) {
@@ -2193,7 +2203,7 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
 
         if (pBranchTxRecordCache && i > 0)
         {
-            if (tx.IsPregnantTx()){
+            if (tx.IsPregnantTx() || tx.IsBranchCreate()){
                 pBranchTxRecordCache->AddBranchChainTxRecord(ptx, block.GetHash(), i);
             }
             if (tx.IsBranchChainTransStep2()){

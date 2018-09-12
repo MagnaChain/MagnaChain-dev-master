@@ -1023,6 +1023,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
                     }
                 }
                 break;
+                case OP_CREATE_BRANCH:
                 case OP_MINE_BRANCH_MORTGAGE:
                 case OP_MINE_BRANCH_COIN:
                 {
@@ -1068,7 +1069,6 @@ void TransactionExtraFields(S &s, const CellTransaction& txTo){
     {
         ::Serialize(s, txTo.branchVSeeds);
         ::Serialize(s, txTo.branchSeedSpec6);
-        ::Serialize(s, txTo.sendToTxHexData);
     }
     else if (txTo.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1)
     {

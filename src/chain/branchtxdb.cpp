@@ -31,7 +31,7 @@ BranchChainTxRecordsDb* pBranchChainTxRecordsDb = nullptr;
 
 void BranchChainTxRecordsCache::AddBranchChainTxRecord(const CellTransactionRef& tx, const uint256& blockhash, uint32_t txindex)
 {
-    if (tx->IsPregnantTx() == false)
+    if (!tx->IsPregnantTx() && !tx->IsBranchCreate())
         return;
 
     BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_TX_DATA);
@@ -50,7 +50,7 @@ void BranchChainTxRecordsCache::AddBranchChainTxRecord(const CellTransactionRef&
 
 void BranchChainTxRecordsCache::DelBranchChainTxRecord(const CellTransactionRef& tx)
 {
-    if (tx->IsPregnantTx() == false)
+    if (!tx->IsPregnantTx() && !tx->IsBranchCreate())
         return;
 
     BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_TX_DATA); // may be delete one entry which not in m_mapChainTxInfos any more

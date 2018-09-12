@@ -97,6 +97,7 @@ isminetype IsMine(const CellKeyStore &keystore, const CellScript& scriptPubKey, 
         if (keystore.HaveKey(keyID))
             return ISMINE_SPENDABLE;
         break;
+    case TX_CREATE_BRANCH:
     case TX_MINE_MORTGAGE:
     case TX_MORTGAGE_COIN:
         keyID = CellKeyID(uint160(vSolutions[0]));

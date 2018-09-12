@@ -84,6 +84,7 @@ static bool SignStep(const BaseSignatureCreator& creator, const CellScript& scri
     case TX_PUBKEY:
         keyID = CellPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, creator, scriptPubKey, ret, sigversion);
+    case TX_CREATE_BRANCH:
     case TX_MINE_MORTGAGE:
     case TX_MORTGAGE_COIN:
     case TX_PUBKEYHASH:
@@ -318,6 +319,7 @@ static Stacks CombineSignatures(const CellScript& scriptPubKey, const BaseSignat
         return sigs2;
     case TX_PUBKEY:
     case TX_PUBKEYHASH:
+    case TX_CREATE_BRANCH:
     case TX_MINE_MORTGAGE:
     case TX_MORTGAGE_COIN:
         // Signatures are bigger than placeholders or empty scripts:

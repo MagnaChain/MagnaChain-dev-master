@@ -12,6 +12,11 @@
 
 #include <assert.h>
 
+bool Coin::IsCoinCreateBranch() const
+{
+    return IsCoinCreateBranchScript(out.scriptPubKey);
+}
+
 bool CellCoinsView::GetCoin(const CellOutPoint &outpoint, Coin &coin) const { return false; }
 uint256 CellCoinsView::GetBestBlock() const { return uint256(); }
 std::vector<uint256> CellCoinsView::GetHeadBlocks() const { return std::vector<uint256>(); }
