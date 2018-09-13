@@ -12,7 +12,7 @@ class CellBlockIndex;
 CellAmount GetCreateBranchMortgage(const CellBlock* pBlock=nullptr, const CellBlockIndex* pBlockIndex=nullptr);
 
 extern const CellAmount CreateBranchChainMortgage;
-extern const uint32_t BRANCH_CHAIN_CREATE_COIN_MATURITY;
+extern const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY;
 extern const uint32_t BRANCH_CHAIN_MATURITY;
 extern const CellAmount MIN_MINE_BRANCH_MORTGAGE;
 extern const uint32_t REDEEM_SAFE_HEIGHT;

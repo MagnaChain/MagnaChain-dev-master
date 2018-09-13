@@ -77,7 +77,6 @@ CellMutableTransaction::CellMutableTransaction(const CellTransaction& tx) : nVer
 	{
 		branchVSeeds = tx.branchVSeeds;
 		branchSeedSpec6 = tx.branchSeedSpec6;
-		sendToTxHexData = tx.sendToTxHexData;
 	}
 	else if (nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1)
 	{

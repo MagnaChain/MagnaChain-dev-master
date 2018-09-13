@@ -354,7 +354,6 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
 		s >> tx.branchVSeeds;
 		s >> tx.branchSeedSpec6;
-		s >> tx.sendToTxHexData;
 	}
 	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
 		s >> tx.sendToBranchid;
@@ -452,7 +451,6 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
 		s << tx.branchVSeeds;
 		s << tx.branchSeedSpec6;
-		s << tx.sendToTxHexData;
 	}
 	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
 		s << tx.sendToBranchid;
@@ -556,7 +554,7 @@ public:
 	const std::string branchSeedSpec6;
 	//branch trans start (step 1)
 	const std::string sendToBranchid;
-	const std::string sendToTxHexData;	//在创建侧链，跨链交易中有用到 目标链交易的数据
+	const std::string sendToTxHexData;	//在跨链交易中有用到 目标链交易的数据
 	//branch trans end (step 2)
 	const std::string fromBranchId;
 	const std::vector<unsigned char> fromTx;
@@ -651,7 +649,7 @@ public:
     //dose it have a child transaction in sendToTxHexData
     bool IsPregnantTx() const
     {
-        return IsBranchCreate() || IsBranchChainTransStep1() || IsMortgage();
+        return IsBranchChainTransStep1() || IsMortgage();
     }
 
 	bool IsBranchCreate() const
@@ -801,7 +799,7 @@ struct CellMutableTransaction
 	//dose it have a child transaction in sendToTxHexData
     bool IsPregnantTx() const
     {
-        return IsBranchCreate() || IsBranchChainTransStep1() || IsMortgage();
+        return IsBranchChainTransStep1() || IsMortgage();
     }
 
 	bool IsBranchCreate() const

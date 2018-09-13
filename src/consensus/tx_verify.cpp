@@ -402,6 +402,13 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
                         REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
                         strprintf("tried to spend coinbase at depth %d", nSpendHeight - coin.nHeight));
             }
+            if (coin.IsCoinCreateBranch()){
+                if (nSpendHeight - coin.nHeight < BRANCH_CHAIN_CREATE_COIN_MATURITY){
+                    return state.Invalid(false,
+                        REJECT_INVALID, "bad-txns-premature-spend-of-coincreatebranch",
+                        strprintf("tried to spend coincreatebranch at depth %d", nSpendHeight - coin.nHeight));
+                }
+            }
 
             // Check for negative or overflow input values
             nValueIn += coin.out.nValue;

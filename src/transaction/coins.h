@@ -56,6 +56,8 @@ public:
         return fCoinBase;
     }
 
+    bool IsCoinCreateBranch() const;
+
     template<typename Stream>
     void Serialize(Stream &s) const {
         assert(!IsSpent());

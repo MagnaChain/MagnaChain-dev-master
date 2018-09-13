@@ -39,10 +39,11 @@
 
 #include "chain/branchdb.h"
 
-const CellAmount CreateBranchChainMortgage = 20000*COIN;
-
 //TODO: for test,发出前需要改成合适的值 
-const uint32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 
+const CellAmount CreateBranchChainMortgage = 20000*COIN;// 创建支链抵押初始值
+const uint32_t MaxPowForCreateChainMortgage = 16; // (2^16) * CreateBranchChainMortgage = 655360000 COIN
+
+const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
 const uint32_t BRANCH_CHAIN_MATURITY = 2000;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
 const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // 抵押挖矿最小值
 const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time)
@@ -81,13 +82,13 @@ CellAmount GetCreateBranchMortgage(const CellBlock* pBlock, const CellBlockIndex
     }
 
     size_t powN = std::max((size_t)0, nSize);
-    powN = std::min((size_t)16, powN);// 655360000 COIN
+    powN = std::min((size_t)MaxPowForCreateChainMortgage, powN);
 
     CellAmount mortgage = CreateBranchChainMortgage * std::pow(2, powN);
     return mortgage;
 }
 
-// make a cache will be better
+// OP: make a cache will be better
 static bool GetTransactionDataByTxInfo(const uint256 &txhash, CellTransactionRef &tx, CellBlockIndex** ppblockindex, uint32_t &tx_vtx_index, CellBlock& block)
 {
     BranchChainTxInfo chainsendinfo = pBranchChainTxRecordsDb->GetBranchChainTxInfo(txhash);
@@ -189,11 +190,11 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     std::string strVSeeds = request.params[0].get_str();
     std::string strSeedSpec6 = request.params[1].get_str();
     std::string strMortgageAddress = request.params[2].get_str();
-    CellLinkAddress strBcAddress(strMortgageAddress);
-    if (!strBcAddress.IsValid())
+    CellLinkAddress kAddress(strMortgageAddress);
+    if (!kAddress.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid celllink address for genesis block address");
-    if (strBcAddress.Get().type() != typeid(CellKeyID))
-    {
+    CellKeyID mortgagekey;
+    if (!kAddress.GetKeyID(mortgagekey)){
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Celllink public key address");
     }
 
@@ -204,18 +205,8 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     wtx.branchVSeeds = strVSeeds;
     wtx.branchSeedSpec6 = strSeedSpec6;
 
-    //make branch transaction output
-    CellAmount fee2 = 0;
-    CellScript sendToScriptPubKey = GetScriptForDestination(strBcAddress.Get());
-    CellMutableTransaction branchStep2MTx;
-    if (MakeBranchTransStep2Tx(branchStep2MTx, sendToScriptPubKey, nAmount, fee2, coin_control) == false) {
-        throw JSONRPCError(RPC_TYPE_ERROR, "Make branch step2 tx error.");
-    }
-    CellTransactionRef branchStep2Tx = MakeTransactionRef(std::move(branchStep2MTx));
-    wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
-
-    CellScript scriptPubKey;
-    scriptPubKey << OP_RETURN << OP_CREATE_BRANCH;// save pubkey to script
+    CellScript scriptPubKey;// create branch pubkey hash
+    scriptPubKey << OP_CREATE_BRANCH << OP_DUP << OP_HASH160 << ToByteVector(mortgagekey) << OP_EQUALVERIFY << OP_CHECKSIG;
 
     bool fSubtractFeeFromAmount = false;
     EnsureWalletIsUnlocked(pwallet);
@@ -234,10 +225,10 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     std::string strError;
     std::vector<CellRecipient> vecSend;
     int nChangePosRet = -1;
-    CellRecipient recipient = { scriptPubKey, nAmount + fee2, fSubtractFeeFromAmount };
+    CellRecipient recipient = { scriptPubKey, nAmount, fSubtractFeeFromAmount };
     vecSend.push_back(recipient);
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
-        if (!fSubtractFeeFromAmount && nAmount + fee2 + nFeeRequired > curBalance)
+        if (!fSubtractFeeFromAmount && nAmount + nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
@@ -430,11 +421,6 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, "can not send to this chain.");
     }
 
-    // comment following code
-    //    CellRPCConfig branchrpccfg;
-    //    if (g_branchChainMan->GetRpcConfig(toBranchid, branchrpccfg) == false || branchrpccfg.IsValid() == false)
-    //        throw JSONRPCError(RPC_WALLET_ERROR, "can not found branch rpc config");
-
     uint256 branchhash;
     branchhash.SetHex(toBranchid);
 
@@ -506,7 +492,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     CellScript scriptPubKey;
     if (!Params().IsMainChain())
     {
-        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//lock the output,output trans to /dev/null 
+        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//burn the output, trans output to /dev/null 
     }
     else
     {
@@ -589,7 +575,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     if (mtxTrans2.IsBranchChainTransStep2() == false)
         throw JSONRPCError(RPC_WALLET_ERROR, "mtxTrans2 is not a branch chain for step2.");
 
-    const std::string strToChainId = mtxTrans1.IsBranchCreate() ? mtxTrans1.GetHash().ToString() : mtxTrans1.sendToBranchid;
+    const std::string strToChainId = mtxTrans1.sendToBranchid;
     if (strToChainId != Params().GetBranchId())
     {
         throw JSONRPCError(RPC_WALLET_ERROR, "Target branch id is not valid.");
@@ -742,7 +728,7 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("Invalid branch transaction!"));
     }
 
-    const uint32_t maturity = tx->IsBranchCreate() ? BRANCH_CHAIN_CREATE_COIN_MATURITY : BRANCH_CHAIN_MATURITY;
+    const uint32_t maturity = BRANCH_CHAIN_MATURITY;
     int confirmations = chainActive.Height() - pblockindex->nHeight + 1;
     if (confirmations < maturity + 1)
     {
@@ -1295,9 +1281,6 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 
 UniValue sendreporttomain(const JSONRPCRequest& request)
 {
-    if (Params().IsMainChain())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
-
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
         throw std::runtime_error(
                 "sendreporttomain \"blockhash\"  \"txid\"\n"
@@ -1312,6 +1295,9 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
                 + HelpExampleCli("sendprovetomain", "\"blockhash\" \"txid\"")
                 + HelpExampleRpc("sendprovetomain", "\"blockhash\" \"txid\"")
                 );
+
+    if (Params().IsMainChain())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 blockHash = ParseHashV(request.params[0], "param 0");
     if (!mapBlockIndex.count(blockHash))
@@ -1355,9 +1341,6 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
 UniValue handlebranchreport(const JSONRPCRequest& request)
 {
-    if (!Params().IsMainChain())
-        throw JSONRPCRequest();
-
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1375,6 +1358,8 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
                 + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
                 + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
                 );
+    if (!Params().IsMainChain())
+        throw JSONRPCRequest();
 
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
@@ -1453,9 +1438,6 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 
 UniValue sendprovetomain(const JSONRPCRequest& request)
 {
-    if (Params().IsMainChain())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
-
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
         throw std::runtime_error(
                 "sendreporttomain \"blockhash\"  \"txid\"\n"
@@ -1470,6 +1452,9 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
                 + HelpExampleCli("sendprovetomain", "\"blockhash\" \"txid\"")
                 + HelpExampleRpc("sendprovetomain", "\"blockhash\" \"txid\"")
                 );
+
+    if (Params().IsMainChain())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 blockHash = ParseHashV(request.params[0], "param 0");
     if (!mapBlockIndex.count(blockHash))
@@ -1511,8 +1496,6 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
 
 UniValue handlebranchprove(const JSONRPCRequest& request)
 {
-    if (!Params().IsMainChain())
-        throw JSONRPCRequest();
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1530,7 +1513,8 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
                 + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
                 + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
                 );
-
+    if (!Params().IsMainChain())
+        throw JSONRPCRequest();
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
     if (!DecodeHexTx(mtxTrans1, strTx1HexData))

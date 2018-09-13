@@ -32,6 +32,7 @@
 #include "ui/ui_interface.h"
 #include "utils/utilmoneystr.h"
 #include "smartcontract/smartcontract.h"
+#include "rpc/branchchainrpc.h"
 
 #include <assert.h>
 
@@ -1839,6 +1840,9 @@ CellAmount CellWalletTx::GetAvailableCredit(bool fUseCache) const
             const CellTxOut &txout = tx->vout[i];
             if (QuickGetBranchScriptType(txout.scriptPubKey) != BST_INVALID)// 抵押币、挖矿币不能使用
                 continue;
+            if (tx->IsBranchCreate() && IsCoinCreateBranchScript(txout.scriptPubKey)
+                && GetBlocksToMaturityForCoinCreateBranch() > 0)
+                continue;
             nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
             if (!MoneyRange(nCredit))
                 throw std::runtime_error(std::string(__func__) + " : value out of range");
@@ -2250,6 +2254,11 @@ void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, const CellTxDes
                 }
 
                 if (QuickGetBranchScriptType(pcoin->tx->vout[i].scriptPubKey) != BST_INVALID)//抵押币、挖矿币不能普通使用
+                {
+                    continue;
+                }
+                if (pcoin->tx->IsBranchCreate() && IsCoinCreateBranchScript(pcoin->tx->vout[i].scriptPubKey) 
+                    && pcoin->GetBlocksToMaturityForCoinCreateBranch() > 0)// 支链创建抵押币需要满足一定高度才能使用
                 {
                     continue;
                 }
@@ -2789,7 +2798,6 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
     {
         toTx.branchVSeeds = fromWtx.branchVSeeds;
         toTx.branchSeedSpec6 = fromWtx.branchSeedSpec6;
-        toTx.sendToTxHexData = fromWtx.sendToTxHexData;
     }
     else if (fromWtx.transaction_version == CellTransaction::TRANS_BRANCH_VERSION_S1)
     {
@@ -3409,9 +3417,9 @@ CellAmount CellWallet::GetMinimumFee(unsigned int nTxBytes, const CellCoinContro
 	if (tx != nullptr)
 	{
 		// fee of branch chain transaction 
-        if (tx->IsPregnantTx() || tx->IsProve() || tx->IsReport())
+        if (tx->IsPregnantTx() || tx->IsBranchCreate() || tx->IsProve() || tx->IsReport())
         {
-            fee_needed *= 10;// TODO: 跨链交易的费率问题 
+            fee_needed *= 10;
         }
 
 		// 根据执行的指令数、代码大小以及存盘数据变化量计算交易费用
@@ -4658,6 +4666,13 @@ int CellMerkleTx::GetBlocksToMaturity() const
     if (!IsCoinBase())
         return 0;
     return std::max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
+}
+
+int CellMerkleTx::GetBlocksToMaturityForCoinCreateBranch() const
+{
+    if (!tx->IsBranchCreate())
+        return 0;
+    return std::max(0, (BRANCH_CHAIN_CREATE_COIN_MATURITY + 1) - GetDepthInMainChain());
 }
 
 bool CellMerkleTx::AcceptToMemoryPool(const CellAmount& nAbsurdFee, CellValidationState& state, bool executeSmartContract, bool* pfMissingInputs)

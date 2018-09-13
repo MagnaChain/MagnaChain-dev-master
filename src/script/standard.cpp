@@ -62,7 +62,7 @@ bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std
         mTemplates.insert(std::make_pair(TX_MULTISIG, CellScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
 
         //create branch mortgage
-		mTemplates.insert(std::make_pair(TX_CREATE_BRANCH, CellScript() << OP_RETURN << OP_CREATE_BRANCH));
+		mTemplates.insert(std::make_pair(TX_CREATE_BRANCH, CellScript() << OP_CREATE_BRANCH << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
 		//cross chain send
         mTemplates.insert(std::make_pair(TX_TRANS_BRANCH, CellScript() << OP_RETURN << OP_TRANS_BRANCH));
@@ -246,7 +246,7 @@ bool ExtractDestination(const CellScript& scriptPubKey, CellTxDestination& addre
         addressRet = CellScriptID(uint160(vSolutions[0]));
         return true;
     }
-    else if (whichType == TX_MINE_MORTGAGE || whichType == TX_MORTGAGE_COIN)
+    else if (whichType == TX_CREATE_BRANCH || whichType == TX_MINE_MORTGAGE || whichType == TX_MORTGAGE_COIN)
     {
         addressRet = CellKeyID(uint160(vSolutions[0]));
         return true;
