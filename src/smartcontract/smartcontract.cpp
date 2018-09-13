@@ -196,7 +196,7 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 	local ret		                                                            \n\
 	local callfun = myenv[funcname]                                             \n\
 	if type(callfun) == 'function' and funcname ~= 'init' then                  \n\
-		ret = { lpcall(maxCallNum, callfun, ...) }							    \n\
+		ret = { lpcall(-1, callfun, ...) }							            \n\
 		if not ret[1] then                                                      \n\
 			return false, ret[2]  			                                    \n\
 		else																	\n\
@@ -587,9 +587,8 @@ int InternalCallContract(lua_State* L)
     UniValue ret(UniValue::VARR);
     long maxCallNum = L->limit_instruction;
     bool success = CallContract(sls, contractAddr, strFuncName, args, maxCallNum, ret);
-    if (success)
-        L->limit_instruction = maxCallNum;
-    else
+    L->limit_instruction = maxCallNum;
+    if (!success)
         throw std::runtime_error(ret[0].get_str().c_str());
 
     lua_pushboolean(L, (int)success);
