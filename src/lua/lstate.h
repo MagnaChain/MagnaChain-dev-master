@@ -124,7 +124,8 @@ struct lua_State {
   GCObject *gclist;
   struct lua_longjmp *errorJmp;  /* current error recover point */
   ptrdiff_t errfunc;  /* current error handling function (stack index) */
-  long limit_instruction; /*limit instruction call*/
+  long limit_instruction; /*limit instruction call */
+  lu_byte limit_on; /*limit switch */
   void* userData;
 };
 

@@ -148,29 +148,22 @@ cjson.encode_sparse_array(true, 1,1)                                            
 function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 	local fun, err = loadstring(_strScript)                                     \n\
 	if err then                                                                 \n\
-		print(err)                                                              \n\
-		return false, 'load contract fail:'..err                                \n\
+		return false, err                                                       \n\
 	end                                                                         \n\
-    collectgarbage('collect')                                                   \n\
 	                                                                            \n\
+    local success                                                               \n\
 	local myenv = createSafeEnv()                                               \n\
 	setfenv(fun, myenv)                                                         \n\
-	local runOk1, rt1, err = lpcall(maxCallNum, fun)							\n\
-	if not runOk1 then                                                          \n\
-		print(err)                                                              \n\
-		return false, 'do contract fail:'..err                                  \n\
+	success, err = lpcall(maxCallNum, fun)							            \n\
+	if not success then                                                         \n\
+		return false, err                                  						\n\
 	end                                                                         \n\
-																				\n\
-	maxCallNum = maxCallNum - rt1												\n\
-	local runOk2, rt2, err2														\n\
+	                                                                            \n\
 	if type(myenv.init) == 'function' then                                      \n\
-		runOk2, rt2, err2 = lpcall(maxCallNum, myenv.init)						\n\
-		if not runOk2 then                                                      \n\
-			print(err2)															\n\
-			return false, 'contract init function fail:'..err2					\n\
+		success, err = lpcall(-1, myenv.init)						            \n\
+		if not success then                                                     \n\
+			return false, err					                                \n\
 		end                                                                     \n\
-	else                                                                        \n\
-		print('no init function to call.')                                      \n\
 	end                                                                         \n\
 	                                                                            \n\
 	local strCompileFun = string.dump(fun)                                      \n\
@@ -181,53 +174,42 @@ function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 		if dataLen > maxDataLen then											\n\
 			return false, 'Lua:regContract dataLen > maxDataLen'                \n\
 		end																		\n\
-	else                                                                        \n\
-		print('no init PersistentData to save')                                 \n\
 	end                                                                         \n\
 	                                                                            \n\
-	return true, rt1 + (rt2 or 0), strPackData, strCompileFun					\n\
+	return true, strPackData, strCompileFun					                    \n\
 end                                                                             \n\
                                                                                 \n\
 function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 	if data and #data >0 then                                                   \n\
 		data = cmsgpack.unpack(data)                                            \n\
 	end                                                                         \n\
-    collectgarbage('collect')                                                   \n\
+                                                                                \n\
 	local lf = loadstring(code)	                                            	\n\
 	local myenv = createSafeEnv()                                               \n\
     myenv.PersistentData = data                                                 \n\
-	--printTable(myenv.PersistentData)											\n\
 	setfenv(lf, myenv)                                                          \n\
-	local runOk1, rt1, err1 = lpcall(maxCallNum, lf)							\n\
-	if not runOk1 then                                                          \n\
-		print(err1)                                                             \n\
-		return false, err1                                                      \n\
+	local success, err = lpcall(maxCallNum, lf)							        \n\
+	if not success then                                                         \n\
+		return false, err                                                       \n\
 	end                                                                         \n\
                                                                                 \n\
-	maxCallNum = maxCallNum - rt1												\n\
-	local runRet		                                                        \n\
+	local ret		                                                            \n\
 	local callfun = myenv[funcname]                                             \n\
-	local runOk2, rt2, err2														\n\
 	if type(callfun) == 'function' and funcname ~= 'init' then                  \n\
-		runRet = { lpcall(maxCallNum, callfun, ...) }							\n\
-		runOk2 = runRet[1]														\n\
-		rt2 = runRet[2]															\n\
-		err2 = runRet[3]														\n\
-		if not runOk2 then                                                      \n\
-			print(err2)															\n\
-			return false, 'callContract function fail:'..err2					\n\
+		ret = { lpcall(-1, callfun, ...) }							            \n\
+		if not ret[1] then                                                      \n\
+			return false, ret[2]  			                                    \n\
 		else																	\n\
 			local temp = {}														\n\
-			for i = 3, #runRet do												\n\
-				table.insert(temp, runRet[i])									\n\
+			for i = 2, #ret do												    \n\
+				table.insert(temp, ret[i])									    \n\
 			end																	\n\
-			runRet = temp														\n\
+			ret = temp														    \n\
 		end																		\n\
 	else                                                                        \n\
-		return false, 'no function for '..tostring(funcname)                    \n\
+		return false, 'can not find function '..funcname..' in contract.' 		\n\
 	end                                                                         \n\
 	                                                                            \n\
-	--printTable(myenv.PersistentData)											\n\
 	local strPackData                                                           \n\
 	if type(myenv.PersistentData) == 'table' then                               \n\
 		strPackData = cmsgpack.pack(myenv.PersistentData)                       \n\
@@ -236,7 +218,7 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 			return false, 'Lua:callContract dataLen > maxDataLen'				\n\
 		end																		\n\
 	end                                                                         \n\
-	return true, rt1 + (rt2 or 0), strPackData, unpacktable(runRet)				\n\
+	return true, strPackData, unpacktable(ret)				                    \n\
 end                                                                             \n";
 
 bool GetPubKey(const CellWallet* pWallet, const CellLinkAddress& addr, CellPubKey& pubKey)
@@ -351,31 +333,29 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pop(L, 1);
 }
 
-int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, const std::string& strSenderAddr, std::string& rawCode, std::string& code, UniValue& ret)
+bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
 {
-    ret.setArray();
-
     CellLinkAddress senderAddr;
     if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr)) {
-        ret.push_back("GetSenderAddr fail.");
-        return -1;
+        ret.push_back(Pair("result", "GetSenderAddr fail."));
+        return false;
     }
 
     CellKeyID senderKey;
     CellPubKey senderPubKey;
     if (!senderAddr.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey)) {
-        ret.push_back("Get Key or PubKey fail.");
-        return -1;
+        ret.push_back(Pair("result", "Get Key or PubKey fail."));
+        return false;
     }
 
     // temp addresss, replace in CellWallet::CreateTransaction
     CellContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);
     CellLinkAddress contractAddr(contractId);
 
-    SmartContractRet scr;
+    std::string codeout;
     sls->Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
-    int result = PublishContract(sls, contractAddr, rawCode, code, scr);
-    if (result == 0) {
+    bool success = PublishContract(sls, contractAddr, rawCode);
+    if (success) {
         CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
         sls->contractIds.erase(contractId);
@@ -396,118 +376,107 @@ int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, 
         ret.push_back(Pair("contractaddress", CellLinkAddress(wtx.tx->contractAddrs[0]).ToString()));
         ret.push_back(Pair("senderaddress", senderAddr.ToString()));
     }
-    else
-        ret.push_back(strprintf("PublishContract fail, code %d", result));
 
-    return result;
+    return success;
 }
 
-int PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode, std::string& code, SmartContractRet& scr)
+bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode)
 {
-    if (sls->amount < 0) {
-        scr.result.push_back("amount <= 0.");
-        return -1;
-    }
+    if (sls->amount < 0)
+        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
 
     CellContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (sls->GetContractInfo(contractId, contractInfo)) {
-        scr.result.push_back("Contract exists.");
-        return -1;
-    }
+    if (sls->GetContractInfo(contractId, contractInfo))
+        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
 
+    std::string codeout;
+    std::string dataout;
+    long maxCallNum = MAX_CONTRACT_CALL;
     lua_State* L = sls->GetLuaState(contractAddr);
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), sls->amount, sls->timestamp, sls->blockHeight);
-
-    int result = PublishContract(L, rawCode, code, scr);
-    if (result == 0) {
-        sls->runningTimes = scr.runningTimes;
-        sls->codeLen = code.size();
-        sls->deltaDataLen = scr.data.size();
+    bool success = PublishContract(L, rawCode, maxCallNum, codeout, dataout);
+    if (success) {
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = codeout.size();
+        sls->deltaDataLen = dataout.size();
 
         if (sls->saveType > 0) {
-            contractInfo.code = code;
-            contractInfo.data = scr.data;
+            contractInfo.code = codeout;
+            contractInfo.data = dataout;
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
     sls->ReleaseLuaState(L);
 
-    return result;
+    return success;
 }
 
-int PublishContract(lua_State* L, const std::string& rawCode, std::string& code, SmartContractRet& scr)
+bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout)
 {
     int top = lua_gettop(L);
     lua_getglobal(L, "regContract");
-    lua_pushnumber(L, MAX_CONTRACT_CALL);
+    lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
     lua_pushlstring(L, rawCode.c_str(), rawCode.size());
     int argc = 3;
 
-    int result = lua_pcall(L, argc, LUA_MULTRET, 0);
-    if (result == 0 && lua_toboolean(L, top + 1) && lua_gettop(L) >= top + 4) {
-        scr.runningTimes = lua_tointeger(L, top + 2);
-
+    assert(lua_pcall(L, argc, LUA_MULTRET, 0) == 0);
+    maxCallNum = L->limit_instruction;
+    bool success = lua_toboolean(L, top + 1) != 0;
+    if (success) {
         size_t dl = 0;
-        const char* temp = lua_tolstring(L, top + 3, &dl);
-        scr.data.assign(temp, dl);
+        const char* temp = lua_tolstring(L, top + 2, &dl);
+        dataout.assign(temp, dl);
 
         size_t cl = 0;
-        temp = lua_tolstring(L, top + 4, &cl);
-        code.assign(temp, cl);
+        temp = lua_tolstring(L, top + 3, &cl);
+        codeout.assign(temp, cl);
     }
     else {
-        if (result == 0) {
-            result = -1;
-        }
         const char* err = lua_tostring(L, -1);
-        LogPrintf("%s:%d %s\n", __FILE__, __LINE__, err);
-        scr.result.push_back(err);
+        throw std::runtime_error(strprintf("%s error: %s", __FUNCTION__, err));
     }
 
     lua_settop(L, top);
-    return result;
+    return success;
 }
 
-int CallContract(SmartLuaState* sls, long& maxCallNum, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& scr)
+bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
-    if (sls->amount < 0) {
-        scr.result.push_back("amount <= 0.");
-        return -1;
-    }
-
-    scr.result.clear();
+    if (sls->amount < 0)
+        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
 
     CellContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0) {
-        scr.result.push_back("GetContractInfo fail");
-        return -1;
-    }
+    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
+        throw std::runtime_error(strprintf("%s GetContractInfo fail, contractid is %s", __FUNCTION__, contractId.ToString()));
 
+    if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM)
+        throw std::runtime_error(strprintf("%s no more max internal call number", __FUNCTION__));
+
+    sls->_internalCallNum++;
+    std::string dataout;
     std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
     lua_State* L = sls->GetLuaState(contractAddr);
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, sls->amount, sls->timestamp, sls->blockHeight);
-    int result = CallContract(L, maxCallNum, contractInfo.code, contractInfo.data, strFuncName, args, scr);
-    if (result == 0 && contractInfo.data != scr.data) {
-        maxCallNum = L->limit_instruction;
-        assert(maxCallNum >= 0);
-
-        sls->deltaDataLen += std::max(0u, (uint32_t)(scr.data.size() - contractInfo.data.size()));
+    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, dataout, ret);
+    if (success) {
+        sls->deltaDataLen += std::max(0u, (uint32_t)(dataout.size() - contractInfo.data.size()));
         if (sls->saveType > 0) {
-            contractInfo.data = scr.data;
+            contractInfo.data = dataout;
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
     sls->ReleaseLuaState(L);
+    sls->_internalCallNum--;
 
-    return result;
+    return success;
 }
 
-int CallContract(lua_State* L, long maxCallNum, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, SmartContractRet& ret)
+bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
     int top = lua_gettop(L);
     lua_getglobal(L, "callContract");
@@ -541,48 +510,44 @@ int CallContract(lua_State* L, long maxCallNum, const std::string& code, const s
         argc++;
     }
 
-    int result = lua_pcall(L, argc, LUA_MULTRET, 0);
-    if (result == 0 && lua_toboolean(L, top + 1) && lua_gettop(L) >= top + 3) {
-        ret.runningTimes = lua_tonumber(L, top + 2);
-
+    assert(lua_pcall(L, argc, LUA_MULTRET, 0) == 0);
+    maxCallNum = L->limit_instruction;
+    bool success = lua_toboolean(L, top + 1) != 0;
+    if (success) {
         size_t dl = 0;
-        const char* temp = lua_tolstring(L, top + 3, &dl);
-        ret.data.assign(temp, dl);
+        const char* temp = lua_tolstring(L, top + 2, &dl);
+        dataout.assign(temp, dl);
 
         int newTop = lua_gettop(L);
-        for (int i = top + 4; i <= newTop; ++i) {
+        for (int i = top + 3; i <= newTop; ++i) {
             int t = lua_type(L, i);
             switch (t) {
             case LUA_TNUMBER:
-                ret.result.push_back(UniValue((int64_t)lua_tonumber(L, i)));
+                ret.push_back(UniValue((int64_t)lua_tonumber(L, i)));
                 break;
             case LUA_TBOOLEAN:
-                ret.result.push_back(UniValue((bool)lua_toboolean(L, i)));
+                ret.push_back(UniValue((bool)lua_toboolean(L, i)));
                 break;
             case LUA_TSTRING:
             {
                 size_t sl = 0;
                 const char* sv = lua_tolstring(L, i, &sl);
-                ret.result.push_back(std::string(sv, sl));
+                ret.push_back(std::string(sv, sl));
                 break;
             }
             default:
-                ret.result.push_back(UniValue());
+                ret.push_back(UniValue());
                 break;
             }
         }
     }
     else {
-        if (result == 0) {
-            result = -1;
-        }
         const char* err = lua_tostring(L, -1);
-        LogPrintf("%s:%d %s\n", __FILE__, __LINE__, err);
-        ret.result.push_back(err);
+        throw std::runtime_error(strprintf("%s error: %s", __FUNCTION__, err));
     }
 
     lua_settop(L, top);
-    return result;
+    return success;
 }
 
 // Lua内部嵌套调用合约
@@ -590,16 +555,16 @@ int InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
-        throw std::runtime_error(strprintf("%s:%d smartLuaState == nullptr", __FILE__, __LINE__));
+        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
 
     std::string strContractAddr = lua_tostring(L, 1);
     CellLinkAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
-        throw std::runtime_error(strprintf("%s:%d contractAddr is invalid", __FILE__, __LINE__));
+        throw std::runtime_error(strprintf("%s contractAddr is invalid", __FUNCTION__));
 
     std::string strFuncName = lua_tostring(L, 2);
     if (strFuncName.empty())
-        throw std::runtime_error(strprintf("%s:%d function name is empty", __FILE__, __LINE__));
+        throw std::runtime_error(strprintf("%s function name is empty", __FUNCTION__));
 
     int top = lua_gettop(L);
     UniValue args(UniValue::VType::VARR);
@@ -619,33 +584,31 @@ int InternalCallContract(lua_State* L)
         }
     }
 
-    SmartContractRet scr;
+    UniValue ret(UniValue::VARR);
     long maxCallNum = L->limit_instruction;
-    int result = CallContract(sls, maxCallNum, contractAddr, strFuncName, args, scr);
-    if (result == 0)
-        L->limit_instruction = maxCallNum;
-    else
-        throw std::runtime_error(strprintf("InternalCallContract fail, error %d.", result));
+    bool success = CallContract(sls, contractAddr, strFuncName, args, maxCallNum, ret);
+    L->limit_instruction = maxCallNum;
+    if (!success)
+        throw std::runtime_error(ret[0].get_str().c_str());
 
-    lua_pushnumber(L, result);
-    for (int i = 0; i < scr.result.size(); ++i) {
-        switch (scr.result[i].type()) {
+    lua_pushboolean(L, (int)success);
+    for (int i = 0; i < ret.size(); ++i) {
+        switch (ret[i].type()) {
         case UniValue::VNUM:
-            lua_pushnumber(L, scr.result[i].get_int64());
+            lua_pushnumber(L, ret[i].get_int64());
             break;
         case UniValue::VBOOL:
-            lua_pushboolean(L, scr.result[i].get_bool());
+            lua_pushboolean(L, ret[i].get_bool());
             break;
         case UniValue::VSTR:
-            lua_pushstring(L, scr.result[i].get_str().c_str());
+            lua_pushstring(L, ret[i].get_str().c_str());
             break;
         default:
             lua_pushnil(L);
             break;
         }
     }
-
-    return scr.result.size() + 1;
+    return ret.size() + 1;
 }
 
 // Lua内部向指定地址发送代币
@@ -747,6 +710,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellAmount am
     this->outputs.clear();
     this->contractIds.clear();
     this->contractAddrs.clear();
+    _internalCallNum = 0;
     totalAmount = -1;
     sendAmount = 0;
     runningTimes = 0;
@@ -760,6 +724,7 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
     if (_luaStates.size() > 0) {
         L = _luaStates.back();
         _luaStates.pop();
+        lua_settop(L, 0);
     }
     else {
         L = lua_open();

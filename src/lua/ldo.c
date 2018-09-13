@@ -521,7 +521,7 @@ int luaD_protectedparser (lua_State *L, ZIO *z, const char *name) {
 
 
 int luaD_limitinstruction(lua_State *L) {
-	if (L->limit_instruction > 0 && --L->limit_instruction == 0)/* limit run instruction */
+	if (L->limit_on != 0 && --L->limit_instruction <= 0)/* limit run instruction */
 	{
 		L->limit_instruction = 0;
 		luaG_runerror(L, "run out of limit instruction.");

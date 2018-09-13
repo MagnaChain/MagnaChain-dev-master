@@ -137,12 +137,9 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
         CellAmount amount = GetTxContractOut(*tx);
 
         if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-            std::string code;
             std::string rawCode = tx->contractCode;
-            SmartContractRet scr;
             sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            int result = PublishContract(sls, contractAddrs, rawCode, code, scr);
-            if (result != 0)
+            if (!PublishContract(sls, contractAddrs, rawCode))
                 *interrupt = true;
         }
         else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
@@ -150,11 +147,10 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
             UniValue args;
             args.read(tx->contractParams);
 
-            SmartContractRet scr;
-            long callNum = MAX_CONTRACT_CALL;
+            UniValue ret;
+            long maxCallNum = MAX_CONTRACT_CALL;
             sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            int result = CallContract(sls, callNum, contractAddrs, strFuncName, args, scr);
-            if (result != 0)
+            if (!CallContract(sls, contractAddrs, strFuncName, args, maxCallNum, ret))
                 *interrupt = true;
         }
     }
