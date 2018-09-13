@@ -316,14 +316,12 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     }
     if (tx.IsBranchChainTransStep2())
     {
-        if (nValueOut >= tx.inAmount || !MoneyRange(tx.inAmount))
-        {
+        if (nValueOut >= tx.inAmount || !MoneyRange(tx.inAmount)){
             return state.DoS(100, false, REJECT_INVALID, "bad-amount-not-correct-t1-t2");
         }
-        if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, pBlock))//can not use DoS(100
-        {
-            return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
-        }
+        //if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, pBlock)){
+        //    return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
+        //}
         
         //挖矿币产生输出判断
         if (!Params().IsMainChain() && QuickGetBranchScriptType(tx.vout[0].scriptPubKey) == BST_MORTGAGE_COIN)

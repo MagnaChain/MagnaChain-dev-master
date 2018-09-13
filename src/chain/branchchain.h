@@ -80,6 +80,7 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 
 bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlockHeader, std::string *pStrErr=nullptr);
 bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache);
+bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache);
 
 bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex);
 bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);

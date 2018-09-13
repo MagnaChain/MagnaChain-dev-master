@@ -540,21 +540,24 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
     if (!ExtractDestination(pScript, kDest)) {
         opcodetype opcode;
         std::vector<unsigned char> vch;
-        CellScript::const_iterator pc1 = coin.out.scriptPubKey.begin();
-        coin.out.scriptPubKey.GetOp(pc1, opcode, vch);
+        const CellScript& scriptPubKey = coin.out.scriptPubKey;
+        CellScript::const_iterator pc1 = scriptPubKey.begin();
+        scriptPubKey.GetOp(pc1, opcode, vch);
 
         if (opcode == OP_CONTRACT) {
             vch.clear();
-            vch.assign(pc1 + 1, coin.out.scriptPubKey.end());
+            vch.assign(pc1 + 1, scriptPubKey.end());
             kDest = CellKeyID(uint160(vch));
             CellLinkAddress addrTest(kDest);
             std::string strTest = addrTest.ToString();
             LogPrint(BCLog::COINDB, "COIN_LIST, get contract addr : %s\n", strTest);
         }
         else if (opcode == OP_TRANS_BRANCH){
-            vch.clear();
-            vch.assign(pc1 + 1, coin.out.scriptPubKey.end());
-            kDest = CellKeyID(uint160(Hash160(vch)));
+            if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256))
+                return false;
+            
+            uint256 branchhash(vch);
+            kDest = CellKeyID(Hash160(branchhash.begin(), branchhash.end()));// branch coin address
         } else
             return false;
     }

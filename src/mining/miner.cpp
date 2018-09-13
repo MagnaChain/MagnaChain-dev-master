@@ -457,9 +457,13 @@ void BlockAssembler::GroupingTransaction(int offset)
 
 bool BlockAssembler::UpdateBranchTx(CellMutableTransaction& branchTx)
 {
-    const std::string strFromChain = branchTx.fromBranchId; 
+    const std::string strFromChain = branchTx.fromBranchId;
+    uint256 branchhash;
+    branchhash.SetHex(strFromChain);
+    uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
+
     CellAmount nAmount = branchTx.inAmount;
-     CoinListPtr plist = pcoinListDb->GetList(uint160(Hash160(ParseHex(strFromChain))));
+     CoinListPtr plist = pcoinListDb->GetList(branchcoinaddress);
         std::set<CellOutPoint> setInOutPoints;
         CellAmount nValue = 0;
 
@@ -496,7 +500,7 @@ bool BlockAssembler::UpdateBranchTx(CellMutableTransaction& branchTx)
         if (nValue > nAmount)
         {
             CellScript voutScriptKey;
-            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(Hash(strFromChain.begin(), strFromChain.end()));
+            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
 
             CellTxOut tmpOut;
             tmpOut.scriptPubKey = voutScriptKey;

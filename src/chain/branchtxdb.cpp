@@ -166,7 +166,7 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const CellTransaction& tx, const Cel
     if (!m_db.Read(keyentry, recvInfo))
         return false;
 
-    if (pBlock && pBlock->GetHash() == recvInfo.blockhash) {
+    if (pBlock && pBlock->GetHash() == recvInfo.blockhash) {//same block is not duplicate
         return false;
     }
 

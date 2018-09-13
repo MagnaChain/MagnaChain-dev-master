@@ -437,7 +437,7 @@ public:
 
 		//change branch dir
         strBranchId = !strBranchIdParams.empty() ? strBranchIdParams : gArgs.GetArg("-branchid", "");
-		if (strBranchId == "main")
+		if (strBranchId == CellBaseChainParams::MAIN)
 			throw std::runtime_error("main chain no need this option -branchid");
 		if (strBranchId.length() != 64 || !IsHex(strBranchId))
 			throw std::runtime_error(strprintf("%s: Invalid branch id %s, it must a txid", __func__, strBranchId.c_str()));
