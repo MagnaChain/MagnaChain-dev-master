@@ -636,8 +636,14 @@ void luaG_runerror (lua_State *L, const char *fmt, ...) {
   luaG_errormsg(L);
 }
 
-LUA_API long lua_setlimitinstruction(lua_State *L, long n){
-	long last = L->limit_instruction;
-	L->limit_instruction = n;
-	return last;
+LUA_API long lua_setlimitinstruction(lua_State *L, long n) {
+    long old = L->limit_instruction;
+    if (n >= 0)
+	    L->limit_instruction = n;
+    L->limit_on = 1;
+    return old;
+}
+
+LUA_API void lua_stoplimit(lua_State *L) {
+    L->limit_on = 0;
 }

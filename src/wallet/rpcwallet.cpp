@@ -550,8 +550,7 @@ UniValue publishcontract(const JSONRPCRequest& request)
         strSenderAddr = request.params[1].get_str();
 
     UniValue ret;
-    std::string code;
-	int result = PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, code, ret);
+	PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, ret);
     return ret;
 }
 
@@ -589,8 +588,7 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
         strSenderAddr = request.params[1].get_str();
 
     UniValue ret;
-    std::string code;
-    int result = PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, code, ret);
+    PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, ret);
     return ret;
 }
 
@@ -655,19 +653,16 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	CellKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
 	CellLinkAddress contractAddr(contractId);
 
-    std::string code;
-    SmartContractRet scr;
     RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
-    int result = PublishContract(&RPCSLS, contractAddr, rawCode, code, scr);
-    if (result != 0)
-        throw JSONRPCError(RPC_MISC_ERROR, scr.result[0].get_str());
+    if (!PublishContract(&RPCSLS, contractAddr, rawCode))
+        return NullUniValue;
 
     CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
     RPCSLS.contractIds.erase(contractId);
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
-    wtx.contractCode = code;
+    wtx.contractCode = rawCode;
     wtx.contractSender = senderPubKey;
     wtx.contractAddrs.emplace_back(contractId);
     wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
@@ -749,15 +744,15 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 5);
 
-    UniValue ret(UniValue::VType::VOBJ);
-    SmartContractRet scr;
+    UniValue callRet(UniValue::VARR);
+    long maxCallNum = MAX_CONTRACT_CALL;
     RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
-    long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, contractAddr, strFuncName, args, scr);
-    if (result == 0) {
-        RPCSLS.runningTimes = MAX_CONTRACT_CALL - callNum;
+    bool success = CallContract(&RPCSLS, contractAddr, strFuncName, args, maxCallNum, callRet);
+    if (success) {
+        RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
         RPCSLS.codeLen = 0;
 
+        UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
             CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
@@ -779,10 +774,13 @@ UniValue callcontract(const JSONRPCRequest& request)
             SendMoney(pwallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, &RPCSLS);
             ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
         }
+        ret.push_back(Pair("return", callRet));
+        return ret;
     }
+    else
+        throw JSONRPCError(RPC_CONTRACT_ERROR, callRet[0].get_str());
 
-    ret.push_back(Pair("return", scr.result));
-    return ret;
+    return NullUniValue;
 }
 
 UniValue getcontractcode(const JSONRPCRequest& request)
@@ -872,14 +870,16 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
 
-    SmartContractRet scr;
+    UniValue callRet(UniValue::VARR);
+    long maxCallNum = MAX_CONTRACT_CALL;
     RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
-    long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, contractAddr, strFuncName, args, scr);
+    bool success = CallContract(&RPCSLS, contractAddr, strFuncName, args, maxCallNum, callRet);
+    RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+    RPCSLS.codeLen = 0;
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("call_return", scr.result));
-    if (result == 0) {
+    ret.push_back(Pair("return", callRet));
+    if (success) {
         if (bSendCall) {
             CellKeyID contractId;
             contractAddr.GetKeyID(contractId);

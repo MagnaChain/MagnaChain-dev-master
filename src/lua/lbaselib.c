@@ -29,7 +29,6 @@
 ** (a console window or a log file, for instance).
 */
 static int luaB_print (lua_State *L) {
-#if _DEBUG
   int n = lua_gettop(L);  /* number of arguments */
   int i;
   lua_getglobal(L, "tostring");
@@ -47,7 +46,6 @@ static int luaB_print (lua_State *L) {
     lua_pop(L, 1);  /* pop result */
   }
   fputs("\n", stdout);
-#endif
   return 0;
 }
 
@@ -404,17 +402,12 @@ static int luaB_lpcall(lua_State *L) {
     long limit = luaL_optlong(L, 1, 0);
     lua_setlimitinstruction(L, limit);
     lua_pushboolean(L, 1);
-    lua_insert(L, 1);
-    lua_pushinteger(L, 0);
     lua_insert(L, 2);
-	status = lua_pcall(L, lua_gettop(L) - 4, LUA_MULTRET, 0);
-	long rest = lua_setlimitinstruction(L, 0);// reset limit
-	long runtimes = limit - rest;
+	status = lua_pcall(L, lua_gettop(L) - 3, LUA_MULTRET, 0);
+    lua_stoplimit(L);
 	lua_pushboolean(L, (status == 0));
-	lua_replace(L, 1);
-	lua_pushinteger(L, runtimes);
-    lua_replace(L, 2);
-	return lua_gettop(L);  /* return status + run times + all results */
+	lua_replace(L, 2);
+	return lua_gettop(L) - 1;  /* return status + run times + all results */
 }
 
 static int luaB_tostring (lua_State *L) {

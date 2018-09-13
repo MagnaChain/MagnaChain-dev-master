@@ -402,20 +402,16 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
     CellAmount amount = GetTxContractOut(tx);
 
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-        std::string code;
         std::string rawCode = tx.contractCode;
-        SmartContractRet scr;
         checkSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, saveType);
-        return (PublishContract(&checkSLS, contractAddr, rawCode, code, scr) == 0);
+        return PublishContract(&checkSLS, contractAddr, rawCode);
 	}
     else if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
-        SmartContractRet scr;
+        UniValue ret;
+        long maxCallNum = MAX_CONTRACT_CALL;
         checkSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, saveType);
-        long callNum = MAX_CONTRACT_CALL;
-        int result = CallContract(&checkSLS, callNum, contractAddr, strFuncName, args, scr);
-        if (result == 0)
+        if (CallContract(&checkSLS, contractAddr, strFuncName, args, maxCallNum, ret))
             return CheckContractVinVout(tx, &checkSLS);
-        return false;
 	}
 
 	return false;
