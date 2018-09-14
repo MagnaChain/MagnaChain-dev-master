@@ -162,7 +162,7 @@ const char* GetOpName(opcodetype opcode)
 }
 
 
-bool CellScript::GetContractAddr(CellKeyID& keyDest) const
+bool CellScript::GetContractAddr(CellContractID& contractId) const
 {
 	opcodetype opcode;
 	std::vector<unsigned char> vch;
@@ -174,7 +174,7 @@ bool CellScript::GetContractAddr(CellKeyID& keyDest) const
 	}
 	vch.clear();
 	vch.assign(pc1 + 1, end());
-	keyDest = CellKeyID(uint160(vch));
+    contractId = CellContractID(uint160(vch));
 	return true;
 }
 

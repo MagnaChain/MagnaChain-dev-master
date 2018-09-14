@@ -3083,6 +3083,36 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                     vin.scriptWitness.SetNull();
                 }
 
+                // check lsdata
+                if (sls != nullptr) {
+                    if (sls->sendAmount > 0 && sls->sendAmount <= sls->totalAmount) {
+                        CellAmount totalSendAmount = 0;
+                        for (size_t i = 0; i < sls->inputs.size(); ++i) {
+                            Coin& coin = sls->inputs[i].first;
+                            CellOutPoint& txo = sls->inputs[i].second;
+
+                            CellTxIn kIn;
+                            kIn.prevout = txo;
+                            txNew.vin.push_back(kIn);
+                            totalSendAmount += coin.out.nValue;
+                            if (totalSendAmount >= sls->sendAmount) {
+                                if (totalSendAmount > sls->sendAmount) {
+                                    CellTxOut changeTxOut;
+                                    changeTxOut.nValue = totalSendAmount - sls->sendAmount;
+                                    changeTxOut.scriptPubKey = GetScriptForDestination(txNew.contractAddrs[0]);
+                                    txNew.vout.push_back(changeTxOut);
+                                }
+                                break;
+                            }
+                        }
+
+                        // output
+                        for (size_t i = 0; i < sls->outputs.size(); ++i)
+                            txNew.vout.push_back(sls->outputs[i]);
+                    }
+                    txNew.contractAddrs.assign(wtxNew.contractAddrs.begin(), wtxNew.contractAddrs.end());
+                }
+
                 nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew, sls);
 				
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
@@ -3161,36 +3191,6 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 
         if (nChangePosInOut == -1) reservekey.ReturnKey(); // Return any reserved key if we don't have change
 
-		// check lsdata
-		if (sls != nullptr) {
-			CellMutableTransaction& mtx = txNew;
-			CellAmount totalSendAmount = 0;
-			for (size_t i = 0; i < sls->inputs.size(); ++i) {
-                Coin& coin = sls->inputs[i].first;
-                CellOutPoint& txo = sls->inputs[i].second;
-
-				CellTxIn kIn;
-				kIn.prevout = txo;
-				mtx.vin.push_back(kIn);
-                totalSendAmount += coin.out.nValue;
-				if (totalSendAmount >= sls->totalAmount) {
-					if (totalSendAmount > sls->totalAmount) {
-						CellTxOut changeTxOut;
-                        changeTxOut.nValue = totalSendAmount - sls->totalAmount;
-                        changeTxOut.scriptPubKey = GetScriptForDestination(mtx.contractAddrs[0]);
-						mtx.vout.push_back(changeTxOut);
-					}
-					break;
-				}
-			}
-
-			// output
-			for (size_t i = 0; i < sls->outputs.size(); ++i) {
-				mtx.vout.push_back(sls->outputs[i]);
-			}
-		}
-        
-        txNew.contractAddrs.assign(wtxNew.contractAddrs.begin(), wtxNew.contractAddrs.end());
 
 		//generate contract address
 		if (txNew.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)

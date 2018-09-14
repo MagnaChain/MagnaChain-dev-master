@@ -183,7 +183,7 @@ bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
 		if (!Solver(prevScript, whichType, vSolutions))
 		{
 			if (tx.IsSmartContract()) {
-				CellKeyID kDest;
+				CellContractID kDest;
 				if (!prevScript.GetContractAddr(kDest))
 					return false;
 				if (kDest != tx.contractAddrs[0])
