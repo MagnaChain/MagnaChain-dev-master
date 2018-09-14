@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-class CellKeyID;
+class CellContractID;
 // Maximum number of bytes pushable to the stack
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520;
 
@@ -679,7 +679,7 @@ public:
         shrink_to_fit();
     }
 
-	bool GetContractAddr(CellKeyID& keyDest) const;
+	bool GetContractAddr(CellContractID& contractId) const;
 };
 
 struct CScriptWitness

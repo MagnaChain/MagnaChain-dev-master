@@ -368,21 +368,28 @@ bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls)
 		return true;
 
 	CellAmount totalAmount = 0;
+    CellScript scriptPubKey = GetScriptForDestination(tx.contractAddrs[0]);
 	for (size_t i = 0; i < sls->inputs.size(); ++i) {
 		Coin& coin = sls->inputs[i].first;
         CellOutPoint& outPoint = sls->inputs[i].second;
         totalAmount += coin.out.nValue;
 
-		CellTxIn kIn;
-		kIn.prevout = outPoint;
-		if (!tx.IsExistVin(kIn))
-			return false;
+        bool found = false;
+        for (int j = 0; j < tx.vin.size(); ++j) {
+            if (tx.vin[j].prevout == outPoint) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+            return false;
 
 		if (totalAmount >= sls->sendAmount) {
 			if (totalAmount > sls->sendAmount) {
                 CellTxOut changeOut;
                 changeOut.nValue = totalAmount - sls->sendAmount;
-                changeOut.scriptPubKey = GetScriptForDestination(tx.contractAddrs[0]);
+                changeOut.scriptPubKey = scriptPubKey;
 				if (!tx.IsExistVout(changeOut))
 					return false;
 			}
@@ -1578,7 +1585,7 @@ bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const Ce
                     // no need to verify signature
                 }else if (!check()) {
                     if (tx.IsSmartContract()) {
-                        CellKeyID kDestKey;
+                        CellContractID kDestKey;
                         if (!scriptPubKey.GetContractAddr(kDestKey)) {
                             return state.DoS(0, false, REJECT_NONSTANDARD, "GetContractAddr fail");
                         }
