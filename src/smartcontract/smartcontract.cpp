@@ -644,7 +644,7 @@ int SendCoins(lua_State* L)
             }
         }
         else {
-            const CellContractID& kAddr = boost::get<CellContractID>(sls->contractAddrs[sls->contractAddrs.size() - 1].Get());
+            const CellContractID& kAddr = boost::get<CellContractID>(sls->contractAddrs[0].Get());
             CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
             CellLinkAddress addr(kAddr);
             //LogPrintf("Send contract address %s\n", addr.ToString());

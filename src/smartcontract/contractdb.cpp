@@ -103,7 +103,10 @@ ContractDataDB::ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMe
 
 void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
 {
-    contractDB->threadId2SmartLuaState.insert(std::make_pair(boost::this_thread::get_id(), new SmartLuaState()));
+    {
+        LOCK(contractDB->cs_cache);
+        contractDB->threadId2SmartLuaState.insert(std::make_pair(boost::this_thread::get_id(), new SmartLuaState()));
+    }
     boost::this_thread::sleep(boost::posix_time::milliseconds(200));
 }
 
@@ -111,10 +114,8 @@ void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contract
     int offset, int size, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrefBlockIndex, bool* interrupt)
 {
     auto it = contractDB->threadId2SmartLuaState.find(boost::this_thread::get_id());
-    if (it == contractDB->threadId2SmartLuaState.end()) {
-        LogPrintf("%s sls == nullptr\n", __FUNCTION__);
-        return;
-    }
+    if (it == contractDB->threadId2SmartLuaState.end())
+        throw std::runtime_error(strprintf("%s sls == nullptr\n", __FUNCTION__));
 
     if (contractDB != nullptr)
         contractDB->ExecutiveTransactionContract(it->second, pblock, offset, size, blockHeight, pContractContext, pPrefBlockIndex, interrupt);
@@ -123,36 +124,41 @@ void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contract
 void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock>& pBlock,
     int offset, int size, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrefBlockIndex, bool* interrupt)
 {
-    for (int i = offset; i < offset + size; ++i) {
-        if (*interrupt)
-            break;
+    try {
+        for (int i = offset; i < offset + size; ++i) {
+            if (*interrupt)
+                break;
 
-        const CellTransactionRef& tx = pBlock->vtx[i];
-        if (tx->IsNull() || !tx->IsSmartContract())
-            continue;
+            const CellTransactionRef& tx = pBlock->vtx[i];
+            if (tx->IsNull() || !tx->IsSmartContract())
+                continue;
 
-        CellContractID contractId = tx->contractAddrs[0];
-        CellLinkAddress contractAddrs(contractId);
-        CellLinkAddress senderAddr(tx->contractSender.GetID());
-        CellAmount amount = GetTxContractOut(*tx);
+            CellContractID contractId = tx->contractAddrs[0];
+            CellLinkAddress contractAddrs(contractId);
+            CellLinkAddress senderAddr(tx->contractSender.GetID());
+            CellAmount amount = GetTxContractOut(*tx);
 
-        if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-            std::string rawCode = tx->contractCode;
-            sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            if (!PublishContract(sls, contractAddrs, rawCode))
-                *interrupt = true;
+            if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
+                std::string rawCode = tx->contractCode;
+                sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
+                if (!PublishContract(sls, contractAddrs, rawCode))
+                    *interrupt = true;
+            }
+            else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+                std::string strFuncName = tx->contractFun;
+                UniValue args;
+                args.read(tx->contractParams);
+
+                UniValue ret;
+                long maxCallNum = MAX_CONTRACT_CALL;
+                sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
+                if (!CallContract(sls, contractAddrs, strFuncName, args, maxCallNum, ret))
+                    *interrupt = true;
+            }
         }
-        else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
-            std::string strFuncName = tx->contractFun;
-            UniValue args;
-            args.read(tx->contractParams);
-
-            UniValue ret;
-            long maxCallNum = MAX_CONTRACT_CALL;
-            sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            if (!CallContract(sls, contractAddrs, strFuncName, args, maxCallNum, ret))
-                *interrupt = true;
-        }
+    }
+    catch (...) {
+        *interrupt = true;
     }
 }
 
