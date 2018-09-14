@@ -580,6 +580,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             }
         }
 
+        // OP: can we move to ancestors?
         CellTransactionRef iterTx = iter->GetSharedTx();
         if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
             std::vector<uint256> ancestors = branchDataMemCache.GetAncestorsBlocksHash(*iterTx);
@@ -606,6 +607,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             if (!UpdateBranchTx(tmpMulTx))
             {
                 ++mi;
+                continue;//next
             }
             else
             {

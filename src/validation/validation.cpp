@@ -1459,9 +1459,9 @@ void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, CellTxUn
         return;
 
     // mark inputs spent
-    if (tx.IsBranchChainTransStep2())
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
     {
-
+        // no inputs
     }
     else if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
@@ -1790,9 +1790,9 @@ static DisconnectResult DisconnectBlock(const CellBlock& block, const CellBlockI
         }
 
         // restore inputs
-        if (tx.IsBranchChainTransStep2())
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
         {
-            //TODO: step2 no valid input
+            //OP : send to branch step2 no valid input
         }
         else if (isBranch2ndBlockTx)
         {
@@ -2081,9 +2081,9 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
 
         nInputs += tx.vin.size();
 
-        if (tx.IsBranchChainTransStep2())
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
         {
-            //TODO:some check
+            //OP: send to branch no valid input,some check
         }
         else if (isBranch2ndBlockTx)
         {

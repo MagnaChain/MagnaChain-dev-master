@@ -635,7 +635,7 @@ void CellWallet::AddToSpends(const uint256& wtxid)
     CellWalletTx& thisTx = mapWallet[wtxid];
     if (thisTx.IsCoinBase()) // Coinbases don't spend anything!
         return;
-	if (thisTx.tx->IsBranchChainTransStep2())
+	if (thisTx.tx->IsBranchChainTransStep2() && thisTx.tx->fromBranchId == CellBaseChainParams::MAIN)
 		return;
 
     for (const CellTxIn& txin : thisTx.tx->vin)
