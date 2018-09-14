@@ -319,7 +319,7 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
 
     // 设置相关参数
     lua_pushstring(L, contractAddr.c_str());
-    lua_setfield(L, -2, "thisAddress"); //合约本身的地址
+    lua_setfield(L, -2, "thisaddress"); //合约本身的地址
     lua_pushstring(L, origin.c_str());
     lua_setfield(L, -2, "origin"); // 原始发起调用合约者公钥地址
     lua_pushstring(L, sender.c_str());
@@ -327,9 +327,9 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pushnumber(L, payment);
     lua_setfield(L, -2, "payment"); //msg.value: number of wei sent with the message
     lua_pushnumber(L, blockTime);
-    lua_setfield(L, -2, "blocktimestamp");
+    lua_setfield(L, -2, "timestamp");
     lua_pushnumber(L, blockHeight);
-    lua_setfield(L, -2, "blocknumber");
+    lua_setfield(L, -2, "blockheight");
     lua_pop(L, 1);
 }
 
