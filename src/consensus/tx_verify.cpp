@@ -311,7 +311,10 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 
             // best chain check
             if (!pBranchDb->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
-                return state.DoS(0, false, REJECT_INVALID, "Branch-tx-not in best chain");
+                return state.DoS(1, false, REJECT_INVALID, "Branch-tx-not in best chain");
+            int minedHeight = pBranchDb->GetBranchBlockMinedHeight(frombranchid, tx.pPMT->blockhash);
+            if (minedHeight < BRANCH_CHAIN_MATURITY)
+                return state.DoS(1, false, REJECT_INVALID, strprintf("branch-tx minedHeight %d is lessthan %d", minedHeight, BRANCH_CHAIN_MATURITY));
         }
     }
     if (tx.IsBranchChainTransStep2())
@@ -337,7 +340,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
                 return state.DoS(100, false, REJECT_INVALID, "Invalid mortgage coin out,from txid");
             }
         }
-        if (CheckBranchTransaction(tx, state, fVerifingDB, pFromTx) == false) {//TODO: this call may be optimization point
+        if (CheckBranchTransaction(tx, state, fVerifingDB, pFromTx) == false) {//OP: this call may be optimization point
             return false;
         }
         //IsMortgage child

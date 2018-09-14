@@ -107,6 +107,15 @@ bool BranchData::IsBlockInBestChain(const uint256& blockhash)
     return vecChainActive[height] == blockhash;
 }
 
+int BranchData::GetBlockMinedHeight(const uint256& blockhash)
+{
+    if (!IsBlockInBestChain(blockhash)){
+        return 0;
+    }
+    uint32_t height = mapHeads[blockhash].nHeight;
+    return Height() - height;
+}
+
 void BranchData::BuildBestChain(BranchBlockData& blockdata)
 {
     const uint256 newTipHash = blockdata.header.GetHash();
@@ -468,4 +477,14 @@ bool BranchDb::IsBlockInActiveChain(const uint256& branchHash, const uint256& bl
 
     BranchData& branchdata = mapBranchsData[branchHash];
     return branchdata.IsBlockInBestChain(blockHash);
+}
+
+int BranchDb::GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash)
+{
+    if (!HasBranchData(branchHash))
+        return 0;
+
+    BranchData& branchdata = mapBranchsData[branchHash];
+    
+    return 0;
 }

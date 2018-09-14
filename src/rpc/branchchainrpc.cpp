@@ -271,10 +271,9 @@ UniValue getbranchchaininfo(const JSONRPCRequest& request)
     if (!Params().IsMainChain())
         throw std::runtime_error("Branch chain has not any branch chain info.");
 
-    std::string branchid = request.params[0].get_str();
-    uint256 hash;
-    hash.SetHex(branchid);
-
+    //std::string branchid = request.params[0].get_str();
+    uint256 hash = ParseHashV(request.params[0], "parameter 1");
+    
     CellTransactionRef tx;
     CellBlockIndex* pblockindex = nullptr;
     uint32_t tx_vtx_index = 0;
@@ -784,7 +783,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     uint256 branchHash = ParseHashV(request.params[0], "parameter 1");
     std::string strBranchid = request.params[0].get_str();
 
-    {// branch chain validation check
+    // branch chain validation check
         CellTransactionRef txBranch;
         CellBlockIndex* pblockindex = nullptr;
         uint32_t tx_vtx_index = 0;
@@ -800,8 +799,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
         if (confirmations < BRANCH_CHAIN_MATURITY) {
             throw JSONRPCError(RPC_VERIFY_ERROR, "Invalid branch transaction,not get enough confirmations");
         }
-    }
-
+    
     CellAmount nAmount = AmountFromValue(request.params[1]);
     if (!MoneyRange(nAmount))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
@@ -863,9 +861,9 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     CellRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
     vecSend.push_back(recipient);// vout 0 是抵押币
     //侧链手续费
-    CellScript scriptNull;
-    scriptNull << OP_TRANS_BRANCH << ToByteVector(branchHash);
-    vecSend.push_back({scriptNull, fee2, fSubtractFeeFromAmount}); // vout 1 是侧链手续费
+    CellScript scriptBranchFee;
+    scriptBranchFee << OP_TRANS_BRANCH << ToByteVector(branchHash);
+    vecSend.push_back({scriptBranchFee, fee2, fSubtractFeeFromAmount}); // vout 1 是侧链手续费
 
     int nChangePosRet = vecSend.size(); // vout end-1 找零, fixed change vout pos 
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {

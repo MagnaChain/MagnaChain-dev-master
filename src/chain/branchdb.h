@@ -83,6 +83,7 @@ public:
     uint256 TipHash(void);
     uint32_t Height(void);
     bool IsBlockInBestChain(const uint256& blockhash);
+    int GetBlockMinedHeight(const uint256& blockhash);
 };
 
 typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;
@@ -139,6 +140,7 @@ public:
     }
     BranchData GetBranchData(const uint256& branchHash);
     bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash);
+    int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash);
 private:
     bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
 

@@ -3417,9 +3417,11 @@ CellAmount CellWallet::GetMinimumFee(unsigned int nTxBytes, const CellCoinContro
 	if (tx != nullptr)
 	{
 		// fee of branch chain transaction 
-        if (tx->IsPregnantTx() || tx->IsBranchCreate() || tx->IsProve() || tx->IsReport())
-        {
+        if (tx->IsPregnantTx() || tx->IsBranchCreate() || tx->IsProve() || tx->IsReport()){
             fee_needed *= 10;
+        }
+        if (tx->IsBranchChainTransStep2()){
+            fee_needed *= 20;
         }
 
 		// 根据执行的指令数、代码大小以及存盘数据变化量计算交易费用
