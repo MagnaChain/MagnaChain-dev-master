@@ -137,10 +137,7 @@ public:
     {
         return mapBranchsData.count(branchHash) > 0;
     }
-    BranchData GetBranchData(const uint256& branchHash)
-    {
-        return mapBranchsData[branchHash];
-    }
+    BranchData GetBranchData(const uint256& branchHash);
     bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash);
 private:
     bool WriteModifyToDB(const std::set<uint256>& modifyBranch);

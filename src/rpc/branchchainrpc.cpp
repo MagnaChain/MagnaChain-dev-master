@@ -44,7 +44,7 @@ const CellAmount CreateBranchChainMortgage = 20000*COIN;// 创建支链抵押初
 const uint32_t MaxPowForCreateChainMortgage = 16; // (2^16) * CreateBranchChainMortgage = 655360000 COIN
 
 const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
-const uint32_t BRANCH_CHAIN_MATURITY = 2000;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
+const uint32_t BRANCH_CHAIN_MATURITY = 1;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
 const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // 抵押挖矿最小值
 const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time)
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
@@ -162,7 +162,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
                 "\nArguments:\n"
                 "1. \"vseeds\"             (string, required) The vSeeds address, eg \"vseeds1.com;vseeds2.com;vseeds3.com\" \n"
                 "2. \"seedspec6\"          (string, required) The SeedSpec6 a 16-byte IPv6 address and a port, eg \"00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333\" \n"
-                "3. \"mortgageaddress\"     (string, required) The CellLink Address, use to receive mortgage in branch chain\n"
+                "3. \"mortgageaddress\"     (string, required) The CellLink Address, use to receive mortgage in main chain\n"
                 "\nReturns the hash of the created branch chain.\n"
                 "\nResult:\n"
                 "{\n"
@@ -390,6 +390,10 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     return "ok";
 }
 
+/**
+ * 跨链交易
+ * 
+ */ 
 UniValue sendtobranchchain(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -415,18 +419,17 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    std::string toBranchid = request.params[0].get_str();
-    if (Params().GetBranchId() == toBranchid)
+    std::string strToBranchid = request.params[0].get_str();
+    if (Params().GetBranchId() == strToBranchid)
     {
         throw JSONRPCError(RPC_WALLET_ERROR, "can not send to this chain.");
     }
 
-    uint256 branchhash;
-    branchhash.SetHex(toBranchid);
-
+    uint256 tobranchhash;
     // only allow branch-chain to main-chain, main-chain to branch-chain, not allow branch to branch
-    if (toBranchid != CellBaseChainParams::MAIN)
+    if (strToBranchid != CellBaseChainParams::MAIN)
     {
+        tobranchhash = ParseHashV(request.params[0], "parameter 1");
         if (!Params().IsMainChain())
         {
             throw JSONRPCError(RPC_WALLET_ERROR, "can not trans from branch-chain to branch-chain");
@@ -438,7 +441,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
         CellBlockIndex* pblockindex = nullptr;
         uint32_t tx_vtx_index = 0;
         CellBlock block;
-        if (!GetTransactionDataByTxInfo(branchhash, txBranch, &pblockindex, tx_vtx_index, block))
+        if (!GetTransactionDataByTxInfo(tobranchhash, txBranch, &pblockindex, tx_vtx_index, block))
             throw JSONRPCError(RPC_VERIFY_ERROR, "GetTransactDataByTxInfo fail");
 
         if (txBranch->IsBranchCreate() == false) {
@@ -477,7 +480,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
 
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::TRANS_BRANCH_VERSION_S1;
-    wtx.sendToBranchid = toBranchid;
+    wtx.sendToBranchid = strToBranchid;
 
     //make branch transaction output
     CellAmount fee2 = 0;
@@ -490,13 +493,11 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
 
     CellScript scriptPubKey;
-    if (!Params().IsMainChain())
-    {
-        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//burn the output, trans output to /dev/null 
+    if (strToBranchid != CellBaseChainParams::MAIN){
+        scriptPubKey << OP_TRANS_BRANCH << ToByteVector(tobranchhash);
     }
-    else
-    {
-        scriptPubKey << OP_TRANS_BRANCH << ToByteVector(Hash(toBranchid.begin(), toBranchid.end()));
+    else{
+        scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//burn the output, trans output to /dev/null 
     }
 
     EnsureWalletIsUnlocked(pwallet);
@@ -554,7 +555,6 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
                 + HelpExampleCli("makebranchtransaction", "93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e")
                 + HelpExampleRpc("makebranchtransaction", "93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e")
                 );
-    LOCK(cs_main);
 
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
@@ -625,6 +625,8 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, mtxTrans2.fromTx, 0, tx1 };
     CellTransactionRef tx2 = MakeTransactionRef(std::move(mtxTrans2));
 
+    LOCK(cs_main);
+
     const CellChainParams& chainparams = Params();
     CellValidationState state;
     CellAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
@@ -677,7 +679,7 @@ UniValue getbranchchaintransaction(const JSONRPCRequest& request)
     uint32_t tx_vtx_index = 0;
     CellBlock block;
 
-    LOCK(cs_main);
+    //LOCK(cs_main);
     if(!GetTransactionDataByTxInfo(txhash, tx, &pblockindex, tx_vtx_index, block))
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("GetTransactDataByTxInfo fail"));
 
@@ -719,7 +721,7 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
     uint32_t tx_vtx_index = 0;
     CellBlock block;
 
-    LOCK(cs_main);
+    //LOCK(cs_main);
     if (!GetTransactionDataByTxInfo(txhash, tx, &pblockindex, tx_vtx_index, block))
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("GetTransactDataByTxInfo fail"));
 
@@ -779,9 +781,9 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
+    uint256 branchHash = ParseHashV(request.params[0], "parameter 1");
     std::string strBranchid = request.params[0].get_str();
-    uint256 branchHash;
-    branchHash.SetHex(strBranchid);
+
     {// branch chain validation check
         CellTransactionRef txBranch;
         CellBlockIndex* pblockindex = nullptr;
@@ -862,7 +864,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     vecSend.push_back(recipient);// vout 0 是抵押币
     //侧链手续费
     CellScript scriptNull;
-    scriptNull << OP_RETURN << OP_TRANS_BRANCH;
+    scriptNull << OP_TRANS_BRANCH << ToByteVector(branchHash);
     vecSend.push_back({scriptNull, fee2, fSubtractFeeFromAmount}); // vout 1 是侧链手续费
 
     int nChangePosRet = vecSend.size(); // vout end-1 找零, fixed change vout pos 

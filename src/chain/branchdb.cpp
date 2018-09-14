@@ -343,7 +343,7 @@ void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
     for (const uint256& branchHash : modifyBranch)
     {
         BranchData& bData = mapBranchsData[branchHash];
-        bData.RecoverTip(pblock->hashPrevBlock);// »Ö¸´Ç°Ò»¸ö¿éµÄ
+        bData.RecoverTip(pblock->hashPrevBlock);// æ¢å¤å‰ä¸€ä¸ªå—çš„
     }
 
     // after scan finish, save to db
@@ -452,6 +452,13 @@ void BranchDb::LoadData()
             }
         }
     }
+}
+
+BranchData BranchDb::GetBranchData(const uint256& branchHash)
+{
+    BranchData& branchdata = mapBranchsData[branchHash];
+    branchdata.InitBranchGenesisBlockData(branchHash);
+    return branchdata;
 }
 
 bool BranchDb::IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash)

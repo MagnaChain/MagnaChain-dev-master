@@ -187,11 +187,11 @@ enum opcodetype
 	OP_CONTRACT = 0xc0,
 
 	OP_CREATE_BRANCH = 0xd0,
-	OP_TRANS_BRANCH = 0xd1, // ¿çÁ´½»Ò×
+	OP_TRANS_BRANCH = 0xd1,
 	
-	OP_MINE_BRANCH_MORTGAGE = 0xd2, // Ö÷Á´µÖÑºÍÚ¿ó
-    OP_MINE_BRANCH_COIN = 0xd3, // ²àÁ´ÍÚ¿ó±Ò
-    OP_REDEEM_MORTGAGE = 0xd4, // Êê»ØµÖÑº
+	OP_MINE_BRANCH_MORTGAGE = 0xd2, //
+    OP_MINE_BRANCH_COIN = 0xd3, //
+    OP_REDEEM_MORTGAGE = 0xd4, // 
 
     // template matching params
     OP_HASH256_DATA = 0xf4,

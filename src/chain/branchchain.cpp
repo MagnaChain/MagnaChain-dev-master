@@ -377,17 +377,23 @@ CellAmount GetBranchChainTransOut(const CellTransaction& branchTransStep1Tx)
 		std::vector<unsigned char> vch;
 		CellScript::const_iterator pc1 = txout.scriptPubKey.begin();
 		txout.scriptPubKey.GetOp(pc1, opcode, vch);
-		if (opcode == OP_RETURN)
-		{
-			txout.scriptPubKey.GetOp(pc1, opcode, vch);
-			if (opcode == OP_TRANS_BRANCH)
-			{ 
-				nAmount += txout.nValue;
-			}
-		}
-        else if(opcode == OP_TRANS_BRANCH)
-        {
-            nAmount += txout.nValue;
+        if (branchTransStep1Tx.sendToBranchid != CellBaseChainParams::MAIN){
+            if (opcode == OP_TRANS_BRANCH){
+                if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)){
+                    uint256 branchhash(vch);
+                    if (branchhash.ToString() == branchTransStep1Tx.sendToBranchid){ //branch id check
+                        nAmount += txout.nValue;
+                    }
+                }
+            }
+        }
+        else{
+            if (opcode == OP_RETURN){
+                txout.scriptPubKey.GetOp(pc1, opcode, vch);
+                if (opcode == OP_TRANS_BRANCH){
+                    nAmount += txout.nValue;
+                }
+            }
         }
 	}
 	return nAmount;
@@ -403,17 +409,16 @@ CellAmount GetMortgageMineOut(const CellTransaction& tx, bool bWithBranchOut)
 		opcodetype opcode;
 		CellScript::const_iterator pc1 = txout.scriptPubKey.begin();
 		txout.scriptPubKey.GetOp(pc1, opcode, vch);
-		if (opcode == OP_MINE_BRANCH_MORTGAGE)
-		{
+		if (opcode == OP_MINE_BRANCH_MORTGAGE){
             //script的其他部分判断
 			nAmount += txout.nValue;
 		}
-        if (bWithBranchOut && opcode == OP_RETURN)
-        {
-            txout.scriptPubKey.GetOp(pc1, opcode, vch);
-            if (opcode == OP_TRANS_BRANCH)
-            {
-                nAmount += txout.nValue;
+        if (bWithBranchOut && opcode == OP_TRANS_BRANCH){
+            if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)){
+                uint256 branchhash(vch);
+                if (branchhash.ToString() == tx.sendToBranchid){
+                    nAmount += txout.nValue;
+                }
             }
         }
 	}
@@ -987,17 +992,10 @@ bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& stat
     if (!CheckBlockHeaderSignature(blockheader))
         return state.DoS(100, false, REJECT_INVALID, "Submit branch chain block header sig check fail");
 
-    //
     if (pBranchCache && pBranchCache->HasInCache(tx))
-        return state.DoS(0, false, REJECT_INVALID, "");
+        return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
 
     BranchData branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
-    branchdata.InitBranchGenesisBlockData(tx.pBranchBlockData->branchID);
-    //has in db
-    if (branchdata.mapHeads.count(blockheader.GetHash())){
-    //    return true;
-        return state.DoS(0, false, REJECT_INVALID, "blockheader info has include before");//防止重复
-    }
     //ContextualCheckBlockHeader
     const CellChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
     if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache))
@@ -1062,6 +1060,28 @@ bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& b
     return true;
 }
 
+// 调用地方 主要还是follow CheckInputs 
+bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache)
+{
+    if (tx.IsSyncBranchInfo()){
+        if (pBranchCache && pBranchCache->HasInCache(tx))
+            return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
+
+        BranchData branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
+        CellBlockHeader blockheader;
+        tx.pBranchBlockData->GetBlockHeader(blockheader);
+        if (branchdata.mapHeads.count(blockheader.GetHash())) {
+            return state.DoS(0, false, REJECT_DUPLICATE, "blockheader info has include before");//防止重复
+        }
+    }
+
+    if (tx.IsBranchChainTransStep2()) {
+        if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, nullptr)) {
+            return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
+        }
+    }
+    return true;
+}
 //
 bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex)
 {

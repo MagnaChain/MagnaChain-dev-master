@@ -973,6 +973,10 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             scriptVerifyFlags = gArgs.GetArg("-promiscuousmempoolflags", scriptVerifyFlags);
         }
 
+        if (!CheckBranchDuplicateTx(tx, state, &branchDataMemCache)){
+            return false;
+        }
+
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
         PrecomputedTransactionData txdata(tx);
@@ -1081,7 +1085,6 @@ static bool AcceptToMemoryPoolWithTime(const CellChainParams& chainparams, CellT
                 pcoinsTip->Uncache(hashTx);
         }
         else{//accept ok
-            //²àÁ´Í·ÐÅÏ¢½»Ò×
             if (tx->IsSyncBranchInfo()){
                 branchDataMemCache.AddToCache(*tx);
             }
@@ -1463,9 +1466,9 @@ void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, CellTxUn
         return;
 
     // mark inputs spent
-    if (tx.IsBranchChainTransStep2())
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
     {
-
+        // no inputs
     }
     else if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
@@ -1794,9 +1797,9 @@ static DisconnectResult DisconnectBlock(const CellBlock& block, const CellBlockI
         }
 
         // restore inputs
-        if (tx.IsBranchChainTransStep2())
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
         {
-            //TODO: step2 no valid input
+            //OP : send to branch step2 no valid input
         }
         else if (isBranch2ndBlockTx)
         {
@@ -1969,7 +1972,7 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
     int64_t nTimeStart = GetTimeMicros();
 
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), !fJustCheck, !fJustCheck, false, pBranchCache))
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), !fJustCheck, !fJustCheck, false))
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
 
     // verify that the view's current state corresponds to the previous block
@@ -2085,9 +2088,9 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
 
         nInputs += tx.vin.size();
 
-        if (tx.IsBranchChainTransStep2())
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
         {
-            //TODO:some check
+            //OP: send to branch no valid input,some check
         }
         else if (isBranch2ndBlockTx)
         {
@@ -2118,6 +2121,13 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
                         REJECT_INVALID, "bad-txns-nonfinal");
             }
         }
+
+        //duplicate check and add to cache
+        if (!CheckBranchDuplicateTx(tx, state, pBranchCache)) {
+            return false;
+        }
+        if (tx.IsSyncBranchInfo())
+            pBranchCache->AddToCache(tx);
 
         // GetTransactionSigOpCost counts 3 types of sigops:
         // * legacy (always)
@@ -3292,7 +3302,7 @@ static bool CheckBlockHeader(const CellBlockHeader& block, CellValidationState& 
     return true;
 }
 
-bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, bool fCheckMerkleRoot, bool fVerifingDB, BranchCache *pBranchCache)
+bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consensus::Params& consensusParams, bool fCheckPOW, bool fCheckMerkleRoot, bool fVerifingDB)
 {
     // These are checks that are independent of context.
 
@@ -3347,7 +3357,7 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
                 return state.DoS(100, false, REJECT_INVALID, "bad-bct-multiple", false, "more than one branch create transaction");
         }
         
-        //²àÁ´µÚ¶þ¸ö¿é,staketxµÄÌØÊâ´¦Àí
+        //侧链第二个块,staketx的特殊处理 
         const bool isBranch2ndBlockTx = (i == 1 && pPreBlockIndex && pPreBlockIndex->nHeight == 0 && !Params().IsMainChain());
         if (isBranch2ndBlockTx)
         {
@@ -3371,13 +3381,17 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
             return state.DoS(100, false, REJECT_INVALID, "bad-stock-trans", false, "block pubkey mismatch");
     }
 
+    BranchCache tempcache;
     // Check transactions
     for (const auto& tx : block.vtx) {
-        if (!CheckTransaction(*tx, state, false, &block, nullptr, fVerifingDB, pBranchCache))
+        if (!CheckTransaction(*tx, state, false, &block, nullptr, fVerifingDB, &tempcache))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                     strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
-        if (pBranchCache && tx->IsSyncBranchInfo()) {
-            pBranchCache->AddToCache(*tx);
+        if (tx->IsSyncBranchInfo()) {
+            if (tempcache.HasInCache(*tx)){
+                return state.Invalid(false, REJECT_INVALID, "duplicate sync branch info in cache.");
+            }
+            tempcache.AddToCache(*tx);
         }
     }
 
@@ -3669,7 +3683,7 @@ bool ProcessNewBlockHeaders(const std::vector<CellBlockHeader>& headers, CellVal
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
 static bool AcceptBlock(const std::shared_ptr<const CellBlock>& pblock, CellValidationState& state, const CellChainParams& chainparams, CellBlockIndex** ppindex, 
-        bool fRequested, const CellDiskBlockPos* dbp, bool* fNewBlock, BranchCache* pBranchCache = nullptr)
+        bool fRequested, const CellDiskBlockPos* dbp, bool* fNewBlock)
 {
     const CellBlock& block = *pblock;
 
@@ -3718,7 +3732,7 @@ static bool AcceptBlock(const std::shared_ptr<const CellBlock>& pblock, CellVali
     }
     if (fNewBlock) *fNewBlock = true;
 
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), true, true, false, pBranchCache) ||
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), true, true, false) ||
             !ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -3801,11 +3815,7 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
         CellValidationState state;
         // Ensure that CheckBlock() passes before calling AcceptBlock, as
         // belt-and-suspenders.
-        bool ret;
-        {
-            BranchCache tempcache;
-            ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), true, true, false, &tempcache);
-        }
+        bool ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), true, true, false);
         BlockMap::iterator bi = mapBlockIndex.find(pblock->hashPrevBlock);
         if (bi == mapBlockIndex.end())
             return error("%s: find prev block failed", __func__);
@@ -3817,8 +3827,7 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
 
         if (ret) {
             // Store to disk
-            BranchCache tempcache;
-            ret = AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock, &tempcache);
+            ret = AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock);
         }
         CheckBlockIndex(chainparams.GetConsensus());
         if (!ret) {
@@ -3858,8 +3867,7 @@ bool TestBlockValidity(CellValidationState& state, const CellChainParams& chainp
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev, GetAdjustedTime()))
         return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
-    BranchCache tempCache;
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot, false, &tempCache))
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), fCheckPOW, fCheckMerkleRoot, false))
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
     if (!ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
