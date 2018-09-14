@@ -16,6 +16,20 @@
 #include <boost/test/unit_test.hpp>
 #include "validation/validation.h"
 
+void AddBlockInfoTx(CellMutableTransaction &mtx, const uint256 &branchid, CellBlockHeader &header, const uint32_t &nbits, uint32_t &preblockH, uint32_t &t, CellBranchBlockInfo &firstBlock, BranchDb &branchdb, uint256 &temphash, const size_t &txindex, std::set<uint256> &modifyBranch)
+{
+    mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
+    mtx.pBranchBlockData->branchID = branchid;
+
+    mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
+    mtx.pBranchBlockData->nBits = nbits;
+    mtx.pBranchBlockData->blockHeight = ++preblockH;
+    mtx.pBranchBlockData->nTime = t++;
+    mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
+    CellTransactionRef ptx = MakeTransactionRef(mtx);
+    branchdb.AddBlockInfoTxData(ptx, temphash, txindex, modifyBranch);
+}
+
 BOOST_FIXTURE_TEST_SUITE(branchdb_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(branchdb_chainactive)
@@ -46,11 +60,12 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
     mtx.pBranchBlockData.reset(pFirstBlock);
     
     size_t txindex = 2;
-    branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+    CellTransactionRef ptx = MakeTransactionRef(mtx);
+    branchdb.AddBlockInfoTxData(ptx, temphash, txindex, modifyBranch);
     
     CellBlockHeader lastchainheader;
     uint32_t lastchaintipheight;
-    // 普通没发生分叉
+    // 鏅�氭病鍙戠敓鍒嗗弶
     {//chain 1
         uint32_t preblockH = firstBlock.blockHeight;
         CellBlockHeader header;
@@ -58,29 +73,13 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
 
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
 
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
@@ -91,47 +90,23 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == preblockH);
     }
 
-    {//chain 2 分叉来了，比前面多一个块
+    {//chain 2 鍒嗗弶鏉ヤ簡锛屾瘮鍓嶉潰澶氫竴涓潡
         uint32_t preblockH = firstBlock.blockHeight;
         CellBlockHeader header;
         firstBlock.GetBlockHeader(header);
 
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) != header.GetHash());
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) != header.GetHash());
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
@@ -143,41 +118,17 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
         CellBlockHeader header = lastchainheader;
 
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) != header.GetHash());
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
         
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
         //-----------------------------------
-        mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
-        mtx.pBranchBlockData->branchID = branchid;
-
-        mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
-        mtx.pBranchBlockData->nBits = nbits;
-        mtx.pBranchBlockData->blockHeight = ++preblockH;
-        mtx.pBranchBlockData->nTime = t++;
-        mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-        branchdb.AddBlockInfoTxData(MakeTransactionRef(mtx), temphash, txindex, modifyBranch);
+        AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
 
         mtx.pBranchBlockData->GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
