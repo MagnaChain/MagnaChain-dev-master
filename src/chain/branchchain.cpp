@@ -995,7 +995,7 @@ bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& stat
     if (pBranchCache && pBranchCache->HasInCache(tx))
         return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
 
-    BranchData& branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
+    BranchData branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
     //ContextualCheckBlockHeader
     const CellChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
     if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache))
@@ -1067,7 +1067,7 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
         if (pBranchCache && pBranchCache->HasInCache(tx))
             return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
 
-        BranchData& branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
+        BranchData branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
         CellBlockHeader blockheader;
         tx.pBranchBlockData->GetBlockHeader(blockheader);
         if (branchdata.mapHeads.count(blockheader.GetHash())) {
