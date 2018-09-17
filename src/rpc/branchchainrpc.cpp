@@ -1299,7 +1299,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     if (Params().IsMainChain())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
-    uint256 blockHash = ParseHashV(request.params[0], "param 0");
+    uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (!mapBlockIndex.count(blockHash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
     CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
@@ -1318,12 +1318,13 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     ReportData* pReportData = new ReportData;
     mtx.pReportData.reset(pReportData);
+    pReportData->reporttype = ReportData::REPORT_TX;
     pReportData->reportedTxHash = txHash;
     pReportData->reportedBranchId = Params().GetBranchHash(); 
     pReportData->reportedBlockHash = block.GetHash();
 
     CellRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig("main", branchrpccfg) == false)
+    if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "invalid rpc config");
 
     const std::string strMethod = "handlebranchreport";
