@@ -150,7 +150,7 @@ public:
         consensus.BIP66Height = 0; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 		consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-        consensus.nPowTargetSpacing = 10;// * 60 * 60;
+        consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", MAIN_CHAIN_POW_TARGET_SPACING);
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
 		consensus.nRuleChangeActivationThreshold = 10;// 1916; // 95% of 2016
@@ -248,7 +248,7 @@ public:
         consensus.BIP66Height = 0; // 000000002104c8c45e99a8853285a3b592602a3ccde2b832481da85e9e4ba182
         consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-		consensus.nPowTargetSpacing = 15;//2 *60;
+		consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", TEST_CHAIN_POW_TARGET_SPACING);
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 10; // 75% for testchains
@@ -333,7 +333,7 @@ public:
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in rpc activation tests)
         consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-		consensus.nPowTargetSpacing = 2;// 10 * 60;
+		consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", TEST_CHAIN_POW_TARGET_SPACING);
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
         consensus.nRuleChangeActivationThreshold = 10; // 75% for testchains
@@ -402,7 +402,7 @@ public:
 		consensus.BIP66Height = 0; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 		consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 		consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-		consensus.nPowTargetSpacing = 8;// * 60;//10 * 60;
+		consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", BRANCH_CHAIN_POW_TARGET_SPACING);
 		consensus.fPowAllowMinDifficultyBlocks = false;
 		consensus.fPowNoRetargeting = false;
 		consensus.nRuleChangeActivationThreshold = 10;// 1916; // 95% of 2016
