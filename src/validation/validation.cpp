@@ -5132,6 +5132,10 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
     if (!CheckTransaction(tx, state))
         return false;
 
+    if (!CheckBranchDuplicateTx(tx, state, &branchDataMemCache)) {
+        return false;
+    }
+
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
     if (!gArgs.GetBoolArg("-prematurewitness", false) && tx.HasWitness() && !witnessEnabled) {
         return state.DoS(0, false, REJECT_NONSTANDARD, "no-witness-yet", true);
