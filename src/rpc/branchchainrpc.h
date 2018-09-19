@@ -5,11 +5,15 @@
 #define BRANCHCHAIN_PRC_H
 
 #include "misc/amount.h"
+#include "coding/uint256.h"
 
 class CellBlock;
 class CellBlockIndex;
+class CellTransaction;
 
 CellAmount GetCreateBranchMortgage(const CellBlock* pBlock=nullptr, const CellBlockIndex* pBlockIndex=nullptr);
+
+uint256 GetBranchTxHash(const CellTransaction& tx);
 
 extern const CellAmount CreateBranchChainMortgage;
 extern const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY;

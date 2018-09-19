@@ -27,6 +27,9 @@
 #include "smartcontract/smartcontract.h"
 
 #include "chain/branchdb.h"
+
+extern bool IsCoinBranchTranScript(const CellScript& script);
+
 bool IsFinalTx(const CellTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
     if (tx.nLockTime == 0)
@@ -319,7 +322,16 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     }
     if (tx.IsBranchChainTransStep2())
     {
-        if (nValueOut >= tx.inAmount || !MoneyRange(tx.inAmount)){
+        CellAmount nOrginalOut = nValueOut;
+        if (tx.fromBranchId != CellBaseChainParams::MAIN){
+            nOrginalOut = 0;// recalc exclude branch tran recharge
+            for (const auto& txout : tx.vout){
+                if (!IsCoinBranchTranScript(txout.scriptPubKey)){
+                    nOrginalOut += txout.nValue;
+                }
+            }
+        }
+        if (nOrginalOut >= tx.inAmount || !MoneyRange(tx.inAmount)){
             return state.DoS(100, false, REJECT_INVALID, "bad-amount-not-correct-t1-t2");
         }
         //if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, pBlock)){

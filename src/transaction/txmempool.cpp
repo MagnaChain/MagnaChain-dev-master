@@ -18,6 +18,7 @@
 #include "utils/util.h"
 #include "utils/utilmoneystr.h"
 #include "utils/utiltime.h"
+#include "rpc/branchchainrpc.h"
 
 CellTxMemPoolEntry::CellTxMemPoolEntry(const CellTransactionRef& _tx, const CellAmount& _nFee,
                                  int64_t _nTime, unsigned int _entryHeight,
@@ -612,14 +613,15 @@ void CellTxMemPool::removeForBlock(const std::vector<CellTransactionRef>& vtx, u
     if (minerPolicyEstimator) {minerPolicyEstimator->processBlock(nBlockHeight, entries);}
     for (const auto& tx : vtx)
     {
-        txiter it = mapTx.find(tx->GetHash());
+        uint256 txid = GetBranchTxHash(*tx);// remove Transaction that has be modified, as IsBranchChainTransStep2
+        txiter it = mapTx.find(txid);
         if (it != mapTx.end()) {
             setEntries stage;
             stage.insert(it);
             RemoveStaged(stage, true, MemPoolRemovalReason::BLOCK);
         }
         removeConflicts(*tx);
-        ClearPrioritisation(tx->GetHash());
+        ClearPrioritisation(txid);
     }
     lastRollingFeeUpdate = GetTime();
     blockSinceLastRollingFeeBump = true;

@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "branchtxdb.h"
+#include "rpc/branchchainrpc.h"
 
 namespace {
     class MineCoinEntry {
@@ -68,7 +69,8 @@ void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const CellTransaction
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_RECV_TX_DATA);
+    uint256 txid = GetBranchTxHash(*tx);
+    BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.blockhash = blockhash;
     data.flags = DbDataFlag::eADD;
@@ -79,7 +81,8 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const CellTransaction
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_RECV_TX_DATA);
+    uint256 txid = GetBranchTxHash(*tx);
+    BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
 }
@@ -161,7 +164,8 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const CellTransaction& tx, const Cel
     if (tx.IsBranchChainTransStep2() == false)
         return false;
 
-    BranchChainTxEntry keyentry(tx.GetHash(), DB_BRANCH_CHAIN_RECV_TX_DATA);
+    uint256 txid = GetBranchTxHash(tx);
+    BranchChainTxEntry keyentry(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo recvInfo;
     if (!m_db.Read(keyentry, recvInfo))
         return false;

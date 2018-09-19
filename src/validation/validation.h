@@ -224,6 +224,7 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
 bool IsCoinCreateBranchScript(const CellScript& script);
+bool IsCoinBranchTranScript(const CellScript& script);
 
 /** 
  * Process an incoming block. This only returns after the best known valid

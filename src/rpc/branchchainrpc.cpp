@@ -148,6 +148,14 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     return true;
 }
 
+uint256 GetBranchTxHash(const CellTransaction& tx)
+{
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN) {
+        return RevertTransaction(tx, nullptr).GetHash();
+    }
+    return tx.GetHash();
+}
+
 UniValue createbranchchain(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
