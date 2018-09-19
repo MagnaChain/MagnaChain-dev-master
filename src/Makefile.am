@@ -67,11 +67,11 @@ TESTS =
 BENCHMARKS =
 
 if BUILD_CELLLINKD
-  bin_PROGRAMS += celllinkd
+  bin_PROGRAMS += magnachaind
 endif
 
 if BUILD_CELLLINK_UTILS
-  bin_PROGRAMS += celllink-cli celllink-tx
+  bin_PROGRAMS += magnachain-cli magnachain-tx
 endif
 
 .PHONY: FORCE check-symbols check-security
@@ -413,17 +413,17 @@ libcelllink_cli_a_SOURCES = \
 nodist_libcelllink_util_a_SOURCES = $(srcdir)/obj/build.h
 #
 
-# celllinkd binary #
-celllinkd_SOURCES = celllinkd.cpp
-celllinkd_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-celllinkd_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-celllinkd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# magnachaind binary #
+magnachaind_SOURCES = celllinkd.cpp
+magnachaind_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+magnachaind_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachaind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-celllinkd_SOURCES += celllinkd-res.rc
+magnachaind_SOURCES += celllinkd-res.rc
 endif
 
-celllinkd_LDADD = \
+magnachaind_LDADD = \
   $(LIBCELLLINK_SERVER) \
   $(LIBCELLLINK_COMMON) \
   $(LIBUNIVALUE) \
@@ -437,38 +437,38 @@ celllinkd_LDADD = \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
 
-celllinkd_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
+magnachaind_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
 
-# celllink-cli binary #
-celllink_cli_SOURCES = celllink-cli.cpp
-celllink_cli_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(EVENT_CFLAGS)
-celllink_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-celllink_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# magnachain-cli binary #
+magnachain_cli_SOURCES = celllink-cli.cpp
+magnachain_cli_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(EVENT_CFLAGS)
+magnachain_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachain_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-celllink_cli_SOURCES += celllink-cli-res.rc
+magnachain_cli_SOURCES += celllink-cli-res.rc
 endif
 
-celllink_cli_LDADD = \
+magnachain_cli_LDADD = \
   $(LIBCELLLINK_CLI) \
   $(LIBUNIVALUE) \
   $(LIBCELLLINK_UTIL) \
   $(LIBCELLLINK_CRYPTO)
 
-celllink_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
+magnachain_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
 #
 
-# celllink-tx binary #
-celllink_tx_SOURCES = celllink-tx.cpp
-celllink_tx_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-celllink_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-celllink_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# magnachain-tx binary #
+magnachain_tx_SOURCES = celllink-tx.cpp
+magnachain_tx_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+magnachain_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachain_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-celllink_tx_SOURCES += celllink-tx-res.rc
+magnachain_tx_SOURCES += celllink-tx-res.rc
 endif
 
-celllink_tx_LDADD = \
+magnachain_tx_LDADD = \
   $(LIBCELLLINK_SERVER) \
   $(LIBCELLLINK_COMMON) \
   $(LIBUNIVALUE) \
@@ -482,7 +482,7 @@ celllink_tx_LDADD = \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
 
-celllink_tx_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
+magnachain_tx_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
 #
 
 # celllinkconsensus library #
