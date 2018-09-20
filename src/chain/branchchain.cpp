@@ -766,7 +766,7 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 void ProcessBlockBranchChain()
 {
 	{
-		uint32_t nBlockHeight = BRANCH_CHAIN_MATURITY;
+		uint32_t nBlockHeight = BRANCH_CHAIN_MATURITY+6;
 		CellBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nBlockHeight];
 		if (pbi != nullptr)
 		{

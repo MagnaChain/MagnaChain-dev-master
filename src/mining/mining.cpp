@@ -368,6 +368,41 @@ bool CoinsComparer(const CellOutput& v1, const CellOutput& v2)
     return v1.tx->tx->vout[v1.i].nValue * (height - v1.nDepth) > v2.tx->tx->vout[v2.i].nValue * (height - v2.nDepth);
 }
 
+UniValue genforbigboomimp(CellWallet* const pwallet, int num_generate, uint64_t max_tries)
+{
+    if (chainActive.Height() + num_generate > Params().GetConsensus().BigBoomHeight) {
+        throw JSONRPCError(RPC_INVALID_REQUEST, "Can not use this rpc, instead of using generate");
+    }
+
+    std::vector< CellScript > vecScript;
+    {
+        LOCK2(cs_main, pwallet->cs_wallet);
+
+        EnsureWalletIsUnlocked(pwallet);
+        pwallet->TopUpKeyPool(num_generate);
+
+        //for (int i = 0; i < num_generate; ++i)
+        //{
+        //	// Generate a new key that is added to wallet
+        //	CellPubKey newKey;
+        //	if (!pwallet->GetKeyFromPool(newKey)) {
+        //		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        //	}
+        //	CellKeyID keyID = newKey.GetID();
+
+        //	pwallet->SetAddressBook(keyID, "", "receive");
+
+        //	CellTxDestination kDest(keyID);
+        //	CellScript kScript = GetScriptForDestination(kDest);
+        //	vecScript.push_back(kScript);
+        //}
+    }
+    std::vector< CellOutput> vecOutputs;
+    CellOutput dummyOut(nullptr, 0, 0, false, false, false);
+    vecOutputs.push_back(dummyOut);
+    return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+}
+
 UniValue generate(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -398,8 +433,22 @@ UniValue generate(const JSONRPCRequest& request)
     }
 
     // branch chain, first gen block
+    UniValue genBlockRet(UniValue::VARR);
     if (!Params().IsMainChain() && chainActive.Height() == 0){
-        return generateBranch2ndBlock(*pwallet);
+        num_generate--;
+        genBlockRet = generateBranch2ndBlock(*pwallet);
+        if (!genBlockRet.isArray())
+            return genBlockRet;// may be gen fail.
+    }
+
+    if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
+    {
+        int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
+        UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
+        if (genBigBoomBlocks.isArray()){
+            num_generate -= genbigboomnum;
+            genBlockRet.push_backV(genBigBoomBlocks.getValues());
+        }
     }
 
     std::set<CellTxDestination> setAddress;
@@ -417,7 +466,43 @@ UniValue generate(const JSONRPCRequest& request)
 
         std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
     }
-    return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+    UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+    if (genblocks.isArray()){
+        genBlockRet.push_backV(genblocks.getValues());
+    }
+    return genBlockRet;
+}
+
+UniValue generateforbigboom(const JSONRPCRequest& request)
+{
+    CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
+        throw std::runtime_error(
+            "generateforbigboom nblocks ( maxtries )\n"
+            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
+            "\nArguments:\n"
+            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
+            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
+            "\nResult:\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
+            "\nExamples:\n"
+            "\nGenerate 11 blocks\n"
+            + HelpExampleCli("generate", "11")
+        );
+    }
+
+    int num_generate = request.params[0].get_int();
+    uint64_t max_tries = 1000000;
+    if (request.params.size() > 1 && !request.params[1].isNull()) {
+        max_tries = request.params[1].get_int();
+    }
+
+    return genforbigboomimp(pwallet, num_generate, max_tries);
 }
 
 UniValue setgenerate(const JSONRPCRequest& request )
@@ -1294,7 +1379,9 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
 
-    { "generating",         "generate",               &generate,                 true,{ "nblocks","maxtries" } },
+    { "generating",         "generate",               &generate,               true,  { "nblocks","maxtries" } },
+    { "generating",         "generateforbigboom",     &generateforbigboom,	   true,  { "nblocks","maxtries" } },
+
     { "generating",         "generatetoaddress",      &generatetoaddress,      true,  {"nblocks","address","maxtries"} },
 	{ "setgenerate",        "setgenerate",			  &setgenerate,			   true,  { "generate"} },
     { "mining",             "mineblanch2ndblock",     &mineblanch2ndblock,     true,  {"mineblanch2ndblock"}},

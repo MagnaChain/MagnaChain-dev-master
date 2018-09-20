@@ -2742,7 +2742,7 @@ UniValue encryptwallet(const JSONRPCRequest& request)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys. So:
     StartShutdown();
-    return "wallet encrypted; Celllink server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
+    return "wallet encrypted; Magnachain server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
 }
 
 UniValue lockunspent(const JSONRPCRequest& request)
@@ -3603,68 +3603,6 @@ UniValue bumpfee(const JSONRPCRequest& request)
     return result;
 }
 
-UniValue generateforbigboom(const JSONRPCRequest& request)
-{
-	CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
-
-	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
-		return NullUniValue;
-	}
-
-	if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
-		throw std::runtime_error(
-			"generateforbigboom nblocks ( maxtries )\n"
-			"\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
-			"\nArguments:\n"
-			"1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
-			"2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
-			"\nResult:\n"
-			"[ blockhashes ]     (array) hashes of blocks generated\n"
-			"\nExamples:\n"
-			"\nGenerate 11 blocks\n"
-			+ HelpExampleCli("generate", "11")
-		);
-	}
-
-    if (chainActive.Height() >= Params().GetConsensus().BigBoomHeight){
-        throw JSONRPCError(RPC_INVALID_REQUEST, "Can not use this rpc, instead of using generate");
-    }
-
-	int num_generate = request.params[0].get_int();
-	uint64_t max_tries = 1000000;
-	if (request.params.size() > 1 && !request.params[1].isNull()) {
-		max_tries = request.params[1].get_int();
-	}
-
-	std::vector< CellScript > vecScript;
-	{
-		LOCK2(cs_main, pwallet->cs_wallet);
-
-		EnsureWalletIsUnlocked(pwallet);
-		pwallet->TopUpKeyPool(num_generate);
-
-		//for (int i = 0; i < num_generate; ++i)
-		//{
-		//	// Generate a new key that is added to wallet
-		//	CellPubKey newKey;
-		//	if (!pwallet->GetKeyFromPool(newKey)) {
-		//		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-		//	}
-		//	CellKeyID keyID = newKey.GetID();
-
-		//	pwallet->SetAddressBook(keyID, "", "receive");
-
-		//	CellTxDestination kDest(keyID);
-		//	CellScript kScript = GetScriptForDestination(kDest);
-		//	vecScript.push_back(kScript);
-		//}
-	} 
-	std::vector< CellOutput> vecOutputs;
-	CellOutput dummyOut( nullptr, 0,0,false,false,false);
-	vecOutputs.push_back(dummyOut);
-	return generateBlocks( pwallet, vecOutputs, num_generate, max_tries, true);
-}
-
 UniValue getaddresscoins(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() < 1 || request.params.size() > 5)
@@ -4178,8 +4116,6 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrasechange",   &walletpassphrasechange,   true,   {"oldpassphrase","newpassphrase"} },
     { "wallet",             "walletpassphrase",         &walletpassphrase,         true,   {"passphrase","timeout"} },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        true,   {"txid"} },
-
-	{ "generating",         "generateforbigboom",       &generateforbigboom,	   true,   {"nblocks","maxtries" } },
 
     { "wallet",             "getaddresscoins",          &getaddresscoins,          true,  { "address", "withscript",} },
     { "wallet",             "premaketransaction",       &premaketransaction,       false,  { "fromaddress","toaddress","changeaddress", "amount" } },
