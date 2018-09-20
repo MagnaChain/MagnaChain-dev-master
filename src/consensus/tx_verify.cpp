@@ -205,6 +205,9 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (!MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
     }
+    nValueOut += tx.contractAmountIn;
+    if (!MoneyRange(nValueOut))
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
 
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
     if (fCheckDuplicateInputs) {
@@ -379,6 +382,9 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 
 bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& state, const CellCoinsViewCache& inputs, int nSpendHeight)
 {
+    if ((tx.contractAmountIn > 0 || tx.contractAmountOut > 0) && !tx.IsSmartContract())
+        return state.DoS(100, false, REJECT_INVALID, "invalid-smart-contract-amount-out", false, "Not a smart contract transaction, but with contract amount out");
+
         // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
         // for an attacker to attempt to split the network.
         if (!inputs.HaveInputs(tx))
@@ -436,6 +442,10 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
                 }
             }
         }
+
+        nValueIn += tx.contractAmountOut;
+        if (!MoneyRange(nValueIn))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
         if (nValueIn < tx.GetValueOut())
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,

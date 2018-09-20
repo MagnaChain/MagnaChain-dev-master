@@ -13,22 +13,6 @@
 
 ContractDataDB* mpContractDb = nullptr;
 
-CellAmount GetTxContractOut(const CellTransaction& tx)
-{
-    CellAmount out = 0;
-    for (auto kOut : tx.vout) {
-        opcodetype opcode;
-        std::vector<unsigned char> vch;
-        CellScript::const_iterator pc1 = kOut.scriptPubKey.begin();
-        kOut.scriptPubKey.GetOp(pc1, opcode, vch);
-        if (opcode == OP_CONTRACT) {
-            out += kOut.nValue;
-            break;
-        }
-    }
-    return out;
-}
-
 struct CmpByBlockHeight {
     bool operator()(const uint256& bh1, const uint256& bh2) const
     {
@@ -136,11 +120,11 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
             CellContractID contractId = tx->contractAddrs[0];
             CellLinkAddress contractAddrs(contractId);
             CellLinkAddress senderAddr(tx->contractSender.GetID());
-            CellAmount amount = GetTxContractOut(*tx);
+            CellAmount amount = tx->contractAmountIn;
 
             if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
                 std::string rawCode = tx->contractCode;
-                sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
+                sls->Initialize(pBlock->GetBlockTime(), blockHeight, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
                 if (!PublishContract(sls, contractAddrs, rawCode))
                     *interrupt = true;
             }
@@ -151,8 +135,8 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
 
                 UniValue ret;
                 long maxCallNum = MAX_CONTRACT_CALL;
-                sls->Initialize(pBlock->GetBlockTime(), blockHeight, amount, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-                if (!CallContract(sls, contractAddrs, strFuncName, args, maxCallNum, ret))
+                sls->Initialize(pBlock->GetBlockTime(), blockHeight, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
+                if (!CallContract(sls, contractAddrs, amount, strFuncName, args, maxCallNum, ret))
                     *interrupt = true;
             }
         }
@@ -241,6 +225,7 @@ void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, Contra
         dbContractInfo.blockHash = pBlockIndex->GetBlockHash();
         dbContractInfo.blockHeight = pBlockIndex->nHeight;
         dbContractInfo.data = ci.second.data;
+        dbContractInfo.amount = ci.second.amount;
 
         // 按高度寻找插入点
         DBBlockContractInfo& blockContractInfo = _contractData[ci.first];
@@ -327,6 +312,7 @@ bool ContractDataDB::GetContractInfo(const CellContractID& contractId, ContractI
             if (checkBlockIndex == bi->second) {
                 contractInfo.code = di->second.code;
                 contractInfo.data = it->data;
+                contractInfo.amount = it->amount;
                 return true;
             }
         }

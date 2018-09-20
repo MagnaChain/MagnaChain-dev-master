@@ -34,9 +34,8 @@ public:
     static const int SAVE_TYPE_DATA = 2;
     static const int MAX_INTERNAL_CALL_NUM = 30;
 
-    
-    std::vector<std::pair<Coin, CellOutPoint>> inputs;
-    std::vector<CellTxOut> outputs;
+    CellAmount contractAmountOut;
+    std::vector<CellTxOut> recipients;
     std::set<CellContractID> contractIds;      // lua执行期间所有调用过的合约
     std::vector<CellLinkAddress> contractAddrs;  // 以栈形式表示当前调用合约的合约地址
     CellLinkAddress originAddr;    // 当前调用合约的调用者最原始公钥地址
@@ -44,9 +43,6 @@ public:
     int saveType;
     int64_t timestamp;                          // 执行时的时间戳
     int blockHeight;                            // 执行时的区块高度
-    CellAmount amount = 0;
-    CellAmount totalAmount = -1;
-    CellAmount sendAmount = 0;
     uint32_t runningTimes = 0;
     size_t deltaDataLen = 0;
     size_t codeLen = 0;
@@ -62,7 +58,7 @@ public:
     void SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache);
     bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo);
 
-    void Initialize(int64_t timestamp, int blockHeight, CellAmount amount, CellLinkAddress& callerAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType);
+    void Initialize(int64_t timestamp, int blockHeight, CellLinkAddress& callerAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType);
     lua_State* GetLuaState(CellLinkAddress& contractAddr);
     void ReleaseLuaState(lua_State* L);
 };
@@ -86,11 +82,11 @@ CellContractID GenerateContractAddressByTx(TxType& tx)
 
 extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
-extern bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret);
+extern bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret);
 extern bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode);
 extern bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout);
 
-extern bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
+extern bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
 extern bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret);
 
 // Lua内置函数

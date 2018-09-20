@@ -444,12 +444,16 @@ uint256 GetContractHash(const CellTransaction& txTo) {
 		ss << txTo.contractAddrs;
 		ss << txTo.contractCode;
 		ss << txTo.contractSender;
+        ss << txTo.contractAmountIn;
+        ss << txTo.contractAmountOut;
 	}
 	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
 		ss << txTo.contractAddrs;
 		ss << txTo.contractSender;
 		ss << txTo.contractFun;
 		ss << txTo.contractParams;
+        ss << txTo.contractAmountIn;
+        ss << txTo.contractAmountOut;
 	}
 	return ss.GetHash();
 }
@@ -477,10 +481,10 @@ bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn,
 		return false;
 
 	constractSig << vchSig;
-	return CheckContracSign(txToIn, constractSig);
+	return CheckContractSign(txToIn, constractSig);
 }
 
-bool CheckContracSign(const CellTransaction* txToIn, const CellScript& constractSig)
+bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constractSig)
 {
 	if (txToIn->IsSmartContract() == false)
 	{

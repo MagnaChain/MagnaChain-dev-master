@@ -46,7 +46,7 @@
 #include "smartcontract/smartcontract.h"
 #include "wallet/wallet.h"
 #include "chain//branchchain.h"
-#include "script/sign.h" //CheckContracSign
+#include "script/sign.h"
 #include "chain/branchdb.h"
 #include "transaction/merkleblock.h"
 #include "rpc/server.h"
@@ -362,47 +362,20 @@ bool IsCoinCreateBranchScript(const CellScript& script)
 bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls)
 {
 	if (sls == nullptr)
-		return false;
+        return false;
 
-	if (sls->inputs.size() == 0 && sls->outputs.size() == 0)
-		return true;
+    if (tx.contractAmountOut != sls->contractAmountOut)
+        return false;
 
-	CellAmount totalAmount = 0;
-    CellScript scriptPubKey = GetScriptForDestination(tx.contractAddrs[0]);
-	for (size_t i = 0; i < sls->inputs.size(); ++i) {
-		Coin& coin = sls->inputs[i].first;
-        CellOutPoint& outPoint = sls->inputs[i].second;
-        totalAmount += coin.out.nValue;
+    if (sls->contractAmountOut == 0)
+        return (sls->recipients.size() == 0);
 
-        bool found = false;
-        for (int j = 0; j < tx.vin.size(); ++j) {
-            if (tx.vin[j].prevout == outPoint) {
-                found = true;
-                break;
-            }
-        }
-
-        if (!found)
-            return false;
-
-		if (totalAmount >= sls->sendAmount) {
-			if (totalAmount > sls->sendAmount) {
-                CellTxOut changeOut;
-                changeOut.nValue = totalAmount - sls->sendAmount;
-                changeOut.scriptPubKey = scriptPubKey;
-				if (!tx.IsExistVout(changeOut))
-					return false;
-			}
-			break;
-		}
-	}
-
-	// output
-	for (size_t i = 0; i < sls->outputs.size(); ++i) {
-		if (!tx.IsExistVout(sls->outputs[i]))
+	for (size_t i = 0; i < sls->recipients.size(); ++i) {
+		if (!tx.IsExistVout(sls->recipients[i]))
 			return false;
 	}
-	return true;
+
+    return (sls->recipients.size() > 0);
 }
 
 SmartLuaState checkSLS;
@@ -416,18 +389,25 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
 	UniValue args;
 	args.read(tx.contractParams);
 	std::string strFuncName = tx.contractFun;
-    CellAmount amount = GetTxContractOut(tx);
+    CellAmount amount = tx.contractAmountIn;
 
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx.contractCode;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, saveType);
-        return PublishContract(&checkSLS, contractAddr, rawCode);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType);
+        if (PublishContract(&checkSLS, contractAddr, rawCode)) {
+            if (tx.contractAmountOut > 0)
+                return false;
+            else
+                return CheckContractVinVout(tx, &checkSLS);
+        }
+        else
+            return false;
 	}
     else if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
         UniValue ret;
         long maxCallNum = MAX_CONTRACT_CALL;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, saveType);
-        if (CallContract(&checkSLS, contractAddr, strFuncName, args, maxCallNum, ret))
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType);
+        if (CallContract(&checkSLS, contractAddr, amount, strFuncName, args, maxCallNum, ret))
             return CheckContractVinVout(tx, &checkSLS);
 	}
 
@@ -732,6 +712,14 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
 				    LogPrint(BCLog::MEMPOOL, "not found vin,HaveCoin return fail.preout %s %d\n", txin.prevout.hash.ToString().c_str(), txin.prevout.n);
                     return false; // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
                 }
+            }
+
+            if (tx.contractAmountOut > 0) {
+                ContractInfo contractInfo;
+                if (!mpContractDb->GetContractInfo(tx.contractAddrs[0], contractInfo, nullptr))
+                    return false;
+                if (tx.contractAmountOut > contractInfo.amount)
+                    return false;
             }
 
             // Bring the best block into scope
@@ -1626,7 +1614,7 @@ bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const Ce
         }
     }
     // contract sender address check
-    if (CheckContracSign(&tx, tx.scontractScriptSig) == false)
+    if (CheckContractSign(&tx, tx.scontractScriptSig) == false)
     {
         return state.DoS(100, false, REJECT_INVALID, "bad-contract-sender-sign");
     }
@@ -3384,7 +3372,7 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
     BranchCache tempcache;
     // Check transactions
     for (const auto& tx : block.vtx) {
-        if (!CheckTransaction(*tx, state, false, &block, nullptr, fVerifingDB, &tempcache))
+        if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, &tempcache))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                     strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
         if (tx->IsSyncBranchInfo()) {

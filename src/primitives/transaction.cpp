@@ -160,6 +160,11 @@ CellAmount CellTransaction::GetValueOut() const
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
+
+    nValueOut += contractAmountIn;
+    if (!MoneyRange(nValueOut))
+        throw std::runtime_error(std::string(__func__) + ": value out of range");
+
     return nValueOut;
 }
 

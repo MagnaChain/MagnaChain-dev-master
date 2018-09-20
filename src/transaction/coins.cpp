@@ -256,6 +256,7 @@ CellAmount CellCoinsViewCache::GetValueIn(const CellTransaction& tx) const
     CellAmount nResult = 0;
     for (unsigned int i = 0; i < tx.vin.size(); i++)
         nResult += AccessCoin(tx.vin[i].prevout).out.nValue;
+    nResult += tx.contractAmountOut;
 
     return nResult;
 }

@@ -350,6 +350,8 @@ public:
 	std::string contractCode;
     std::string contractParams;
     std::vector<CellContractID> contractAddrs;
+    CellAmount contractAmountIn = 0;    // 向合约转入
+    CellAmount contractAmountOut = 0;   // 向合约转出
 
 	void ClearTempContractData()
 	{

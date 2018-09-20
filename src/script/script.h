@@ -679,6 +679,7 @@ public:
         shrink_to_fit();
     }
 
+    bool IsContract() const;
 	bool GetContractAddr(CellContractID& contractId) const;
 };
 

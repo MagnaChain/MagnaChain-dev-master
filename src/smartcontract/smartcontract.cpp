@@ -333,7 +333,7 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pop(L, 1);
 }
 
-bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
+bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
 {
     CellLinkAddress senderAddr;
     if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
@@ -349,7 +349,7 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount,
     CellLinkAddress contractAddr(contractId);
 
     std::string codeout;
-    sls->Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
+    sls->Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
     bool success = PublishContract(sls, contractAddr, rawCode);
     if (success) {
         CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -365,7 +365,7 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount,
         bool subtractFeeFromAmount = false;
         CellCoinControl coinCtrl;
         EnsureWalletIsUnlocked(pWallet);
-        SendMoney(pWallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, sls);
+        SendMoney(pWallet, scriptPubKey, 0, subtractFeeFromAmount, wtx, coinCtrl, sls);
 
         ret.setObject();
         ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
@@ -378,9 +378,6 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount,
 
 bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode)
 {
-    if (sls->amount < 0)
-        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
-
     CellContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
@@ -391,7 +388,7 @@ bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const st
     std::string dataout;
     long maxCallNum = MAX_CONTRACT_CALL;
     lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), sls->amount, sls->timestamp, sls->blockHeight);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
     bool success = PublishContract(L, rawCode, maxCallNum, codeout, dataout);
     if (success) {
         sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
@@ -439,9 +436,9 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
     return success;
 }
 
-bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
-    if (sls->amount < 0)
+    if (amount < 0)
         throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
 
     CellContractID contractId;
@@ -457,14 +454,32 @@ bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::
     std::string dataout;
     std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
     lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, sls->amount, sls->timestamp, sls->blockHeight);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
     bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, dataout, ret);
     if (success) {
         sls->deltaDataLen += std::max(0u, (uint32_t)(dataout.size() - contractInfo.data.size()));
-        if (sls->saveType > 0) {
-            contractInfo.data = dataout;
-            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+
+        contractInfo.data = dataout;
+        if (!MoneyRange(amount) || !MoneyRange(sls->contractAmountOut))
+            success = false;
+
+        if (success) {
+            contractInfo.amount += amount;
+            if (!MoneyRange(contractInfo.amount))
+                success = false;
         }
+
+        if (success) {
+            if (contractInfo.amount >= sls->contractAmountOut)
+                contractInfo.amount -= sls->contractAmountOut;
+            else
+                success = false;
+            if (!MoneyRange(contractInfo.amount))
+                success = false;
+        }
+
+        if (success && sls->saveType > 0)
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
     }
     sls->ReleaseLuaState(L);
     sls->_internalCallNum--;
@@ -582,7 +597,7 @@ int InternalCallContract(lua_State* L)
 
     UniValue ret(UniValue::VARR);
     long maxCallNum = L->limit_instruction;
-    bool success = CallContract(sls, contractAddr, strFuncName, args, maxCallNum, ret);
+    bool success = CallContract(sls, contractAddr, 0, strFuncName, args, maxCallNum, ret);
     L->limit_instruction = maxCallNum;
     if (!success)
         throw std::runtime_error(ret[0].get_str().c_str());
@@ -614,62 +629,24 @@ int SendCoins(lua_State* L)
     if (sls == nullptr)
         throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
 
+    if (!lua_isstring(L, 1))
+        throw std::runtime_error(strprintf("%s param1 is not a string", __FUNCTION__));
+
+    if (!lua_isnumber(L, 2))
+        throw std::runtime_error(strprintf("%s param2 is not a number", __FUNCTION__));
+
     std::string strDest = lua_tostring(L, 1);
     CellAmount sendAmount = lua_tonumber(L, 2);
 
-    if (sls->totalAmount < 0) {
-        bool bGetCoinsFromCoinsDb = true;
-        int curHeight = chainActive.Height();
-
-        sls->totalAmount = 0;
-        if (!bGetCoinsFromCoinsDb) {
-            CellScript scriptPubKey = GetScriptForDestination(sls->contractAddrs[0].Get());
-
-            CellCoinsViewCursor* pCursor = pcoinsdbview->Cursor();
-            while (pCursor->Valid()) {
-                Coin coin;
-                pCursor->GetValue(coin);
-                CellOutPoint outPoint;
-                pCursor->GetKey(outPoint);
-                pCursor->Next();
-
-                if (coin.nHeight + CONTRACT_MATURITY > curHeight) {
-                    continue;
-                }
-                if (coin.out.scriptPubKey != scriptPubKey) {
-                    continue;
-                }
-                sls->inputs.emplace_back(coin, outPoint);
-                sls->totalAmount += coin.out.nValue;
-            }
-        }
-        else {
-            const CellContractID& kAddr = boost::get<CellContractID>(sls->contractAddrs[0].Get());
-            CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
-            CellLinkAddress addr(kAddr);
-            //LogPrintf("Send contract address %s\n", addr.ToString());
-
-            if (plist != nullptr) {
-                BOOST_FOREACH(const CellOutPoint& outPoint, plist->coins) {
-                    const Coin& coin = pcoinsTip->AccessCoin(outPoint);
-                    if (coin.nHeight + CONTRACT_MATURITY > curHeight) {
-                        continue;
-                    }
-                    if (coin.IsSpent()) {
-                        continue;
-                    }
-                    CellContractID kDestKey;
-                    if (!coin.out.scriptPubKey.GetContractAddr(kDestKey)) {
-                        continue;
-                    }
-                    sls->inputs.emplace_back(coin, outPoint);
-                    sls->totalAmount += coin.out.nValue;
-                }
-            }
-        }
+    ContractInfo contractInfo;
+    CellContractID contractID;
+    sls->contractAddrs[0].GetContractID(contractID);
+    if (!sls->GetContractInfo(contractID, contractInfo)) {
+        lua_pushboolean(L, false);
+        return 1;
     }
 
-    if (sls->sendAmount + sendAmount > sls->totalAmount) {
+    if (sls->contractAmountOut + sendAmount > contractInfo.amount) {
         lua_pushboolean(L, false);
         return 1;
     }
@@ -679,14 +656,14 @@ int SendCoins(lua_State* L)
     CellLinkAddress kDest(strDest);
     CellScript scriptPubKey = GetScriptForDestination(kDest.Get());
     out.scriptPubKey = scriptPubKey;
-    sls->outputs.emplace_back(out);
-    sls->sendAmount += sendAmount;
+    sls->recipients.emplace_back(out);
+    sls->contractAmountOut += sendAmount;
 
     lua_pushboolean(L, true);
     return 1;
 }
 
-void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellAmount amount, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType)
+void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType)
 {
     this->timestamp = timestamp;
     this->blockHeight = blockHeight;
@@ -694,18 +671,14 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellAmount am
     this->_pContractContext = pContractContext;
     this->_pPrevBlockIndex = pPrevBlockIndex;
     this->saveType = saveType;
-    this->amount = amount;
 
     if (_pContractContext == nullptr)
         _pContractContext = &mpContractDb->_contractContext;
 
-    this->inputs.clear();
-    this->outputs.clear();
+    this->recipients.clear();
     this->contractIds.clear();
     this->contractAddrs.clear();
     _internalCallNum = 0;
-    totalAmount = -1;
-    sendAmount = 0;
     runningTimes = 0;
     deltaDataLen = 0;
     codeLen = 0;

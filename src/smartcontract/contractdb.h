@@ -14,6 +14,7 @@ struct ContractInfo
 public:
     std::string code;
     std::string data;
+    CellAmount amount = 0;
 };
 
 // 智能合约的存盘数据
@@ -23,6 +24,7 @@ public:
     uint256 blockHash;
     uint32_t blockHeight;
     std::string data;
+    CellAmount amount = 0;         // 合约拥有的coin数量
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -30,6 +32,7 @@ public:
         READWRITE(blockHash);
         READWRITE(blockHeight);
         READWRITE(data);
+        READWRITE(amount);
     }
 };
 
@@ -76,9 +79,9 @@ private:
     std::map<CellContractID, ContractInfo> _data;
 
 public:
-    void SetCache(const CellContractID& key, ContractInfo& contractInfo);
-    void SetData(const CellContractID& key, ContractInfo& contractInfo);
-    bool GetData(const CellContractID& key, ContractInfo& contractInfo);
+    void SetCache(const CellContractID& contractId, ContractInfo& contractInfo);
+    void SetData(const CellContractID& contractId, ContractInfo& contractInfo);
+    bool GetData(const CellContractID& contractId, ContractInfo& contractInfo);
     void Commit();
     void ClearCache();
     void ClearData();

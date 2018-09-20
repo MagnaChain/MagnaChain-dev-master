@@ -161,6 +161,15 @@ const char* GetOpName(opcodetype opcode)
     }
 }
 
+bool CellScript::IsContract() const
+{
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    CellScript::const_iterator pc1 = begin();
+    GetOp(pc1, opcode, vch);
+    return (opcode == OP_CONTRACT);
+}
+
 
 bool CellScript::GetContractAddr(CellContractID& contractId) const
 {

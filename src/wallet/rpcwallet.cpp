@@ -402,8 +402,12 @@ void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellA
 	std::string strError;
 	std::vector<CellRecipient> vecSend;
     if (nValue > 0) {
-        CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
-        vecSend.push_back(recipient);
+        if (scriptPubKey.IsContract())
+            wtxNew.contractAmountIn = nValue;
+        else {
+            CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
+            vecSend.push_back(recipient);
+        }
     }
     int nChangePosRet = -1;
 	if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true, sls)) {
@@ -550,7 +554,7 @@ UniValue publishcontract(const JSONRPCRequest& request)
         strSenderAddr = request.params[1].get_str();
 
     UniValue ret;
-	PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, ret);
+	PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret);
     return ret;
 }
 
@@ -588,7 +592,7 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
         strSenderAddr = request.params[1].get_str();
 
     UniValue ret;
-    PublishContract(&RPCSLS, pwallet, 0, strSenderAddr, rawCode, ret);
+    PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret);
     return ret;
 }
 
@@ -653,7 +657,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	CellKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
 	CellLinkAddress contractAddr(contractId);
 
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
     if (!PublishContract(&RPCSLS, contractAddr, rawCode))
         return NullUniValue;
 
@@ -746,8 +750,8 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
-    bool success = CallContract(&RPCSLS, contractAddr, strFuncName, args, maxCallNum, callRet);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     if (success) {
         RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
         RPCSLS.codeLen = 0;
@@ -767,6 +771,8 @@ UniValue callcontract(const JSONRPCRequest& request)
             wtx.contractParams = args.write();
             wtx.contractAddrs.emplace_back(contractId);
             wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
+            wtx.contractAmountIn = amount;
+            wtx.contractAmountOut = RPCSLS.contractAmountOut;
 
             bool subtractFeeFromAmount = false;
             CellCoinControl coinCtrl;
@@ -872,8 +878,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, amount, senderAddr, nullptr, nullptr, 0);
-    bool success = CallContract(&RPCSLS, contractAddr, strFuncName, args, maxCallNum, callRet);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
     RPCSLS.codeLen = 0;
 

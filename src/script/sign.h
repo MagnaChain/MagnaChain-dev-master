@@ -83,6 +83,6 @@ SignatureData DataFromTransaction(const CellMutableTransaction& tx, unsigned int
 void UpdateTransaction(CellMutableTransaction& tx, unsigned int nIn, const SignatureData& data);
 
 bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn, CellScript& constractSig);
-bool CheckContracSign(const CellTransaction* txToIn, const CellScript& constractSig);
+bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constractSig);
 
 #endif // CELLLINK_SCRIPT_SIGN_H
