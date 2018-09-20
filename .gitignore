@@ -1,6 +1,7 @@
 *.csproj
 *.suo
 *.obj
+*.user
 /.vs/
 /Debug/
 /Release/
