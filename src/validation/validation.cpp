@@ -59,7 +59,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/thread.hpp>
-
+#include "rpc/branchchainrpc.h"
 
 #if defined(NDEBUG)
 # error "CellLink cannot be compiled without assertions."
@@ -353,8 +353,16 @@ bool IsCoinCreateBranchScript(const CellScript& script)
 {
     opcodetype opcode;
     CellScript::const_iterator pc1 = script.begin();
-    script.GetOp(pc1, opcode);
-    if (opcode == OP_CREATE_BRANCH)
+    if (script.GetOp(pc1, opcode) && opcode == OP_CREATE_BRANCH)
+        return true;
+    return false;
+}
+
+bool IsCoinBranchTranScript(const CellScript& script)
+{
+    opcodetype opcode;
+    CellScript::const_iterator pc1 = script.begin();
+    if (script.GetOp(pc1, opcode) && opcode == OP_TRANS_BRANCH)
         return true;
     return false;
 }
@@ -528,8 +536,16 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
     while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
         // ignore validation errors in resurrected transactions
         CellValidationState stateDummy;
+        CellTransactionRef ptx = *it;
+        if (fAddToMempool){
+            if (ptx->IsBranchChainTransStep2() && ptx->fromBranchId != CellBaseChainParams::MAIN)// revert transaction data
+            {
+                CellMutableTransaction mtx = RevertTransaction(*ptx, nullptr);
+                ptx = MakeTransactionRef(mtx);
+            }
+        }
         if (!fAddToMempool || (*it)->IsCoinBase() || (*it)->IsStake() || (*it)->IsReportReward() // these tx are not accepted in mempool
-            || !AcceptToMemoryPool(mempool, stateDummy, *it, false, nullptr, nullptr, true)) {
+            || !AcceptToMemoryPool(mempool, stateDummy, ptx, false, nullptr, nullptr, true)) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
             mempool.removeRecursive(**it, MemPoolRemovalReason::REORG);
@@ -1477,6 +1493,29 @@ void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, int nHei
 }
 
 bool CScriptCheck::operator()() {
+    ////
+    if (ptxTo->IsBranchChainTransStep2() && ptxTo->fromBranchId != CellBaseChainParams::MAIN)
+    {
+        uint256 branchid;
+        branchid.SetHex(ptxTo->fromBranchId);
+        opcodetype opcode;
+        std::vector<unsigned char> vch;
+        CellScript::const_iterator pc1 = scriptPubKey.begin();
+        if (!scriptPubKey.GetOp(pc1, opcode, vch) || opcode != OP_TRANS_BRANCH)
+            return false;
+        if (scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256))
+        {
+            uint256 branchhash(vch);
+            if (branchhash == branchid) {
+                return true;
+            }
+        }
+        else
+            return false;
+        return false;
+    }
+    ////
+
     const CellScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
     return VerifyScript(scriptSig, scriptPubKey, witness, nFlags, CachingTransactionSignatureChecker(ptxTo, nIn, amount, cacheStore, *txdata), &error);
@@ -2130,7 +2169,7 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
                 REJECT_INVALID, "bad-blk-sigops");
 
         txdata.emplace_back(tx);
-        if (tx.IsBranchChainTransStep2())
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == CellBaseChainParams::MAIN)
         {
             nFees += tx.inAmount - tx.GetValueOut();
         }
@@ -5080,6 +5119,10 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
     
     if (!CheckTransaction(tx, state))
         return false;
+
+    if (!CheckBranchDuplicateTx(tx, state, &branchDataMemCache)) {
+        return false;
+    }
 
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
     if (!gArgs.GetBoolArg("-prematurewitness", false) && tx.HasWitness() && !witnessEnabled) {

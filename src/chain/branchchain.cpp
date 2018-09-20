@@ -376,22 +376,24 @@ CellAmount GetBranchChainTransOut(const CellTransaction& branchTransStep1Tx)
 		opcodetype opcode;
 		std::vector<unsigned char> vch;
 		CellScript::const_iterator pc1 = txout.scriptPubKey.begin();
-		txout.scriptPubKey.GetOp(pc1, opcode, vch);
-        if (branchTransStep1Tx.sendToBranchid != CellBaseChainParams::MAIN){
-            if (opcode == OP_TRANS_BRANCH){
-                if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)){
-                    uint256 branchhash(vch);
-                    if (branchhash.ToString() == branchTransStep1Tx.sendToBranchid){ //branch id check
-                        nAmount += txout.nValue;
+		if (txout.scriptPubKey.GetOp(pc1, opcode, vch))
+		{
+            if (branchTransStep1Tx.sendToBranchid != CellBaseChainParams::MAIN){
+                if (opcode == OP_TRANS_BRANCH){
+                    if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)){
+                        uint256 branchhash(vch);
+                        if (branchhash.ToString() == branchTransStep1Tx.sendToBranchid){ //branch id check
+                            nAmount += txout.nValue;
+                        }
                     }
                 }
             }
-        }
-        else{
-            if (opcode == OP_RETURN){
-                txout.scriptPubKey.GetOp(pc1, opcode, vch);
-                if (opcode == OP_TRANS_BRANCH){
-                    nAmount += txout.nValue;
+            else{
+                if (opcode == OP_RETURN){
+                    txout.scriptPubKey.GetOp(pc1, opcode, vch);
+                    if (opcode == OP_TRANS_BRANCH){
+                        nAmount += txout.nValue;
+                    }
                 }
             }
         }
@@ -408,7 +410,8 @@ CellAmount GetMortgageMineOut(const CellTransaction& tx, bool bWithBranchOut)
 	{
 		opcodetype opcode;
 		CellScript::const_iterator pc1 = txout.scriptPubKey.begin();
-		txout.scriptPubKey.GetOp(pc1, opcode, vch);
+		if (txout.scriptPubKey.GetOp(pc1, opcode, vch) == false)
+		    continue;
 		if (opcode == OP_MINE_BRANCH_MORTGAGE){
             //script的其他部分判断
 			nAmount += txout.nValue;
@@ -512,6 +515,37 @@ void testgetint64()
         testscriptint64(-i);
         i = i + 10000;
     }
+}
+
+CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx)
+{
+    CellMutableTransaction mtx(tx);
+    if (tx.IsBranchChainTransStep2())
+        mtx.fromTx.clear();
+    if (pFromTx && pFromTx->IsMortgage()) {
+        mtx.vout[0].scriptPubKey.clear();
+    }
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN)
+    {
+        mtx.pPMT.reset(new CellSpvProof());
+
+        //recover tx: remove UTXO
+        //vin like func MakeBranchTransStep2Tx
+        mtx.vin.clear();
+        mtx.vin.resize(1);
+        mtx.vin[0].prevout.hash.SetNull();
+        mtx.vin[0].prevout.n = 0;
+        mtx.vin[0].scriptSig.clear();
+        //remove vout branch recharge
+        for (int i = mtx.vout.size() - 1; i >= 0; i--) {
+            const CellScript& scriptPubKey = mtx.vout[i].scriptPubKey;
+            if (IsCoinBranchTranScript(scriptPubKey)) {
+                mtx.vout.erase(mtx.vout.begin() + i);
+            }
+        }
+    }
+
+    return mtx;
 }
 
 // 获取抵押币脚本中的数据
@@ -764,7 +798,7 @@ void ProcessBlockBranchChain()
  @param fVerifingDB 
  @param pFromTx The source transaction(step 1 tx) of txBranchChainStep2
 */
-bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValidationState &state, const bool fVerifingDB, CellTransactionRef &pFromTx)
+bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValidationState &state, const bool fVerifingDB, const CellTransactionRef &pFromTx)
 {
 	if (txBranchChainStep2.IsBranchChainTransStep2() == false)
 		return state.DoS(100, false, REJECT_INVALID, "is not a IsBranchChainTransStep2");
@@ -806,7 +840,8 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
         return error("%s sendToTxHexData is not a valid transaction data.\n", __func__);
     }
 
-    CellMutableTransaction mtxTrans2my(txBranchChainStep2);
+    CellMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx);
+    /*
     //remove fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();
     if (txTrans1.IsMortgage())
@@ -817,6 +852,7 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
     {
         mtxTrans2my.pPMT.reset(new CellSpvProof());
     }
+    */
     if (mtxTrans2.GetHash() != mtxTrans2my.GetHash())
     {
         std::string strErr = strprintf("%s transaction hash error\n", __func__);
@@ -828,9 +864,19 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
         std::string strErr = strprintf(" %s Invalid inAmount!\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }
-    if (txBranchChainStep2.GetValueOut() > txBranchChainStep2.inAmount)
+    //
+    CellAmount nOrginalOut = txBranchChainStep2.GetValueOut();
+    if (txBranchChainStep2.fromBranchId != CellBaseChainParams::MAIN) {
+        nOrginalOut = 0;// recalc exclude branch tran recharge
+        for (const auto& txout : txBranchChainStep2.vout) {
+            if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
+                nOrginalOut += txout.nValue;
+            }
+        }
+    }
+    if (nOrginalOut > txBranchChainStep2.inAmount)
     {
-        std::string strErr = strprintf("GetValueOut larger than inAmount\n", __func__);
+        std::string strErr = strprintf("%s GetValueOut larger than inAmount\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }
 

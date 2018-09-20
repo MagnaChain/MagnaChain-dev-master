@@ -258,9 +258,17 @@ bool BlockAssembler::TestPackageTransactions(const CellTxMemPool::setEntries& pa
     return true;
 }
 
-void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter)
+void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
-    pblock->vtx.emplace_back(iter->GetSharedTx());
+    if (chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()){
+        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0){
+            throw std::runtime_error("utxo make did not make target transaction");
+        }
+        pblock->vtx.emplace_back(utxoMaker.mapCache[iter->GetSharedTx()->GetHash()]);
+    }
+    else
+        pblock->vtx.emplace_back(iter->GetSharedTx());
+
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
     nBlockWeight += iter->GetTxWeight();
@@ -455,61 +463,122 @@ void BlockAssembler::GroupingTransaction(int offset)
     }
 }
 
-bool BlockAssembler::UpdateBranchTx(CellMutableTransaction& branchTx)
+bool MakeBranchTxUTXO::MakeTxUTXO(CellTxMemPool::txiter iter)
 {
+    if (iter->GetSharedTx()->fromBranchId == CellBaseChainParams::MAIN){
+        return false;
+    }
+
+    CellMutableTransaction branchTx(*iter->GetSharedTx());
+
     const std::string strFromChain = branchTx.fromBranchId;
     uint256 branchhash;
     branchhash.SetHex(strFromChain);
     uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
 
+    if (mapBranchCoins.count(branchcoinaddress) == 0){
+        CoinListPtr pcoinlist = pcoinListDb->GetList(branchcoinaddress);
+        
+        BranchUTXOCache cache;
+        if (pcoinlist != nullptr)
+            cache.coinlist = *pcoinlist;// copy
+        mapBranchCoins.insert(std::make_pair(branchcoinaddress, cache));
+    }
+
+    BranchUTXOCache& utxoCahce = mapBranchCoins[branchcoinaddress];
+
+    std::vector<CellOutPoint> vInOutPoints;
+    CellAmount nValue = 0;
     CellAmount nAmount = branchTx.inAmount;
-     CoinListPtr plist = pcoinListDb->GetList(branchcoinaddress);
-        std::set<CellOutPoint> setInOutPoints;
-        CellAmount nValue = 0;
 
-        if (plist != nullptr) {
-            BOOST_FOREACH(const CellOutPoint& outpoint, plist->coins) {
-                const Coin& coin = pcoinsTip->AccessCoin(outpoint);
-                if (coin.IsSpent()) {
-                    continue;
-                }
-                if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
-                    continue;
-                }
+    // get coins
+    {
+        //first get from db list
+        for (std::vector<CellOutPoint>::iterator it = utxoCahce.coinlist.coins.begin();
+            it != utxoCahce.coinlist.coins.end(); it++) {
+            const CellOutPoint& outpoint = *it;
+            const Coin& coin = pcoinsTip->AccessCoin(outpoint);// CellCoinsViewCache
+            if (coin.IsSpent()) {
+                continue;
+            }
+            if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
+                continue;
+            }
 
-                nValue += coin.out.nValue;
-                setInOutPoints.insert(outpoint);
-                if (nValue >= nAmount) 
-                    break;   
+            nValue += coin.out.nValue;
+            vInOutPoints.push_back(outpoint);
+            if (nValue >= nAmount)
+                break;
+        }
+        // 2nd from cache output
+        if (nValue < nAmount){
+            for (BranchUTXOCache::MAP_CACHE_COIN::iterator mit = utxoCahce.mapCacheCoin.begin();
+                mit != utxoCahce.mapCacheCoin.end(); mit++)
+            {
+                const CellOutPoint& outpoint = mit->first;
+                const CellTxOut& out = mit->second;
+
+                nValue += out.nValue;
+                vInOutPoints.push_back(outpoint);
+                if (nValue >= nAmount)
+                    break;
             }
         }
+    }
 
-        if (nValue < nAmount)
-        {
-            return false;
+    if (nValue < nAmount)
+    {
+        return false;
+    }
+
+    CellCoinControl coin_control;
+    const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CellTxIn::SEQUENCE_FINAL - 1);
+    branchTx.vin.clear();
+    //
+    for (std::vector<CellOutPoint>::reverse_iterator rit = vInOutPoints.rbegin();// from back to front, erase from vector(utxoCahce.coinlist.coins)
+        rit != vInOutPoints.rend(); rit++) {
+        const CellOutPoint& outpoint = *rit;
+
+        //add to vin
+        branchTx.vin.push_back(CellTxIn(outpoint, CellScript(),
+            nSequence));
+
+        //spend utxoCahce
+        for (std::vector<CellOutPoint>::reverse_iterator ritc = utxoCahce.coinlist.coins.rbegin();// for back end to remove fast.
+            ritc != utxoCahce.coinlist.coins.rend(); ritc++) {
+            if (*ritc == outpoint)
+            {
+                utxoCahce.coinlist.coins.erase(std::next(ritc).base());
+                break;
+            }
         }
-        CellCoinControl coin_control;
+        utxoCahce.mapCacheCoin.erase(outpoint);
+    }
 
-        const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CellTxIn::SEQUENCE_FINAL - 1);
-        branchTx.vin.clear();
-        for (const auto& outpoint : setInOutPoints) {
-            branchTx.vin.push_back(CellTxIn(outpoint, CellScript(),
-                    nSequence));
-        }
+    //recharge
+    if (nValue > nAmount)
+    {
+        CellScript voutScriptKey;
+        voutScriptKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
 
-        if (nValue > nAmount)
-        {
-            CellScript voutScriptKey;
-            voutScriptKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
+        CellTxOut tmpOut;
+        tmpOut.scriptPubKey = voutScriptKey;
+        tmpOut.nValue = nValue - nAmount;
+        branchTx.vout.push_back(tmpOut);
 
-            CellTxOut tmpOut;
-            tmpOut.scriptPubKey = voutScriptKey;
-            tmpOut.nValue = nValue - nAmount;
-            branchTx.vout.push_back(tmpOut);
-        }
-        return true;
+        uint256 newtxid = branchTx.GetHash();
+        utxoCahce.mapCacheCoin.insert(std::make_pair(CellOutPoint(newtxid, branchTx.vout.size()-1), tmpOut));
+    }
+
+    //end
+    mapCache.insert(std::make_pair(iter->GetSharedTx()->GetHash(), MakeTransactionRef(branchTx)));
+    return true;
 }
 
+bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
+{
+    return utxoMaker.MakeTxUTXO(iter);
+}
 
 // This transaction selection algorithm orders the mempool based
 // on feerate of a transaction including all unconfirmed ancestors.
@@ -533,6 +602,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
     // Start by adding all descendants of previously added txs to mapModifiedTx
     // and modifying them for their already included ancestors
     UpdatePackagesForAdded(inBlock, mapModifiedTx);
+
+    MakeBranchTxUTXO makeBTxHelper;
 
     CellTxMemPool::indexed_transaction_set::index<ancestor_score>::type::iterator mi = mempool.mapTx.get<ancestor_score>().begin();
     CellTxMemPool::txiter iter;
@@ -581,7 +652,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         }
 
         // OP: can we move to ancestors?
-        CellTransactionRef iterTx = iter->GetSharedTx();
+        const CellTransactionRef& iterTx = iter->GetSharedTx();
         if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
             std::vector<uint256> ancestors = branchDataMemCache.GetAncestorsBlocksHash(*iterTx);
             for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
@@ -601,17 +672,16 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             }
         }
 
-        if (Params().IsMainChain() && iterTx->IsBranchChainTransStep2())
+        if (chainparams.IsMainChain() && iterTx->IsBranchChainTransStep2())
         {
-            CellMutableTransaction tmpMulTx(*iterTx);
-            if (!UpdateBranchTx(tmpMulTx))
+            if (!UpdateBranchTx(iter, makeBTxHelper))
             {
-                ++mi;
+                //++mi;
+                if (fUsingModified) {
+                    mapModifiedTx.get<ancestor_score>().erase(modit);
+                    failedTx.insert(iter);
+                }
                 continue;//next
-            }
-            else
-            {
-               iterTx = MakeTransactionRef(tmpMulTx); 
             }
         }
 
@@ -676,7 +746,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 		SortForBlock(ancestors, iter, sortedEntries);
 
 		for (size_t i = 0; i < sortedEntries.size(); ++i) {
-			AddToBlock(sortedEntries[i]);
+			AddToBlock(sortedEntries[i], makeBTxHelper);
 			// Erase from the modified set, if present
 			mapModifiedTx.erase(sortedEntries[i]);
 		}
@@ -994,43 +1064,6 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 	// 取得矿工当前可用的UTXO
     CellTxDestination kDest;
 	ExtractDestination(block.vtx[0]->vout[0].scriptPubKey, kDest);
-
-	/*
-
-	// 获取最近一次挖矿的块
-	CoinListPtr pList = Explorer::GetCoinList(kDest);
-	if (pList == nullptr)
-		return 0;
-	int iLastMineBlock = 0;
-	BOOST_FOREACH(const CellOutPoint& op, pList->coins) {
-		const Coin& coin = pcoinsTip->AccessCoin(op);
-		if ( coin.IsCoinBase() )
-		{
-			int iHeight = coin.nHeight;
-			if ( iHeight > iLastMineBlock) {
-				iLastMineBlock = iHeight;
-			}
-		}
-	}
-
-	const int iMineDelay = 30;
-	CellAmount total = 0;
-	BOOST_FOREACH(const CellOutPoint& op, pList->coins) {
-		const Coin& coin = pcoinsTip->AccessCoin(op);
-
-		CellAmount v = coin.out.nValue;
-		// 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
-		int iHeight = coin.nHeight;
-		iHeight += iMatureDepth;
-		if (iHeight < iLastMineBlock){
-			iHeight = iLastMineBlock + iMineDelay;
-		}
-		int iRun = iPrevHeight - iHeight;
-		if ( iRun > 0 ){
-			total += (v / COIN) * iRun;
-		}
-	}
-	*/
 
 	if ( isBigBoom )
 		total = 0;
@@ -2013,7 +2046,7 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
  */
 void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const CellScript &minerpkey, const CellCoinsViewCache* pCoinsCache)
 {
-    if (!Params().IsMainChain())
+    if (!chainparams.IsMainChain())
         return;
 
     if (!ptxReport->IsReport() || ptxReport->pReportData == nullptr)
@@ -2074,7 +2107,7 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
 // OP:对所有report记录下来，按块高度排序，对超时的进行处理
 void BlockAssembler::addReportProofTxs(const CellScript& scriptPubKeyIn, CellCoinsViewCache *pcoinsCache)
 {
-    if (!Params().IsMainChain())
+    if (!chainparams.IsMainChain())
         return;
 
     uint32_t nOutOfHeight = REPORT_OUTOF_HEIGHT;
@@ -2083,7 +2116,7 @@ void BlockAssembler::addReportProofTxs(const CellScript& scriptPubKeyIn, CellCoi
     {
         std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
         CellBlock& block = *pblock;
-        if (ReadBlockFromDisk(block, pbi, Params().GetConsensus()))
+        if (ReadBlockFromDisk(block, pbi, chainparams.GetConsensus()))
         {
             for (int i = 1; i < block.vtx.size(); i++)
             {

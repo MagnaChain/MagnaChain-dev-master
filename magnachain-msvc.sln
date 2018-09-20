@@ -3,17 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2008
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "celllink-common", "celllink-common\celllink-common.vcxproj", "{5ABF25E3-3352-4342-B3D5-C4344CB36886}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_static", "db-4.8.30\build_windows\db_static.vcxproj", "{671539AA-D9A6-4B7B-8044-61B511D6F432}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "celllink-cli", "celllink-cli\celllink-cli.vcxproj", "{1BED1B30-3853-4A16-8965-8E9F3699C399}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-cli", "magnachain-cli\magnachain-cli.vcxproj", "{1BED1B30-3853-4A16-8965-8E9F3699C399}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "celllinkd", "celllinkd\celllinkd.vcxproj", "{E617E2C8-8609-4A46-9965-64646EA16CC7}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-common", "magnachain-common\magnachain-common.vcxproj", "{5ABF25E3-3352-4342-B3D5-C4344CB36886}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "celllink-test", "celllink-test\celllink-test.vcxproj", "{D943771F-36F4-453F-8A57-3FB8340F9FAD}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachaind", "magnachaind\magnachaind.vcxproj", "{E617E2C8-8609-4A46-9965-64646EA16CC7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "celllink-tx", "celllink-tx\celllink-tx.vcxproj", "{15C82F04-E3DB-4393-9AED-31E8FAEF7D7A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-test", "magnachain-test\magnachain-test.vcxproj", "{D943771F-36F4-453F-8A57-3FB8340F9FAD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-tx", "magnachain-tx\magnachain-tx.vcxproj", "{15C82F04-E3DB-4393-9AED-31E8FAEF7D7A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,14 +23,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.ActiveCfg = Debug|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.Build.0 = Debug|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.ActiveCfg = Debug|Win32
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.Build.0 = Debug|Win32
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.ActiveCfg = Release|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.Build.0 = Release|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.ActiveCfg = Release|Win32
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.Build.0 = Release|Win32
 		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x64.ActiveCfg = Debug|x64
 		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x64.Build.0 = Debug|x64
 		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x86.ActiveCfg = Debug|Win32
@@ -47,6 +39,14 @@ Global
 		{1BED1B30-3853-4A16-8965-8E9F3699C399}.Release|x64.Build.0 = Release|x64
 		{1BED1B30-3853-4A16-8965-8E9F3699C399}.Release|x86.ActiveCfg = Release|Win32
 		{1BED1B30-3853-4A16-8965-8E9F3699C399}.Release|x86.Build.0 = Release|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.ActiveCfg = Debug|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.Build.0 = Debug|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.ActiveCfg = Debug|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.Build.0 = Debug|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.ActiveCfg = Release|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.Build.0 = Release|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.ActiveCfg = Release|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.Build.0 = Release|Win32
 		{E617E2C8-8609-4A46-9965-64646EA16CC7}.Debug|x64.ActiveCfg = Debug|x64
 		{E617E2C8-8609-4A46-9965-64646EA16CC7}.Debug|x64.Build.0 = Debug|x64
 		{E617E2C8-8609-4A46-9965-64646EA16CC7}.Debug|x86.ActiveCfg = Debug|Win32

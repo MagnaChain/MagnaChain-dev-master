@@ -250,7 +250,14 @@ public:
 class ReportData
 {
 public:
+    enum {
+        REPORT_TX = 1,
+        REPORT_COINBASE,
+        REPORT_MERKLETREE,
+    };
+
     ReportData() = default;
+    int32_t reporttype;
     uint256 reportedBranchId;
     uint256 reportedBlockHash;
     uint256 reportedTxHash;
@@ -260,6 +267,7 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
+        READWRITE(reporttype);
         READWRITE(reportedBranchId);
         READWRITE(reportedBlockHash);
         READWRITE(reportedTxHash);
@@ -380,11 +388,11 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         tx.pBranchBlockData.reset(new CellBranchBlockInfo);
         s >> *tx.pBranchBlockData;
     }
-    else if (tx.nVersion == 10){
+    else if (tx.nVersion == 10){//CellTransaction::REPORT_CHEAT
         tx.pReportData.reset(new ReportData);
         s >> *tx.pReportData;
     }
-    else if (tx.nVersion == 11) {
+    else if (tx.nVersion == 11) {//CellTransaction::PROVE
         s >> tx.vectProveData;
     }
     else if (tx.nVersion == 13) {//CellTransaction::REDEEM_MORTGAGE
@@ -474,10 +482,10 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     else if (tx.nVersion == 9) {//CellTransaction::SYNC_BRANCH_INFO
         s << *tx.pBranchBlockData;
     }
-    else if (tx.nVersion == 10) {
+    else if (tx.nVersion == 10) {//CellTransaction::REPORT_CHEAT
         s << *tx.pReportData;
     }
-    else if (tx.nVersion == 11) {
+    else if (tx.nVersion == 11) {//CellTransaction::PROVE
         s << tx.vectProveData;
     }
     else if (tx.nVersion == 13) {//CellTransaction::REDEEM_MORTGAGE

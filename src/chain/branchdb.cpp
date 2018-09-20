@@ -485,6 +485,5 @@ int BranchDb::GetBranchBlockMinedHeight(const uint256& branchHash, const uint256
         return 0;
 
     BranchData& branchdata = mapBranchsData[branchHash];
-    
-    return 0;
+    return branchdata.GetBlockMinedHeight(blockHash);
 }

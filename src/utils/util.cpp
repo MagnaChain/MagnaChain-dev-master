@@ -95,8 +95,8 @@
 // Application startup time (used for uptime calculation)
 const int64_t nStartupTime = GetTime();
 
-const char * const CELLLINK_CONF_FILENAME = "celllink.conf";
-const char * const CELLLINK_PID_FILENAME = "celllink.pid";
+const char * const CELLLINK_CONF_FILENAME = "magnachain.conf";
+const char * const CELLLINK_PID_FILENAME = "magnachain.pid";
 
 ArgsManager gArgs;
 bool fPrintToConsole = false;
@@ -514,7 +514,7 @@ static std::string FormatException(const std::exception* pex, const char* pszThr
     char pszModule[MAX_PATH] = "";
     GetModuleFileNameA(nullptr, pszModule, sizeof(pszModule));
 #else
-    const char* pszModule = "celllink";
+    const char* pszModule = "magnachain";
 #endif
     if (pex)
         return strprintf(
@@ -533,13 +533,13 @@ void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
 
 fs::path GetDefaultDataDir()
 {
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\CellLink
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\CellLink
-    // Mac: ~/Library/Application Support/CellLink
-    // Unix: ~/.celllink
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data\magnachain
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming\magnachain
+    // Mac: ~/Library/Application Support/magnachain
+    // Unix: ~/.magnachain
 #ifdef _WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "CellLink";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "magnachain";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -549,10 +549,10 @@ fs::path GetDefaultDataDir()
         pathRet = fs::path(pszHome);
 #ifdef MAC_OSX
     // Mac
-    return pathRet / "Library/Application Support/CellLink";
+    return pathRet / "Library/Application Support/magnachain";
 #else
     // Unix
-    return pathRet / ".celllink";
+    return pathRet / ".magnachain";
 #endif
 #endif
 }
@@ -611,7 +611,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 {
     fs::ifstream streamConfig(GetConfigFile(confPath));
     if (!streamConfig.good())
-        return; // No celllink.conf file is OK
+        return; // No magnachain.conf file is OK
 
     {
         LOCK(cs_args);
@@ -620,7 +620,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 
         for (boost::program_options::detail::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
         {
-            // Don't overwrite existing settings so command line settings override celllink.conf
+            // Don't overwrite existing settings so command line settings override magnachain.conf
             std::string strKey = std::string("-") + it->string_key;
             std::string strValue = it->value[0];
             InterpretNegativeSetting(strKey, strValue);

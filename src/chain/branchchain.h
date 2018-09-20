@@ -63,7 +63,7 @@ void ProcessBlockBranchChain();
 
 CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids);
 bool CheckSpvProof(const uint256& frombranchid, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash);
-bool CheckBranchTransaction(const CellTransaction& tx, CellValidationState &state, const bool fVerifingDB, CellTransactionRef& pFromTx);
+bool CheckBranchTransaction(const CellTransaction& tx, CellValidationState &state, const bool fVerifingDB, const CellTransactionRef& pFromTx);
 
 CellAmount GetBranchChainCreateTxOut(const CellTransaction& tx);
 CellAmount GetBranchChainTransOut(const CellTransaction& branchTransStep1Tx);
@@ -85,4 +85,6 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
 bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex);
 bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
 bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
+
+CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx);
 #endif //  BRANCHCHAIN_H

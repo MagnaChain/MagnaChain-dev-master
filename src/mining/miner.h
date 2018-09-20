@@ -130,6 +130,28 @@ struct update_for_parent_inclusion
     CellTxMemPool::txiter iter;
 };
 
+class BranchUTXOCache
+{
+public:
+    typedef std::map<CellOutPoint, CellTxOut> MAP_CACHE_COIN;
+
+    CoinList coinlist;
+    MAP_CACHE_COIN mapCacheCoin;
+};
+
+class MakeBranchTxUTXO
+{
+public:
+    typedef std::map<uint160, BranchUTXOCache> MAP_BRANCH_COINS;
+    typedef std::map<uint256, CellTransactionRef> MAP_MAKE_CACHE;
+    
+    bool MakeTxUTXO(CellTxMemPool::txiter iter);
+
+    MAP_MAKE_CACHE mapCache;
+private:
+    MAP_BRANCH_COINS mapBranchCoins;
+};
+
 /** Generate a new block, without valid proof-of-work */
 class BlockAssembler
 {
@@ -178,7 +200,7 @@ private:
     /** Clear the block's state and prepare for assembling a new block */
     void resetBlock();
     /** Add a tx to the block */
-    void AddToBlock(CellTxMemPool::txiter iter);
+    void AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 
     void GroupingTransaction(int offset);
 
@@ -211,7 +233,7 @@ private:
     //
     void addReportProofTx(const CellTransactionRef &ptxReport, const CellScript &minerpkey, const CellCoinsViewCache* pCoinsCache);
     void addReportProofTxs(const CellScript& scriptPubKeyIn, CellCoinsViewCache *pcoinsCache);
-    bool UpdateBranchTx(CellMutableTransaction& branchTx);
+    bool UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 };
 
 /** Modify the extranonce in a block */

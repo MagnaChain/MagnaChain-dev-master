@@ -148,6 +148,14 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     return true;
 }
 
+uint256 GetBranchTxHash(const CellTransaction& tx)
+{
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN) {
+        return RevertTransaction(tx, nullptr).GetHash();
+    }
+    return tx.GetHash();
+}
+
 UniValue createbranchchain(const JSONRPCRequest& request)
 {
     CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -162,7 +170,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
                 "\nArguments:\n"
                 "1. \"vseeds\"             (string, required) The vSeeds address, eg \"vseeds1.com;vseeds2.com;vseeds3.com\" \n"
                 "2. \"seedspec6\"          (string, required) The SeedSpec6 a 16-byte IPv6 address and a port, eg \"00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333\" \n"
-                "3. \"mortgageaddress\"     (string, required) The CellLink Address, use to receive mortgage in main chain\n"
+                "3. \"mortgageaddress\"     (string, required) The magnachain Address, use to receive mortgage in main chain\n"
                 "\nReturns the hash of the created branch chain.\n"
                 "\nResult:\n"
                 "{\n"
@@ -764,7 +772,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
                 "\nArguments:\n"
                 "1. \"branchid\"             (string, required) The branch id\n"
                 "2. \"amount\"               (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 100.0\n"
-                "3. \"address\"              (string, required) The celllink address for Redeem\n"
+                "3. \"address\"              (string, required) The magnachain address for Redeem\n"
                 "\nReturns ok or fail.\n"
                 "\nResult:\n"
                 "\"ret\"                  (string) ok or fail\n"
@@ -1299,7 +1307,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     if (Params().IsMainChain())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
-    uint256 blockHash = ParseHashV(request.params[0], "param 0");
+    uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (!mapBlockIndex.count(blockHash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
     CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
@@ -1318,12 +1326,13 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     ReportData* pReportData = new ReportData;
     mtx.pReportData.reset(pReportData);
+    pReportData->reporttype = ReportData::REPORT_TX;
     pReportData->reportedTxHash = txHash;
     pReportData->reportedBranchId = Params().GetBranchHash(); 
     pReportData->reportedBlockHash = block.GetHash();
 
     CellRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig("main", branchrpccfg) == false)
+    if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "invalid rpc config");
 
     const std::string strMethod = "handlebranchreport";
