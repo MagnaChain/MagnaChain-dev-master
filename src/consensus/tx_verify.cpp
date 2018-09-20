@@ -192,6 +192,10 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
     if (tx.vout.empty() && !tx.IsSmartContract())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
+    if ((tx.contractAmountIn > 0 || tx.contractAmountOut > 0) && !tx.IsSmartContract())
+        return state.DoS(100, false, REJECT_INVALID, "invalid-smart-contract-amount-out", false, "Not a smart contract transaction, but with contract amount out");
+    if (!MoneyRange(tx.contractAmountIn) || !MoneyRange(tx.contractAmountOut))
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-contractamount-toolarge");
     // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
@@ -394,9 +398,6 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 
 bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& state, const CellCoinsViewCache& inputs, int nSpendHeight)
 {
-    if ((tx.contractAmountIn > 0 || tx.contractAmountOut > 0) && !tx.IsSmartContract())
-        return state.DoS(100, false, REJECT_INVALID, "invalid-smart-contract-amount-out", false, "Not a smart contract transaction, but with contract amount out");
-
         // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
         // for an attacker to attempt to split the network.
         if (!inputs.HaveInputs(tx))
