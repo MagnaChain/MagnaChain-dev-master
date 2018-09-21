@@ -19,6 +19,7 @@
 #include "primitives/block.h"
 #include <boost/thread.hpp>
 #include "chain/chain.h"
+#include "chain/branchchain.h"
 
 static const std::string DB_MAP_REPORT_PROVE_DATA = "db_mao_report_prove_data";
 
@@ -179,16 +180,19 @@ void BranchData::RemoveBlock(const uint256& blockhash)
 
 bool BranchCache::HasInCache(const CellTransaction& tx)
 {
-    BranchBlockData blockData;
-    blockData.InitDataFromTx(tx);
+    if (tx.IsSyncBranchInfo())
+    {
+        BranchBlockData blockData;
+        blockData.InitDataFromTx(tx);
 
-    uint256 blockHash = blockData.header.GetHash();
-    uint256 branchHash = tx.pBranchBlockData->branchID;
+        uint256 blockHash = blockData.header.GetHash();
+        uint256 branchHash = tx.pBranchBlockData->branchID;
 
-    if (mapBranchCache.count(branchHash)){
-        if (mapBranchCache[branchHash].mapHeads.count(blockHash)){
-            if (mapBranchCache[branchHash].mapHeads[blockHash].flags == BranchBlockData::eADD){
-                return true;
+        if (mapBranchCache.count(branchHash)){
+            if (mapBranchCache[branchHash].mapHeads.count(blockHash)){
+                if (mapBranchCache[branchHash].mapHeads[blockHash].flags == BranchBlockData::eADD){
+                    return true;
+                }
             }
         }
     }
@@ -197,37 +201,42 @@ bool BranchCache::HasInCache(const CellTransaction& tx)
 
 void BranchCache::AddToCache(const CellTransaction& tx)
 {
-    BranchBlockData blockData;
-    blockData.flags = BranchBlockData::eADD;
-    blockData.InitDataFromTx(tx);
+    if (tx.IsSyncBranchInfo()) {
+        BranchBlockData blockData;
+        blockData.flags = BranchBlockData::eADD;
+        blockData.InitDataFromTx(tx);
 
-    blockData.txHash = tx.GetHash();
+        blockData.txHash = tx.GetHash();
 
-    uint256 blockHash = blockData.header.GetHash();
-    uint256 branchHash = tx.pBranchBlockData->branchID;
+        uint256 blockHash = blockData.header.GetHash();
+        uint256 branchHash = tx.pBranchBlockData->branchID;
 
-    BranchData& bData = mapBranchCache[branchHash];
-    bData.mapHeads[blockHash] = blockData;
+        BranchData& bData = mapBranchCache[branchHash];
+        bData.mapHeads[blockHash] = blockData;
+    }
 }
 
 // Use in follow situation. 1.After finish build block
 // keep cache 
 void BranchCache::RemoveFromCache(const CellTransaction& tx)
 {
-    BranchBlockData blockData;
-    blockData.flags = BranchBlockData::eDELETE;
-    blockData.InitDataFromTx(tx);
+    if (tx.IsSyncBranchInfo())
+    {
+        BranchBlockData blockData;
+        blockData.flags = BranchBlockData::eDELETE;
+        blockData.InitDataFromTx(tx);
 
-    blockData.txHash = tx.GetHash();
+        blockData.txHash = tx.GetHash();
 
-    uint256 blockHash = blockData.header.GetHash();
-    uint256 branchHash = tx.pBranchBlockData->branchID;
+        uint256 blockHash = blockData.header.GetHash();
+        uint256 branchHash = tx.pBranchBlockData->branchID;
 
-    BranchData& bData = mapBranchCache[branchHash];
-    if (bData.mapHeads.count(blockHash))//update map data
-        bData.mapHeads[blockHash].flags = BranchBlockData::eDELETE;
-    else                                // set map data
-        bData.mapHeads[blockHash] = blockData;
+        BranchData& bData = mapBranchCache[branchHash];
+        if (bData.mapHeads.count(blockHash))//update map data
+            bData.mapHeads[blockHash].flags = BranchBlockData::eDELETE;
+        else                                // set map data
+            bData.mapHeads[blockHash] = blockData;
+    }
 }
 
 void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
@@ -237,18 +246,25 @@ void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
         if (tx->IsSyncBranchInfo()){
             RemoveFromCache(*tx);
         }
+        if (tx->IsReport()){
+            uint256 reportFlagHash = GetReportTxHashKey(*tx);
+            mReortTxFlagCache.erase(reportFlagHash);
+        }
     }
 }
 
 std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const CellTransaction& tx)
 {
     std::vector<uint256> vecRet;
+    if (!tx.IsSyncBranchInfo()){
+        return vecRet;
+    }
 
     BranchBlockData blockData;
     blockData.InitDataFromTx(tx);
 
     //uint256 blockHash = blockData.header.GetHash();
-    uint256 branchHash = tx.pBranchBlockData->branchID;
+    const uint256& branchHash = tx.pBranchBlockData->branchID;
 
     if (mapBranchCache.count(branchHash))
     {
@@ -323,6 +339,10 @@ void BranchDb::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
         if (transaction->IsSyncBranchInfo()) {
             AddBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
         }
+        if (transaction->IsReport()) {
+            uint256 reportFlagHash = GetReportTxHashKey(*transaction);
+            mReortTxFlag[reportFlagHash] = FLAG_REPORTED;
+        }
     }
 
     for (const uint256& branchHash : modifyBranch)
@@ -345,6 +365,10 @@ void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
         CellTransactionRef transaction = trans[i];
         if (transaction->IsSyncBranchInfo()) {
             DelBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
+        }
+        if (transaction->IsReport()) {
+            uint256 reportFlagHash = GetReportTxHashKey(*transaction);
+            mReortTxFlag.erase(reportFlagHash);
         }
     }
 

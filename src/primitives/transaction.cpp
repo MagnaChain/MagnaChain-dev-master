@@ -104,6 +104,15 @@ CellMutableTransaction::CellMutableTransaction(const CellTransaction& tx) : nVer
     {
         pBranchBlockData.reset((tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)));
     }
+    else if (nVersion == CellTransaction::REPORT_CHEAT)
+    {
+        pReportData.reset(tx.pReportData == nullptr? nullptr: new ReportData(*tx.pReportData));
+        pPMT.reset(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT));
+    }
+    else if (nVersion == CellTransaction::PROVE)
+    {
+        vectProveData = tx.vectProveData;
+    }
     else if (nVersion == CellTransaction::REDEEM_MORTGAGE)
     {
         fromBranchId = tx.fromBranchId;

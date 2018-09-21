@@ -82,6 +82,9 @@ bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlockHeader, 
 bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache);
 bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache);
 
+uint256 GetReportTxHashKey(const CellTransaction& tx);
+
+bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state);
 bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex);
 bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
 bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);

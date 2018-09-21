@@ -366,7 +366,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
 		s >> tx.sendToBranchid;
 		s >> tx.sendToTxHexData;
-        if (tx.sendToBranchid == "main") {
+        if (tx.sendToBranchid == CellBaseChainParams::MAIN) {
             tx.pPMT.reset(new CellSpvProof());
             s >> *tx.pPMT;
         }
@@ -375,7 +375,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 		s >> tx.fromBranchId;
 		s >> tx.fromTx;
 		s >> tx.inAmount;
-        if (tx.fromBranchId != "main") {
+        if (tx.fromBranchId != CellBaseChainParams::MAIN) {
             tx.pPMT.reset(new CellSpvProof());
             s >> *tx.pPMT;
         }
@@ -391,6 +391,8 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     else if (tx.nVersion == 10){//CellTransaction::REPORT_CHEAT
         tx.pReportData.reset(new ReportData);
         s >> *tx.pReportData;
+        tx.pPMT.reset(new CellSpvProof());
+        s >> *tx.pPMT;
     }
     else if (tx.nVersion == 11) {//CellTransaction::PROVE
         s >> tx.vectProveData;
@@ -463,7 +465,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
 		s << tx.sendToBranchid;
 		s << tx.sendToTxHexData;
-        if (tx.sendToBranchid == "main") {
+        if (tx.sendToBranchid == CellBaseChainParams::MAIN) {
             s << *tx.pPMT;
         }
 	}
@@ -471,7 +473,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 		s << tx.fromBranchId;
 		s << tx.fromTx;
 		s << tx.inAmount;
-        if (tx.fromBranchId != "main") {
+        if (tx.fromBranchId != CellBaseChainParams::MAIN) {
             s << *tx.pPMT;
         }
 	}
@@ -484,6 +486,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     else if (tx.nVersion == 10) {//CellTransaction::REPORT_CHEAT
         s << *tx.pReportData;
+        s << *tx.pPMT;
     }
     else if (tx.nVersion == 11) {//CellTransaction::PROVE
         s << tx.vectProveData;

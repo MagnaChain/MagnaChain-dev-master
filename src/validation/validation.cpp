@@ -1088,12 +1088,18 @@ static bool AcceptToMemoryPoolWithTime(const CellChainParams& chainparams, CellT
             for (const CellOutPoint& hashTx : coins_to_uncache)
                 pcoinsTip->Uncache(hashTx);
         }
-        else{//accept ok
-            if (tx->IsSyncBranchInfo()){
-                branchDataMemCache.AddToCache(*tx);
-            }
+    }
+    if (res)//accept ok
+    {
+        if (tx->IsSyncBranchInfo()) {
+            branchDataMemCache.AddToCache(*tx);
+        }
+        if (tx->IsReport()){
+            uint256 reportFlagHash = GetReportTxHashKey(*tx);
+            branchDataMemCache.mReortTxFlagCache[reportFlagHash] = FLAG_REPORTED;
         }
     }
+
     // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
     CellValidationState stateDummy;
     FlushStateToDisk(chainparams, stateDummy, FLUSH_STATE_PERIODIC);

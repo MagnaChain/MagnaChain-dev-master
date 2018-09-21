@@ -44,7 +44,7 @@ const CellAmount CreateBranchChainMortgage = 20000*COIN;// 创建支链抵押初
 const uint32_t MaxPowForCreateChainMortgage = 16; // (2^16) * CreateBranchChainMortgage = 655360000 COIN
 
 const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
-const uint32_t BRANCH_CHAIN_MATURITY = 1;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
+const uint32_t BRANCH_CHAIN_MATURITY = 2000;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
 const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // 抵押挖矿最小值
 const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time)
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
@@ -1316,7 +1316,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))   
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
-    uint256 txHash = ParseHashV(request.params[1], "transaction hash");
+    uint256 txHash = ParseHashV(request.params[1], "parameter 2");
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
 
@@ -1396,26 +1396,16 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid transaction spv");
     }
 
-    uint256 reportFlagHash = Hash(reportedBranchId.begin(), reportedBranchId.end(),
-            tx->pReportData->reportedBlockHash.begin(), tx->pReportData->reportedBlockHash.end(),
-            tx->pReportData->reportedTxHash.begin(), tx->pReportData->reportedTxHash.end());
+    uint256 reportFlagHash = GetReportTxHashKey(*tx);
     if (pBranchDb->mReortTxFlag.count(reportFlagHash))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Tansaction had been reported!");
-
-    CellPubKey newKey;
-    if(!pwallet->GetKeyFromPool(newKey))
-    {
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-    }
-    CellKeyID keyID = newKey.GetID();
-    pwallet->SetAddressBook(keyID, "", "handlebranchreport");
-    CellTxDestination kDest(keyID);
-    CellScript scriptPubKey = GetScriptForDestination(kDest);
 
     CellCoinControl coin_control;
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::REPORT_CHEAT;
-    wtx.pReportData.reset(new ReportData(*tx->pReportData)); 
+    wtx.isDataTransaction = true;
+    wtx.pReportData.reset(new ReportData(*tx->pReportData));
+    wtx.pPMT.reset(new CellSpvProof(*tx->pPMT));
 
     CellReserveKey reservekey(pwallet);
     CellAmount nFeeRequired;
@@ -1423,13 +1413,9 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     std::vector<CellRecipient> vecSend;
     bool fSubtractFeeFromAmount = false;
     CellAmount curBalance = pwallet->GetBalance();
-    CellAmount nValue  = DUST_RELAY_TX_FEE; 
-    CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount};
-    vecSend.push_back(recipient);
-    int nChangePosRet = vecSend.size(); 
-
+    int nChangePosRet = -1;
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
-        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+        if (!fSubtractFeeFromAmount && nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
@@ -1439,7 +1425,8 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
         strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
-    pBranchDb->mReortTxFlag[reportFlagHash] = FLAG_REPORTED;
+
+    //pBranchDb->mReortTxFlag[reportFlagHash] = FLAG_REPORTED;
 
     return "ok";
 }
@@ -1545,21 +1532,11 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid report transaction");
     }
 
-    CellPubKey newKey;
-    if(!pwallet->GetKeyFromPool(newKey))
-    {
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-    }
-    CellKeyID keyID = newKey.GetID();
-    pwallet->SetAddressBook(keyID, "", "handlebranchprove");
-
-    CellTxDestination kDest(keyID);
-    CellScript scriptPubKey = GetScriptForDestination(kDest);
-
     CellCoinControl coin_control;
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PROVE;
     wtx.vectProveData = tx->vectProveData;
+    wtx.isDataTransaction = true;
 
     CellReserveKey reservekey(pwallet);
     CellAmount nFeeRequired;
@@ -1567,12 +1544,9 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
     std::vector<CellRecipient> vecSend;
     bool fSubtractFeeFromAmount = false;
     CellAmount curBalance = pwallet->GetBalance();
-    CellAmount nValue = DUST_RELAY_TX_FEE;
-    CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
-    vecSend.push_back(recipient);
-    int nChangePosRet = vecSend.size(); 
+    int nChangePosRet = -1; 
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
-        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+        if (!fSubtractFeeFromAmount && nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
@@ -1583,7 +1557,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    pBranchDb->mReortTxFlag[proveFlagHash] = FLAG_PROVED;
+    //pBranchDb->mReortTxFlag[proveFlagHash] = FLAG_PROVED;
 
     return "ok";
 }

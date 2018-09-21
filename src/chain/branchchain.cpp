@@ -1106,6 +1106,16 @@ bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& b
     return true;
 }
 
+uint256 GetReportTxHashKey(const CellTransaction& tx)
+{
+    if (!tx.IsReport()){
+        return uint256();
+    }
+    return Hash(tx.pReportData->reportedBranchId.begin(), tx.pReportData->reportedBranchId.end(),
+        tx.pReportData->reportedBlockHash.begin(), tx.pReportData->reportedBlockHash.end(),
+        tx.pReportData->reportedTxHash.begin(), tx.pReportData->reportedTxHash.end());
+}
+
 // 调用地方 主要还是follow CheckInputs 
 bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache)
 {
@@ -1126,8 +1136,30 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
             return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
         }
     }
+
+    if (tx.IsReport()){
+        uint256 reportFlagHash = GetReportTxHashKey(tx);
+        if (pBranchCache && pBranchCache->mReortTxFlagCache.count(reportFlagHash)){
+            return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in cache");
+        }
+        if (pBranchDb->mReortTxFlag.count(reportFlagHash)){
+            return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in db");
+        }
+    }
     return true;
 }
+
+bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
+{
+    if (tx.IsReport())
+    {
+        const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
+        if (!CheckSpvProof(reportedBranchId, state, *tx.pPMT, tx.pReportData->reportedTxHash))
+            return false;
+    }
+    return true;
+}
+
 //
 bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex)
 {

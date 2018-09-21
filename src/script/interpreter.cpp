@@ -1090,6 +1090,15 @@ void TransactionExtraFields(S &s, const CellTransaction& txTo){
     {
         ::Serialize(s, txTo.pBranchBlockData);
     }
+    else if (txTo.nVersion == CellTransaction::REPORT_CHEAT)
+    {
+        ::Serialize(s, txTo.pReportData);
+        ::Serialize(s, txTo.pPMT);
+    }
+    else if (txTo.nVersion == CellTransaction::PROVE)
+    {
+        ::Serialize(s, txTo.vectProveData);
+    }
     else if (txTo.nVersion == CellTransaction::REDEEM_MORTGAGE)
     {
         ::Serialize(s, txTo.fromBranchId);

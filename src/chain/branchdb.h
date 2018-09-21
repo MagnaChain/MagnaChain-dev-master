@@ -13,6 +13,9 @@
 #include <utility>
 #include <vector>
 
+const uint16_t FLAG_REPORTED = 1;
+const uint16_t FLAG_PROVED = 2;
+
 class BranchBlockData
 {
 public:
@@ -92,19 +95,20 @@ class BranchCache
 {
 public:
     MAPBRANCHS_DATA mapBranchCache;
+    std::map<uint256, uint16_t> mReortTxFlagCache;
 
     bool HasInCache(const CellTransaction& tx);
     void AddToCache(const CellTransaction& tx);
-    void RemoveFromCache(const CellTransaction& tx);
+    
     void RemoveFromBlock(const std::vector<CellTransactionRef>& vtx);
 
     std::vector<uint256> GetAncestorsBlocksHash(const CellTransaction& tx);
 
     const BranchBlockData* GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash);
-};
 
-const uint16_t FLAG_REPORTED = 1;
-const uint16_t FLAG_PROVED = 2;
+private:
+    void RemoveFromCache(const CellTransaction& tx);
+};
 
 /*
  1、保证每个BranchData的mapHeads的BranchBlockData的preblock数据是存在的。

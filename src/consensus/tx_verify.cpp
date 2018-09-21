@@ -179,13 +179,10 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 {
     if (tx.IsSyncBranchInfo())
     {
-        //if (!tx.vin.empty() || !tx.vout.empty())
-        //    return state.DoS(100, false, REJECT_INVALID, "Invalid sync block head transaction");
         if (!Params().IsMainChain())
             return state.DoS(100, false, REJECT_INVALID, "Branch chain can not accept branch head transaction");
         if (!CheckBranchBlockInfoTx(tx, state, pBranchCache))
             return false;
-        //return true;
     }
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
@@ -369,6 +366,11 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
             {
                 return state.Invalid(false, REJECT_INVALID, "mortgage vout nValue is not satisfy min mortgage");
             }
+        }
+    }
+    if (tx.IsReport()){
+        if (!CheckReportCheatTx(tx, state)){
+            return false;
         }
     }
     if (tx.IsLockMortgageMineCoin()){
