@@ -512,7 +512,7 @@ std::string GetBranchTxProof(const CellBlock& block,  const std::set<uint256>& s
 bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof);
 
 
-bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveData>& vectProveData);
+bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveDataItem>& vectProveData);
 #endif // CELLLINK_VALIDATION_H
 
 

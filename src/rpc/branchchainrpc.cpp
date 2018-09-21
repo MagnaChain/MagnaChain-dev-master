@@ -1452,7 +1452,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     if (Params().IsMainChain())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
-    uint256 blockHash = ParseHashV(request.params[0], "param 0");
+    uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (!mapBlockIndex.count(blockHash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
     CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
@@ -1461,20 +1461,19 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))   
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
-    uint256 txHash = ParseHashV(request.params[1], "transaction hash");
+    uint256 txHash = ParseHashV(request.params[1], "parameter 2");
 
-    std::vector<ProveData> vectProveData;
-    if (!GetProveInfo(block, txHash, vectProveData))
+    CellMutableTransaction mtx;
+    mtx.nVersion = CellTransaction::PROVE;
+    mtx.pProveData.reset(new ProveData);
+    mtx.pProveData->branchId = Params().GetBranchHash();
+    if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData))
     {
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
     }
 
-    CellMutableTransaction mtx;
-    mtx.nVersion = CellTransaction::PROVE;
-    mtx.vectProveData = vectProveData;
-
     CellRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig("main", branchrpccfg) == false)
+    if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "invalid rpc config");
 
     const std::string strMethod = "handlebranchprove";
@@ -1522,10 +1521,10 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 
     CellTransactionRef tx = MakeTransactionRef(std::move(mtxTrans1));
 
-    ProveData proveData = tx->vectProveData[1];
-    uint256 proveFlagHash = Hash(proveData.branchId.begin(), proveData.branchId.end(),
-            proveData.blockHash.begin(), proveData.blockHash.end(),
-            proveData.txHash.begin(), proveData.txHash.end());
+    ProveDataItem proveDataItem = tx->pProveData->vectProveData[0];
+    uint256 proveFlagHash = Hash(tx->pProveData->branchId.begin(), tx->pProveData->branchId.end(),
+            proveDataItem.blockHash.begin(), proveDataItem.blockHash.end(),
+            proveDataItem.txHash.begin(), proveDataItem.txHash.end());
 
     if (!pBranchDb->mReortTxFlag.count(proveFlagHash) || pBranchDb->mReortTxFlag[proveFlagHash] != FLAG_REPORTED)
     {
@@ -1535,7 +1534,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
     CellCoinControl coin_control;
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PROVE;
-    wtx.vectProveData = tx->vectProveData;
+    wtx.pProveData.reset(tx->pProveData ? new ProveData(*tx->pProveData) : nullptr);
     wtx.isDataTransaction = true;
 
     CellReserveKey reservekey(pwallet);

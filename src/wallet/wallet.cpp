@@ -2835,7 +2835,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
     }
     else if (fromWtx.transaction_version == CellTransaction::PROVE)
     {
-        toTx.vectProveData = std::move(fromWtx.vectProveData);
+        toTx.pProveData.reset(new ProveData(*fromWtx.pProveData));
     }
     else if (fromWtx.transaction_version == CellTransaction::LOCK_MORTGAGE_MINE_COIN)
     {

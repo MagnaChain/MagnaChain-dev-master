@@ -274,10 +274,9 @@ public:
     }
 };
 
-class ProveData 
+class ProveDataItem
 {
 public:
-    uint256 branchId;
     uint256 blockHash;
     uint256 txHash;
     std::vector<unsigned char> tx;
@@ -287,11 +286,24 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        READWRITE(branchId);
         READWRITE(blockHash);
         READWRITE(txHash);
         READWRITE(tx);
         READWRITE(pCSP);
+    }
+};
+
+class ProveData
+{
+public:
+    uint256 branchId;
+    std::vector<ProveDataItem> vectProveData;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action){
+        READWRITE(branchId);
+        READWRITE(vectProveData);
     }
 };
 
@@ -395,7 +407,8 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
         s >> *tx.pPMT;
     }
     else if (tx.nVersion == 11) {//CellTransaction::PROVE
-        s >> tx.vectProveData;
+        tx.pProveData.reset(new ProveData);
+        s >> *tx.pProveData;
     }
     else if (tx.nVersion == 13) {//CellTransaction::REDEEM_MORTGAGE
         s >> tx.fromBranchId;
@@ -489,7 +502,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << *tx.pPMT;
     }
     else if (tx.nVersion == 11) {//CellTransaction::PROVE
-        s << tx.vectProveData;
+        s << *tx.pProveData;
     }
     else if (tx.nVersion == 13) {//CellTransaction::REDEEM_MORTGAGE
         s << tx.fromBranchId;
@@ -576,7 +589,7 @@ public:
 	const std::shared_ptr<const CellBranchBlockInfo> pBranchBlockData;
     const std::shared_ptr<const CellSpvProof> pPMT;
     const std::shared_ptr<const ReportData> pReportData;
-    const std::vector<ProveData> vectProveData;
+    const std::shared_ptr<const ProveData> pProveData;
 
     const uint256 reporttxid;// 从reported tx获取block coin，是否被证明等信息
     const uint256 coinpreouthash; // coin preout hash
@@ -776,7 +789,7 @@ struct CellMutableTransaction
     std::shared_ptr<CellSpvProof> pPMT;
 
     std::shared_ptr<ReportData> pReportData;
-    std::vector<ProveData> vectProveData;
+    std::shared_ptr<ProveData> pProveData;
 
     uint256 reporttxid;
     uint256 coinpreouthash;
@@ -895,7 +908,7 @@ template <typename Tx> static inline CellTransactionRef MakeTransactionRef(Tx&& 
 inline CellTransaction::CellTransaction() : nVersion(CellTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
     contractAddrs(), contractCode(), contractSender(), contractFun(), contractParams(), scontractScriptSig(), contractAmountIn(0), contractAmountOut(0),
     branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(),
-    fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(), pReportData(), vectProveData(), reporttxid(), coinpreouthash(), provetxid(), hash(){}
+    fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash(){}
 inline CellTransaction::CellTransaction(const CellMutableTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
     contractAddrs(tx.contractAddrs), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
     scontractScriptSig(tx.scontractScriptSig), contractAmountIn(tx.contractAmountIn), contractAmountOut(tx.contractAmountOut),
@@ -904,14 +917,14 @@ inline CellTransaction::CellTransaction(const CellMutableTransaction& tx) : nVer
     pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
     pPMT(tx.pPMT == nullptr? nullptr: new CellSpvProof(*tx.pPMT)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
-    vectProveData(tx.vectProveData), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
     contractAddrs(std::move(tx.contractAddrs)), contractCode(std::move(tx.contractCode)), contractSender(std::move(tx.contractSender)), contractFun(std::move(tx.contractFun)), contractParams(std::move(tx.contractParams)),
     scontractScriptSig(tx.scontractScriptSig), contractAmountIn(tx.contractAmountIn), contractAmountOut(tx.contractAmountOut),
     branchVSeeds(std::move(tx.branchVSeeds)), branchSeedSpec6(std::move(tx.branchSeedSpec6)), sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(std::move(tx.fromBranchId)), fromTx(std::move(tx.fromTx)), inAmount(tx.inAmount),
     pBranchBlockData(std::move(tx.pBranchBlockData)), pPMT(std::move(tx.pPMT)), 
-    pReportData(std::move(tx.pReportData)), vectProveData(std::move(tx.vectProveData)),
+    pReportData(std::move(tx.pReportData)), pProveData(std::move(tx.pProveData)),
     reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)), hash(ComputeHash()) {}
 
 // add copy constructor, 添加了不可复制成员变量pBranchBlockData后，默认复制构造函数被删除了
@@ -924,7 +937,7 @@ inline CellTransaction::CellTransaction(const CellTransaction& tx)
       pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
       pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)), 
       pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
-      vectProveData(tx.vectProveData), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 
 inline CellMutableTransaction::CellMutableTransaction(const CellMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
@@ -935,7 +948,7 @@ inline CellMutableTransaction::CellMutableTransaction(const CellMutableTransacti
       pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
       pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)), 
       pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
-      vectProveData(tx.vectProveData), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
+    pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
 
 inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutableTransaction& tx)
 {
@@ -964,7 +977,7 @@ inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutab
     pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData));
     pPMT.reset(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT));
     pReportData.reset(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData));
-    vectProveData = tx.vectProveData;
+    pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
     reporttxid = tx.reporttxid;
     coinpreouthash = tx.coinpreouthash;
     provetxid = tx.provetxid;

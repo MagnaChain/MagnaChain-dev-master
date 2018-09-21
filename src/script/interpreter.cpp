@@ -1097,7 +1097,7 @@ void TransactionExtraFields(S &s, const CellTransaction& txTo){
     }
     else if (txTo.nVersion == CellTransaction::PROVE)
     {
-        ::Serialize(s, txTo.vectProveData);
+        ::Serialize(s, txTo.pProveData);
     }
     else if (txTo.nVersion == CellTransaction::REDEEM_MORTGAGE)
     {

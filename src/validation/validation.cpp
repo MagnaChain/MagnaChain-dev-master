@@ -429,13 +429,13 @@ bool CheckReportTxProve(const CellTransaction& tx)
         return false;
     }
 
-    std::vector<ProveData> vectProveData = tx.vectProveData;
+    const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
     std::set<uint256> setHashs;
     //std::vector<CellTransactionRef> vectTx;
+    const uint256 branchId = tx.pProveData->branchId;
     CellTransactionRef pProveTx;
     for (size_t i = 0; i < vectProveData.size(); ++i)
-    {
-        const uint256 branchId = vectProveData[i].branchId;
+    {   
         if (!pBranchDb->HasBranchData(branchId))
         {
             return false;
@@ -5269,7 +5269,7 @@ bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, cons
     return true;
 }
 
-bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveData>& vectProveData)
+bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData)
 {
     if (ptx->IsCoinBase())
         return false;
@@ -5323,11 +5323,10 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
 
             std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(inblock, setTxids));
 
-            ProveData pData;
+            ProveDataItem pData;
             CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tmpTx };
             pData.pCSP = *pSpvPf;
             pData.blockHash = block.GetHash();
-            pData.branchId = uint256S(Params().GetBranchId());
             pData.txHash = tmpTx->GetHash();
 
             vectProveData.emplace_back(pData);
@@ -5337,7 +5336,7 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
     return true;
 }
 
-bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveData>& vectProveData)
+bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveDataItem>& vectProveData)
 {
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
@@ -5350,11 +5349,10 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
     
     std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(block, setTxids));
 
-    ProveData pData;
+    ProveDataItem pData;
     CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx };
     pData.pCSP = *pSpvPf;
     pData.blockHash = block.GetHash();
-    pData.branchId = uint256S(Params().GetBranchId());
     pData.txHash = txHash;
     vectProveData.emplace_back(pData);
 

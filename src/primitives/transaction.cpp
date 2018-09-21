@@ -111,7 +111,7 @@ CellMutableTransaction::CellMutableTransaction(const CellTransaction& tx) : nVer
     }
     else if (nVersion == CellTransaction::PROVE)
     {
-        vectProveData = tx.vectProveData;
+        pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
     }
     else if (nVersion == CellTransaction::REDEEM_MORTGAGE)
     {

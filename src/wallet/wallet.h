@@ -370,7 +370,7 @@ public:
     std::shared_ptr<const CellSpvProof> pPMT;
     std::vector<unsigned char> fromTx;
     std::shared_ptr<const ReportData> pReportData;
-    std::vector<ProveData> vectProveData;
+    std::shared_ptr<ProveData> pProveData;
 
     bool isDataTransaction; // transaction can be fee only, no transfer
     std::shared_ptr<CellBranchBlockInfo> pBranchBlockData;
