@@ -1350,13 +1350,13 @@ bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState&
     if (!tx.IsLockMortgageMineCoin())
         return false;
 
-    std::string fromBranchId = "main";
+    const std::string& fromBranchId = CellBaseChainParams::MAIN;
     // check report transactoin is in main chain
     CellRPCConfig branchrpccfg;
     if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false)
     {
-        if (Params().IsMainChain() && gArgs.GetBoolArg("-unchecknoconfigbranch", false))
-            return true;
+        //if (Params().IsMainChain() && gArgs.GetBoolArg("-unchecknoconfigbranch", false))
+        //    return true;
 
         std::string strErr = strprintf(" %s can not found branch rpc config for %s\n", __func__, fromBranchId);
         return state.DoS(1, false, REJECT_INVALID, strErr);
@@ -1391,7 +1391,7 @@ bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState&
     if (!DecodeHexTx(mtxReport, uvtxhex.get_str()))
         return error("%s decode hex tx fail\n", __func__);
 
-    if (mtxReport.pReportData == nullptr)
+    if (!mtxReport.IsReport() || mtxReport.pReportData == nullptr)
         return false;
 
     if (mtxReport.pReportData->reportedBranchId != Params().GetBranchHash())
@@ -1406,8 +1406,9 @@ bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState&
     }
 
     //TODO: 是否要加判断还没有被证明? 加了会不会引出问题：主链下载数据比侧链领先一截，主链加完证明数据，侧链才加载锁定交易，然后进来此判断
+    //      不加也ok吧，因为还是可以解锁
 
-    //举报块是否在记录里?? 理论有误的块也不会被侧链记录
+    //举报块是否在记录里?? 被举报的块有可能被丢弃?? 
  //   if (mapBlockIndex.count(mtxReport.pReportData->reportedBlockHash) == 0)
  //       return false;
 

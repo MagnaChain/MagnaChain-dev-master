@@ -1592,8 +1592,8 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     // 1 branch, get report tx data
     // 2 coin preout hash
     // 3 历史久远的不能举报?
-    uint256 reporttxid = ParseHashV(request.params[0], "param 0");
-    uint256 coinprevouthash = ParseHashV(request.params[1], "param 1");
+    uint256 reporttxid = ParseHashV(request.params[0], "parameter 1");
+    uint256 coinprevouthash = ParseHashV(request.params[1], "parameter 2");
 
     CellCoinControl coin_control;
 
@@ -1657,7 +1657,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
     if (!Params().IsMainChain())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This RPC API Only be called in main chain!\n");
 
-    uint256 reporttxid = ParseHashV(request.params[0], "param 0");
+    uint256 reporttxid = ParseHashV(request.params[0], "parameter 1");
 
     CellTransactionRef ptxReport;
     uint256 hashBlock;
@@ -1671,7 +1671,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
         confirmations = chainActive.Height() - mapBlockIndex[hashBlock]->nHeight;
 
     // get mine coin prevouthash
-    LOCK(cs_main);// protect pBranchDb
+    //LOCK(cs_main);// protect pBranchDb
     uint256 prevouthash;
     BranchData branchdata = pBranchDb->GetBranchData(ptxReport->pReportData->reportedBranchId);// don't check
     if (branchdata.mapHeads.count(ptxReport->pReportData->reportedBlockHash)){
@@ -1719,9 +1719,9 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    uint256 reporttxid = ParseHashV(request.params[0], "param 0");
-    uint256 coinprevouthash = ParseHashV(request.params[1],"param 1");
-    uint256 provetxid = ParseHashV(request.params[2], "param 2");
+    uint256 reporttxid = ParseHashV(request.params[0], "parameter 1");
+    uint256 coinprevouthash = ParseHashV(request.params[1],"parameter 2");
+    uint256 provetxid = ParseHashV(request.params[2], "parameter 3");
 
     CellCoinControl coin_control;
 
