@@ -422,57 +422,6 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
 	return false;
 }
 
-bool CheckReportTxProve(const CellTransaction& tx)
-{
-    if (!tx.IsProve())
-    {
-        return false;
-    }
-
-    const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
-    std::set<uint256> setHashs;
-    //std::vector<CellTransactionRef> vectTx;
-    const uint256 branchId = tx.pProveData->branchId;
-    CellTransactionRef pProveTx;
-    for (size_t i = 0; i < vectProveData.size(); ++i)
-    {   
-        if (!pBranchDb->HasBranchData(branchId))
-        {
-            return false;
-        }
-        BranchData branchData = pBranchDb->GetBranchData(branchId);
-        if (branchData.mapHeads.count(vectProveData[i].blockHash))
-        {
-            return false;
-        }
-
-        std::vector<uint256> vMatch;
-        std::vector<unsigned int> vIndex;
-        CellSpvProof svpProof(vectProveData[i].pCSP);
-        if (svpProof.pmt.ExtractMatches(vMatch, vIndex) != branchData.mapHeads[vectProveData[i].blockHash].header.hashMerkleRoot)
-        {
-            return false;
-        }
-
-        CellTransactionRef pTx;
-        CellDataStream cds(vectProveData[i].tx, SER_NETWORK, INIT_PROTO_VERSION);
-        cds >> (pTx);
-        //vectTx.emplace_back(pTx);
-        if (i==0)
-            pProveTx = pTx;
-        else
-            setHashs.insert(pTx->GetHash());            
-    }
-    // Ð£ÑévinÊÇ·ñÕýÈ·
-    for(CellTxIn vin: pProveTx->vin)
-    {
-        uint256 hash = vin.prevout.hash;
-        if (!setHashs.count(hash))
-            return false;
-    }       
-
-    return true;
-}
 // Returns the script flags which should be checked for a given block
 static unsigned int GetBlockScriptFlags(const CellBlockIndex* pindex, const Consensus::Params& chainparams);
 
@@ -1091,13 +1040,7 @@ static bool AcceptToMemoryPoolWithTime(const CellChainParams& chainparams, CellT
     }
     if (res)//accept ok
     {
-        if (tx->IsSyncBranchInfo()) {
-            branchDataMemCache.AddToCache(*tx);
-        }
-        if (tx->IsReport()){
-            uint256 reportFlagHash = GetReportTxHashKey(*tx);
-            branchDataMemCache.mReortTxFlagCache[reportFlagHash] = FLAG_REPORTED;
-        }
+        branchDataMemCache.AddToCache(*tx);//check n add relate cache
     }
 
     // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
@@ -2159,8 +2102,8 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
         if (!CheckBranchDuplicateTx(tx, state, pBranchCache)) {
             return false;
         }
-        if (tx.IsSyncBranchInfo())
-            pBranchCache->AddToCache(tx);
+        //
+        pBranchCache->AddToCache(tx);
 
         // GetTransactionSigOpCost counts 3 types of sigops:
         // * legacy (always)
@@ -3414,18 +3357,14 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
             return state.DoS(100, false, REJECT_INVALID, "bad-stock-trans", false, "block pubkey mismatch");
     }
 
-    BranchCache tempcache;
+    BranchCache tempcache;// use to duplicate check in one block
     // Check transactions
     for (const auto& tx : block.vtx) {
         if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, &tempcache))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                     strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
-        if (tx->IsSyncBranchInfo()) {
-            if (tempcache.HasInCache(*tx)){
-                return state.Invalid(false, REJECT_INVALID, "duplicate sync branch info in cache.");
-            }
-            tempcache.AddToCache(*tx);
-        }
+
+        tempcache.AddToCache(*tx);
     }
 
     unsigned int nSigOps = 0;
@@ -3817,18 +3756,6 @@ void UpdateContractTxAndProveTx(bool checkContract)
         if (tx.IsSmartContract()) {
             if (checkContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_DATA, state))
                 vTxs.emplace_back(tx);
-        }
-    }
-
-    for (auto it = mempool.mapTx.begin(); it != mempool.mapTx.end(); it++)
-    {
-        const CellTransaction& tx = it->GetTx();
-        // ´¦ÀíÖ¤Ã÷½»Ò×
-        if (tx.IsProve())
-        {
-            if (CheckReportTxProve(tx))
-            {
-            }
         }
     }
 
@@ -5327,7 +5254,6 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
             CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tmpTx };
             pData.pCSP = *pSpvPf;
             pData.blockHash = block.GetHash();
-            pData.txHash = tmpTx->GetHash();
 
             vectProveData.emplace_back(pData);
 
@@ -5344,8 +5270,16 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
     CellTransactionRef tx;
     uint256 hashBlock = uint256();
 
-    if (!GetTransaction(txHash, tx, Params().GetConsensus(), hashBlock, true))
-        return false;
+    //GetTransaction will fail if fTxIndex == false(default value) and tx's out coins have been spent.
+    //if (!GetTransaction(txHash, tx, Params().GetConsensus(), hashBlock, true))
+    //    return false;
+    //
+    for (const CellTransactionRef& v : block.vtx){
+        if (v->GetHash() == txHash){
+            tx = v;
+            break;
+        }
+    }
     
     std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(block, setTxids));
 
@@ -5353,7 +5287,6 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
     CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx };
     pData.pCSP = *pSpvPf;
     pData.blockHash = block.GetHash();
-    pData.txHash = txHash;
     vectProveData.emplace_back(pData);
 
     return GetTxVinBlockData(block, tx, vectProveData);

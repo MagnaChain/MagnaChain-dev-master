@@ -1326,7 +1326,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     ReportData* pReportData = new ReportData;
     mtx.pReportData.reset(pReportData);
-    pReportData->reporttype = ReportData::REPORT_TX;
+    pReportData->reporttype = ReportType::REPORT_TX;
     pReportData->reportedTxHash = txHash;
     pReportData->reportedBranchId = Params().GetBranchHash(); 
     pReportData->reportedBlockHash = block.GetHash();
@@ -1368,7 +1368,7 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
                 + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
                 );
     if (!Params().IsMainChain())
-        throw JSONRPCRequest();
+        throw JSONRPCError(RPC_WALLET_ERROR, "can not call in branchchain.\n");
 
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
@@ -1426,7 +1426,7 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    //pBranchDb->mReortTxFlag[reportFlagHash] = FLAG_REPORTED;
+    //pBranchDb->mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
 
     return "ok";
 }
@@ -1437,7 +1437,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
         throw std::runtime_error(
                 "sendreporttomain \"blockhash\"  \"txid\"\n"
-                "\nSend invalid transaction proof to main chain. \n"
+                "\nSend valid transaction proof to main chain. \n"
                 "\nArguments:\n"
                 "1. \"blockhash\"        (string, required) The block hash.\n"
                 "2. \"txid\"             (string, required) A transaction hash.\n"
@@ -1466,6 +1466,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     CellMutableTransaction mtx;
     mtx.nVersion = CellTransaction::PROVE;
     mtx.pProveData.reset(new ProveData);
+    mtx.pProveData->provetype = ReportType::REPORT_TX;
     mtx.pProveData->branchId = Params().GetBranchHash();
     if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData))
     {
@@ -1509,32 +1510,26 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
                 + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
                 );
     if (!Params().IsMainChain())
-        throw JSONRPCRequest();
+        throw JSONRPCError(RPC_WALLET_ERROR, "Can not call in branchchain.\n");
     const std::string& strTx1HexData = request.params[0].get_str();
     CellMutableTransaction mtxTrans1;
-    if (!DecodeHexTx(mtxTrans1, strTx1HexData))
-    {
+    if (!DecodeHexTx(mtxTrans1, strTx1HexData)){
         throw JSONRPCError(RPC_WALLET_ERROR, "DecodeHexTx tx hex fail.\n");
     }
+
     if (!mtxTrans1.IsProve())
         throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid transaction data");
 
     CellTransactionRef tx = MakeTransactionRef(std::move(mtxTrans1));
-
-    ProveDataItem proveDataItem = tx->pProveData->vectProveData[0];
-    uint256 proveFlagHash = Hash(tx->pProveData->branchId.begin(), tx->pProveData->branchId.end(),
-            proveDataItem.blockHash.begin(), proveDataItem.blockHash.end(),
-            proveDataItem.txHash.begin(), proveDataItem.txHash.end());
-
-    if (!pBranchDb->mReortTxFlag.count(proveFlagHash) || pBranchDb->mReortTxFlag[proveFlagHash] != FLAG_REPORTED)
-    {
+    uint256 proveFlagHash = GetProveTxHashKey(*tx);
+    if (!pBranchDb->mReortTxFlag.count(proveFlagHash)==0 || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid report transaction");
     }
 
     CellCoinControl coin_control;
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PROVE;
-    wtx.pProveData.reset(tx->pProveData ? new ProveData(*tx->pProveData) : nullptr);
+    wtx.pProveData.reset(tx->pProveData == nullptr ? nullptr : new ProveData(*tx->pProveData));
     wtx.isDataTransaction = true;
 
     CellReserveKey reservekey(pwallet);
@@ -1556,7 +1551,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    //pBranchDb->mReortTxFlag[proveFlagHash] = FLAG_PROVED;
+    //pBranchDb->mReortTxFlag[proveFlagHash] = RP_FLAG_PROVED;
 
     return "ok";
 }

@@ -247,15 +247,15 @@ public:
     }
 };
 
+enum ReportType{
+    REPORT_TX = 1,
+    REPORT_COINBASE,
+    REPORT_MERKLETREE,
+};
+
 class ReportData
 {
 public:
-    enum {
-        REPORT_TX = 1,
-        REPORT_COINBASE,
-        REPORT_MERKLETREE,
-    };
-
     ReportData() = default;
     int32_t reporttype;
     uint256 reportedBranchId;
@@ -278,7 +278,6 @@ class ProveDataItem
 {
 public:
     uint256 blockHash;
-    uint256 txHash;
     std::vector<unsigned char> tx;
     CellSpvProof pCSP;
 
@@ -287,7 +286,6 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
         READWRITE(blockHash);
-        READWRITE(txHash);
         READWRITE(tx);
         READWRITE(pCSP);
     }
@@ -296,12 +294,14 @@ public:
 class ProveData
 {
 public:
+    int32_t provetype;
     uint256 branchId;
     std::vector<ProveDataItem> vectProveData;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action){
+        READWRITE(provetype);
         READWRITE(branchId);
         READWRITE(vectProveData);
     }

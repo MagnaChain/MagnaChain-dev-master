@@ -1106,17 +1106,47 @@ bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& b
     return true;
 }
 
+//GetReportTxHashKey 和 GetProveTxHashKey 需要计算出同样的值
 uint256 GetReportTxHashKey(const CellTransaction& tx)
 {
     if (!tx.IsReport()){
         return uint256();
     }
-    return Hash(tx.pReportData->reportedBranchId.begin(), tx.pReportData->reportedBranchId.end(),
-        tx.pReportData->reportedBlockHash.begin(), tx.pReportData->reportedBlockHash.end(),
-        tx.pReportData->reportedTxHash.begin(), tx.pReportData->reportedTxHash.end());
+
+    int nType = SER_GETHASH;
+    int nVersion = PROTOCOL_VERSION;
+    CellHashWriter ss(nType, nVersion);
+    ss << tx.pReportData->reporttype;
+    if (tx.pReportData->reporttype == ReportType::REPORT_TX)
+    {
+        ss << tx.pReportData->reportedBranchId;
+        ss << tx.pReportData->reportedBlockHash;
+        ss << tx.pReportData->reportedTxHash;
+    }
+    return ss.GetHash();
+}
+uint256 GetProveTxHashKey(const CellTransaction& tx)
+{
+    int nType = SER_GETHASH;
+    int nVersion = PROTOCOL_VERSION;
+    CellHashWriter ss(nType, nVersion);
+    ss << tx.pProveData->provetype;
+    if (tx.pProveData->provetype == ReportType::REPORT_TX)
+    {
+        const ProveDataItem& proveDataItem = tx.pProveData->vectProveData[0];
+        CellTransactionRef ptxToProve;
+        CellDataStream cds(proveDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (ptxToProve);
+        uint256 txid = ptxToProve->GetHash();
+
+        ss << tx.pProveData->branchId;
+        ss << proveDataItem.blockHash;
+        ss << txid;
+    }
+    return ss.GetHash();
 }
 
-// 调用地方 主要还是follow CheckInputs 
+// 调用地方 主要还是follow CheckInputs : 1.accepttomempool 2.connectblock
 bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache)
 {
     if (tx.IsSyncBranchInfo()){
@@ -1146,6 +1176,20 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in db");
         }
     }
+
+    if (tx.IsProve()){
+        uint256 proveFlagHash = GetProveTxHashKey(tx);
+        if (pBranchCache && pBranchCache->mReortTxFlagCache.count(proveFlagHash) 
+            && pBranchCache->mReortTxFlagCache[proveFlagHash] == RP_FLAG_PROVED)
+        {
+            return state.DoS(0, false, REJECT_DUPLICATE, "duplicate prove in cache");
+        }
+        if (pBranchDb->mReortTxFlag.count(proveFlagHash) 
+            && pBranchDb->mReortTxFlag[proveFlagHash] == RP_FLAG_PROVED)
+        {
+            return state.DoS(0, false, REJECT_DUPLICATE, "duplicate prove in db");
+        }
+    }
     return true;
 }
 
@@ -1156,6 +1200,85 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
         if (!CheckSpvProof(reportedBranchId, state, *tx.pPMT, tx.pReportData->reportedTxHash))
             return false;
+    }
+    return true;
+}
+
+bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
+{
+    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX){
+        return false;
+    }
+
+    const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
+    if (vectProveData.size() < 1){
+        return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid can not zero");
+    }
+
+    CellTransactionRef pProveTx;
+    CellDataStream cds(vectProveData[0].tx, SER_NETWORK, INIT_PROTO_VERSION);
+    cds >> (pProveTx);
+
+    if (vectProveData.size() != pProveTx->vin.size()+1){
+        return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid for prove each input");
+    }
+
+    const uint256 branchId = tx.pProveData->branchId;
+    if (!pBranchDb->HasBranchData(branchId)){
+        return false;
+    }
+    BranchData branchData = pBranchDb->GetBranchData(branchId);
+    for (size_t i = 1; i < vectProveData.size(); ++i)
+    {
+        if (branchData.mapHeads.count(vectProveData[i].blockHash))
+        {
+            return false;
+        }
+        
+        CellTransactionRef pTx;
+        CellDataStream cds(vectProveData[i].tx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pTx);
+
+        const uint256& providetxid = pTx->GetHash();
+
+        CellSpvProof svpProof(vectProveData[i].pCSP);
+        if (!CheckSpvProof(branchId, state, svpProof, providetxid)){
+            return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
+        }
+        if (providetxid != pProveTx->vin[i - 1].prevout.hash){
+            return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx provide tx not match");
+        }
+    }
+
+    return true;
+}
+
+bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
+{
+    if (tx.IsProve())
+    {
+        uint256 proveFlagHash = GetProveTxHashKey(tx);
+        //check report exist, don't check in cache now. let a report tx in a mined block may be better.
+        if (pBranchDb->mReortTxFlag.count(proveFlagHash) == 0
+            || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
+        {
+            return state.DoS(0, false, REJECT_INVALID, "prove to report tx not exist.");
+        }
+
+        if (tx.pProveData->provetype == ReportType::REPORT_TX){
+            if (!CheckProveReportTx(tx, state)){
+                return false;
+            }
+        }
+        else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
+        {
+        }
+        else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
+        {
+        }
+        else{ 
+            return state.DoS(0, false, REJECT_INVALID, "Invalid report type");
+        }
     }
     return true;
 }

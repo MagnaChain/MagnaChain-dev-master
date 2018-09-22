@@ -373,6 +373,13 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
             return false;
         }
     }
+    if (tx.IsProve())
+    {
+        if (!CheckProveTx(tx, state))
+        {
+            return false;
+        }
+    }
     if (tx.IsLockMortgageMineCoin()){
         if (!CheckLockMortgageMineCoinTx(tx, state))
             return false;

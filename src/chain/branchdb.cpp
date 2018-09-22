@@ -211,8 +211,24 @@ void BranchCache::AddToCache(const CellTransaction& tx)
         uint256 blockHash = blockData.header.GetHash();
         uint256 branchHash = tx.pBranchBlockData->branchID;
 
-        BranchData& bData = mapBranchCache[branchHash];
+        BranchData& bData = this->mapBranchCache[branchHash];
         bData.mapHeads[blockHash] = blockData;
+    }
+    if (tx.IsReport()){
+        uint256 reportFlagHash = GetReportTxHashKey(tx);
+        this->mReortTxFlagCache[reportFlagHash] = RP_FLAG_REPORTED;
+    }
+    if (tx.IsProve())
+    {
+        uint256 proveFlagHash = GetProveTxHashKey(tx);
+
+        //check before
+        //if (this->mReortTxFlagCache.count(proveFlagHash) == 0 || this->mReortTxFlagCache[proveFlagHash] != RP_FLAG_REPORTED)
+        //{
+        //    AbortNode;
+        //}
+
+        this->mReortTxFlagCache[proveFlagHash] = RP_FLAG_PROVED;
     }
 }
 
@@ -237,19 +253,17 @@ void BranchCache::RemoveFromCache(const CellTransaction& tx)
         else                                // set map data
             bData.mapHeads[blockHash] = blockData;
     }
+    if (tx.IsReport()) {
+        uint256 reportFlagHash = GetReportTxHashKey(tx);
+        mReortTxFlagCache.erase(reportFlagHash);
+    }
 }
 
 void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
 {
     for (const auto& tx : vtx)
     {
-        if (tx->IsSyncBranchInfo()){
-            RemoveFromCache(*tx);
-        }
-        if (tx->IsReport()){
-            uint256 reportFlagHash = GetReportTxHashKey(*tx);
-            mReortTxFlagCache.erase(reportFlagHash);
-        }
+        RemoveFromCache(*tx);
     }
 }
 
@@ -341,7 +355,19 @@ void BranchDb::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
         }
         if (transaction->IsReport()) {
             uint256 reportFlagHash = GetReportTxHashKey(*transaction);
-            mReortTxFlag[reportFlagHash] = FLAG_REPORTED;
+            mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
+        }
+        if (transaction->IsProve())
+        {
+            uint256 proveFlagHash = GetProveTxHashKey(*transaction);
+
+            //check before
+            //if(this->mReortTxFlag.count(proveFlagHash) == 0 || this->mReortTxFlagCache[proveFlagHash] != RP_FLAG_REPORTED)
+            //{
+            //    AbortNode;
+            //}
+
+            this->mReortTxFlag[proveFlagHash] = RP_FLAG_PROVED;
         }
     }
 
@@ -369,6 +395,11 @@ void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
         if (transaction->IsReport()) {
             uint256 reportFlagHash = GetReportTxHashKey(*transaction);
             mReortTxFlag.erase(reportFlagHash);
+        }
+        if (transaction->IsProve())
+        {
+            uint256 proveFlagHash = GetProveTxHashKey(*transaction);
+            this->mReortTxFlag[proveFlagHash] = RP_FLAG_REPORTED; // revert to previous value
         }
     }
 

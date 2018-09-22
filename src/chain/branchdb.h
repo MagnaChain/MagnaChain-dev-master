@@ -13,8 +13,9 @@
 #include <utility>
 #include <vector>
 
-const uint16_t FLAG_REPORTED = 1;
-const uint16_t FLAG_PROVED = 2;
+//the state of report and prove
+const uint16_t RP_FLAG_REPORTED = 1;
+const uint16_t RP_FLAG_PROVED = 2;
 
 class BranchBlockData
 {
