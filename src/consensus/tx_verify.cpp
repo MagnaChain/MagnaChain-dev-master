@@ -338,9 +338,6 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (nOrginalOut >= tx.inAmount || !MoneyRange(tx.inAmount)){
             return state.DoS(100, false, REJECT_INVALID, "bad-amount-not-correct-t1-t2");
         }
-        //if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, pBlock)){
-        //    return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
-        //}
         
         //挖矿币产生输出判断
         if (!Params().IsMainChain() && QuickGetBranchScriptType(tx.vout[0].scriptPubKey) == BST_MORTGAGE_COIN)
@@ -404,6 +401,8 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 
     return true;
 }
+
+extern bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey);
 
 bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& state, const CellCoinsViewCache& inputs, int nSpendHeight)
 {
@@ -472,6 +471,35 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
         if (nValueIn < tx.GetValueOut())
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
                 strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
+
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN)
+        {
+            CellAmount nInValueBranch = 0;
+            for (unsigned int i = 0; i < tx.vin.size(); i++)
+            {
+                const CellOutPoint &prevout = tx.vin[i].prevout;
+                const Coin& coin = inputs.AccessCoin(prevout);// coin type has check in 
+                nInValueBranch += coin.out.nValue;
+            }
+            uint256 frombranchid;
+            frombranchid.SetHex(tx.fromBranchId);
+            CellAmount nOrginalOut = 0;
+            CellAmount nBranchRecharge = 0;
+            for (const auto& txout : tx.vout) {
+                if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
+                    nOrginalOut += txout.nValue;
+                }
+                else{
+                    nBranchRecharge += txout.nValue;
+                    if (!CheckTranBranchScript(frombranchid, txout.scriptPubKey)) {
+                        return state.DoS(100, false, REJECT_INVALID, "branch-step-2-recharge-script-invalid");
+                    }
+                }
+            }
+            if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount){
+                return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
+            }
+        }
 
         //check vout
         if (tx.IsRedeemMortgageStatement()){

@@ -1441,27 +1441,33 @@ void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, int nHei
     UpdateCoins(tx, inputs, txundo, nHeight);
 }
 
+bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey)
+{
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    CellScript::const_iterator pc1 = scriptPubKey.begin();
+    if (!scriptPubKey.GetOp(pc1, opcode, vch) || opcode != OP_TRANS_BRANCH)
+        return false;
+    if (scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256))
+    {
+        uint256 branchhash(vch);
+        if (branchhash == branchid) {
+            return true;
+        }
+    }
+    else
+        return false;
+    return false;
+}
+
 bool CScriptCheck::operator()() {
     ////
     if (ptxTo->IsBranchChainTransStep2() && ptxTo->fromBranchId != CellBaseChainParams::MAIN)
     {
         uint256 branchid;
         branchid.SetHex(ptxTo->fromBranchId);
-        opcodetype opcode;
-        std::vector<unsigned char> vch;
-        CellScript::const_iterator pc1 = scriptPubKey.begin();
-        if (!scriptPubKey.GetOp(pc1, opcode, vch) || opcode != OP_TRANS_BRANCH)
-            return false;
-        if (scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256))
-        {
-            uint256 branchhash(vch);
-            if (branchhash == branchid) {
-                return true;
-            }
-        }
-        else
-            return false;
-        return false;
+
+        return CheckTranBranchScript(branchid, scriptPubKey);
     }
     ////
 

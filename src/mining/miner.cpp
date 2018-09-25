@@ -489,7 +489,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(CellTxMemPool::txiter iter)
 
     std::vector<CellOutPoint> vInOutPoints;
     CellAmount nValue = 0;
-    CellAmount nAmount = branchTx.inAmount;
+    const CellAmount nAmount = branchTx.inAmount;
 
     // get coins
     {

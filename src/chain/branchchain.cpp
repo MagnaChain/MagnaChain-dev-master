@@ -1227,27 +1227,64 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     if (!pBranchDb->HasBranchData(branchId)){
         return false;
     }
+    CellAmount nInAmount = 0;
     BranchData branchData = pBranchDb->GetBranchData(branchId);
-    for (size_t i = 1; i < vectProveData.size(); ++i)
+    for (size_t i = 0; i < pProveTx->vin.size(); ++i)
     {
-        if (branchData.mapHeads.count(vectProveData[i].blockHash))
-        {
+        const ProveDataItem& provDataItem = vectProveData[i + 1];
+        if (branchData.mapHeads.count(provDataItem.blockHash)){
             return false;
         }
         
         CellTransactionRef pTx;
-        CellDataStream cds(vectProveData[i].tx, SER_NETWORK, INIT_PROTO_VERSION);
+        CellDataStream cds(provDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pTx);
 
         const uint256& providetxid = pTx->GetHash();
 
-        CellSpvProof svpProof(vectProveData[i].pCSP);
+        CellSpvProof svpProof(provDataItem.pCSP);
         if (!CheckSpvProof(branchId, state, svpProof, providetxid)){
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
         }
-        if (providetxid != pProveTx->vin[i - 1].prevout.hash){
+        const CellOutPoint& outpoint = pProveTx->vin[i].prevout;
+        if (providetxid != outpoint.hash){
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx provide tx not match");
         }
+        
+        if (outpoint.n >= pTx->vout.size()){
+            return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx ");
+        }
+
+        //check sign
+        const CellScript& scriptPubKey = pTx->vout[outpoint.n].scriptPubKey;
+        const CellAmount amount = pTx->vout[outpoint.n].nValue;
+        nInAmount += amount;
+
+        bool fCacheResults = false;
+        unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS| SCRIPT_VERIFY_NULLDUMMY;
+        PrecomputedTransactionData txdata(*pTx);
+        CScriptCheck check(scriptPubKey, amount, *pTx, i, flags, fCacheResults, &txdata);
+        if (!check()){
+            return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx scriptcheck fail");
+        }
+    }
+
+    //check input >= output value
+    CellAmount nValueOut = 0;
+    for (const auto& txout : pProveTx->vout)
+    {
+        if (txout.nValue < 0)
+            return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-vout-negative");
+        if (txout.nValue > MAX_MONEY)
+            return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-vout-toolarge");
+        nValueOut += txout.nValue;
+        if (!MoneyRange(nValueOut))
+            return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
+    }
+    if (!MoneyRange(nValueOut))
+        return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
+    if (nInAmount < nValueOut){
+        return state.DoS(100, false, REJECT_INVALID, "nvalue in out error");
     }
 
     return true;

@@ -226,6 +226,7 @@ static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 bool IsCoinCreateBranchScript(const CellScript& script);
 bool IsCoinBranchTranScript(const CellScript& script);
 
+bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey);
 /** 
  * Process an incoming block. This only returns after the best known valid
  * block is made active. Note that it does not, however, guarantee that the
