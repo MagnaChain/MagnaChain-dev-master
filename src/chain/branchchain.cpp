@@ -1442,39 +1442,42 @@ bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationStat
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()) {
-        return error(" %s RPC call fail: %s\n", __func__, errorVal.write());
+        return state.DoS(0, false, REJECT_INVALID, 
+            strprintf(" %s RPC call fail: %s\n", __func__, errorVal.write()) );
     }
     if (result.isNull()) {
-        return error(" %s RPC call fail: result null\n", __func__);
+        return state.DoS(0, false, REJECT_INVALID, 
+            "CheckUnlockMortgageMineCoinTx RPC call fail: result null." );
     }
 
-    //const UniValue& uvtxhex = find_value(result, "txhex");
-    //const UniValue& uvconfirmations = find_value(result, "confirmations");
-    //const UniValue& uvprevouthash = find_value(result, "preminecoinvouthash");
-    //if (uvtxhex.isNull() || !uvtxhex.isStr() || uvconfirmations.isNull() || !uvconfirmations.isNum() || uvprevouthash.isNull())
-    //    return error("%s RPC return invalid value\n", __func__);
+    const UniValue& uvtxhex = find_value(result, "txhex");
+    const UniValue& uvconfirmations = find_value(result, "confirmations");
+    const UniValue& uvprevouthash = find_value(result, "preminecoinvouthash");
+    if (uvtxhex.isNull() || !uvtxhex.isStr() || uvconfirmations.isNull() || !uvconfirmations.isNum() || uvprevouthash.isNull())
+        return state.DoS(0, false, REJECT_INVALID, "CheckUnlockMortgageMineCoinTx RPC return invalid value");
 
-    //int32_t confirmations = uvconfirmations.get_int();
-    //if (confirmations < REPORT_LOCK_COIN_HEIGHT)
-    //    return error("%s: Need 60 blocks to be mature, now is %d\n", __func__, confirmations);
+    int32_t confirmations = uvconfirmations.get_int();
+    if (confirmations < REPORT_LOCK_COIN_HEIGHT)
+        return state.DoS(0, false, REJECT_INVALID, 
+            strprintf("%s: Need 60 blocks to be mature, now is %d\n", __func__, confirmations));
 
-    //CellMutableTransaction mtxProve;
-    //if (!DecodeHexTx(mtxProve, uvtxhex.get_str()))
-    //    return error("%s decode hex tx fail\n", __func__);
+    CellMutableTransaction mtxProve;
+    if (!DecodeHexTx(mtxProve, uvtxhex.get_str()))
+        return state.DoS(0, false, REJECT_INVALID, "CheckUnlockMortgageMineCoinTx decode hex tx fail");
 
-    //if (mtxProve.pReportData == nullptr)
-    //    return false;
+    if (mtxProve.pProveData == nullptr)
+        return false;
 
-    //if (mtxProve.pReportData->reportedBranchId != Params().GetBranchHash())
-    //    return state.DoS(100, false, REJECT_INVALID, "prove-branchid-not-match");
+    if (mtxProve.pProveData->branchId != Params().GetBranchHash())
+        return state.DoS(100, false, REJECT_INVALID, "prove-branchid-not-match");
 
-    //uint256 minecoinfromhash;
-    //if (!SafeParseHashV(uvprevouthash, minecoinfromhash))
-    //    return error("%s parse minecoinfromhash fail\n", __func__);
+    uint256 minecoinfromhash;
+    if (!SafeParseHashV(uvprevouthash, minecoinfromhash))
+        return state.DoS(0, false, REJECT_INVALID, "CheckUnlockMortgageMineCoinTx parse minecoinfromhash fail");
 
-    //if (tx.coinpreouthash != minecoinfromhash) {
-    //    return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
-    //}
-    //
+    if (tx.coinpreouthash != minecoinfromhash) {
+        return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
+    }
+    
     return true;
 }

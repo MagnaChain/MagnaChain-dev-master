@@ -1468,8 +1468,8 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     mtx.pProveData.reset(new ProveData);
     mtx.pProveData->provetype = ReportType::REPORT_TX;
     mtx.pProveData->branchId = Params().GetBranchHash();
-    if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData))
-    {
+    mtx.pProveData->blockHash = blockHash;
+    if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData)){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
     }
 
@@ -1599,8 +1599,8 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::LOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;
-    wtx.coinpreouthash = coinprevouthash;
+    wtx.reporttxid = reporttxid;//被主链打包的举报交易id
+    wtx.coinpreouthash = coinprevouthash;//锁定目标币的txid
     wtx.isDataTransaction = true;
 
     bool fSubtractFeeFromAmount = false;
@@ -1727,9 +1727,9 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::UNLOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;
+    wtx.reporttxid = reporttxid;// 举报交易txid
     wtx.coinpreouthash = coinprevouthash;
-    wtx.provetxid = provetxid;
+    wtx.provetxid = provetxid;//证明交易txid
     wtx.isDataTransaction = true;
 
     bool fSubtractFeeFromAmount = false;
@@ -1800,13 +1800,20 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
         confirmations = chainActive.Height() - mapBlockIndex[hashBlock]->nHeight;
 
     // get mine coin prevouthash
-    LOCK(cs_main);// protect pBranchDb
+    // LOCK(cs_main);// protect pBranchDb
+    
+    if (!pBranchDb->HasBranchData(ptxProve->pProveData->branchId)){
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid prove transaction data.");
+    }
+
+    uint256 reportblockhash = ptxProve->pProveData->blockHash;
+    
     uint256 prevouthash;
-    //BranchData branchdata = pBranchDb->GetBranchData(ptxProve->vectProveData->reportedBranchId);// don't check
-    //if (branchdata.mapHeads.count(ptxProve->pReportData->reportedBlockHash)) {
-    //    if (!GetMortgageCoinData(branchdata.mapHeads[ptxProve->pReportData->reportedBlockHash].pStakeTx->vout[0].scriptPubKey, &prevouthash))
-    //        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid-block-data");
-    //}
+    BranchData branchdata = pBranchDb->GetBranchData(ptxProve->pProveData->branchId);
+    if (branchdata.mapHeads.count(reportblockhash)) {
+        if (!GetMortgageCoinData(branchdata.mapHeads[reportblockhash].pStakeTx->vout[0].scriptPubKey, &prevouthash))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid-block-data");
+    }
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txhex", EncodeHexTx(*ptxProve, RPCSerializationFlags())));

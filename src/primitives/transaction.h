@@ -296,6 +296,7 @@ class ProveData
 public:
     int32_t provetype;
     uint256 branchId;
+    uint256 blockHash;
     std::vector<ProveDataItem> vectProveData;
 
     ADD_SERIALIZE_METHODS;
@@ -303,6 +304,7 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action){
         READWRITE(provetype);
         READWRITE(branchId);
+        READWRITE(blockHash);
         READWRITE(vectProveData);
     }
 };
