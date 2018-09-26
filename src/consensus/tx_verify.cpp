@@ -451,15 +451,16 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
                 return  state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
 
             if (tx.IsRedeemMortgageStatement()){
-                if (nSpendHeight - coin.nHeight < REDEEM_SAFE_HEIGHT) // 挖矿币需要满足一定高度后才能赎回
-                    return state.Invalid(false,
-                        REJECT_INVALID, "bad-txns-premature-redeem-of-mortgage",
-                        strprintf("tried to redeem mortgage at depth %d", nSpendHeight - coin.nHeight));
                 if (GetMortgageCoinData(coin.out.scriptPubKey, &mortgageFromTxid)){
                     nMortgageCoin += coin.out.nValue;
                     nCountMortgageCoin++;
                     if (nCountMortgageCoin > 1)
                         return state.DoS(100, false, REJECT_INVALID, "more-than-one-mortgage-coin", false, "Just one mortgage coin in, one redeem coin out");
+
+                    if (nSpendHeight - coin.nHeight < REDEEM_SAFE_HEIGHT) // 挖矿币需要满足一定高度后才能赎回
+                        return state.Invalid(false,
+                            REJECT_INVALID, "bad-txns-premature-redeem-of-mortgage",
+                            strprintf("tried to redeem mortgage at depth %d", nSpendHeight - coin.nHeight));
                 }
             }
         }
