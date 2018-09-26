@@ -14,7 +14,7 @@ class UniValue;
 
 typedef void(*GenerateBlockCB)();
 /** Generate blocks (mine) */
-UniValue generateBlocks( CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOutputs, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf = nullptr, CellChainParams* pp = nullptr, CellCoinsViewCache *pcoinsCache = nullptr );
+UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutputs, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf = nullptr, CellChainParams* pp = nullptr, CellCoinsViewCache *pcoinsCache = nullptr );
 
 void GenerateCells(bool fGenerate, int nThreads, const CellChainParams& chainparams);
 

@@ -161,7 +161,7 @@ bool SignBlock(CellBlock *pblock, CellKeyStore* keystore)
 	return true;
 }
 
-UniValue generateBlocks(CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOutput, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf, CellChainParams* params, CellCoinsViewCache *pcoinsCache)
+UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutput, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf, CellChainParams* params, CellCoinsViewCache *pcoinsCache)
 {
 	if( vecOutput.empty() )
 		throw JSONRPCError(RPC_INTERNAL_ERROR, "no address with enough coins\n");
@@ -191,18 +191,24 @@ UniValue generateBlocks(CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOu
         int startTime = GetTimeMillis();
 		// check script pubkey
 		CellOutput& out = vecOutput[nTries % vecOutput.size()];
+        std::shared_ptr<CellReserveKey> pReserveKey = nullptr;
 		CellScript scriptPubKey;
 		if (out.tx == nullptr) {
-			CellPubKey newKey;
+            pReserveKey = std::make_shared<CellReserveKey>(keystoreIn);
+
+			/*CellPubKey newKey;
 			if (!keystoreIn->GetKeyFromPool(newKey)) {
 				throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 			}
 			CellKeyID keyID = newKey.GetID();
 
-			keystoreIn->SetAddressBook(keyID, "", "receive");
-
-			CellTxDestination kDest(keyID);
-			scriptPubKey = GetScriptForDestination(kDest);
+			keystoreIn->SetAddressBook(keyID, "", "receive");*/
+            CellPubKey vchPubKey;
+            if (!pReserveKey->GetReservedKey(vchPubKey)){
+                throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+            }
+			
+			scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
 		}
 		else {
 			scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
@@ -264,13 +270,16 @@ UniValue generateBlocks(CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOu
             // --nMaxTries;
         // }
 
-		if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
-		{
-			std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
-			if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
-				throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
-			++nHeight;
-			blockHashes.push_back(pblock->GetHash().GetHex());
+        if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
+        {
+            std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
+            if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+            ++nHeight;
+            blockHashes.push_back(pblock->GetHash().GetHex());
+            if (pReserveKey){
+                pReserveKey->KeepKey();
+            }
 		}
 		++nTries;
         printf("GenerateBlock use time %d\n", GetTimeMillis() - startTime);
@@ -315,7 +324,7 @@ UniValue generateBlocks(CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOu
 }
 
 //挖侧链第二个块，创世块之后的首块
-UniValue generateBranch2ndBlock(CellKeyStore& keystore)
+UniValue generateBranch2ndBlock(CellWallet& wallet)
 {
     //获取交易池中自己的coin
     if (Params().IsMainChain())
@@ -331,11 +340,11 @@ UniValue generateBranch2ndBlock(CellKeyStore& keystore)
     std::map<uint256, CellWalletTx> mapTempWallet;
     CellCoinsView viewDummy;
     CellCoinsViewCache view(&viewDummy);
-    GetAvailableMortgageCoinsInMemPool(keystore, vecOutput, mapTempWallet, view);
+    GetAvailableMortgageCoinsInMemPool(wallet, vecOutput, mapTempWallet, view);
     if (vecOutput.size() > 0)
     {
         int nGenerate = 1;
-        return generateBlocks(&keystore, vecOutput, nGenerate, vecOutput.size(), false, nullptr, nullptr, &view);
+        return generateBlocks(&wallet, vecOutput, nGenerate, vecOutput.size(), false, nullptr, nullptr, &view);
     }
     else
         throw std::runtime_error("No mortgagecoin in mempool");
@@ -441,15 +450,22 @@ UniValue generate(const JSONRPCRequest& request)
             return genBlockRet;// may be gen fail.
     }
 
+    if (num_generate <= 0)
+        return genBlockRet;
+
     if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
     {
         int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
+        genbigboomnum = std::min(num_generate, genbigboomnum);
         UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
         if (genBigBoomBlocks.isArray()){
             num_generate -= genbigboomnum;
             genBlockRet.push_backV(genBigBoomBlocks.getValues());
         }
     }
+
+    if (num_generate <= 0)
+        return genBlockRet;
 
     std::set<CellTxDestination> setAddress;
     std::vector<CellOutput> vecOutputs;
@@ -588,7 +604,7 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
 
 	//std::vector< CellScript> vecScript;
 	//vecScript.push_back(coinbaseScript->reserveScript);
-    return generateBlocks( (CellKeyStore*)pwallet, vecOutputs, nGenerate, nMaxTries, false);
+    return generateBlocks( pwallet, vecOutputs, nGenerate, nMaxTries, false);
 }
 
 UniValue getmininginfo(const JSONRPCRequest& request)
