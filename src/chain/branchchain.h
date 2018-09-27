@@ -92,4 +92,6 @@ bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState&
 bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
 
 CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx);
+
+bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& block, std::string *pStrErr = nullptr);
 #endif //  BRANCHCHAIN_H

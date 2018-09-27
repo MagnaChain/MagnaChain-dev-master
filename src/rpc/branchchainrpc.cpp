@@ -998,7 +998,7 @@ UniValue getbranchchainheight(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in branch chain!\n");
 
     LOCK(cs_main);
-    uint256 branchid = ParseHashV(request.params[0], "param 0");
+    uint256 branchid = ParseHashV(request.params[0], "parameter 1");
     if (!pBranchChainTxRecordsDb->IsBranchCreated(branchid))
         throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
 
@@ -1090,7 +1090,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    uint256 txid = ParseHashV(request.params[0], "param 0");
+    uint256 txid = ParseHashV(request.params[0], "parameter 1");
     int32_t n = 0;
     if (request.params.size() > 1){
         if (request.params[1].isNum())
@@ -1199,7 +1199,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    uint256 mortgagecoinhash = ParseHashV(request.params[0], "param 0");
+    uint256 mortgagecoinhash = ParseHashV(request.params[0], "parameter 1");
     int32_t nvoutindex = 0;
     if (request.params.size() > 1) {
         if (request.params[1].isNum())
@@ -1213,7 +1213,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     if (!DecodeHexTx(statementmtx, strTxHexData))
         throw JSONRPCError(RPC_INVALID_REQUEST, "Parameter 'fromtx' invalid hex tx data.");
 
-    uint256 frombranchid = ParseHashV(request.params[3], "param 3");
+    uint256 frombranchid = ParseHashV(request.params[3], "parameter 3");
     CellSpvProof spvProof;
     DecodeHexSpv(spvProof, request.params[4].get_str());
 
@@ -1240,7 +1240,8 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::REDEEM_MORTGAGE;
     wtx.pPMT.reset(new CellSpvProof(spvProof));
-    wtx.fromBranchId = frombranchid.ToString();
+    wtx.fromBranchId = frombranchid.ToString();        
+    CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, wtx.fromTx, 0, statementmtx };
 
     CellScript scriptPubKey = GetScriptForDestination(coinMortgageKeyId);
 
@@ -1286,6 +1287,67 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     return obj;
 }
 
+UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+        throw std::runtime_error(
+            "rebroadcastredeemtransaction txid \n"
+            "\n rebroadcast the redeem mortgage coin transaction by txid, in case that transction has not be send to the main chain .\n"
+            "\nArguments:\n"
+            "1. \"txid\"                  (string, required) The txid.\n"
+            "\nReturns the hash of the created branch chain.\n"
+            "\nResult:\n"
+            "\"ret\"                  (string) ok or false\n"
+            "\nExamples:\n"
+            + HelpExampleCli("rebroadcastredeemtransaction", "5754f9e659cdf365dc2da4198046c631333d8d70e4f38f15f20e46ed5bf630db")
+            + HelpExampleRpc("rebroadcastredeemtransaction", "5754f9e659cdf365dc2da4198046c631333d8d70e4f38f15f20e46ed5bf630db")
+        );
+
+    if (Params().IsMainChain()){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "This rpc can not call in main chain.");
+    }
+
+    uint256 txhash = ParseHashV(request.params[0], "parameter 1");
+    CellTransactionRef tx;
+    CellBlockIndex* pblockindex = nullptr;
+    uint32_t tx_vtx_index = 0;
+    CellBlock block;
+    uint256 hashBlock;
+    //LOCK(cs_main);
+
+    //GetTransaction(txhash, tx, Params().GetConsensus(), )
+    bool retflag;
+    bool retval = ReadTxDataByTxIndex(txhash, tx, hashBlock, retflag);
+    if (!retval){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "Can not read tx data by parameter 1(txid)");
+    }
+
+    if (!tx->IsRedeemMortgageStatement()) {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "Tx(parameter 1) is not a redeem mortgage statement transaction!");
+    }
+
+    if (mapBlockIndex.count(hashBlock) == 0){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "Tx's block no block index in mapBlockIndex");
+    }
+
+    pblockindex = mapBlockIndex[hashBlock];
+    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus())){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "Read Block From Disk fail when rebroadcast redeem.");
+    }
+
+    const uint32_t maturity = BRANCH_CHAIN_MATURITY;
+    int confirmations = chainActive.Height() - pblockindex->nHeight + 1;
+    if (confirmations < maturity + 1){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "can not broadcast because no enough confirmations");
+    }
+
+    std::string strError;
+    if (!ReqMainChainRedeemMortgage(tx, block, &strError)){
+        throw JSONRPCError(RPC_VERIFY_ERROR, strprintf(std::string("Call ReqMainChainRedeemMortgage fail: %s"), strError));
+    }
+
+    return "ok";
+}
 
 UniValue sendreporttomain(const JSONRPCRequest& request)
 {
@@ -1786,7 +1848,7 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
     if (!Params().IsMainChain())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "This RPC API Only be called in main chain!\n");
 
-    uint256 provetxid = ParseHashV(request.params[0], "param 0");
+    uint256 provetxid = ParseHashV(request.params[0], "parameter 0");
 
     CellTransactionRef ptxProve;
     uint256 hashBlock;
@@ -1842,6 +1904,7 @@ static const CRPCCommand commands[] =
 
     { "branchchain",        "redeemmortgagecoinstatement",&redeemmortgagecoinstatement,false, {"txid", "voutindex"}},
     { "branchchain",        "redeemmortgagecoin",        &redeemmortgagecoin,          false,{ "txid", "voutindex" } },
+    { "branchchain",        "rebroadcastredeemtransaction",&rebroadcastredeemtransaction, false,{ "txid" }, },
 
     // report and provre api
     { "branchchain",        "sendreporttomain",          &sendreporttomain,            false, {"blockhash", "txid"}},

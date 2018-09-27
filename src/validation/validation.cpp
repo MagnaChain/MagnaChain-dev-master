@@ -1060,14 +1060,14 @@ bool AcceptToMemoryPool(CellTxMemPool& pool, CellValidationState &state, const C
 }
 
 
-bool ReadTxDataByTxIndex(const uint256 & hash, CellTransactionRef & txOut, uint256 & hashBlock, bool &retflag)
+bool ReadTxDataByTxIndex(const uint256& hash, CellTransactionRef& txOut, uint256& hashBlock, bool& retflag)
 {
     retflag = true;
         CellDiskTxPos postx;
         if (pblocktree->ReadTxIndex(hash, postx)) {
             CellAutoFile file(OpenBlockFile(postx, true), SER_DISK, CLIENT_VERSION);
             if (file.IsNull())
-                return error("%s: OpenBlockFile failed", __func__);
+                return error("%s: OpenBlockFile failed\n", __func__);
             CellBlockHeader header;
             try {
                 file >> header;
@@ -1075,11 +1075,11 @@ bool ReadTxDataByTxIndex(const uint256 & hash, CellTransactionRef & txOut, uint2
                 file >> txOut;
             }
             catch (const std::exception& e) {
-                return error("%s: Deserialize or I/O error - %s", __func__, e.what());
+                return error("%s: Deserialize or I/O error - %s\n", __func__, e.what());
             }
             hashBlock = header.GetHash();
             if (txOut->GetHash() != hash)
-                return error("%s: txid mismatch", __func__);
+                return error("%s: txid mismatch\n", __func__);
             return true;
         }
     retflag = false;
@@ -2192,7 +2192,7 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
 
         if (fTxIndex)// fTxIndex record all
             vPos.push_back(std::make_pair(tx.GetHash(), pos));
-        else if (tx.IsBranchCreate() || tx.IsReport() || tx.IsProve()) // record with filter
+        else if (tx.IsBranchCreate() || tx.IsReport() || tx.IsProve() || tx.IsRedeemMortgageStatement()) // record with filter
             vPos.push_back(std::make_pair(tx.GetHash(), pos));
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
 

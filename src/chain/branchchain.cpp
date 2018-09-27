@@ -40,9 +40,6 @@
 
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;
 
-
-bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& block, std::string *pStrErr = nullptr);
-
 //
 // Exception thrown on connection error.  This error is used to determine
 // when to wait if -rpcwait is given.

@@ -507,7 +507,7 @@ void DumpMempool();
 /** Load the mempool from disk. */
 bool LoadMempool();
 
-bool ReadTxDataByTxIndex(const uint256 & hash, CellTransactionRef & txOut, uint256 & hashBlock, bool &retflag);
+bool ReadTxDataByTxIndex(const uint256& hash, CellTransactionRef& txOut, uint256& hashBlock, bool& retflag);
 
 std::string GetBranchTxProof(const CellBlock& block,  const std::set<uint256>& setTxids);
 bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof);
