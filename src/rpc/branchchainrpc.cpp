@@ -242,7 +242,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     }
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     //end send money
@@ -535,7 +535,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
 
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     // end send money
@@ -882,7 +882,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
 
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
@@ -959,7 +959,7 @@ UniValue submitbranchblockinfo(const JSONRPCRequest& request)
     }
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     ///////////
@@ -1151,7 +1151,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     // end send money
@@ -1274,7 +1274,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     // end send money
@@ -1370,7 +1370,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
-    if (!mapBlockIndex.count(blockHash))
+    if (mapBlockIndex.count(blockHash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
     CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
 
@@ -1405,9 +1405,13 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
     const UniValue& error = find_value(reply, "error");
     if (!error.isNull())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "call rpc error");
+        throw JSONRPCError(RPC_INTERNAL_ERROR,strprintf(std::string("call rpc error %s"), error.write()));
+    const UniValue& result = find_value(reply, "result");
+    if (result.isNull()){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
+    }
 
-    return "ok";
+    return result;
 }
 
 UniValue handlebranchreport(const JSONRPCRequest& request)
@@ -1447,7 +1451,7 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     if (!pBranchDb->HasBranchData(reportedBranchId))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid reported branch id");
     BranchData branchData = pBranchDb->GetBranchData(reportedBranchId);
-    if (branchData.mapHeads.count(tx->pReportData->reportedBlockHash))
+    if (branchData.mapHeads.count(tx->pReportData->reportedBlockHash) == 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not found block data in mapHeads");
 
     std::vector<uint256> vMatch;
@@ -1484,13 +1488,18 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
     //pBranchDb->mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
-
-    return "ok";
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    if (!state.GetRejectReason().empty())
+    {
+        ret.push_back(Pair("commit_reject_reason", state.GetRejectReason()));
+    }
+    return ret;
 }
 
 
@@ -1547,9 +1556,14 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
     const UniValue& error = find_value(reply, "error");
     if (!error.isNull())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "call rpc error");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf(std::string("call rpc error %s"), error.write()));
 
-    return "ok";
+    const UniValue& result = find_value(reply, "result");
+    if (result.isNull()) {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
+    }
+
+    return result;
 }
 
 UniValue handlebranchprove(const JSONRPCRequest& request)
@@ -1584,7 +1598,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 
     CellTransactionRef tx = MakeTransactionRef(std::move(mtxTrans1));
     uint256 proveFlagHash = GetProveTxHashKey(*tx);
-    if (!pBranchDb->mReortTxFlag.count(proveFlagHash)==0 || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED){
+    if (pBranchDb->mReortTxFlag.count(proveFlagHash)==0 || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid report transaction");
     }
 
@@ -1609,13 +1623,19 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
     //pBranchDb->mReortTxFlag[proveFlagHash] = RP_FLAG_PROVED;
 
-    return "ok";
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    if (!state.GetRejectReason().empty())
+    {
+        ret.push_back(Pair("commit_reject_reason", state.GetRejectReason()));
+    }
+    return ret;
 }
 
 // 举报后,在举报交易被打包后 REPORT_LOCK_COIN_HEIGHT + 1个块后手动在支链调用该接口
@@ -1685,7 +1705,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     }
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     ///////////
@@ -1814,7 +1834,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
     }
     CellValidationState state;
     if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction was rejected! Reason given: %s", state.GetRejectReason());
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
     ///////////

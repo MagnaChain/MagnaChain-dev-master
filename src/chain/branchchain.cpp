@@ -1229,8 +1229,8 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     for (size_t i = 0; i < pProveTx->vin.size(); ++i)
     {
         const ProveDataItem& provDataItem = vectProveData[i + 1];
-        if (branchData.mapHeads.count(provDataItem.blockHash)){
-            return false;
+        if (branchData.mapHeads.count(provDataItem.blockHash) == 0){
+            return state.DoS(0, false, REJECT_INVALID, "proveitem's block not exist");
         }
         
         CellTransactionRef pTx;
@@ -1259,8 +1259,8 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
 
         bool fCacheResults = false;
         unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS| SCRIPT_VERIFY_NULLDUMMY;
-        PrecomputedTransactionData txdata(*pTx);
-        CScriptCheck check(scriptPubKey, amount, *pTx, i, flags, fCacheResults, &txdata);
+        PrecomputedTransactionData txdata(*pProveTx);
+        CScriptCheck check(scriptPubKey, amount, *pProveTx, i, flags, fCacheResults, &txdata);
         if (!check()){
             return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx scriptcheck fail");
         }

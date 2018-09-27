@@ -3311,7 +3311,7 @@ bool CellWallet::CommitTransaction(CellWalletTx& wtxNew, CellReserveKey& reserve
             // Broadcast
             bool fMissingInputs = false;
             if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, &fMissingInputs)) {
-                LogPrintf("CommitTransaction(): Transaction cannot be broadcast immediately, %s %s\n", state.GetRejectReason(), fMissingInputs?",MissingInputs":"");
+                LogPrintf("CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs":"");
                 // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
                 return false;// zjh add this return false;
             } else {
