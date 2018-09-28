@@ -1287,6 +1287,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     return obj;
 }
 
+//当赎回抵押挖矿币交易满足成熟度后，可以手动触发主链的赎回动作。默认请求下回自动调用，但是考虑到有可能失败的情况，如发生了，只好手动去调
 UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
@@ -1349,6 +1350,7 @@ UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
     return "ok";
 }
 
+//在支链发起举报某个交易（除coinbase外）
 UniValue sendreporttomain(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -1357,7 +1359,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
                 "\nSend invalid transaction proof to main chain. \n"
                 "\nArguments:\n"
                 "1. \"blockhash\"        (string, required) The block hash.\n"
-                "2. \"txid\"             (string, required) A transaction hash.\n"
+                "2. \"txid\"             (string, required) The txid of transaction that will be reported.\n"
                 "\nReturns ok or fail.\n"
                 "\nResult:\n"
                 "\n"
@@ -1379,6 +1381,23 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
+    //check tx is a normal transaction
+    CellTransactionRef pReportTx;
+    for (const CellTransactionRef& ptx : block.vtx)
+    {
+        if (ptx->GetHash() == txHash)
+        {
+            pReportTx = ptx;
+            break;
+        }
+    }
+    if (pReportTx == nullptr){
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "block did not contain the reported transaction");
+    }
+    if (pReportTx->IsCoinBase()){
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not report a coinbase transaction in this RPC");
+    }
+
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
 
@@ -1502,7 +1521,7 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     return ret;
 }
 
-
+//发起证明
 UniValue sendprovetomain(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)

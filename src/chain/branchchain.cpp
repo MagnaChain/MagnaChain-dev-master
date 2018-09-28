@@ -1206,6 +1206,10 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX){
         return false;
     }
+    const uint256 branchId = tx.pProveData->branchId;
+    if (!pBranchDb->HasBranchData(branchId)){
+        return false;
+    }
 
     const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
     if (vectProveData.size() < 1){
@@ -1216,14 +1220,20 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     CellDataStream cds(vectProveData[0].tx, SER_NETWORK, INIT_PROTO_VERSION);
     cds >> (pProveTx);
 
+    CellSpvProof svpProof(vectProveData[0].pCSP);
+    const uint256& reporttxhash = pProveTx->GetHash();
+    if (!CheckSpvProof(branchId, state, svpProof, reporttxhash)) {
+        return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
+    }
+
+    if (pProveTx->IsCoinBase()){
+        return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx Prove tx can not a coinbase transaction");
+    }
+
     if (vectProveData.size() != pProveTx->vin.size()+1){
         return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid for prove each input");
     }
 
-    const uint256 branchId = tx.pProveData->branchId;
-    if (!pBranchDb->HasBranchData(branchId)){
-        return false;
-    }
     CellAmount nInAmount = 0;
     BranchData branchData = pBranchDb->GetBranchData(branchId);
     for (size_t i = 0; i < pProveTx->vin.size(); ++i)
@@ -1238,7 +1248,6 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
         cds >> (pTx);
 
         const uint256& providetxid = pTx->GetHash();
-
         CellSpvProof svpProof(provDataItem.pCSP);
         if (!CheckSpvProof(branchId, state, svpProof, providetxid)){
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
@@ -1300,14 +1309,15 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
         }
 
         if (tx.pProveData->provetype == ReportType::REPORT_TX){
-            if (!CheckProveReportTx(tx, state)){
+            if (!CheckProveReportTx(tx, state)) {
                 return false;
             }
         }
         else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
         {
+
         }
-        else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
+        else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)
         {
         }
         else{ 

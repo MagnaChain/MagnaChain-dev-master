@@ -5276,10 +5276,6 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
     CellTransactionRef tx;
     uint256 hashBlock = uint256();
 
-    //GetTransaction will fail if fTxIndex == false(default value) and tx's out coins have been spent.
-    //if (!GetTransaction(txHash, tx, Params().GetConsensus(), hashBlock, true))
-    //    return false;
-    //
     for (const CellTransactionRef& v : block.vtx){
         if (v->GetHash() == txHash){
             tx = v;
@@ -5287,6 +5283,10 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
         }
     }
     
+    if (tx == nullptr){
+        return error("%s did not find tx in block.\n", __func__);
+    }
+
     std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(block, setTxids));
 
     ProveDataItem pData;
@@ -5295,5 +5295,11 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
     pData.blockHash = block.GetHash();
     vectProveData.emplace_back(pData);
 
-    return GetTxVinBlockData(block, tx, vectProveData);
+    if (tx->IsCoinBase()){// no valid input
+        return false;
+    }
+    else{
+        return GetTxVinBlockData(block, tx, vectProveData);
+    }
+    return false;
 }
