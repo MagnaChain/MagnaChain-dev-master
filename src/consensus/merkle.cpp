@@ -156,14 +156,25 @@ uint256 ComputeMerkleRootFromBranch(const uint256& leaf, const std::vector<uint2
     return hash;
 }
 
-uint256 BlockMerkleRoot(const CellBlock& block, bool* mutated)
+uint256 VecTxMerkleRoot(const std::vector<CellTransactionRef> vtx, bool* mutated)
 {
     std::vector<uint256> leaves;
-    leaves.resize(block.vtx.size());
-    for (size_t s = 0; s < block.vtx.size(); s++) {
-        leaves[s] = block.vtx[s]->GetHash();
+    leaves.resize(vtx.size());
+    for (size_t s = 0; s < vtx.size(); s++) {
+        leaves[s] = vtx[s]->GetHash();
     }
     return ComputeMerkleRoot(leaves, mutated);
+}
+
+uint256 BlockMerkleRoot(const CellBlock& block, bool* mutated)
+{
+    //std::vector<uint256> leaves;
+    //leaves.resize(block.vtx.size());
+    //for (size_t s = 0; s < block.vtx.size(); s++) {
+    //    leaves[s] = block.vtx[s]->GetHash();
+    //}
+    //return ComputeMerkleRoot(leaves, mutated);
+    return VecTxMerkleRoot(block.vtx, mutated);
 }
 
 uint256 BlockWitnessMerkleRoot(const CellBlock& block, bool* mutated)

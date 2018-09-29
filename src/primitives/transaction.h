@@ -297,7 +297,11 @@ public:
     int32_t provetype;
     uint256 branchId;
     uint256 blockHash;
+    uint256 txHash;// to prove txid
     std::vector<ProveDataItem> vectProveData;
+
+    std::vector<unsigned char> vtxData; // block vtx serialize data, service for coinbase prove n merkle prove
+    std::vector<std::vector<ProveDataItem>> vecBlockTxProve;// all block tx(exclude coinbase)'s prove data, use to prove each input of each tx in vtx is exist.  
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -305,7 +309,14 @@ public:
         READWRITE(provetype);
         READWRITE(branchId);
         READWRITE(blockHash);
-        READWRITE(vectProveData);
+        READWRITE(txHash);
+        if (provetype == ReportType::REPORT_TX){
+            READWRITE(vectProveData);
+        }
+        if (provetype == ReportType::REPORT_COINBASE){
+            READWRITE(vtxData);
+            READWRITE(vecBlockTxProve);
+        }
     }
 };
 
@@ -380,7 +391,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
 		s >> tx.sendToBranchid;
 		s >> tx.sendToTxHexData;
-        if (tx.sendToBranchid == CellBaseChainParams::MAIN) {
+        if (tx.sendToBranchid == "main") {
             tx.pPMT.reset(new CellSpvProof());
             s >> *tx.pPMT;
         }
@@ -389,7 +400,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 		s >> tx.fromBranchId;
 		s >> tx.fromTx;
 		s >> tx.inAmount;
-        if (tx.fromBranchId != CellBaseChainParams::MAIN) {
+        if (tx.fromBranchId != "main") {
             tx.pPMT.reset(new CellSpvProof());
             s >> *tx.pPMT;
         }
@@ -480,7 +491,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
 		s << tx.sendToBranchid;
 		s << tx.sendToTxHexData;
-        if (tx.sendToBranchid == CellBaseChainParams::MAIN) {
+        if (tx.sendToBranchid == "main") {
             s << *tx.pPMT;
         }
 	}
@@ -488,7 +499,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 		s << tx.fromBranchId;
 		s << tx.fromTx;
 		s << tx.inAmount;
-        if (tx.fromBranchId != CellBaseChainParams::MAIN) {
+        if (tx.fromBranchId != "main") {
             s << *tx.pPMT;
         }
 	}

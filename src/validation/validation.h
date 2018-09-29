@@ -514,6 +514,7 @@ bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, cons
 
 
 bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveDataItem>& vectProveData);
+bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block);
 #endif // CELLLINK_VALIDATION_H
 
 

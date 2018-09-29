@@ -370,10 +370,8 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
             return false;
         }
     }
-    if (tx.IsProve())
-    {
-        if (!CheckProveTx(tx, state))
-        {
+    if (tx.IsProve()){
+        if (!CheckProveTx(tx, state)){
             return false;
         }
     }

@@ -29,6 +29,7 @@
 #include "chainparams.h"
 #include "validation/validation.h"
 #include "consensus/validation.h"
+#include "consensus/merkle.h"
 
 #include "script/standard.h"
 #include "coding/base58.h"
@@ -1114,7 +1115,7 @@ uint256 GetReportTxHashKey(const CellTransaction& tx)
     int nVersion = PROTOCOL_VERSION;
     CellHashWriter ss(nType, nVersion);
     ss << tx.pReportData->reporttype;
-    if (tx.pReportData->reporttype == ReportType::REPORT_TX)
+    if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
     {
         ss << tx.pReportData->reportedBranchId;
         ss << tx.pReportData->reportedBlockHash;
@@ -1130,15 +1131,21 @@ uint256 GetProveTxHashKey(const CellTransaction& tx)
     ss << tx.pProveData->provetype;
     if (tx.pProveData->provetype == ReportType::REPORT_TX)
     {
-        const ProveDataItem& proveDataItem = tx.pProveData->vectProveData[0];
-        CellTransactionRef ptxToProve;
-        CellDataStream cds(proveDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
-        cds >> (ptxToProve);
-        uint256 txid = ptxToProve->GetHash();
+        //const ProveDataItem& proveDataItem = tx.pProveData->vectProveData[0];
+        //CellTransactionRef ptxToProve;
+        //CellDataStream cds(proveDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
+        //cds >> (ptxToProve);
+        //uint256 txid = ptxToProve->GetHash();
 
         ss << tx.pProveData->branchId;
-        ss << proveDataItem.blockHash;
-        ss << txid;
+        ss << tx.pProveData->blockHash;
+        ss << tx.pProveData->txHash;//take it easy
+    }
+    else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
+    {
+        ss << tx.pProveData->branchId;
+        ss << tx.pProveData->blockHash;
+        ss << tx.pProveData->txHash;
     }
     return ss.GetHash();
 }
@@ -1201,63 +1208,41 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
     return true;
 }
 
-bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
+bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, CellValidationState& state, 
+    const std::vector<ProveDataItem>& vectProveData, BranchData& branchData, const uint256& branchId, CellAmount& fee, bool jumpFrist)
 {
-    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX){
-        return false;
-    }
-    const uint256 branchId = tx.pProveData->branchId;
-    if (!pBranchDb->HasBranchData(branchId)){
-        return false;
-    }
-
-    const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
-    if (vectProveData.size() < 1){
-        return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid can not zero");
-    }
-
-    CellTransactionRef pProveTx;
-    CellDataStream cds(vectProveData[0].tx, SER_NETWORK, INIT_PROTO_VERSION);
-    cds >> (pProveTx);
-
-    CellSpvProof svpProof(vectProveData[0].pCSP);
-    const uint256& reporttxhash = pProveTx->GetHash();
-    if (!CheckSpvProof(branchId, state, svpProof, reporttxhash)) {
-        return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
-    }
-
-    if (pProveTx->IsCoinBase()){
+    if (pProveTx->IsCoinBase()) {
         return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx Prove tx can not a coinbase transaction");
     }
 
-    if (vectProveData.size() != pProveTx->vin.size()+1){
+    int baseIndex = jumpFrist ? 1 : 0;
+    if (vectProveData.size() != pProveTx->vin.size() + baseIndex) {
         return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid for prove each input");
     }
 
     CellAmount nInAmount = 0;
-    BranchData branchData = pBranchDb->GetBranchData(branchId);
     for (size_t i = 0; i < pProveTx->vin.size(); ++i)
     {
-        const ProveDataItem& provDataItem = vectProveData[i + 1];
-        if (branchData.mapHeads.count(provDataItem.blockHash) == 0){
+        const ProveDataItem& provDataItem = vectProveData[i + baseIndex];
+        if (branchData.mapHeads.count(provDataItem.blockHash) == 0) {
             return state.DoS(0, false, REJECT_INVALID, "proveitem's block not exist");
         }
-        
+
         CellTransactionRef pTx;
         CellDataStream cds(provDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pTx);
 
         const uint256& providetxid = pTx->GetHash();
         CellSpvProof svpProof(provDataItem.pCSP);
-        if (!CheckSpvProof(branchId, state, svpProof, providetxid)){
+        if (!CheckSpvProof(branchId, state, svpProof, providetxid)) {
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
         }
         const CellOutPoint& outpoint = pProveTx->vin[i].prevout;
-        if (providetxid != outpoint.hash){
+        if (providetxid != outpoint.hash) {
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx provide tx not match");
         }
-        
-        if (outpoint.n >= pTx->vout.size()){
+
+        if (outpoint.n >= pTx->vout.size()) {
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx ");
         }
 
@@ -1267,10 +1252,10 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
         nInAmount += amount;
 
         bool fCacheResults = false;
-        unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS| SCRIPT_VERIFY_NULLDUMMY;
+        unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_NULLDUMMY;
         PrecomputedTransactionData txdata(*pProveTx);
         CScriptCheck check(scriptPubKey, amount, *pProveTx, i, flags, fCacheResults, &txdata);
-        if (!check()){
+        if (!check()) {
             return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx scriptcheck fail");
         }
     }
@@ -1289,8 +1274,114 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     }
     if (!MoneyRange(nValueOut))
         return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
-    if (nInAmount < nValueOut){
-        return state.DoS(100, false, REJECT_INVALID, "nvalue in out error");
+    if (nInAmount < nValueOut) {
+        return state.DoS(100, false, REJECT_INVALID, "value in/out error");
+    }
+
+    fee = nInAmount - nValueOut;
+    return true;
+}
+
+bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
+{
+    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX){
+        return false;
+    }
+
+    const uint256 branchId = tx.pProveData->branchId;
+    if (!pBranchDb->HasBranchData(branchId)){
+        return false;
+    }
+
+    const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
+    if (vectProveData.size() < 1){
+        return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid can not zero");
+    }
+
+    // unserialize prove tx
+    CellTransactionRef pProveTx;
+    CellDataStream cds(vectProveData[0].tx, SER_NETWORK, INIT_PROTO_VERSION);
+    cds >> (pProveTx);
+
+    //check txid
+    if (pProveTx->GetHash() != tx.pProveData->txHash){
+        return state.DoS(0, false, REJECT_INVALID, "Prove tx data error, first tx's hasdid is not eq proved txid");
+    }
+
+    // spv check 
+    CellSpvProof svpProof(vectProveData[0].pCSP);
+    const uint256& reporttxhash = pProveTx->GetHash();
+    if (!CheckSpvProof(branchId, state, svpProof, reporttxhash)) {
+        return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
+    }
+
+    BranchData branchData = pBranchDb->GetBranchData(branchId);
+    
+    //check input/output/sign
+    CellAmount fee;
+    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, branchId, fee, true)){
+        return false;
+    }
+
+    return true;
+}
+
+bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
+{
+    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_COINBASE) {
+        return false;
+    }
+
+    const uint256& branchId = tx.pProveData->branchId;
+    if (!pBranchDb->HasBranchData(branchId)) {
+        return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
+    }
+
+    BranchData branchData = pBranchDb->GetBranchData(branchId);
+    if (branchData.mapHeads.count(tx.pProveData->blockHash) == 0){
+        return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no block data");
+    }
+    BranchBlockData& branchblockdata = branchData.mapHeads[tx.pProveData->blockHash];
+
+    std::vector<CellTransactionRef> vtx;
+    CellDataStream cds(tx.pProveData->vtxData, SER_NETWORK, INIT_PROTO_VERSION);
+    cds >> vtx;
+    if (vtx.size() < 2){
+        return state.DoS(100, false, REJECT_INVALID, "invalid vtx size");
+    }
+    if (vtx[0]->GetHash() != tx.pProveData->txHash){
+        return state.DoS(100, false, REJECT_INVALID, "coinbase tx is eq txHash");
+    }
+
+    //prove merkle tree root
+    bool mutated;
+    uint256 hashMerkleRoot2 = VecTxMerkleRoot(vtx, &mutated);
+    if (branchblockdata.header.hashMerkleRoot != hashMerkleRoot2){
+        return state.DoS(100, false, REJECT_INVALID, "Invalid merkle tree for vtx");
+    }
+    if (mutated)
+        return state.DoS(100, false, REJECT_INVALID, "duplicate transaction in vtx");
+
+    // size valid
+    if (vtx.size() != tx.pProveData->vecBlockTxProve.size() + 2){
+        return state.DoS(100, false, REJECT_INVALID, "provide vecblocktxprove size invalid");
+    }
+
+    // check tx and collect input/output, calc fees
+    CellAmount totalFee = 0;
+    for (int i = 2; i < vtx.size(); i++){
+        const CellTransactionRef& toProveTx = vtx[i];
+        const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vecBlockTxProve[i - 2];
+
+        CellAmount fee;
+        if (!CheckTransactionProveWithProveData(toProveTx, state, vectProveData, branchData, branchId, fee, false)) {
+            return false;
+        }
+        totalFee += fee;
+    }
+
+    if (vtx[0]->GetValueOut() != totalFee){
+        return state.DoS(100, false, REJECT_INVALID, "Prove coinbase transaction fail, fee invalid");
     }
 
     return true;
@@ -1313,9 +1404,10 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
                 return false;
             }
         }
-        else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
-        {
-
+        else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE){
+            if (!CheckProveCoinbaseTx(tx, state)){
+                return false;
+            }
         }
         else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)
         {

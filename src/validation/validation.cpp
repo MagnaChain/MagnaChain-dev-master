@@ -3749,7 +3749,7 @@ static bool AcceptBlock(const std::shared_ptr<const CellBlock>& pblock, CellVali
     return true;
 }
 
-void UpdateContractTxAndProveTx(bool checkContract)
+void UpdateContractTx(bool checkContract)
 {
     if (checkContract)
         mpContractDb->_contractContext.ClearAll();
@@ -3815,7 +3815,7 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
     // check and remove invalid contract transaction
     SendBranchBlockHeader(pblock);
     // check and remove invalid contract transaction 
-    UpdateContractTxAndProveTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
+    UpdateContractTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
     printf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - start);
     return true;
@@ -5302,4 +5302,23 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
         return GetTxVinBlockData(block, tx, vectProveData);
     }
     return false;
+}
+
+//构建coinbase交易的证明
+bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block)
+{
+    //write all block.vtx data to pProveData->vtxData
+    CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pProveData->vtxData, 0, block.vtx };
+
+    //create vtx transaction's prove data
+    //exclude coinbase, stake transaction
+    for (int i = 2; i < block.vtx.size(); i++) {
+        const CellTransactionRef& ptx = block.vtx[i];
+        pProveData->vecBlockTxProve.emplace_back();
+        std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
+        if (!GetTxVinBlockData(block, ptx, vectProveData)){
+            return false;
+        }
+    }
+    return true;
 }

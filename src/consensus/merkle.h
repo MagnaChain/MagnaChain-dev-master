@@ -17,6 +17,9 @@ uint256 ComputeMerkleRoot(const std::vector<uint256>& leaves, bool* mutated = nu
 std::vector<uint256> ComputeMerkleBranch(const std::vector<uint256>& leaves, uint32_t position);
 uint256 ComputeMerkleRootFromBranch(const uint256& leaf, const std::vector<uint256>& branch, uint32_t position);
 
+// same function as BlockMerkleRoot
+uint256 VecTxMerkleRoot(const std::vector<CellTransactionRef> vtx, bool* mutated);
+
 /*
  * Compute the Merkle root of the transactions in a block.
  * *mutated is set to true if a duplicated subtree was found.

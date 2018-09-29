@@ -44,9 +44,9 @@ const CellAmount CreateBranchChainMortgage = 20000*COIN;// 创建支链抵押初
 const uint32_t MaxPowForCreateChainMortgage = 16; // (2^16) * CreateBranchChainMortgage = 655360000 COIN
 
 const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
-const uint32_t BRANCH_CHAIN_MATURITY = 2000;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
+const uint32_t BRANCH_CHAIN_MATURITY = 1;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
 const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // 抵押挖矿最小值
-const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time)
+const uint32_t REDEEM_SAFE_HEIGHT = 10; // 10800 * 8s = 1 day (branch chain block time)
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
 const uint32_t REPORT_LOCK_COIN_HEIGHT = 30; // 30 * 30s = 15 mins
 
@@ -1350,7 +1350,7 @@ UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
     return "ok";
 }
 
-//在支链发起举报某个交易（除coinbase外）
+//在支链发起举报某个交易，或者举报coinbase交易
 UniValue sendreporttomain(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -1394,9 +1394,9 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     if (pReportTx == nullptr){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "block did not contain the reported transaction");
     }
-    if (pReportTx->IsCoinBase()){
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not report a coinbase transaction in this RPC");
-    }
+    //if (pProveTx->IsCoinBase()){
+    //    throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not report a coinbase transaction in this RPC");
+    //}
 
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
@@ -1407,7 +1407,10 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     ReportData* pReportData = new ReportData;
     mtx.pReportData.reset(pReportData);
-    pReportData->reporttype = ReportType::REPORT_TX;
+    if (!pReportTx->IsCoinBase())
+        pReportData->reporttype = ReportType::REPORT_TX;
+    else
+        pReportData->reporttype = ReportType::REPORT_COINBASE;
     pReportData->reportedTxHash = txHash;
     pReportData->reportedBranchId = Params().GetBranchHash(); 
     pReportData->reportedBlockHash = block.GetHash();
@@ -1433,6 +1436,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     return result;
 }
 
+//主链接收处理举报交易
 UniValue handlebranchreport(const JSONRPCRequest& request)
 {
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1521,7 +1525,8 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     return ret;
 }
 
-//发起证明
+//在支链上发起证明某个交易
+// 先是在支链创建好证明数据
 UniValue sendprovetomain(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -1530,7 +1535,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
                 "\nSend valid transaction proof to main chain. \n"
                 "\nArguments:\n"
                 "1. \"blockhash\"        (string, required) The block hash.\n"
-                "2. \"txid\"             (string, required) A transaction hash.\n"
+                "2. \"txid\"             (string, required) A transaction hash to be prove.\n"
                 "\nReturns ok or fail.\n"
                 "\nResult:\n"
                 "\n"
@@ -1552,15 +1557,38 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
+    CellTransactionRef pProveTx;
+    for (const CellTransactionRef& ptx : block.vtx)
+    {
+        if (ptx->GetHash() == txHash)
+        {
+            pProveTx = ptx;
+            break;
+        }
+    }
+    if (pProveTx == nullptr) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "block did not contain the need proved transaction");
+    }
 
     CellMutableTransaction mtx;
     mtx.nVersion = CellTransaction::PROVE;
     mtx.pProveData.reset(new ProveData);
-    mtx.pProveData->provetype = ReportType::REPORT_TX;
+    if (!pProveTx->IsCoinBase())
+        mtx.pProveData->provetype = ReportType::REPORT_TX;
+    else
+        mtx.pProveData->provetype = ReportType::REPORT_COINBASE;
     mtx.pProveData->branchId = Params().GetBranchHash();
     mtx.pProveData->blockHash = blockHash;
-    if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData)){
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
+    mtx.pProveData->txHash = txHash;
+    if (pProveTx->IsCoinBase()){ 
+        if (!GetProveOfCoinbase(mtx.pProveData, block)){
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Get coinbase transaction prove data failed");
+        }
+    }
+    else{
+        if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData)){
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
+        }
     }
 
     CellRPCConfig branchrpccfg;
@@ -1585,6 +1613,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     return result;
 }
 
+//主链接收举报的证明
 UniValue handlebranchprove(const JSONRPCRequest& request)
 {
     CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
@@ -1617,7 +1646,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 
     CellTransactionRef tx = MakeTransactionRef(std::move(mtxTrans1));
     uint256 proveFlagHash = GetProveTxHashKey(*tx);
-    if (pBranchDb->mReortTxFlag.count(proveFlagHash)==0 || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED){
+    if (pBranchDb->mReortTxFlag.count(proveFlagHash) == 0 || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid report transaction");
     }
 
