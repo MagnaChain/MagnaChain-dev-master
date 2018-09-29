@@ -1980,6 +1980,7 @@ static const CRPCCommand commands[] =
     // 证明交易数据还需要修改和完善
     { "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
     { "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},
+
     { "branchchain",        "lockmortgageminecoin",      &lockmortgageminecoin,        false, { "txid", "coinpreouthash"}},
     { "branchchain",        "getreporttxdata",           &getreporttxdata,             false, { "txid" } },
     { "branchchain",        "unlockmortgageminecoin",    &unlockmortgageminecoin,      false,{ "txid", "coinpreouthash", "provetxid" } }, 
