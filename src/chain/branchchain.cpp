@@ -1192,8 +1192,21 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
     if (tx.IsReport())
     {
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
-        if (!CheckSpvProof(reportedBranchId, state, *tx.pPMT, tx.pReportData->reportedTxHash))
-            return false;
+        if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
+        {
+            if (!CheckSpvProof(reportedBranchId, state, *tx.pPMT, tx.pReportData->reportedTxHash))
+                return false;
+        }
+        else if (tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
+        {
+            if (!pBranchDb->HasBranchData(reportedBranchId))
+                return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
+            BranchData branchdata = pBranchDb->GetBranchData(reportedBranchId);
+            if (branchdata.mapHeads.count(tx.pReportData->reportedBlockHash) == 0)
+                return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx Can not found block data in mapHeads");
+        }
+        else
+            return state.DoS(100, false, REJECT_INVALID, "Invalid report type!");
     }
     return true;
 }

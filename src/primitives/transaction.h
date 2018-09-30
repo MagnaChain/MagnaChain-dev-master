@@ -313,7 +313,11 @@ public:
         if (provetype == ReportType::REPORT_TX){
             READWRITE(vectProveData);
         }
-        if (provetype == ReportType::REPORT_COINBASE){
+        else if (provetype == ReportType::REPORT_COINBASE) {
+            READWRITE(vtxData);
+            READWRITE(vecBlockTxProve);
+        }
+        else if (provetype == ReportType::REPORT_MERKLETREE) {
             READWRITE(vtxData);
             READWRITE(vecBlockTxProve);
         }

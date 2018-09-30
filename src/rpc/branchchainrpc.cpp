@@ -1689,7 +1689,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
 //提交内容和证明coinbase是一样。
 UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
             "sendreporttomain \"blockhash\"  \"txid\"\n"
             "\nSend valid block merkle proof to main chain.\n"
@@ -1704,7 +1704,7 @@ UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
             + HelpExampleRpc("sendmerkleprovetomain", "\"blockhash\"")
         );
 
-    if (!Params().IsMainChain())
+    if (Params().IsMainChain())
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
