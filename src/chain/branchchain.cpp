@@ -1115,7 +1115,8 @@ uint256 GetReportTxHashKey(const CellTransaction& tx)
     int nVersion = PROTOCOL_VERSION;
     CellHashWriter ss(nType, nVersion);
     ss << tx.pReportData->reporttype;
-    if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
+    if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE 
+        || tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
     {
         ss << tx.pReportData->reportedBranchId;
         ss << tx.pReportData->reportedBlockHash;
@@ -1129,19 +1130,8 @@ uint256 GetProveTxHashKey(const CellTransaction& tx)
     int nVersion = PROTOCOL_VERSION;
     CellHashWriter ss(nType, nVersion);
     ss << tx.pProveData->provetype;
-    if (tx.pProveData->provetype == ReportType::REPORT_TX)
-    {
-        //const ProveDataItem& proveDataItem = tx.pProveData->vectProveData[0];
-        //CellTransactionRef ptxToProve;
-        //CellDataStream cds(proveDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
-        //cds >> (ptxToProve);
-        //uint256 txid = ptxToProve->GetHash();
-
-        ss << tx.pProveData->branchId;
-        ss << tx.pProveData->blockHash;
-        ss << tx.pProveData->txHash;//take it easy
-    }
-    else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE)
+    if (tx.pProveData->provetype == ReportType::REPORT_TX || tx.pProveData->provetype == ReportType::REPORT_COINBASE
+        || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)
     {
         ss << tx.pProveData->branchId;
         ss << tx.pProveData->blockHash;
@@ -1328,7 +1318,9 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
 
 bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
 {
-    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_COINBASE) {
+    if (!tx.IsProve() || tx.pProveData == nullptr 
+        || !(tx.pProveData->provetype == ReportType::REPORT_COINBASE || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)) 
+    {
         return false;
     }
 
@@ -1349,8 +1341,11 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
     if (vtx.size() < 2){
         return state.DoS(100, false, REJECT_INVALID, "invalid vtx size");
     }
-    if (vtx[0]->GetHash() != tx.pProveData->txHash){
+    if (tx.pProveData->provetype == ReportType::REPORT_COINBASE && vtx[0]->GetHash() != tx.pProveData->txHash){
         return state.DoS(100, false, REJECT_INVALID, "coinbase tx is eq txHash");
+    }
+    if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE && !tx.pProveData->txHash.IsNull()){
+        return state.DoS(100, false, REJECT_INVALID, "merkle poof txhash is invalid,must null");
     }
 
     //prove merkle tree root
@@ -1380,6 +1375,7 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
         totalFee += fee;
     }
 
+    //目前设计支链是不产生块奖励，只有收取手续费
     if (vtx[0]->GetValueOut() != totalFee){
         return state.DoS(100, false, REJECT_INVALID, "Prove coinbase transaction fail, fee invalid");
     }
@@ -1411,6 +1407,9 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
         }
         else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)
         {
+            if (!CheckProveCoinbaseTx(tx, state)) {
+                return false;
+            }
         }
         else{ 
             return state.DoS(0, false, REJECT_INVALID, "Invalid report type");

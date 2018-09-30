@@ -5305,6 +5305,8 @@ bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<Pro
 }
 
 //构建coinbase交易的证明
+//coinbase需要证明block的手续费是正确的，目前设计支链是不产生块奖励，只有收取手续费
+//为了计算手续费，得知道block所有交易的输入输出
 bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block)
 {
     //write all block.vtx data to pProveData->vtxData

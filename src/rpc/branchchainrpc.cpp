@@ -1525,6 +1525,77 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     return ret;
 }
 
+// 举报merkle
+UniValue reportbranchchainblockmerkle(const JSONRPCRequest& request)
+{
+    CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
+        throw std::runtime_error(
+            "reportbranchchainblockmerkle \"blockhash\"  \"txid\"\n"
+            "\nReport a branchchain block merkle error.\n"
+            "\nArguments:\n"
+            "1. \"branchid\"         (string, required) The branchid.\n"
+            "2. \"blockhash\"        (string, required) The block hash.\n"
+            "\nReturns ok or fail.\n"
+            "\nResult:\n"
+            "\n"
+            "\nExamples:\n"
+            + HelpExampleCli("reportbranchchainblockmerkle", "\"branchid\" \"blockhash\"")
+            + HelpExampleRpc("reportbranchchainblockmerkle", "\"branchid\" \"blockhash\"")
+        );
+
+    if (!Params().IsMainChain())
+        throw JSONRPCError(RPC_WALLET_ERROR, "can not call in branchchain.\n");
+
+    uint256 branchid = ParseHashV(request.params[0], "parameter 1");
+    uint256 blockHash = ParseHashV(request.params[1], "parameter 2");
+
+    std::shared_ptr<ReportData> pReportData = std::make_shared< ReportData>();
+    pReportData->reportedBranchId = branchid;
+    pReportData->reportedBlockHash = blockHash;
+    pReportData->reporttype = ReportType::REPORT_MERKLETREE;
+    pReportData->reportedTxHash.SetNull();
+
+    CellCoinControl coin_control;
+    CellWalletTx wtx;
+    wtx.transaction_version = CellTransaction::REPORT_CHEAT;
+    wtx.isDataTransaction = true;
+    wtx.pReportData = pReportData;
+    wtx.pPMT.reset(new CellSpvProof());
+
+    CellReserveKey reservekey(pwallet);
+    CellAmount nFeeRequired;
+    std::string strError;
+    std::vector<CellRecipient> vecSend;
+    bool fSubtractFeeFromAmount = false;
+    CellAmount curBalance = pwallet->GetBalance();
+    int nChangePosRet = -1;
+    if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
+        if (!fSubtractFeeFromAmount && nFeeRequired > curBalance)
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    CellValidationState state;
+    if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    //pBranchDb->mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
+    UniValue ret(UniValue::VOBJ);
+    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+    if (!state.GetRejectReason().empty())
+    {
+        ret.push_back(Pair("commit_reject_reason", state.GetRejectReason()));
+    }
+    return ret;
+}
+
+
 //在支链上发起证明某个交易
 // 先是在支链创建好证明数据
 UniValue sendprovetomain(const JSONRPCRequest& request)
@@ -1589,6 +1660,71 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData)){
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
         }
+    }
+
+    CellRPCConfig branchrpccfg;
+    if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "invalid rpc config");
+
+    const std::string strMethod = "handlebranchprove";
+    UniValue params(UniValue::VARR);
+    CellTransactionRef txRef = MakeTransactionRef(std::move(mtx));
+    params.push_back(EncodeHexTx(*txRef, RPCSerializationFlags()));
+
+    UniValue reply = CallRPC(branchrpccfg, strMethod, params);
+    const UniValue& error = find_value(reply, "error");
+    if (!error.isNull())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf(std::string("call rpc error %s"), error.write()));
+
+    const UniValue& result = find_value(reply, "result");
+    if (result.isNull()) {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
+    }
+
+    return result;
+}
+
+//send block merkle tree prove , the same as prove coinbase transaction
+//直接在主链上举报，原因是举报者没法获得目标block的详情，或者block数据本身有问题而被丢弃了，通过这样强制矿工提供完整证明
+//提交内容和证明coinbase是一样。
+UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
+        throw std::runtime_error(
+            "sendreporttomain \"blockhash\"  \"txid\"\n"
+            "\nSend valid block merkle proof to main chain.\n"
+            "\nArguments:\n"
+            "1. \"blockhash\"        (string, required) The block hash.\n"
+            
+            "\nReturns ok or fail.\n"
+            "\nResult:\n"
+            "\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendmerkleprovetomain", "\"blockhash\"")
+            + HelpExampleRpc("sendmerkleprovetomain", "\"blockhash\"")
+        );
+
+    if (!Params().IsMainChain())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
+
+    uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
+    if (!mapBlockIndex.count(blockHash))
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+    CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
+
+    CellBlock block;
+    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+
+    CellMutableTransaction mtx;
+    mtx.nVersion = CellTransaction::PROVE;
+    mtx.pProveData.reset(new ProveData);
+    mtx.pProveData->provetype = ReportType::REPORT_MERKLETREE;
+    mtx.pProveData->branchId = Params().GetBranchHash();
+    mtx.pProveData->blockHash = blockHash;
+    mtx.pProveData->txHash.SetNull();// when report merkle, this field is null, so set it null to match.
+    if (!GetProveOfCoinbase(mtx.pProveData, block)) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Get coinbase transaction prove data failed");
     }
 
     CellRPCConfig branchrpccfg;
@@ -1977,8 +2113,10 @@ static const CRPCCommand commands[] =
     // report and provre api
     { "branchchain",        "sendreporttomain",          &sendreporttomain,            false, {"blockhash", "txid"}},
     { "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
+    { "branchchain",        "reportbranchchainblockmerkle",&reportbranchchainblockmerkle, false, {"branchid","blockhash"},},
     // 证明交易数据还需要修改和完善
     { "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
+    { "branchchain",        "sendmerkleprovetomain",     &sendmerkleprovetomain,       false, {"blockhash"}},
     { "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},
 
     { "branchchain",        "lockmortgageminecoin",      &lockmortgageminecoin,        false, { "txid", "coinpreouthash"}},
