@@ -1387,13 +1387,15 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
 {
     if (tx.IsProve())
     {
-        uint256 proveFlagHash = GetProveTxHashKey(tx);
+        /*
+        //uint256 proveFlagHash = GetProveTxHashKey(tx);
         //check report exist, don't check in cache now. let a report tx in a mined block may be better.
         if (pBranchDb->mReortTxFlag.count(proveFlagHash) == 0
             || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
         {
             return state.DoS(0, false, REJECT_INVALID, "prove to report tx not exist.");
         }
+        */
 
         if (tx.pProveData->provetype == ReportType::REPORT_TX){
             if (!CheckProveReportTx(tx, state)) {
