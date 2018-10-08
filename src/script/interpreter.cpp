@@ -1168,6 +1168,8 @@ public:
     /** Serialize an input of txTo */
     template<typename S>
     void SerializeInput(S &s, unsigned int nInput) const {
+        if (txTo.vin[nInput].scriptSig.IsContract())
+            return;
         // In case of SIGHASH_ANYONECANPAY, only the input being signed is serialized
         if (fAnyoneCanPay)
             nInput = nIn;
@@ -1190,6 +1192,8 @@ public:
     /** Serialize an output of txTo */
     template<typename S>
     void SerializeOutput(S &s, unsigned int nOutput) const {
+        if (txTo.vout[nOutput].scriptPubKey.IsContractChange())
+            return;
         if (fHashSingle && nOutput != nIn)
             // Do not lock-in the txout payee at other indices as txin
             ::Serialize(s, CellTxOut());
@@ -1204,12 +1208,20 @@ public:
         //::Serialize(s, txTo.nVersion); change for diff from celllink
         // Serialize vin
         unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
-        ::WriteCompactSize(s, nInputs);
+        unsigned int nRealInputs = 0;
         for (unsigned int nInput = 0; nInput < nInputs; nInput++)
-             SerializeInput(s, nInput);
+            if (!txTo.vin[nInput].scriptSig.IsContract())
+                nRealInputs++;
+        ::WriteCompactSize(s, nRealInputs);
+        for (unsigned int nInput = 0; nInput < nInputs; nInput++)
+            SerializeInput(s, nInput);
         // Serialize vout
-        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn+1 : txTo.vout.size());
-        ::WriteCompactSize(s, nOutputs);
+        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn + 1 : txTo.vout.size());
+        unsigned int nRealOutputs = 0;
+        for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
+            if (!txTo.vout[nOutput].scriptPubKey.IsContractChange())
+                nRealOutputs++;
+        ::WriteCompactSize(s, nRealOutputs);
         for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
              SerializeOutput(s, nOutput);
         // Serialize nLockTime
