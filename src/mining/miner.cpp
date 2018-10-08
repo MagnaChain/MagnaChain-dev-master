@@ -571,7 +571,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(CellMutableTransaction& tx, uint160& key, Cell
 bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     CellMutableTransaction newTx(*iter->GetSharedTx());
-    uint256& oldHash = newTx.GetHash();
+    uint256 oldHash = newTx.GetHash();
 
     bool success = false;
     int vOutSize = newTx.vout.size();
@@ -585,7 +585,8 @@ bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO
         CellScript scriptPubKey;
         scriptPubKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
 
-        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, CellScript(), scriptPubKey);
+        CellScript scriptSig = CellScript();
+        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
     if (newTx.IsSmartContract() && newTx.contractOut > 0) {
