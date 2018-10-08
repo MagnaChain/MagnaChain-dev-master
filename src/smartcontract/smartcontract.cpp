@@ -642,7 +642,8 @@ int SendCoins(lua_State* L)
     }
 
     CellLinkAddress kDest(strDest);
-    CellScript& scriptPubKey = GetScriptForDestination(kDest.Get());
+    CellTxDestination destination = kDest.Get();
+    CellScript& scriptPubKey = GetScriptForDestination(destination);
     CellTxOut out;
     out.nValue = amount;
     out.scriptPubKey = scriptPubKey;
