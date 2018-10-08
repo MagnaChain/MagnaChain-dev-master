@@ -376,17 +376,17 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     s >> tx.nLockTime;
 
     if (tx.nVersion == 3) { //CellTransaction::PUBLISH_CONTRACT_VERSION
-        s >> tx.contractAddrs;
+        s >> tx.contractAddr;
 		s >> tx.contractCode;
 		s >> tx.contractSender;
-		s >> tx.scontractScriptSig;
+		s >> tx.contractScriptSig;
 	}
     else if (tx.nVersion == 4) {//CellTransaction::CALL_CONTRACT_VERSION
-        s >> tx.contractAddrs;
+        s >> tx.contractAddr;
 		s >> tx.contractSender;
 		s >> tx.contractFun;
 		s >> tx.contractParams;
-		s >> tx.scontractScriptSig;
+		s >> tx.contractScriptSig;
 	}
 	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
 		s >> tx.branchVSeeds;
@@ -476,17 +476,17 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     s << tx.nLockTime;
 
 	if (tx.nVersion == 3) {//CellTransaction::PUBLISH_CONTRACT_VERSION
-		s << tx.contractAddrs;
+		s << tx.contractAddr;
 		s << tx.contractCode;
 		s << tx.contractSender;
-		s << tx.scontractScriptSig;
+		s << tx.contractScriptSig;
 	}
 	else if (tx.nVersion == 4) {//CellTransaction::CALL_CONTRACT_VERSION
-		s << tx.contractAddrs;
+		s << tx.contractAddr;
 		s << tx.contractSender;
 		s << tx.contractFun;
 		s << tx.contractParams;
-		s << tx.scontractScriptSig;
+		s << tx.contractScriptSig;
 	}
 	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
 		s << tx.branchVSeeds;
@@ -587,10 +587,9 @@ public:
 	const CellPubKey contractSender;// sender pub addr
 	const std::string contractFun;
 	const std::string contractParams;
-    const CellScript scontractScriptSig;
-    const std::vector<CellContractID> contractAddrs;
-    const CellAmount contractAmountIn;    // 向合约转入
-    const CellAmount contractAmountOut;   // 向合约转出
+    const CellScript contractScriptSig;
+    const CellContractID contractAddr;
+    const CellAmount contractOut;
 
 	//branch create data
 	const std::string branchVSeeds;
@@ -786,10 +785,9 @@ struct CellMutableTransaction
 	CellPubKey contractSender;
 	std::string contractFun;
 	std::string contractParams;
-	CellScript scontractScriptSig;
-    std::vector<CellContractID> contractAddrs;
-    CellAmount contractAmountIn = 0;    // 向合约转入
-    CellAmount contractAmountOut = 0;   // 向合约转出
+	CellScript contractScriptSig;
+    CellContractID contractAddr;
+    CellAmount contractOut;
 
 	//branch create data
 	std::string branchVSeeds;
@@ -923,12 +921,12 @@ static inline CellTransactionRef MakeTransactionRef() { return std::make_shared<
 template <typename Tx> static inline CellTransactionRef MakeTransactionRef(Tx&& txIn) { return std::make_shared<const CellTransaction>(std::forward<Tx>(txIn)); }
 
 inline CellTransaction::CellTransaction() : nVersion(CellTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
-    contractAddrs(), contractCode(), contractSender(), contractFun(), contractParams(), scontractScriptSig(), contractAmountIn(0), contractAmountOut(0),
-    branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(),
+    contractAddr(), contractCode(), contractSender(), contractFun(), contractParams(), contractScriptSig(),
+    branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(), contractOut(0),
     fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash(){}
 inline CellTransaction::CellTransaction(const CellMutableTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-    contractAddrs(tx.contractAddrs), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
-    scontractScriptSig(tx.scontractScriptSig), contractAmountIn(tx.contractAmountIn), contractAmountOut(tx.contractAmountOut),
+    contractAddr(tx.contractAddr), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
+    contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
     branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
     pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
@@ -936,8 +934,8 @@ inline CellTransaction::CellTransaction(const CellMutableTransaction& tx) : nVer
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
-    contractAddrs(std::move(tx.contractAddrs)), contractCode(std::move(tx.contractCode)), contractSender(std::move(tx.contractSender)), contractFun(std::move(tx.contractFun)), contractParams(std::move(tx.contractParams)),
-    scontractScriptSig(tx.scontractScriptSig), contractAmountIn(tx.contractAmountIn), contractAmountOut(tx.contractAmountOut),
+    contractAddr(std::move(tx.contractAddr)), contractCode(std::move(tx.contractCode)), contractSender(std::move(tx.contractSender)), contractFun(std::move(tx.contractFun)), contractParams(std::move(tx.contractParams)),
+    contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
     branchVSeeds(std::move(tx.branchVSeeds)), branchSeedSpec6(std::move(tx.branchSeedSpec6)), sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(std::move(tx.fromBranchId)), fromTx(std::move(tx.fromTx)), inAmount(tx.inAmount),
     pBranchBlockData(std::move(tx.pBranchBlockData)), pPMT(std::move(tx.pPMT)), 
@@ -947,8 +945,8 @@ inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(
 // add copy constructor, 添加了不可复制成员变量pBranchBlockData后，默认复制构造函数被删除了
 inline CellTransaction::CellTransaction(const CellTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-      contractAddrs(tx.contractAddrs), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
-      scontractScriptSig(tx.scontractScriptSig), contractAmountIn(tx.contractAmountIn), contractAmountOut(tx.contractAmountOut),
+      contractAddr(tx.contractAddr), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
+      contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
       branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
       fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
       pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
@@ -958,8 +956,8 @@ inline CellTransaction::CellTransaction(const CellTransaction& tx)
 
 inline CellMutableTransaction::CellMutableTransaction(const CellMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-    contractAddrs(tx.contractAddrs), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
-      scontractScriptSig(tx.scontractScriptSig), contractAmountIn(tx.contractAmountIn), contractAmountOut(tx.contractAmountOut),
+      contractAddr(tx.contractAddr), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
+      contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
       branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
       fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
       pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
@@ -976,14 +974,13 @@ inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutab
     vin = (tx.vin);
     vout = (tx.vout);
     nLockTime = (tx.nLockTime);
-    contractAddrs = (tx.contractAddrs);
+    contractAddr = (tx.contractAddr);
     contractCode = (tx.contractCode);
     contractSender = (tx.contractSender);
     contractFun = (tx.contractFun);
     contractParams = (tx.contractParams);
-    contractAmountIn = (tx.contractAmountIn);
-    contractAmountOut = (tx.contractAmountOut);
-    scontractScriptSig = (tx.scontractScriptSig);
+    contractScriptSig = (tx.contractScriptSig);
+    contractOut = (tx.contractOut);
     branchVSeeds = (tx.branchVSeeds);
     branchSeedSpec6 = (tx.branchSeedSpec6);
     sendToBranchid = (tx.sendToBranchid);

@@ -1004,7 +1004,7 @@ UniValue sendrawtransaction(const JSONRPCRequest& request)
 	{
 		UniValue ret(UniValue::VOBJ);
 		ret.push_back(Pair("txid", tx->GetHash().ToString()));
-		ret.push_back(Pair("contractaddress", tx->contractAddrs[0].ToString()));
+		ret.push_back(Pair("contractaddress", tx->contractAddr.ToString()));
 		ret.push_back(Pair("senderaddress", tx->contractSender.GetID().ToString()));
 		return ret;
 	}

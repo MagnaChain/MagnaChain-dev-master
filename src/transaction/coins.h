@@ -305,6 +305,24 @@ private:
     CellCoinsViewCache(const CellCoinsViewCache &);
 };
 
+class CoinAmountCache
+{
+public:
+    CellAmount GetAmount(uint160& key);
+    bool IncAmount(uint160& key, CellAmount delta);
+    bool DecAmount(uint160& key, CellAmount delta);
+
+    void TakeSnapshot(uint160& key);
+    void RemoveSnapshot(uint160& key, bool reverse);
+
+    void Clear();
+
+private:
+    bool takeSnapshot;
+    std::map<uint160, CellAmount> snapshots;
+    std::map<uint160, CellAmount> coinAmountCache;
+};
+
 //! Utility function to add all of a transaction's outputs to a cache.
 // When check is false, this assumes that overwrites are only possible for coinbase transactions.
 // When check is true, the underlying view may be queried to determine whether an addition is

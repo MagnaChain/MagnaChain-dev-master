@@ -349,9 +349,8 @@ public:
 	CellPubKey contractSender;
 	std::string contractCode;
     std::string contractParams;
-    std::vector<CellContractID> contractAddrs;
-    CellAmount contractAmountIn = 0;    // 向合约转入
-    CellAmount contractAmountOut = 0;   // 向合约转出
+    CellContractID contractAddr;
+    CellAmount contractOut;
 
 	void ClearTempContractData()
 	{
@@ -419,6 +418,7 @@ public:
         nChangeCached = 0;
         nOrderPos = -1;
         isDataTransaction = false;
+        contractOut = 0;
     }
 
     ADD_SERIALIZE_METHODS;
@@ -448,7 +448,7 @@ public:
         READWRITE(nTimeReceived);
         READWRITE(fFromMe);
         READWRITE(fSpent);
-        READWRITE(contractAddrs);
+        READWRITE(contractAddr);
 
         if (ser_action.ForRead())
         {

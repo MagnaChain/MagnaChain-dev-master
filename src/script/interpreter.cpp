@@ -1054,13 +1054,13 @@ template<typename S>
 void TransactionExtraFields(S &s, const CellTransaction& txTo){
 	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)//TODO: check this
     {
-        ::Serialize(s, txTo.contractAddrs);
+        ::Serialize(s, txTo.contractAddr);
 		::Serialize(s, txTo.contractCode);
         ::Serialize(s, txTo.contractSender);
 	}
 	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
     {
-        ::Serialize(s, txTo.contractAddrs);
+        ::Serialize(s, txTo.contractAddr);
 		::Serialize(s, txTo.contractSender);
 		::Serialize(s, txTo.contractFun);
         ::Serialize(s, txTo.contractParams);
@@ -1223,7 +1223,8 @@ public:
 uint256 GetPrevoutHash(const CellTransaction& txTo) {
     CellHashWriter ss(SER_GETHASH, 0);
     for (const auto& txin : txTo.vin) {
-        ss << txin.prevout;
+        if (!txin.scriptSig.IsContract())
+            ss << txin.prevout;
     }
     return ss.GetHash();
 }
@@ -1231,7 +1232,8 @@ uint256 GetPrevoutHash(const CellTransaction& txTo) {
 uint256 GetSequenceHash(const CellTransaction& txTo) {
     CellHashWriter ss(SER_GETHASH, 0);
     for (const auto& txin : txTo.vin) {
-        ss << txin.nSequence;
+        if (!txin.scriptSig.IsContract())
+            ss << txin.nSequence;
     }
     return ss.GetHash();
 }
@@ -1239,7 +1241,8 @@ uint256 GetSequenceHash(const CellTransaction& txTo) {
 uint256 GetOutputsHash(const CellTransaction& txTo) {
     CellHashWriter ss(SER_GETHASH, 0);
     for (const auto& txout : txTo.vout) {
-        ss << txout;
+        if (!txout.scriptPubKey.IsContractChange())
+            ss << txout;
     }
     return ss.GetHash();
 }

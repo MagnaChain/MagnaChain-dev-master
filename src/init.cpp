@@ -262,6 +262,8 @@ void Shutdown()
         pblocktree = nullptr;
         delete pBranchDb;
         pBranchDb = nullptr;
+        delete pCoinAmountCache;
+        pCoinAmountCache = nullptr;
     }
 #ifdef ENABLE_WALLET
     for (CWalletRef pwallet : vpwallets) {
@@ -1534,6 +1536,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
 				pcoinListDb = new CoinListDB( pcoinsdbview->GetDb() );
 				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, false);
                 pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, false);
+                pCoinAmountCache = new CoinAmountCache();
                 
                 if (Params().IsMainChain()) //only in main chain
                 {

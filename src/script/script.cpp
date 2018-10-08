@@ -143,6 +143,7 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP10                  : return "OP_NOP10";
 
     case OP_CONTRACT               : return "OP_CONTRACT";
+    case OP_CONTRACT_CHANGE        : return "OP_CONTRACT_CHANGE";
     case OP_CREATE_BRANCH          : return "OP_CREATE_BRANCH";
     case OP_TRANS_BRANCH           : return "OP_TRANS_BRANCH";
     case OP_MINE_BRANCH_MORTGAGE   : return "OP_MINE_BRANCH_MORTGAGE";
@@ -167,7 +168,16 @@ bool CellScript::IsContract() const
     std::vector<unsigned char> vch;
     CellScript::const_iterator pc1 = begin();
     GetOp(pc1, opcode, vch);
-    return (opcode == OP_CONTRACT);
+    return (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+}
+
+bool CellScript::IsContractChange() const
+{
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    CellScript::const_iterator pc1 = begin();
+    GetOp(pc1, opcode, vch);
+    return (opcode == OP_CONTRACT_CHANGE);
 }
 
 
@@ -178,9 +188,9 @@ bool CellScript::GetContractAddr(CellContractID& contractId) const
 	CellScript::const_iterator pc1 = begin();
 	GetOp(pc1, opcode, vch);
 
-	if (opcode != OP_CONTRACT) {
+	if (opcode != OP_CONTRACT && opcode != OP_CONTRACT_CHANGE)
 		return false;
-	}
+
 	vch.clear();
 	vch.assign(pc1 + 1, end());
     contractId = CellContractID(uint160(vch));

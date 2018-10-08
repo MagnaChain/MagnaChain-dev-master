@@ -2783,10 +2783,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
         toTx.nVersion = CellTransaction::PUBLISH_CONTRACT_VERSION;
         toTx.contractCode = fromWtx.contractCode;
         toTx.contractSender = fromWtx.contractSender;
-        toTx.contractAddrs = fromWtx.contractAddrs;
-        toTx.contractAmountIn = fromWtx.contractAmountIn;
-        toTx.contractAmountOut = fromWtx.contractAmountOut;
-        //	toTx.contractParams = fromWtx.contractParams;
+        toTx.contractAddr = fromWtx.contractAddr;
     }
     else if (fromWtx.transaction_version == CellTransaction::CALL_CONTRACT_VERSION)
     {
@@ -2794,9 +2791,8 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
         toTx.contractFun = fromWtx.contractCode;
         toTx.contractSender = fromWtx.contractSender;
         toTx.contractParams = fromWtx.contractParams;
-        toTx.contractAddrs = fromWtx.contractAddrs;
-        toTx.contractAmountIn = fromWtx.contractAmountIn;
-        toTx.contractAmountOut = fromWtx.contractAmountOut;
+        toTx.contractAddr = fromWtx.contractAddr;
+        toTx.contractOut = fromWtx.contractOut;
     }
     if (fromWtx.transaction_version == CellTransaction::CREATE_BRANCH_VERSION)
     {
@@ -2871,7 +2867,6 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
         if (recipient.fSubtractFeeFromAmount)
             nSubtractFeeFromAmount++;
     }
-    nValue += wtxNew.contractAmountIn;
     if (vecSend.empty() && !wtxNew.isDataTransaction && !wtxNew.IsSmartContract())
     {
         strFailReason = _("Transaction must have at least one recipient");
@@ -2970,7 +2965,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                 wtxNew.fFromMe = true;
                 bool fFirst = true;
 
-				// 如果是从输入中扣除交易费，则输入还要加上交易费用
+				// 如果是从输入中扣除交易费，则输入要加上交易费用
                 CellAmount nValueToSelect = nValue;
                 if (nSubtractFeeFromAmount == 0)
                     nValueToSelect += nFeeRet;
@@ -3078,8 +3073,18 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                     return false;
                 }
 
+                if (sls != nullptr && sls->recipients.size() > 0) {
+                    txNew.vin.emplace_back(uint256(), txNew.vin.size());
+                    txNew.vout.emplace_back(txNew.contractOut, GetScriptForDestination(txNew.contractAddr));
+                }
+
 				// 获取交易字节大小 
                 nBytes = GetVirtualTransactionSize(txNew);
+
+                if (sls != nullptr && sls->recipients.size() > 0) {
+                    txNew.vin.resize(txNew.vin.size() - 1);
+                    txNew.vout.resize(txNew.vout.size() - 1);
+                }
 
 				// 移除虚拟签名数据
                 // Remove scriptSigs to eliminate the fee calculation dummy signatures
@@ -3090,23 +3095,9 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 
                 // check lsdata
                 if (sls != nullptr) {
-                    if (sls->contractAmountOut > 0) {
-                        ContractInfo contractInfo;
-                        if (!mpContractDb->GetContractInfo(txNew.contractAddrs[0], contractInfo, nullptr)) {
-                            strFailReason = _("GetContractInfo fail");
-                            return false;
-                        }
-
-                        if (sls->contractAmountOut < contractInfo.amount) {
-                            strFailReason = _("Contract have not enough coins.");
-                            return false;
-                        }
-
-                        // output
-                        for (size_t i = 0; i < sls->recipients.size(); ++i)
-                            txNew.vout.push_back(sls->recipients[i]);
-                        txNew.contractAddrs.assign(wtxNew.contractAddrs.begin(), wtxNew.contractAddrs.end());
-                    }
+                    for (size_t i = 0; i < sls->recipients.size(); ++i)
+                        txNew.vout.push_back(sls->recipients[i]);
+                    txNew.contractAddr = wtxNew.contractAddr;
                 }
 
                 nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew, sls);
@@ -3192,12 +3183,12 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 		if (txNew.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
 		{
 			//replace
-			CellContractID oldKey = txNew.contractAddrs[0];
+			CellContractID oldKey = txNew.contractAddr;
             CellScript oldScript = GetScriptForDestination(CellLinkAddress(oldKey).Get());
 
-			txNew.contractAddrs[0] = GenerateContractAddressByTx(txNew);
+			txNew.contractAddr = GenerateContractAddressByTx(txNew);
 			//replace vout
-            CellScript newScript = GetScriptForDestination(CellLinkAddress(txNew.contractAddrs[0]).Get());
+            CellScript newScript = GetScriptForDestination(CellLinkAddress(txNew.contractAddr).Get());
 			for (auto out : txNew.vout)
 			{
 				if (out.scriptPubKey == oldScript)
@@ -3235,7 +3226,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 					return false;
 				}
 				else {
-					txNew.scontractScriptSig = constractSig;
+					txNew.contractScriptSig = constractSig;
 				}
 			}
         }

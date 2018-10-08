@@ -55,6 +55,7 @@ struct LockPoints {
 };
 
 class CellTxMemPool;
+class CellLinkAddress;
 
 /** \class CellTxMemPoolEntry
  *
@@ -96,6 +97,8 @@ private:
     int64_t nSigOpCostWithAncestors;
 
 public:
+    std::set<CellContractID> contractAddrs;
+
     CellTxMemPoolEntry(const CellTransactionRef& _tx, const CellAmount& _nFee, int64_t _nTime, unsigned int _entryHeight, bool spendsCoinbase, int64_t nSigOpsCost, LockPoints lp);
 
     CellTxMemPoolEntry(const CellTxMemPoolEntry& other);
@@ -134,8 +137,6 @@ public:
     int64_t GetSigOpCostWithAncestors() const { return nSigOpCostWithAncestors; }
 
     mutable size_t vTxHashesIdx; //!< Index in mempool's vTxHashes
-
-    CellKeyID ContractAddr() const { return tx->contractAddrs[0]; };
 };
 
 // Helpers for modifying CellTxMemPool::mapTx, which is a boost multi_index.
@@ -348,6 +349,7 @@ public:
     }
 };
 
+
 /**
  * CellTxMemPool stores valid-according-to-the-current-best-chain transactions
  * that may be included in the next block.
@@ -502,7 +504,7 @@ private:
     void UpdateChild(txiter entry, txiter child, bool add);
 
 public:
-    std::vector<indexed_transaction_set::const_iterator> GetSortedDepthAndScore() const;
+    std::vector<indexed_transaction_set::iterator> GetSortedDepthAndScore();
 
     indirectmap<CellOutPoint, const CellTransaction*> mapNextTx;
     std::map<uint256, CellAmount> mapDeltas;
@@ -628,7 +630,7 @@ public:
 
     CellTransactionRef get(const uint256& hash) const;
     TxMempoolInfo info(const uint256& hash) const;
-    std::vector<TxMempoolInfo> infoAll() const;
+    std::vector<TxMempoolInfo> infoAll();
 
     size_t DynamicMemoryUsage() const;
 

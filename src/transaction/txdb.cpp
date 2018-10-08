@@ -478,6 +478,26 @@ struct CoinListEntry {
     }
 };
 
+class CoinCacheVisitor : public boost::static_visitor<bool>
+{
+private:
+    uint160& key;
+
+public:
+    CoinCacheVisitor(uint160& cache) : key(cache) {}
+
+    bool operator()(const CellContractID& id) const { 
+        key = id;
+        return true;
+    }
+    bool operator()(const CellKeyID& id) const {
+        key = id;
+        return true;
+    }
+    bool operator()(const CellScriptID& id) const { return false; }
+    bool operator()(const CellNoDestination& no) const { return false; }
+};
+
 
 // coin list db
 static void CoinListGetParent(const CellOutPoint& outpoint, const Coin& coin, CoinList& kList)
@@ -544,7 +564,7 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
         CellScript::const_iterator pc1 = scriptPubKey.begin();
         scriptPubKey.GetOp(pc1, opcode, vch);
 
-        if (opcode == OP_CONTRACT) {
+        if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE) {
             vch.clear();
             vch.assign(pc1 + 1, scriptPubKey.end());
             kDest = CellKeyID(uint160(vch));
@@ -580,7 +600,8 @@ void CoinListDB::ImportCoins(CellCoinsMap& mapCoins)
             if (!GetCoinDest(outpoint, coin, kDest))
                 continue;
 
-            CellKeyID& kKey = boost::get<CellKeyID&>(kDest);
+            uint160 kKey;
+            boost::apply_visitor(CoinCacheVisitor(kKey), kDest);
 
             CellCoinListMap::iterator mit = cache.find(kKey);
             CoinListPtr pList = nullptr;

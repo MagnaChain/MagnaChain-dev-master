@@ -184,7 +184,9 @@ enum opcodetype
     OP_NOP10 = 0xb9,
 
 	// smart contract
-	OP_CONTRACT = 0xc0,
+    OP_CONTRACT_ADDR = 0xc0,
+	OP_CONTRACT = 0xc1,
+    OP_CONTRACT_CHANGE = 0xc2,
 
 	OP_CREATE_BRANCH = 0xd0,
 	OP_TRANS_BRANCH = 0xd1,
@@ -680,6 +682,7 @@ public:
     }
 
     bool IsContract() const;
+    bool IsContractChange() const;
 	bool GetContractAddr(CellContractID& contractId) const;
 };
 

@@ -253,10 +253,19 @@ CellAmount CellCoinsViewCache::GetValueIn(const CellTransaction& tx) const
     if (tx.IsCoinBase())
         return 0;
 
+    bool includeContract = false;
     CellAmount nResult = 0;
-    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    for (unsigned int i = 0; i < tx.vin.size(); i++) {
         nResult += AccessCoin(tx.vin[i].prevout).out.nValue;
-    nResult += tx.contractAmountOut;
+        if (tx.vin[i].scriptSig.IsContract())
+            includeContract = true;
+    }
+
+    if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && !includeContract && tx.contractOut > 0) {
+        nResult += tx.contractOut;
+        if (!MoneyRange(nResult) || !MoneyRange(tx.contractOut))
+            return 0;
+    }
 
     return nResult;
 }
@@ -271,6 +280,88 @@ bool CellCoinsViewCache::HaveInputs(const CellTransaction& tx) const
         }
     }
     return true;
+}
+
+
+CellAmount CoinAmountCache::GetAmount(uint160& key)
+{
+    CellAmount nValue(0);
+    if (coinAmountCache.count(key) == 0) {
+        CoinListPtr plist = pcoinListDb->GetList(key);
+
+        for (auto it = plist->coins.begin(); it != plist->coins.end(); ++it) {
+            const CellOutPoint& outpoint = *it;
+            const Coin& coin = pcoinsTip->AccessCoin(outpoint);
+
+            if (coin.IsSpent())
+                continue;
+            if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
+                continue;
+
+            nValue += coin.out.nValue;
+        }
+        coinAmountCache[key] = nValue;
+    }
+    else
+        nValue = coinAmountCache[key];
+
+    if (takeSnapshot) {
+        takeSnapshot = false;
+        snapshots[key] = GetAmount(key);
+    }
+
+    return nValue;
+}
+
+bool CoinAmountCache::IncAmount(uint160& key, CellAmount delta)
+{
+    if (delta < 0)
+        return false;
+
+    if (delta == 0)
+        return true;
+
+    CellAmount value = GetAmount(key);
+    value += delta;
+    coinAmountCache[key] = value;
+    return true;
+}
+
+bool CoinAmountCache::DecAmount(uint160& key, CellAmount delta)
+{
+    if (delta < 0)
+        return false;
+
+    if (delta == 0)
+        return true;
+
+    CellAmount value = GetAmount(key);
+    if (value < delta)
+        return false;
+    value -= delta;
+    coinAmountCache[key] = value;
+    return true;
+}
+
+void CoinAmountCache::TakeSnapshot(uint160& key)
+{
+    takeSnapshot = true;
+}
+
+void CoinAmountCache::RemoveSnapshot(uint160& key, bool reverse)
+{
+    if (!takeSnapshot) {
+        CellAmount value = GetAmount(key);
+        snapshots.erase(key);
+        if (reverse)
+            coinAmountCache[key] = value;
+    }
+}
+
+void CoinAmountCache::Clear()
+{
+    snapshots.clear();
+    coinAmountCache.clear();
 }
 
 static const size_t MIN_TRANSACTION_OUTPUT_WEIGHT = WITNESS_SCALE_FACTOR * ::GetSerializeSize(CellTxOut(), SER_NETWORK, PROTOCOL_VERSION);

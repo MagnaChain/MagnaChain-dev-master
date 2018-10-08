@@ -434,26 +434,25 @@ uint256 GetContractHash(const CellTransaction& txTo) {
 	ss << txTo.nLockTime;
 
 	for (const auto& txin : txTo.vin) {
-		ss << txin;
+        if (!txin.scriptSig.IsContract())
+		    ss << txin;
 	}
 	for (const auto& txout : txTo.vout) {
-		ss << txout;
+        if (!txout.scriptPubKey.IsContractChange())
+		    ss << txout;
 	}
 
 	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-		ss << txTo.contractAddrs;
+		ss << txTo.contractAddr;
 		ss << txTo.contractCode;
 		ss << txTo.contractSender;
-        ss << txTo.contractAmountIn;
-        ss << txTo.contractAmountOut;
 	}
 	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
-		ss << txTo.contractAddrs;
+		ss << txTo.contractAddr;
 		ss << txTo.contractSender;
 		ss << txTo.contractFun;
 		ss << txTo.contractParams;
-        ss << txTo.contractAmountIn;
-        ss << txTo.contractAmountOut;
+        ss << txTo.contractOut;
 	}
 	return ss.GetHash();
 }
@@ -486,10 +485,9 @@ bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn,
 
 bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constractSig)
 {
-	if (txToIn->IsSmartContract() == false)
-	{
+	if (!txToIn->IsSmartContract())
 		return true;
-	}
+
 	// Hash type is one byte tacked on to the end of the signature
 	std::vector<unsigned char> vchSig;
 	opcodetype opcode;

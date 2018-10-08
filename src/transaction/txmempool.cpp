@@ -177,9 +177,8 @@ bool CellTxMemPool::CalculateMemPoolAncestors(const CellTxMemPoolEntry &entry, s
                 }
             }
         }
-        // ½«µ÷ÓÃµÄÖÇÄÜºÏÔ¼¹ØÁªµØÖ·¼ÓÈëµ½ancestorsÖÐ
-        for (unsigned int i = 0; i < tx.contractAddrs.size(); i++) {
-            const CellKeyID& contractId = tx.contractAddrs[i];
+        // 获取内存池中与合约关联地址的交易
+        for (auto& contractId : entry.contractAddrs) {
             auto it = contractLinksMap.find(contractId);
             if (it != contractLinksMap.end()) {
                 txiter piter = mapTx.find(it->second.back());
@@ -350,6 +349,7 @@ void CellTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, CellAmount modi
     assert(int(nSigOpCostWithAncestors) >= 0);
 }
 
+
 CellTxMemPool::CellTxMemPool(CellBlockPolicyEstimator* estimator) :
     nTransactionsUpdated(0), minerPolicyEstimator(estimator), nCreateBranchTxCount(0)
 {
@@ -411,9 +411,8 @@ bool CellTxMemPool::addUnchecked(const uint256& hash, const CellTxMemPoolEntry &
         mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
         setParentTransactions.insert(tx.vin[i].prevout.hash);
     }
-    // ½«¹ØÁªºÏÔ¼µØÖ·µÄ½»Ò×¼ÓÈëancestorsÁÐ±í
-    for (unsigned int i = 0; i < tx.contractAddrs.size(); i++) {
-        const CellKeyID& contractId = tx.contractAddrs[i];
+    // 设置内存池中与合约关联地址的交易
+    for (auto& contractId : entry.contractAddrs) {
         auto it = contractLinksMap.find(contractId);
         if (it != contractLinksMap.end())
             setParentTransactions.insert(it->second.back());
@@ -806,9 +805,9 @@ public:
 };
 } // namespace
 
-std::vector<CellTxMemPool::indexed_transaction_set::const_iterator> CellTxMemPool::GetSortedDepthAndScore() const
+std::vector<CellTxMemPool::indexed_transaction_set::iterator> CellTxMemPool::GetSortedDepthAndScore()
 {
-    std::vector<indexed_transaction_set::const_iterator> iters;
+    std::vector<indexed_transaction_set::iterator> iters;
     AssertLockHeld(cs);
 
     iters.reserve(mapTx.size());
@@ -837,7 +836,7 @@ static TxMempoolInfo GetInfo(CellTxMemPool::indexed_transaction_set::const_itera
     return TxMempoolInfo{it->GetSharedTx(), it->GetTime(), CellFeeRate(it->GetFee(), it->GetTxSize()), it->GetModifiedFee() - it->GetFee()};
 }
 
-std::vector<TxMempoolInfo> CellTxMemPool::infoAll() const
+std::vector<TxMempoolInfo> CellTxMemPool::infoAll()
 {
     LOCK(cs);
     auto iters = GetSortedDepthAndScore();

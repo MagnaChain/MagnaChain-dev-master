@@ -62,16 +62,17 @@ CellMutableTransaction::CellMutableTransaction(const CellTransaction& tx) : nVer
 	{
 		contractCode = tx.contractCode;
 		contractSender = tx.contractSender;
-        contractAddrs = tx.contractAddrs;
-		scontractScriptSig = tx.scontractScriptSig;
+        contractAddr = tx.contractAddr;
+		contractScriptSig = tx.contractScriptSig;
 	}
 	else if (nVersion == CellTransaction::CALL_CONTRACT_VERSION)
 	{
 		contractSender = tx.contractSender;
 		contractFun = tx.contractFun;
         contractParams = tx.contractParams;
-        contractAddrs = tx.contractAddrs;
-		scontractScriptSig = tx.scontractScriptSig;
+        contractAddr = tx.contractAddr;
+        contractScriptSig = tx.contractScriptSig;
+        contractOut = tx.contractOut;
 	}
 	else if (nVersion == CellTransaction::CREATE_BRANCH_VERSION)
 	{
@@ -169,11 +170,6 @@ CellAmount CellTransaction::GetValueOut() const
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
-
-    nValueOut += contractAmountIn;
-    if (!MoneyRange(nValueOut))
-        throw std::runtime_error(std::string(__func__) + ": value out of range");
-
     return nValueOut;
 }
 

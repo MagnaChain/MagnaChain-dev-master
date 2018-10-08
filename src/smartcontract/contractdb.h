@@ -14,7 +14,6 @@ struct ContractInfo
 public:
     std::string code;
     std::string data;
-    CellAmount amount = 0;
 };
 
 // 智能合约的存盘数据
@@ -24,7 +23,6 @@ public:
     uint256 blockHash;
     uint32_t blockHeight;
     std::string data;
-    CellAmount amount = 0;         // 合约拥有的coin数量
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -32,7 +30,6 @@ public:
         READWRITE(blockHash);
         READWRITE(blockHeight);
         READWRITE(data);
-        READWRITE(amount);
     }
 };
 
@@ -89,6 +86,13 @@ public:
 };
 
 class SmartLuaState;
+class CellLinkAddress;
+
+struct SmartContractValidationData
+{
+    std::set<uint256> transactions;
+    std::set<CellContractID> contracts;
+};
 
 class ContractDataDB
 {
@@ -113,11 +117,11 @@ public:
 
     bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
 
-    bool RunBlockContract(const std::shared_ptr<const CellBlock> pblock, ContractContext* contractContext);
+    bool RunBlockContract(const std::shared_ptr<const CellBlock> pblock, ContractContext* contractContext, CoinAmountCache* pCoinAmountCache);
     static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock>& pblock,
-        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, bool* interrupt);
+        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, SmartContractValidationData& validationData, CoinAmountCache* pCoinAmountCache);
     void ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock>& pblock,
-        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, bool* interrupt);
+        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, SmartContractValidationData& validationData, CoinAmountCache* pCoinAmountCache);
 
     void UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* contractContext);
     void Flush();

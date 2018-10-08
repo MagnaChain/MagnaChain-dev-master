@@ -84,7 +84,8 @@ private:
                     if (nTodo == 0 && !fMaster)
                         // We processed the last element; inform the master it can exit and return the result
                         condMaster.notify_one();
-                } else {
+                }
+                else {
                     // first iteration
                     nTotal++;
                 }

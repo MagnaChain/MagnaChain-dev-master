@@ -523,8 +523,7 @@ CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTr
     if (pFromTx && pFromTx->IsMortgage()) {
         mtx.vout[0].scriptPubKey.clear();
     }
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN)
-    {
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN) {
         mtx.pPMT.reset(new CellSpvProof());
 
         //recover tx: remove UTXO
@@ -538,6 +537,19 @@ CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTr
         for (int i = mtx.vout.size() - 1; i >= 0; i--) {
             const CellScript& scriptPubKey = mtx.vout[i].scriptPubKey;
             if (IsCoinBranchTranScript(scriptPubKey)) {
+                mtx.vout.erase(mtx.vout.begin() + i);
+            }
+        }
+    }
+    else if (tx.IsSmartContract()) {
+        for (int i = mtx.vin.size() - 1; i >= 0; i--) {
+            if (mtx.vin[i].scriptSig.IsContract()) {
+                mtx.vin.erase(mtx.vin.begin() + i);
+            }
+        }
+        for (int i = mtx.vout.size() - 1; i >= 0; i--) {
+            const CellScript& scriptPubKey = mtx.vout[i].scriptPubKey;
+            if (scriptPubKey.IsContractChange()) {
                 mtx.vout.erase(mtx.vout.begin() + i);
             }
         }
@@ -660,6 +672,24 @@ CellAmount GetBranchChainOut(const CellTransaction& tx)
         return GetMortgageMineOut(tx, true);
     }
     return 0;
+}
+
+CellAmount GetContractAmountOut(const CellTransaction& tx)
+{
+    CellAmount amount(0);
+    std::vector<unsigned char> vch;
+    for (int i = 0; i < tx.vout.size(); ++i) {
+        CellTxOut txout = tx.vout[i];
+
+        opcodetype opcode;
+        CellScript::const_iterator pc1 = txout.scriptPubKey.begin();
+        if (!txout.scriptPubKey.GetOp(pc1, opcode, vch))
+            continue;
+
+        if (opcode == OP_CONTRACT)
+            amount += txout.nValue;
+    }
+    return amount;
 }
 
 //copy from merkleblock.cpp

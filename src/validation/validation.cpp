@@ -214,6 +214,7 @@ CellCoinsViewDB *pcoinsdbview = nullptr;
 CellCoinsViewCache *pcoinsTip = nullptr;
 CellBlockTreeDB *pblocktree = nullptr;
 CoinListDB* pcoinListDb = nullptr;
+CoinAmountCache* pCoinAmountCache = nullptr;
 
 enum FlushStateMode {
     FLUSH_STATE_NONE,
@@ -369,54 +370,54 @@ bool IsCoinBranchTranScript(const CellScript& script)
 
 bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls)
 {
-	if (sls == nullptr)
+    if (sls == nullptr)
         return false;
 
-    if (tx.contractAmountOut != sls->contractAmountOut)
-        return false;
+    if (sls->contractOut == 0 && sls->recipients.size() == 0)
+        return true;
 
-    if (sls->contractAmountOut == 0)
-        return (sls->recipients.size() == 0);
-
-	for (size_t i = 0; i < sls->recipients.size(); ++i) {
-		if (!tx.IsExistVout(sls->recipients[i]))
-			return false;
-	}
-
-    return (sls->recipients.size() > 0);
+    // output
+    for (size_t i = 0; i < sls->recipients.size(); ++i) {
+        if (!tx.IsExistVout(sls->recipients[i]))
+            return false;
+    }
+    return true;
 }
 
 SmartLuaState checkSLS;
 
-bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationState& state)
+bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationState& state, CellTxMemPoolEntry* entry, CoinAmountCache* pCoinAmountCache)
 {
     CellLinkAddress contractAddr;
-    contractAddr.Set(tx.contractAddrs[0]);
+    contractAddr.Set(tx.contractAddr);
 	CellLinkAddress senderAddr;
     senderAddr.Set(tx.contractSender.GetID());
 	UniValue args;
 	args.read(tx.contractParams);
-	std::string strFuncName = tx.contractFun;
-    CellAmount amount = tx.contractAmountIn;
+    std::string strFuncName = tx.contractFun;
+    CellAmount amount = GetTxContractOut(tx);
 
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx.contractCode;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType);
-        if (PublishContract(&checkSLS, contractAddr, rawCode)) {
-            if (tx.contractAmountOut > 0)
-                return false;
-            else
-                return CheckContractVinVout(tx, &checkSLS);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        if (PublishContract(&checkSLS, contractAddr, rawCode) && CheckContractVinVout(tx, &checkSLS)) {
+            if (entry != nullptr)
+                entry->contractAddrs.insert(checkSLS.contractIds.begin(), checkSLS.contractIds.end());
+            return true;
         }
-        else
-            return false;
 	}
     else if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
         UniValue ret;
         long maxCallNum = MAX_CONTRACT_CALL;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType);
-        if (CallContract(&checkSLS, contractAddr, amount, strFuncName, args, maxCallNum, ret))
-            return CheckContractVinVout(tx, &checkSLS);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        if (CallContract(&checkSLS, contractAddr, amount, strFuncName, args, maxCallNum, ret) && CheckContractVinVout(tx, &checkSLS)) {
+            if (entry != nullptr) {
+                if (entry->GetTx().contractOut != checkSLS.contractOut)
+                    return false;
+                entry->contractAddrs.insert(checkSLS.contractIds.begin(), checkSLS.contractIds.end());
+            }
+            return true;
+        }
 	}
 
 	return false;
@@ -679,14 +680,6 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
                 }
             }
 
-            if (tx.contractAmountOut > 0) {
-                ContractInfo contractInfo;
-                if (!mpContractDb->GetContractInfo(tx.contractAddrs[0], contractInfo, nullptr))
-                    return false;
-                if (tx.contractAmountOut > contractInfo.amount)
-                    return false;
-            }
-
             // Bring the best block into scope
             view.GetBestBlock();
 
@@ -760,7 +753,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
                     strprintf("%d > %d", nFees, nAbsurdFee));
 
         if (tx.IsSmartContract()) {
-            if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state)) {
+            if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state, &entry, pCoinAmountCache)) {
                 mpContractDb->_contractContext.ClearCache();
                 return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
             }
@@ -1469,7 +1462,14 @@ bool CScriptCheck::operator()() {
 
         return CheckTranBranchScript(branchid, scriptPubKey);
     }
-    ////
+    else if (ptxTo->IsSmartContract() && ptxTo->vin[nIn].scriptSig.IsContract()) {
+        CellContractID contractId1;
+        if (!ptxTo->vin[nIn].scriptSig.GetContractAddr(contractId1))
+            return false;
+        if (contractId1 != ptxTo->contractAddr)
+            return false;
+        return true;
+    }
 
     const CellScript &scriptSig = ptxTo->vin[nIn].scriptSig;
     const CScriptWitness *witness = &ptxTo->vin[nIn].scriptWitness;
@@ -1563,15 +1563,17 @@ bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const Ce
                 if (pvChecks) {
                     pvChecks->push_back(CScriptCheck());
                     check.swap(pvChecks->back());
-                }else if (tx.IsReportReward()){
+                }
+                else if (tx.IsReportReward()) {
                     // no need to verify signature
-                }else if (!check()) {
+                }
+                else if (!check()) {
                     if (tx.IsSmartContract()) {
                         CellContractID kDestKey;
                         if (!scriptPubKey.GetContractAddr(kDestKey)) {
                             return state.DoS(0, false, REJECT_NONSTANDARD, "GetContractAddr fail");
                         }
-                        if (kDestKey != tx.contractAddrs[0])
+                        if (kDestKey != tx.contractAddr)
                             return state.DoS(0, false, REJECT_NONSTANDARD, "kDestKey not eq tx.contractAddr");
                     }
                     else {
@@ -1608,10 +1610,9 @@ bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const Ce
         }
     }
     // contract sender address check
-    if (CheckContractSign(&tx, tx.scontractScriptSig) == false)
-    {
+    if (!CheckContractSign(&tx, tx.contractScriptSig))
         return state.DoS(100, false, REJECT_INVALID, "bad-contract-sender-sign");
-    }
+
     return true;
 }
 
@@ -3756,11 +3757,13 @@ void UpdateContractTx(bool checkContract)
 
     CellValidationState state;
     std::vector<CellTransaction> vTxs;
+    pCoinAmountCache->Clear();
     auto items = mempool.GetSortedDepthAndScore();
     for(int i = 0; i < items.size(); ++i) {
         CellTransaction tx = items[i]->GetTx();
+        auto item = *items[i];
         if (tx.IsSmartContract()) {
-            if (checkContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_DATA, state))
+            if (checkContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_DATA, state, &item, pCoinAmountCache))
                 vTxs.emplace_back(tx);
         }
     }
@@ -3768,6 +3771,8 @@ void UpdateContractTx(bool checkContract)
     printf("%s remove tx size %d\n", __FUNCTION__, vTxs.size());
     for (const CellTransaction& tran : vTxs)
         mempool.removeRecursive(tran, MemPoolRemovalReason::BLOCK);
+
+    pCoinAmountCache->Clear();
 }
 
 bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<const CellBlock> pblock, bool fForceProcessing, bool *fNewBlock)
@@ -3786,7 +3791,8 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
         if (bi == mapBlockIndex.end())
             return error("%s: find prev block failed", __func__);
         
-        if (!mpContractDb->RunBlockContract(pblock, &contractContext))
+        CoinAmountCache coinAmountCache;
+        if (!mpContractDb->RunBlockContract(pblock, &contractContext, &coinAmountCache))
             return error("%s: RunBlockContract failed", __func__);
 
         LOCK(cs_main);

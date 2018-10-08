@@ -187,12 +187,8 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
-    if (tx.vout.empty() && !tx.IsSmartContract())
+    if (tx.vout.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vout-empty");
-    if ((tx.contractAmountIn > 0 || tx.contractAmountOut > 0) && !tx.IsSmartContract())
-        return state.DoS(100, false, REJECT_INVALID, "invalid-smart-contract-amount-out", false, "Not a smart contract transaction, but with contract amount out");
-    if (!MoneyRange(tx.contractAmountIn) || !MoneyRange(tx.contractAmountOut))
-        return state.DoS(100, false, REJECT_INVALID, "bad-txns-contractamount-toolarge");
     // Size limits (this doesn't take the witness into account, as that hasn't been checked for malleability)
     if (::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
@@ -209,9 +205,6 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (!MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
     }
-    nValueOut += tx.contractAmountIn;
-    if (!MoneyRange(nValueOut))
-        return state.DoS(100, false, REJECT_INVALID, "bad-txns-txouttotal-toolarge");
 
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
     if (fCheckDuplicateInputs) {
@@ -224,7 +217,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     }
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
     {
-		if (GenerateContractAddressByTx(tx) != tx.contractAddrs[0])
+		if (GenerateContractAddressByTx(tx) != tx.contractAddr)
 		{
 			return state.DoS(100, false, REJECT_INVALID, "bad-contract-address");
 		}
@@ -415,6 +408,8 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
 
         CellAmount nValueIn = 0;
         CellAmount nFees = 0;
+        CellAmount nContractAmountIn = 0;
+        CellScript contractScript = GetScriptForDestination(tx.contractAddr);
         for (unsigned int i = 0; i < tx.vin.size(); i++)
         {
             const CellOutPoint &prevout = tx.vin[i].prevout;
@@ -441,12 +436,18 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn))
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
+            if (tx.vin[i].scriptSig.IsContract()) {
+                if (tx.vin[i].scriptSig != contractScript)
+                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
+                nContractAmountIn += coin.out.nValue;
+            }
+
             // Check input types
             branch_script_type bst = QuickGetBranchScriptType(coin.out.scriptPubKey);
             if ((bst == BST_MORTGAGE_MINE && !tx.IsRedeemMortgage() && !tx.IsBranchChainTransStep2())) // 除了赎回抵押币
                 return state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
             if ((bst == BST_MORTGAGE_COIN && !tx.IsRedeemMortgageStatement() && !tx.IsStake())) // 除了声明赎回挖矿币,挖矿时可以使用挖矿币
-                return  state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
+                return state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
 
             if (tx.IsRedeemMortgageStatement()){
                 if (GetMortgageCoinData(coin.out.scriptPubKey, &mortgageFromTxid)){
@@ -463,11 +464,34 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             }
         }
 
-        nValueIn += tx.contractAmountOut;
-        if (!MoneyRange(nValueIn))
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.contractOut > 0) {
+            nValueIn += tx.contractOut;
+            if (!MoneyRange(tx.contractOut) || !MoneyRange(nValueIn))
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+            nContractAmountIn += tx.contractOut;
+        }
 
-        if (nValueIn < tx.GetValueOut())
+        CellAmount nValueOut = 0;
+        CellAmount nContractAmountChange = 0;
+        for (const auto& tx_out : tx.vout) {
+            nValueOut += tx_out.nValue;
+            if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+
+            if (tx_out.scriptPubKey.IsContract()) {
+                CellContractID contractId;
+                if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.contractAddr)
+                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
+                if (tx_out.scriptPubKey.IsContractChange()) {
+                    // 合约输出只能有一个找零
+                    if (nContractAmountChange > 0)
+                        return state.DoS(100, false, REJECT_INVALID, "bad_contract_amount_change");
+                    nContractAmountChange += tx_out.nValue;
+                }
+            }
+        }
+
+        if (nValueIn < nValueOut)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
                 strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
 
@@ -498,6 +522,11 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount){
                 return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
             }
+        }
+
+        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && tx.contractOut > 0) {
+            if (nContractAmountIn - nContractAmountChange != tx.contractOut)
+                return state.DoS(100, false, REJECT_INVALID, "contract amount not match");
         }
 
         //check vout

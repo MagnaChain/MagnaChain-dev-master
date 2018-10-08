@@ -260,8 +260,9 @@ bool BlockAssembler::TestPackageTransactions(const CellTxMemPool::setEntries& pa
 
 void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
-    if (chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()){
-        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0){
+    if ((chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()) ||
+        (iter->GetSharedTx()->IsSmartContract() && iter->GetSharedTx()->contractOut > 0)) {
+        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0) {
             throw std::runtime_error("utxo make did not make target transaction");
         }
         pblock->vtx.emplace_back(utxoMaker.mapCache[iter->GetSharedTx()->GetHash()]);
@@ -349,12 +350,12 @@ bool GroupTransactionComparer(const std::pair<uint256, int>& v1, const std::pair
 }
 
 // 按照输入关联及关联合约地址的分组调用智能合约
-void BlockAssembler::GroupingTransaction(int offset)
+void BlockAssembler::GroupingTransaction(int offset, std::vector<const CellTxMemPoolEntry*>& blockTxEntries)
 {
     std::set<int> mergeGroups;
     std::map<int, std::vector<std::pair<uint256, int>>> group2trans;
     std::map<uint256, int> trans2group;
-    std::map<uint160, int> contract2group;
+    std::map<CellContractID, int> contract2group;
 
     int nextGroupId = 1;
     for (int i = offset; i < pblock->vtx.size(); ++i) {
@@ -390,13 +391,15 @@ void BlockAssembler::GroupingTransaction(int offset)
         }
 
         if (tx->IsSmartContract()) {
+            const CellTxMemPoolEntry* entry = blockTxEntries[i - offset + 1];
             int finalGroupId = groupId;
-            for (int k = 0; k < tx->contractAddrs.size(); ++k) {
-                const CellKeyID& contractAddr = tx->contractAddrs[k];
+            for (auto& contractAddr : entry->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     finalGroupId = std::min(contractGroupId, finalGroupId);
                 }
+                else
+                    contract2group[contractAddr] = groupId;
             }
 
             if (finalGroupId != groupId) {
@@ -404,8 +407,7 @@ void BlockAssembler::GroupingTransaction(int offset)
                 groupId = finalGroupId;
             }
 
-            for (int k = 0; k < tx->contractAddrs.size(); ++k) {
-                const CellKeyID& contractAddr = tx->contractAddrs[k];
+            for (auto& contractAddr : entry->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     if (finalGroupId != contractGroupId) {
@@ -428,8 +430,8 @@ void BlockAssembler::GroupingTransaction(int offset)
 
         des.emplace_back(std::make_pair(tx->GetHash(), i));
         trans2group[tx->GetHash()] = groupId;
-        if (tx->contractAddrs.size() > 0)
-            contract2group[tx->contractAddrs[0]] = groupId;
+        if (!tx->contractAddr.IsNull())
+            contract2group[tx->contractAddr] = groupId;
 
         if (groupId == nextGroupId)
             nextGroupId++;
@@ -463,121 +465,149 @@ void BlockAssembler::GroupingTransaction(int offset)
     }
 }
 
-bool MakeBranchTxUTXO::MakeTxUTXO(CellTxMemPool::txiter iter)
+BranchUTXOCache& MakeBranchTxUTXO::LoadUTXOCache(uint160& key)
 {
-    if (iter->GetSharedTx()->fromBranchId == CellBaseChainParams::MAIN){
-        return false;
-    }
+    if (mapBranchCoins.count(key) == 0) {
+        CoinListPtr pcoinlist = pcoinListDb->GetList(key);
 
-    CellMutableTransaction branchTx(*iter->GetSharedTx());
-
-    const std::string strFromChain = branchTx.fromBranchId;
-    uint256 branchhash;
-    branchhash.SetHex(strFromChain);
-    uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
-
-    if (mapBranchCoins.count(branchcoinaddress) == 0){
-        CoinListPtr pcoinlist = pcoinListDb->GetList(branchcoinaddress);
-        
         BranchUTXOCache cache;
         if (pcoinlist != nullptr)
             cache.coinlist = *pcoinlist;// copy
-        mapBranchCoins.insert(std::make_pair(branchcoinaddress, cache));
+        mapBranchCoins.insert(std::make_pair(key, cache));
+    }
+    return mapBranchCoins[key];
+}
+
+CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vector<CellOutPoint>& vInOutPoints)
+{
+    BranchUTXOCache& utxoCache = LoadUTXOCache(key);
+    CellAmount nValue = 0;
+
+    //first get from db list
+    for (std::vector<CellOutPoint>::iterator it = utxoCache.coinlist.coins.begin();
+		it != utxoCache.coinlist.coins.end(); it++) {
+        const CellOutPoint& outpoint = *it;
+        const Coin& coin = pcoinsTip->AccessCoin(outpoint);// CellCoinsViewCache
+        if (coin.IsSpent())
+            continue;
+        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
+            continue;
+
+        nValue += coin.out.nValue;
+        vInOutPoints.push_back(outpoint);
+        if (nValue >= nAmount)
+            break;
     }
 
-    BranchUTXOCache& utxoCahce = mapBranchCoins[branchcoinaddress];
+    // 2nd from cache output
+    if (nValue < nAmount) {
+        for (BranchUTXOCache::MAP_CACHE_COIN::iterator mit = utxoCache.mapCacheCoin.begin();
+            mit != utxoCache.mapCacheCoin.end(); mit++)
+        {
+            const CellOutPoint& outpoint = mit->first;
+            const CellTxOut& out = mit->second;
 
-    std::vector<CellOutPoint> vInOutPoints;
-    CellAmount nValue = 0;
-    const CellAmount nAmount = branchTx.inAmount;
-
-    // get coins
-    {
-        //first get from db list
-        for (std::vector<CellOutPoint>::iterator it = utxoCahce.coinlist.coins.begin();
-            it != utxoCahce.coinlist.coins.end(); it++) {
-            const CellOutPoint& outpoint = *it;
-            const Coin& coin = pcoinsTip->AccessCoin(outpoint);// CellCoinsViewCache
-            if (coin.IsSpent()) {
-                continue;
-            }
-            if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
-                continue;
-            }
-
-            nValue += coin.out.nValue;
+            nValue += out.nValue;
             vInOutPoints.push_back(outpoint);
             if (nValue >= nAmount)
                 break;
         }
-        // 2nd from cache output
-        if (nValue < nAmount){
-            for (BranchUTXOCache::MAP_CACHE_COIN::iterator mit = utxoCahce.mapCacheCoin.begin();
-                mit != utxoCahce.mapCacheCoin.end(); mit++)
-            {
-                const CellOutPoint& outpoint = mit->first;
-                const CellTxOut& out = mit->second;
+    }
 
-                nValue += out.nValue;
-                vInOutPoints.push_back(outpoint);
-                if (nValue >= nAmount)
-                    break;
+    if (nValue < nAmount) {
+        vInOutPoints.clear();
+        return 0;
+    }
+
+    // from back to front, erase from vector(utxoCahce.coinlist.coins)
+    for (auto rit = vInOutPoints.rbegin(); rit != vInOutPoints.rend(); rit++) {
+        const CellOutPoint& outpoint = *rit;
+
+        //spend utxoCahce
+        for (std::vector<CellOutPoint>::reverse_iterator ritc = utxoCache.coinlist.coins.rbegin();// for back end to remove fast.
+            ritc != utxoCache.coinlist.coins.rend(); ritc++) {
+            if (*ritc == outpoint)
+            {
+                utxoCache.coinlist.coins.erase(std::next(ritc).base());
+                break;
             }
         }
+        utxoCache.mapCacheCoin.erase(outpoint);
     }
 
+    return nValue;
+}
+
+bool MakeBranchTxUTXO::MakeTxUTXO(CellMutableTransaction& tx, uint160& key, CellAmount nAmount, CellScript& scriptSig, CellScript& changeScriptPubKey)
+{
+    std::vector<CellOutPoint> vInOutPoints;
+    CellAmount nValue = UseUTXO(key, nAmount, vInOutPoints);
     if (nValue < nAmount)
-    {
         return false;
-    }
 
     CellCoinControl coin_control;
     const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CellTxIn::SEQUENCE_FINAL - 1);
-    branchTx.vin.clear();
-    //
+
     for (std::vector<CellOutPoint>::reverse_iterator rit = vInOutPoints.rbegin();// from back to front, erase from vector(utxoCahce.coinlist.coins)
         rit != vInOutPoints.rend(); rit++) {
         const CellOutPoint& outpoint = *rit;
 
         //add to vin
-        branchTx.vin.push_back(CellTxIn(outpoint, CellScript(),
-            nSequence));
-
-        //spend utxoCahce
-        for (std::vector<CellOutPoint>::reverse_iterator ritc = utxoCahce.coinlist.coins.rbegin();// for back end to remove fast.
-            ritc != utxoCahce.coinlist.coins.rend(); ritc++) {
-            if (*ritc == outpoint)
-            {
-                utxoCahce.coinlist.coins.erase(std::next(ritc).base());
-                break;
-            }
-        }
-        utxoCahce.mapCacheCoin.erase(outpoint);
+        tx.vin.push_back(CellTxIn(outpoint, scriptSig, nSequence));
     }
 
     //recharge
     if (nValue > nAmount)
     {
-        CellScript voutScriptKey;
-        voutScriptKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
-
         CellTxOut tmpOut;
-        tmpOut.scriptPubKey = voutScriptKey;
+        tmpOut.scriptPubKey = changeScriptPubKey;
         tmpOut.nValue = nValue - nAmount;
-        branchTx.vout.push_back(tmpOut);
-
-        uint256 newtxid = branchTx.GetHash();
-        utxoCahce.mapCacheCoin.insert(std::make_pair(CellOutPoint(newtxid, branchTx.vout.size()-1), tmpOut));
+        tx.vout.push_back(tmpOut);
     }
 
-    //end
-    mapCache.insert(std::make_pair(iter->GetSharedTx()->GetHash(), MakeTransactionRef(branchTx)));
     return true;
 }
 
 bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
-    return utxoMaker.MakeTxUTXO(iter);
+    CellMutableTransaction newTx(*iter->GetSharedTx());
+    uint256& oldHash = newTx.GetHash();
+
+    bool success = false;
+    int vOutSize = newTx.vout.size();
+    std::vector<uint160> keys;
+    if (chainparams.IsMainChain() && newTx.IsBranchChainTransStep2()) {
+        const std::string strFromChain = iter->GetSharedTx()->fromBranchId;
+        uint256 branchhash;
+        branchhash.SetHex(strFromChain);
+        uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
+
+        CellScript scriptPubKey;
+        scriptPubKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
+
+        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, CellScript(), scriptPubKey);
+        keys.push_back(branchcoinaddress);
+    }
+    if (newTx.IsSmartContract() && newTx.contractOut > 0) {
+        CellContractID& contractId = newTx.contractAddr;
+        CellScript contractScript = GetScriptForDestination(contractId);
+        CellScript contractChangeScript = CellScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
+
+        success = utxoMaker.MakeTxUTXO(newTx, contractId, newTx.contractOut, contractScript, contractChangeScript);
+        keys.push_back(contractId);
+    }
+
+    if (success) {
+        uint256 newHash = newTx.GetHash();
+        for (int i = vOutSize; i < newTx.vout.size(); ++i) {
+            BranchUTXOCache& utxoCache = utxoMaker.mapBranchCoins[keys[i - vOutSize]];
+            utxoCache.mapCacheCoin.insert(std::make_pair(CellOutPoint(newHash, i), newTx.vout[i]));
+        }
+
+        utxoMaker.mapCache.insert(std::make_pair(oldHash, MakeTransactionRef(newTx)));
+    }
+
+    return success;
 }
 
 // This transaction selection algorithm orders the mempool based
@@ -614,6 +644,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
 
+    std::vector<const CellTxMemPoolEntry*> blockTxEntries;
+    blockTxEntries.insert(blockTxEntries.end(), offset, nullptr);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -672,7 +704,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             }
         }
 
-        if (chainparams.IsMainChain() && iterTx->IsBranchChainTransStep2())
+        if ((chainparams.IsMainChain() && iterTx->IsBranchChainTransStep2() && iter->GetSharedTx()->fromBranchId == CellBaseChainParams::MAIN) ||
+            (iterTx->IsSmartContract() && iterTx->contractOut > 0))
         {
             if (!UpdateBranchTx(iter, makeBTxHelper))
             {
@@ -749,6 +782,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 			AddToBlock(sortedEntries[i], makeBTxHelper);
 			// Erase from the modified set, if present
 			mapModifiedTx.erase(sortedEntries[i]);
+            blockTxEntries.emplace_back(&*sortedEntries[i]);
 		}
 
 		++nPackagesSelected;
@@ -759,7 +793,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
     // 默认使用分片重新排列交易
     if (gArgs.GetBoolArg("-grouping", true))
-        GroupingTransaction(offset);
+        GroupingTransaction(offset, blockTxEntries);
     else {
         pblock->groupSize.emplace_back(offset);
         pblock->groupSize.emplace_back(pblock->vtx.size() - offset);

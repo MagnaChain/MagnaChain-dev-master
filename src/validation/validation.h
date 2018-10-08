@@ -476,6 +476,8 @@ extern CellBlockTreeDB* pblocktree;
 
 extern CoinListDB* pcoinListDb;
 
+extern CoinAmountCache* pCoinAmountCache;
+
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().
  * While checking, GetBestBlock() refers to the parent block. (protected by cs_main)

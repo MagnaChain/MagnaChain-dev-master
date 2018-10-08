@@ -402,12 +402,8 @@ void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellA
 	std::string strError;
 	std::vector<CellRecipient> vecSend;
     if (nValue > 0) {
-        if (scriptPubKey.IsContract())
-            wtxNew.contractAmountIn = nValue;
-        else {
-            CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
-            vecSend.push_back(recipient);
-        }
+        CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
+        vecSend.push_back(recipient);
     }
     int nChangePosRet = -1;
 	if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true, sls)) {
@@ -657,19 +653,18 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	CellKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
 	CellLinkAddress contractAddr(contractId);
 
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     if (!PublishContract(&RPCSLS, contractAddr, rawCode))
         return NullUniValue;
 
     CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-    RPCSLS.contractIds.erase(contractId);
     CellWalletTx wtx;
     wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.contractCode = rawCode;
     wtx.contractSender = senderPubKey;
-    wtx.contractAddrs.emplace_back(contractId);
-    wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
+    wtx.contractAddr = contractId;
+    wtx.contractOut = 0;
     SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
     UniValue ret(UniValue::VOBJ);
@@ -750,7 +745,7 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     if (success) {
         RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
@@ -763,16 +758,13 @@ UniValue callcontract(const JSONRPCRequest& request)
             CellContractID contractId;
             contractAddr.GetContractID(contractId);
 
-            RPCSLS.contractIds.erase(contractId);
             CellWalletTx wtx;
             wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
             wtx.contractSender = senderPubKey;
             wtx.contractCode = strFuncName;
             wtx.contractParams = args.write();
-            wtx.contractAddrs.emplace_back(contractId);
-            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
-            wtx.contractAmountIn = amount;
-            wtx.contractAmountOut = RPCSLS.contractAmountOut;
+            wtx.contractAddr = contractId;
+            wtx.contractOut = RPCSLS.contractOut;
 
             bool subtractFeeFromAmount = false;
             CellCoinControl coinCtrl;
@@ -878,7 +870,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
     RPCSLS.codeLen = 0;
@@ -898,8 +890,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
             wtx.contractSender = senderPubKey;
             wtx.contractCode = strFuncName;
             wtx.contractParams = args.write();
-            wtx.contractAddrs.emplace_back(contractId);
-            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractIds.begin(), RPCSLS.contractIds.end());
+            wtx.contractAddr = contractId;
+            wtx.contractOut = RPCSLS.contractOut;
             SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));

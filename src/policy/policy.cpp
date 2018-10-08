@@ -80,7 +80,7 @@ bool IsStandard(const CellScript& scriptPubKey, txnouttype& whichType, const boo
 		std::vector<unsigned char> vch;
 		CellScript::const_iterator pc = scriptPubKey.begin();
 		scriptPubKey.GetOp(pc, opcode, vch);
-		if (opcode == OP_CONTRACT)
+		if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE)
 			return true;
 		return false;
 	}
@@ -186,7 +186,7 @@ bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
 				CellContractID kDest;
 				if (!prevScript.GetContractAddr(kDest))
 					return false;
-				if (kDest != tx.contractAddrs[0])
+				if (kDest != tx.contractAddr)
 					return false;
 			}
 			else

@@ -145,10 +145,11 @@ public:
     typedef std::map<uint160, BranchUTXOCache> MAP_BRANCH_COINS;
     typedef std::map<uint256, CellTransactionRef> MAP_MAKE_CACHE;
     
-    bool MakeTxUTXO(CellTxMemPool::txiter iter);
+    BranchUTXOCache& LoadUTXOCache(uint160& key);
+    CellAmount UseUTXO(uint160& key, CellAmount nAmount, std::vector<CellOutPoint>& vInOutPoints);
+    bool MakeTxUTXO(CellMutableTransaction& tx, uint160& key, CellAmount nAmount, CellScript& scriptSig, CellScript& changeScriptPubKey);
 
     MAP_MAKE_CACHE mapCache;
-private:
     MAP_BRANCH_COINS mapBranchCoins;
 };
 
@@ -202,7 +203,7 @@ private:
     /** Add a tx to the block */
     void AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 
-    void GroupingTransaction(int offset);
+    void GroupingTransaction(int offset, std::vector<const CellTxMemPoolEntry*>& blockTxEntries);
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on feerate including unconfirmed ancestors

@@ -217,11 +217,11 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
 
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
 	{
-		entry.pushKV("contractaddress", tx.contractAddrs[0].ToString());
+		entry.pushKV("contractaddress", tx.contractAddr.ToString());
 		entry.pushKV("senderpubkey", HexStr(tx.contractSender.begin(), tx.contractSender.end()));
         UniValue o(UniValue::VOBJ);
-        o.pushKV("asm", ScriptToAsmStr(tx.scontractScriptSig, true));
-        o.pushKV("hex", HexStr(tx.scontractScriptSig.begin(), tx.scontractScriptSig.end()));
+        o.pushKV("asm", ScriptToAsmStr(tx.contractScriptSig, true));
+        o.pushKV("hex", HexStr(tx.contractScriptSig.begin(), tx.contractScriptSig.end()));
         entry.pushKV("scontractScriptSig", o);
 	}
 	if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
