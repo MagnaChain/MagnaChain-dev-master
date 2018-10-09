@@ -631,6 +631,12 @@ int SendCoins(lua_State* L)
         throw std::runtime_error(strprintf("%s param2 is not a number", __FUNCTION__));
 
     std::string strDest = lua_tostring(L, 1);
+    CellLinkAddress kDest(strDest);
+    if (kDest.IsContractID()) {
+        lua_pushboolean(L, false);
+        return 1;
+    }
+
     CellAmount amount = lua_tonumber(L, 2);
 
     CellContractID contractID;
@@ -641,11 +647,10 @@ int SendCoins(lua_State* L)
         return 1;
     }
 
-    CellLinkAddress kDest(strDest);
-    CellScript scriptPubKey = GetScriptForDestination(kDest.Get());
     CellTxOut out;
     out.nValue = amount;
-    out.scriptPubKey = scriptPubKey;
+    out.scriptPubKey = GetScriptForDestination(kDest.Get());
+
     sls->recipients.emplace_back(out);
     sls->contractOut += amount;
 
@@ -705,9 +710,10 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
         lua_pushcfunction(L, SendCoins);
         lua_setglobal(L, "send");
 
-        lua_gc(L, LUA_GCRESTART, 0);
         L->userData = this;
     }
+
+    lua_gc(L, LUA_GCCOLLECT, 0);
 
     CellKeyID contractId;
     contractAddr.GetKeyID(contractId);
