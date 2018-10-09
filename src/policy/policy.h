@@ -16,6 +16,7 @@
 
 class CellCoinsViewCache;
 class CellTxOut;
+class SmartLuaState;
 
 /** Default for -blockmaxweight, which controls the range of block weights the mining code will create **/
 static const unsigned int DEFAULT_BLOCK_MAX_WEIGHT = MAX_BLOCK_WEIGHT - 4000;
@@ -102,6 +103,6 @@ extern unsigned int nBytesPerSigOp;
 
 /** Compute the virtual transaction size (weight reinterpreted as bytes). */
 int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost);
-int64_t GetVirtualTransactionSize(const CellTransaction& tx, int64_t nSigOpCost = 0);
+int64_t GetVirtualTransactionSize(const CellTransaction& tx, int64_t nSigOpCost = 0, SmartLuaState* sls=nullptr);
 
 #endif // CELLLINK_POLICY_POLICY_H

@@ -12,6 +12,7 @@
 #include "consensus/consensus.h"
 #include "primitives/transaction.h"
 #include "primitives/block.h"
+#include "smartcontract/smartcontract.h"
 
 /** "reject" message codes */
 static const unsigned char REJECT_MALFORMED = 0x01;
@@ -90,9 +91,26 @@ public:
     std::string GetDebugMessage() const { return strDebugMessage; }
 };
 
-static inline int64_t GetTransactionWeight(const CellTransaction& tx)
+static inline int64_t GetTransactionWeight(const CellTransaction& tx, SmartLuaState* sls = nullptr)
 {
-    return ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR -1) + ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+    int factor = 1;
+    int basepart = 0;
+    if (tx.IsPregnantTx() || tx.IsBranchCreate() || tx.IsProve() || tx.IsReport()){
+        factor = 10;
+    }
+    if (tx.IsBranchChainTransStep2()){
+        factor = 20;
+    }
+    if (tx.IsSmartContract()){
+        if (sls != nullptr)
+        {
+            basepart = sls->runningTimes * 0.1 + sls->codeLen * 0.1 + sls->deltaDataLen * 0.1;
+        }
+    }
+
+    size_t part1 = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1);
+    size_t part2 = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+    return (part1 + part2) * factor + basepart;
 }
 
 static inline int64_t GetBlockWeight(const CellBlock& block)

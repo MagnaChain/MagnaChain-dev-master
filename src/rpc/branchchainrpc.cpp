@@ -388,9 +388,25 @@ UniValue addbranchnode(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, std::string("Invalid branchid"));
     }
 
-    if (branchid != "main" && (branchid.length() != 64 || !IsHex(branchid)))
+    if (branchid != CellBaseChainParams::MAIN && (branchid.length() != 64 || !IsHex(branchid)))
     {
         throw JSONRPCError(RPC_TYPE_ERROR, std::string("Invalid branchid"));
+    }
+
+    if (branchid != CellBaseChainParams::MAIN)
+    {
+        uint256 branchhash = ParseHashV(branchid, "parameter 1");
+
+        CellTransactionRef txBranch;
+        CellBlockIndex* pblockindex = nullptr;
+        uint32_t tx_vtx_index = 0;
+        CellBlock block;
+        if (!GetTransactionDataByTxInfo(branchhash, txBranch, &pblockindex, tx_vtx_index, block))
+            throw JSONRPCError(RPC_VERIFY_ERROR, "GetTransactDataByTxInfo fail");
+
+        if (txBranch->IsBranchCreate() == false) {
+            throw JSONRPCError(RPC_VERIFY_ERROR, "Invalid branchid");
+        }
     }
 
     g_branchChainMan->ReplaceRpcConfig(branchid, rpcconfig);
