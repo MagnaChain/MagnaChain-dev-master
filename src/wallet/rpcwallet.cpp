@@ -550,7 +550,8 @@ UniValue publishcontract(const JSONRPCRequest& request)
         strSenderAddr = request.params[1].get_str();
 
     UniValue ret(UniValue::VARR);
-	PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret);
+	if (!PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
 
@@ -588,7 +589,8 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
         strSenderAddr = request.params[1].get_str();
 
     UniValue ret(UniValue::VARR);
-    PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret);
+    if (!PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
 
@@ -656,7 +658,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     UniValue ret(UniValue::VARR);
     RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     if (!PublishContract(&RPCSLS, contractAddr, rawCode, ret))
-        return ret;
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
@@ -911,6 +913,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
             ret.push_back(Pair("coins", coins));
         }
 	}
+    else
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
 	return ret;
 }
