@@ -14,7 +14,7 @@
 #include "misc/tinyformat.h"
 #include "utils/util.h"
 #include "utils/utilstrencodings.h"
-
+#include "smartcontract/smartcontract.h"
 
 CellAmount GetDustThreshold(const CellTxOut& txout, const CellFeeRate& dustRelayFeeIn)
 {
@@ -272,7 +272,7 @@ int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost)
     return (std::max(nWeight, nSigOpCost * nBytesPerSigOp) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
 }
 
-int64_t GetVirtualTransactionSize(const CellTransaction& tx, int64_t nSigOpCost)
+int64_t GetVirtualTransactionSize(const CellTransaction& tx, int64_t nSigOpCost, SmartLuaState* sls)
 {
-    return GetVirtualTransactionSize(GetTransactionWeight(tx), nSigOpCost);
+    return GetVirtualTransactionSize(GetTransactionWeight(tx, sls), nSigOpCost);
 }

@@ -1028,7 +1028,7 @@ CellAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams
     // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
     nSubsidy >>= halvings;
 
-    if (consensusParams.BigBoomHeight >= nHeight) {
+    if (nHeight <= consensusParams.BigBoomHeight) {
         nSubsidy += consensusParams.BigBoomValue;
     }
     return nSubsidy;
@@ -1864,10 +1864,32 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
     coinbaseTx.vin[0].prevout.SetNull();
     coinbaseTx.vin[0].scriptSig = CellScript() << nHeight << OP_0;
 
-    coinbaseTx.vout.resize(1);
-    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + kMinReward; //nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-
+    // split output when outcoin too large, this use for big boom stage
+    // because big boom coin well make block work too big
+    // 在gen big boom的时候，把大额的币分成小份，不至于挖矿时一个大额币把挖矿难度瞬间提高
+    if (chainparams.IsMainChain() && nHeight <= chainparams.GetConsensus().BigBoomHeight)
+    {
+        const CellAmount minAmount = (10000 * COIN);
+        CellAmount total = nFees + kMinReward;
+        int splitsize = total / minAmount;
+        splitsize = std::max(splitsize, 1);
+        coinbaseTx.vout.resize(splitsize);
+        for (int i=0; i< splitsize; i++)
+        {
+            coinbaseTx.vout[i].scriptPubKey = scriptPubKeyIn;
+            if (i == splitsize - 1){
+                coinbaseTx.vout[i].nValue = total - minAmount * (splitsize - 1);
+            }
+            else {
+                coinbaseTx.vout[i].nValue = minAmount;
+            }
+        }
+    }
+    else{
+        coinbaseTx.vout.resize(1);
+        coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
+        coinbaseTx.vout[0].nValue = nFees + kMinReward; //nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    }
     /*
 	if (kParentReward > 0)
 	{

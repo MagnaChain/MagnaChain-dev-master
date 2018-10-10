@@ -18,6 +18,7 @@ extern "C"
 #include "key/pubkey.h"
 #include "univalue.h"
 #include "smartcontract/contractdb.h"
+#include "coding/base58.h"
 
 const int MAX_CONTRACT_CALL = 10000;
 const int MAX_DATA_LEN = 1024 * 1024;
