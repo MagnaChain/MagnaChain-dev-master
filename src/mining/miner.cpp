@@ -566,7 +566,7 @@ bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO
     CellMutableTransaction newTx(*iter->GetSharedTx());
     uint256 oldHash = newTx.GetHash();
 
-    bool success = false;
+    bool success = true;
     int vOutSize = newTx.vout.size();
     std::vector<uint160> keys;
     if (chainparams.IsMainChain() && newTx.IsBranchChainTransStep2()) {
@@ -762,7 +762,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             CellTxMemPool::txiter entry = sortedEntries[i];
             const CellTransactionRef& entryTx = iter->GetSharedTx();
 
-            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2() && entry->GetSharedTx()->fromBranchId == CellBaseChainParams::MAIN) ||
+            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
                 (entryTx->IsSmartContract() && entryTx->contractOut > 0)) {
                 if (!UpdateBranchTx(entry, makeBTxHelper)) {
                     //++mi;
