@@ -145,7 +145,6 @@ public:
     typedef std::map<uint160, BranchUTXOCache> MAP_BRANCH_COINS;
     typedef std::map<uint256, CellTransactionRef> MAP_MAKE_CACHE;
     
-    BranchUTXOCache& LoadUTXOCache(uint160& key);
     CellAmount UseUTXO(uint160& key, CellAmount nAmount, std::vector<CellOutPoint>& vInOutPoints);
     bool MakeTxUTXO(CellMutableTransaction& tx, uint160& key, CellAmount nAmount, CellScript& scriptSig, CellScript& changeScriptPubKey);
 

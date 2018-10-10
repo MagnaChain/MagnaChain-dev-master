@@ -262,9 +262,8 @@ void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& ut
 {
     if ((chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()) ||
         (iter->GetSharedTx()->IsSmartContract() && iter->GetSharedTx()->contractOut > 0)) {
-        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0) {
+        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
-        }
         pblock->vtx.emplace_back(utxoMaker.mapCache[iter->GetSharedTx()->GetHash()]);
     }
     else
@@ -465,7 +464,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const CellTxMem
     }
 }
 
-BranchUTXOCache& MakeBranchTxUTXO::LoadUTXOCache(uint160& key)
+CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vector<CellOutPoint>& vInOutPoints)
 {
     if (mapBranchCoins.count(key) == 0) {
         CoinListPtr pcoinlist = pcoinListDb->GetList(key);
@@ -475,14 +474,9 @@ BranchUTXOCache& MakeBranchTxUTXO::LoadUTXOCache(uint160& key)
             cache.coinlist = *pcoinlist;// copy
         mapBranchCoins.insert(std::make_pair(key, cache));
     }
-    return mapBranchCoins[key];
-}
+    BranchUTXOCache& utxoCache = mapBranchCoins[key];
 
-CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vector<CellOutPoint>& vInOutPoints)
-{
-    BranchUTXOCache& utxoCache = LoadUTXOCache(key);
     CellAmount nValue = 0;
-
     //first get from db list
     for (std::vector<CellOutPoint>::iterator it = utxoCache.coinlist.coins.begin();
 		it != utxoCache.coinlist.coins.end(); it++) {
@@ -502,8 +496,7 @@ CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vect
     // 2nd from cache output
     if (nValue < nAmount) {
         for (BranchUTXOCache::MAP_CACHE_COIN::iterator mit = utxoCache.mapCacheCoin.begin();
-            mit != utxoCache.mapCacheCoin.end(); mit++)
-        {
+            mit != utxoCache.mapCacheCoin.end(); mit++) {
             const CellOutPoint& outpoint = mit->first;
             const CellTxOut& out = mit->second;
 
@@ -604,7 +597,6 @@ bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO
             BranchUTXOCache& utxoCache = utxoMaker.mapBranchCoins[keys[i - vOutSize]];
             utxoCache.mapCacheCoin.insert(std::make_pair(CellOutPoint(newHash, i), newTx.vout[i]));
         }
-
         utxoMaker.mapCache.insert(std::make_pair(oldHash, MakeTransactionRef(newTx)));
     }
 
@@ -705,20 +697,6 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             }
         }
 
-        if ((chainparams.IsMainChain() && iterTx->IsBranchChainTransStep2() && iter->GetSharedTx()->fromBranchId == CellBaseChainParams::MAIN) ||
-            (iterTx->IsSmartContract() && iterTx->contractOut > 0))
-        {
-            if (!UpdateBranchTx(iter, makeBTxHelper))
-            {
-                //++mi;
-                if (fUsingModified) {
-                    mapModifiedTx.get<ancestor_score>().erase(modit);
-                    failedTx.insert(iter);
-                }
-                continue;//next
-            }
-        }
-
         // We skip mapTx entries that are inBlock, and mapModifiedTx shouldn't
         // contain anything that is inBlock.
         assert(!inBlock.count(iter));
@@ -779,7 +757,29 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         std::vector<CellTxMemPool::txiter> sortedEntries;
 		SortForBlock(ancestors, iter, sortedEntries);
 
-		for (size_t i = 0; i < sortedEntries.size(); ++i) {
+        bool fail = false;
+        for (size_t i = 0; i < sortedEntries.size(); ++i) {
+            CellTxMemPool::txiter entry = sortedEntries[i];
+            const CellTransactionRef& entryTx = iter->GetSharedTx();
+
+            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2() && entry->GetSharedTx()->fromBranchId == CellBaseChainParams::MAIN) ||
+                (entryTx->IsSmartContract() && entryTx->contractOut > 0)) {
+                if (!UpdateBranchTx(entry, makeBTxHelper)) {
+                    //++mi;
+                    if (fUsingModified) {
+                        mapModifiedTx.get<ancestor_score>().erase(modit);
+                        failedTx.insert(entry);
+                    }
+                    fail = true;
+                    break;//next
+                }
+            }
+        }
+
+        if (fail)
+            continue;
+
+        for (size_t i = 0; i < sortedEntries.size(); ++i) {
 			AddToBlock(sortedEntries[i], makeBTxHelper);
 			// Erase from the modified set, if present
 			mapModifiedTx.erase(sortedEntries[i]);
