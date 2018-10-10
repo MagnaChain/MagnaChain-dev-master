@@ -351,7 +351,7 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string&
 
     std::string codeout;
     sls->Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, nullptr);
-    bool success = PublishContract(sls, contractAddr, rawCode);
+    bool success = PublishContract(sls, contractAddr, rawCode, ret);
     if (success) {
         CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
@@ -377,7 +377,7 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string&
     return success;
 }
 
-bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode)
+bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode, UniValue& ret)
 {
     CellContractID contractId;
     contractAddr.GetContractID(contractId);
@@ -390,7 +390,7 @@ bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const st
     long maxCallNum = MAX_CONTRACT_CALL;
     lua_State* L = sls->GetLuaState(contractAddr);
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
-    bool success = PublishContract(L, rawCode, maxCallNum, codeout, dataout);
+    bool success = PublishContract(L, rawCode, maxCallNum, codeout, dataout, ret);
     if (success) {
         sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
         sls->codeLen = codeout.size();
@@ -407,7 +407,7 @@ bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const st
     return success;
 }
 
-bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout)
+bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret)
 {
     int top = lua_gettop(L);
     lua_getglobal(L, "regContract");
@@ -430,7 +430,7 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
     }
     else {
         const char* err = lua_tostring(L, -1);
-        throw std::runtime_error(strprintf("%s error: %s", __FUNCTION__, err));
+        ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
     }
 
     lua_settop(L, top);
@@ -549,7 +549,7 @@ bool CallContract(lua_State* L, const std::string& code, const std::string& data
     }
     else {
         const char* err = lua_tostring(L, -1);
-        throw std::runtime_error(strprintf("%s error: %s", __FUNCTION__, err));
+        ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
     }
 
     lua_settop(L, top);
@@ -713,8 +713,6 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
         L->userData = this;
     }
 
-    lua_gc(L, LUA_GCCOLLECT, 0);
-
     CellKeyID contractId;
     contractAddr.GetKeyID(contractId);
     contractIds.insert(contractId);
@@ -726,7 +724,6 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
 void SmartLuaState::ReleaseLuaState(lua_State* L)
 {
     contractAddrs.resize(contractAddrs.size() - 1);
-
     lua_gc(L, LUA_GCCOLLECT, 0); /* stop collector during initialization */
     _luaStates.push(L);
 }
