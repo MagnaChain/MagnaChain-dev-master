@@ -54,7 +54,7 @@ bool ContractContext::GetData(const CellContractID& contractId, ContractInfo& co
 {
     if (cache.size() > 0) {
         auto it = cache.find(contractId);
-        if (it == cache.end()) {
+        if (it != cache.end()) {
             contractInfo.code = it->second.code;
             contractInfo.data = it->second.data;
             return true;
@@ -154,10 +154,11 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
             CellLinkAddress senderAddr(tx->contractSender.GetID());
             CellAmount amount = GetTxContractOut(*tx);
 
+            UniValue ret(UniValue::VARR);
             if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
                 std::string rawCode = tx->contractCode;
                 sls->Initialize(pBlock->GetBlockTime(), blockHeight, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache);
-                if (!PublishContract(sls, contractAddr, rawCode)) {
+                if (!PublishContract(sls, contractAddr, rawCode, ret)) {
                     interrupt = true;
                     return;
                 }
@@ -167,7 +168,6 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std:
                 UniValue args;
                 args.read(tx->contractParams);
 
-                UniValue ret;
                 long maxCallNum = MAX_CONTRACT_CALL;
                 sls->Initialize(pBlock->GetBlockTime(), blockHeight, senderAddr, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache);
                 if (!CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) || tx->contractOut != sls->contractOut) {

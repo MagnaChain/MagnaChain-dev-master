@@ -63,7 +63,8 @@ CellMutableTransaction::CellMutableTransaction(const CellTransaction& tx) : nVer
 		contractCode = tx.contractCode;
 		contractSender = tx.contractSender;
         contractAddr = tx.contractAddr;
-		contractScriptSig = tx.contractScriptSig;
+        contractScriptSig = tx.contractScriptSig;
+        contractOut = 0;
 	}
 	else if (nVersion == CellTransaction::CALL_CONTRACT_VERSION)
 	{

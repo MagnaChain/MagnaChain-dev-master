@@ -566,7 +566,7 @@ bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO
     CellMutableTransaction newTx(*iter->GetSharedTx());
     uint256 oldHash = newTx.GetHash();
 
-    bool success = false;
+    bool success = true;
     int vOutSize = newTx.vout.size();
     std::vector<uint160> keys;
     if (chainparams.IsMainChain() && newTx.IsBranchChainTransStep2()) {

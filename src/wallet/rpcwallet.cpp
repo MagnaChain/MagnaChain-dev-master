@@ -549,8 +549,9 @@ UniValue publishcontract(const JSONRPCRequest& request)
     if (request.params.size() > 1)
         strSenderAddr = request.params[1].get_str();
 
-    UniValue ret;
-	PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret);
+    UniValue ret(UniValue::VARR);
+	if (!PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
 
@@ -587,8 +588,9 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
     if (request.params.size() > 1)
         strSenderAddr = request.params[1].get_str();
 
-    UniValue ret;
-    PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret);
+    UniValue ret(UniValue::VARR);
+    if (!PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
 
@@ -653,9 +655,10 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	CellKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
 	CellLinkAddress contractAddr(contractId);
 
+    UniValue ret(UniValue::VARR);
     RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    if (!PublishContract(&RPCSLS, contractAddr, rawCode))
-        return NullUniValue;
+    if (!PublishContract(&RPCSLS, contractAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
@@ -667,7 +670,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     wtx.contractOut = 0;
     SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
-    UniValue ret(UniValue::VOBJ);
+    ret.setObject();
     ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
     UniValue uvalCoins(UniValue::VARR);
     for (CellTxIn txin : wtx.tx->vin)
@@ -910,6 +913,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
             ret.push_back(Pair("coins", coins));
         }
 	}
+    else
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
 	return ret;
 }

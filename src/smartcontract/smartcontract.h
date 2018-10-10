@@ -87,8 +87,8 @@ CellContractID GenerateContractAddressByTx(TxType& tx)
 extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
 extern bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret);
-extern bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode);
-extern bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout);
+extern bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode, UniValue& ret);
+extern bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret);
 
 extern bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
 extern bool CallContractReal(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
