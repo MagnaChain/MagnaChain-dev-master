@@ -54,7 +54,7 @@ bool ContractContext::GetData(const CellContractID& contractId, ContractInfo& co
 {
     if (cache.size() > 0) {
         auto it = cache.find(contractId);
-        if (it == cache.end()) {
+        if (it != cache.end()) {
             contractInfo.code = it->second.code;
             contractInfo.data = it->second.data;
             return true;
