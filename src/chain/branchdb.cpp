@@ -117,24 +117,37 @@ int BranchData::GetBlockMinedHeight(const uint256& blockhash)
     return Height() - height;
 }
 
-void BranchData::BuildBestChain(BranchBlockData& blockdata)
+void BranchData::AddNewBlockData(BranchBlockData& blockdata)
 {
     const uint256 newTipHash = blockdata.header.GetHash();
-
+    const uint256& hashPrevBlock = blockdata.header.hashPrevBlock;
+    //add new block head data
     mapHeads[newTipHash] = blockdata;
+    //update parent's son hashs
+    if (mapHeads.count(hashPrevBlock)) {
+        mapHeads[hashPrevBlock].vecSonHashs.push_back(newTipHash);
 
-    if (vecChainActive.back() == blockdata.header.hashPrevBlock)
-    {
-        vecChainActive.push_back(newTipHash);
-    }
-    else
-    {
-        const BranchBlockData& tipBlock = mapHeads[vecChainActive.back()];
-        if (blockdata.nChainWork > tipBlock.nChainWork)
-        {
-            ActivateBestChain(newTipHash);
+        //继承hashPrevBlock的死亡属性
+        if (mapHeads[hashPrevBlock].deadstatus){
+            blockdata.deadstatus = blockdata.deadstatus | BranchBlockData::eDeadInherit;
         }
-        //else
+    }
+    
+    if (!blockdata.deadstatus)
+    {
+        if (vecChainActive.back() == blockdata.header.hashPrevBlock)
+        {
+            vecChainActive.push_back(newTipHash);
+        }
+        else
+        {
+            const BranchBlockData& tipBlock = mapHeads[vecChainActive.back()];
+            if (blockdata.nChainWork > tipBlock.nChainWork)
+            {
+                ActivateBestChain(newTipHash);
+            }
+            //else
+        }
     }
 }
 
@@ -175,6 +188,88 @@ void BranchData::RemoveBlock(const uint256& blockhash)
     if (vecChainActive.back() == blockhash)
     {
         vecChainActive.pop_back();
+    }
+}
+
+void BranchData::UpdateDeadStatus(const uint256& blockId, bool &fStatusChange){
+    if (!mapHeads.count(blockId)){
+        return;//assert
+    }
+    if (mapHeads[blockId].deadstatus & BranchBlockData::eDeadSelf){
+        return;//alread dead
+    }
+    mapHeads[blockId].deadstatus = mapHeads[blockId].deadstatus | BranchBlockData::eDeadSelf;
+    fStatusChange = true;
+    // dead transmit
+    for (const uint256 sonhash : mapHeads[blockId].vecSonHashs){
+        DeadTransmit(sonhash);
+    }
+}
+
+void BranchData::DeadTransmit(const uint256& blockId)
+{
+    mapHeads[blockId].deadstatus = mapHeads[blockId].deadstatus | BranchBlockData::eDeadInherit;
+    // 
+    if (mapHeads[blockId].deadstatus & BranchBlockData::eDeadSelf){
+        return;// 如何子block中有被举报死掉的块，它下面的应该不用递归了，没bug的话它的后代应该是dead的。
+    }
+    for (const uint256 sonhash : mapHeads[blockId].vecSonHashs) {
+        DeadTransmit(sonhash);
+    }
+}
+
+void BranchData::UpdateRebornStatus(const uint256& blockId, bool &fStatusChange)
+{
+    if (!mapHeads[blockId].IsDead())//all prove, is time to reborn
+    {
+        //移除dead self的状态
+        mapHeads[blockId].deadstatus = mapHeads[blockId].deadstatus & (~BranchBlockData::eDeadSelf);
+        fStatusChange = true;
+    }
+    if (!mapHeads[blockId].deadstatus){
+        for (const uint256 sonhash : mapHeads[blockId].vecSonHashs) {
+            RebornTransmit(sonhash);
+        }
+    }
+}
+
+void BranchData::RebornTransmit(const uint256& blockId)
+{
+    //移除dead inherit状态
+    mapHeads[blockId].deadstatus = mapHeads[blockId].deadstatus & (~BranchBlockData::eDeadInherit);
+    if (mapHeads[blockId].deadstatus) {
+        return;
+    }
+    for (const uint256 sonhash : mapHeads[blockId].vecSonHashs) {
+        RebornTransmit(sonhash);
+    }
+}
+
+uint256 BranchData::FindBestTipBlock()
+{
+    if (vecChainActive.size() <= 0)
+        return uint256();
+
+    const uint256& genesisBlockId = vecChainActive[0];
+    uint256 mostworkblock = genesisBlockId;
+    FindBestBlock(genesisBlockId, mostworkblock);
+    return mostworkblock;
+}
+
+void BranchData::FindBestBlock(const uint256& blockhash, uint256& mostworkblock)
+{
+    BranchBlockData& blockdata = mapHeads[blockhash];
+    if (blockdata.deadstatus)
+    {
+        return;
+    }
+    if (blockdata.nChainWork > mapHeads[mostworkblock].nChainWork)
+    {
+        mostworkblock = blockhash;
+    }
+    for (const uint256& sonblockid : blockdata.vecSonHashs)
+    {
+        FindBestBlock(sonblockid, mostworkblock);
     }
 }
 
@@ -257,6 +352,11 @@ void BranchCache::RemoveFromCache(const CellTransaction& tx)
         uint256 reportFlagHash = GetReportTxHashKey(tx);
         mReortTxFlagCache.erase(reportFlagHash);
     }
+    //TODO: test case
+    if (tx.IsProve()){
+        uint256 proveFlagHash = GetProveTxHashKey(tx);
+        mReortTxFlagCache.erase(proveFlagHash);
+    }
 }
 
 void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
@@ -312,6 +412,18 @@ BranchDb::BranchDb(const fs::path& path, size_t nCacheSize, bool fMemory, bool f
 {
 }
 
+bool BranchBlockData::IsDead()
+{
+    bool isAllProve = true;
+    for (const std::pair<uint256, uint16_t>& p: mapReportStatus){
+        if (p.second == RP_FLAG_REPORTED){
+            isAllProve = false;
+            break;
+        }
+    }
+    return !isAllProve;
+}
+
 void BranchBlockData::InitDataFromTx(const CellTransaction& tx)
 {
     BranchBlockData& bBlockData = *this;
@@ -345,32 +457,89 @@ void BranchDb::Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConne
 void BranchDb::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 {
     std::set<uint256> modifyBranch;
+    std::set<uint256> brokenChainBranch;
     const CellBlock& block = *pblock;
-    const std::vector<CellTransactionRef>& trans = block.vtx;
     const uint256 mainBlockHash = block.GetHash();
-    for (size_t i = 0; i < trans.size(); ++i) {
-        CellTransactionRef transaction = trans[i];
-        if (transaction->IsSyncBranchInfo()) {
-            AddBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
+    for (size_t i = 0; i < block.vtx.size(); ++i) {
+        CellTransactionRef tx = block.vtx[i];
+        if (tx->IsSyncBranchInfo()) {
+            AddBlockInfoTxData(tx, mainBlockHash, i, modifyBranch);
         }
-        if (transaction->IsReport()) {
-            uint256 reportFlagHash = GetReportTxHashKey(*transaction);
+        if (tx->IsReport()) {
+            uint256 reportFlagHash = GetReportTxHashKey(*tx);
             mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
-        }
-        if (transaction->IsProve())
-        {
-            uint256 proveFlagHash = GetProveTxHashKey(*transaction);
 
-            //check before
-            //if(this->mReortTxFlag.count(proveFlagHash) == 0 || this->mReortTxFlagCache[proveFlagHash] != RP_FLAG_REPORTED)
+            //-----------
+            const uint256& rpBranchId = tx->pReportData->reportedBranchId;
+            const uint256& rpBlockId = tx->pReportData->reportedBlockHash;
+            if (mapBranchsData.count(rpBranchId)){// ok, we must assert(mapBranchsData.count(rpBranchId));
+                BranchData& branchdata = mapBranchsData[rpBranchId];
+                if (branchdata.mapHeads.count(rpBlockId)){
+                    branchdata.mapHeads[rpBlockId].mapReportStatus[reportFlagHash] = RP_FLAG_REPORTED;
+                    //update dead status, dead transmit
+                    bool deadchanged = false;
+                    branchdata.UpdateDeadStatus(rpBlockId, deadchanged);
+                    if (deadchanged){
+                        brokenChainBranch.insert(rpBranchId);
+                    }
+                }
+                else{
+                    LogPrint(BCLog::BRANCH, "Fatal error: report tx block data not exist!\n");
+                }
+            }
+            else{
+                LogPrint(BCLog::BRANCH, "Fatal error: report tx branch data not exist!\n");
+            }
+        }
+        if (tx->IsProve())
+        {
+            uint256 proveFlagHash = GetProveTxHashKey(*tx);
+
+            //assert first
+            //if(this->mReortTxFlag.count(proveFlagHash) == 0 || this->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
             //{
             //    AbortNode;
             //}
 
             this->mReortTxFlag[proveFlagHash] = RP_FLAG_PROVED;
+
+            //-----------
+            const uint256& rpBranchId = tx->pProveData->branchId;
+            const uint256& rpBlockId = tx->pProveData->blockHash;
+            if (mapBranchsData.count(rpBranchId)) {// ok, we must assert(mapBranchsData.count(rpBranchId));
+                BranchData& branchdata = mapBranchsData[rpBranchId];
+                if (branchdata.mapHeads.count(rpBlockId)) {
+                    branchdata.mapHeads[rpBlockId].mapReportStatus[proveFlagHash] = RP_FLAG_PROVED;
+                    //update dead status, reborn transmit
+                    bool deadchanged = false;
+                    branchdata.UpdateRebornStatus(rpBlockId, deadchanged);
+                    if (deadchanged){
+                        brokenChainBranch.insert(rpBranchId);
+                    }
+                }
+                else {
+                    LogPrint(BCLog::BRANCH, "Fatal error: prove tx block data not exist!\n");
+                }
+            }
+            else {
+                LogPrint(BCLog::BRANCH, "Fatal error: prove tx branch data not exist!\n");
+            }
         }
     }
 
+    // re find best tip block
+    for (const uint256& branchHash : brokenChainBranch)
+    {
+        BranchData& bData = mapBranchsData[branchHash];
+        uint256 besttipblock = bData.FindBestTipBlock();
+        if (bData.vecChainActive.back() != besttipblock)
+        {
+            bData.ActivateBestChain(besttipblock);
+            modifyBranch.insert(branchHash);
+        }
+    }
+
+    //支链besttipblock的快照，用于在disconnected block时快速回滚
     for (const uint256& branchHash : modifyBranch)
     {
         BranchData& bData = mapBranchsData[branchHash];
@@ -384,22 +553,66 @@ void BranchDb::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 {
     std::set<uint256> modifyBranch;
+    std::set<uint256> brokenChainBranch;// no use
     const CellBlock& block = *pblock;
-    const std::vector<CellTransactionRef>& trans = block.vtx;
     const uint256 mainBlockHash = block.GetHash();
-    for (int i = trans.size() - 1; i >= 0; i--) {
-        CellTransactionRef transaction = trans[i];
-        if (transaction->IsSyncBranchInfo()) {
-            DelBlockInfoTxData(transaction, mainBlockHash, i, modifyBranch);
+    for (int i = block.vtx.size() - 1; i >= 0; i--) {
+        CellTransactionRef tx = block.vtx[i];
+        if (tx->IsSyncBranchInfo()) {
+            DelBlockInfoTxData(tx, mainBlockHash, i, modifyBranch);
         }
-        if (transaction->IsReport()) {
-            uint256 reportFlagHash = GetReportTxHashKey(*transaction);
+        if (tx->IsReport()) {
+            uint256 reportFlagHash = GetReportTxHashKey(*tx);
             mReortTxFlag.erase(reportFlagHash);
+            //-----------
+            const uint256& rpBranchId = tx->pReportData->reportedBranchId;
+            const uint256& rpBlockId = tx->pReportData->reportedBlockHash;
+            if (mapBranchsData.count(rpBranchId)) {// ok, we must assert(mapBranchsData.count(rpBranchId));
+                BranchData& branchdata = mapBranchsData[rpBranchId];
+                if (branchdata.mapHeads.count(rpBlockId)) {
+                    branchdata.mapHeads[rpBlockId].mapReportStatus.erase(reportFlagHash);
+                    //update dead status, 检查是否可以移除死亡状态
+                    bool deadchanged = false;
+                    branchdata.UpdateRebornStatus(rpBlockId, deadchanged);
+                    if (deadchanged){
+                        brokenChainBranch.insert(rpBranchId);
+                        modifyBranch.insert(rpBranchId);
+                    }
+                }
+                else {
+                    LogPrint(BCLog::BRANCH, "Fatal error: disconnect report tx block data not exist!\n");
+                }
+            }
+            else {
+                LogPrint(BCLog::BRANCH, "Fatal error: disconnect report tx branch data not exist!\n");
+            }
         }
-        if (transaction->IsProve())
+        if (tx->IsProve())
         {
-            uint256 proveFlagHash = GetProveTxHashKey(*transaction);
+            uint256 proveFlagHash = GetProveTxHashKey(*tx);
             this->mReortTxFlag[proveFlagHash] = RP_FLAG_REPORTED; // revert to previous value
+            //-----------
+            const uint256& rpBranchId = tx->pProveData->branchId;
+            const uint256& rpBlockId = tx->pProveData->blockHash;
+            if (mapBranchsData.count(rpBranchId)) {// ok, we must assert(mapBranchsData.count(rpBranchId));
+                BranchData& branchdata = mapBranchsData[rpBranchId];
+                if (branchdata.mapHeads.count(rpBlockId)) {
+                    branchdata.mapHeads[rpBlockId].mapReportStatus[proveFlagHash] = RP_FLAG_REPORTED;
+                    //update dead status, 检查是否需要reborn to dead.
+                    bool deadchanged = false;
+                    branchdata.UpdateDeadStatus(rpBlockId, deadchanged);
+                    if (deadchanged){
+                        brokenChainBranch.insert(rpBranchId);
+                        modifyBranch.insert(rpBranchId);
+                    }
+                }
+                else {
+                    LogPrint(BCLog::BRANCH, "Fatal error: disconnect prove tx block data not exist!\n");
+                }
+            }
+            else {
+                LogPrint(BCLog::BRANCH, "Fatal error: disconnect prove tx branch data not exist!\n");
+            }
         }
     }
 
@@ -430,8 +643,8 @@ void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256
     bBlockData.txIndex = iTxVtxIndex;
     bBlockData.nChainWork = (bData.mapHeads.count(hashPrevBlock) ? bData.mapHeads[hashPrevBlock].nChainWork : 0)
         + GetBlockProof(bBlockData.header.nBits);
-
-    bData.BuildBestChain(bBlockData);
+    
+    bData.AddNewBlockData(bBlockData);
 
     modifyBranch.insert(branchHash);
 }
