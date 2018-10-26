@@ -374,11 +374,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
  
         //connect block
         branchdb.Flush(pblockNew, true);
-        BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == preHeader.GetHash());
+        BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 1]);
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 1);
     }
     //--------------------
-    {// block 2 举报
+    {// block 2 举报 -3
         std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
@@ -402,7 +402,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
 
         pblock2 = pblockNew;
     }
-    {// block 3 举报
+    {// block 3 举报 -4
         std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
@@ -444,7 +444,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 5]);
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 5);
     }
-    {// block 4
+    {// block 4 举报 -2
         std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
@@ -465,6 +465,74 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         branchdb.Flush(pblockNew, true);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 5]);
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 5);
+    }
+    {//block 5 开始证明啦 -3
+        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
+
+        //add report tx---------
+        CellMutableTransaction mtx;
+        mtx.nVersion = CellTransaction::PROVE;
+        mtx.pProveData = std::make_shared<ProveData>();
+        mtx.pProveData->provetype = ReportType::REPORT_TX;
+        mtx.pProveData->branchId = branchid;
+        mtx.pProveData->blockHash = expertBranchChain[expertBranchChain.size() - 3];
+        mtx.pProveData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+
+        pblockNew->vtx.push_back(MakeTransactionRef(mtx));
+        //------------
+
+        //connect block
+        branchdb.Flush(pblockNew, true);
+        BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 5]);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 5);
+    }
+    {//block 6 开始证明啦 -4
+        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
+
+        //add report tx---------
+        CellMutableTransaction mtx;
+        mtx.nVersion = CellTransaction::PROVE;
+        mtx.pProveData = std::make_shared<ProveData>();
+        mtx.pProveData->provetype = ReportType::REPORT_TX;
+        mtx.pProveData->branchId = branchid;
+        mtx.pProveData->blockHash = expertBranchChain[expertBranchChain.size() - 4];
+        mtx.pProveData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+
+        pblockNew->vtx.push_back(MakeTransactionRef(mtx));
+        //------------
+
+        //connect block
+        branchdb.Flush(pblockNew, true);
+        BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 3]);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 3);
+    }
+    {//block 7 开始证明啦 -2
+        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
+
+        //add report tx---------
+        CellMutableTransaction mtx;
+        mtx.nVersion = CellTransaction::PROVE;
+        mtx.pProveData = std::make_shared<ProveData>();
+        mtx.pProveData->provetype = ReportType::REPORT_TX;
+        mtx.pProveData->branchId = branchid;
+        mtx.pProveData->blockHash = expertBranchChain[expertBranchChain.size() - 2];
+        mtx.pProveData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+
+        pblockNew->vtx.push_back(MakeTransactionRef(mtx));
+        //------------
+
+        //connect block
+        branchdb.Flush(pblockNew, true);
+        BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 1]);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 1);
+
+        //disconnect block
+        branchdb.Flush(pblockNew, false);
+        BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == expertBranchChain[expertBranchChain.size() - 3]);
+        BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 3);
     }
 }
 
