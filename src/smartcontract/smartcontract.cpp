@@ -669,7 +669,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellLinkAddre
     this->pCoinAmountCache = pCoinAmountCache;
 
     if (_pContractContext == nullptr)
-        _pContractContext = &mpContractDb->_contractContext;
+        _pContractContext = &mpContractDb->contractContext;
 
     this->contractOut = 0;
     this->recipients.clear();
@@ -745,5 +745,6 @@ bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractIn
     if (_pContractContext->GetData(contractId, contractInfo))
         return true;
 
-    return mpContractDb->GetContractInfo(contractId, contractInfo, _pPrevBlockIndex);
+    return mpContractDb->GetContractInfo(contractId, contractInfo, _pPrevBlockIndex) > 0;
 }
+

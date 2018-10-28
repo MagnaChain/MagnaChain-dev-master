@@ -446,6 +446,7 @@ uint256 GetContractHash(const CellTransaction& txTo) {
 		ss << txTo.contractAddr;
 		ss << txTo.contractCode;
 		ss << txTo.contractSender;
+        ss << txTo.contractOut;
 	}
 	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
 		ss << txTo.contractAddr;

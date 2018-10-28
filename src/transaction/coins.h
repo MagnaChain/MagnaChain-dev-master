@@ -305,9 +305,36 @@ private:
     CellCoinsViewCache(const CellCoinsViewCache &);
 };
 
+class CoinAmountCacheBase
+{
+public:
+    virtual CellAmount GetAmount(uint160& key) const
+    {
+        return 0;
+    }
+};
+
+class CoinAmountDB : public CoinAmountCacheBase
+{
+public:
+    CellAmount GetAmount(uint160& key) const override;
+};
+
+class CoinAmountTemp : public CoinAmountCacheBase
+{
+public:
+    CellAmount GetAmount(uint160& key) const override;
+    void IncAmount(uint160& key, CellAmount delta);
+
+private:
+    std::map<uint160, CellAmount> coinAmountCache;
+};
+
 class CoinAmountCache
 {
 public:
+    CoinAmountCache(CoinAmountCacheBase* amountBase) : base(amountBase) {}
+
     CellAmount GetAmount(uint160& key);
     bool IncAmount(uint160& key, CellAmount delta);
     bool DecAmount(uint160& key, CellAmount delta);
@@ -319,6 +346,7 @@ public:
 
 private:
     bool takeSnapshot;
+    CoinAmountCacheBase* base;
     std::map<uint160, CellAmount> snapshots;
     std::map<uint160, CellAmount> coinAmountCache;
 };

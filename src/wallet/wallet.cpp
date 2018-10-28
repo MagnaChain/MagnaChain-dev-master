@@ -3235,9 +3235,10 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
         wtxNew.SetTx(MakeTransactionRef(std::move(txNew)));
 
         // Limit size
-        if (GetTransactionWeight(wtxNew) >= MAX_STANDARD_TX_WEIGHT)
+        int64_t txWeight = GetTransactionWeight(wtxNew);
+        if (txWeight >= MAX_STANDARD_TX_WEIGHT)
         {
-            strFailReason = _("Transaction too large");
+            strFailReason = strprintf("Transaction too large, weight is %I64d", txWeight);
             return false;
         }
     }

@@ -214,6 +214,7 @@ CellCoinsViewDB *pcoinsdbview = nullptr;
 CellCoinsViewCache *pcoinsTip = nullptr;
 CellBlockTreeDB *pblocktree = nullptr;
 CoinListDB* pcoinListDb = nullptr;
+CoinAmountDB*pCoinAmountDB = nullptr;
 CoinAmountCache* pCoinAmountCache = nullptr;
 
 enum FlushStateMode {
@@ -754,7 +755,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
 
         if (tx.IsSmartContract()) {
             if (executeSmartContract && !CheckSmartContract(tx, SmartLuaState::SAVE_TYPE_CACHE, state, &entry, pCoinAmountCache)) {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
             }
         }
@@ -767,7 +768,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         size_t nLimitDescendantSize = gArgs.GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT)*1000;
         std::string errString;
         if (!pool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
-            mpContractDb->_contractContext.ClearCache();
+            mpContractDb->contractContext.ClearCache();
             return state.DoS(0, false, REJECT_NONSTANDARD, "too-long-mempool-chain", false, errString);
         }
 
@@ -778,7 +779,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         for (CellTxMemPool::txiter ancestorIt : setAncestors) {
             const uint256 &hashAncestor = ancestorIt->GetTx().GetHash();
             if (setConflicts.count(hashAncestor)) {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return state.DoS(10, false,
                         REJECT_INVALID, "bad-txns-spends-conflicting-tx", false,
                         strprintf("%s spends conflicting transaction %s",
@@ -831,7 +832,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
                 // mitigating most cases.
                 CellFeeRate oldFeeRate(mi->GetModifiedFee(), mi->GetTxSize());
                 if (newFeeRate <= oldFeeRate) {
-                    mpContractDb->_contractContext.ClearCache();
+                    mpContractDb->contractContext.ClearCache();
                     return state.DoS(0, false,
                             REJECT_INSUFFICIENTFEE, "insufficient fee", false,
                             strprintf("rejecting replacement %s; new feerate %s <= old feerate %s",
@@ -861,7 +862,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
                 }
             }
             else {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false,
                         REJECT_NONSTANDARD, "too many potential replacements", false,
                         strprintf("rejecting replacement %s; too many potential replacements (%d > %d)\n",
@@ -880,7 +881,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
                     // it's cheaper to just check if the new input refers to a
                     // tx that's in the mempool.
                     if (pool.mapTx.find(tx.vin[j].prevout.hash) != pool.mapTx.end()) {
-                        mpContractDb->_contractContext.ClearCache();
+                        mpContractDb->contractContext.ClearCache();
                         return state.DoS(0, false,
                             REJECT_NONSTANDARD, "replacement-adds-unconfirmed", false,
                             strprintf("replacement %s adds unconfirmed input, idx %d",
@@ -893,7 +894,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             // replaces - if we did the bandwidth used by those conflicting
             // transactions would not be paid for.
             if (nModifiedFees < nConflictingFees) {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false,
                         REJECT_INSUFFICIENTFEE, "insufficient fee", false,
                         strprintf("rejecting replacement %s, less fees than conflicting txs; %s < %s",
@@ -904,7 +905,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             // new transaction must pay for its own bandwidth.
             CellAmount nDeltaFees = nModifiedFees - nConflictingFees;
             if (nDeltaFees < ::incrementalRelayFee.GetFee(nSize)) {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false,
                         REJECT_INSUFFICIENTFEE, "insufficient fee", false,
                         strprintf("rejecting replacement %s, not enough additional fees to relay; %s < %s",
@@ -936,7 +937,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
                 // Only the witness is missing, so the transaction itself may be fine.
                 state.SetCorruptionPossible();
             }
-            mpContractDb->_contractContext.ClearCache();
+            mpContractDb->contractContext.ClearCache();
             return false; // state filled in by CheckInputs
         }
 
@@ -961,12 +962,12 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             // Check if current block has some flags that scriptVerifyFlags
             // does not before printing an ominous warning
             if (!(~scriptVerifyFlags & currentBlockScriptVerifyFlags)) {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return error("%s: BUG! PLEASE REPORT THIS! ConnectInputs failed against latest-block but not STANDARD flags %s, %s",
                         __func__, hash.ToString(), FormatStateMessage(state));
             } else {
                 if (!CheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, false, txdata)) {
-                    mpContractDb->_contractContext.ClearCache();
+                    mpContractDb->contractContext.ClearCache();
                     return error("%s: ConnectInputs failed against MANDATORY but not STANDARD flags due to promiscuous mempool %s, %s",
                             __func__, hash.ToString(), FormatStateMessage(state));
                 } else {
@@ -1000,13 +1001,13 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
         if (!fOverrideMempoolLimit) {
             LimitMempoolSize(pool, gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, gArgs.GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
             if (!pool.exists(hash)) {
-                mpContractDb->_contractContext.ClearCache();
+                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool full");
             }
         }
     }
 
-    mpContractDb->_contractContext.Commit();
+    mpContractDb->contractContext.Commit();
     GetMainSignals().TransactionAddedToMempool(ptx);
 
     return true;
@@ -3753,7 +3754,7 @@ static bool AcceptBlock(const std::shared_ptr<const CellBlock>& pblock, CellVali
 void UpdateContractTx(bool checkContract)
 {
     if (checkContract)
-        mpContractDb->_contractContext.ClearAll();
+        mpContractDb->contractContext.ClearAll();
 
     CellValidationState state;
     std::vector<CellTransaction> vTxs;
@@ -3775,11 +3776,10 @@ void UpdateContractTx(bool checkContract)
     pCoinAmountCache->Clear();
 }
 
-bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<const CellBlock> pblock, bool fForceProcessing, bool *fNewBlock)
+bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<const CellBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock, bool executeContract)
 {
     int64_t start = GetTimeMillis();
 
-    ContractContext contractContext;
     CellBlockIndex *pindex = nullptr;
     {
         if (fNewBlock) *fNewBlock = false;
@@ -3791,9 +3791,13 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
         if (bi == mapBlockIndex.end())
             return error("%s: find prev block failed", __func__);
         
-        CoinAmountCache coinAmountCache;
-        if (!mpContractDb->RunBlockContract(pblock, &contractContext, &coinAmountCache))
-            return error("%s: RunBlockContract failed", __func__);
+        if (executeContract) {
+            std::vector<uint256> hashWithData(pblock->vtx.size());
+            CoinAmountDB coinAmountDB;
+            CoinAmountCache coinAmountCache(&coinAmountDB);
+            if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache))
+                return error("%s: RunBlockContract failed", __func__);
+        }
 
         LOCK(cs_main);
 
@@ -3816,8 +3820,9 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
 
     ProcessBlockBranchChain();
 
-    mpContractDb->UpdateBlockContractInfo(pindex, &contractContext);
+    mpContractDb->UpdateBlockContractInfo(pindex, pContractContext);
     mpContractDb->Flush();
+
     // check and remove invalid contract transaction
     SendBranchBlockHeader(pblock);
     // check and remove invalid contract transaction 
@@ -5159,7 +5164,8 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
         }
 
         // No transactions are allowed below minRelayTxFee except from disconnected blocks
-        if (fLimitFree && nModifiedFees < ::minRelayTxFee.GetFee(nSize)) {
+        CellAmount needFee = ::minRelayTxFee.GetFee(nSize);
+        if (fLimitFree && nModifiedFees < needFee) {
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
         }
 
@@ -5208,7 +5214,7 @@ bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, cons
     return true;
 }
 
-bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData)
+bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData, CoinAmountTemp* amountTemp)
 {
     if (ptx->IsCoinBase())
         return false;
@@ -5230,12 +5236,9 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
         return false;
     }
 
-    //ÕÒ³öµ±Ç°½»Ò×µÄundo
     CellTxUndo txundo;
-    for (size_t i=1; i<block.vtx.size(); i++)
-    {
-        if (block.vtx[i]->GetHash() == ptx->GetHash())
-        {
+    for (size_t i=1; i<block.vtx.size(); i++) {
+        if (block.vtx[i]->GetHash() == ptx->GetHash()) {
             txundo = blockUndo.vtxundo[i-1];
             break;
         }
@@ -5243,15 +5246,21 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
 
     const CellChainParams& params = Params();
     const Consensus::Params& consensusParams = params.GetConsensus();
-    for (size_t i=0; i< ptx->vin.size(); i++)
-    {
+    for (size_t i=0; i< ptx->vin.size(); i++) {
         const Coin &coin = txundo.vprevout[i];
         const CellBlockIndex *pinblockindex = chainActive[coin.nHeight];
         CellBlock inblock;
         if (ReadBlockFromDisk(inblock, pinblockindex, consensusParams)) {
+            if (coin.out.scriptPubKey.IsContract()) {
+                CellContractID contractId;
+                coin.out.scriptPubKey.GetContractAddr(contractId);
+                if (amountTemp != nullptr)
+                    amountTemp->IncAmount(contractId, coin.out.nValue);
+            }
+
             CellTransactionRef tmpTx;
-            for (size_t j=0; j < inblock.vtx.size(); j++){
-                if (inblock.vtx[j]->GetHash() == ptx->vin[i].prevout.hash){
+            for (size_t j = 0; j < inblock.vtx.size(); j++) {
+                if (inblock.vtx[j]->GetHash() == ptx->vin[i].prevout.hash) {
                     tmpTx = inblock.vtx[j];
                     break;
                 }
@@ -5270,44 +5279,38 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
             vectProveData.emplace_back(pData);
 
         }
+        else
+            return false;
     }
     return true;
 }
 
-bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveDataItem>& vectProveData)
+bool GetProveInfo(const CellBlock& block, int blockHeight, CellBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData)
 {
-    std::set<uint256> setTxids;
-    setTxids.insert(txHash);
+    CellTransactionRef tx = block.vtx[txIndex];
 
-    CellTransactionRef tx;
+    std::set<uint256> setTxids;
+    setTxids.insert(tx->GetHash());
+
     uint256 hashBlock = uint256();
 
-    for (const CellTransactionRef& v : block.vtx){
-        if (v->GetHash() == txHash){
-            tx = v;
-            break;
-        }
-    }
-    
-    if (tx == nullptr){
+    if (tx == nullptr)
         return error("%s did not find tx in block.\n", __func__);
-    }
 
     std::shared_ptr<CellSpvProof> pSpvPf(NewSpvProof(block, setTxids));
 
     ProveDataItem pData;
-    CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx };
+    CellVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
     pData.pCSP = *pSpvPf;
     pData.blockHash = block.GetHash();
-    vectProveData.emplace_back(pData);
+    pProveData->vectProveData.emplace_back(pData);
 
-    if (tx->IsCoinBase()){// no valid input
+    if (tx->IsCoinBase())
         return false;
-    }
-    else{
-        return GetTxVinBlockData(block, tx, vectProveData);
-    }
-    return false;
+
+    CoinAmountTemp amountTemp;
+    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData, &amountTemp);
+    return success;
 }
 
 //构建coinbase交易的证明
@@ -5324,7 +5327,7 @@ bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block
         const CellTransactionRef& ptx = block.vtx[i];
         pProveData->vecBlockTxProve.emplace_back();
         std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
-        if (!GetTxVinBlockData(block, ptx, vectProveData)){
+        if (!GetTxVinBlockData(block, ptx, vectProveData, nullptr)){
             return false;
         }
     }

@@ -2474,7 +2474,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             // we have a chain with at least nMinimumChainWork), and we ignore
             // compact blocks with less work than our tip, it is safe to treat
             // reconstructed compact blocks as having been requested.
-            ProcessNewBlock(chainparams, pblock, /*fForceProcessing=*/true, &fNewBlock);
+            ContractContext contractContext;
+            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock, true);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2558,7 +2559,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             // disk-space attacks), but this should be safe due to the
             // protections in the compact block handler -- see related comment
             // in compact block optimistic reconstruction handling.
-            ProcessNewBlock(chainparams, pblock, /*fForceProcessing=*/true, &fNewBlock);
+            ContractContext contractContext;
+            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock, true);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2613,7 +2615,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             mapBlockSource.emplace(hash, std::make_pair(pfrom->GetId(), true));
         }
         bool fNewBlock = false;
-        ProcessNewBlock(chainparams, pblock, forceProcessing, &fNewBlock);
+        ContractContext contractContext;
+        ProcessNewBlock(chainparams, pblock, &contractContext, forceProcessing, &fNewBlock, true);
         if (fNewBlock) {
             pfrom->nLastBlockTime = GetTime();
         } else {

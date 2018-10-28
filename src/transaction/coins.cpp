@@ -282,24 +282,47 @@ bool CellCoinsViewCache::HaveInputs(const CellTransaction& tx) const
     return true;
 }
 
+CellAmount CoinAmountDB::GetAmount(uint160& key) const
+{
+    CellAmount nValue = 0;
+    CoinListPtr plist = pcoinListDb->GetList(key);
+    for (auto it = plist->coins.begin(); it != plist->coins.end(); ++it) {
+        const CellOutPoint& outpoint = *it;
+        const Coin& coin = pcoinsTip->AccessCoin(outpoint);
+
+        if (coin.IsSpent())
+            continue;
+        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
+            continue;
+
+        nValue += coin.out.nValue;
+    }
+    return nValue;
+}
+
+CellAmount CoinAmountTemp::GetAmount(uint160& key) const
+{
+    auto it = coinAmountCache.find(key);
+    if (it == coinAmountCache.end())
+        return 0;
+    return it->second;
+}
+
+void CoinAmountTemp::IncAmount(uint160& key, CellAmount delta)
+{
+    if (delta <= 0)
+        return;
+    CellAmount nValue = GetAmount(key);
+    nValue += delta;
+    coinAmountCache[key] = nValue;
+}
 
 CellAmount CoinAmountCache::GetAmount(uint160& key)
 {
-    CellAmount nValue(0);
+    CellAmount nValue = 0;
     if (coinAmountCache.count(key) == 0) {
-        CoinListPtr plist = pcoinListDb->GetList(key);
-
-        for (auto it = plist->coins.begin(); it != plist->coins.end(); ++it) {
-            const CellOutPoint& outpoint = *it;
-            const Coin& coin = pcoinsTip->AccessCoin(outpoint);
-
-            if (coin.IsSpent())
-                continue;
-            if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
-                continue;
-
-            nValue += coin.out.nValue;
-        }
+        if (base != nullptr)
+            nValue = base->GetAmount(key);
         coinAmountCache[key] = nValue;
     }
     else
@@ -307,7 +330,7 @@ CellAmount CoinAmountCache::GetAmount(uint160& key)
 
     if (takeSnapshot) {
         takeSnapshot = false;
-        snapshots[key] = GetAmount(key);
+        snapshots[key] = nValue;
     }
 
     return nValue;

@@ -362,9 +362,14 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const CellTxMem
         int groupId = nextGroupId;
         const CellTransactionRef& tx = pblock->vtx[i];
 
+        if (trans2group.find(tx->GetHash()) != trans2group.end())
+            groupId = trans2group[tx->GetHash()];
+
         int lastGroupId = -1;
         for (int j = 0; j < tx->vin.size(); ++j) {
             const CellOutPoint& preOutPoint = tx->vin[j].prevout;
+            if (preOutPoint.hash.IsNull())
+                continue;
             if (trans2group.find(preOutPoint.hash) != trans2group.end()) {
                 int preTransGroupId = trans2group[preOutPoint.hash];
                 groupId = std::min(preTransGroupId, groupId);
@@ -804,7 +809,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
     // 默认使用分片重新排列交易
     if (gArgs.GetBoolArg("-grouping", true))
-        GroupingTransaction(offset, blockTxEntries);
+        GroupingTransaction(1, blockTxEntries);
     else {
         pblock->groupSize.emplace_back(offset);
         pblock->groupSize.emplace_back(pblock->vtx.size() - offset);
@@ -1986,7 +1991,7 @@ bool CheckCoinbaseTx(const CellBlock& block, CellBlockIndex* pindex, CellAmount 
 }
 
 
-std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScript& scriptPubKeyIn, bool fMineWitnessTx, const CellKeyStore* keystoreIn, CellCoinsViewCache *pcoinsCache)
+std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock(const CellScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx, const CellKeyStore* keystoreIn, CellCoinsViewCache *pcoinsCache)
 {
     if (pcoinsCache == nullptr)
     {
@@ -2011,21 +2016,20 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
 
     CellBlockIndex* pindexPrev = chainActive.Tip();
     nHeight = pindexPrev->nHeight + 1;
-	if (!this->outpoint.IsNull()) {
-		CellMutableTransaction stakeTx;
+    if (!this->outpoint.IsNull()) {
+        CellMutableTransaction stakeTx;
         stakeTx.nVersion = CellTransaction::STAKE;
-		if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
-			return nullptr;
-		}
+        if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
+            return nullptr;
+        }
 
-		// set outpoint
-		pblock->prevoutStake = outpoint;
+        // set outpoint
+        pblock->prevoutStake = outpoint;
 
-		pblock->vtx.emplace_back();
         pblocktemplate->vTxFees.push_back(-1);       // updated at end
         pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-		pblock->vtx[1] = MakeTransactionRef(std::move(stakeTx));
-	}
+        pblock->vtx.emplace_back(MakeTransactionRef(std::move(stakeTx)));
+    }
 
 	pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
 	// -regtest only: allow overriding block.nVersion with
@@ -2100,6 +2104,12 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
 		throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
 	}
+
+    CoinAmountDB coinAmountDB;
+    CoinAmountCache coinAmountCache(&coinAmountDB);
+    std::shared_ptr<CellBlock> pShareBlock = std::make_shared<CellBlock>(*pblock);
+    if (!mpContractDb->RunBlockContract(pShareBlock, pContractContext, &coinAmountCache))
+        return nullptr;
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));

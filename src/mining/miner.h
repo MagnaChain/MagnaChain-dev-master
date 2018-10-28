@@ -193,7 +193,7 @@ public:
     BlockAssembler(const CellChainParams& params, const Options& options);
 
     /** Construct a new block template with coinbase to scriptPubKeyIn */
-    std::unique_ptr<CellBlockTemplate> CreateNewBlock(const CellScript& scriptPubKeyIn, bool fMineWitnessTx=true, const CellKeyStore* keystoreIn = nullptr, CellCoinsViewCache *pcoinsCache = nullptr );
+    std::unique_ptr<CellBlockTemplate> CreateNewBlock(const CellScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx=true, const CellKeyStore* keystoreIn = nullptr, CellCoinsViewCache *pcoinsCache = nullptr);
 
 private:
     // utility functions

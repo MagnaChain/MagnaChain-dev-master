@@ -205,11 +205,10 @@ public:
     std::vector<unsigned char> vchStakeTxData;// block.vtx[1] stake transaction serialize data
 
     ADD_SERIALIZE_METHODS;
-
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        READWRITE(this->nVersion);
+        READWRITE(nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
         READWRITE(nTime);
@@ -288,6 +287,27 @@ public:
         READWRITE(blockHash);
         READWRITE(tx);
         READWRITE(pCSP);
+    }
+};
+
+// 执行智能合约时的上下文数据
+class ContractInfo
+{
+public:
+    int txIndex;
+    std::string code;
+    std::string data;
+
+    ContractInfo() {};
+    ContractInfo(std::string& code, std::string& data, int index) : code(code), data(data), txIndex(index) {}
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(txIndex);
+        READWRITE(code);
+        READWRITE(data);
     }
 };
 
@@ -380,6 +400,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 		s >> tx.contractCode;
 		s >> tx.contractSender;
 		s >> tx.contractScriptSig;
+        s >> tx.contractOut;
 	}
     else if (tx.nVersion == 4) {//CellTransaction::CALL_CONTRACT_VERSION
         s >> tx.contractAddr;
@@ -387,6 +408,7 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
 		s >> tx.contractFun;
 		s >> tx.contractParams;
 		s >> tx.contractScriptSig;
+        s >> tx.contractOut;
 	}
 	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
 		s >> tx.branchVSeeds;
@@ -480,6 +502,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 		s << tx.contractCode;
 		s << tx.contractSender;
 		s << tx.contractScriptSig;
+        s << tx.contractOut;
 	}
 	else if (tx.nVersion == 4) {//CellTransaction::CALL_CONTRACT_VERSION
 		s << tx.contractAddr;
@@ -487,6 +510,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 		s << tx.contractFun;
 		s << tx.contractParams;
 		s << tx.contractScriptSig;
+        s << tx.contractOut;
 	}
 	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
 		s << tx.branchVSeeds;

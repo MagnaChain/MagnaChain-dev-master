@@ -16,6 +16,7 @@ class CellValidationState;
 class CellBlockHeader;
 class CellBlock;
 class BranchCache;
+class BranchData;
 
 class CellRPCConfig {
 public:
@@ -23,6 +24,7 @@ public:
 	uint16_t    iPort;
 	std::string strUser;
 	std::string strPassword;
+    std::string strWallet;
 
 	void Reset();
 	bool IsValid();
@@ -55,14 +57,14 @@ enum branch_script_type
 };
 
 UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params,
-	const std::string& rpcuser = "", const std::string& rpcpassword = "");
+	const std::string& rpcuser = "", const std::string& rpcpassword = "", const std::string& rpcwallet = "");
 
 UniValue CallRPC(const CellRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params);
 
 void ProcessBlockBranchChain();
 
 CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids);
-bool CheckSpvProof(const uint256& frombranchid, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash);
+bool CheckSpvProof(BranchData& branchData, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash);
 bool CheckBranchTransaction(const CellTransaction& tx, CellValidationState &state, const bool fVerifingDB, const CellTransactionRef& pFromTx);
 
 CellAmount GetBranchChainCreateTxOut(const CellTransaction& tx);
