@@ -515,17 +515,22 @@ void testgetint64()
     }
 }
 
-CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx)
+CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx, bool fDeepRevert)
 {
     CellMutableTransaction mtx(tx);
-    if (tx.IsBranchChainTransStep2())
-        mtx.fromTx.clear();
-    if (pFromTx && pFromTx->IsMortgage()) {
-        mtx.vout[0].scriptPubKey.clear();
+    if (fDeepRevert){
+        if (tx.IsBranchChainTransStep2()){
+            mtx.fromTx.clear();
+            if (pFromTx && pFromTx->IsMortgage()) {
+                mtx.vout[0].scriptPubKey.clear();
+            }
+            if (mtx.fromBranchId != CellBaseChainParams::MAIN) {
+                mtx.pPMT.reset(new CellSpvProof());
+            }
+        }
     }
+    
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN) {
-        mtx.pPMT.reset(new CellSpvProof());
-
         //recover tx: remove UTXO
         //vin like func MakeBranchTransStep2Tx
         mtx.vin.clear();
@@ -868,7 +873,7 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
         return error("%s sendToTxHexData is not a valid transaction data.\n", __func__);
     }
 
-    CellMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx);
+    CellMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx, true);
     /*
     //remove fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();

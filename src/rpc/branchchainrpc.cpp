@@ -1120,7 +1120,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     if (coin.IsSpent())
         throw JSONRPCError(RPC_WALLET_ERROR, "Coin is spent!");
     if (chainActive.Height() - coin.nHeight < REDEEM_SAFE_HEIGHT)// 挖矿币需要满足一定高度后才能赎回,给别人举报有时间窗口
-        throw JSONRPCError(RPC_INVALID_REQUEST, "Coin need ");
+        throw JSONRPCError(RPC_INVALID_REQUEST, strprintf(std::string("Coin need %s confirmation", REDEEM_SAFE_HEIGHT)));
 
     uint256 fromtxid;
     CellKeyID keyid;
@@ -1469,8 +1469,8 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
                 "\nResult:\n"
                 "\"ret\"                  (string) ok or fail\n"
                 "\nExamples:\n"
-                + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
-                + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
+                + HelpExampleCli("handlebranchreport", "5754f9e...630db")
+                + HelpExampleRpc("handlebranchreport", "5754f9e...630db")
                 );
     if (!Params().IsMainChain())
         throw JSONRPCError(RPC_WALLET_ERROR, "can not call in branchchain.\n");
@@ -1782,8 +1782,8 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
                 "\nResult:\n"
                 "\"ret\"                  (string) ok or fail\n"
                 "\nExamples:\n"
-                + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
-                + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
+                + HelpExampleCli("handlebranchprove", "5754f9e...630db")
+                + HelpExampleRpc("handlebranchprove", "5754f9e...630db")
                 );
     if (!Params().IsMainChain())
         throw JSONRPCError(RPC_WALLET_ERROR, "Can not call in branchchain.\n");

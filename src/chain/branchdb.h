@@ -14,12 +14,20 @@
 #include <vector>
 
 //the state of report and prove
-const uint16_t RP_FLAG_REPORTED = 1;
-const uint16_t RP_FLAG_PROVED = 2;
+const uint16_t RP_FLAG_REPORTED = 1;//被举报了
+const uint16_t RP_FLAG_PROVED = 2;//已证明
 
 class BranchBlockData
 {
 public:
+    typedef std::vector<uint256> VEC_HASH;
+    typedef std::map<uint256, uint16_t> MAP_REPORT_PROVE;
+    enum {//dead status
+        eLive = 0,
+        eDeadSelf = 1<<0,
+        eDeadInherit = 1<<1,
+    };
+
     CellBlockHeader header; // 侧链spv
     int32_t nHeight;     // 侧链块高度
     CellTransactionRef pStakeTx;
@@ -30,6 +38,12 @@ public:
     int txIndex;    // 交易在主链打包块的index
 
     arith_uint256 nChainWork;// 包含全部祖先和自己的work
+    VEC_HASH vecSonHashs;// 子block hash,make a block tree chain
+    unsigned char deadstatus;
+    MAP_REPORT_PROVE mapReportStatus;// deadstatus需要知道当前block的举报状态，BranchDb的mReortTxFlag差不了，或者需要改成多key容器
+                                  // 而且放这里比mReortTxFlag更有优势吧，数据分散到每个block，而不是集中起来。集中会导致某个数据
+                                  // 数据过大。
+    bool IsDead();//是否在被举报状态
 
     void InitDataFromTx(const CellTransaction& tx);
 
@@ -46,6 +60,9 @@ public:
         READWRITE(txIndex);
 
         READWRITE(nChainWork);
+        READWRITE(vecSonHashs);
+        READWRITE(deadstatus);
+        READWRITE(mapReportStatus);
     }
 
     enum {
@@ -66,9 +83,18 @@ public:
     VBRANCH_CHAIN vecChainActive;
     MAP_MAINBLOCK_BRANCHTIP mapSnapshotBlockTip; // record connected main block, each branch tip
 
-    void BuildBestChain(BranchBlockData& blockdata);
+    void AddNewBlockData(BranchBlockData& blockdata);
     void ActivateBestChain(const uint256 &bestTipHash);
     void RemoveBlock(const uint256& blockhash);
+
+    //
+    void UpdateDeadStatus(const uint256& blockId, bool &fStatusChange);
+    void DeadTransmit(const uint256& blockId);
+    //
+    void UpdateRebornStatus(const uint256& blockId, bool &fStatusChange);
+    void RebornTransmit(const uint256& blockId);
+    // 
+    uint256 FindBestTipBlock();
 
     ADD_SERIALIZE_METHODS;
 
@@ -88,6 +114,9 @@ public:
     uint32_t Height(void);
     bool IsBlockInBestChain(const uint256& blockhash);
     int GetBlockMinedHeight(const uint256& blockhash);
+
+private:
+    void FindBestBlock(const uint256& blockhash, uint256& mostworkblock);
 };
 
 typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;

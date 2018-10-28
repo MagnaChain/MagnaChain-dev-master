@@ -477,10 +477,11 @@ CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vect
     BranchUTXOCache& utxoCache = mapBranchCoins[key];
 
     CellAmount nValue = 0;
+    std::vector<int> usedIndex;//用来删除已使用的币
     //first get from db list
-    for (std::vector<CellOutPoint>::iterator it = utxoCache.coinlist.coins.begin();
-		it != utxoCache.coinlist.coins.end(); it++) {
-        const CellOutPoint& outpoint = *it;
+    //优先使用较老的币
+    for (int i = 0; i < utxoCache.coinlist.coins.size(); i++) {
+        const CellOutPoint& outpoint = utxoCache.coinlist.coins[i];
         const Coin& coin = pcoinsTip->AccessCoin(outpoint);// CellCoinsViewCache
         if (coin.IsSpent())
             continue;
@@ -489,6 +490,7 @@ CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vect
 
         nValue += coin.out.nValue;
         vInOutPoints.push_back(outpoint);
+        usedIndex.push_back(i);
         if (nValue >= nAmount)
             break;
     }
@@ -512,19 +514,26 @@ CellAmount MakeBranchTxUTXO::UseUTXO(uint160& key, CellAmount nAmount, std::vect
         return 0;
     }
 
+    //从后面往前删除
+    for (std::vector<int>::reverse_iterator rit = usedIndex.rbegin(); rit != usedIndex.rend(); rit++)
+    {
+        utxoCache.coinlist.coins.erase(utxoCache.coinlist.coins.begin() + *rit);
+    }
+
     // from back to front, erase from vector(utxoCahce.coinlist.coins)
     for (auto rit = vInOutPoints.rbegin(); rit != vInOutPoints.rend(); rit++) {
         const CellOutPoint& outpoint = *rit;
 
         //spend utxoCahce
-        for (std::vector<CellOutPoint>::reverse_iterator ritc = utxoCache.coinlist.coins.rbegin();// for back end to remove fast.
-            ritc != utxoCache.coinlist.coins.rend(); ritc++) {
-            if (*ritc == outpoint)
-            {
-                utxoCache.coinlist.coins.erase(std::next(ritc).base());
-                break;
-            }
-        }
+        //for (std::vector<CellOutPoint>::reverse_iterator ritc = utxoCache.coinlist.coins.rbegin();// for back end to remove fast.
+        //    ritc != utxoCache.coinlist.coins.rend(); ritc++) {
+        //    if (*ritc == outpoint)
+        //    {
+        //        utxoCache.coinlist.coins.erase(std::next(ritc).base());
+        //        break;
+        //    }
+        //}
+
         utxoCache.mapCacheCoin.erase(outpoint);
     }
 
@@ -541,9 +550,9 @@ bool MakeBranchTxUTXO::MakeTxUTXO(CellMutableTransaction& tx, uint160& key, Cell
     CellCoinControl coin_control;
     const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (CellTxIn::SEQUENCE_FINAL - 1);
 
-    for (std::vector<CellOutPoint>::reverse_iterator rit = vInOutPoints.rbegin();// from back to front, erase from vector(utxoCahce.coinlist.coins)
-        rit != vInOutPoints.rend(); rit++) {
-        const CellOutPoint& outpoint = *rit;
+    for (std::vector<CellOutPoint>::iterator it = vInOutPoints.begin();// from back to front, erase from vector(utxoCahce.coinlist.coins)
+        it != vInOutPoints.end(); it++) {
+        const CellOutPoint& outpoint = *it;
 
         //add to vin
         tx.vin.push_back(CellTxIn(outpoint, scriptSig, nSequence));
@@ -579,6 +588,7 @@ bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO
         scriptPubKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
 
         CellScript scriptSig = CellScript();
+        newTx.vin.clear();
         success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
