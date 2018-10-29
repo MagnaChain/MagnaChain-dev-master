@@ -3364,6 +3364,7 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
             return state.DoS(100, false, REJECT_INVALID, "bad-stock-trans", false, "block pubkey mismatch");
     }
 
+    std::set<uint256> setTxid;
     BranchCache tempcache;// use to duplicate check in one block
     // Check transactions
     for (const auto& tx : block.vtx) {
@@ -3372,6 +3373,15 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
                     strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
 
         tempcache.AddToCache(*tx);
+
+        if (tx->IsBranchChainTransStep2())// is any other need to check
+        {
+            uint256 txid = GetBranchTxHash(*tx);
+            if (setTxid.count(txid)){
+                return state.DoS(100, false, REJECT_INVALID, "Duplicate tx in block.");
+            }
+            setTxid.insert(txid);
+        }
     }
 
     unsigned int nSigOps = 0;
