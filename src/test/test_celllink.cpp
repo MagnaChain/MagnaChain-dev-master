@@ -152,7 +152,8 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<CellMutableTransactio
 	//CellWallet tempWallet;
 	//tempWallet.AddKey(coinbaseKey);
     //std::unique_ptr<CellBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
-	std::unique_ptr<CellBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey);
+    ContractContext contractContext;
+	std::unique_ptr<CellBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
     CellBlock& block = pblocktemplate->block;
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
@@ -166,7 +167,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<CellMutableTransactio
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
     std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(block);
-    ProcessNewBlock(chainparams, shared_pblock, true, nullptr);
+    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false);
 
     CellBlock result = block;
     return result;
