@@ -2784,6 +2784,7 @@ static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& t
         toTx.contractCode = fromWtx.contractCode;
         toTx.contractSender = fromWtx.contractSender;
         toTx.contractAddr = fromWtx.contractAddr;
+        toTx.contractOut = fromWtx.contractOut;
     }
     else if (fromWtx.transaction_version == CellTransaction::CALL_CONTRACT_VERSION)
     {
