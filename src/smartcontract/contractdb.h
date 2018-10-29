@@ -5,16 +5,7 @@
 #define CONTRACT_DB_H
 
 #include "transaction/txdb.h"
-
 #include <boost/threadpool.hpp>
-
-// 执行智能合约时的上下文数据
-struct ContractInfo
-{
-public:
-    std::string code;
-    std::string data;
-};
 
 // 智能合约的存盘数据
 class DBContractInfo
@@ -72,8 +63,9 @@ class ContractContext
 {
     friend class ContractDataDB;
 
-private:
-    std::map<CellContractID, ContractInfo> _data;
+public:
+    std::map<CellContractID, ContractInfo> cache;    // 数据缓存，用于回滚
+    std::map<CellContractID, ContractInfo> data;
 
 public:
     void SetCache(const CellContractID& contractId, ContractInfo& contractInfo);
@@ -88,10 +80,15 @@ public:
 class SmartLuaState;
 class CellLinkAddress;
 
-struct SmartContractValidationData
+struct SmartContractThreadData
 {
-    std::set<uint256> transactions;
-    std::set<CellContractID> contracts;
+    int offset;
+    uint16_t groupSize;
+    int blockHeight;
+    ContractContext contractContext;
+    CellBlockIndex* pPrevBlockIndex;
+    CoinAmountCache* pCoinAmountCache;
+    std::set<uint256> associationTransactions;
 };
 
 class ContractDataDB
@@ -103,10 +100,10 @@ private:
     mutable CellCriticalSection cs_cache;
 
     // 合约缓存，同时包含多个合约对应的多个块合约数据快照
-    DBContractMap _contractData;
+    DBContractMap contractData;
 
 public:
-    ContractContext _contractContext;
+    ContractContext contractContext;
 
 public:
     ContractDataDB() = delete;
@@ -115,13 +112,11 @@ public:
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     static void InitializeThread(ContractDataDB* contractDB);
 
-    bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
+    int GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
 
-    bool RunBlockContract(const std::shared_ptr<const CellBlock> pblock, ContractContext* contractContext, CoinAmountCache* pCoinAmountCache);
-    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock>& pblock,
-        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, SmartContractValidationData& validationData, CoinAmountCache* pCoinAmountCache);
-    void ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock>& pblock,
-        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, SmartContractValidationData& validationData, CoinAmountCache* pCoinAmountCache);
+    bool RunBlockContract(const std::shared_ptr<const CellBlock> pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
+    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock> pBlock, SmartContractThreadData* threadData);
+    void ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock> pBlock, SmartContractThreadData* threadData);
 
     void UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* contractContext);
     void Flush();

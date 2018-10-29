@@ -306,7 +306,10 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (tx.fromBranchId != CellBaseChainParams::MAIN) {
             //spv check
             uint256 frombranchid = uint256S(tx.fromBranchId);
-            if (!CheckSpvProof(frombranchid, state, *tx.pPMT, pFromTx->GetHash()))
+            if (!pBranchDb->HasBranchData(frombranchid))
+                return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
+            BranchData branchdata = pBranchDb->GetBranchData(frombranchid);
+            if (!CheckSpvProof(branchdata, state, *tx.pPMT, pFromTx->GetHash()))
                 return false;
 
             // best chain check

@@ -47,6 +47,7 @@ class CellValidationState;
 class SmartLuaState;
 struct ChainTxData;
 class BranchCache;
+class ContractContext;
 
 struct PrecomputedTransactionData;
 struct LockPoints;
@@ -246,7 +247,7 @@ bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey);
  * @param[out]  fNewBlock A boolean which is set to indicate if the block was first received via this call
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<const CellBlock> pblock, bool fForceProcessing, bool* fNewBlock);
+bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<const CellBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool executeContract);
 
 /**
  * Process incoming block headers.
@@ -476,6 +477,8 @@ extern CellBlockTreeDB* pblocktree;
 
 extern CoinListDB* pcoinListDb;
 
+extern CoinAmountDB* pCoinAmountDB;
+
 extern CoinAmountCache* pCoinAmountCache;
 
 /**
@@ -514,8 +517,7 @@ bool ReadTxDataByTxIndex(const uint256& hash, CellTransactionRef& txOut, uint256
 std::string GetBranchTxProof(const CellBlock& block,  const std::set<uint256>& setTxids);
 bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof);
 
-
-bool GetProveInfo(const CellBlock& block, const uint256& txHash, std::vector<ProveDataItem>& vectProveData);
+bool GetProveInfo(const CellBlock& block, int blockHeight, CellBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
 bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block);
 #endif // CELLLINK_VALIDATION_H
 

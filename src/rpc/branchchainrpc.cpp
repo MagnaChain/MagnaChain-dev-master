@@ -1488,7 +1488,7 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 
     const uint256 reportedBranchId = tx->pReportData->reportedBranchId;
     if (!pBranchDb->HasBranchData(reportedBranchId))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid reported branch id");
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Invalid reported branch id %s", reportedBranchId.ToString().c_str()));
     BranchData branchData = pBranchDb->GetBranchData(reportedBranchId);
     if (branchData.mapHeads.count(tx->pReportData->reportedBlockHash) == 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not found block data in mapHeads");
@@ -1644,12 +1644,15 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
+
+    int targetTxIndex = -1;
     CellTransactionRef pProveTx;
-    for (const CellTransactionRef& ptx : block.vtx)
+    for (int i = 0; i < block.vtx.size(); ++i)
     {
-        if (ptx->GetHash() == txHash)
+        if (block.vtx[i]->GetHash() == txHash)
         {
-            pProveTx = ptx;
+            targetTxIndex = i;
+            pProveTx = block.vtx[i];
             break;
         }
     }
@@ -1673,7 +1676,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         }
     }
     else{
-        if (!GetProveInfo(block, txHash, mtx.pProveData->vectProveData)){
+        if (!GetProveInfo(block, pblockindex->nHeight, pblockindex->pprev, targetTxIndex, mtx.pProveData)){
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
         }
     }

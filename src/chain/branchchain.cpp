@@ -121,7 +121,7 @@ static void http_error_cb(enum evhttp_request_error err, void *ctx)
 #endif
 
 UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params,
-	const std::string& rpcuser/*=""*/, const std::string& rpcpassword/*=""*/)
+	const std::string& rpcuser/*=""*/, const std::string& rpcpassword/*=""*/, const std::string& rpcwallet/*=""*/)
 {
 	// Obtain event base
 	raii_event_base base = obtain_event_base();
@@ -156,7 +156,7 @@ UniValue CallRPC(const std::string& host, const int port, const std::string& str
 
 	// check if we should use a special wallet endpoint
 	std::string endpoint = "/";
-	std::string walletName = gArgs.GetArg("-rpcwallet", "");
+    std::string walletName = rpcwallet;
 	if (!walletName.empty()) {
 		char *encodedURI = evhttp_uriencode(walletName.c_str(), walletName.size(), false);
 		if (encodedURI) {
@@ -245,6 +245,7 @@ void CellRPCConfig::Reset()
 	iPort = 0;
 	strUser.clear();
 	strPassword.clear();
+    strWallet.clear();
 }
 
 bool CellRPCConfig::IsValid()
@@ -318,6 +319,11 @@ bool CellBranchChainMan::ParseRpcConfig(const std::string& strCfg, CellRPCConfig
 	UniValue uvPassworld = find_value(uv, "password");
 	if (uvPassworld.isNull() == false)
 		rpccfg.strPassword = uvPassworld.get_str();
+
+    UniValue uvWallet = find_value(uv, "wallet");
+    if (uvWallet.isNull() == false)
+        rpccfg.strWallet = uvWallet.get_str();
+
 	return true;
 }
 
@@ -681,7 +687,7 @@ CellAmount GetBranchChainOut(const CellTransaction& tx)
 
 CellAmount GetContractAmountOut(const CellTransaction& tx)
 {
-    CellAmount amount(0);
+    CellAmount amount = 0;
     std::vector<unsigned char> vch;
     for (int i = 0; i < tx.vout.size(); ++i) {
         CellTxOut txout = tx.vout[i];
@@ -718,17 +724,14 @@ CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids
     return new CellSpvProof(vHashes, vMatch, block.GetHash());
 }
 
-bool CheckSpvProof(const uint256& frombranchid, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash)
+bool CheckSpvProof(BranchData& branchData, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash)
 {
-    if (!pBranchDb->HasBranchData(frombranchid))
-        return state.DoS(0, false, REJECT_INVALID, "Load branch data fail,spv-check-fail");
-    BranchData branchdata = pBranchDb->GetBranchData(frombranchid);
-    if (branchdata.mapHeads.count(spvProof.blockhash) == 0)
+    if (branchData.mapHeads.count(spvProof.blockhash) == 0)
         return state.DoS(0, false, REJECT_INVALID, "Can not found block data in mapHeads");
     std::vector<uint256> vMatch;
     std::vector<unsigned int> vIndex;
     CellSpvProof svpProof(spvProof);
-    if (svpProof.pmt.ExtractMatches(vMatch, vIndex) != branchdata.mapHeads[spvProof.blockhash].header.hashMerkleRoot) {
+    if (svpProof.pmt.ExtractMatches(vMatch, vIndex) != branchData.mapHeads[spvProof.blockhash].header.hashMerkleRoot) {
         return state.DoS(100, false, REJECT_INVALID, "transaction spv check fail!");
     }
     //s2 fromtx hash in vMatch
@@ -1227,16 +1230,17 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
     if (tx.IsReport())
     {
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
+        if (!pBranchDb->HasBranchData(reportedBranchId))
+            return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
+        BranchData branchdata = pBranchDb->GetBranchData(reportedBranchId);
+
         if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
         {
-            if (!CheckSpvProof(reportedBranchId, state, *tx.pPMT, tx.pReportData->reportedTxHash))
+            if (!CheckSpvProof(branchdata, state, *tx.pPMT, tx.pReportData->reportedTxHash))
                 return false;
         }
         else if (tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
         {
-            if (!pBranchDb->HasBranchData(reportedBranchId))
-                return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
-            BranchData branchdata = pBranchDb->GetBranchData(reportedBranchId);
             if (branchdata.mapHeads.count(tx.pReportData->reportedBlockHash) == 0)
                 return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx Can not found block data in mapHeads");
         }
@@ -1247,7 +1251,7 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
 }
 
 bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, CellValidationState& state, 
-    const std::vector<ProveDataItem>& vectProveData, BranchData& branchData, const uint256& branchId, CellAmount& fee, bool jumpFrist)
+    const std::vector<ProveDataItem>& vectProveData, BranchData& branchData, CellAmount& fee, bool jumpFrist)
 {
     if (pProveTx->IsCoinBase()) {
         return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx Prove tx can not a coinbase transaction");
@@ -1272,7 +1276,7 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
 
         const uint256& providetxid = pTx->GetHash();
         CellSpvProof svpProof(provDataItem.pCSP);
-        if (!CheckSpvProof(branchId, state, svpProof, providetxid)) {
+        if (!CheckSpvProof(branchData, state, svpProof, providetxid)) {
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
         }
         const CellOutPoint& outpoint = pProveTx->vin[i].prevout;
@@ -1347,17 +1351,17 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     }
 
     // spv check 
+    BranchData branchData = pBranchDb->GetBranchData(branchId);
     CellSpvProof svpProof(vectProveData[0].pCSP);
     const uint256& reporttxhash = pProveTx->GetHash();
-    if (!CheckSpvProof(branchId, state, svpProof, reporttxhash)) {
+    if (!CheckSpvProof(branchData, state, svpProof, reporttxhash)) {
         return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
     }
 
-    BranchData branchData = pBranchDb->GetBranchData(branchId);
     
     //check input/output/sign
     CellAmount fee;
-    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, branchId, fee, true)){
+    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, fee, true)){
         return false;
     }
 
@@ -1417,7 +1421,7 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
         const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vecBlockTxProve[i - 2];
 
         CellAmount fee;
-        if (!CheckTransactionProveWithProveData(toProveTx, state, vectProveData, branchData, branchId, fee, false)) {
+        if (!CheckTransactionProveWithProveData(toProveTx, state, vectProveData, branchData, fee, false)) {
             return false;
         }
         totalFee += fee;

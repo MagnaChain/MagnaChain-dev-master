@@ -238,9 +238,10 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
 			outpoint.hash = out.tx->tx->GetHash();
 			outpoint.n = out.i;
 		}
+        ContractContext contractContext;
 		BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params() );
 		options.outpoint = outpoint;
-        std::unique_ptr<CellBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock( scriptPubKey, true, keystoreIn, pcoinsCache ));
+        std::unique_ptr<CellBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache));
 		if (!pblocktemplate.get()){
             // out of memory or MakeStokeTransaction fail
 			//throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
@@ -252,7 +253,7 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
         //    LOCK(cs_main);
         //    IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
         //}
-		pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值 
+		pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
 		// 如果有修改头部的值，需要重新签名 
 		if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
 		{
@@ -273,7 +274,7 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
             std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
-            if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
+            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr, false))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
             ++nHeight;
             blockHashes.push_back(pblock->GetHash().GetHex());
@@ -313,12 +314,11 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
         blockHashes.push_back(pblock->GetHash().GetHex());
-		*/
-        //mark script as important because it was used at least for one coinbase output if the script came from the wallet
-   //     if (keepScript)
-   //     {
-			//vecScript[nMaxTries%vecScript.size()].KeepScript();
-   //     }
+
+        mark script as important because it was used at least for one coinbase output if the script came from the wallet
+        if (keepScript) {
+			vecScript[nMaxTries%vecScript.size()].KeepScript();
+        }*/
     }
     return blockHashes;
 }
@@ -941,7 +941,8 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         // Create new block
         CellScript scriptDummy = CellScript() << OP_TRUE;
 
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock( scriptDummy, fSupportsSegwit);
+        ContractContext contractContext;
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptDummy, &contractContext, fSupportsSegwit);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
@@ -1174,7 +1175,8 @@ UniValue submitblock(const JSONRPCRequest& request)
 
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(Params(), blockptr, true, nullptr);
+    ContractContext contractContext;
+    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr, true);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found) {
