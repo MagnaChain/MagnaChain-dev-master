@@ -2130,7 +2130,6 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
         return;
 
     // 检查ptxReport是否满足高度 REPORT_OUTOF_HEIGHT
-    // TODO: 检查ptxReport有没有被证明
 
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
@@ -2139,7 +2138,7 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
         return;
 
     BranchData branchdata = pBranchDb->GetBranchData(reportbranchid);
-    if (!branchdata.mapHeads.count(reportblockhash))// TODO: best chain check!
+    if (!branchdata.mapHeads.count(reportblockhash))// best chain check?
         return;
     
     // 从stake交易取出prevout(抵押币)
@@ -2148,13 +2147,19 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
     if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
         return;
 
+    // 检查ptxReport有没有被证明
+    uint256 reportFlagHash = GetReportTxHashKey(*ptxReport);
+    if (blockdata.mapReportStatus.count(reportFlagHash) == 0 || blockdata.mapReportStatus[reportFlagHash] == RP_FLAG_PROVED){
+        return;
+    }
+
     CellOutPoint prevout(coinfromtxid, 0);// 抵押币放在vout[0]位
     const Coin& coin = pCoinsCache->AccessCoin(prevout);
     if (coin.IsSpent())
         return;
     
-    CellAmount nValueIn = coin.out.nValue;   
-    const CellScript reporterAddress = ptxReport->vout[0].scriptPubKey;
+    const CellAmount& nValueIn = coin.out.nValue;   
+    const CellScript& reporterAddress = ptxReport->vout[0].scriptPubKey;
 
     // 不用留手续费, 因为这个是矿工自己创建的交易
     CellMutableTransaction mtx;
