@@ -155,7 +155,7 @@ void TestPackageSelection(const CellChainParams& chainparams, CellScript scriptP
     mempool.removeRecursive(tx);
     tx.vout[0].nValue -= 2; // Now we should be just over the min relay fee
     hashLowFeeTx = tx.GetHash();
-    mempool.addUnchecked(hashLowFeeTx, entry.Fee(feeToUse + 2).FromTx(tx));
+    mempool.addUnchecked(hashLowFeeTx, entry.Fee(feeToUse+2).FromTx(tx));
     contractContext.ClearAll();
     pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
     BOOST_CHECK(pblocktemplate->block.vtx[4]->GetHash() == hashFreeTx);
@@ -215,8 +215,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     LOCK(cs_main);
     fCheckpointsEnabled = false;
 
-    // Simple block creation, nothing special yet:
     ContractContext contractContext;
+    // Simple block creation, nothing special yet:
     BOOST_CHECK(pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext));
 
     // We can't make transactions until we have inputs
@@ -243,13 +243,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
         pblock->nNonce = blockinfo[i].nonce;
         std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
-        contractContext.ClearAll();
-        BOOST_CHECK(ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, true));
+        BOOST_CHECK(ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false));
         pblock->hashPrevBlock = pblock->GetHash();
     }
 
-    // Just to make sure we can still make simple blocks
     contractContext.ClearAll();
+    // Just to make sure we can still make simple blocks
     BOOST_CHECK(pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext));
 
     const CellAmount BLOCKSUBSIDY = 50*COIN;

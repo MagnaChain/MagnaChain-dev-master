@@ -1497,9 +1497,7 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     if (!chainActive.Contains(rpBlockIndex))// report tx not in active chain
         return false;
     if (rpBlockIndex->nHeight - pindex->nHeight < REPORT_OUTOF_HEIGHT)
-        return state.DoS(100, false, REJECT_INVALID, "");
-
-    //TODO: 检查举报有没有被证明
+        return state.DoS(100, false, REJECT_INVALID, "Still in prove stage.");
 
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
@@ -1508,11 +1506,17 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
         return false;
 
     BranchData branchdata = pBranchDb->GetBranchData(reportbranchid);
-    if (!branchdata.mapHeads.count(reportblockhash))// TODO: best chain check!
+    if (!branchdata.mapHeads.count(reportblockhash))// best chain check? 1. no, 作弊过，但是数据在分叉上，也可以举报。带来麻烦是，矿工需要监控自己挖出来的分叉有没有监控。  
         return false;
 
     // 从stake交易取出prevout(抵押币)
     BranchBlockData blockdata = branchdata.mapHeads[reportblockhash];
+    //检查举报有没有被证明
+    uint256 reportFlagHash = GetReportTxHashKey(*ptxReport);
+    if (blockdata.mapReportStatus.count(reportFlagHash) == 0 || blockdata.mapReportStatus[reportFlagHash] == RP_FLAG_PROVED) {
+        return false;
+    }
+    
     uint256 coinfromtxid;
     if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
         return state.DoS(100, false, REJECT_INVALID, "invalid-stake-pubkey");
