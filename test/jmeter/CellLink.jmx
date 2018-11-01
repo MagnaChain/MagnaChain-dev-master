@@ -1286,7 +1286,8 @@ fos.close();</stringProp>
         </HTTPSamplerProxy>
         <hashTree/>
         <BeanShellSampler guiclass="BeanShellSamplerGui" testclass="BeanShellSampler" testname="BeanShell Sampler" enabled="true">
-          <stringProp name="BeanShellSampler.query">String cmd = &quot;cmd /c start &quot; + props.get(&quot;exepath&quot;) + &quot;/magnachaind -printtoconsole -datadir=&quot; + props.get(&quot;branchchainconfpath&quot;);
+          <stringProp name="BeanShellSampler.query">String cmd = props.get(&quot;cmd&quot;) + &quot;magnachaind -printtoconsole -datadir=&quot; + props.get(&quot;branchchainconfpath&quot;);
+print(cmd);
 Runtime.getRuntime().exec(cmd);</stringProp>
           <stringProp name="BeanShellSampler.filename"></stringProp>
           <stringProp name="BeanShellSampler.parameters"></stringProp>
