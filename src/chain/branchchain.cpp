@@ -200,7 +200,7 @@ UniValue CallRPC(const CellRPCConfig& rpccfg, const std::string& strMethod, cons
 	if (true)
 	{
 		try {
-			UniValue ret = CallRPC(rpccfg.strIp, rpccfg.iPort, strMethod, params, rpccfg.strUser, rpccfg.strPassword);
+			UniValue ret = CallRPC(rpccfg.strIp, rpccfg.iPort, strMethod, params, rpccfg.strUser, rpccfg.strPassword, rpccfg.strWallet);
 			return ret;
 		}
 		catch (const CellConnectionFailed& e)
