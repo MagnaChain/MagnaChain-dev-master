@@ -22,5 +22,6 @@ extern const CellAmount MIN_MINE_BRANCH_MORTGAGE;
 extern const uint32_t REDEEM_SAFE_HEIGHT;
 extern const uint32_t REPORT_OUTOF_HEIGHT;
 extern const uint32_t REPORT_LOCK_COIN_HEIGHT;
+extern const uint32_t CUSHION_HEIGHT;
 
 #endif //  BRANCHCHAIN_PRC_H

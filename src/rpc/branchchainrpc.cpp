@@ -50,6 +50,8 @@ const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain b
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
 const uint32_t REPORT_LOCK_COIN_HEIGHT = 30; // 30 * 30s = 15 mins
 
+const uint32_t CUSHION_HEIGHT = 6;
+
 //创建侧链抵押金计算
 CellAmount GetCreateBranchMortgage(const CellBlock* pBlock, const CellBlockIndex* pBlockIndex)
 {
