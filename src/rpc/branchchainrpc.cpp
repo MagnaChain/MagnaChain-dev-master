@@ -134,7 +134,7 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     //    branchTx.fromTx = ;//this value set later.
     branchTx.pPMT.reset(new CellSpvProof()); //will reset later, 这里防止序列化时报错
 
-    branchTx.vin.resize(1);// (CellTransaction::IsCoinBase function is amazing)
+    branchTx.vin.resize(1);// (set v[0] diff from CellTransaction::IsCoinBase)
     branchTx.vin[0].prevout.hash.SetNull();
     branchTx.vin[0].prevout.n = 0;// make prevout is not Null any more
     branchTx.vin[0].scriptSig.clear();

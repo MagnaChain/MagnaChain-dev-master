@@ -3834,7 +3834,11 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
     mpContractDb->Flush();
 
     // check and remove invalid contract transaction
-    SendBranchBlockHeader(pblock);
+    std::string strErr;
+    SendBranchBlockHeader(pblock, &strErr);
+    if (!strErr.empty()){
+        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock");
+    }
     // check and remove invalid contract transaction 
     UpdateContractTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
