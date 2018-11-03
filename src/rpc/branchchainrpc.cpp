@@ -416,7 +416,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
 
     //test connect
     UniValue params(UniValue::VARR);
-    UniValue reply = CallRPC(rpcconfig, "", params);
+    UniValue reply = CallRPC(rpcconfig, "getbalance", params);
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()){
