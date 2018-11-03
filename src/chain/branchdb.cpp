@@ -44,6 +44,7 @@ void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
     blockdata.nHeight = 0;
     blockdata.pStakeTx = MakeTransactionRef();
     blockdata.nChainWork = GetBlockProof(genesisblock.nBits);
+    blockdata.deadstatus = BranchBlockData::eLive;
 
     vecChainActive.push_back(blockdata.header.GetHash());
 }
@@ -431,16 +432,15 @@ bool BranchBlockData::IsDead()
 
 void BranchBlockData::InitDataFromTx(const CellTransaction& tx)
 {
-    BranchBlockData& bBlockData = *this;
     //set block header
-    tx.pBranchBlockData->GetBlockHeader(bBlockData.header);
+    tx.pBranchBlockData->GetBlockHeader(this->header);
 
-    bBlockData.nHeight = tx.pBranchBlockData->blockHeight;
+    this->nHeight = tx.pBranchBlockData->blockHeight;
 
     CellDataStream cds(tx.pBranchBlockData->vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
-    cds >> (bBlockData.pStakeTx);
+    cds >> (this->pStakeTx);
 
-    bBlockData.txHash = tx.GetHash();
+    this->txHash = tx.GetHash();
 }
 
 void BranchDb::Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect)
@@ -637,6 +637,7 @@ void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256
 {
     BranchBlockData bBlockData;
     bBlockData.InitDataFromTx(*transaction);
+    bBlockData.deadstatus = BranchBlockData::eLive;
 
     uint256 branchHash = transaction->pBranchBlockData->branchID;
     BranchData& bData = mapBranchsData[branchHash];
