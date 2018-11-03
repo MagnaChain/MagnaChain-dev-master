@@ -5180,7 +5180,7 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
         // No transactions are allowed below minRelayTxFee except from disconnected blocks
         CellAmount needFee = ::minRelayTxFee.GetFee(nSize);
         if (fLimitFree && nModifiedFees < needFee) {
-            return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
+            return state.DoS(0, false, REJECT_INSUFFICIENTFEE, strprintf("min relay fee not met. needFee %lld, nModifiedFees %lld", needFee, nModifiedFees));
         }
 
         if (nAbsurdFee && nFees > nAbsurdFee)
