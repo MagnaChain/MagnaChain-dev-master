@@ -27,6 +27,11 @@ BranchDb* pBranchDb = nullptr;
 
 BranchCache branchDataMemCache;
 
+BranchBlockData::BranchBlockData():nHeight(0), txIndex(0), deadstatus(eLive)
+{
+
+}
+
 void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
 {
     const CellChainParams& bparams = BranchParams(branchid);

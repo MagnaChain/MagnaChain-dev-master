@@ -20,6 +20,8 @@ const uint16_t RP_FLAG_PROVED = 2;//已证明
 class BranchBlockData
 {
 public:
+    BranchBlockData();
+
     typedef std::vector<uint256> VEC_HASH;
     typedef std::map<uint256, uint16_t> MAP_REPORT_PROVE;
     enum {//dead status
