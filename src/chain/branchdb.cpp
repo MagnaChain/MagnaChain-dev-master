@@ -44,6 +44,7 @@ void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
     blockdata.nHeight = 0;
     blockdata.pStakeTx = MakeTransactionRef();
     blockdata.nChainWork = GetBlockProof(genesisblock.nBits);
+    LogPrintf("bBlockData.deadstatus = %d InitBranchGenesisBlockData\n", blockdata.deadstatus);
     blockdata.deadstatus = BranchBlockData::eLive;
 
     vecChainActive.push_back(blockdata.header.GetHash());
@@ -636,10 +637,10 @@ void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     BranchBlockData bBlockData;
-    LogPrintf("bBlockData.deadstatus = %d 111", bBlockData.deadstatus);
+    //LogPrintf("bBlockData.deadstatus = %d 111", bBlockData.deadstatus);
     bBlockData.InitDataFromTx(*transaction);
-    LogPrintf("bBlockData.deadstatus = %d 222", bBlockData.deadstatus);
-    bBlockData.deadstatus = BranchBlockData::eLive;
+    //LogPrintf("bBlockData.deadstatus = %d 222", bBlockData.deadstatus);
+    //bBlockData.deadstatus = BranchBlockData::eLive;
 
     uint256 branchHash = transaction->pBranchBlockData->branchID;
     BranchData& bData = mapBranchsData[branchHash];
