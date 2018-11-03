@@ -636,7 +636,9 @@ void BranchDb::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
 void BranchDb::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     BranchBlockData bBlockData;
+    LogPrintf("bBlockData.deadstatus = %d 111", bBlockData.deadstatus);
     bBlockData.InitDataFromTx(*transaction);
+    LogPrintf("bBlockData.deadstatus = %d 222", bBlockData.deadstatus);
     bBlockData.deadstatus = BranchBlockData::eLive;
 
     uint256 branchHash = transaction->pBranchBlockData->branchID;
