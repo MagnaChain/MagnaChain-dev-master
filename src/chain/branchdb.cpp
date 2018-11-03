@@ -44,7 +44,7 @@ void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
     blockdata.nHeight = 0;
     blockdata.pStakeTx = MakeTransactionRef();
     blockdata.nChainWork = GetBlockProof(genesisblock.nBits);
-    LogPrintf("bBlockData.deadstatus = %d InitBranchGenesisBlockData\n", blockdata.deadstatus);
+    //LogPrintf("bBlockData.deadstatus = %d InitBranchGenesisBlockData\n", blockdata.deadstatus);
     blockdata.deadstatus = BranchBlockData::eLive;
 
     vecChainActive.push_back(blockdata.header.GetHash());
