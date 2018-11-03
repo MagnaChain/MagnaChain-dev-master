@@ -50,6 +50,8 @@ const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain b
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
 const uint32_t REPORT_LOCK_COIN_HEIGHT = 30; // 30 * 30s = 15 mins
 
+const uint32_t CUSHION_HEIGHT = 6;
+
 //创建侧链抵押金计算
 CellAmount GetCreateBranchMortgage(const CellBlock* pBlock, const CellBlockIndex* pBlockIndex)
 {
@@ -132,7 +134,7 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
     //    branchTx.fromTx = ;//this value set later.
     branchTx.pPMT.reset(new CellSpvProof()); //will reset later, 这里防止序列化时报错
 
-    branchTx.vin.resize(1);// (CellTransaction::IsCoinBase function is amazing)
+    branchTx.vin.resize(1);// (set v[0] diff from CellTransaction::IsCoinBase)
     branchTx.vin[0].prevout.hash.SetNull();
     branchTx.vin[0].prevout.n = 0;// make prevout is not Null any more
     branchTx.vin[0].scriptSig.clear();
@@ -353,7 +355,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
 //添加分支节点
 UniValue addbranchnode(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 5 || request.params.size() > 5)
+    if (request.fHelp || request.params.size() < 5 || request.params.size() > 6)
         throw std::runtime_error(
                 "addbranchnode branchid ip port username password\n"
                 "\n get a created branch chain info.\n"
@@ -363,6 +365,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
                 "3. \"port\"                (string, required) Branch node rpc port.\n"
                 "4. \"usrname\"             (string, required) Branch node rpc username.\n"
                 "5. \"password\"            (string, required) Branch node rpc password.\n"
+                "6. \"wallet\"              (string, optional) Rpc wallet\n"
                 "\nReturns the hash of the created branch chain.\n"
                 "\nResult:\n"
                 "    Ok or fail\n"
@@ -376,17 +379,17 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     std::string port = request.params[2].get_str();
     std::string username = request.params[3].get_str();
     std::string password = request.params[4].get_str();
+    std::string strWallet;
+    if (request.params.size() > 5){
+        strWallet = request.params[5].get_str();
+    }
 
     CellRPCConfig rpcconfig;
     rpcconfig.strIp = ip;
     rpcconfig.iPort = atoi(port);
     rpcconfig.strUser = username;
     rpcconfig.strPassword = password;
-
-    if (branchid != CellBaseChainParams::MAIN && (branchid.length() != 64 || !IsHex(branchid)))
-    {
-        throw JSONRPCError(RPC_TYPE_ERROR, std::string("Invalid branchid"));
-    }
+    rpcconfig.strWallet = strWallet;
 
     if (branchid != CellBaseChainParams::MAIN && (branchid.length() != 64 || !IsHex(branchid)))
     {
@@ -410,6 +413,16 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     }
 
     g_branchChainMan->ReplaceRpcConfig(branchid, rpcconfig);
+
+    //test connect
+    UniValue params(UniValue::VARR);
+    UniValue reply = CallRPC(rpcconfig, "", params);
+    const UniValue& result = find_value(reply, "result");
+    const UniValue& errorVal = find_value(reply, "error");
+    if (!errorVal.isNull()){
+        return errorVal.write();
+    }
+
     return "ok";
 }
 

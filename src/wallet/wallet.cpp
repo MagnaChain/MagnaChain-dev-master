@@ -2244,7 +2244,7 @@ void CellWallet::AvailableCoins(std::vector<CellOutput> &vCoins, const CellTxDes
                 if (dest != nullptr) {
                     CellTxDestination dest_test;
                     ExtractDestination(pcoin->tx->vout[i].scriptPubKey, dest_test);
-                    if (dest_test != *dest)
+                    if (!(dest_test == *dest))
                         continue;
                 }
 

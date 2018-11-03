@@ -196,18 +196,12 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
 		if (out.tx == nullptr) {
             pReserveKey = std::make_shared<CellReserveKey>(keystoreIn);
 
-			/*CellPubKey newKey;
-			if (!keystoreIn->GetKeyFromPool(newKey)) {
-				throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-			}
-			CellKeyID keyID = newKey.GetID();
-
-			keystoreIn->SetAddressBook(keyID, "", "receive");*/
             CellPubKey vchPubKey;
             if (!pReserveKey->GetReservedKey(vchPubKey)){
                 throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
             }
 			
+            keystoreIn->SetAddressBook(vchPubKey.GetID(), "generateforbigboom", "receive");
 			scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
 		}
 		else {

@@ -307,7 +307,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
             //spv check
             uint256 frombranchid = uint256S(tx.fromBranchId);
             if (!pBranchDb->HasBranchData(frombranchid))
-                return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
+                return state.DoS(0, false, REJECT_INVALID, strprintf("CheckTransaction branchid error. %s", tx.fromBranchId));
             BranchData branchdata = pBranchDb->GetBranchData(frombranchid);
             if (!CheckSpvProof(branchdata, state, *tx.pPMT, pFromTx->GetHash()))
                 return false;
