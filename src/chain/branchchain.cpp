@@ -1032,11 +1032,11 @@ bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::s
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()){
-        SetStrErr(errorVal.get_str());
+        SetStrErr(errorVal.write());
         return false;
     }
     if (result.isNull()) {
-        SetStrErr(result.get_str());
+        SetStrErr("SendBranchBlockHeader rpc result is null.");
         return false;
     }
     
@@ -1130,11 +1130,11 @@ bool ReqMainChainRedeemMortgage(const CellTransactionRef& tx, const CellBlock& b
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()) {
-        SetStrErr(errorVal.get_str());
+        SetStrErr(errorVal.write());
         return false;
     }
     if (result.isNull()) {
-        SetStrErr(result.get_str());
+        SetStrErr("ReqMainChainRedeemMortgage rpc result is NULL");
         return false;
     }
 
