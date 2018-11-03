@@ -316,19 +316,16 @@ fos.close();</stringProp>
             <stringProp name="HTTPSampler.response_timeout"></stringProp>
           </HTTPSamplerProxy>
           <hashTree/>
-          <BeanShellSampler guiclass="BeanShellSamplerGui" testclass="BeanShellSampler" testname="BeanShell Sampler" enabled="false">
+          <BeanShellSampler guiclass="BeanShellSamplerGui" testclass="BeanShellSampler" testname="BeanShell Sampler" enabled="true">
             <stringProp name="BeanShellSampler.query">String cmd = props.get(&quot;cmd&quot;) + &quot;magnachaind -printtoconsole -datadir=&quot; + props.get(&quot;branchchainconfpath&quot;);
-Runtime.getRuntime().exec(cmd);</stringProp>
+Runtime.getRuntime().exec(cmd);
+Thread.sleep(12000);</stringProp>
             <stringProp name="BeanShellSampler.filename"></stringProp>
             <stringProp name="BeanShellSampler.parameters"></stringProp>
             <boolProp name="BeanShellSampler.resetInterpreter">false</boolProp>
           </BeanShellSampler>
           <hashTree/>
-          <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Constant Timer" enabled="false">
-            <stringProp name="ConstantTimer.delay">8000</stringProp>
-          </ConstantTimer>
-          <hashTree/>
-          <ModuleController guiclass="ModuleControllerGui" testclass="ModuleController" testname="Module Controller" enabled="false">
+          <ModuleController guiclass="ModuleControllerGui" testclass="ModuleController" testname="Module Controller" enabled="true">
             <collectionProp name="ModuleController.node_path">
               <stringProp name="764597751">Test Plan</stringProp>
               <stringProp name="764597751">Test Plan</stringProp>
