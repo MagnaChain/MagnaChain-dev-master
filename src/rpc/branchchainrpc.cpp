@@ -144,7 +144,7 @@ bool MakeBranchTransStep2Tx(CellMutableTransaction& branchTx, const CellScript& 
 
     unsigned int nBytes = GetVirtualTransactionSize(branchTx);
     FeeCalculation feeCalc;
-    fee = CellWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc);
+    fee = CellWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc) * 100;// step 2 will include step 1.
 
     branchTx.inAmount = nAmount + fee;
     return true;
