@@ -128,8 +128,7 @@ void BranchData::AddNewBlockData(BranchBlockData& blockdata)
 {
     const uint256 newTipHash = blockdata.header.GetHash();
     const uint256& hashPrevBlock = blockdata.header.hashPrevBlock;
-    //add new block head data
-    mapHeads[newTipHash] = blockdata;
+
     //update parent's son hashs
     if (mapHeads.count(hashPrevBlock)) {
         mapHeads[hashPrevBlock].vecSonHashs.push_back(newTipHash);
@@ -156,6 +155,8 @@ void BranchData::AddNewBlockData(BranchBlockData& blockdata)
             //else
         }
     }
+    //add new block head data
+    mapHeads[newTipHash] = blockdata;
 }
 
 void BranchData::ActivateBestChain(const uint256 &bestTipHash)
