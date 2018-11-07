@@ -1225,6 +1225,16 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
     return true;
 }
 
+bool CheckReportTxCommonly(const CellTransaction& tx, CellValidationState& state, BranchData& branchdata)
+{
+    if (branchdata.mapHeads.count(tx.pReportData->reportedBlockHash) == 0)
+        return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx Can not found block data in mapHeads");
+    if (branchdata.Height() - branchdata.mapHeads[tx.pReportData->reportedBlockHash].nHeight > REDEEM_SAFE_HEIGHT) {
+        return state.DoS(0, false, REJECT_INVALID, "Report block too old");
+    }
+    return true;
+}
+
 bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
 {
     if (tx.IsReport())
@@ -1238,11 +1248,13 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
         {
             if (!CheckSpvProof(branchdata, state, *tx.pPMT, tx.pReportData->reportedTxHash))
                 return false;
+            if (!CheckReportTxCommonly(tx, state, branchdata))
+                return false;
         }
         else if (tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
         {
-            if (branchdata.mapHeads.count(tx.pReportData->reportedBlockHash) == 0)
-                return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx Can not found block data in mapHeads");
+            if (!CheckReportTxCommonly(tx, state, branchdata))
+                return false;
         }
         else
             return state.DoS(100, false, REJECT_INVALID, "Invalid report type!");

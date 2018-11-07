@@ -2912,14 +2912,22 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
     assert(txNew.nLockTime <= (unsigned int)chainActive.Height());
     assert(txNew.nLockTime < LOCKTIME_THRESHOLD);
     FeeCalculation feeCalc;
-    CellAmount nFeeNeeded;
+    CellAmount nFeeNeeded = 0;
     unsigned int nBytes;
     {
         std::set<CellInputCoin> setCoins;
         LOCK2(cs_main, cs_wallet);
         {
             std::vector<CellOutput> vAvailableCoins;
-            AvailableCoins(vAvailableCoins, nullptr, true, &coin_control);
+            if (!gArgs.GetBoolArg("-quickmode", false)){
+                AvailableCoins(vAvailableCoins, nullptr, true, &coin_control);
+            }
+            else {//找到足够的币提前退出
+                CellAmount nMinimumAmount = 1;
+                CellAmount nMaximumAmount = MAX_MONEY;
+                CellAmount nMinimumSumAmount = nValue * 2 + (nFeeNeeded ? nFeeNeeded : COIN);
+                AvailableCoins(vAvailableCoins, nullptr, true, &coin_control, nMinimumAmount, nMaximumAmount, nMinimumSumAmount);
+            }
 
             // Create change script that will be used if we need change
             // TODO: pass in scriptChange instead of reservekey so

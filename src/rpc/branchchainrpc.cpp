@@ -46,11 +46,11 @@ const uint32_t MaxPowForCreateChainMortgage = 16; // (2^16) * CreateBranchChainM
 const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
 const uint32_t BRANCH_CHAIN_MATURITY = 2000;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
 const CellAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // 抵押挖矿最小值
-const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time)
+const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time) 挖矿币安全高度（继续挖矿和赎回需要满足的高度）、举报高度
 const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
 const uint32_t REPORT_LOCK_COIN_HEIGHT = 30; // 30 * 30s = 15 mins
 
-const uint32_t CUSHION_HEIGHT = 6;
+const uint32_t CUSHION_HEIGHT = 6;// 跨连交易需要在 （BRANCH_CHAIN_MATURITY + 这个缓冲值）成熟度后才把step2的交易发送给目标链，加这个缓冲高度是因为网络节点上链的同步需要时间。
 
 //创建侧链抵押金计算
 CellAmount GetCreateBranchMortgage(const CellBlock* pBlock, const CellBlockIndex* pBlockIndex)
@@ -1405,6 +1405,10 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
     CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
 
+    if (chainActive.Height() - pblockindex->nHeight > REDEEM_SAFE_HEIGHT){
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Report block is too old.");
+    }
+
     CellBlock block;
     if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))   
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
@@ -1423,9 +1427,6 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     if (pReportTx == nullptr){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "block did not contain the reported transaction");
     }
-    //if (pProveTx->IsCoinBase()){
-    //    throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not report a coinbase transaction in this RPC");
-    //}
 
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
