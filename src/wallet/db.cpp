@@ -359,15 +359,15 @@ bool CellDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vecto
 
     std::string strLine;
     while (!strDump.eof() && strLine != HEADER_END)
-        getline(strDump, strLine); // Skip past header
+        std::getline(strDump, strLine); // Skip past header
 
     std::string keyHex, valueHex;
     while (!strDump.eof() && keyHex != DATA_END) {
-        getline(strDump, keyHex);
+        std::getline(strDump, keyHex);
         if (keyHex != DATA_END) {
             if (strDump.eof())
                 break;
-            getline(strDump, valueHex);
+            std::getline(strDump, valueHex);
             if (valueHex == DATA_END) {
                 LogPrintf("CellDBEnv::Salvage: WARNING: Number of keys in data does not match number of values.\n");
                 break;
