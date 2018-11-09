@@ -686,6 +686,8 @@ public:
 	bool GetContractAddr(CellContractID& contractId) const;
 };
 
+int64_t GetScriptInt64(opcodetype opcode, const std::vector<unsigned char>& vch);
+
 struct CScriptWitness
 {
     // Note that this encodes the data elements being pushed, rather than

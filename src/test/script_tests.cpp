@@ -1452,4 +1452,34 @@ BOOST_AUTO_TEST_CASE(script_HasValidOps)
     BOOST_CHECK(!script.HasValidOps());
 }
 
+void testscriptint64(int64_t ni)
+{
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    CellScript s = CellScript() << ni;
+    CellScript::const_iterator pc = s.begin();
+    s.GetOp(pc, opcode, vch);
+    int64_t n = GetScriptInt64(opcode, vch);
+    BOOST_CHECK(ni == n);
+}
+
+BOOST_AUTO_TEST_CASE(script_testgetint64)
+{
+    for (int i = 0; i < 1000; i++)
+    {
+        testscriptint64(i);
+        testscriptint64(-i);
+    }
+    for (int64_t i = 1000; ;)
+    {
+        testscriptint64(i);
+        testscriptint64(-i);
+        int64_t oi = i;
+        i = i<<1;
+        if (i <= oi || i >= 1073741824000){
+            break;
+        }
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()

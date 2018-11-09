@@ -773,9 +773,10 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("can not broadcast because no enough confirmations"));
     }
 
-    if (BranchChainTransStep2(tx, block) == false)
+    std::string strError;
+    if (BranchChainTransStep2(tx, block, &strError) == false)
     {
-        throw JSONRPCError(RPC_VERIFY_ERROR, std::string("send to target chain return fail."));
+        throw JSONRPCError(RPC_VERIFY_ERROR, strprintf("send to target chain return fail: %s", strError));
     }
 
     return "ok";

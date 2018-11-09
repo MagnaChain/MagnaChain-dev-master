@@ -477,50 +477,6 @@ branch_script_type QuickGetBranchScriptType(const CellScript& scriptPubKey)
     return BST_INVALID;
 }
 
-int64_t GetScriptInt64(opcodetype opcode, const std::vector<unsigned char>& vch)
-{
-    if (opcode == OP_0)
-    {
-        return 0;
-    }
-    if (opcode == OP_1NEGATE || (opcode >= OP_1 && opcode <= OP_16))
-    {
-        CScriptNum temp((int)opcode - (int)(OP_1 - 1));
-        return temp.getint64();
-    }
-    CScriptNum temp(vch, false,5);
-    return temp.getint64();
-    //throw scriptnum_error("script number error");
-}
-
-
-void testscriptint64(int64_t ni)
-{
-    opcodetype opcode;
-    std::vector<unsigned char> vch;
-    CellScript s = CellScript() << ni;
-    CellScript::const_iterator pc = s.begin();
-    s.GetOp(pc, opcode, vch);
-    int64_t n = GetScriptInt64(opcode, vch);
-    assert(ni == n);
-}
-
-void testgetint64()
-{
-    testscriptint64(-1);
-    for (int i=0;i <1000; i++)
-    {
-        testscriptint64(i);
-        testscriptint64(-i);
-    }
-    for (int64_t i=1000; i < uint64_t(-1);)
-    {
-        testscriptint64(i);
-        testscriptint64(-i);
-        i = i + 10000;
-    }
-}
-
 CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx, bool fDeepRevert)
 {
     CellMutableTransaction mtx(tx);
@@ -742,22 +698,22 @@ bool CheckSpvProof(BranchData& branchData, CellValidationState &state, const Cel
 }
 
 // 跨链交易从发起链广播到目标链 
-bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
+bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block, std::string* pStrErrorMsg)
 {
 	if (!tx->IsPregnantTx())
 	{
-		return error("%s: tx no a branch chain transaction", __func__);
+		return error_ex1(pStrErrorMsg, "%s: tx no a branch chain transaction", __func__);
 	}
 
 	//broadcast to target chain.
 	const std::string strToChainId = tx->sendToBranchid;
 	if (strToChainId == Params().GetBranchId())
-		return error("%s: can not to this chain!", __func__);
+		return error_ex1(pStrErrorMsg, "%s: can not to this chain!", __func__);
 
 	CellRPCConfig chainrpccfg;
 	if (g_branchChainMan->GetRpcConfig(strToChainId, chainrpccfg) == false || chainrpccfg.IsValid() == false)
 	{
-		return error("%s: can not found branch rpc config for %s\n", __func__, strToChainId);
+		return error_ex1(pStrErrorMsg, "%s: can not found branch rpc config for %s\n", __func__, strToChainId);
 	}
 
     std::string strTxHexData;
@@ -788,12 +744,12 @@ bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block)
 	if (!errorVal.isNull())
 	{
 		//throw JSONRPCError(RPC_WALLET_ERROR, strError);
-		return error("%s: RPC call makebranchtransaction fail: %s, txid %s\n", __func__, errorVal.write(), tx->GetHash().GetHex());
+		return error_ex1(pStrErrorMsg, "%s: RPC call makebranchtransaction fail: %s, txid %s\n", __func__, errorVal.write(), tx->GetHash().GetHex());
 	}
 
 	if (result.isNull() || result.get_str() != "ok")
 	{
-		error("%s RPC call not return ok", __func__);
+		return error_ex1(pStrErrorMsg, "%s RPC call not return ok", __func__);
 	}
 	return true;
 }
@@ -815,7 +771,7 @@ void ProcessBlockBranchChain()
 					const CellTransactionRef& tx = block.vtx[i];
 					if (tx->IsBranchChainTransStep1() || tx->IsMortgage())
 					{
-						BranchChainTransStep2(tx, block);
+						BranchChainTransStep2(tx, block, nullptr);
 					}
                     if (tx->IsRedeemMortgageStatement())
                     {
@@ -983,9 +939,9 @@ bool CheckBranchTransaction(const CellTransaction& txBranchChainStep2, CellValid
 //call in branch chain
 bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::string *pStrErr)
 {
-    SetStrErr("Unknow error");
+    SetStrErr("Unknow error\n");
     if (Params().IsMainChain() || pBlock == nullptr) {
-        SetStrErr("Can not called in main chain or pPlock is null");
+        SetStrErr("Can not called in main chain or pPlock is null\n");
         return false;
     }
  
@@ -994,7 +950,7 @@ bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::s
         pBlockIndex = mapBlockIndex[pBlock->GetHash()];
     }
     if (pBlockIndex == nullptr){
-        SetStrErr("get block index fail");
+        SetStrErr("get block index fail\n");
         return false;
     }
 
@@ -1010,7 +966,7 @@ bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::s
     pBlockInfo->blockHeight = pBlockIndex->nHeight;
     pBlockInfo->branchID.SetHex(Params().GetBranchId());
     if (pBlock->vtx.size() < 2){
-        SetStrErr("block vtx size error");
+        SetStrErr("block vtx size error\n");
         return false;
     }
     CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pBlockInfo->vchStakeTxData, 0, pBlock->vtx[1]};
@@ -1018,7 +974,7 @@ bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::s
     //call rpc
     CellRPCConfig branchrpccfg;
     if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false || branchrpccfg.IsValid() == false){
-        SetStrErr("can not found main chain rpc connnect info");
+        SetStrErr("can not found main chain rpc connnect info\n");
         return false;
     }
 
@@ -1036,7 +992,7 @@ bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlock, std::s
         return false;
     }
     if (result.isNull()) {
-        SetStrErr("SendBranchBlockHeader rpc result is null.");
+        SetStrErr("SendBranchBlockHeader rpc result is null.\n");
         return false;
     }
     
@@ -1307,10 +1263,23 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
 
         bool fCacheResults = false;
         unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_NULLDUMMY;
+
         PrecomputedTransactionData txdata(*pProveTx);
         CScriptCheck check(scriptPubKey, amount, *pProveTx, i, flags, fCacheResults, &txdata);
         if (!check()) {
-            return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx scriptcheck fail");
+            bool checkok = true;
+            if (pProveTx->IsCallContract()){//智能合约转币不用签名的
+                checkok = false;
+                CellContractID kDestKey;
+                if (!scriptPubKey.GetContractAddr(kDestKey)) {
+                    return state.DoS(0, false, REJECT_NONSTANDARD, "check smartcontract sign fail, contract addr fail");
+                }
+                if (kDestKey != pProveTx->contractAddr)
+                    return state.DoS(0, false, REJECT_INVALID, "check smartcontract sign fail, contract addr error");
+                checkok = true;
+            }
+            if (!checkok)
+                return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx scriptcheck fail");
         }
     }
 

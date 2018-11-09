@@ -164,6 +164,19 @@ bool error(const char* fmt, const Args&... args)
     return false;
 }
 
+template<typename... Args>
+bool error_ex1(std::string *pStrMsg/*get error msg*/, const char* fmt, const Args&... args)
+{
+    if (pStrMsg != nullptr)
+    {
+        *pStrMsg = "ERROR: " + tfm::format(fmt, args...) + "\n";
+        LogPrintStr(*pStrMsg);
+    }
+    else
+        LogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
+    return false;
+}
+
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void FileCommit(FILE *file);
 bool TruncateFile(FILE *file, unsigned int length);

@@ -327,3 +327,19 @@ bool CellScript::HasValidOps() const
     }
     return true;
 }
+
+int64_t GetScriptInt64(opcodetype opcode, const std::vector<unsigned char>& vch)
+{
+    if (opcode == OP_0)
+    {
+        return 0;
+    }
+    if (opcode == OP_1NEGATE || (opcode >= OP_1 && opcode <= OP_16))
+    {
+        CScriptNum temp((int)opcode - (int)(OP_1 - 1));
+        return temp.getint64();
+    }
+    CScriptNum temp(vch, false, 5);
+    return temp.getint64();
+    //throw scriptnum_error("script number error");
+}

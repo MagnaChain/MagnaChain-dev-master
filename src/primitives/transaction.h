@@ -707,6 +707,10 @@ public:
         return nVersion == PUBLISH_CONTRACT_VERSION || nVersion == CALL_CONTRACT_VERSION;
     }
 
+    bool IsCallContract() const {
+        return nVersion == CALL_CONTRACT_VERSION;
+    }
+
     bool IsSyncBranchInfo() const
     {
         return nVersion == SYNC_BRANCH_INFO;
@@ -861,6 +865,10 @@ struct CellMutableTransaction
 
     bool IsSmartContract() const {
         return nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || nVersion == CellTransaction::CALL_CONTRACT_VERSION;
+    }
+
+    bool IsCallContract() const {
+        return nVersion == CellTransaction::CALL_CONTRACT_VERSION;
     }
 
 	//dose it have a child transaction in sendToTxHexData
