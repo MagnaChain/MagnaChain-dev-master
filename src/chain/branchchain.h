@@ -78,7 +78,7 @@ bool GetMortgageMineData(const CellScript& scriptPubKey, uint256* pBranchHash = 
 bool GetMortgageCoinData(const CellScript& scriptPubKey, uint256* pFromTxid = nullptr, CellKeyID *pKeyID = nullptr, int64_t *pnHeight = nullptr);
 bool GetRedeemSriptData(const CellScript& scriptPubKey, uint256* pFromTxid);
 
-bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block);
+bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block, std::string* pStrErrorMsg);
 
 bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlockHeader, std::string *pStrErr=nullptr);
 bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache);
