@@ -1,0 +1,1187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0049)https://bitcointalk.org/index.php?topic=1636271.0 -->
+<html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+	
+	<meta name="description" content="How to compile static version bitcoind?">
+	<meta name="keywords" content="bitcoin, forum, bitcoin forum, bitcointalk">
+	<script language="JavaScript" type="text/javascript" src="./How to compile static version bitcoind__files/script.js.&#19979;&#36733;"></script>
+	<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+		var smf_theme_url = "https://bitcointalk.org/Themes/custom1";
+		var smf_images_url = "https://bitcointalk.org/Themes/custom1/images";
+		var smf_scripturl = "https://bitcointalk.org/index.php";
+		var smf_iso_case_folding = false;
+		var smf_charset = "ISO-8859-1";
+	// ]]></script>
+	<title>How to compile static version bitcoind?</title><!--2d41a6d5cb422a14ef8d793f3ff7776262aa8e44db64a35afaf19db64d2c02b7d014ef8d793f3ff7776262aa8e44db64a3594141a544ef8d793f3ff7776262aa8e44db64a351049-->
+	<link rel="stylesheet" type="text/css" href="./How to compile static version bitcoind__files/style.css">
+	 <!--[if !IE]> -->
+	 <link rel="stylesheet" type="text/css" media="only screen and (min-device-width: 320px) and (max-device-width: 650px)" href="./How to compile static version bitcoind__files/mobile.css">
+	 <!-- <![endif]-->
+	<link rel="stylesheet" type="text/css" href="./How to compile static version bitcoind__files/print.css" media="print"><style type="text/css">
+.fydmhidhYkvAViQfDtayYQ > td {background-color: #E5E5E8; text-align:center;}
+.fydmhidhYkvAViQfDtayYQ > td > table {margin-top:-5px}
+.fydmhidhYkvAViQfDtayYQ .NQpfiiqdjZtrQbSembSFxQ {display:inline-block;max-width:100%; min-width:100%; max-height:47px; overflow:hidden}
+.fydmhidhYkvAViQfDtayYQ table,.fydmhidhYkvAViQfDtayYQ tbody,.fydmhidhYkvAViQfDtayYQ tr,.fydmhidhYkvAViQfDtayYQ td {display:inline-block;max-width:100%; min-width:100%; overflow:hidden}
+.fydmhidhYkvAViQfDtayYQ .NQpfiiqdjZtrQbSembSFxQ table,.fydmhidhYkvAViQfDtayYQ .NQpfiiqdjZtrQbSembSFxQ tbody,.fydmhidhYkvAViQfDtayYQ .NQpfiiqdjZtrQbSembSFxQ tr,.fydmhidhYkvAViQfDtayYQ .NQpfiiqdjZtrQbSembSFxQ td {display:initial; max-width:none;min-width:none;overflow:visible}
+.hPujHpHcdRsJhxRcmdOtzA {display:none !important}
+.FWleDZRFCUZrVBJhfgdLyQ {display:none}
+.hyUthaAihfXJjbfgkisjOg {padding: 1px 1px 0 1px;}
+.EAIcPDaFEcMMFEmBIIcHEA{color:#699C62; font-weight:bold; font-size:18px}
+.EAIcPDaFEcMMFEmBIIcHEA:link{color:#699C62; font-weight:bold; font-size:18px}
+.EAIcPDaFEcMMFEmBIIcHEA:visited{color:#699C62; font-weight:bold; font-size:18px}
+.WGvUpFFDhuefGtradkMZqQ{color:#00F30C;font-size:15px;font-weight:bold}
+.WGvUpFFDhuefGtradkMZqQ:link{color:#00F30C;font-size:15px;font-weight:bold}
+.WGvUpFFDhuefGtradkMZqQ:visited{color:#00F30C;font-size:15px;font-weight:bold}
+
+.cSGUaoIJfKyopupCXMaglA:link {font-size:22px;font-weight:bold;color:orange}
+.cSGUaoIJfKyopupCXMaglA:active {font-size:22px;font-weight:bold;color:orange}
+.cSGUaoIJfKyopupCXMaglA:visited {font-size:22px;font-weight:bold;color:orange}
+.cSGUaoIJfKyopupCXMaglA:hover {text-decoration:none !important;color:red}
+.lZajvJciancuChZhMrpfgQ:link {font-size:24px;font-weight:bold;color:rgb(250,180,75)}
+.lZajvJciancuChZhMrpfgQ:active {font-size:24px;font-weight:bold;color:rgb(250,180,75)}
+.lZajvJciancuChZhMrpfgQ:visited {font-size:24px;font-weight:bold;color:rgb(250,180,75)}
+.lZajvJciancuChZhMrpfgQ:hover {text-decoration:none !important;color:white;background-color:rgb(181,204,222)}
+.lZajvJciancuChZhMrpfgQ {display:inline-block;margin: 3px;0;3px;0}
+.zDbkcSwhDHDHYWrqieiMhA:hover {text-decoration:none !important;}
+.zDbkcSwhDHDHYWrqieiMhA {font-size:22px;font-weight:bold;}
+.pPgjpqfhGoOfhHSNPkTTyQ {   width: 900px;   height: 44px;   max-width: 100%;   background: #5CB9F7;   display: flex;   justify-content: space-between;   align-items: center;   text-decoration: none !important;   font-size: 16px;   color: #fff !important;   font-family: arial, sans-serif;   overflow: hidden; }    .pPgjpqfhGoOfhHSNPkTTyQ button {     border: none;     background: #8EE000;     color: #fff;     outline: none;     font-size: 1em;     padding: 0.5em 1.2em;     margin-left: 0.3em;     border-radius: 2em;     text-transform: uppercase;     font-weight: 600;     pointer-events: none;   }    .pPgjpqfhGoOfhHSNPkTTyQ:hover .cgeppTxbGPyhdeYhagNczA span {   display: none; }  .pPgjpqfhGoOfhHSNPkTTyQ:hover .cgeppTxbGPyhdeYhagNczA span:nth-child(2) {   display: block; }  .cgeppTxbGPyhdeYhagNczA {   display: flex;   align-items: center; }    .cgeppTxbGPyhdeYhagNczA span {   margin-left: 0.1em;   font-size: 1em;   font-weight: 700;   letter-spacing: 0.5px;   font-size: 20px;   width: 11em;   text-align: center; }  .qsxsJENLGedfPyiUybVhqg {   display: inline-block; }  .cgeppTxbGPyhdeYhagNczA span:nth-child(2) {   display: none; }  .BYTqdqLWeHSpKefobQxFAg {   display: flex;   background: #586A91;   height: 44px;   align-items: center;   justify-content: center;   padding: 0 1em 0 0.5em;   position: relative;   z-index: 2; }    .BYTqdqLWeHSpKefobQxFAg:after {   position: absolute;   right: 100%;   top: 50%;   content: "";   width: 36px;   height: 36px;   background: #586A91;   border-radius: 0.5em;   transform: translate(50%, -50%) rotate(45deg);   z-index: -1; }    .BYTqdqLWeHSpKefobQxFAg > span {   margin-right: 1em;   font-weight: 600;   font-size: 16px;   letter-spacing: 0.5px;   margin-top: 0.1em; }  @media (max-width: 725px) {   .pPgjpqfhGoOfhHSNPkTTyQ button {     display: none;   }   .cgeppTxbGPyhdeYhagNczA {     margin-left: 1em;   } }   @media (max-width: 550px) {   .BYTqdqLWeHSpKefobQxFAg span span {     display: none;   } }  @media (max-width: 465px) {   .BYTqdqLWeHSpKefobQxFAg {     display: none;   }   .pPgjpqfhGoOfhHSNPkTTyQ {     justify-content: center;   } }
+.HsyVRYVSpxTkTjXZBijzgw {   width: 900px;   height: 44px;   max-width: 100%;   background: #5CB9F7;   display: flex;   justify-content: space-between;   align-items: center;   text-decoration: none !important;   font-size: 16px;   color: #fff !important;   font-family: arial, sans-serif;   overflow: hidden; }    .HsyVRYVSpxTkTjXZBijzgw button {     border: none;     background: #8EE000;     color: #fff;     outline: none;     font-size: 1em;     padding: 0.5em 1.2em;     margin-left: 0.4em;     border-radius: 2em;     text-transform: uppercase;     font-weight: 600; cursor:pointer; transition: all 0.3s;   } button:hover{transform: scale(1.05);}    .lehjCWLSQaupwHrSWYaexQ:hover span{   display: none; }  .lehjCWLSQaupwHrSWYaexQ:hover span:nth-child(2) {   display: block; }  .lehjCWLSQaupwHrSWYaexQ {   display: flex;   align-items: center; color:#fff}    .lehjCWLSQaupwHrSWYaexQ span {   margin-left: 0.1em;   font-size: 1em;   font-weight: 700;   letter-spacing: 0.5px;   font-size: 20px;   width: 11em;   text-align: center; }  .ghocTSjEgKSNzhjejkLIwg {   display: inline-block; }  .lehjCWLSQaupwHrSWYaexQ span:nth-child(2) {   display: none; }  .RqeTAidedtaNlOfxptyYCw {   display: flex;   background: #586A91;   height: 44px;   align-items: center;   justify-content: center;   padding: 0 1em 0 0.5em;   position: relative;   z-index: 2; }    .RqeTAidedtaNlOfxptyYCw:after {   position: absolute;   right: 100%;   top: 50%;   content: "";   width: 36px;   height: 36px;   background: #586A91;   border-radius: 0.5em;   transform: translate(50%, -50%) rotate(45deg);   z-index: -1; }    .RqeTAidedtaNlOfxptyYCw > span {   margin-right: 1em;   font-weight: 600;   font-size: 16px;   letter-spacing: 0.5px;   margin-top: 0.1em; }  @media (max-width: 725px) {   .HsyVRYVSpxTkTjXZBijzgw button {     display: none;   }   .lehjCWLSQaupwHrSWYaexQ {     margin-left: 1em;   } }   @media (max-width: 550px) {   .RqeTAidedtaNlOfxptyYCw span span {     display: none;   } }  @media (max-width: 465px) {   .RqeTAidedtaNlOfxptyYCw {     display: none;   }   .HsyVRYVSpxTkTjXZBijzgw {     justify-content: center;   } }
+.pPgjpqfhGoOfhHSNPkTTyQ {   width: 900px;   height: 44px;   max-width: 100%;   background: #5CB9F7;   display: flex;   justify-content: space-between;   align-items: center;   text-decoration: none !important;   font-size: 16px;   color: #fff !important;   font-family: arial, sans-serif;   overflow: hidden; }    .pPgjpqfhGoOfhHSNPkTTyQ button {   border: none;   background: #8EE000;   color: #fff;   outline: none;   font-size: 1em;   padding: 0.5em 1.2em;   margin-left: 0.4em;   border-radius: 2em;   text-transform: uppercase;   font-weight: 600;   cursor: pointer;   transition: all 0.3s; }  button:hover {   transform: scale(1.05); }  .cgeppTxbGPyhdeYhagNczA:hover span {   display: none; }  .cgeppTxbGPyhdeYhagNczA:hover span:nth-child(2) {   display: block; }  .cgeppTxbGPyhdeYhagNczA {   display: flex;   align-items: center;   color: #fff; }    .cgeppTxbGPyhdeYhagNczA span {   margin-left: 0.1em;   font-size: 1em;   font-weight: 700;   letter-spacing: 0.5px;   font-size: 20px;   width: 11em;   text-align: center; }  .qsxsJENLGedfPyiUybVhqg {   display: inline-block; }  .cgeppTxbGPyhdeYhagNczA span:nth-child(2) {   display: none; }  .BYTqdqLWeHSpKefobQxFAg {   display: flex;   background: #586A91;   height: 44px;   align-items: center;   justify-content: center;   padding: 0 1em 0 0.5em;   position: relative;   z-index: 2; }    .BYTqdqLWeHSpKefobQxFAg:after {   position: absolute;   right: 100%;   top: 50%;   content: "";   width: 36px;   height: 36px;   background: #586A91;   border-radius: 0.5em;   transform: translate(50%, -50%) rotate(45deg);   z-index: -1; }    .BYTqdqLWeHSpKefobQxFAg > span {   margin-right: 1em;   font-weight: 600;   font-size: 16px;   letter-spacing: 0.5px;   margin-top: 0.1em; }  @media (max-width: 725px) {   .pPgjpqfhGoOfhHSNPkTTyQ button {     display: none;   }   .cgeppTxbGPyhdeYhagNczA {     margin-left: 1em;   } }   @media (max-width: 550px) {   .BYTqdqLWeHSpKefobQxFAg span span {     display: none;   } }  @media (max-width: 465px) {   .BYTqdqLWeHSpKefobQxFAg {     display: none;   }   .pPgjpqfhGoOfhHSNPkTTyQ {     justify-content: center;   } }
+.HsyVRYVSpxTkTjXZBijzgw {   width: 900px;   height: 44px;   max-width: 100%;   background: #fff;   display: flex;   justify-content: space-between;   align-items: center;   text-decoration: none !important;   font-size: 16px;   color: #fff !important;   font-family: arial, sans-serif;   overflow: hidden; }    .HsyVRYVSpxTkTjXZBijzgw button {   border: none;   background: #8EE000;   color: #fff;   outline: none;   font-size: 1em;   padding: 0.5em 1.2em;   margin-left: 0.4em;   border-radius: 2em;   text-transform: uppercase;   font-weight: 600;   cursor: pointer;   transition: all 0.3s; }  button:hover {   transform: scale(1.05); }  .lehjCWLSQaupwHrSWYaexQ:hover span {   display: none; }  .lehjCWLSQaupwHrSWYaexQ:hover span:nth-child(2) {   display: block; }  .lehjCWLSQaupwHrSWYaexQ {   display: flex;   align-items: center;   color: #5CB9F7; }    .lehjCWLSQaupwHrSWYaexQ span {   margin-left: 0.1em;   font-size: 1em;   font-weight: 700;   letter-spacing: 0.5px;   font-size: 20px;   width: 11em;   text-align: center; }  .ghocTSjEgKSNzhjejkLIwg {   display: inline-block; }  .lehjCWLSQaupwHrSWYaexQ span:nth-child(2) {   display: none; }  .RqeTAidedtaNlOfxptyYCw {   display: flex;   background: #586A91;   height: 44px;   align-items: center;   justify-content: center;   padding: 0 1em 0 0.5em;   position: relative;   z-index: 2; }    .RqeTAidedtaNlOfxptyYCw:after {   position: absolute;   right: 100%;   top: 50%;   content: "";   width: 36px;   height: 36px;   background: #586A91;   border-radius: 0.5em;   transform: translate(50%, -50%) rotate(45deg);   z-index: -1; }    .RqeTAidedtaNlOfxptyYCw > span {   margin-right: 1em;   font-weight: 600;   font-size: 16px;   letter-spacing: 0.5px;   margin-top: 0.1em; }  @media (max-width: 725px) {   .HsyVRYVSpxTkTjXZBijzgw button {     display: none;   }   .lehjCWLSQaupwHrSWYaexQ {     margin-left: 1em;   } }   @media (max-width: 550px) {   .RqeTAidedtaNlOfxptyYCw span span {     display: none;   } }  @media (max-width: 465px) {   .RqeTAidedtaNlOfxptyYCw {     display: none;   }   .HsyVRYVSpxTkTjXZBijzgw {     justify-content: center;   } }
+.nounderline:hover {text-decoration:none}
+.exempttable {display:inline-table !important}
+.bbca table, .bbca tbody, .bbca tr, .bbca td{
+	display: inline-block !important;
+	min-width: 0px !important;
+	text-align: center !important;
+}
+.gunbot td{text-align:left !important}
+.olddiv{display:block}
+</style>
+<link rel="stylesheet" type="text/css" href="./How to compile static version bitcoind__files/extra4.css">
+<link rel="stylesheet" type="text/css" href="./How to compile static version bitcoind__files/extra3.css">
+
+	<link rel="help" href="https://bitcointalk.org/index.php?action=help" target="_blank">
+	<link rel="search" href="https://bitcointalk.org/index.php?action=search">
+	<link rel="contents" href="https://bitcointalk.org/index.php">
+	<link rel="alternate" type="application/rss+xml" title="Bitcoin Forum - RSS" href="https://bitcointalk.org/index.php?type=rss;action=.xml">
+	<link rel="prev" href="https://bitcointalk.org/index.php?topic=1636271.0;prev_next=prev">
+	<link rel="next" href="https://bitcointalk.org/index.php?topic=1636271.0;prev_next=next">
+	<link rel="index" href="https://bitcointalk.org/index.php?board=6.0"><meta http-equiv="X-UA-Compatible" content="IE=EmulateIE7">
+<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+		function showhide(msgnr)
+		{
+			if (document.getElementById("message"+msgnr).style.display == "")
+			    {document.getElementById("message"+msgnr).style.display = "none";
+			     document.getElementById("ignmsgbttns"+msgnr).style.visibility = "hidden";
+			     document.getElementById("ignoremessage"+msgnr).style.display = "";
+			     document.getElementById("ignfooter"+msgnr).style.display = "none";
+			     document.getElementById("showhide"+msgnr).src = "https://bitcointalk.org/Themes/custom1/images/english/ignshow.gif";
+			     document.getElementById("showhide"+msgnr).alt = "Show";
+			     document.getElementById("ignprofile"+msgnr).style.display = "none";
+			    }
+			    else
+			    {document.getElementById("message"+msgnr).style.display = "";
+			     document.getElementById("ignmsgbttns"+msgnr).style.visibility = "visible";
+			     document.getElementById("ignoremessage"+msgnr).style.display = "none";
+			     document.getElementById("ignfooter"+msgnr).style.display = "";
+			     document.getElementById("showhide"+msgnr).src = "https://bitcointalk.org/Themes/custom1/images/english/ignhide.gif";
+			     document.getElementById("showhide"+msgnr).alt = "Hide";
+			     document.getElementById("ignprofile"+msgnr).style.display = "";
+			     }
+		}
+// ]]></script>
+
+	<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+		var current_header = false;
+
+		function shrinkHeader(mode)
+		{
+			document.cookie = "upshrink=" + (mode ? 1 : 0);
+			document.getElementById("upshrink").src = smf_images_url + (mode ? "/upshrink2.gif" : "/upshrink.gif");
+
+			document.getElementById("upshrinkHeader").style.display = mode ? "none" : "";
+			document.getElementById("upshrinkHeader2").style.display = mode ? "none" : "";
+
+			current_header = mode;
+		}
+	// ]]></script>
+		<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+			var current_header_ic = false;
+
+			function shrinkHeaderIC(mode)
+			{
+				document.cookie = "upshrinkIC=" + (mode ? 1 : 0);
+				document.getElementById("upshrink_ic").src = smf_images_url + (mode ? "/expand.gif" : "/collapse.gif");
+
+				document.getElementById("upshrinkHeaderIC").style.display = mode ? "none" : "";
+
+				current_header_ic = mode;
+			}
+		// ]]></script></head>
+<body>
+	<div class="tborder">
+		<table width="100%" cellpadding="0" cellspacing="0" border="0" id="smfheader">
+			<tbody><tr>
+				<td class="catbg" height="32">
+					<span style="font-family: Verdana, sans-serif; font-size: 140%; ">Bitcoin Forum</span>
+				</td>
+				<td align="right" class="catbg">
+					<img src="./How to compile static version bitcoind__files/smflogo.gif" style="margin: 2px;" alt="">
+				</td>
+			</tr>
+		</tbody></table>
+		<table width="100%" cellpadding="0" cellspacing="0" border="0">
+			<tbody><tr>
+				<td class="titlebg2" height="32" align="right">
+					<span class="smalltext">December 23, 2017, 08:43:27 AM</span>
+					<a href="https://bitcointalk.org/index.php?topic=1636271.0#" onclick="shrinkHeader(!current_header); return false;"><img id="upshrink" src="./How to compile static version bitcoind__files/upshrink.gif" alt="*" title="Shrink or expand the header." align="bottom" style="margin: 0 1ex;"></a>
+				</td>
+			</tr>
+			<tr id="upshrinkHeader">
+				<td valign="top" colspan="2">
+					<table width="100%" class="bordercolor" cellpadding="8" cellspacing="1" border="0" style="margin-top: 1px;">
+						<tbody><tr>
+							<td colspan="2" width="100%" valign="top" class="windowbg2" id="variousheadlinks"><span class="middletext">Welcome, <b>Guest</b>. Please <a href="https://bitcointalk.org/index.php?action=login">login</a> or <a href="https://bitcointalk.org/index.php?action=register">register</a>.				</span>
+							</td>
+						</tr>
+					</tbody></table>
+				</td>
+			</tr>
+		</tbody></table>
+		<table id="upshrinkHeader2" width="100%" cellpadding="4" cellspacing="0" border="0">
+			<tbody><tr>
+				<td width="90%" class="titlebg2">
+					<span class="smalltext"><b>News</b>: Latest stable version of Bitcoin Core: <a class="ul" href="https://bitcoin.org/en/download">0.15.1</a>&nbsp; [<a class="ul" href="https://bitcointalk.org/bitcoin-0.15.1.torrent">Torrent</a>].</span>
+				</td>
+				<td class="titlebg2" align="right" nowrap="nowrap" valign="top">
+					<form action="https://bitcointalk.org/index.php?action=search2" method="post" accept-charset="ISO-8859-1" style="margin: 0;">
+						<a href="https://bitcointalk.org/index.php?action=search;advanced"><img src="./How to compile static version bitcoind__files/filter.gif" align="middle" style="margin: 0 1ex;" alt=""></a>
+						<input type="text" name="search" value="" style="width: 190px;">&nbsp;
+						<input type="submit" name="submit" value="Search" style="width: 11ex;">
+						<input type="hidden" name="advanced" value="0">
+						<input type="hidden" name="topic" value="1636271">
+					</form>
+				</td>
+			</tr>
+		</tbody></table>
+	</div>
+			<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 10px;">
+				<tbody><tr>
+					<td class="maintab_first">&nbsp;</td><td class="maintab_active_first">&nbsp;</td>
+				<td valign="top" class="maintab_active_back">
+					<a href="https://bitcointalk.org/index.php">Home</a>
+				</td><td class="maintab_active_last">&nbsp;</td>
+				<td valign="top" class="maintab_back">
+					<a href="https://bitcointalk.org/index.php?action=help">Help</a>
+				</td>
+				<td valign="top" class="maintab_back">
+					<a href="https://bitcointalk.org/index.php?action=search">Search</a>
+				</td>
+				<td valign="top" class="maintab_back">
+					<a href="https://bitcointalk.org/donate.html">Donate</a>
+				</td>
+				<td valign="top" class="maintab_back">
+					<a href="https://bitcointalk.org/index.php?action=login">Login</a>
+				</td>
+				<td valign="top" class="maintab_back">
+					<a href="https://bitcointalk.org/index.php?action=register">Register</a>
+				</td>
+				<td class="maintab_last">&nbsp;</td>
+			</tr>
+		</tbody></table>
+	<div id="bodyarea" style="padding: 1ex 0px 2ex 0px;">
+<a name="top"></a>
+<a name="msg16455631"></a>
+<div><div class="nav" style="font-size: smaller; margin-bottom: 2ex; margin-top: 2ex;"><b><a href="https://bitcointalk.org/index.php" class="nav">Bitcoin Forum</a></b>&nbsp;&gt;&nbsp;<b><a href="https://bitcointalk.org/index.php#1" class="nav">Bitcoin</a></b>&nbsp;&gt;&nbsp;<b><a href="https://bitcointalk.org/index.php?board=6.0" class="nav">Development &amp; Technical Discussion</a></b> (Moderators: <a href="https://bitcointalk.org/index.php?action=profile;u=11425" title="Board Moderator">gmaxwell</a>, <a href="https://bitcointalk.org/index.php?action=profile;u=290195" title="Board Moderator">achow101</a>)&nbsp;&gt;&nbsp;<b><a href="https://bitcointalk.org/index.php?topic=1636271.0" class="nav">How to compile static version bitcoind?</a></b></div></div>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+	<tbody><tr>
+		<td class="middletext" valign="bottom" style="padding-bottom: 4px;">Pages:  [<b>1</b>]  </td>
+		<td align="right" style="padding-right: 1ex;">
+			<div class="nav" style="margin-bottom: 2px;"> <a href="https://bitcointalk.org/index.php?topic=1636271.0;prev_next=prev#new">« previous topic</a> <a href="https://bitcointalk.org/index.php?topic=1636271.0;prev_next=next#new">next topic »</a></div>
+			<table cellpadding="0" cellspacing="0">
+				<tbody><tr>
+					
+		<td class="mirrortab_first">&nbsp;</td>
+		<td class="mirrortab_back"><a href="https://bitcointalk.org/index.php?action=printpage;topic=1636271.0" target="_blank">Print</a></td>
+		<td class="mirrortab_last">&nbsp;</td>
+				</tr>
+			</tbody></table>
+		</td>
+	</tr>
+</tbody></table>
+<table width="100%" cellpadding="3" cellspacing="0" border="0" class="tborder" style="border-bottom: 0;">
+		<tbody><tr class="catbg3">
+				<td valign="middle" width="2%" style="padding-left: 6px;">
+						<img src="./How to compile static version bitcoind__files/normal_post.gif" align="bottom" alt="">
+				</td>
+				<td width="13%"> Author</td>
+				<td valign="middle" width="85%" style="padding-left: 6px;" id="top_subject">
+						Topic: How to compile static version bitcoind? &nbsp;(Read 1381 times)
+				</td>
+		</tr>
+</tbody></table>
+<form action="https://bitcointalk.org/index.php?action=quickmod2;topic=1636271.0" method="post" accept-charset="ISO-8859-1" name="quickModForm" id="quickModForm" style="margin: 0;" onsubmit="return in_edit_mode == 1 ? modify_save(&#39;4ef8d793f3ff7776262aa8e44db64a35&#39;) : confirm(&#39;Are you sure you want to do this?&#39;);">
+<table cellpadding="0" cellspacing="0" border="0" width="100%" class="bordercolor">
+	<tbody><tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg"><b><i></i></b><b><i></i></b><b><i></i></b><b><i></i></b><b><i></i></b>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=662400" title="View the profile of kzv">kzv</a></b>
+							<div class="smalltext">
+								Hero Member<br>
+								<img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 742<br><br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=662400"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="http://3s3s.org/" title="Simple and easy to use anonymizer"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16455631#msg16455631"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16455631">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16455631#msg16455631">How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 04, 2016, 07:35:32 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns1" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16455631#msg16455631">#1</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post">Hi<br><br>i complied a bitcoind in Ubuntu Dektop 64bit<br><br><div class="codeheader">Code:</div><div class="code">./configure<br>make<br>make install<br>completed and works well in Ubuntu</div><br>i moved this bitcoind into a Centos 64bit 6.5, ran it and some errors came out<br><br><div class="codeheader">Code:</div><div class="code">./bitcoind: error while loading shared libraries: libboost_system.so.1.58.0: cannot open shared object file: No such file or directory</div><br>i think all *.so lib required need to be compiled together with the bitcoind binnary, but how? i tried<br><br><div class="codeheader">Code:</div><div class="code">./configure --disable-shared<br>make clean<br>make<br>sudo make install<br>completed but still doesn't work in Centos, same error</div><br>and tried<br><br><div class="codeheader">Code:</div><div class="code">./configure <br>make clean<br>make STATIC=all<br>sudo make install<br>completed but still doesn't work in Centos, same error</div><br>the bitcoind in <a class="ul" href="https://bitcoin.org/bin/bitcoin-core-0.13.0/bitcoin-0.13.0-x86_64-linux-gnu.tar.gz">https://bitcoin.org/bin/bitcoin-core-0.13.0/bitcoin-0.13.0-x86_64-linux-gnu.tar.gz</a> however works well in both Centos and Ubuntu<br></div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16455631">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig662400"><span style="color: red;"><b>Vote for Marycoin:</b></span> <a class="ul" href="https://www.livecoin.net/voting/index?vote=Marycoin">https://www.livecoin.net/voting/index?vote=Marycoin</a><br><span style="font-size: 14pt !important; line-height: 1.3em;">Donate <b>Marycoin</b> project development: MS12okFu6D3FzBi2fTsmGEa6iQV9h31txe</span></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr><tr><td class="hyUthaAihfXJjbfgkisjOg"></td></tr><tr class="fydmhidhYkvAViQfDtayYQ"><td class="hyUthaAihfXJjbfgkisjOg"> <a name="msg1514018607"></a>
+ <table width="100%" border="0">
+  <tbody><tr><td>
+   <table width="100%">
+    <tbody><tr>
+       <td rowspan="2">
+     </td>
+       <td>
+      <table width="100%" class="hPujHpHcdRsJhxRcmdOtzA"><tbody><tr><td></td></tr>
+      </tbody></table>
+      <div class="NQpfiiqdjZtrQbSembSFxQ"><a href="https://bitcointalk.org/index.php?topic=1715214.msg17180502#msg17180502"><span class="gunbot">		<span class="gunbot2">	<span style="display:block" class="gunbotlogo"></span>	<span style="inline-block" class="gunbotlines">THE AUTOMATIC PROFIT GENERATOR</span>	<span style="inline-block" class="gunbotjoinbg">&#10004;   TradingView Integration<br>&#10004;   24/7 Trading Bot</span>	 <span style="inline-block" class="gunbotlines2">POLONIEX - KRAKEN - BITTREX - BITFINEX - CRYPTOPIA</span>	<span style="inline-block" class="gunbotlinesb">THE OFFICIAL GUNBOT COMMUNITY</span><span style="display:block" class="gunbotlogob"></span>	</span>		</span>	</a></div>
+     </td>
+    </tr>
+    <tr class="hPujHpHcdRsJhxRcmdOtzA"><td></td>
+    </tr>
+   </tbody></table>
+  </td></tr>
+ </tbody></table>
+ <span style="font-size:x-small">Advertised sites are not endorsed by the Bitcoin Forum. They may be unsafe, untrustworthy, or illegal in your jurisdiction. <a href="https://bitcointalk.org/index.php?topic=2611831.0">Advertise here.</a></span>
+</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg">
+		<a name="msg16455813"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg2">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=290195" title="View the profile of achow101">achow101</a></b>
+							<div class="smalltext">
+								Moderator<br>
+								Legendary<br>
+								<img src="./How to compile static version bitcoind__files/staff.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 1260<br><br>
+								<div style="overflow: auto; width: 100%;"><img src="./How to compile static version bitcoind__files/avatar_290195.png" alt="" class="avatar" border="0"></div><br>
+								38A35VNc17P7fenEDkLvkTMppwLwTeEeT7<br>
+								<br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=290195"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="https://github.com/achow101" title="Github"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16455813#msg16455813"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16455813">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16455813#msg16455813">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 04, 2016, 07:53:41 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns2" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16455813#msg16455813">#2</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post" style="height: 37px;">You should use the depends system and compile the libs. Then you can build with those and it would work.</div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16455813">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig290195">Tip Me!: <a class="ul" href="bitcoin:38A35VNc17P7fenEDkLvkTMppwLwTeEeT7">38A35VNc17P7fenEDkLvkTMppwLwTeEeT7</a> | <a class="ul" href="https://github.com/achow101/">GitHub</a> | <a class="ul" href="https://keybase.io/achow101/key.asc">GPG Key Fingerprint 0x17565732E08E5E41</a> | <a class="ul" href="https://bitcointalk.org/index.php?topic=1608655.0">ACE - AD Campaign Experts</a></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg"><b><i></i></b><b><i></i></b><b><i></i></b><b><i></i></b><b><i></i></b>
+		<a name="msg16455877"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=662400" title="View the profile of kzv">kzv</a></b>
+							<div class="smalltext">
+								Hero Member<br>
+								<img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 742<br><br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=662400"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="http://3s3s.org/" title="Simple and easy to use anonymizer"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16455877#msg16455877"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16455877">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16455877#msg16455877">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 04, 2016, 08:02:24 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns3" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16455877#msg16455877">#3</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post"><div class="quoteheader"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16455813#msg16455813">Quote from: achow101 on October 04, 2016, 07:53:41 PM</a></div><div class="quote">You should use the depends system and compile the libs. Then you can build with those and it would work.<br></div><br>This is all my steps:<br><div class="codeheader">Code:</div><div class="code">sudo apt-get install build-essential libtool autotools-dev automake pkg-config libssl-dev libevent-dev bsdmainutils<br>sudo apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev<br>sudo add-apt-repository ppa:bitcoin/bitcoin<br>sudo apt-get update<br>sudo apt-get install libdb4.8-dev libdb4.8++-dev<br>sudo apt-get install libminiupnpc-dev<br>sudo apt-get install libzmq3-dev<br>sudo apt-get install libqt5gui5 libqt5core5a libqt5dbus5 qttools5-dev qttools5-dev-tools libprotobuf-dev protobuf-compiler<br>sudo apt-get install libqrencode-dev<br>sudo apt-get update<br>sudo add-apt-repository ppa:bitcoin/bitcoin<br>sudo apt-get update<br>wget https://github.com/bitcoin/bitcoin/archive/v0.13.0.tar.gz<br>tar -xvzf v0.13.0.tar.gz<br>cd bitcoin-0.13.0<br>./autogen.sh<br>./configure<br>make<br>sudo make install </div><br>exactly what I need to do more?</div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16455877">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig662400"><span style="color: red;"><b>Vote for Marycoin:</b></span> <a class="ul" href="https://www.livecoin.net/voting/index?vote=Marycoin">https://www.livecoin.net/voting/index?vote=Marycoin</a><br><span style="font-size: 14pt !important; line-height: 1.3em;">Donate <b>Marycoin</b> project development: MS12okFu6D3FzBi2fTsmGEa6iQV9h31txe</span></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg"><b><i></i></b><b><i></i></b><b><i></i></b>
+		<a name="msg16455986"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg2">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=290195" title="View the profile of achow101">achow101</a></b>
+							<div class="smalltext">
+								Moderator<br>
+								Legendary<br>
+								<img src="./How to compile static version bitcoind__files/staff.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 1260<br><br>
+								<div style="overflow: auto; width: 100%;"><img src="./How to compile static version bitcoind__files/avatar_290195.png" alt="" class="avatar" border="0"></div><br>
+								38A35VNc17P7fenEDkLvkTMppwLwTeEeT7<br>
+								<br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=290195"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="https://github.com/achow101" title="Github"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16455986#msg16455986"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16455986">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16455986#msg16455986">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 04, 2016, 08:16:25 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns4" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16455986#msg16455986">#4</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post">Do exactly this from the Bitcoin source dir.<br><br><div class="codeheader">Code:</div><div class="code">cd depends<br>make<br>cd ..<br>./autogen.sh<br>./configure --prefix=`pwd`/depends/x86_64-pc-linux-gnu<br>make<br></div><br>The binaries produced should work across platforms.</div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16455986">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig290195">Tip Me!: <a class="ul" href="bitcoin:38A35VNc17P7fenEDkLvkTMppwLwTeEeT7">38A35VNc17P7fenEDkLvkTMppwLwTeEeT7</a> | <a class="ul" href="https://github.com/achow101/">GitHub</a> | <a class="ul" href="https://keybase.io/achow101/key.asc">GPG Key Fingerprint 0x17565732E08E5E41</a> | <a class="ul" href="https://bitcointalk.org/index.php?topic=1608655.0">ACE - AD Campaign Experts</a></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg"><b><i></i></b><b><i></i></b><b><i></i></b>
+		<a name="msg16463297"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=662400" title="View the profile of kzv">kzv</a></b>
+							<div class="smalltext">
+								Hero Member<br>
+								<img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 742<br><br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=662400"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="http://3s3s.org/" title="Simple and easy to use anonymizer"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16463297#msg16463297"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16463297">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16463297#msg16463297">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 05, 2016, 02:01:35 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns5" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16463297#msg16463297">#5</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post"><div class="quoteheader"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16455986#msg16455986">Quote from: achow101 on October 04, 2016, 08:16:25 PM</a></div><div class="quote">Do exactly this from the Bitcoin source dir.<br><br><div class="codeheader">Code:</div><div class="code">cd depends<br>make<br>cd ..<br>./autogen.sh<br>./configure --prefix=`pwd`/depends/x86_64-pc-linux-gnu<br>make<br></div><br>The binaries produced should work across platforms.<br></div><br>I tried but I got such errors in CentOS<br><br><div class="codeheader">Code:</div><div class="code">./bitcoind: /usr/lib64/libstdc++.so.6: version `GLIBCXX_3.4.20' not found (required by ./bitcoind)<br>./bitcoind: /usr/lib64/libstdc++.so.6: version `CXXABI_1.3.8' not found (required by ./bitcoind)<br>./bitcoind: /usr/lib64/libstdc++.so.6: version `GLIBCXX_3.4.15' not found (required by ./bitcoind)<br>./bitcoind: /usr/lib64/libstdc++.so.6: version `GLIBCXX_3.4.21' not found (required by ./bitcoind)<br>./bitcoind: /lib64/libc.so.6: version `GLIBC_2.15' not found (required by ./bitcoind)<br>./bitcoind: /lib64/libc.so.6: version `GLIBC_2.14' not found (required by ./bitcoind)</div></div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16463297">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig662400"><span style="color: red;"><b>Vote for Marycoin:</b></span> <a class="ul" href="https://www.livecoin.net/voting/index?vote=Marycoin">https://www.livecoin.net/voting/index?vote=Marycoin</a><br><span style="font-size: 14pt !important; line-height: 1.3em;">Donate <b>Marycoin</b> project development: MS12okFu6D3FzBi2fTsmGEa6iQV9h31txe</span></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg">
+		<a name="msg16464399"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg2">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=290195" title="View the profile of achow101">achow101</a></b>
+							<div class="smalltext">
+								Moderator<br>
+								Legendary<br>
+								<img src="./How to compile static version bitcoind__files/staff.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 1260<br><br>
+								<div style="overflow: auto; width: 100%;"><img src="./How to compile static version bitcoind__files/avatar_290195.png" alt="" class="avatar" border="0"></div><br>
+								38A35VNc17P7fenEDkLvkTMppwLwTeEeT7<br>
+								<br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=290195"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="https://github.com/achow101" title="Github"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16464399#msg16464399"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16464399">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16464399#msg16464399">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 05, 2016, 03:48:50 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns6" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16464399#msg16464399">#6</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post">Try this configure command instead<br><div class="codeheader">Code:</div><div class="code">./configure --prefix=`pwd`/depends/x86_64-pc-linux-gnu LDFLAGS="-static-libstdc++"</div></div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16464399">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig290195">Tip Me!: <a class="ul" href="bitcoin:38A35VNc17P7fenEDkLvkTMppwLwTeEeT7">38A35VNc17P7fenEDkLvkTMppwLwTeEeT7</a> | <a class="ul" href="https://github.com/achow101/">GitHub</a> | <a class="ul" href="https://keybase.io/achow101/key.asc">GPG Key Fingerprint 0x17565732E08E5E41</a> | <a class="ul" href="https://bitcointalk.org/index.php?topic=1608655.0">ACE - AD Campaign Experts</a></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg">
+		<a name="msg16470964"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=662400" title="View the profile of kzv">kzv</a></b>
+							<div class="smalltext">
+								Hero Member<br>
+								<img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 742<br><br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=662400"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="http://3s3s.org/" title="Simple and easy to use anonymizer"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16470964#msg16470964"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16470964">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16470964#msg16470964">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 06, 2016, 07:58:35 AM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns7" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16470964#msg16470964">#7</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post"><div class="quoteheader"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16464399#msg16464399">Quote from: achow101 on October 05, 2016, 03:48:50 PM</a></div><div class="quote">Try this configure command instead<br><div class="codeheader">Code:</div><div class="code">./configure --prefix=`pwd`/depends/x86_64-pc-linux-gnu LDFLAGS="-static-libstdc++"</div></div><br>I tried. Were such errors<br><br><div class="codeheader">Code:</div><div class="code">./bitcoind: /lib64/libc.so.6: version `GLIBC_2.15' not found (required by ./bitcoind)<br>./bitcoind: /lib64/libc.so.6: version `GLIBC_2.14' not found (required by ./bitcoind)</div></div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16470964">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig662400"><span style="color: red;"><b>Vote for Marycoin:</b></span> <a class="ul" href="https://www.livecoin.net/voting/index?vote=Marycoin">https://www.livecoin.net/voting/index?vote=Marycoin</a><br><span style="font-size: 14pt !important; line-height: 1.3em;">Donate <b>Marycoin</b> project development: MS12okFu6D3FzBi2fTsmGEa6iQV9h31txe</span></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg"><b><i></i></b><b><i></i></b>
+		<a name="msg16473333"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg2">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=290195" title="View the profile of achow101">achow101</a></b>
+							<div class="smalltext">
+								Moderator<br>
+								Legendary<br>
+								<img src="./How to compile static version bitcoind__files/staff.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 1260<br><br>
+								<div style="overflow: auto; width: 100%;"><img src="./How to compile static version bitcoind__files/avatar_290195.png" alt="" class="avatar" border="0"></div><br>
+								38A35VNc17P7fenEDkLvkTMppwLwTeEeT7<br>
+								<br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=290195"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="https://github.com/achow101" title="Github"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16473333#msg16473333"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16473333">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16473333#msg16473333">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 06, 2016, 12:30:55 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns8" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16473333#msg16473333">#8</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post">Ok.. How about this command?<br><div class="codeheader">Code:</div><div class="code">./configure --enable-glibc-back-compat --prefix=`pwd`/depends/x86_64-pc-linux-gnu LDFLAGS="-static-libstdc++"</div></div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16473333">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig290195">Tip Me!: <a class="ul" href="bitcoin:38A35VNc17P7fenEDkLvkTMppwLwTeEeT7">38A35VNc17P7fenEDkLvkTMppwLwTeEeT7</a> | <a class="ul" href="https://github.com/achow101/">GitHub</a> | <a class="ul" href="https://keybase.io/achow101/key.asc">GPG Key Fingerprint 0x17565732E08E5E41</a> | <a class="ul" href="https://bitcointalk.org/index.php?topic=1608655.0">ACE - AD Campaign Experts</a></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr class="BaetdjYpuTjsyUWyrDDuTQ"><td class="hyUthaAihfXJjbfgkisjOg"><b><i></i></b><b><i></i></b>
+		<a name="msg16473668"></a>
+		<table width="100%" cellpadding="3" cellspacing="0" border="0">
+			<tbody><tr><td class="windowbg">
+				<table width="100%" cellpadding="5" cellspacing="0" style="table-layout: fixed;">
+					<tbody><tr>
+								<td valign="top" width="16%" rowspan="2" style="overflow: hidden;" class="poster_info">
+							<b><a href="https://bitcointalk.org/index.php?action=profile;u=662400" title="View the profile of kzv">kzv</a></b>
+							<div class="smalltext">
+								Hero Member<br>
+								<img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><img src="./How to compile static version bitcoind__files/star.gif" alt="*" border="0"><br>
+								<img src="./How to compile static version bitcoind__files/useroff.gif" alt="Offline" border="0" style="margin-top: 2px;"><span class="smalltext"> Offline</span><br><br>
+								Activity: 742<br><br>
+								
+								
+								
+								<br>
+								<a href="https://bitcointalk.org/index.php?action=profile;u=662400"><img src="./How to compile static version bitcoind__files/profile_sm.gif" alt="View Profile" title="View Profile" border="0"></a>
+								<a href="http://3s3s.org/" title="Simple and easy to use anonymizer"><img src="./How to compile static version bitcoind__files/www_sm.gif" alt="WWW" border="0"></a><br>
+							</div>
+						</td>
+								<td valign="top" width="85%" height="100%" style="padding: 2px;" class="td_headerandpost">
+							<table width="100%" border="0"><tbody><tr>
+								<td valign="middle"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16473668#msg16473668"><img src="./How to compile static version bitcoind__files/xx.gif" alt="" border="0"></a></td>
+								<td valign="middle">
+												<div style="font-weight: bold;" class="subject" id="subject_16473668">
+										<a href="https://bitcointalk.org/index.php?topic=1636271.msg16473668#msg16473668">Re: How to compile static version bitcoind?</a>
+									</div>
+												<div class="smalltext">October 06, 2016, 01:08:02 PM</div></td>
+										  <td align="right" valign="middle" height="20" style="font-size: smaller; padding-top: 4px;" class="td_buttons"><div id="ignmsgbttns9" style="visibility: visible;"> &nbsp;<a class="message_number" style="vertical-align: middle;" href="https://bitcointalk.org/index.php?topic=1636271.msg16473668#msg16473668">#9</a>
+		 </div>
+								</td>
+							</tr></tbody></table>
+									 <hr width="100%" size="1" class="hrcolor" style="margin-top: 4px;">
+							<div class="post"><div class="quoteheader"><a href="https://bitcointalk.org/index.php?topic=1636271.msg16473333#msg16473333">Quote from: achow101 on October 06, 2016, 12:30:55 PM</a></div><div class="quote">Ok.. How about this command?<br><div class="codeheader">Code:</div><div class="code">./configure --enable-glibc-back-compat --prefix=`pwd`/depends/x86_64-pc-linux-gnu LDFLAGS="-static-libstdc++"</div></div><br>It works!!!<br>Thank you very much!!!&nbsp; <img src="./How to compile static version bitcoind__files/smiley.gif" alt="Smiley" border="0"></div>
+						</td>
+					</tr>
+					<tr>
+						<td valign="bottom" class="smalltext" width="85%">
+							<table width="100%" border="0" style="table-layout: fixed;"><tbody><tr>
+								<td colspan="2" class="smalltext" width="100%">
+								</td>
+							</tr><tr>
+								<td valign="bottom" class="smalltext" id="modified_16473668">
+								</td>
+								<td align="right" valign="bottom" class="smalltext">
+									<img src="./How to compile static version bitcoind__files/ip.gif" alt="" border="0">
+								</td>
+							</tr></tbody></table>
+							<hr width="100%" size="1" class="hrcolor">
+							<div class="signature sig662400"><span style="color: red;"><b>Vote for Marycoin:</b></span> <a class="ul" href="https://www.livecoin.net/voting/index?vote=Marycoin">https://www.livecoin.net/voting/index?vote=Marycoin</a><br><span style="font-size: 14pt !important; line-height: 1.3em;">Donate <b>Marycoin</b> project development: MS12okFu6D3FzBi2fTsmGEa6iQV9h31txe</span></div>
+						</td>
+					</tr>
+				</tbody></table>
+			</td></tr>
+		</tbody></table>
+	</td></tr>
+	<tr><td style="padding: 0 0 1px 0;"></td></tr>
+</tbody></table>
+<a name="lastPost"></a>
+<table width="100%" cellpadding="0" cellspacing="0" border="0">
+	<tbody><tr>
+		<td class="middletext">Pages:  [<b>1</b>]  </td>
+		<td align="right" style="padding-right: 1ex;">
+			<table cellpadding="0" cellspacing="0">
+				<tbody><tr>
+					
+		<td class="maintab_first">&nbsp;</td>
+		<td class="maintab_back"><a href="https://bitcointalk.org/index.php?action=printpage;topic=1636271.0" target="_blank">Print</a></td>
+		<td class="maintab_last">&nbsp;</td>
+				</tr>
+			</tbody></table>
+		</td>
+	</tr>
+</tbody></table>
+<script language="JavaScript" type="text/javascript" src="./How to compile static version bitcoind__files/xml_topic.js.&#19979;&#36733;"></script>
+<script language="JavaScript" type="text/javascript">//<!--
+	quickReplyCollapsed = true;
+
+	smf_topic = 1636271;
+	smf_start = 0;
+	smf_show_modify = 0;
+
+	// On quick modify, this is what the body will look like.
+	var smf_template_body_edit = '<div id="error_box" style="padding: 4px; color: red;"></div><textarea class="editor" name="message" rows="12" style="width: 94%; margin-bottom: 10px;">%body%</textarea><br /><input type="hidden" name="sc" value="4ef8d793f3ff7776262aa8e44db64a35" /><input type="hidden" name="topic" value="1636271" /><input type="hidden" name="msg" value="%msg_id%" /><div style="text-align: center;"><input type="submit" name="post" value="Save" onclick="return modify_save(\'4ef8d793f3ff7776262aa8e44db64a35\');" accesskey="s" />&nbsp;&nbsp;<input type="submit" name="cancel" value="Cancel" onclick="return modify_cancel();" /></div>';
+
+	// And this is the replacement for the subject.
+	var smf_template_subject_edit = '<input type="text" name="subject" value="%subject%" size="60" style="width: 99%;"  maxlength="80" />';
+
+	// Restore the message to this after editing.
+	var smf_template_body_normal = '%body%';
+	var smf_template_subject_normal = '<a href="https://bitcointalk.org/index.php?topic=1636271.msg%msg_id%#msg%msg_id%">%subject%</a>';
+	var smf_template_top_subject = "Topic: %subject% &nbsp;(Read 1381 times)"
+
+	if (window.XMLHttpRequest)
+		showModifyButtons();
+// --></script>
+<table border="0" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 1ex;">
+		<tbody><tr>
+				<td valign="top"><div class="nav" style="font-size: smaller; margin-bottom: 2ex; margin-top: 2ex;"><b><a href="https://bitcointalk.org/index.php" class="nav">Bitcoin Forum</a></b>&nbsp;&gt;&nbsp;<b><a href="https://bitcointalk.org/index.php#1" class="nav">Bitcoin</a></b>&nbsp;&gt;&nbsp;<b><a href="https://bitcointalk.org/index.php?board=6.0" class="nav">Development &amp; Technical Discussion</a></b> (Moderators: <a href="https://bitcointalk.org/index.php?action=profile;u=11425" title="Board Moderator">gmaxwell</a>, <a href="https://bitcointalk.org/index.php?action=profile;u=290195" title="Board Moderator">achow101</a>)&nbsp;&gt;&nbsp;<b><a href="https://bitcointalk.org/index.php?topic=1636271.0" class="nav">How to compile static version bitcoind?</a></b></div></td> 
+				<td valign="top" align="right" class="nav"> <a href="https://bitcointalk.org/index.php?topic=1636271.0;prev_next=prev#new">« previous topic</a> <a href="https://bitcointalk.org/index.php?topic=1636271.0;prev_next=next#new">next topic »</a></td>
+		</tr>
+</tbody></table>
+	<table cellpadding="0" cellspacing="0" border="0" style="margin-left: 1ex;">
+		<tbody><tr>
+			<td>&nbsp;</td>
+		</tr>
+	</tbody></table>
+</form>
+<div class="tborder"><div class="titlebg2" style="padding: 4px;" align="right">
+	<form action="https://bitcointalk.org/index.php" method="get" accept-charset="ISO-8859-1" style="padding:0; margin: 0;">
+		<span class="smalltext">Jump to:</span>
+		<select name="jumpto" id="jumpto" onchange="if (this.selectedIndex &gt; 0 &amp;&amp; this.options[this.selectedIndex].value) window.location.href = smf_scripturl + this.options[this.selectedIndex].value.substr(smf_scripturl.indexOf(&#39;?&#39;) == -1 || this.options[this.selectedIndex].value.substr(0, 1) != &#39;?&#39; ? 0 : 1);">
+			<option value="">Please select a destination:</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="#1">Bitcoin</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="?board=1.0"> =&gt; Bitcoin Discussion</option>
+			<option value="?board=74.0"> ===&gt; Legal</option>
+			<option value="?board=77.0"> ===&gt; Press</option>
+			<option value="?board=86.0"> ===&gt; Meetups</option>
+			<option value="?board=87.0"> ===&gt; Important Announcements</option>
+			<option value="?board=6.0" selected="selected"> =&gt; Development &amp; Technical Discussion</option>
+			<option value="?board=37.0"> ===&gt; Alternative clients</option>
+			<option value="?board=99.0"> =====&gt; MultiBit</option>
+			<option value="?board=98.0"> =====&gt; Electrum</option>
+			<option value="?board=100.0"> =====&gt; Bitcoin Wallet for Android</option>
+			<option value="?board=138.0"> =====&gt; BitcoinJ</option>
+			<option value="?board=97.0"> =====&gt; Armory</option>
+			<option value="?board=231.0"> =====&gt; Mycelium</option>
+			<option value="?board=14.0"> =&gt; Mining</option>
+			<option value="?board=40.0"> ===&gt; Mining support</option>
+			<option value="?board=41.0"> ===&gt; Pools</option>
+			<option value="?board=42.0"> ===&gt; Mining software (miners)</option>
+			<option value="?board=76.0"> ===&gt; Hardware</option>
+			<option value="?board=137.0"> =====&gt; Group buys</option>
+			<option value="?board=81.0"> ===&gt; Mining speculation</option>
+			<option value="?board=4.0"> =&gt; Bitcoin Technical Support</option>
+			<option value="?board=12.0"> =&gt; Project Development</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="#3">Economy</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="?board=7.0"> =&gt; Economics</option>
+			<option value="?board=57.0"> ===&gt; Speculation</option>
+			<option value="?board=5.0"> =&gt; Marketplace</option>
+			<option value="?board=51.0"> ===&gt; Goods</option>
+			<option value="?board=75.0"> =====&gt; Computer hardware</option>
+			<option value="?board=93.0"> =====&gt; Digital goods</option>
+			<option value="?board=234.0"> =======&gt; Invites &amp; Accounts</option>
+			<option value="?board=217.0"> =====&gt; Collectibles</option>
+			<option value="?board=52.0"> ===&gt; Services</option>
+			<option value="?board=53.0"> ===&gt; Currency exchange</option>
+			<option value="?board=56.0"> ===&gt; Gambling</option>
+			<option value="?board=71.0"> =====&gt; Games and rounds</option>
+			<option value="?board=207.0"> =====&gt; Investor-based games</option>
+			<option value="?board=228.0"> =====&gt; Gambling discussion</option>
+			<option value="?board=65.0"> ===&gt; Lending</option>
+			<option value="?board=88.0"> =====&gt; Long-term offers</option>
+			<option value="?board=78.0"> ===&gt; Securities</option>
+			<option value="?board=73.0"> ===&gt; Auctions</option>
+			<option value="?board=84.0"> ===&gt; Service Announcements</option>
+			<option value="?board=212.0"> =====&gt; Micro Earnings</option>
+			<option value="?board=85.0"> ===&gt; Service Discussion</option>
+			<option value="?board=222.0"> =====&gt; Web Wallets</option>
+			<option value="?board=223.0"> =====&gt; Exchanges</option>
+			<option value="?board=8.0"> =&gt; Trading Discussion</option>
+			<option value="?board=83.0"> ===&gt; Scam Accusations</option>
+			<option value="?board=129.0"> ===&gt; Reputation</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="#4">Other</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="?board=24.0"> =&gt; Meta</option>
+			<option value="?board=167.0"> ===&gt; New forum software</option>
+			<option value="?board=168.0"> ===&gt; Bitcoin Wiki</option>
+			<option value="?board=34.0"> =&gt; Politics &amp; Society</option>
+			<option value="?board=39.0"> =&gt; Beginners &amp; Help</option>
+			<option value="?board=9.0"> =&gt; Off-topic</option>
+			<option value="?board=59.0"> =&gt; Archival</option>
+			<option value="?board=92.0"> ===&gt; &#1050;&#1086;&#1088;&#1079;&#1080;&#1085;&#1072;</option>
+			<option value="?board=44.0"> ===&gt; CPU/GPU Bitcoin mining hardware</option>
+			<option value="?board=17.0"> ===&gt; Chinese students</option>
+			<option value="?board=25.0"> ===&gt; Obsolete (buying)</option>
+			<option value="?board=26.0"> ===&gt; Obsolete (selling)</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="#6">Alternate cryptocurrencies</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="?board=67.0"> =&gt; Altcoin Discussion</option>
+			<option value="?board=159.0"> =&gt; Announcements (Altcoins)</option>
+			<option value="?board=240.0"> ===&gt; Tokens (Altcoins)</option>
+			<option value="?board=160.0"> =&gt; Mining (Altcoins)</option>
+			<option value="?board=199.0"> ===&gt; Pools (Altcoins)</option>
+			<option value="?board=161.0"> =&gt; Marketplace (Altcoins)</option>
+			<option value="?board=197.0"> ===&gt; Service Announcements (Altcoins)</option>
+			<option value="?board=198.0"> ===&gt; Service Discussion (Altcoins)</option>
+			<option value="?board=238.0"> ===&gt; Bounties (Altcoins)</option>
+			<option value="?board=224.0"> =&gt; Speculation (Altcoins)</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="#5">Local</option>
+			<option value="" disabled="disabled">-----------------------------</option>
+			<option value="?board=241.0"> =&gt; &#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577; (Arabic)</option>
+			<option value="?board=242.0"> ===&gt; &#1575;&#1604;&#1593;&#1605;&#1604;&#1575;&#1578; &#1575;&#1604;&#1576;&#1583;&#1610;&#1604;&#1577; (Altcoins)</option>
+			<option value="?board=191.0"> =&gt; Bahasa Indonesia (Indonesian)</option>
+			<option value="?board=193.0"> ===&gt; Jual Beli</option>
+			<option value="?board=194.0"> ===&gt; Mining (Bahasa Indonesia)</option>
+			<option value="?board=192.0"> ===&gt; Altcoins (Bahasa Indonesia)</option>
+			<option value="?board=27.0"> =&gt; Español (Spanish)</option>
+			<option value="?board=31.0"> ===&gt; Mercado y Economía</option>
+			<option value="?board=202.0"> =====&gt; Servicios</option>
+			<option value="?board=203.0"> =====&gt; Trading y especulación</option>
+			<option value="?board=32.0"> ===&gt; Hardware y Minería</option>
+			<option value="?board=33.0"> ===&gt; Esquina Libre</option>
+			<option value="?board=101.0"> ===&gt; Mercadillo</option>
+			<option value="?board=102.0"> =====&gt; Mexico</option>
+			<option value="?board=103.0"> =====&gt; Argentina</option>
+			<option value="?board=104.0"> =====&gt; España</option>
+			<option value="?board=105.0"> =====&gt; Centroamerica y Caribe</option>
+			<option value="?board=130.0"> ===&gt; Primeros pasos y ayuda</option>
+			<option value="?board=151.0"> ===&gt; Altcoins (criptomonedas alternativas)</option>
+			<option value="?board=177.0"> =====&gt; Minería de altcoins</option>
+			<option value="?board=204.0"> =====&gt; Servicios</option>
+			<option value="?board=30.0"> =&gt; &#20013;&#25991; (Chinese)</option>
+			<option value="?board=117.0"> ===&gt; &#36339;&#34468;&#24066;&#22330;</option>
+			<option value="?board=118.0"> ===&gt; &#23665;&#23528;&#24065;</option>
+			<option value="?board=119.0"> ===&gt; &#23186;&#20307;</option>
+			<option value="?board=146.0"> ===&gt; &#25366;&#30719;</option>
+			<option value="?board=196.0"> ===&gt; &#31163;&#39064;&#19975;&#37324;</option>
+			<option value="?board=201.0"> =&gt; Hrvatski (Croatian)</option>
+			<option value="?board=220.0"> ===&gt; Trgovina</option>
+			<option value="?board=221.0"> ===&gt; Altcoins (Hrvatski)</option>
+			<option value="?board=16.0"> =&gt; Deutsch (German)</option>
+			<option value="?board=35.0"> ===&gt; Biete</option>
+			<option value="?board=36.0"> ===&gt; Suche</option>
+			<option value="?board=62.0"> ===&gt; Anfänger und Hilfe</option>
+			<option value="?board=60.0"> ===&gt; Mining (Deutsch)</option>
+			<option value="?board=61.0"> ===&gt; Trading und Spekulation</option>
+			<option value="?board=63.0"> ===&gt; Projektentwicklung</option>
+			<option value="?board=64.0"> ===&gt; Off-Topic (Deutsch)</option>
+			<option value="?board=139.0"> ===&gt; Treffen</option>
+			<option value="?board=140.0"> ===&gt; Presse </option>
+			<option value="?board=141.0"> ===&gt; Auktionen</option>
+			<option value="?board=152.0"> ===&gt; Altcoins (Deutsch)</option>
+			<option value="?board=120.0"> =&gt; &#917;&#955;&#955;&#951;&#957;&#953;&#954;&#940; (Greek)</option>
+			<option value="?board=136.0"> ===&gt; &#913;&#947;&#959;&#961;&#940;</option>
+			<option value="?board=195.0"> ===&gt; Mining Discussion (&#917;&#955;&#955;&#951;&#957;&#953;&#954;&#940;)</option>
+			<option value="?board=179.0"> ===&gt; Altcoins (&#917;&#955;&#955;&#951;&#957;&#953;&#954;&#940;)</option>
+			<option value="?board=246.0"> =====&gt; Altcoin Announcements (&#917;&#955;&#955;&#951;&#957;&#953;&#954;&#940;)</option>
+			<option value="?board=247.0"> =====&gt; Altcoin Mining (&#917;&#955;&#955;&#951;&#957;&#953;&#954;&#940;)</option>
+			<option value="?board=95.0"> =&gt; &#1506;&#1489;&#1512;&#1497;&#1514; (Hebrew)</option>
+			<option value="?board=13.0"> =&gt; Français</option>
+			<option value="?board=183.0"> ===&gt; Actualité et News</option>
+			<option value="?board=208.0"> ===&gt; Débutants</option>
+			<option value="?board=47.0"> ===&gt; Discussions générales et utilisation du Bitcoin</option>
+			<option value="?board=48.0"> ===&gt; Mining et Hardware</option>
+			<option value="?board=187.0"> ===&gt; Économie et spéculation</option>
+			<option value="?board=49.0"> ===&gt; Place de marché</option>
+			<option value="?board=209.0"> =====&gt; Échanges</option>
+			<option value="?board=210.0"> =====&gt; Produits et services</option>
+			<option value="?board=211.0"> =====&gt; Petites annonces</option>
+			<option value="?board=188.0"> ===&gt; Le Bitcoin et la loi</option>
+			<option value="?board=54.0"> ===&gt; Wiki, documentation et traduction</option>
+			<option value="?board=186.0"> ===&gt; Développement et technique</option>
+			<option value="?board=184.0"> ===&gt; Vos sites et projets</option>
+			<option value="?board=50.0"> ===&gt; Hors-sujet</option>
+			<option value="?board=149.0"> ===&gt; Altcoins (Français)</option>
+			<option value="?board=89.0"> =&gt; India</option>
+			<option value="?board=121.0"> ===&gt; Mining (India)</option>
+			<option value="?board=122.0"> ===&gt; Marketplace (India)</option>
+			<option value="?board=123.0"> ===&gt; Regional Languages (India)</option>
+			<option value="?board=124.0"> ===&gt; Press &amp; News from India</option>
+			<option value="?board=125.0"> ===&gt; Alt Coins (India)</option>
+			<option value="?board=126.0"> ===&gt; Buyer/ Seller Reputations (India)</option>
+			<option value="?board=127.0"> ===&gt; Off-Topic (India)</option>
+			<option value="?board=28.0"> =&gt; Italiano (Italian)</option>
+			<option value="?board=153.0"> ===&gt; Guide (Italiano)</option>
+			<option value="?board=169.0"> ===&gt; Progetti</option>
+			<option value="?board=205.0"> ===&gt; Discussioni avanzate e sviluppo</option>
+			<option value="?board=175.0"> ===&gt; Trading, analisi e speculazione</option>
+			<option value="?board=170.0"> ===&gt; Mercato</option>
+			<option value="?board=46.0"> =====&gt; Mercato valute</option>
+			<option value="?board=107.0"> =====&gt; Beni</option>
+			<option value="?board=171.0"> =====&gt; Servizi</option>
+			<option value="?board=172.0"> =====&gt; Esercizi commerciali</option>
+			<option value="?board=173.0"> =====&gt; Hardware/Mining (Italiano)</option>
+			<option value="?board=200.0"> =====&gt; Gambling (Italiano)</option>
+			<option value="?board=162.0"> ===&gt; Accuse scam/truffe</option>
+			<option value="?board=115.0"> ===&gt; Mining (Italiano)</option>
+			<option value="?board=132.0"> ===&gt; Alt-Currencies (Italiano)</option>
+			<option value="?board=176.0"> =====&gt; Annunci</option>
+			<option value="?board=144.0"> ===&gt; Raduni/Meeting (Italiano)</option>
+			<option value="?board=165.0"> ===&gt; Crittografia e decentralizzazione</option>
+			<option value="?board=145.0"> ===&gt; Off-Topic (Italiano)</option>
+			<option value="?board=79.0"> =&gt; Nederlands (Dutch)</option>
+			<option value="?board=80.0"> ===&gt; Markt</option>
+			<option value="?board=94.0"> ===&gt; Gokken/lotterijen</option>
+			<option value="?board=116.0"> ===&gt; Mining (Nederlands)</option>
+			<option value="?board=143.0"> ===&gt; Beurzen</option>
+			<option value="?board=147.0"> ===&gt; Alt Coins (Nederlands)</option>
+			<option value="?board=148.0"> ===&gt; Off-topic (Nederlands)</option>
+			<option value="?board=150.0"> ===&gt; Meetings (Nederlands)</option>
+			<option value="?board=82.0"> =&gt; &#54620;&#44397;&#50612; (Korean)</option>
+			<option value="?board=182.0"> ===&gt; &#45824;&#52404;&#53076;&#51064; Alt Coins (&#54620;&#44397;&#50612;)</option>
+			<option value="?board=219.0"> =&gt; Philippines</option>
+			<option value="?board=243.0"> ===&gt; Altcoins (Philippines)</option>
+			<option value="?board=142.0"> =&gt; Polski</option>
+			<option value="?board=163.0"> ===&gt; Tablica og&#322;osze&#324;</option>
+			<option value="?board=164.0"> ===&gt; Alternatywne kryptowaluty</option>
+			<option value="?board=29.0"> =&gt; Português (Portuguese)</option>
+			<option value="?board=131.0"> ===&gt; Primeiros Passos (Iniciantes)</option>
+			<option value="?board=69.0"> ===&gt; Economia &amp; Mercado</option>
+			<option value="?board=70.0"> ===&gt; Mineração em Geral</option>
+			<option value="?board=206.0"> ===&gt; Desenvolvimento &amp; Discussões Técnicas</option>
+			<option value="?board=181.0"> ===&gt; Criptomoedas Alternativas</option>
+			<option value="?board=134.0"> ===&gt; Brasil</option>
+			<option value="?board=135.0"> ===&gt; Portugal</option>
+			<option value="?board=10.0"> =&gt; &#1056;&#1091;&#1089;&#1089;&#1082;&#1080;&#1081; (Russian)</option>
+			<option value="?board=22.0"> ===&gt; &#1053;&#1086;&#1074;&#1080;&#1095;&#1082;&#1080;</option>
+			<option value="?board=128.0"> ===&gt; &#1053;&#1086;&#1074;&#1086;&#1089;&#1090;&#1080;</option>
+			<option value="?board=23.0"> ===&gt; &#1041;&#1080;&#1079;&#1085;&#1077;&#1089;</option>
+			<option value="?board=236.0"> =====&gt; &#1041;&#1072;&#1088;&#1072;&#1093;&#1086;&#1083;&#1082;&#1072;</option>
+			<option value="?board=237.0"> =====&gt; &#1054;&#1073;&#1084;&#1077;&#1085;&#1085;&#1080;&#1082;&#1080;</option>
+			<option value="?board=90.0"> ===&gt; &#1048;&#1076;&#1077;&#1080;</option>
+			<option value="?board=66.0"> ===&gt; &#1050;&#1086;&#1076;&#1077;&#1088;&#1099;</option>
+			<option value="?board=21.0"> ===&gt; &#1052;&#1072;&#1081;&#1085;&#1077;&#1088;&#1099;</option>
+			<option value="?board=91.0"> ===&gt; &#1055;&#1086;&#1083;&#1080;&#1090;&#1080;&#1082;&#1072;</option>
+			<option value="?board=20.0"> ===&gt; &#1058;&#1088;&#1077;&#1081;&#1076;&#1077;&#1088;&#1099;</option>
+			<option value="?board=72.0"> ===&gt; &#1040;&#1083;&#1100;&#1090;&#1077;&#1088;&#1085;&#1072;&#1090;&#1080;&#1074;&#1085;&#1099;&#1077; &#1082;&#1088;&#1080;&#1087;&#1090;&#1086;&#1074;&#1072;&#1083;&#1102;&#1090;&#1099;</option>
+			<option value="?board=248.0"> =====&gt; &#1058;&#1086;&#1082;&#1077;&#1085;&#1099;</option>
+			<option value="?board=55.0"> ===&gt; &#1061;&#1072;&#1081;&#1087;&#1099;</option>
+			<option value="?board=19.0"> ===&gt; &#1070;&#1088;&#1080;&#1089;&#1090;&#1099;</option>
+			<option value="?board=185.0"> ===&gt; &#1056;&#1072;&#1073;&#1086;&#1090;&#1072;</option>
+			<option value="?board=18.0"> ===&gt; &#1056;&#1072;&#1079;&#1085;&#1086;&#1077;</option>
+			<option value="?board=108.0"> =&gt; Român&#259; (Romanian)</option>
+			<option value="?board=109.0"> ===&gt; Anunturi importante</option>
+			<option value="?board=110.0"> ===&gt; Offtopic</option>
+			<option value="?board=111.0"> ===&gt; Market</option>
+			<option value="?board=166.0"> ===&gt; Minerit</option>
+			<option value="?board=112.0"> ===&gt; Tutoriale</option>
+			<option value="?board=113.0"> ===&gt; Bine ai venit!</option>
+			<option value="?board=114.0"> ===&gt; Presa</option>
+			<option value="?board=178.0"> ===&gt; Altcoins (Monede Alternative)</option>
+			<option value="?board=45.0"> =&gt; Skandinavisk</option>
+			<option value="?board=133.0"> =&gt; Türkçe (Turkish)</option>
+			<option value="?board=180.0"> ===&gt; Bitcoin Haberleri</option>
+			<option value="?board=155.0"> ===&gt; Pazar Alan&#305;</option>
+			<option value="?board=156.0"> ===&gt; Madencilik</option>
+			<option value="?board=189.0"> ===&gt; Ekonomi</option>
+			<option value="?board=190.0"> ===&gt; Servisler</option>
+			<option value="?board=232.0"> =====&gt; Fonlar</option>
+			<option value="?board=229.0"> ===&gt; Proje Geli&#351;tirme</option>
+			<option value="?board=157.0"> ===&gt; Alternatif Kripto-Paralar</option>
+			<option value="?board=235.0"> =====&gt; Madencilik (Alternatif Kripto-Paralar)</option>
+			<option value="?board=239.0"> =====&gt; Duyurular (Alternatif Kripto-Paralar)</option>
+			<option value="?board=158.0"> ===&gt; Konu D&#305;&#351;&#305;</option>
+			<option value="?board=174.0"> ===&gt; Yeni Ba&#351;layanlar &amp; Yard&#305;m</option>
+			<option value="?board=230.0"> ===&gt; Bulu&#351;malar</option>
+			<option value="?board=11.0"> =&gt; Other languages/locations</option>
+		</select>&nbsp;
+		<input type="button" value="go" onclick="if (this.form.jumpto.options[this.form.jumpto.selectedIndex].value) window.location.href = &#39;https://bitcointalk.org/index.php&#39; + this.form.jumpto.options[this.form.jumpto.selectedIndex].value;">
+	</form>
+</div></div><br>
+	</div><!--No longer true--><div style="visibility: hidden"><div style="text-align:center">Sponsored by <a class="td_headerandpost5" id="sponsor" href="https://www.privateinternetaccess.com/">Private Internet Access</a>, a Bitcoin-accepting <a href="https://www.privateinternetaccess.com/" title="VPN">VPN</a>.</div></div><script type="text/javascript">
+//<!--
+function detectabp(el) {
+	if(typeof window.getComputedStyle != 'function')
+		return false;
+	if(!el)
+		var el=document.getElementById("sponsor");
+	var s = window.getComputedStyle(el).getPropertyValue("-moz-binding");
+	var s2 = window.getComputedStyle(el).getPropertyValue("display");
+	var detected = typeof s !== "undefined" && s != null && s.length > 0 && s != "none";
+	return detected || (typeof s2 !== "undefined" && s2 != null && s2 == "none");
+}
+function hex(num, length) {
+	str=num.toString(16);
+	while (str.length < length) {
+		str = '0' + str;
+	}
+	return str.substr(0,length);
+
+}
+
+function getabplink(site) {
+	var sites = new Array();sites["https://www.privateinternetaccess.com/"] = 1;
+sites["https://bitcointalk.org/dec/p1.html"] = 2;
+sites["https://fundyourselfnow.com"] = 3;
+	site_n=sites[site];
+	if(typeof site_n === 'undefined' || site_n === null || site_n <1 || site_n >150)
+		return site;
+	var code=Math.floor(Math.random()*2100000000);
+	var filler=hex(Math.floor(Math.random()*900000000000000),8);
+	var msg=Math.floor(Math.random()*9999999);
+	var site_c = site_n ^ code;
+	var template = Math.floor(Math.random()*4);
+	if(template==0)
+		template='https://bitcointalk.org/index.php?topic='+msg+'.0;do=watch;sesc=';
+	else if (template==1)
+		template="https://bitcointalk.org/index.php?action=post;msg=" + msg + ";topic=" + msg + ".0;sesc=";
+	else if (template==2)
+		template="https://bitcointalk.org/index.php?action=post;quote="+msg+";topic="+msg+".0;num_replies="+msg+";sesc=";
+	else
+		template="https://bitcointalk.org/index.php?action=ignore;u="+msg+";topic="+msg+";msg="+msg+";sesc=";
+
+	return template + hex(code,8) + hex(code,8) + hex(site_c,8) + filler;
+}
+function antiabp(){
+	if(!detectabp())
+		return;
+	var all_links=document.body.getElementsByTagName('a');
+	var els=new Array();
+	for(var i=0;i<all_links.length;i++) {
+		els.push(all_links[i])
+	}
+	for(var i=0;i<els.length;i++) {
+		if(detectabp(els[i])){
+			var newlink = els[i].cloneNode();
+			newlink.href=getabplink(els[i]);
+			newlink.innerHTML=els[i].innerHTML;
+			els[i].parentNode.insertBefore(newlink, els[i]);
+			els[i].parentNode.removeChild(els[i]);
+		}
+	}
+}
+
+if(window.chrome)
+	window.setTimeout(antiabp, 300);
+else
+	antiabp();
+//-->
+</script>
+
+	<div id="footerarea" style="text-align: center; padding-bottom: 1ex;">
+		<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+			function smfFooterHighlight(element, value)
+			{
+				element.src = smf_images_url + "/" + (value ? "h_" : "") + element.id + ".gif";
+			}
+		// ]]></script>
+		<table cellspacing="0" cellpadding="3" border="0" align="center" width="100%">
+			<tbody><tr>
+				<td width="28%" valign="middle" align="right">
+					<a href="http://www.mysql.com/" target="_blank"><img id="powered-mysql" src="./How to compile static version bitcoind__files/powered-mysql.gif" alt="Powered by MySQL" width="54" height="20" style="margin: 5px 16px;" onmouseover="smfFooterHighlight(this, true);" onmouseout="smfFooterHighlight(this, false);"></a>
+					<a href="http://www.php.net/" target="_blank"><img id="powered-php" src="./How to compile static version bitcoind__files/powered-php.gif" alt="Powered by PHP" width="54" height="20" style="margin: 5px 16px;" onmouseover="smfFooterHighlight(this, true);" onmouseout="smfFooterHighlight(this, false);"></a>
+				</td>
+				<td valign="middle" align="center" style="white-space: nowrap;">
+					
+		<span class="smalltext" style="display: inline; visibility: visible; font-family: Verdana, Arial, sans-serif;"><a href="http://www.simplemachines.org/" title="Simple Machines Forum" target="_blank">Powered by SMF 1.1.19</a> | 
+<a href="http://www.simplemachines.org/about/copyright.php" title="Free Forum Software" target="_blank">SMF © 2006-2009, Simple Machines</a>
+		</span>
+				</td>
+				<td width="28%" valign="middle" align="left">
+					<a href="http://validator.w3.org/check/referer" target="_blank"><img id="valid-xhtml10" src="./How to compile static version bitcoind__files/valid-xhtml10.gif" alt="Valid XHTML 1.0!" width="54" height="20" style="margin: 5px 16px;" onmouseover="smfFooterHighlight(this, true);" onmouseout="smfFooterHighlight(this, false);"></a>
+					<a href="http://jigsaw.w3.org/css-validator/check/referer" target="_blank"><img id="valid-css" src="./How to compile static version bitcoind__files/valid-css.gif" alt="Valid CSS!" width="54" height="20" style="margin: 5px 16px;" onmouseover="smfFooterHighlight(this, true);" onmouseout="smfFooterHighlight(this, false);"></a>
+				</td>
+			</tr>
+		</tbody></table>
+		<script language="JavaScript" type="text/javascript"><!-- // --><![CDATA[
+			window.addEventListener("load", smf_codeFix, false);
+
+			function smf_codeFix()
+			{
+				var codeFix = document.getElementsByTagName ? document.getElementsByTagName("div") : document.all.tags("div");
+
+				for (var i = 0; i < codeFix.length; i++)
+				{
+					if ((codeFix[i].className == "code" || codeFix[i].className == "post" || codeFix[i].className == "signature") && codeFix[i].offsetHeight < 20)
+						codeFix[i].style.height = (codeFix[i].offsetHeight + 20) + "px";
+				}
+			}
+		// ]]></script>
+	</div>
+	<div id="ajax_in_progress" style="display: none;">Loading...</div>
+</body></html>
