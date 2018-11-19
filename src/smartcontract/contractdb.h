@@ -11,14 +11,14 @@
 class DBContractInfo
 {
 public:
-    uint256 blockHash;
+    ContractDataFrom from;
     uint32_t blockHeight;
     std::string data;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(blockHash);
+        READWRITE(from);
         READWRITE(blockHeight);
         READWRITE(data);
     }
@@ -36,36 +36,30 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(code);
-        if (ser_action.ForRead()) {
-            uint64_t size;
-            READWRITE(size);
-            for (int i = 0; i < size; ++i) {
-                DBContractInfo dbContractInfo;
-                READWRITE(dbContractInfo);
-                data.emplace_back(dbContractInfo);
-            }
-        }
-        else {
-            uint64_t size = data.size();
-            READWRITE(size);
-            for (DBContractList::iterator it = data.begin(); it != data.end(); ++it) {
-                READWRITE(*it);
-            }
-        }
-        
+        READWRITE(data);
     }
 };
 
 class CellContractID;
 typedef std::map<CellContractID, DBBlockContractInfo> DBContractMap;
+typedef std::map<CellContractID, ContractInfo> CONTRACT_DATA;
+
+class ContractTxFinalData
+{
+public:
+    CellAmount coins;
+    std::vector<CONTRACT_DATA> data;
+};
 
 class ContractContext
 {
     friend class ContractDataDB;
 
 public:
-    std::map<CellContractID, ContractInfo> cache;    // 数据缓存，用于回滚
-    std::map<CellContractID, ContractInfo> data;
+    CONTRACT_DATA cache;    // 数据缓存，用于回滚
+    CONTRACT_DATA data;
+    ContractTxFinalData txFinalData;
+    CONTRACT_DATA prevData;
 
 public:
     void SetCache(const CellContractID& contractId, ContractInfo& contractInfo);
@@ -91,6 +85,7 @@ struct SmartContractThreadData
     std::set<uint256> associationTransactions;
 };
 
+typedef std::map<uint256, std::vector<std::map<CellContractID, ContractInfo>>> BLOCK_CONTRACT_DATA;
 class ContractDataDB
 {
 private:
@@ -101,6 +96,8 @@ private:
 
     // 合约缓存，同时包含多个合约对应的多个块合约数据快照
     DBContractMap contractData;
+    BLOCK_CONTRACT_DATA blockContractData;
+    std::map<int, std::vector<std::pair<uint256, bool>>> mapHeightHash;
 
 public:
     ContractContext contractContext;
@@ -114,9 +111,9 @@ public:
 
     int GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
 
-    bool RunBlockContract(const std::shared_ptr<const CellBlock> pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
-    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock> pBlock, SmartContractThreadData* threadData);
-    void ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock> pBlock, SmartContractThreadData* threadData);
+    bool RunBlockContract(CellBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
+    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, CellBlock* pBlock, SmartContractThreadData* threadData);
+    void ExecutiveTransactionContract(SmartLuaState* sls, CellBlock* pBlock, SmartContractThreadData* threadData);
 
     void UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* contractContext);
     void Flush();

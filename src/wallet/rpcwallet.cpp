@@ -656,7 +656,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	CellLinkAddress contractAddr(contractId);
 
     UniValue ret(UniValue::VARR);
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     if (!PublishContract(&RPCSLS, contractAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
@@ -748,7 +748,7 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     if (success) {
         RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
@@ -873,7 +873,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
     RPCSLS.codeLen = 0;

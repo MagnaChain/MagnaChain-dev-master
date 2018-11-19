@@ -32,6 +32,8 @@
 #include "wallet/rpcwallet.h"
 #include "univalue.h"
 #include "utils/util.h"
+#include "consensus/merkle.h"
+#include "smartcontract/smartcontract.h"
 
 #include <boost/foreach.hpp>
 #include <stdint.h>
@@ -1373,9 +1375,8 @@ UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
     }
 
     std::string strError;
-    if (!ReqMainChainRedeemMortgage(tx, block, &strError)){
+    if (!ReqMainChainRedeemMortgage(tx, block, &strError))
         throw JSONRPCError(RPC_VERIFY_ERROR, strprintf(std::string("Call ReqMainChainRedeemMortgage fail: %s"), strError));
-    }
 
     return "ok";
 }
@@ -1404,11 +1405,10 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (mapBlockIndex.count(blockHash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-    CellBlockIndex*  pblockindex = mapBlockIndex[blockHash];
 
-    if (chainActive.Height() - pblockindex->nHeight > REDEEM_SAFE_HEIGHT){
+    CellBlockIndex* pblockindex = mapBlockIndex[blockHash];
+    if (chainActive.Height() - pblockindex->nHeight > REDEEM_SAFE_HEIGHT)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Report block is too old.");
-    }
 
     CellBlock block;
     if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))   
@@ -1416,18 +1416,18 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
     //check tx is a normal transaction
+    int txIndex = -1;
     CellTransactionRef pReportTx;
-    for (const CellTransactionRef& ptx : block.vtx)
-    {
-        if (ptx->GetHash() == txHash)
-        {
-            pReportTx = ptx;
+    for (int i = 0; i < block.vtx.size(); ++i) {
+        if (block.vtx[i]->GetHash() == txHash) {
+            txIndex = i;
+            pReportTx = block.vtx[i];
             break;
         }
     }
-    if (pReportTx == nullptr){
+
+    if (pReportTx == nullptr)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "block did not contain the reported transaction");
-    }
 
     std::set<uint256> setTxids;
     setTxids.insert(txHash);
@@ -1438,13 +1438,138 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     ReportData* pReportData = new ReportData;
     mtx.pReportData.reset(pReportData);
-    if (!pReportTx->IsCoinBase())
-        pReportData->reporttype = ReportType::REPORT_TX;
-    else
+    if (pReportTx->IsCoinBase())
         pReportData->reporttype = ReportType::REPORT_COINBASE;
+    else
+        pReportData->reporttype = ReportType::REPORT_TX;
     pReportData->reportedTxHash = txHash;
-    pReportData->reportedBranchId = Params().GetBranchHash(); 
+    pReportData->reportedBranchId = Params().GetBranchHash();
     pReportData->reportedBlockHash = block.GetHash();
+
+    CellRPCConfig branchrpccfg;
+    if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "invalid rpc config");
+
+    const std::string strMethod = "handlebranchreport";
+    UniValue params(UniValue::VARR);
+    CellTransactionRef txRef = MakeTransactionRef(std::move(mtx));
+    params.push_back(EncodeHexTx(*txRef, RPCSerializationFlags()));
+
+    CellMutableTransaction mtxTrans1;
+    if (!DecodeHexTx(mtxTrans1, params[0].get_str()))
+        throw JSONRPCError(RPC_WALLET_ERROR, "DecodeHexTx tx hex fail.\n");
+
+    UniValue reply = CallRPC(branchrpccfg, strMethod, params);
+    const UniValue& error = find_value(reply, "error");
+    if (!error.isNull())
+        throw JSONRPCError(RPC_INTERNAL_ERROR,strprintf(std::string("call rpc error %s"), error.write()));
+    const UniValue& result = find_value(reply, "result");
+    if (result.isNull())
+        throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
+
+    return result;
+}
+
+SmartLuaState branchRpcSLS;
+UniValue reportcontractdata(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 4)
+        throw std::runtime_error(
+            "sendreporttomain \"blockhash\"  \"txid\"\n"
+            "\nSend invalid transaction proof to main chain. \n"
+            "\nArguments:\n"
+            "1. \"blockhash\"        (string, required) The block hash.\n"
+            "2. \"txid\"             (string, required) The txid of transaction that will be reported.\n"
+            "\nReturns ok or fail.\n"
+            "\nResult:\n"
+            "\n"
+            "\nExamples:\n"
+            + HelpExampleCli("sendprovetomain", "\"blockhash\" \"txid\"")
+            + HelpExampleRpc("sendprovetomain", "\"blockhash\" \"txid\"")
+        );
+
+    if (Params().IsMainChain())
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
+
+    uint256 reportedBlockHash = ParseHashV(request.params[0], "parameter 1");
+    if (mapBlockIndex.count(reportedBlockHash) == 0)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+
+    CellBlock reportedBlock;
+    CellBlockIndex* pReportedBlockIndex = mapBlockIndex[reportedBlockHash];
+    if (!ReadBlockFromDisk(reportedBlock, pReportedBlockIndex, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+
+    int reportedTxIndex = -1;
+    uint256 reportedTxHash = ParseHashV(request.params[1], "parameter 2");
+    //check tx is a normal transaction
+    for (int i = 0; i < reportedBlock.vtx.size(); ++i) {
+        if (reportedBlock.vtx[i]->GetHash() == reportedTxHash) {
+            reportedTxIndex = i;
+            break;
+        }
+    }
+    if (reportedTxIndex == -1)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't find transaction");
+
+    uint256 proveBlockHash = ParseHashV(request.params[2], "parameter 2");
+    if (mapBlockIndex.count(proveBlockHash) == 0)
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+
+    CellBlock proveBlock;
+    CellBlockIndex* pProveBlockIndex = mapBlockIndex[proveBlockHash];
+    if (!ReadBlockFromDisk(proveBlock, pProveBlockIndex, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+
+    int proveTxIndex = -1;
+    uint256 proveTxHash = ParseHashV(request.params[3], "parameter 3");
+    //check tx is a normal transaction
+    for (int i = 0; i < proveBlock.vtx.size(); ++i) {
+        if (proveBlock.vtx[i]->GetHash() == proveTxHash) {
+            proveTxIndex = i;
+            break;
+        }
+    }
+    if (proveTxIndex == -1)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't find transaction");
+
+    CellMutableTransaction mtx;
+    mtx.nVersion = CellTransaction::REPORT_CHEAT;
+
+    std::set<uint256> setTxids;
+    setTxids.insert(reportedTxHash);
+    mtx.pPMT.reset(NewSpvProof(reportedBlock, setTxids));
+
+    ReportData* pReportData = new ReportData;
+    mtx.pReportData.reset(pReportData);
+    pReportData->reporttype = ReportType::REPORT_CONTRACT_DATA;
+    pReportData->reportedBranchId = Params().GetBranchHash();
+
+    CellTransactionRef reportTx = reportedBlock.vtx[reportedTxIndex];
+    pReportData->reportedBlockHash = reportedBlockHash;
+    pReportData->reportedTxHash = reportedTxHash;
+    pReportData->contractData.reset(new ReportContractData);
+    pReportData->contractData->reportedContractPrevData = reportedBlock.prevContractData[reportedTxIndex];
+    std::vector<uint256> reprotedLeaves;
+    VecTxMerkleLeavesWithPrevData(reportedBlock.vtx, reportedBlock.prevContractData, reprotedLeaves);
+    std::vector<bool> reportedMatch(reportedBlock.vtx.size(), false);
+    reportedMatch[reportedTxIndex] = true;
+    pReportData->contractData->reportedSpvProof = std::move(CellSpvProof(reprotedLeaves, reportedMatch, reportedBlockHash));
+
+    CellTransactionRef proveTx = proveBlock.vtx[proveTxIndex];
+    pReportData->contractData->proveTxHash = proveTxHash;
+
+    ContractContext contractContext;
+    contractContext.txFinalData.data.resize(proveBlock.vtx.size());
+    if (!ExecuteBlock(&branchRpcSLS, &proveBlock, pProveBlockIndex->pprev, 0, proveTxIndex + 1, &contractContext))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "executive contract fail");
+    pReportData->contractData->proveContractData = contractContext.txFinalData.data[proveTxIndex];
+
+    std::vector<bool> proveMatch(proveBlock.vtx.size(), false);
+    proveMatch[proveTxIndex] = true;
+    std::vector<uint256> proveLeaves;
+    VecTxMerkleLeavesWithData(proveBlock.vtx, contractContext.txFinalData.data, proveLeaves);
+    pReportData->contractData->proveSpvProof = std::move(CellSpvProof(proveLeaves, proveMatch, proveBlockHash));
 
     CellRPCConfig branchrpccfg;
     if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
@@ -1458,11 +1583,10 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
     const UniValue& error = find_value(reply, "error");
     if (!error.isNull())
-        throw JSONRPCError(RPC_INTERNAL_ERROR,strprintf(std::string("call rpc error %s"), error.write()));
+        throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf(std::string("call rpc error %s"), error.write()));
     const UniValue& result = find_value(reply, "result");
-    if (result.isNull()){
+    if (result.isNull())
         throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
-    }
 
     return result;
 }
@@ -1508,13 +1632,14 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     if (branchData.mapHeads.count(tx->pReportData->reportedBlockHash) == 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not found block data in mapHeads");
 
-    std::vector<uint256> vMatch;
-    std::vector<unsigned int> vIndex;
-    CellSpvProof svpProof(*tx->pPMT);
-    if (svpProof.pmt.ExtractMatches(vMatch, vIndex) != branchData.mapHeads[tx->pPMT->blockhash].header.hashMerkleRoot)
-    {
+    BranchBlockData* pBlockData = branchData.GetBranchBlockData(tx->pPMT->blockhash);
+    if (pBlockData == nullptr)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not found block data in mapHeads");
+
+    CellSpvProof spvProof(*tx->pPMT);
+    int txIndex = CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, tx->pReportData->reportedTxHash);
+    if (txIndex < 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid transaction spv");
-    }
 
     uint256 reportFlagHash = GetReportTxHashKey(*tx);
     if (pBranchDb->mReortTxFlag.count(reportFlagHash))
@@ -1678,22 +1803,45 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     CellMutableTransaction mtx;
     mtx.nVersion = CellTransaction::PROVE;
     mtx.pProveData.reset(new ProveData);
-    if (!pProveTx->IsCoinBase())
+    if (!pProveTx->IsCoinBase()) {
         mtx.pProveData->provetype = ReportType::REPORT_TX;
+        mtx.pProveData->contractData.reset(new ContractProveData);
+    }
     else
         mtx.pProveData->provetype = ReportType::REPORT_COINBASE;
     mtx.pProveData->branchId = Params().GetBranchHash();
     mtx.pProveData->blockHash = blockHash;
     mtx.pProveData->txHash = txHash;
-    if (pProveTx->IsCoinBase()){ 
-        if (!GetProveOfCoinbase(mtx.pProveData, block)){
+    if (pProveTx->IsCoinBase()) { 
+        if (!GetProveOfCoinbase(mtx.pProveData, block))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get coinbase transaction prove data failed");
-        }
     }
-    else{
-        if (!GetProveInfo(block, pblockindex->nHeight, pblockindex->pprev, targetTxIndex, mtx.pProveData)){
+    else {
+        if (!GetProveInfo(block, pblockindex->nHeight, pblockindex->pprev, targetTxIndex, mtx.pProveData))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
-        }
+    }
+
+    if (pProveTx->IsSmartContract()) {
+        ContractContext contractContext;
+        if (!ExecuteBlock(&RPCSLS, &block, pblockindex->pprev, 0, targetTxIndex + 1, &contractContext))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
+
+        // 先证明合约数据来源合法
+        mtx.pProveData->contractData->coins = block.prevContractData[targetTxIndex].coins;
+        mtx.pProveData->contractData->contractPrevData = std::move(RPCSLS.contractDataFrom);
+
+        std::vector<uint256> reportedPrevDataLeaves;
+        VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, reportedPrevDataLeaves);
+        std::vector<bool> reportedMatch(block.vtx.size(), false);
+        reportedMatch[targetTxIndex] = true;
+        mtx.pProveData->contractData->prevDataSPV = std::move(CellPartialMerkleTree(reportedPrevDataLeaves, reportedMatch));
+        
+        if (!ExecuteBlock(&RPCSLS, &block, pblockindex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
+
+        std::vector<uint256> reportedDataLeaves;
+        VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, reportedDataLeaves);
+        mtx.pProveData->contractData->dataSPV = std::move(CellPartialMerkleTree(reportedDataLeaves, reportedMatch));
     }
 
     CellRPCConfig branchrpccfg;
@@ -1757,9 +1905,8 @@ UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
     mtx.pProveData->branchId = Params().GetBranchHash();
     mtx.pProveData->blockHash = blockHash;
     mtx.pProveData->txHash.SetNull();// when report merkle, this field is null, so set it null to match.
-    if (!GetProveOfCoinbase(mtx.pProveData, block)) {
+    if (!GetProveOfCoinbase(mtx.pProveData, block))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Get coinbase transaction prove data failed");
-    }
 
     CellRPCConfig branchrpccfg;
     if (g_branchChainMan->GetRpcConfig(CellBaseChainParams::MAIN, branchrpccfg) == false)
@@ -1776,9 +1923,8 @@ UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf(std::string("call rpc error %s"), error.write()));
 
     const UniValue& result = find_value(reply, "result");
-    if (result.isNull()) {
+    if (result.isNull())
         throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
-    }
 
     return result;
 }
@@ -1832,7 +1978,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
     std::vector<CellRecipient> vecSend;
     bool fSubtractFeeFromAmount = false;
     CellAmount curBalance = pwallet->GetBalance();
-    int nChangePosRet = -1; 
+    int nChangePosRet = -1;
     if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
         if (!fSubtractFeeFromAmount && nFeeRequired > curBalance)
             strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
@@ -1850,9 +1996,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
     if (!state.GetRejectReason().empty())
-    {
         ret.push_back(Pair("commit_reject_reason", state.GetRejectReason()));
-    }
     return ret;
 }
 
@@ -2146,6 +2290,7 @@ static const CRPCCommand commands[] =
 
     // report and provre api
     { "branchchain",        "sendreporttomain",          &sendreporttomain,            false, {"blockhash", "txid"}},
+    { "branchchain",        "reportcontractdata",          &reportcontractdata,        false,{ "reportedblockhash", "reportedtxid", "proveblockhash", "provetxid" } },
     { "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
     { "branchchain",        "reportbranchchainblockmerkle",&reportbranchchainblockmerkle, false, {"branchid","blockhash"},},
     // 证明交易数据还需要修改和完善

@@ -203,11 +203,10 @@ CellBranchBlockInfo::CellBranchBlockInfo()
 }
 
 CellBranchBlockInfo::CellBranchBlockInfo(const CellBranchBlockInfo& r)
-    : nVersion(r.nVersion), hashPrevBlock(r.hashPrevBlock), hashMerkleRoot(r.hashMerkleRoot),
-      nTime(r.nTime), nBits(r.nBits), nNonce(r.nNonce), vchBlockSig(r.vchBlockSig),
+    : nVersion(r.nVersion), hashPrevBlock(r.hashPrevBlock), hashMerkleRoot(r.hashMerkleRoot), hashMerkleRootWithData(r.hashMerkleRootWithData),
+      hashMerkleRootWithPrevData(r.hashMerkleRootWithPrevData), nTime(r.nTime), nBits(r.nBits), nNonce(r.nNonce), vchBlockSig(r.vchBlockSig),
       prevoutStake(r.prevoutStake), branchID(r.branchID),blockHeight(r.blockHeight), vchStakeTxData(r.vchStakeTxData)
 {
-
 }
 
 void CellBranchBlockInfo::SetNull()
@@ -215,6 +214,8 @@ void CellBranchBlockInfo::SetNull()
     nVersion = 0;
     hashPrevBlock.SetNull();
     hashMerkleRoot.SetNull();
+    hashMerkleRootWithData.SetNull();
+    hashMerkleRootWithPrevData.SetNull();
     nTime = 0;
     nBits = 0;
     nNonce = 0;
@@ -232,6 +233,8 @@ void CellBranchBlockInfo::GetBlockHeader(CellBlockHeader& block) const
     block.nVersion = nVersion;
     block.hashPrevBlock = hashPrevBlock;
     block.hashMerkleRoot = hashMerkleRoot;
+    block.hashMerkleRootWithData = hashMerkleRootWithData;
+    block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
     block.nTime = nTime;
     block.nBits = nBits;
     block.nNonce = nNonce;
@@ -244,6 +247,8 @@ void CellBranchBlockInfo::SetBlockHeader(const CellBlockHeader& block)
     nVersion = block.nVersion;
     hashPrevBlock = block.hashPrevBlock;
     hashMerkleRoot = block.hashMerkleRoot;
+    hashMerkleRootWithData = block.hashMerkleRootWithData;
+    hashMerkleRootWithPrevData = block.hashMerkleRootWithPrevData;
     nTime = block.nTime;
     nBits = block.nBits;
     nNonce = block.nNonce;

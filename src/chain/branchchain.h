@@ -64,7 +64,7 @@ UniValue CallRPC(const CellRPCConfig& rpccfg, const std::string& strMethod, cons
 void ProcessBlockBranchChain();
 
 CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids);
-bool CheckSpvProof(BranchData& branchData, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash);
+int CheckSpvProof(const uint256& merkleRoot, CellPartialMerkleTree& pmt, const uint256 &querytxhash);
 bool CheckBranchTransaction(const CellTransaction& tx, CellValidationState &state, const bool fVerifingDB, const CellTransactionRef& pFromTx);
 
 CellAmount GetBranchChainCreateTxOut(const CellTransaction& tx);
@@ -92,6 +92,7 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state);
 bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex);
 bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
 bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
+bool CheckProveContractData(const CellTransaction& tx, CellValidationState& state);
 
 CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx, bool fDeepRevert = false);
 

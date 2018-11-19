@@ -282,7 +282,7 @@ bool CellCoinsViewCache::HaveInputs(const CellTransaction& tx) const
     return true;
 }
 
-CellAmount CoinAmountDB::GetAmount(uint160& key) const
+CellAmount CoinAmountDB::GetAmount(const uint160& key) const
 {
     CellAmount nValue = 0;
     CoinListPtr plist = pcoinListDb->GetList(key);
@@ -300,7 +300,7 @@ CellAmount CoinAmountDB::GetAmount(uint160& key) const
     return nValue;
 }
 
-CellAmount CoinAmountTemp::GetAmount(uint160& key) const
+CellAmount CoinAmountTemp::GetAmount(const uint160& key) const
 {
     auto it = coinAmountCache.find(key);
     if (it == coinAmountCache.end())
@@ -308,7 +308,7 @@ CellAmount CoinAmountTemp::GetAmount(uint160& key) const
     return it->second;
 }
 
-void CoinAmountTemp::IncAmount(uint160& key, CellAmount delta)
+void CoinAmountTemp::IncAmount(const uint160& key, CellAmount delta)
 {
     if (delta <= 0)
         return;
@@ -317,7 +317,12 @@ void CoinAmountTemp::IncAmount(uint160& key, CellAmount delta)
     coinAmountCache[key] = nValue;
 }
 
-CellAmount CoinAmountCache::GetAmount(uint160& key)
+bool CoinAmountCache::HasKeyInCache(const uint160& key) const
+{
+    return (coinAmountCache.count(key) > 0);
+}
+
+CellAmount CoinAmountCache::GetAmount(const uint160& key)
 {
     CellAmount nValue = 0;
     if (coinAmountCache.count(key) == 0) {
@@ -336,7 +341,7 @@ CellAmount CoinAmountCache::GetAmount(uint160& key)
     return nValue;
 }
 
-bool CoinAmountCache::IncAmount(uint160& key, CellAmount delta)
+bool CoinAmountCache::IncAmount(const uint160& key, CellAmount delta)
 {
     if (delta < 0)
         return false;
@@ -350,7 +355,7 @@ bool CoinAmountCache::IncAmount(uint160& key, CellAmount delta)
     return true;
 }
 
-bool CoinAmountCache::DecAmount(uint160& key, CellAmount delta)
+bool CoinAmountCache::DecAmount(const uint160& key, CellAmount delta)
 {
     if (delta < 0)
         return false;
@@ -366,12 +371,12 @@ bool CoinAmountCache::DecAmount(uint160& key, CellAmount delta)
     return true;
 }
 
-void CoinAmountCache::TakeSnapshot(uint160& key)
+void CoinAmountCache::TakeSnapshot(const uint160& key)
 {
     takeSnapshot = true;
 }
 
-void CoinAmountCache::RemoveSnapshot(uint160& key, bool reverse)
+void CoinAmountCache::RemoveSnapshot(const uint160& key, bool reverse)
 {
     if (!takeSnapshot) {
         CellAmount value = GetAmount(key);

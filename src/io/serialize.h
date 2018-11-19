@@ -21,6 +21,7 @@
 #include <string.h>
 #include <utility>
 #include <vector>
+#include <list>
 
 #include "misc/prevector.h"
 
@@ -500,6 +501,12 @@ template<typename Stream, typename T, typename A, typename V> void Unserialize_i
 template<typename Stream, typename T, typename A> inline void Unserialize(Stream& is, std::vector<T, A>& v);
 
 /**
+ * list
+ */
+template<typename Stream, typename T, typename A> void Serialize(Stream& os, const std::list<T, A>& l);
+template<typename Stream, typename T, typename A> void Unserialize(Stream& is, std::list<T, A>& l);
+
+/**
  * pair
  */
 template<typename Stream, typename K, typename T> void Serialize(Stream& os, const std::pair<K, T>& item);
@@ -704,6 +711,31 @@ template<typename Stream, typename T, typename A>
 inline void Unserialize(Stream& is, std::vector<T, A>& v)
 {
     Unserialize_impl(is, v, T());
+}
+
+/**
+ * list
+ */
+template<typename Stream, typename T, typename A>
+void Serialize(Stream& os, const std::list<T, A>& l)
+{
+    WriteCompactSize(os, l.size());
+    for (typename std::list<T, A>::const_iterator it = l.begin(); it != l.end(); ++it)
+        Serialize(os, (*it));
+}
+
+template<typename Stream, typename T, typename A>
+void Unserialize(Stream& is, std::list<T, A>& l)
+{
+    l.clear();
+    unsigned int nSize = ReadCompactSize(is);
+    typename std::list<T, A>::iterator it = l.begin();
+    for (unsigned int i = 0; i < nSize; i++)
+    {
+        T value;
+        Unserialize(is, value);
+        it = l.insert(it, value);
+    }
 }
 
 

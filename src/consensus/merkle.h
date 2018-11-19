@@ -12,19 +12,30 @@
 #include "primitives/transaction.h"
 #include "primitives/block.h"
 #include "coding/uint256.h"
+#include "smartcontract/contractdb.h"
+
+
+class ContractContext;
 
 uint256 ComputeMerkleRoot(const std::vector<uint256>& leaves, bool* mutated = nullptr);
 std::vector<uint256> ComputeMerkleBranch(const std::vector<uint256>& leaves, uint32_t position);
 uint256 ComputeMerkleRootFromBranch(const uint256& leaf, const std::vector<uint256>& branch, uint32_t position);
 
+uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
+uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData);
+
 // same function as BlockMerkleRoot
 uint256 VecTxMerkleRoot(const std::vector<CellTransactionRef> vtx, bool* mutated);
+bool VecTxMerkleLeavesWithData(const std::vector<CellTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves);
+bool VecTxMerkleLeavesWithPrevData(const std::vector<CellTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves);
 
 /*
  * Compute the Merkle root of the transactions in a block.
  * *mutated is set to true if a duplicated subtree was found.
  */
 uint256 BlockMerkleRoot(const CellBlock& block, bool* mutated = nullptr);
+uint256 BlockMerkleRootWithData(const CellBlock& block, const ContractContext& contractContext, bool* mutated = nullptr);
+uint256 BlockMerkleRootWithPrevData(const CellBlock& block, bool* mutated = nullptr);
 
 /*
  * Compute the Merkle root of the witness transactions in a block.

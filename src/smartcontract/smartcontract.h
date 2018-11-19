@@ -32,6 +32,7 @@ class MakeBranchTxUTXO;
 class SmartLuaState
 {
 public:
+    static const int SAVE_TYPE_NONE = 0;
     static const int SAVE_TYPE_CACHE = 1;
     static const int SAVE_TYPE_DATA = 2;
     static const int MAX_INTERNAL_CALL_NUM = 30;
@@ -44,12 +45,14 @@ public:
     int saveType;
     int64_t timestamp;                          // 执行时的时间戳
     int blockHeight;                            // 执行时的区块高度
+    int txIndex;
     CellAmount contractOut = 0;
     uint32_t runningTimes = 0;
     size_t deltaDataLen = 0;
     size_t codeLen = 0;
     int _internalCallNum = 0;
     CoinAmountCache* pCoinAmountCache;
+    std::map<CellContractID, ContractInfo> contractDataFrom;
 
 private:
     mutable CellCriticalSection _contractCS;
@@ -62,9 +65,11 @@ public:
     void SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache);
     bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo);
 
-    void Initialize(int64_t timestamp, int blockHeight, CellLinkAddress& callerAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
+    void Initialize(int64_t timestamp, int blockHeight, int txIndex, CellLinkAddress& callerAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
     lua_State* GetLuaState(CellLinkAddress& contractAddr);
     void ReleaseLuaState(lua_State* L);
+
+    void Clear();
 };
 
 extern bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLinkAddress& senderAddr);
@@ -93,6 +98,9 @@ extern bool PublishContract(lua_State* L, const std::string& rawCode, long& maxC
 extern bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
 extern bool CallContractReal(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
 extern bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret);
+
+bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txIndex, CellAmount coins, int64_t blockTime, int blockHeight, CellBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
+bool ExecuteBlock(SmartLuaState* sls, CellBlock* pBlock, CellBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);
 
 // Lua内置函数
 extern int InternalCallContract(lua_State *L);

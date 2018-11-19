@@ -85,9 +85,12 @@ public:
     VBRANCH_CHAIN vecChainActive;
     MAP_MAINBLOCK_BRANCHTIP mapSnapshotBlockTip; // record connected main block, each branch tip
 
+    BranchBlockData* GetBranchBlockData(const uint256& blockHash);
     void AddNewBlockData(BranchBlockData& blockdata);
     void ActivateBestChain(const uint256 &bestTipHash);
     void RemoveBlock(const uint256& blockhash);
+
+    const BranchBlockData* GetAncestor(BranchBlockData* pBlock, int height);
 
     //
     void UpdateDeadStatus(const uint256& blockId, bool &fStatusChange);

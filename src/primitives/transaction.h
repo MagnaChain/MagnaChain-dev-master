@@ -193,6 +193,8 @@ public:
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
+    uint256 hashMerkleRootWithData;
+    uint256 hashMerkleRootWithPrevData;
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
@@ -211,6 +213,8 @@ public:
         READWRITE(nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
+        READWRITE(hashMerkleRootWithData);
+        READWRITE(hashMerkleRootWithPrevData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -250,27 +254,7 @@ enum ReportType{
     REPORT_TX = 1,
     REPORT_COINBASE,
     REPORT_MERKLETREE,
-};
-
-class ReportData
-{
-public:
-    ReportData() = default;
-    int32_t reporttype;
-    uint256 reportedBranchId;
-    uint256 reportedBlockHash;
-    uint256 reportedTxHash;
-
-    ADD_SERIALIZE_METHODS;
-
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(reporttype);
-        READWRITE(reportedBranchId);
-        READWRITE(reportedBlockHash);
-        READWRITE(reportedTxHash);
-    }
+    REPORT_CONTRACT_DATA,
 };
 
 class ProveDataItem
@@ -290,24 +274,121 @@ public:
     }
 };
 
-// 执行智能合约时的上下文数据
-class ContractInfo
+class ContractDataFrom
 {
 public:
+    uint256 blockHash;
     int txIndex;
-    std::string code;
-    std::string data;
-
-    ContractInfo() {};
-    ContractInfo(std::string& code, std::string& data, int index) : code(code), data(data), txIndex(index) {}
+    uint256 dataHash;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
+        READWRITE(blockHash);
         READWRITE(txIndex);
+        READWRITE(dataHash);
+    }
+};
+
+// 执行智能合约时的上下文数据
+class ContractInfo
+{
+public:
+    ContractDataFrom from;
+    std::string code;
+    std::string data;
+
+    ContractInfo() {};
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(from);
         READWRITE(code);
         READWRITE(data);
+    }
+};
+
+class ContractPrevData
+{
+public:
+    CellAmount coins;   // 执行合约时该合约的币数量
+    std::map<CellContractID, ContractDataFrom> dataFrom;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(coins);
+        READWRITE(dataFrom);
+    }
+};
+
+class ReportContractData
+{
+public:
+    ContractPrevData reportedContractPrevData;  // 有错误数据的交易合约数据
+    CellSpvProof reportedSpvProof;
+
+    uint256 proveTxHash;
+    std::map<CellContractID, ContractInfo> proveContractData;       // 被替换的数据
+    CellSpvProof proveSpvProof;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(reportedContractPrevData);
+        READWRITE(reportedSpvProof);
+
+        READWRITE(proveTxHash);
+        READWRITE(proveContractData);
+        READWRITE(proveSpvProof);
+    }
+};
+
+class ReportData
+{
+public:
+    ReportData() = default;
+    int32_t reporttype;
+    uint256 reportedBranchId;
+    uint256 reportedBlockHash;
+    uint256 reportedTxHash;
+    std::shared_ptr<ReportContractData> contractData;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(reporttype);
+        READWRITE(reportedBranchId);
+        READWRITE(reportedBlockHash);
+        READWRITE(reportedTxHash);
+        if (reporttype == ReportType::REPORT_CONTRACT_DATA) {
+            if (ser_action.ForRead())
+                contractData.reset(new ReportContractData);
+            READWRITE(*contractData);
+        }
+    }
+};
+
+class ContractProveData
+{
+public:
+    CellAmount coins;
+    std::map<CellContractID, ContractInfo> contractPrevData;
+    CellPartialMerkleTree prevDataSPV;
+    CellPartialMerkleTree dataSPV;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(coins);
+        READWRITE(contractPrevData);
+        READWRITE(prevDataSPV);
+        READWRITE(dataSPV);
     }
 };
 
@@ -319,19 +400,23 @@ public:
     uint256 blockHash;
     uint256 txHash;// to prove txid
     std::vector<ProveDataItem> vectProveData;
+    std::shared_ptr<ContractProveData> contractData;
 
     std::vector<unsigned char> vtxData; // block vtx serialize data, service for coinbase prove n merkle prove
     std::vector<std::vector<ProveDataItem>> vecBlockTxProve;// all block tx(exclude coinbase)'s prove data, use to prove each input of each tx in vtx is exist.  
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action){
+    inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(provetype);
         READWRITE(branchId);
         READWRITE(blockHash);
         READWRITE(txHash);
-        if (provetype == ReportType::REPORT_TX){
+        if (provetype == ReportType::REPORT_TX) {
             READWRITE(vectProveData);
+            if (ser_action.ForRead())
+                contractData.reset(new ContractProveData);
+            READWRITE(*contractData);
         }
         else if (provetype == ReportType::REPORT_COINBASE) {
             READWRITE(vtxData);

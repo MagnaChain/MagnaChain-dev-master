@@ -38,6 +38,7 @@
 #include "rpc/server.h"
 #include "chain/branchdb.h"
 #include "misc/timedata.h"
+#include "smartcontract/smartcontract.h"
 
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;
 
@@ -677,24 +678,21 @@ CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids
             vMatch.push_back(false);
         vHashes.push_back(hash);
     }
+
     return new CellSpvProof(vHashes, vMatch, block.GetHash());
 }
 
-bool CheckSpvProof(BranchData& branchData, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash)
+int CheckSpvProof(const uint256& merkleRoot, CellPartialMerkleTree& pmt, const uint256 &querytxhash)
 {
-    if (branchData.mapHeads.count(spvProof.blockhash) == 0)
-        return state.DoS(0, false, REJECT_INVALID, "Can not found block data in mapHeads");
     std::vector<uint256> vMatch;
     std::vector<unsigned int> vIndex;
-    CellSpvProof svpProof(spvProof);
-    if (svpProof.pmt.ExtractMatches(vMatch, vIndex) != branchData.mapHeads[spvProof.blockhash].header.hashMerkleRoot) {
-        return state.DoS(100, false, REJECT_INVALID, "transaction spv check fail!");
-    }
-    //s2 fromtx hash in vMatch
-    if (std::find(vMatch.begin(), vMatch.end(), querytxhash) == vMatch.end()) {
-        return state.DoS(100, false, REJECT_INVALID, "Branch chain send to main from txid did not in CellSpvProof's merkle tree");
-    }
-    return true;
+    if (pmt.ExtractMatches(vMatch, vIndex) != merkleRoot)
+        return -1;
+    if (std::find(vMatch.begin(), vMatch.end(), querytxhash) == vMatch.end())
+        return -1;
+    if (vIndex.size() > 1)
+        return -1;
+    return vIndex[0];
 }
 
 // 跨链交易从发起链广播到目标链 
@@ -1110,7 +1108,7 @@ uint256 GetReportTxHashKey(const CellTransaction& tx)
     CellHashWriter ss(nType, nVersion);
     ss << tx.pReportData->reporttype;
     if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE 
-        || tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
+        || tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE || tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA)
     {
         ss << tx.pReportData->reportedBranchId;
         ss << tx.pReportData->reportedBlockHash;
@@ -1183,11 +1181,11 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
 
 bool CheckReportTxCommonly(const CellTransaction& tx, CellValidationState& state, BranchData& branchdata)
 {
-    if (branchdata.mapHeads.count(tx.pReportData->reportedBlockHash) == 0)
+    BranchBlockData* pBlockData = branchdata.GetBranchBlockData(tx.pReportData->reportedBlockHash);
+    if (pBlockData == nullptr)
         return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx Can not found block data in mapHeads");
-    if (branchdata.Height() - branchdata.mapHeads[tx.pReportData->reportedBlockHash].nHeight > REDEEM_SAFE_HEIGHT) {
-        return state.DoS(0, false, REJECT_INVALID, "Report block too old");
-    }
+    if (branchdata.Height() - pBlockData->nHeight > REDEEM_SAFE_HEIGHT)
+        return state.DoS(0, false, REJECT_INVALID, strprintf("Report block too old, chainheight %d, blockheight %d", branchdata.Height(), pBlockData->nHeight));
     return true;
 }
 
@@ -1202,7 +1200,11 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
 
         if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
         {
-            if (!CheckSpvProof(branchdata, state, *tx.pPMT, tx.pReportData->reportedTxHash))
+            CellSpvProof spvProof(*tx.pPMT);
+            BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
+            if (pBlockData == nullptr)
+                return false;
+            if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, tx.pReportData->reportedTxHash) < 0)
                 return false;
             if (!CheckReportTxCommonly(tx, state, branchdata))
                 return false;
@@ -1211,6 +1213,11 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
         {
             if (!CheckReportTxCommonly(tx, state, branchdata))
                 return false;
+        }
+        else if (tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA)
+        {
+            if (!CheckProveContractData(tx, state))
+                return state.DoS(0, false, REJECT_INVALID, "CheckProveContractData fail");
         }
         else
             return state.DoS(100, false, REJECT_INVALID, "Invalid report type!");
@@ -1231,35 +1238,42 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
     }
 
     CellAmount nInAmount = 0;
+    CellAmount nContractIn = 0;
+    CellScript contractScript = GetScriptForDestination(pProveTx->contractAddr);
     for (size_t i = 0; i < pProveTx->vin.size(); ++i)
     {
         const ProveDataItem& provDataItem = vectProveData[i + baseIndex];
-        if (branchData.mapHeads.count(provDataItem.blockHash) == 0) {
+        if (branchData.mapHeads.count(provDataItem.blockHash) == 0)
             return state.DoS(0, false, REJECT_INVALID, "proveitem's block not exist");
-        }
 
         CellTransactionRef pTx;
         CellDataStream cds(provDataItem.tx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pTx);
 
-        const uint256& providetxid = pTx->GetHash();
-        CellSpvProof svpProof(provDataItem.pCSP);
-        if (!CheckSpvProof(branchData, state, svpProof, providetxid)) {
+        CellSpvProof spvProof(provDataItem.pCSP);
+        BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
+        if (pBlockData == nullptr)
+            return false;
+        if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pTx->GetHash()) < 0)
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
-        }
-        const CellOutPoint& outpoint = pProveTx->vin[i].prevout;
-        if (providetxid != outpoint.hash) {
-            return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx provide tx not match");
-        }
 
-        if (outpoint.n >= pTx->vout.size()) {
+        const CellOutPoint& outpoint = pProveTx->vin[i].prevout;
+        if (pTx->GetHash() != outpoint.hash)
+            return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx provide tx not match");
+
+        if (outpoint.n >= pTx->vout.size())
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx ");
-        }
 
         //check sign
         const CellScript& scriptPubKey = pTx->vout[outpoint.n].scriptPubKey;
         const CellAmount amount = pTx->vout[outpoint.n].nValue;
         nInAmount += amount;
+
+        if (scriptPubKey.IsContract()) {
+            if (scriptPubKey != contractScript)
+                return state.DoS(0, false, REJECT_INVALID, "Invalid contract inpoint");
+            nContractIn += amount;
+        }
 
         bool fCacheResults = false;
         unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_NULLDUMMY;
@@ -1285,6 +1299,7 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
 
     //check input >= output value
     CellAmount nValueOut = 0;
+    CellAmount nContractOut = 0;
     for (const auto& txout : pProveTx->vout)
     {
         if (txout.nValue < 0)
@@ -1294,7 +1309,17 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
         nValueOut += txout.nValue;
         if (!MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
+
+        if (txout.scriptPubKey.IsContractChange()) {
+            CellContractID contractId;
+            if (!txout.scriptPubKey.GetContractAddr(contractId) || contractId != pProveTx->contractAddr)
+                return state.DoS(0, false, REJECT_INVALID, "Invalid contract out public key");
+            nContractOut += txout.nValue;
+        }
     }
+
+    if (nContractIn - nContractOut != pProveTx->contractOut)
+        return state.DoS(0, false, REJECT_INVALID, "Contract out not match");
     if (!MoneyRange(nValueOut))
         return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
     if (nInAmount < nValueOut) {
@@ -1305,21 +1330,51 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
     return true;
 }
 
+bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const const CellTransactionRef proveTx, const BranchBlockData* pBlockData)
+{
+    static SmartLuaState sls;
+
+    ContractPrevData prevData;
+    for (auto item : pProveData->contractData->contractPrevData)
+        prevData.dataFrom[item.first] = item.second.from;
+    prevData.coins = pProveData->contractData->coins;
+
+    uint256 hashWithPrevData = GetTxHashWithPrevData(proveTx->GetHash(), prevData);
+    int txIndex = CheckSpvProof(pBlockData->header.hashMerkleRootWithPrevData, pProveData->contractData->prevDataSPV, hashWithPrevData);
+    if (txIndex < 0)
+        return false;
+
+    ContractContext contractContext;
+    for (auto item : pProveData->contractData->contractPrevData)
+        contractContext.data[item.first] = std::move(item.second);
+
+    CoinAmountTemp coinAmountTemp;
+    coinAmountTemp.IncAmount(proveTx->contractAddr, pProveData->contractData->coins);
+
+    contractContext.txFinalData.data.resize(txIndex + 1);
+    if (!ExecuteContract(&sls, proveTx, txIndex, pProveData->contractData->coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext))
+        return false;
+
+    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData.data[txIndex]);
+    int txIndexFinal = CheckSpvProof(pBlockData->header.hashMerkleRootWithData, pProveData->contractData->dataSPV, hashWithData);
+    if (txIndexFinal < 0 || txIndexFinal != txIndex)
+        return false;
+
+    return true;
+}
+
 bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
 {
-    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX){
+    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX)
         return false;
-    }
 
     const uint256 branchId = tx.pProveData->branchId;
-    if (!pBranchDb->HasBranchData(branchId)){
+    if (!pBranchDb->HasBranchData(branchId))
         return false;
-    }
 
     const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
-    if (vectProveData.size() < 1){
+    if (vectProveData.size() < 1)
         return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid can not zero");
-    }
 
     // unserialize prove tx
     CellTransactionRef pProveTx;
@@ -1327,24 +1382,25 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     cds >> (pProveTx);
 
     //check txid
-    if (pProveTx->GetHash() != tx.pProveData->txHash){
+    if (pProveTx->GetHash() != tx.pProveData->txHash)
         return state.DoS(0, false, REJECT_INVALID, "Prove tx data error, first tx's hasdid is not eq proved txid");
-    }
 
-    // spv check 
+    // spv check
     BranchData branchData = pBranchDb->GetBranchData(branchId);
-    CellSpvProof svpProof(vectProveData[0].pCSP);
-    const uint256& reporttxhash = pProveTx->GetHash();
-    if (!CheckSpvProof(branchData, state, svpProof, reporttxhash)) {
+    CellSpvProof spvProof(vectProveData[0].pCSP);
+    BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
+    if (pBlockData == nullptr)
+        return false;
+    if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pProveTx->GetHash()) < 0)
         return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
-    }
 
-    
     //check input/output/sign
     CellAmount fee;
-    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, fee, true)){
+    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, fee, true))
         return false;
-    }
+
+    if (pProveTx->IsSmartContract() && !CheckProveSmartContract(tx.pProveData, pProveTx, pBlockData))
+        return false;
 
     return true;
 }
@@ -1416,6 +1472,59 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
     return true;
 }
 
+bool CheckProveContractData(const CellTransaction& tx, CellValidationState& state)
+{
+    if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA)
+        return false;
+
+    const uint256& branchId = tx.pReportData->reportedBranchId;
+    if (!pBranchDb->HasBranchData(branchId))
+        return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
+    BranchData branchData = pBranchDb->GetBranchData(branchId);
+
+    // 先验证被举报交易及对应合约数据属于指定区块
+    BranchBlockData* pReportedBlockData = branchData.GetBranchBlockData(tx.pReportData->reportedBlockHash);
+    if (pReportedBlockData == nullptr)
+        return state.DoS(0, false, REJECT_INVALID, "Get branch reported block data fail");
+
+    uint256 reportedTxHashWithPrevData = GetTxHashWithPrevData(tx.pReportData->reportedTxHash, tx.pReportData->contractData->reportedContractPrevData);
+    int reportedTxIndex = CheckSpvProof(pReportedBlockData->header.hashMerkleRootWithPrevData, tx.pReportData->contractData->reportedSpvProof.pmt, reportedTxHashWithPrevData);
+    if (reportedTxIndex < 0)
+        return false;
+
+    // 再验证替换的交易数据是否属于指定区块
+    BranchBlockData* pProveBlockData = branchData.GetBranchBlockData(tx.pReportData->contractData->proveSpvProof.blockhash);
+    if (pProveBlockData == nullptr)
+        return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no block data");
+
+    uint256 proveTxHashWithData = GetTxHashWithData(tx.pReportData->contractData->proveTxHash, tx.pReportData->contractData->proveContractData);
+    int proveTxIndex = CheckSpvProof(pProveBlockData->header.hashMerkleRootWithData, tx.pReportData->contractData->proveSpvProof.pmt, proveTxHashWithData);
+    if (proveTxIndex < 0)
+        return false;
+
+    if (pReportedBlockData->nHeight < pProveBlockData->nHeight)
+        return false;
+
+    const BranchBlockData* proveAncestorBlockData = branchData.GetAncestor(pReportedBlockData, pProveBlockData->nHeight);
+    if (proveAncestorBlockData->mBlockHash != pProveBlockData->mBlockHash)
+        return false;
+
+    for (auto& item : tx.pReportData->contractData->proveContractData) {
+        auto& it = tx.pReportData->contractData->reportedContractPrevData.dataFrom.find(item.first);
+        if (it != tx.pReportData->contractData->reportedContractPrevData.dataFrom.end()) {
+            BranchBlockData& targetBlockData = branchData.mapHeads[it->second.blockHash];
+            const BranchBlockData* subAncestorBlockData = branchData.GetAncestor(pReportedBlockData, targetBlockData.nHeight);
+            if (subAncestorBlockData->mBlockHash != targetBlockData.mBlockHash)
+                return true;
+
+            if (pProveBlockData->nHeight > targetBlockData.nHeight || (pProveBlockData->nHeight == targetBlockData.nHeight && proveTxIndex > it->second.txIndex && proveTxIndex < reportedTxIndex))
+                return true;
+        }
+    }
+
+    return false;
+}
+
 bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
 {
     if (tx.IsProve())
@@ -1431,24 +1540,19 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
         */
 
         if (tx.pProveData->provetype == ReportType::REPORT_TX){
-            if (!CheckProveReportTx(tx, state)) {
+            if (!CheckProveReportTx(tx, state))
                 return false;
-            }
         }
         else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE){
-            if (!CheckProveCoinbaseTx(tx, state)){
+            if (!CheckProveCoinbaseTx(tx, state))
                 return false;
-            }
         }
-        else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)
-        {
-            if (!CheckProveCoinbaseTx(tx, state)) {
+        else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE) {
+            if (!CheckProveCoinbaseTx(tx, state))
                 return false;
-            }
         }
-        else{ 
+        else
             return state.DoS(0, false, REJECT_INVALID, "Invalid report type");
-        }
     }
     return true;
 }

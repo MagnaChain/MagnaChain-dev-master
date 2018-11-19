@@ -309,7 +309,12 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
             if (!pBranchDb->HasBranchData(frombranchid))
                 return state.DoS(0, false, REJECT_INVALID, strprintf("CheckTransaction branchid error. %s", tx.fromBranchId));
             BranchData branchdata = pBranchDb->GetBranchData(frombranchid);
-            if (!CheckSpvProof(branchdata, state, *tx.pPMT, pFromTx->GetHash()))
+
+            CellSpvProof spvProof(*tx.pPMT);
+            BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
+            if (pBlockData == nullptr)
+                return false;
+            if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pFromTx->GetHash()) < 0)
                 return false;
 
             // best chain check

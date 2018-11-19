@@ -2093,7 +2093,6 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock(const CellScri
 		LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
 	}
 
-
 	// to verify is mining with the address owner
 	CellMutableTransaction kSignTx(*pblock->vtx[0]);
 	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn))
@@ -2107,8 +2106,7 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock(const CellScri
 
     CoinAmountDB coinAmountDB;
     CoinAmountCache coinAmountCache(&coinAmountDB);
-    std::shared_ptr<CellBlock> pShareBlock = std::make_shared<CellBlock>(*pblock);
-    if (!mpContractDb->RunBlockContract(pShareBlock, pContractContext, &coinAmountCache))
+    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache))
         return nullptr;
 
 	int64_t nTime2 = GetTimeMicros();

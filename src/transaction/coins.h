@@ -308,7 +308,7 @@ private:
 class CoinAmountCacheBase
 {
 public:
-    virtual CellAmount GetAmount(uint160& key) const
+    virtual CellAmount GetAmount(const uint160& key) const
     {
         return 0;
     }
@@ -317,14 +317,14 @@ public:
 class CoinAmountDB : public CoinAmountCacheBase
 {
 public:
-    CellAmount GetAmount(uint160& key) const override;
+    CellAmount GetAmount(const uint160& key) const override;
 };
 
 class CoinAmountTemp : public CoinAmountCacheBase
 {
 public:
-    CellAmount GetAmount(uint160& key) const override;
-    void IncAmount(uint160& key, CellAmount delta);
+    CellAmount GetAmount(const uint160& key) const override;
+    void IncAmount(const uint160& key, CellAmount delta);
 
 private:
     std::map<uint160, CellAmount> coinAmountCache;
@@ -335,12 +335,13 @@ class CoinAmountCache
 public:
     CoinAmountCache(CoinAmountCacheBase* amountBase) : base(amountBase) {}
 
-    CellAmount GetAmount(uint160& key);
-    bool IncAmount(uint160& key, CellAmount delta);
-    bool DecAmount(uint160& key, CellAmount delta);
+    bool HasKeyInCache(const uint160& key) const;
+    CellAmount GetAmount(const uint160& key);
+    bool IncAmount(const uint160& key, CellAmount delta);
+    bool DecAmount(const uint160& key, CellAmount delta);
 
-    void TakeSnapshot(uint160& key);
-    void RemoveSnapshot(uint160& key, bool reverse);
+    void TakeSnapshot(const uint160& key);
+    void RemoveSnapshot(const uint160& key, bool reverse);
 
     void Clear();
 

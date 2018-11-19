@@ -401,7 +401,7 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
     UniValue ret(UniValue::VARR);
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx.contractCode;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (PublishContract(&checkSLS, contractAddr, rawCode, ret) && CheckContractVinVout(tx, &checkSLS)) {
             if (entry != nullptr)
                 entry->contractAddrs.insert(checkSLS.contractIds.begin(), checkSLS.contractIds.end());
@@ -410,7 +410,7 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
 	}
     else if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
         long maxCallNum = MAX_CONTRACT_CALL;
-        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        checkSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(&checkSLS, contractAddr, amount, strFuncName, args, maxCallNum, ret) && CheckContractVinVout(tx, &checkSLS)) {
             if (entry != nullptr) {
                 if (entry->GetTx().contractOut != checkSLS.contractOut)
@@ -2605,9 +2605,10 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
         if (!ReadBlockFromDisk(*pblockNew, pindexNew, chainparams.GetConsensus()))
             return AbortNode(state, "Failed to read block");
         pthisBlock = pblockNew;
-    } else {
-        pthisBlock = pblock;
     }
+    else
+        pthisBlock = pblock;
+
     const CellBlock& blockConnecting = *pthisBlock;
     // Apply the block atomically to the chain state.
     int64_t nTime2 = GetTimeMicros(); nTimeReadFromDisk += nTime2 - nTime1;
@@ -2774,7 +2775,8 @@ static bool ActivateBestChainStep(CellValidationState& state, const CellChainPar
                     fInvalidFound = true;
                     fContinue = false;
                     break;
-                } else {
+                }
+                else {
                     // A system error occurred (disk space, database error, ...).
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
@@ -2841,7 +2843,6 @@ bool ActivateBestChain(CellValidationState &state, const CellChainParams& chainp
     // us in the middle of ProcessNewBlock - do not assume pblock is set
     // sanely for performance or correctness!
 
-
     CellBlockIndex *pindexMostWork = nullptr;
     CellBlockIndex *pindexNewTip = nullptr;
     int nStopAtHeight = gArgs.GetArg("-stopatheight", DEFAULT_STOPATHEIGHT);
@@ -2857,9 +2858,8 @@ bool ActivateBestChain(CellValidationState &state, const CellChainParams& chainp
             ConnectTrace connectTrace(mempool); // Destructed before cs_main is unlocked
 
             CellBlockIndex *pindexOldTip = chainActive.Tip();
-            if (pindexMostWork == nullptr) {
+            if (pindexMostWork == nullptr)
                 pindexMostWork = FindMostWorkChain();
-            }
 
             // Whether we have anything to do at all.
             if (pindexMostWork == nullptr || pindexMostWork == chainActive.Tip())
@@ -2891,18 +2891,18 @@ bool ActivateBestChain(CellValidationState &state, const CellChainParams& chainp
         GetMainSignals().UpdatedBlockTip(pindexNewTip, pindexFork, fInitialDownload);
 
         // Always notify the UI if a new block tip was connected
-        if (pindexFork != pindexNewTip) {
+        if (pindexFork != pindexNewTip)
             uiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
-        }
 
-        if (nStopAtHeight && pindexNewTip && pindexNewTip->nHeight >= nStopAtHeight) StartShutdown();
+        if (nStopAtHeight && pindexNewTip && pindexNewTip->nHeight >= nStopAtHeight)
+            StartShutdown();
     } while (pindexNewTip != pindexMostWork);
+
     CheckBlockIndex(chainparams.GetConsensus());
 
     // Write changes periodically to disk, after relay.
-    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC)) {
+    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC))
         return false;
-    }
 
     return true;
 }
@@ -3779,14 +3779,14 @@ void UpdateContractTx(bool checkContract)
         }
     }
 
-    printf("%s remove tx size %d\n", __FUNCTION__, vTxs.size());
+    LogPrintf("%s remove tx size %d\n", __FUNCTION__, vTxs.size());
     for (const CellTransaction& tran : vTxs)
         mempool.removeRecursive(tran, MemPoolRemovalReason::BLOCK);
 
     pCoinAmountCache->Clear();
 }
 
-bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<const CellBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock, bool executeContract)
+bool ProcessNewBlock(const CellChainParams& chainparams, std::shared_ptr<CellBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock, bool executeContract)
 {
     int64_t start = GetTimeMillis();
 
@@ -3798,14 +3798,14 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
         // belt-and-suspenders.
         bool ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), true, true, false);
         BlockMap::iterator bi = mapBlockIndex.find(pblock->hashPrevBlock);
-        if (bi == mapBlockIndex.end())
+        if (bi == mapBlockIndex.end()) 
             return error("%s: find prev block failed", __func__);
-        
+
         if (executeContract) {
-            std::vector<uint256> hashWithData(pblock->vtx.size());
             CoinAmountDB coinAmountDB;
             CoinAmountCache coinAmountCache(&coinAmountDB);
-            if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache))
+            CellBlock& block = *pblock;
+            if (!mpContractDb->RunBlockContract(&block, pContractContext, &coinAmountCache))
                 return error("%s: RunBlockContract failed", __func__);
         }
 
@@ -3836,13 +3836,12 @@ bool ProcessNewBlock(const CellChainParams& chainparams, const std::shared_ptr<c
     // check and remove invalid contract transaction
     std::string strErr;
     SendBranchBlockHeader(pblock, &strErr);
-    if (!strErr.empty()){
+    if (!strErr.empty())
         LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock");
-    }
     // check and remove invalid contract transaction 
     UpdateContractTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
-    printf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - start);
+    LogPrintf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - start);
     return true;
 }
 
@@ -5228,7 +5227,7 @@ bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, cons
     return true;
 }
 
-bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData, CoinAmountTemp* amountTemp)
+bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData)
 {
     if (ptx->IsCoinBase())
         return false;
@@ -5268,8 +5267,6 @@ bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, st
             if (coin.out.scriptPubKey.IsContract()) {
                 CellContractID contractId;
                 coin.out.scriptPubKey.GetContractAddr(contractId);
-                if (amountTemp != nullptr)
-                    amountTemp->IncAmount(contractId, coin.out.nValue);
             }
 
             CellTransactionRef tmpTx;
@@ -5323,7 +5320,7 @@ bool GetProveInfo(const CellBlock& block, int blockHeight, CellBlockIndex* pPrev
         return false;
 
     CoinAmountTemp amountTemp;
-    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData, &amountTemp);
+    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
     return success;
 }
 
@@ -5341,7 +5338,7 @@ bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block
         const CellTransactionRef& ptx = block.vtx[i];
         pProveData->vecBlockTxProve.emplace_back();
         std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
-        if (!GetTxVinBlockData(block, ptx, vectProveData, nullptr)){
+        if (!GetTxVinBlockData(block, ptx, vectProveData)){
             return false;
         }
     }

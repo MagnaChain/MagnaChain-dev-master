@@ -183,83 +183,80 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
     UniValue blockHashes(UniValue::VARR);
     while (nHeight < nHeightEnd && nTries < nMaxTries && !ShutdownRequested())
     {
-		if (nTries != 0 && nTries % 500 == 0)
-		{
-			boost::this_thread::interruption_point();
-		}
+        if (nTries != 0 && nTries % 500 == 0)
+            boost::this_thread::interruption_point();
 
         int startTime = GetTimeMillis();
-		// check script pubkey
-		CellOutput& out = vecOutput[nTries % vecOutput.size()];
+        // check script pubkey
+        CellOutput& out = vecOutput[nTries % vecOutput.size()];
         std::shared_ptr<CellReserveKey> pReserveKey = nullptr;
-		CellScript scriptPubKey;
-		if (out.tx == nullptr) {
+        CellScript scriptPubKey;
+        if (out.tx == nullptr) {
             pReserveKey = std::make_shared<CellReserveKey>(keystoreIn);
 
             CellPubKey vchPubKey;
-            if (!pReserveKey->GetReservedKey(vchPubKey)){
+            if (!pReserveKey->GetReservedKey(vchPubKey))
                 throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-            }
-			
+
             keystoreIn->SetAddressBook(vchPubKey.GetID(), "generateforbigboom", "receive");
-			scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
-		}
-		else {
-			scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-			//get branch chain mine pubkey
-            if ((params && !params->IsMainChain()) || !Params().IsMainChain()){
+            scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
+        }
+        else {
+            scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+            //get branch chain mine pubkey
+            if ((params && !params->IsMainChain()) || !Params().IsMainChain()) {
                 CellKeyID keyid;
                 uint256 coinpreouthash;
-                if (!GetMortgageCoinData(scriptPubKey, &coinpreouthash, &keyid)){
+                if (!GetMortgageCoinData(scriptPubKey, &coinpreouthash, &keyid)) {
                     nTries++;
                     continue;
                 }
-                else{
-                    if (pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)){//已经被锁
+                else {
+                    if (pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
                         nTries++;
                         continue;
                     }
                     scriptPubKey = GetScriptForDestination(keyid);
                 }
             }
-			if (scriptPubKey.IsPayToScriptHash()) {
-				nTries++;
-				continue;
-			}
-		}
-		CellOutPoint outpoint;
-		if (out.tx != nullptr) {
-			outpoint.hash = out.tx->tx->GetHash();
-			outpoint.n = out.i;
-		}
+            if (scriptPubKey.IsPayToScriptHash()) {
+                nTries++;
+                continue;
+            }
+        }
+        CellOutPoint outpoint;
+        if (out.tx != nullptr) {
+            outpoint.hash = out.tx->tx->GetHash();
+            outpoint.n = out.i;
+        }
+
         ContractContext contractContext;
-		BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params() );
-		options.outpoint = outpoint;
+        BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params());
+        options.outpoint = outpoint;
         std::unique_ptr<CellBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache));
-		if (!pblocktemplate.get()){
+        if (!pblocktemplate.get()) {
             // out of memory or MakeStokeTransaction fail
-			//throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
-			nTries++;
-			continue;
-		}
+            //throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+            nTries++;
+            continue;
+        }
+
         CellBlock *pblock = &pblocktemplate->block;
-        //{
-        //    LOCK(cs_main);
-        //    IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
-        //}
-		pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
-		// 如果有修改头部的值，需要重新签名 
-		if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
-		{
-			if (!SignBlock(pblock, keystoreIn))
-			{
-				nTries++;
-				continue;
-			}
-		}
-		
-		CellValidationState val_state;
-		// while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckBlockWork( *pblock, val_state, Params().GetConsensus())) {
+        pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
+        pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
+        pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
+        // 如果有修改头部的值，需要重新签名
+        if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
+        {
+            if (!SignBlock(pblock, keystoreIn))
+            {
+                nTries++;
+                continue;
+            }
+        }
+
+        CellValidationState val_state;
+        // while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckBlockWork( *pblock, val_state, Params().GetConsensus())) {
         // //while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) {
             // ++pblock->nNonce;
             // --nMaxTries;
@@ -267,18 +264,16 @@ UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutp
 
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
-            std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
+            std::shared_ptr<CellBlock> shared_pblock = std::make_shared<CellBlock>(*pblock);
             if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr, false))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
             ++nHeight;
             blockHashes.push_back(pblock->GetHash().GetHex());
-            if (pReserveKey){
+            if (pReserveKey)
                 pReserveKey->KeepKey();
-            }
-		}
-		++nTries;
-        printf("GenerateBlock use time %d\n", GetTimeMillis() - startTime);
-
+        }
+        ++nTries;
+        LogPrintf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - startTime);
 		/*
 		while (nMaxTries > 0 && !CheckBlockWork(*pblock, val_state, Params().GetConsensus())) {
 			--nMaxTries;

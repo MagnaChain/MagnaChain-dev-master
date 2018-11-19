@@ -117,8 +117,10 @@ bool IsStandardTx(const CellTransaction& tx, std::string& reason, const bool wit
     // to MAX_STANDARD_TX_WEIGHT mitigates CPU exhaustion attacks.
     unsigned int sz = GetTransactionWeight(tx);
     if (sz >= MAX_STANDARD_TX_WEIGHT) {
-        reason = "tx-size";
-        return false;
+        if (!tx.IsProve()) {
+            reason = "tx-size";
+            return false;
+        }
     }
 
     for (const CellTxIn& txin : tx.vin)

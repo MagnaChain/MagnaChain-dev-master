@@ -6,6 +6,7 @@
 #include "merkle.h"
 #include "coding/hash.h"
 #include "utils/utilstrencodings.h"
+#include "smartcontract/contractdb.h"
 
 /*     WARNING! If you're reading this because you're learning about crypto
        and/or designing a new system that will use merkle trees, keep in mind
@@ -175,6 +176,58 @@ uint256 BlockMerkleRoot(const CellBlock& block, bool* mutated)
     //}
     //return ComputeMerkleRoot(leaves, mutated);
     return VecTxMerkleRoot(block.vtx, mutated);
+}
+
+uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData)
+{
+    CellHashWriter ss(SER_GETHASH, 0);
+    ss << txHash;
+    for (auto item : contractData)
+        ss << item.first << item.second.from.txIndex << item.second.code << item.second.data;
+    return ss.GetHash();
+}
+
+bool VecTxMerkleLeavesWithData(const std::vector<CellTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves)
+{
+    if (vtx.size() != contractData.size())
+        return false;
+    leaves.resize(vtx.size());
+    for (size_t i = 0; i < vtx.size(); ++i)
+        leaves[i] = GetTxHashWithData(vtx[i]->GetHash(), contractData[i]);
+    return true;
+}
+
+uint256 BlockMerkleRootWithData(const CellBlock& block, const ContractContext& contractContext, bool*mutated)
+{
+    std::vector<uint256> leaves;
+    if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, leaves))
+        return uint256();
+    return ComputeMerkleRoot(leaves, mutated);
+}
+
+uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData)
+{
+    CellHashWriter ss(SER_GETHASH, 0);
+    ss << txHash << contractPrevData;
+    return ss.GetHash();
+}
+
+bool VecTxMerkleLeavesWithPrevData(const std::vector<CellTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves)
+{
+    if (vtx.size() != contractData.size())
+        return false;
+    leaves.resize(vtx.size(), uint256());
+    for (size_t i = 0; i < vtx.size(); ++i)
+        leaves[i] = GetTxHashWithPrevData(vtx[i]->GetHash(), contractData[i]);
+    return true;
+}
+
+uint256 BlockMerkleRootWithPrevData(const CellBlock& block, bool* mutated)
+{
+    std::vector<uint256> leaves;
+    if (!VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, leaves))
+        return uint256();
+    return ComputeMerkleRoot(leaves, mutated);
 }
 
 uint256 BlockWitnessMerkleRoot(const CellBlock& block, bool* mutated)

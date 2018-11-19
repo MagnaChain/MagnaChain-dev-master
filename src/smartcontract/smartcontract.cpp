@@ -350,7 +350,7 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string&
     CellLinkAddress contractAddr(contractId);
 
     std::string codeout;
-    sls->Initialize(GetTime(), chainActive.Height() + 1, senderAddr, nullptr, nullptr, 0, nullptr);
+    sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     bool success = PublishContract(sls, contractAddr, rawCode, ret);
     if (success) {
         CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -385,20 +385,20 @@ bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const st
     if (sls->GetContractInfo(contractId, contractInfo))
         throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
 
-    std::string codeout;
-    std::string dataout;
+    std::string code, data;
     long maxCallNum = MAX_CONTRACT_CALL;
     lua_State* L = sls->GetLuaState(contractAddr);
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
-    bool success = PublishContract(L, rawCode, maxCallNum, codeout, dataout, ret);
+    bool success = PublishContract(L, rawCode, maxCallNum, code, data, ret);
     if (success) {
         sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls->codeLen = codeout.size();
-        sls->deltaDataLen = dataout.size();
+        sls->codeLen = code.size();
+        sls->deltaDataLen = data.size();
 
         if (sls->saveType > 0) {
-            contractInfo.code = codeout;
-            contractInfo.data = dataout;
+            contractInfo.from.txIndex = sls->txIndex;
+            contractInfo.data = data;
+            contractInfo.code = code;
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
@@ -462,16 +462,17 @@ bool CallContractReal(SmartLuaState* sls, CellLinkAddress& contractAddr, const C
         throw std::runtime_error(strprintf("%s no more max internal call number", __FUNCTION__));
 
     sls->_internalCallNum++;
-    std::string dataout;
+    std::string data;
     std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
     lua_State* L = sls->GetLuaState(contractAddr);
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
-    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, dataout, ret);
+    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, data, ret);
     if (success) {
-        sls->deltaDataLen += std::max(0, (int32_t)(dataout.size() - contractInfo.data.size()));
-        contractInfo.data = dataout;
+        sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
 
         if (sls->saveType > 0) {
+            contractInfo.from.txIndex = sls->txIndex;
+            contractInfo.data = data;
             assert(sls->pCoinAmountCache->DecAmount(contractId, sls->contractOut));
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
@@ -658,10 +659,13 @@ int SendCoins(lua_State* L)
     return 1;
 }
 
-void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache)
+void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache)
 {
+    Clear();
+
     this->timestamp = timestamp;
     this->blockHeight = blockHeight;
+    this->txIndex = txIndex;
     this->originAddr = originAddr;
     this->_pContractContext = pContractContext;
     this->_pPrevBlockIndex = pPrevBlockIndex;
@@ -728,6 +732,24 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
     _luaStates.push(L);
 }
 
+void SmartLuaState::Clear()
+{
+    saveType = SAVE_TYPE_NONE;
+    timestamp = 0;
+    blockHeight = -1;
+    txIndex = -1;
+    contractOut = 0;
+    runningTimes = 0;
+    deltaDataLen = 0;
+    codeLen = 0;
+    _internalCallNum = 0;
+    pCoinAmountCache = nullptr;
+    _pContractContext = nullptr;
+    _pPrevBlockIndex = nullptr;
+    pCoinAmountCache = nullptr;
+    contractDataFrom.clear();
+}
+
 void SmartLuaState::SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache)
 {
     LOCK(_contractCS);
@@ -742,9 +764,83 @@ bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractIn
     LOCK(_contractCS);
 
     // 直接从快照缓存中读取
-    if (_pContractContext->GetData(contractId, contractInfo))
-        return true;
+    if (!_pContractContext->GetData(contractId, contractInfo)) {
+        if (mpContractDb->GetContractInfo(contractId, contractInfo, _pPrevBlockIndex) < 0)
+            return false;
+    }
 
-    return mpContractDb->GetContractInfo(contractId, contractInfo, _pPrevBlockIndex) > 0;
+    if (contractDataFrom.count(contractId) == 0) {
+        if (contractInfo.from.dataHash.IsNull()) {
+            CellHashWriter ss(SER_GETHASH, 0);
+            ss << contractInfo.code << contractInfo.data;
+            contractInfo.from.dataHash = ss.GetHash();
+        }
+        contractDataFrom[contractId] = contractInfo;
+    }
+
+    return true;
 }
 
+bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txIndex, CellAmount coins, int64_t blockTime, int blockHeight, CellBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
+{
+    CellContractID contractId = tx->contractAddr;
+    CellLinkAddress contractAddr(contractId);
+    CellLinkAddress senderAddr(tx->contractSender.GetID());
+    CellAmount amount = GetTxContractOut(*tx);
+
+    CoinAmountTemp coinAmountTemp;
+    coinAmountTemp.IncAmount(contractId, coins);
+    CoinAmountCache coinAmountCache(&coinAmountTemp);
+
+    UniValue ret(UniValue::VARR);
+    if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
+        std::string rawCode = tx->contractCode;
+        sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
+        if (!PublishContract(sls, contractAddr, rawCode, ret))
+            return false;
+    }
+    else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+        std::string strFuncName = tx->contractFun;
+        UniValue args;
+        args.read(tx->contractParams);
+
+        long maxCallNum = MAX_CONTRACT_CALL;
+        sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
+        if (!CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) || tx->contractOut != sls->contractOut)
+            return false;
+
+        if (tx->contractOut > 0 && sls->recipients.size() == 0)
+            return false;
+
+        CellAmount total = 0;
+        for (int j = 0; j < sls->recipients.size(); ++j) {
+            if (!tx->IsExistVout(sls->recipients[j]))
+                return false;
+            total += sls->recipients[j].nValue;
+        }
+
+        if (total != tx->contractOut)
+            return false;
+    }
+
+    pContractContext->txFinalData.data[txIndex] = pContractContext->cache;
+    pContractContext->Commit();
+    return true;
+}
+
+bool ExecuteBlock(SmartLuaState* sls, CellBlock* pBlock, CellBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext)
+{
+    std::map<CellContractID, uint256> contract2txid;
+    pContractContext->txFinalData.data.resize(pBlock->vtx.size());
+    for (int i = offset; i < offset + count; ++i) {
+        const CellTransactionRef tx = pBlock->vtx[i];
+        if (tx->IsNull())
+            return false;
+
+        assert(!tx->GetHash().IsNull());
+        if (tx->IsSmartContract())
+            ExecuteContract(sls, tx, i, pBlock->prevContractData[i].coins, pBlock->GetBlockTime(), pPrevBlockIndex->nHeight + 1, pPrevBlockIndex, pContractContext);
+    }
+
+    return true;
+}

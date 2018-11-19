@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2010 Satoshi Nakamoto
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2018 The CellLink Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -25,6 +25,8 @@ public:
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
+    uint256 hashMerkleRootWithData;
+    uint256 hashMerkleRootWithPrevData;
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
@@ -44,6 +46,8 @@ public:
         READWRITE(this->nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
+        READWRITE(hashMerkleRootWithData);
+        READWRITE(hashMerkleRootWithPrevData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -58,13 +62,13 @@ public:
         nVersion = 0;
         hashPrevBlock.SetNull();
         hashMerkleRoot.SetNull();
+        hashMerkleRootWithData.SetNull();
+        hashMerkleRootWithPrevData.SetNull();
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-
 		vchBlockSig.clear();
 		prevoutStake.SetNull();
-
     }
 
     bool IsNull() const
@@ -81,13 +85,13 @@ public:
     }
 };
 
-
 class CellBlock : public CellBlockHeader
 {
 public:
     // network and disk
     std::vector<CellTransactionRef> vtx;
     std::vector<uint16_t> groupSize;
+    std::vector<ContractPrevData> prevContractData;
 
     // memory only
     mutable bool fChecked;
@@ -110,28 +114,31 @@ public:
         READWRITE(*(CellBlockHeader*)this);
         READWRITE(vtx);
         READWRITE(groupSize);
+        READWRITE(prevContractData);
     }
 
     void SetNull()
     {
         CellBlockHeader::SetNull();
         vtx.clear();
+        groupSize.clear();
+        prevContractData.clear();
         fChecked = false;
     }
 
     CellBlockHeader GetBlockHeader() const
     {
         CellBlockHeader block;
-        block.nVersion       = nVersion;
-        block.hashPrevBlock  = hashPrevBlock;
+        block.nVersion = nVersion;
+        block.hashPrevBlock = hashPrevBlock;
         block.hashMerkleRoot = hashMerkleRoot;
-        block.nTime          = nTime;
-        block.nBits          = nBits;
-        block.nNonce         = nNonce;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
+        block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.nTime = nTime;
+        block.nBits = nBits;
+        block.nNonce = nNonce;
         return block;
     }
-
-    std::string ToString() const;
 };
 
 /** Describes a place in the block chain to another node such that if the
