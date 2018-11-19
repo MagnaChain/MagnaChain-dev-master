@@ -98,7 +98,7 @@ uint256 BranchData::TipHash(void)
     return vecChainActive.back();
 }
 
-uint32_t BranchData::Height(void)
+int32_t BranchData::Height(void)
 {
     return vecChainActive.size() - 1;
 }

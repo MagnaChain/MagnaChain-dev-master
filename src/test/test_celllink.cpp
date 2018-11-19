@@ -166,7 +166,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<CellMutableTransactio
 
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
-    std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(block);
+    std::shared_ptr<CellBlock> shared_pblock = std::make_shared<CellBlock>(block);
     ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false);
 
     CellBlock result = block;

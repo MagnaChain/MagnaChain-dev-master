@@ -1184,6 +1184,8 @@ bool CheckReportTxCommonly(const CellTransaction& tx, CellValidationState& state
     BranchBlockData* pBlockData = branchdata.GetBranchBlockData(tx.pReportData->reportedBlockHash);
     if (pBlockData == nullptr)
         return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx Can not found block data in mapHeads");
+    if (branchdata.Height() < pBlockData->nHeight)
+        return state.DoS(0, false, REJECT_INVALID, strprintf("Report block height larger than branchdata height, chainheight %d, blockheight %d", branchdata.Height(), pBlockData->nHeight));
     if (branchdata.Height() - pBlockData->nHeight > REDEEM_SAFE_HEIGHT)
         return state.DoS(0, false, REJECT_INVALID, strprintf("Report block too old, chainheight %d, blockheight %d", branchdata.Height(), pBlockData->nHeight));
     return true;

@@ -116,7 +116,7 @@ public:
     void RecoverTip(const uint256& mainBlockHash);
 
     uint256 TipHash(void);
-    uint32_t Height(void);
+    int32_t Height(void);
     bool IsBlockInBestChain(const uint256& blockhash);
     int GetBlockMinedHeight(const uint256& blockhash);
 
