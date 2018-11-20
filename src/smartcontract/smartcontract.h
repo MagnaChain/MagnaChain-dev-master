@@ -102,6 +102,13 @@ extern bool CallContract(lua_State* L, const std::string& code, const std::strin
 bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txIndex, CellAmount coins, int64_t blockTime, int blockHeight, CellBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
 bool ExecuteBlock(SmartLuaState* sls, CellBlock* pBlock, CellBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);
 
+uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
+uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData);
+bool VecTxMerkleLeavesWithData(const std::vector<CellTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves);
+bool VecTxMerkleLeavesWithPrevData(const std::vector<CellTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves);
+uint256 BlockMerkleRootWithData(const CellBlock& block, const ContractContext& contractContext, bool* mutated = nullptr);
+uint256 BlockMerkleRootWithPrevData(const CellBlock& block, bool* mutated = nullptr);
+
 // Lua内置函数
 extern int InternalCallContract(lua_State *L);
 extern int SendCoins(lua_State* L);
