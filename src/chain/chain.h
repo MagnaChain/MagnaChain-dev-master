@@ -210,6 +210,8 @@ public:
     //! block header
     int nVersion;
     uint256 hashMerkleRoot;
+    uint256 hashMerkleRootWithData;
+    uint256 hashMerkleRootWithPrevData;
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
@@ -240,6 +242,8 @@ public:
 
         nVersion       = 0;
         hashMerkleRoot = uint256();
+        hashMerkleRootWithData = uint256();
+        hashMerkleRootWithPrevData = uint256();
         nTime          = 0;
         nBits          = 0;
         nNonce         = 0;
@@ -258,6 +262,8 @@ public:
 
         nVersion       = block.nVersion;
         hashMerkleRoot = block.hashMerkleRoot;
+        hashMerkleRootWithData = block.hashMerkleRootWithData;
+        hashMerkleRootWithPrevData = block.hashMerkleRootWithPrevData;
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
@@ -290,6 +296,8 @@ public:
         if (pprev)
             block.hashPrevBlock = pprev->GetBlockHash();
         block.hashMerkleRoot = hashMerkleRoot;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
+        block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
@@ -331,9 +339,11 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CellBlockIndex(pprev=%p, nHeight=%d, merkle=%s, hashBlock=%s)",
+        return strprintf("CellBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithData=%s, merkleRootWithPrevData=%s, hashBlock=%s)",
             pprev, nHeight,
             hashMerkleRoot.ToString(),
+            hashMerkleRootWithData.ToString(),
+            hashMerkleRootWithPrevData.ToString(),
             GetBlockHash().ToString());
     }
 
@@ -412,6 +422,8 @@ public:
         READWRITE(this->nVersion);
         READWRITE(hashPrev);
         READWRITE(hashMerkleRoot);
+        READWRITE(hashMerkleRootWithData);
+        READWRITE(hashMerkleRootWithPrevData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -425,7 +437,9 @@ public:
         CellBlockHeader block;
         block.nVersion        = nVersion;
         block.hashPrevBlock   = hashPrev;
-        block.hashMerkleRoot  = hashMerkleRoot;
+        block.hashMerkleRoot = hashMerkleRoot;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
+        block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
         block.nTime           = nTime;
         block.nBits           = nBits;
         block.nNonce          = nNonce;
