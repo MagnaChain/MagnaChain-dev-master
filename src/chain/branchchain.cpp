@@ -1512,7 +1512,7 @@ bool CheckProveContractData(const CellTransaction& tx, CellValidationState& stat
         return false;
 
     for (auto& item : tx.pReportData->contractData->proveContractData) {
-        auto& it = tx.pReportData->contractData->reportedContractPrevData.dataFrom.find(item.first);
+        auto it = tx.pReportData->contractData->reportedContractPrevData.dataFrom.find(item.first);
         if (it != tx.pReportData->contractData->reportedContractPrevData.dataFrom.end()) {
             BranchBlockData& targetBlockData = branchData.mapHeads[it->second.blockHash];
             const BranchBlockData* subAncestorBlockData = branchData.GetAncestor(pReportedBlockData, targetBlockData.nHeight);
