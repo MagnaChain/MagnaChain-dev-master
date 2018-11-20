@@ -1332,7 +1332,7 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
     return true;
 }
 
-bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const const CellTransactionRef proveTx, const BranchBlockData* pBlockData)
+bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const CellTransactionRef proveTx, const BranchBlockData* pBlockData)
 {
     static SmartLuaState sls;
 
