@@ -12,7 +12,6 @@
 #include "primitives/transaction.h"
 #include "primitives/block.h"
 #include "coding/uint256.h"
-#include "smartcontract/contractdb.h"
 
 
 class ContractContext;
