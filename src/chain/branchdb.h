@@ -14,6 +14,7 @@
 #include <vector>
 
 //the state of report and prove
+const uint16_t RP_INVALID = 0;
 const uint16_t RP_FLAG_REPORTED = 1;//被举报了
 const uint16_t RP_FLAG_PROVED = 2;//已证明
 
@@ -42,9 +43,8 @@ public:
     arith_uint256 nChainWork;// 包含全部祖先和自己的work
     VEC_HASH vecSonHashs;// 子block hash,make a block tree chain
     unsigned char deadstatus;
-    MAP_REPORT_PROVE mapReportStatus;// deadstatus需要知道当前block的举报状态，BranchDb的mReortTxFlag差不了，或者需要改成多key容器
-                                  // 而且放这里比mReortTxFlag更有优势吧，数据分散到每个block，而不是集中起来。集中会导致某个数据
-                                  // 数据过大。
+    MAP_REPORT_PROVE mapReportStatus;// deadstatus需要知道当前block的举报状态，和BranchDb的mReortTxFlag差不多，或者需要改成多key容器
+                                  // 而且放这里比mReortTxFlag更有优势吧，数据分散到每个block，而不是集中起来。
     bool IsDead();//是否在被举报状态
 
     void InitDataFromTx(const CellTransaction& tx);
@@ -126,10 +126,66 @@ private:
 
 typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;
 
-class BranchCache
+//参考 CellCoinsView CellCoinsViewBacked CellCoinsViewCache CellCoinsViewDB 的机构来重写这里的cache
+// Interface
+class BrandchDataView
 {
 public:
-    MAPBRANCHS_DATA mapBranchCache;
+    virtual bool HasBranchData(const uint256& branchHash) const;
+    virtual uint256 GetBranchTipHash(const uint256& branchid);
+    virtual uint32_t GetBranchHeight(const uint256& branchid);
+    virtual BranchData GetBranchData(const uint256& branchHash);
+    virtual bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash);
+    virtual int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash);
+    virtual uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash);
+};
+
+// 数据操作(通用部分)
+class BranchDataProcesser: public BrandchDataView
+{
+public:
+    //std::map<uint256, uint16_t> mReortTxFlag;
+    // <override
+    uint256 GetBranchTipHash(const uint256& branchid) override;
+    uint32_t GetBranchHeight(const uint256& branchid) override;
+    bool HasBranchData(const uint256& branchHash) const override;
+    BranchData GetBranchData(const uint256& branchHash) override;
+    bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash) override;
+    int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash) override;
+
+    uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
+    //override>
+    // flush data in connectblock and disconnnectblock, add or remove data.
+    void Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect);
+protected:
+    void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
+    void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
+
+    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+
+    virtual bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
+protected:
+    MAPBRANCHS_DATA mapBranchsData;
+};
+
+// 1、内存池的记录 2、verifydb时的那种临时db
+// 缓存操作 临时操作 当失败时可以直接丢弃 而不污染数据源
+// 优先从本地class取数据，在本地取不到的情况下再向readonly_db取
+class BranchCache : public BranchDataProcesser
+{
+public:
+    BranchCache() = delete;
+    BranchCache(const BranchCache&) = delete;
+    BranchCache(BrandchDataView *dataview) :readonly_db(dataview) {};
+    BranchCache& operator=(const BranchCache&) = delete;
+
+    BrandchDataView *readonly_db;// never modify db's data in this class. If data not in this class, fetch data from db.
+
     std::map<uint256, uint16_t> mReortTxFlagCache;
 
     bool HasInCache(const CellTransaction& tx);
@@ -137,11 +193,23 @@ public:
     
     void RemoveFromBlock(const std::vector<CellTransactionRef>& vtx);
 
+    //获取cache中的block的祖先
     std::vector<uint256> GetAncestorsBlocksHash(const CellTransaction& tx);
 
     const BranchBlockData* GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash);
 
+    // <override
+    uint256 GetBranchTipHash(const uint256& branchid) override;
+    uint32_t GetBranchHeight(const uint256& branchid) override;
+    bool HasBranchData(const uint256& branchHash) const override;
+    BranchData GetBranchData(const uint256& branchHash) override;
+    bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash) override;
+    int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash) override;
+
+    uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
+    //override>
 private:
+    MAPBRANCHS_DATA mapBranchCache;
     void RemoveFromCache(const CellTransaction& tx);
 };
 
@@ -149,47 +217,48 @@ private:
  1、保证每个BranchData的mapHeads的BranchBlockData的preblock数据是存在的。
     也就是每个数据都有完整的到达创世块的链路径
  */
-
-class BranchDb
+// 持久化
+class BranchDb : public BranchDataProcesser
 {
 public:
     BranchDb() = delete;
     BranchDb(const BranchDb&) = delete;
     BranchDb(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     BranchDb& operator=(const BranchDb&) = delete;
-
-    // flush data in connectblock and disconnnectblock, add or remove data.
-    void Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect);
-    void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
-    void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
-
-    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-
+    
     void LoadData();
 
-    uint256 GetBranchTipHash(const uint256& branchid);
-    uint32_t GetBranchHeight(const uint256& branchid);
-public:
-    std::map<uint256, uint16_t> mReortTxFlag;
+    //std::map<uint256, uint16_t> mReortTxFlag;
+// <override
+    //uint256 GetBranchTipHash(const uint256& branchid) override;
+    //uint32_t GetBranchHeight(const uint256& branchid) override;
+    //bool HasBranchData(const uint256& branchHash) const override;
+    //BranchData GetBranchData(const uint256& branchHash) override;
+    //bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash) override;
+    //int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash) override;
 
-    bool HasBranchData(const uint256& branchHash) const
-    {
-        return mapBranchsData.count(branchHash) > 0;
-    }
-    BranchData GetBranchData(const uint256& branchHash);
-    bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash);
-    int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash);
-private:
-    bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
+    //uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
+//override>
+protected:
+    //void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
+    //void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
 
+    //void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    //void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    //bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    //bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    //bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    //bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+
+    bool WriteModifyToDB(const std::set<uint256>& modifyBranch) override;
+protected:
     CellDBWrapper db;
-    MAPBRANCHS_DATA mapBranchsData;
+    //MAPBRANCHS_DATA mapBranchsData;
 };
 
-extern BranchDb* pBranchDb;
+extern BranchDb* g_pBranchDb;
 
 //branch mempool tx cache data
-extern BranchCache branchDataMemCache;
+extern BranchCache* g_pBranchDataMemCache;
 
 #endif // BITCOIN_BRANCHDB_H

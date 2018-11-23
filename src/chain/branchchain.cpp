@@ -1031,7 +1031,7 @@ bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& stat
     if (pBranchCache && pBranchCache->HasInCache(tx))
         return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
 
-    BranchData branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
+    BranchData branchdata = g_pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
     //ContextualCheckBlockHeader
     const CellChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
     if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache))
@@ -1139,7 +1139,7 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
         if (pBranchCache && pBranchCache->HasInCache(tx))
             return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
 
-        BranchData branchdata = pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
+        BranchData branchdata = g_pBranchDb->GetBranchData(tx.pBranchBlockData->branchID);
         CellBlockHeader blockheader;
         tx.pBranchBlockData->GetBlockHeader(blockheader);
         if (branchdata.mapHeads.count(blockheader.GetHash())) {
@@ -1155,23 +1155,26 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
 
     if (tx.IsReport()){
         uint256 reportFlagHash = GetReportTxHashKey(tx);
+        const uint256& rpBranchId = tx.pReportData->reportedBranchId;
+        const uint256& rpBlockId = tx.pReportData->reportedBlockHash;
         if (pBranchCache && pBranchCache->mReortTxFlagCache.count(reportFlagHash)){
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in cache");
         }
-        if (pBranchDb->mReortTxFlag.count(reportFlagHash)){
+        if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, reportFlagHash) != RP_INVALID){
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in db");
         }
     }
 
     if (tx.IsProve()){
         uint256 proveFlagHash = GetProveTxHashKey(tx);
+        const uint256& rpBranchId = tx.pProveData->branchId;
+        const uint256& rpBlockId = tx.pProveData->blockHash;
         if (pBranchCache && pBranchCache->mReortTxFlagCache.count(proveFlagHash) 
             && pBranchCache->mReortTxFlagCache[proveFlagHash] == RP_FLAG_PROVED)
         {
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate prove in cache");
         }
-        if (pBranchDb->mReortTxFlag.count(proveFlagHash) 
-            && pBranchDb->mReortTxFlag[proveFlagHash] == RP_FLAG_PROVED)
+        if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, proveFlagHash) == RP_FLAG_PROVED)
         {
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate prove in db");
         }
@@ -1196,9 +1199,9 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
     if (tx.IsReport())
     {
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
-        if (!pBranchDb->HasBranchData(reportedBranchId))
+        if (!g_pBranchDb->HasBranchData(reportedBranchId))
             return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
-        BranchData branchdata = pBranchDb->GetBranchData(reportedBranchId);
+        BranchData branchdata = g_pBranchDb->GetBranchData(reportedBranchId);
 
         if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
         {
@@ -1371,7 +1374,7 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
         return false;
 
     const uint256 branchId = tx.pProveData->branchId;
-    if (!pBranchDb->HasBranchData(branchId))
+    if (!g_pBranchDb->HasBranchData(branchId))
         return false;
 
     const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
@@ -1388,7 +1391,7 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
         return state.DoS(0, false, REJECT_INVALID, "Prove tx data error, first tx's hasdid is not eq proved txid");
 
     // spv check
-    BranchData branchData = pBranchDb->GetBranchData(branchId);
+    BranchData branchData = g_pBranchDb->GetBranchData(branchId);
     CellSpvProof spvProof(vectProveData[0].pCSP);
     BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
     if (pBlockData == nullptr)
@@ -1416,11 +1419,11 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
     }
 
     const uint256& branchId = tx.pProveData->branchId;
-    if (!pBranchDb->HasBranchData(branchId)) {
+    if (!g_pBranchDb->HasBranchData(branchId)) {
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
     }
 
-    BranchData branchData = pBranchDb->GetBranchData(branchId);
+    BranchData branchData = g_pBranchDb->GetBranchData(branchId);
     if (branchData.mapHeads.count(tx.pProveData->blockHash) == 0){
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no block data");
     }
@@ -1480,9 +1483,9 @@ bool CheckProveContractData(const CellTransaction& tx, CellValidationState& stat
         return false;
 
     const uint256& branchId = tx.pReportData->reportedBranchId;
-    if (!pBranchDb->HasBranchData(branchId))
+    if (!g_pBranchDb->HasBranchData(branchId))
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
-    BranchData branchData = pBranchDb->GetBranchData(branchId);
+    BranchData branchData = g_pBranchDb->GetBranchData(branchId);
 
     // 先验证被举报交易及对应合约数据属于指定区块
     BranchBlockData* pReportedBlockData = branchData.GetBranchBlockData(tx.pReportData->reportedBlockHash);
@@ -1534,8 +1537,8 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
         /*
         //uint256 proveFlagHash = GetProveTxHashKey(tx);
         //check report exist, don't check in cache now. let a report tx in a mined block may be better.
-        if (pBranchDb->mReortTxFlag.count(proveFlagHash) == 0
-            || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
+        if (g_pBranchDb->mReortTxFlag.count(proveFlagHash) == 0
+            || g_pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
         {
             return state.DoS(0, false, REJECT_INVALID, "prove to report tx not exist.");
         }
@@ -1589,10 +1592,10 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
     uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
-    if (!pBranchDb->HasBranchData(reportbranchid))
+    if (!g_pBranchDb->HasBranchData(reportbranchid))
         return false;
 
-    BranchData branchdata = pBranchDb->GetBranchData(reportbranchid);
+    BranchData branchdata = g_pBranchDb->GetBranchData(reportbranchid);
     if (!branchdata.mapHeads.count(reportblockhash))// best chain check? 1. no, 作弊过，但是数据在分叉上，也可以举报。带来麻烦是，矿工需要监控自己挖出来的分叉有没有监控。  
         return false;
 

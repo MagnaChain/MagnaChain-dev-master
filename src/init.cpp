@@ -260,8 +260,10 @@ void Shutdown()
         pcoinsdbview = nullptr;
         delete pblocktree;
         pblocktree = nullptr;
-        delete pBranchDb;
-        pBranchDb = nullptr;
+        delete g_pBranchDataMemCache;
+        g_pBranchDataMemCache = nullptr;
+        delete g_pBranchDb;
+        g_pBranchDb = nullptr;
         delete pCoinAmountCache;
         pCoinAmountCache = nullptr;
         delete pCoinAmountDB;
@@ -1461,7 +1463,8 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                 delete pcoinsdbview;
                 delete pcoinscatcher;
                 delete pblocktree;
-                delete pBranchDb;
+                delete g_pBranchDataMemCache;
+                delete g_pBranchDb;
                 //BranchDb::DeleteDb();
 
                 pblocktree = new CellBlockTreeDB(nBlockTreeDBCache, false, fReset);
@@ -1541,7 +1544,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                 
                 if (Params().IsMainChain()) //only in main chain
                 {
-                    if (pBranchDb == nullptr) { // cache size calculations
+                    if (g_pBranchDb == nullptr) { // cache size calculations
                         int64_t nTotalCache = (gArgs.GetArg("-dbcache", nDefaultDbCache) << 20);
                         nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
                         nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greater than nMaxDbcache
@@ -1550,8 +1553,11 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                         nTotalCache -= nBlockTreeDBCache;
                         int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
                         nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20);                   // cap total coins db cache
-                        pBranchDb = new BranchDb(GetDataDir() / "branchchain", nCoinDBCache, false, false);
-                        pBranchDb->LoadData();
+                        g_pBranchDb = new BranchDb(GetDataDir() / "branchchain", nCoinDBCache, false, false);
+                        g_pBranchDb->LoadData();
+                    }
+                    if (g_pBranchDataMemCache == nullptr){
+                        g_pBranchDataMemCache = new BranchCache(g_pBranchDb);
                     }
                 }
                 

@@ -1035,8 +1035,8 @@ UniValue getbranchchainheight(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
 
     UniValue retObj(UniValue::VOBJ);
-    retObj.push_back(Pair("blockhash", pBranchDb->GetBranchTipHash(branchid).ToString()));
-    retObj.push_back(Pair("height", (uint64_t)pBranchDb->GetBranchHeight(branchid)));
+    retObj.push_back(Pair("blockhash", g_pBranchDb->GetBranchTipHash(branchid).ToString()));
+    retObj.push_back(Pair("height", (uint64_t)g_pBranchDb->GetBranchHeight(branchid)));
     return retObj;
 }
 
@@ -1626,9 +1626,9 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
     CellTransactionRef tx = MakeTransactionRef(std::move(mtxTrans1));
 
     const uint256 reportedBranchId = tx->pReportData->reportedBranchId;
-    if (!pBranchDb->HasBranchData(reportedBranchId))
+    if (!g_pBranchDb->HasBranchData(reportedBranchId))
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf("Invalid reported branch id %s", reportedBranchId.ToString().c_str()));
-    BranchData branchData = pBranchDb->GetBranchData(reportedBranchId);
+    BranchData branchData = g_pBranchDb->GetBranchData(reportedBranchId);
     if (branchData.mapHeads.count(tx->pReportData->reportedBlockHash) == 0)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not found block data in mapHeads");
 
@@ -1642,7 +1642,9 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid transaction spv");
 
     uint256 reportFlagHash = GetReportTxHashKey(*tx);
-    if (pBranchDb->mReortTxFlag.count(reportFlagHash))
+    const uint256& rpBranchId = tx->pReportData->reportedBranchId;
+    const uint256& rpBlockId = tx->pReportData->reportedBlockHash;
+    if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, reportFlagHash) != RP_INVALID)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Tansaction had been reported!");
 
     CellCoinControl coin_control;
@@ -1671,7 +1673,6 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    //pBranchDb->mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
     if (!state.GetRejectReason().empty())
@@ -1741,7 +1742,6 @@ UniValue reportbranchchainblockmerkle(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
 
-    //pBranchDb->mReortTxFlag[reportFlagHash] = RP_FLAG_REPORTED;
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
     if (!state.GetRejectReason().empty())
@@ -1962,7 +1962,9 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 
     CellTransactionRef tx = MakeTransactionRef(std::move(mtxTrans1));
     uint256 proveFlagHash = GetProveTxHashKey(*tx);
-    if (pBranchDb->mReortTxFlag.count(proveFlagHash) == 0 || pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED){
+    const uint256& rpBranchId = tx->pProveData->branchId;
+    const uint256& rpBlockId = tx->pProveData->blockHash;
+    if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, proveFlagHash) != RP_FLAG_REPORTED){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid report transaction");
     }
 
@@ -1990,8 +1992,6 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
         strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strError);
     }
-
-    //pBranchDb->mReortTxFlag[proveFlagHash] = RP_FLAG_PROVED;
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
@@ -2115,9 +2115,9 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
         confirmations = chainActive.Height() - mapBlockIndex[hashBlock]->nHeight;
 
     // get mine coin prevouthash
-    //LOCK(cs_main);// protect pBranchDb
+    //LOCK(cs_main);// protect g_pBranchDb
     uint256 prevouthash;
-    BranchData branchdata = pBranchDb->GetBranchData(ptxReport->pReportData->reportedBranchId);// don't check
+    BranchData branchdata = g_pBranchDb->GetBranchData(ptxReport->pReportData->reportedBranchId);// don't check
     if (branchdata.mapHeads.count(ptxReport->pReportData->reportedBlockHash)){
         if (!GetMortgageCoinData(branchdata.mapHeads[ptxReport->pReportData->reportedBlockHash].pStakeTx->vout[0].scriptPubKey, &prevouthash))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid-block-data");
@@ -2244,16 +2244,16 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
         confirmations = chainActive.Height() - mapBlockIndex[hashBlock]->nHeight;
 
     // get mine coin prevouthash
-    // LOCK(cs_main);// protect pBranchDb
+    // LOCK(cs_main);// protect g_pBranchDb
     
-    if (!pBranchDb->HasBranchData(ptxProve->pProveData->branchId)){
+    if (!g_pBranchDb->HasBranchData(ptxProve->pProveData->branchId)){
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid prove transaction data.");
     }
 
     uint256 reportblockhash = ptxProve->pProveData->blockHash;
     
     uint256 prevouthash;
-    BranchData branchdata = pBranchDb->GetBranchData(ptxProve->pProveData->branchId);
+    BranchData branchdata = g_pBranchDb->GetBranchData(ptxProve->pProveData->branchId);
     if (branchdata.mapHeads.count(reportblockhash)) {
         if (!GetMortgageCoinData(branchdata.mapHeads[reportblockhash].pStakeTx->vout[0].scriptPubKey, &prevouthash))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid-block-data");

@@ -694,7 +694,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         // OP: can we move to ancestors?
         const CellTransactionRef& iterTx = iter->GetSharedTx();
         if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
-            std::vector<uint256> ancestors = branchDataMemCache.GetAncestorsBlocksHash(*iterTx);
+            std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
             for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
                 CellTxMemPool::txiter it = mempool.mapTx.find(*rit);
                 if (it == mempool.mapTx.end())
@@ -2132,10 +2132,10 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
     uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
-    if (!pBranchDb->HasBranchData(reportbranchid))
+    if (!g_pBranchDb->HasBranchData(reportbranchid))
         return;
 
-    BranchData branchdata = pBranchDb->GetBranchData(reportbranchid);
+    BranchData branchdata = g_pBranchDb->GetBranchData(reportbranchid);
     if (!branchdata.mapHeads.count(reportblockhash))// best chain check?
         return;
     

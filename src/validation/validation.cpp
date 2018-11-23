@@ -568,7 +568,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
     if (tx.IsBranchCreate() && pool.GetCreateBranchChainTxCount() != 0)
         return state.DoS(0, false, REJECT_INVALID, "mempool have contain a create branch chain transaction");//only one Branch create transaction in mempool, for easy calc Mortgage
 
-    if (!CheckTransaction(tx, state,true, nullptr, nullptr, false, &branchDataMemCache))
+    if (!CheckTransaction(tx, state,true, nullptr, nullptr, false, g_pBranchDataMemCache))
         return false; // state filled in by CheckTransaction
 
     // Coinbase is only valid in a block, not as a loose transaction
@@ -920,7 +920,7 @@ static bool AcceptToMemoryPoolWorker(const CellChainParams& chainparams, CellTxM
             scriptVerifyFlags = gArgs.GetArg("-promiscuousmempoolflags", scriptVerifyFlags);
         }
 
-        if (!CheckBranchDuplicateTx(tx, state, &branchDataMemCache)){
+        if (!CheckBranchDuplicateTx(tx, state, g_pBranchDataMemCache)){
             return false;
         }
 
@@ -1034,7 +1034,7 @@ static bool AcceptToMemoryPoolWithTime(const CellChainParams& chainparams, CellT
     }
     if (res)//accept ok
     {
-        branchDataMemCache.AddToCache(*tx);//check n add relate cache
+        g_pBranchDataMemCache->AddToCache(*tx);//check n add relate cache
     }
 
     // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
@@ -2111,7 +2111,8 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
             return false;
         }
         //
-        pBranchCache->AddToCache(tx);
+        if (pBranchCache)
+            pBranchCache->AddToCache(tx);
 
         // GetTransactionSigOpCost counts 3 types of sigops:
         // * legacy (always)
@@ -2489,7 +2490,7 @@ bool static DisconnectTip(CellValidationState& state, const CellChainParams& cha
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
-        pBranchDb->Flush(pblock, false);
+        g_pBranchDb->Flush(pblock, false);
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
     // Write the chain state to disk, if necessary.
@@ -2617,7 +2618,7 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
     {
         CellCoinsViewCache view(pcoinsTip);
         BranchChainTxRecordsCache bccache;
-        BranchCache branchcache;
+        BranchCache branchcache(g_pBranchDb);
         bool rv = ConnectBlock(blockConnecting, state, pindexNew, view, chainparams, false, &bccache, &branchcache);
         GetMainSignals().BlockChecked(blockConnecting, state);
         if (!rv) {
@@ -2630,7 +2631,7 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
-        pBranchDb->Flush(pthisBlock, true);
+        g_pBranchDb->Flush(pthisBlock, true);
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
     LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);
@@ -2642,7 +2643,7 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
     // Remove conflicting transactions from the mempool.;
     mempool.removeForBlock(blockConnecting.vtx, pindexNew->nHeight);
     disconnectpool.removeForBlock(blockConnecting.vtx);
-    branchDataMemCache.RemoveFromBlock(blockConnecting.vtx);
+    g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
     // Update chainActive & related variables.
     UpdateTip(pindexNew, chainparams);
 
@@ -3366,7 +3367,7 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
     }
 
     std::set<uint256> setTxid;
-    BranchCache tempcache;// use to duplicate check in one block
+    BranchCache tempcache(g_pBranchDb);// use to duplicate check in one block
     // Check transactions
     for (const auto& tx : block.vtx) {
         if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, &tempcache))
@@ -3375,7 +3376,7 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
 
         tempcache.AddToCache(*tx);
 
-        if (tx->IsBranchChainTransStep2())// is any other need to check
+        if (tx->IsBranchChainTransStep2())
         {
             uint256 txid = GetBranchTxHash(*tx);
             if (setTxid.count(txid)){
@@ -3861,7 +3862,7 @@ bool TestBlockValidity(CellValidationState& state, const CellChainParams& chainp
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
     if (!ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
-    BranchCache tempCache2;
+    BranchCache tempCache2(g_pBranchDb);
     if (!ConnectBlock(block, state, &indexDummy, viewNew, chainparams, true, nullptr, &tempCache2))
         return false;
     assert(state.IsValid());
@@ -5083,7 +5084,7 @@ bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellT
     if (!CheckTransaction(tx, state))
         return false;
 
-    if (!CheckBranchDuplicateTx(tx, state, &branchDataMemCache)) {
+    if (!CheckBranchDuplicateTx(tx, state, g_pBranchDataMemCache)) {
         return false;
     }
 
@@ -5218,7 +5219,7 @@ bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, cons
 
     std::vector<uint256> vMatch;
     std::vector<unsigned int> vIndex;
-    BranchData bData = pBranchDb->GetBranchData(branchHash);
+    BranchData bData = g_pBranchDb->GetBranchData(branchHash);
     BranchBlockData bBlockData = bData.mapHeads[block.GetHash()];
     uint256 hashMerkleRoot = bBlockData.header.hashMerkleRoot;
 

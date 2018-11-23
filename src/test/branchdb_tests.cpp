@@ -16,7 +16,17 @@
 #include <boost/test/unit_test.hpp>
 #include "validation/validation.h"
 
-void AddBlockInfoTx(CellMutableTransaction &mtx, const uint256 &branchid, CellBlockHeader &header, const uint32_t &nbits, uint32_t &preblockH, uint32_t &t, CellBranchBlockInfo &firstBlock, BranchDb &branchdb, uint256 &temphash, const size_t &txindex, std::set<uint256> &modifyBranch)
+class BranchDbTest : public BranchDb
+{
+public:
+    BranchDbTest(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe) :BranchDb(path, nCacheSize, fMemory, fWipe){}
+    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+    {
+        BranchDb::AddBlockInfoTxData(transaction, mainBlockHash, iTxVtxIndex, modifyBranch);
+    }
+};
+
+void AddBlockInfoTx(CellMutableTransaction &mtx, const uint256 &branchid, CellBlockHeader &header, const uint32_t &nbits, uint32_t &preblockH, uint32_t &t, CellBranchBlockInfo &firstBlock, BranchDbTest &branchdb, uint256 &temphash, const size_t &txindex, std::set<uint256> &modifyBranch)
 {
     mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
     mtx.pBranchBlockData->branchID = branchid;
@@ -34,7 +44,7 @@ BOOST_FIXTURE_TEST_SUITE(branchdb_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(branchdb_chainactive)
 {
-    BranchDb branchdb(fs::temp_directory_path() / fs::unique_path(), 8<<20, false, false);
+    BranchDbTest branchdb(fs::temp_directory_path() / fs::unique_path(), 8<<20, false, false);
 
     uint256 branchid = uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e");
     const CellChainParams& bparams = BranchParams(branchid);
@@ -157,7 +167,7 @@ void CreateTestTxToBlock(std::shared_ptr<CellBlock> &pblockNew, const uint256 &b
 
 BOOST_AUTO_TEST_CASE(branchdb_flush)
 {
-    BranchDb branchdb(fs::temp_directory_path() / fs::unique_path(), 8 << 20, false, false);
+    BranchDbTest branchdb(fs::temp_directory_path() / fs::unique_path(), 8 << 20, false, false);
 
     uint256 branchid = uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e");
     
@@ -337,7 +347,7 @@ void NewMainBlockHead(std::shared_ptr<CellBlock> &pblockNew, const uint32_t &nbi
 
 BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
 {
-    BranchDb branchdb(fs::temp_directory_path() / fs::unique_path(), 8 << 20, false, false);
+    BranchDbTest branchdb(fs::temp_directory_path() / fs::unique_path(), 8 << 20, false, false);
     uint256 branchid = uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e");
 
     const CellChainParams& bparams = BranchParams(branchid);
@@ -478,6 +488,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         mtx.pProveData->branchId = branchid;
         mtx.pProveData->blockHash = expertBranchChain[expertBranchChain.size() - 3];
         mtx.pProveData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+        mtx.pProveData->contractData = std::make_shared<ContractProveData>();
 
         pblockNew->vtx.push_back(MakeTransactionRef(mtx));
         //------------
@@ -499,6 +510,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         mtx.pProveData->branchId = branchid;
         mtx.pProveData->blockHash = expertBranchChain[expertBranchChain.size() - 4];
         mtx.pProveData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+        mtx.pProveData->contractData = std::make_shared<ContractProveData>();
 
         pblockNew->vtx.push_back(MakeTransactionRef(mtx));
         //------------
@@ -520,6 +532,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         mtx.pProveData->branchId = branchid;
         mtx.pProveData->blockHash = expertBranchChain[expertBranchChain.size() - 2];
         mtx.pProveData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+        mtx.pProveData->contractData = std::make_shared<ContractProveData>();
 
         pblockNew->vtx.push_back(MakeTransactionRef(mtx));
         //------------
