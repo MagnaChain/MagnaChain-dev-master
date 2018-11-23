@@ -15,13 +15,4 @@ CellAmount GetCreateBranchMortgage(const CellBlock* pBlock=nullptr, const CellBl
 
 uint256 GetBranchTxHash(const CellTransaction& tx);
 
-extern const CellAmount CreateBranchChainMortgage;
-extern const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY;
-extern const uint32_t BRANCH_CHAIN_MATURITY;
-extern const CellAmount MIN_MINE_BRANCH_MORTGAGE;
-extern const uint32_t REDEEM_SAFE_HEIGHT;
-extern const uint32_t REPORT_OUTOF_HEIGHT;
-extern const uint32_t REPORT_LOCK_COIN_HEIGHT;
-extern const uint32_t CUSHION_HEIGHT;
-
 #endif //  BRANCHCHAIN_PRC_H
