@@ -70,6 +70,8 @@ public:
     enum {
         eADD,
         eDELETE,
+        //eModify,
+        //eOriginal,
     };
     unsigned char flags; // memory only
 };
@@ -120,6 +122,13 @@ public:
     bool IsBlockInBestChain(const uint256& blockhash);
     int GetBlockMinedHeight(const uint256& blockhash);
 
+    enum {
+        eADD,
+        eDELETE,
+        eModify,
+        eOriginal,
+    };
+    unsigned char flags; // memory only, cache data use it
 private:
     void FindBestBlock(const uint256& blockhash, uint256& mostworkblock);
 };
@@ -209,7 +218,7 @@ public:
     uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
     //override>
 private:
-    MAPBRANCHS_DATA mapBranchCache;
+    //MAPBRANCHS_DATA mapBranchCache;
     void RemoveFromCache(const CellTransaction& tx);
 };
 

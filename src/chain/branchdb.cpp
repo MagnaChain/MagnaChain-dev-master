@@ -667,9 +667,9 @@ bool BranchCache::HasInCache(const CellTransaction& tx)
         uint256 blockHash = blockData.header.GetHash();
         uint256 branchHash = tx.pBranchBlockData->branchID;
 
-        if (mapBranchCache.count(branchHash)){
-            if (mapBranchCache[branchHash].mapHeads.count(blockHash)){
-                if (mapBranchCache[branchHash].mapHeads[blockHash].flags == BranchBlockData::eADD){
+        if (mapBranchsData.count(branchHash)){
+            if (mapBranchsData[branchHash].mapHeads.count(blockHash)){
+                if (mapBranchsData[branchHash].mapHeads[blockHash].flags == BranchBlockData::eADD){
                     return true;
                 }
             }
@@ -690,7 +690,10 @@ void BranchCache::AddToCache(const CellTransaction& tx)
         uint256 blockHash = blockData.header.GetHash();
         uint256 branchHash = tx.pBranchBlockData->branchID;
 
-        BranchData& bData = this->mapBranchCache[branchHash];
+        bool isNewBranch = this->mapBranchsData.count(branchHash) == 0;
+        BranchData& bData = this->mapBranchsData[branchHash];
+        if (isNewBranch)
+            bData.flags = BranchData::eADD;
         bData.mapHeads[blockHash] = blockData;
     }
     if (tx.IsReport()){
@@ -816,7 +819,7 @@ void BranchCache::RemoveFromCache(const CellTransaction& tx)
         uint256 blockHash = blockData.header.GetHash();
         uint256 branchHash = tx.pBranchBlockData->branchID;
 
-        BranchData& bData = mapBranchCache[branchHash];
+        BranchData& bData = mapBranchsData[branchHash];
         if (bData.mapHeads.count(blockHash))//update map data
             bData.mapHeads[blockHash].flags = BranchBlockData::eDELETE;
         else                                // set map data
@@ -854,9 +857,9 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const CellTransaction& 
     //uint256 blockHash = blockData.header.GetHash();
     const uint256& branchHash = tx.pBranchBlockData->branchID;
 
-    if (mapBranchCache.count(branchHash))
+    if (mapBranchsData.count(branchHash))
     {
-        BranchData& branchdata = mapBranchCache[branchHash];
+        BranchData& branchdata = mapBranchsData[branchHash];
         uint256& preblockhash = blockData.header.hashPrevBlock;
         while (branchdata.mapHeads.count(preblockhash)){
             BranchBlockData& preblockdata = branchdata.mapHeads[preblockhash];
@@ -870,11 +873,11 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const CellTransaction& 
 
 const BranchBlockData* BranchCache::GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash)
 {
-    if (mapBranchCache.count(branchhash)){
-        if (mapBranchCache[branchhash].mapHeads.count(blockhash)){
-            if (mapBranchCache[branchhash].mapHeads[blockhash].flags == BranchBlockData::eADD)
+    if (mapBranchsData.count(branchhash)){
+        if (mapBranchsData[branchhash].mapHeads.count(blockhash)){
+            if (mapBranchsData[branchhash].mapHeads[blockhash].flags == BranchBlockData::eADD)
             {
-                return &mapBranchCache[branchhash].mapHeads[blockhash];
+                return &mapBranchsData[branchhash].mapHeads[blockhash];
             }
         }
     }
