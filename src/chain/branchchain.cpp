@@ -1323,7 +1323,7 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
         }
     }
 
-    if (nContractIn - nContractOut != pProveTx->contractOut)
+    if (pProveTx->IsSmartContract() && nContractIn - nContractOut != pProveTx->contractOut)
         return state.DoS(0, false, REJECT_INVALID, "Contract out not match");
     if (!MoneyRange(nValueOut))
         return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
