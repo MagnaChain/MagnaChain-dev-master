@@ -2774,78 +2774,62 @@ CellFeeRate GetDiscardRate(const CellBlockPolicyEstimator& estimator)
 
 static bool MoveTransactionData(CellWalletTx& fromWtx, CellMutableTransaction& toTx)
 {
-    if (fromWtx.transaction_version > CellTransaction::CURRENT_VERSION)
+    if (fromWtx.nVersion > CellTransaction::CURRENT_VERSION)
+        toTx.nVersion = fromWtx.nVersion;
+    if (fromWtx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || fromWtx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
     {
-        toTx.nVersion = fromWtx.transaction_version;
+        toTx.pContractData.reset(new ContractData(*fromWtx.pContractData));
     }
-    if (fromWtx.transaction_version == CellTransaction::PUBLISH_CONTRACT_VERSION)
-    {
-        toTx.nVersion = CellTransaction::PUBLISH_CONTRACT_VERSION;
-        toTx.contractCode = fromWtx.contractCode;
-        toTx.contractSender = fromWtx.contractSender;
-        toTx.contractAddr = fromWtx.contractAddr;
-        toTx.contractOut = fromWtx.contractOut;
-    }
-    else if (fromWtx.transaction_version == CellTransaction::CALL_CONTRACT_VERSION)
-    {
-        toTx.nVersion = CellTransaction::CALL_CONTRACT_VERSION;
-        toTx.contractFun = fromWtx.contractCode;
-        toTx.contractSender = fromWtx.contractSender;
-        toTx.contractParams = fromWtx.contractParams;
-        toTx.contractAddr = fromWtx.contractAddr;
-        toTx.contractOut = fromWtx.contractOut;
-    }
-    if (fromWtx.transaction_version == CellTransaction::CREATE_BRANCH_VERSION)
+    else if (fromWtx.nVersion == CellTransaction::CREATE_BRANCH_VERSION)
     {
         toTx.branchVSeeds = fromWtx.branchVSeeds;
         toTx.branchSeedSpec6 = fromWtx.branchSeedSpec6;
     }
-    else if (fromWtx.transaction_version == CellTransaction::TRANS_BRANCH_VERSION_S1)
+    else if (fromWtx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1)
     {
         toTx.sendToBranchid = fromWtx.sendToBranchid;
         toTx.sendToTxHexData = fromWtx.sendToTxHexData;
         if (toTx.sendToBranchid == CellBaseChainParams::MAIN)
             toTx.pPMT.reset(new CellSpvProof());
     }
-    else if (fromWtx.transaction_version == CellTransaction::TRANS_BRANCH_VERSION_S2)//这种类型不是创建出来的，是包含在上面两个类型
+    else if (fromWtx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2)//这种类型不是创建出来的，是包含在上面两个类型
     {
     }
-    else if (fromWtx.transaction_version == CellTransaction::MINE_BRANCH_MORTGAGE)
+    else if (fromWtx.nVersion == CellTransaction::MINE_BRANCH_MORTGAGE)
     {
         toTx.sendToBranchid = fromWtx.sendToBranchid;
         toTx.sendToTxHexData = fromWtx.sendToTxHexData;
     }
-    else if (fromWtx.transaction_version == CellTransaction::REDEEM_MORTGAGE)
+    else if (fromWtx.nVersion == CellTransaction::REDEEM_MORTGAGE)
     {
         toTx.fromBranchId = fromWtx.fromBranchId;
         toTx.pPMT.reset(new CellSpvProof(*fromWtx.pPMT));
         toTx.fromTx = std::move(fromWtx.fromTx);
     }
-    else if (fromWtx.transaction_version == CellTransaction::SYNC_BRANCH_INFO)
+    else if (fromWtx.nVersion == CellTransaction::SYNC_BRANCH_INFO)
     {
         toTx.pBranchBlockData = std::move(fromWtx.pBranchBlockData);
     }
-    else if (fromWtx.transaction_version == CellTransaction::REPORT_CHEAT)
+    else if (fromWtx.nVersion == CellTransaction::REPORT_CHEAT)
     {
         toTx.pPMT.reset(new CellSpvProof(*fromWtx.pPMT));
         toTx.pReportData.reset(new ReportData(*fromWtx.pReportData));
     }
-    else if (fromWtx.transaction_version == CellTransaction::PROVE)
+    else if (fromWtx.nVersion == CellTransaction::PROVE)
     {
         toTx.pProveData.reset(new ProveData(*fromWtx.pProveData));
     }
-    else if (fromWtx.transaction_version == CellTransaction::LOCK_MORTGAGE_MINE_COIN)
+    else if (fromWtx.nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN)
     {
         toTx.reporttxid = fromWtx.reporttxid;
         toTx.coinpreouthash = fromWtx.coinpreouthash;
     }
-    else if (fromWtx.transaction_version == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN)
+    else if (fromWtx.nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN)
     {
         toTx.reporttxid = fromWtx.reporttxid;
         toTx.coinpreouthash = fromWtx.coinpreouthash;
         toTx.provetxid = fromWtx.provetxid;
     }
-    //fromWtx.ClearTempContractData();
     return true;
 }
 
@@ -3084,7 +3068,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 
                 if (sls != nullptr && sls->recipients.size() > 0) {
                     txNew.vin.emplace_back(uint256(), txNew.vin.size());
-                    txNew.vout.emplace_back(txNew.contractOut, GetScriptForDestination(txNew.contractAddr));
+                    txNew.vout.emplace_back(txNew.pContractData->amountOut, GetScriptForDestination(txNew.pContractData->address));
                 }
 
 				// 获取交易字节大小 
@@ -3106,7 +3090,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
                 if (sls != nullptr) {
                     for (size_t i = 0; i < sls->recipients.size(); ++i)
                         txNew.vout.push_back(sls->recipients[i]);
-                    txNew.contractAddr = wtxNew.contractAddr;
+                    txNew.pContractData->address = wtxNew.pContractData->address;
                 }
 
                 nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew, sls);
@@ -3192,12 +3176,12 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 		if (txNew.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
 		{
 			//replace
-			CellContractID oldKey = txNew.contractAddr;
+			CellContractID oldKey = txNew.pContractData->address;
             CellScript oldScript = GetScriptForDestination(CellLinkAddress(oldKey).Get());
 
-			txNew.contractAddr = GenerateContractAddressByTx(txNew);
+			txNew.pContractData->address = GenerateContractAddressByTx(txNew);
 			//replace vout
-            CellScript newScript = GetScriptForDestination(CellLinkAddress(txNew.contractAddr).Get());
+            CellScript newScript = GetScriptForDestination(CellLinkAddress(txNew.pContractData->address).Get());
 			for (auto out : txNew.vout)
 			{
 				if (out.scriptPubKey == oldScript)
@@ -3235,7 +3219,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 					return false;
 				}
 				else {
-					txNew.contractScriptSig = constractSig;
+					txNew.pContractData->signature = constractSig;
 				}
 			}
         }

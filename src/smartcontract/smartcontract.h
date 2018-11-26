@@ -84,8 +84,8 @@ CellContractID GenerateContractAddressByTx(TxType& tx)
     for (auto v : tx.vout)
         ss << v.nValue;
 
-    ss << tx.contractCode;
-    ss << tx.contractSender;
+    ss << tx.pContractData->codeOrFunc;
+    ss << tx.pContractData->sender;
     return CellContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 

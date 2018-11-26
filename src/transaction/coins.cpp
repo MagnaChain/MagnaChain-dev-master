@@ -261,9 +261,9 @@ CellAmount CellCoinsViewCache::GetValueIn(const CellTransaction& tx) const
             includeContract = true;
     }
 
-    if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && !includeContract && tx.contractOut > 0) {
-        nResult += tx.contractOut;
-        if (!MoneyRange(nResult) || !MoneyRange(tx.contractOut))
+    if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && !includeContract && tx.pContractData->amountOut > 0) {
+        nResult += tx.pContractData->amountOut;
+        if (!MoneyRange(nResult) || !MoneyRange(tx.pContractData->amountOut))
             return 0;
     }
 

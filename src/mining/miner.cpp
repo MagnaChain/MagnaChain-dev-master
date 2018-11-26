@@ -261,7 +261,7 @@ bool BlockAssembler::TestPackageTransactions(const CellTxMemPool::setEntries& pa
 void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     if ((chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()) ||
-        (iter->GetSharedTx()->IsSmartContract() && iter->GetSharedTx()->contractOut > 0)) {
+        (iter->GetSharedTx()->IsSmartContract() && iter->GetSharedTx()->pContractData->amountOut > 0)) {
         if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
         pblock->vtx.emplace_back(utxoMaker.mapCache[iter->GetSharedTx()->GetHash()]);
@@ -434,8 +434,10 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const CellTxMem
 
         des.emplace_back(std::make_pair(tx->GetHash(), i));
         trans2group[tx->GetHash()] = groupId;
-        if (!tx->contractAddr.IsNull())
-            contract2group[tx->contractAddr] = groupId;
+        if (tx->IsSmartContract()) {
+            if (!tx->pContractData->address.IsNull())
+                contract2group[tx->pContractData->address] = groupId;
+        }
 
         if (groupId == nextGroupId)
             nextGroupId++;
@@ -597,12 +599,12 @@ bool BlockAssembler::UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO
         success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
-    if (newTx.IsSmartContract() && newTx.contractOut > 0) {
-        CellContractID& contractId = newTx.contractAddr;
+    if (newTx.IsSmartContract() && newTx.pContractData->amountOut > 0) {
+        CellContractID& contractId = newTx.pContractData->address;
         CellScript contractScript = GetScriptForDestination(contractId);
         CellScript contractChangeScript = CellScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
 
-        success = utxoMaker.MakeTxUTXO(newTx, contractId, newTx.contractOut, contractScript, contractChangeScript);
+        success = utxoMaker.MakeTxUTXO(newTx, contractId, newTx.pContractData->amountOut, contractScript, contractChangeScript);
         keys.push_back(contractId);
     }
 
@@ -778,7 +780,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             const CellTransactionRef& entryTx = iter->GetSharedTx();
 
             if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
-                (entryTx->IsSmartContract() && entryTx->contractOut > 0)) {
+                (entryTx->IsSmartContract() && entryTx->pContractData->amountOut > 0)) {
                 if (!UpdateBranchTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {

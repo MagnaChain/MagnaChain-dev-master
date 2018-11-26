@@ -200,7 +200,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     CellCoinControl coin_control;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::CREATE_BRANCH_VERSION;
+    wtx.nVersion = CellTransaction::CREATE_BRANCH_VERSION;
     wtx.branchVSeeds = strVSeeds;
     wtx.branchSeedSpec6 = strSeedSpec6;
 
@@ -504,7 +504,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     CellCoinControl coin_control;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::TRANS_BRANCH_VERSION_S1;
+    wtx.nVersion = CellTransaction::TRANS_BRANCH_VERSION_S1;
     wtx.sendToBranchid = strToBranchid;
 
     //make branch transaction output
@@ -855,7 +855,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     CellCoinControl coin_control;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::MINE_BRANCH_MORTGAGE;
+    wtx.nVersion = CellTransaction::MINE_BRANCH_MORTGAGE;
     wtx.sendToBranchid = strBranchid;
 
     //make branch transaction output
@@ -954,7 +954,7 @@ UniValue submitbranchblockinfo(const JSONRPCRequest& request)
     CellCoinControl coin_control;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::SYNC_BRANCH_INFO;
+    wtx.nVersion = CellTransaction::SYNC_BRANCH_INFO;
     wtx.pBranchBlockData = std::move(mtxTrans1.pBranchBlockData);
     wtx.isDataTransaction = true;
 
@@ -1136,7 +1136,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     coin_control.fAllowOtherInputs = true;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::REDEEM_MORTGAGE_STATEMENT;
+    wtx.nVersion = CellTransaction::REDEEM_MORTGAGE_STATEMENT;
 
     CellScript scriptPubKey;
     scriptPubKey << OP_RETURN << OP_REDEEM_MORTGAGE << ToByteVector(fromtxid);// output trans to /dev/null
@@ -1257,7 +1257,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 
     //create transaction
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::REDEEM_MORTGAGE;
+    wtx.nVersion = CellTransaction::REDEEM_MORTGAGE;
     wtx.pPMT.reset(new CellSpvProof(spvProof));
     wtx.fromBranchId = frombranchid.ToString();        
     CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, wtx.fromTx, 0, statementmtx };
@@ -1636,7 +1636,7 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 
     CellCoinControl coin_control;
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::REPORT_CHEAT;
+    wtx.nVersion = CellTransaction::REPORT_CHEAT;
     wtx.isDataTransaction = true;
     wtx.pReportData.reset(new ReportData(*tx->pReportData));
     wtx.pPMT.reset(new CellSpvProof(*tx->pPMT));
@@ -1705,7 +1705,7 @@ UniValue reportbranchchainblockmerkle(const JSONRPCRequest& request)
 
     CellCoinControl coin_control;
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::REPORT_CHEAT;
+    wtx.nVersion = CellTransaction::REPORT_CHEAT;
     wtx.isDataTransaction = true;
     wtx.pReportData = pReportData;
     wtx.pPMT.reset(new CellSpvProof());
@@ -1957,7 +1957,7 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 
     CellCoinControl coin_control;
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::PROVE;
+    wtx.nVersion = CellTransaction::PROVE;
     wtx.pProveData.reset(tx->pProveData == nullptr ? nullptr : new ProveData(*tx->pProveData));
     wtx.isDataTransaction = true;
 
@@ -2029,7 +2029,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     CellCoinControl coin_control;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::LOCK_MORTGAGE_MINE_COIN;
+    wtx.nVersion = CellTransaction::LOCK_MORTGAGE_MINE_COIN;
     wtx.reporttxid = reporttxid;//被主链打包的举报交易id
     wtx.coinpreouthash = coinprevouthash;//锁定目标币的txid
     wtx.isDataTransaction = true;
@@ -2157,7 +2157,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
     CellCoinControl coin_control;
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::UNLOCK_MORTGAGE_MINE_COIN;
+    wtx.nVersion = CellTransaction::UNLOCK_MORTGAGE_MINE_COIN;
     wtx.reporttxid = reporttxid;// 举报交易txid
     wtx.coinpreouthash = coinprevouthash;
     wtx.provetxid = provetxid;//证明交易txid

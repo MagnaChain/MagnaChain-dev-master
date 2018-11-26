@@ -1052,18 +1052,14 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
 namespace {
 template<typename S>
 void TransactionExtraFields(S &s, const CellTransaction& txTo){
-	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)//TODO: check this
+	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
     {
-        ::Serialize(s, txTo.contractAddr);
-		::Serialize(s, txTo.contractCode);
-        ::Serialize(s, txTo.contractSender);
-	}
-	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
-    {
-        ::Serialize(s, txTo.contractAddr);
-		::Serialize(s, txTo.contractSender);
-		::Serialize(s, txTo.contractFun);
-        ::Serialize(s, txTo.contractParams);
+        //TODO: check this
+        ::Serialize(s, txTo.pContractData->address);
+        ::Serialize(s, txTo.pContractData->sender);
+        ::Serialize(s, txTo.pContractData->codeOrFunc);
+        ::Serialize(s, txTo.pContractData->args);
+        ::Serialize(s, txTo.pContractData->amountOut);
 	}
     else if (txTo.nVersion == CellTransaction::CREATE_BRANCH_VERSION)
     {

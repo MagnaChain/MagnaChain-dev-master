@@ -442,19 +442,14 @@ uint256 GetContractHash(const CellTransaction& txTo) {
 		    ss << txout;
 	}
 
-	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-		ss << txTo.contractAddr;
-		ss << txTo.contractCode;
-		ss << txTo.contractSender;
-        ss << txTo.contractOut;
+	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+        ss << txTo.pContractData->address;
+        ss << txTo.pContractData->sender;
+		ss << txTo.pContractData->codeOrFunc;
+        ss << txTo.pContractData->args;
+        ss << txTo.pContractData->amountOut;
 	}
-	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
-		ss << txTo.contractAddr;
-		ss << txTo.contractSender;
-		ss << txTo.contractFun;
-		ss << txTo.contractParams;
-        ss << txTo.contractOut;
-	}
+
 	return ss.GetHash();
 }
 
@@ -465,7 +460,7 @@ bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn,
 		return true;
 	}
 
-	CellKeyID keyAddr = txToIn->contractSender.GetID();
+	CellKeyID keyAddr = txToIn->pContractData->sender.GetID();
 	CellKey key;
 	if (!keystoreIn->GetKey(keyAddr, key))
 		return false;
@@ -498,7 +493,7 @@ bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constrac
 
 	uint256 sighash = GetContractHash(*txToIn);
 	//LogPrintf("sighash = %s",sighash.GetHex());
-	if (!txToIn->contractSender.Verify(sighash, vchSig))
+	if (!txToIn->pContractData->sender.Verify(sighash, vchSig))
 		return false;
 
 	return true;

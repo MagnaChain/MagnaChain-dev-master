@@ -358,11 +358,12 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string&
 
         sls->contractIds.erase(contractId);
         CellWalletTx wtx;
-        wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
-        wtx.contractCode = rawCode;
-        wtx.contractSender = senderPubKey;
-        wtx.contractAddr = contractId;
-        wtx.contractOut = 0;
+        wtx.nVersion = CellTransaction::PUBLISH_CONTRACT_VERSION;
+        wtx.pContractData.reset(new ContractData);
+        wtx.pContractData->codeOrFunc = rawCode;
+        wtx.pContractData->sender = senderPubKey;
+        wtx.pContractData->address = contractId;
+        wtx.pContractData->amountOut = 0;
 
         bool subtractFeeFromAmount = false;
         CellCoinControl coinCtrl;
@@ -371,7 +372,7 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string&
 
         ret.setObject();
         ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
-        ret.push_back(Pair("contractaddress", CellLinkAddress(wtx.tx->contractAddr).ToString()));
+        ret.push_back(Pair("contractaddress", CellLinkAddress(wtx.tx->pContractData->address).ToString()));
         ret.push_back(Pair("senderaddress", senderAddr.ToString()));
     }
 
@@ -784,9 +785,9 @@ bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractIn
 
 bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txIndex, CellAmount coins, int64_t blockTime, int blockHeight, CellBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
 {
-    CellContractID contractId = tx->contractAddr;
+    CellContractID contractId = tx->pContractData->address;
     CellLinkAddress contractAddr(contractId);
-    CellLinkAddress senderAddr(tx->contractSender.GetID());
+    CellLinkAddress senderAddr(tx->pContractData->sender.GetID());
     CellAmount amount = GetTxContractOut(*tx);
 
     CoinAmountTemp coinAmountTemp;
@@ -795,22 +796,22 @@ bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txInde
 
     UniValue ret(UniValue::VARR);
     if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-        std::string rawCode = tx->contractCode;
+        std::string rawCode = tx->pContractData->codeOrFunc;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
         if (!PublishContract(sls, contractAddr, rawCode, ret))
             return false;
     }
     else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
-        std::string strFuncName = tx->contractFun;
+        std::string strFuncName = tx->pContractData->codeOrFunc;
         UniValue args;
-        args.read(tx->contractParams);
+        args.read(tx->pContractData->args);
 
         long maxCallNum = MAX_CONTRACT_CALL;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
-        if (!CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) || tx->contractOut != sls->contractOut)
+        if (!CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) || tx->pContractData->amountOut != sls->contractOut)
             return false;
 
-        if (tx->contractOut > 0 && sls->recipients.size() == 0)
+        if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0)
             return false;
 
         CellAmount total = 0;
@@ -820,7 +821,7 @@ bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txInde
             total += sls->recipients[j].nValue;
         }
 
-        if (total != tx->contractOut)
+        if (total != tx->pContractData->amountOut)
             return false;
     }
 
