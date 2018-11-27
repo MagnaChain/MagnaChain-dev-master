@@ -188,7 +188,7 @@ bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
 				CellContractID kDest;
 				if (!prevScript.GetContractAddr(kDest))
 					return false;
-				if (kDest != tx.contractAddr)
+				if (kDest != tx.pContractData->address)
 					return false;
 			}
 			else

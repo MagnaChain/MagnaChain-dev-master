@@ -390,17 +390,17 @@ SmartLuaState checkSLS;
 bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationState& state, CellTxMemPoolEntry* entry, CoinAmountCache* pCoinAmountCache)
 {
     CellLinkAddress contractAddr;
-    contractAddr.Set(tx.contractAddr);
+    contractAddr.Set(tx.pContractData->address);
 	CellLinkAddress senderAddr;
-    senderAddr.Set(tx.contractSender.GetID());
+    senderAddr.Set(tx.pContractData->sender.GetID());
 	UniValue args;
-	args.read(tx.contractParams);
-    std::string strFuncName = tx.contractFun;
+	args.read(tx.pContractData->args);
+    std::string strFuncName = tx.pContractData->codeOrFunc;
     CellAmount amount = GetTxContractOut(tx);
 
     UniValue ret(UniValue::VARR);
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-        std::string rawCode = tx.contractCode;
+        std::string rawCode = tx.pContractData->codeOrFunc;
         checkSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (PublishContract(&checkSLS, contractAddr, rawCode, ret) && CheckContractVinVout(tx, &checkSLS)) {
             if (entry != nullptr)
@@ -413,7 +413,7 @@ bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationS
         checkSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(&checkSLS, contractAddr, amount, strFuncName, args, maxCallNum, ret) && CheckContractVinVout(tx, &checkSLS)) {
             if (entry != nullptr) {
-                if (entry->GetTx().contractOut != checkSLS.contractOut)
+                if (entry->GetTx().pContractData->amountOut != checkSLS.contractOut)
                     return false;
                 entry->contractAddrs.insert(checkSLS.contractIds.begin(), checkSLS.contractIds.end());
             }
@@ -1467,7 +1467,7 @@ bool CScriptCheck::operator()() {
         CellContractID contractId1;
         if (!ptxTo->vin[nIn].scriptSig.GetContractAddr(contractId1))
             return false;
-        if (contractId1 != ptxTo->contractAddr)
+        if (contractId1 != ptxTo->pContractData->address)
             return false;
         return true;
     }
@@ -1574,7 +1574,7 @@ bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const Ce
                         if (!scriptPubKey.GetContractAddr(kDestKey)) {
                             return state.DoS(0, false, REJECT_NONSTANDARD, "GetContractAddr fail");
                         }
-                        if (kDestKey != tx.contractAddr)
+                        if (kDestKey != tx.pContractData->address)
                             return state.DoS(0, false, REJECT_NONSTANDARD, "kDestKey not eq tx.contractAddr");
                     }
                     else {
@@ -1611,7 +1611,7 @@ bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const Ce
         }
     }
     // contract sender address check
-    if (!CheckContractSign(&tx, tx.contractScriptSig))
+    if (!CheckContractSign(&tx, tx.pContractData->signature))
         return state.DoS(100, false, REJECT_INVALID, "bad-contract-sender-sign");
 
     return true;

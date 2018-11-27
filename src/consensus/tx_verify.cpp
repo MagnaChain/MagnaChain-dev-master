@@ -217,7 +217,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     }
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
     {
-		if (GenerateContractAddressByTx(tx) != tx.contractAddr)
+		if (GenerateContractAddressByTx(tx) != tx.pContractData->address)
 		{
 			return state.DoS(100, false, REJECT_INVALID, "bad-contract-address");
 		}
@@ -417,7 +417,10 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
         CellAmount nValueIn = 0;
         CellAmount nFees = 0;
         CellAmount nContractAmountIn = 0;
-        CellScript contractScript = GetScriptForDestination(tx.contractAddr);
+        CellScript contractScript;
+        if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
+            contractScript = GetScriptForDestination(tx.pContractData->address);
+
         for (unsigned int i = 0; i < tx.vin.size(); i++)
         {
             const CellOutPoint &prevout = tx.vin[i].prevout;
@@ -472,11 +475,11 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             }
         }
 
-        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.contractOut > 0) {
-            nValueIn += tx.contractOut;
-            if (!MoneyRange(tx.contractOut) || !MoneyRange(nValueIn))
+        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.pContractData->amountOut > 0) {
+            nValueIn += tx.pContractData->amountOut;
+            if (!MoneyRange(tx.pContractData->amountOut) || !MoneyRange(nValueIn))
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-            nContractAmountIn += tx.contractOut;
+            nContractAmountIn += tx.pContractData->amountOut;
         }
 
         CellAmount nValueOut = 0;
@@ -488,7 +491,7 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
 
             if (tx_out.scriptPubKey.IsContract()) {
                 CellContractID contractId;
-                if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.contractAddr)
+                if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
                     return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
                 if (tx_out.scriptPubKey.IsContractChange()) {
                     // 合约输出只能有一个找零
@@ -532,8 +535,8 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             }
         }
 
-        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && tx.contractOut > 0) {
-            if (nContractAmountIn - nContractAmountChange != tx.contractOut)
+        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && tx.pContractData->amountOut > 0) {
+            if (nContractAmountIn - nContractAmountChange != tx.pContractData->amountOut)
                 return state.DoS(100, false, REJECT_INVALID, "contract amount not match");
         }
 

@@ -345,19 +345,8 @@ public:
     mutable CellAmount nAvailableWatchCreditCached;
     mutable CellAmount nChangeCached;
 	// temp data for contract
-	int32_t transaction_version = CellTransaction::CURRENT_VERSION;//special version
-	CellPubKey contractSender;
-	std::string contractCode;
-    std::string contractParams;
-    CellContractID contractAddr;
-    CellAmount contractOut;
+	int32_t nVersion = CellTransaction::CURRENT_VERSION;//special version
 
-	void ClearTempContractData()
-	{
-		transaction_version = 0;
-		contractCode.clear();
-		contractParams.clear();
-	}
 	// temp data for branch
 	std::string branchVSeeds;
 	std::string branchSeedSpec6;
@@ -366,8 +355,10 @@ public:
 	std::string sendToTxHexData;
 	//uint64_t inAmount;
     std::string fromBranchId;
+
     std::shared_ptr<const CellSpvProof> pPMT;
     std::vector<unsigned char> fromTx;
+    std::shared_ptr<ContractData> pContractData;
     std::shared_ptr<const ReportData> pReportData;
     std::shared_ptr<ProveData> pProveData;
 
@@ -418,7 +409,6 @@ public:
         nChangeCached = 0;
         nOrderPos = -1;
         isDataTransaction = false;
-        contractOut = 0;
     }
 
     ADD_SERIALIZE_METHODS;
@@ -448,7 +438,6 @@ public:
         READWRITE(nTimeReceived);
         READWRITE(fFromMe);
         READWRITE(fSpent);
-        READWRITE(contractAddr);
 
         if (ser_action.ForRead())
         {
@@ -506,7 +495,7 @@ public:
     bool IsEquivalentTo(const CellWalletTx& tx) const;
 
     bool IsSmartContract() const {
-        return transaction_version == CellTransaction::PUBLISH_CONTRACT_VERSION || transaction_version == CellTransaction::CALL_CONTRACT_VERSION;
+        return nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || nVersion == CellTransaction::CALL_CONTRACT_VERSION;
     }
 
     bool InMempool() const;

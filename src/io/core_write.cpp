@@ -217,17 +217,17 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
 
 	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
 	{
-		entry.pushKV("contractaddress", tx.contractAddr.ToString());
-		entry.pushKV("senderpubkey", HexStr(tx.contractSender.begin(), tx.contractSender.end()));
+		entry.pushKV("contractaddress", tx.pContractData->address.ToString());
+		entry.pushKV("senderpubkey", HexStr(tx.pContractData->sender.begin(), tx.pContractData->sender.end()));
         UniValue o(UniValue::VOBJ);
-        o.pushKV("asm", ScriptToAsmStr(tx.contractScriptSig, true));
-        o.pushKV("hex", HexStr(tx.contractScriptSig.begin(), tx.contractScriptSig.end()));
+        o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));
+        o.pushKV("hex", HexStr(tx.pContractData->signature.begin(), tx.pContractData->signature.end()));
         entry.pushKV("scontractScriptSig", o);
 	}
 	if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
 	{
-		entry.pushKV("callfun", tx.contractFun);
-		entry.pushKV("params", tx.contractParams);
+		entry.pushKV("callfun", tx.pContractData->codeOrFunc);
+		entry.pushKV("params", tx.pContractData->args);
 	}
 	if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION)
 	{

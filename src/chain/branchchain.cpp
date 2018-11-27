@@ -1244,7 +1244,7 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
 
     CellAmount nInAmount = 0;
     CellAmount nContractIn = 0;
-    CellScript contractScript = GetScriptForDestination(pProveTx->contractAddr);
+    CellScript contractScript = GetScriptForDestination(pProveTx->pContractData->address);
     for (size_t i = 0; i < pProveTx->vin.size(); ++i)
     {
         const ProveDataItem& provDataItem = vectProveData[i + baseIndex];
@@ -1293,7 +1293,7 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
                 if (!scriptPubKey.GetContractAddr(kDestKey)) {
                     return state.DoS(0, false, REJECT_NONSTANDARD, "check smartcontract sign fail, contract addr fail");
                 }
-                if (kDestKey != pProveTx->contractAddr)
+                if (kDestKey != pProveTx->pContractData->address)
                     return state.DoS(0, false, REJECT_INVALID, "check smartcontract sign fail, contract addr error");
                 checkok = true;
             }
@@ -1317,13 +1317,13 @@ bool CheckTransactionProveWithProveData(const CellTransactionRef &pProveTx, Cell
 
         if (txout.scriptPubKey.IsContractChange()) {
             CellContractID contractId;
-            if (!txout.scriptPubKey.GetContractAddr(contractId) || contractId != pProveTx->contractAddr)
+            if (!txout.scriptPubKey.GetContractAddr(contractId) || contractId != pProveTx->pContractData->address)
                 return state.DoS(0, false, REJECT_INVALID, "Invalid contract out public key");
             nContractOut += txout.nValue;
         }
     }
 
-    if (pProveTx->IsSmartContract() && nContractIn - nContractOut != pProveTx->contractOut)
+    if (pProveTx->IsSmartContract() && nContractIn - nContractOut != pProveTx->pContractData->amountOut)
         return state.DoS(0, false, REJECT_INVALID, "Contract out not match");
     if (!MoneyRange(nValueOut))
         return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
@@ -1354,7 +1354,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
         contractContext.data[item.first] = std::move(item.second);
 
     CoinAmountTemp coinAmountTemp;
-    coinAmountTemp.IncAmount(proveTx->contractAddr, pProveData->contractData->coins);
+    coinAmountTemp.IncAmount(proveTx->pContractData->address, pProveData->contractData->coins);
 
     contractContext.txFinalData.data.resize(txIndex + 1);
     if (!ExecuteContract(&sls, proveTx, txIndex, pProveData->contractData->coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext))

@@ -663,11 +663,12 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
     CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
-    wtx.contractCode = rawCode;
-    wtx.contractSender = senderPubKey;
-    wtx.contractAddr = contractId;
-    wtx.contractOut = 0;
+    wtx.nVersion = CellTransaction::PUBLISH_CONTRACT_VERSION;
+    wtx.pContractData.reset(new ContractData);
+    wtx.pContractData->codeOrFunc = rawCode;
+    wtx.pContractData->sender = senderPubKey;
+    wtx.pContractData->address = contractId;
+    wtx.pContractData->amountOut = 0;
     SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
     ret.setObject();
@@ -762,12 +763,13 @@ UniValue callcontract(const JSONRPCRequest& request)
             contractAddr.GetContractID(contractId);
 
             CellWalletTx wtx;
-            wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
-            wtx.contractSender = senderPubKey;
-            wtx.contractCode = strFuncName;
-            wtx.contractParams = args.write();
-            wtx.contractAddr = contractId;
-            wtx.contractOut = RPCSLS.contractOut;
+            wtx.nVersion = CellTransaction::CALL_CONTRACT_VERSION;
+            wtx.pContractData.reset(new ContractData);
+            wtx.pContractData->sender = senderPubKey;
+            wtx.pContractData->codeOrFunc = strFuncName;
+            wtx.pContractData->args = args.write();
+            wtx.pContractData->address = contractId;
+            wtx.pContractData->amountOut = RPCSLS.contractOut;
 
             bool subtractFeeFromAmount = false;
             CellCoinControl coinCtrl;
@@ -889,12 +891,13 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
             RPCSLS.contractIds.erase(contractId);
             CellWalletTx wtx;
-            wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
-            wtx.contractSender = senderPubKey;
-            wtx.contractCode = strFuncName;
-            wtx.contractParams = args.write();
-            wtx.contractAddr = contractId;
-            wtx.contractOut = RPCSLS.contractOut;
+            wtx.nVersion = CellTransaction::CALL_CONTRACT_VERSION;
+            wtx.pContractData.reset(new ContractData);
+            wtx.pContractData->sender = senderPubKey;
+            wtx.pContractData->codeOrFunc = strFuncName;
+            wtx.pContractData->args = args.write();
+            wtx.pContractData->address = contractId;
+            wtx.pContractData->amountOut = RPCSLS.contractOut;
             SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));

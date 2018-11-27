@@ -18,6 +18,15 @@
 #include "chain/chainparamsbase.h"
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
+
+enum ReportType {
+    REPORT_TX = 1,
+    REPORT_COINBASE,
+    REPORT_MERKLETREE,
+    REPORT_CONTRACT_DATA,
+};
+
+
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class CellOutPoint
 {
@@ -250,13 +259,6 @@ public:
     }
 };
 
-enum ReportType{
-    REPORT_TX = 1,
-    REPORT_COINBASE,
-    REPORT_MERKLETREE,
-    REPORT_CONTRACT_DATA,
-};
-
 class ProveDataItem
 {
 public:
@@ -429,225 +431,32 @@ public:
     }
 };
 
-/**
- * Basic transaction serialization format:
- * - int32_t nVersion
- * - std::vector<CellTxIn> vin
- * - std::vector<CellTxOut> vout
- * - uint32_t nLockTime
- *
- * Extended transaction serialization format:
- * - int32_t nVersion
- * - unsigned char dummy = 0x00
- * - unsigned char flags (!= 0)
- * - std::vector<CellTxIn> vin
- * - std::vector<CellTxOut> vout
- * - if (flags & 1):
- *   - CTxWitness wit;
- * - uint32_t nLockTime
- */
-template<typename Stream, typename TxType>
-inline void UnserializeTransaction(TxType& tx, Stream& s) {
-    const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
+class ContractData
+{
+public:
+    CellContractID address;
+    CellPubKey sender;
+    std::string codeOrFunc;
+    std::string args;
+    CellAmount amountOut;
+    CellScript signature;
 
-    s >> tx.nVersion;
-    unsigned char flags = 0;
-    tx.vin.clear();
-    tx.vout.clear();
-    /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
-    s >> tx.vin;
-    if (tx.vin.size() == 0 && fAllowWitness) {
-        /* We read a dummy or an empty vin. */
-        s >> flags;
-        if (flags != 0) {
-            s >> tx.vin;
-            s >> tx.vout;
-        }
-    } else {
-        /* We read a non-empty vin. Assume a normal vout follows. */
-        s >> tx.vout;
-    }
-    if ((flags & 1) && fAllowWitness) {
-        /* The witness flag is present, and we support witnesses. */
-        flags ^= 1;
-        for (size_t i = 0; i < tx.vin.size(); i++) {
-            s >> tx.vin[i].scriptWitness.stack;
-        }
-    }
-    if (flags) {
-        /* Unknown flag in the serialization */
-        throw std::ios_base::failure("Unknown transaction optional data");
-    }
-    s >> tx.nLockTime;
+    ContractData() : amountOut(0) {}
 
-    if (tx.nVersion == 3) { //CellTransaction::PUBLISH_CONTRACT_VERSION
-        s >> tx.contractAddr;
-		s >> tx.contractCode;
-		s >> tx.contractSender;
-		s >> tx.contractScriptSig;
-        s >> tx.contractOut;
-	}
-    else if (tx.nVersion == 4) {//CellTransaction::CALL_CONTRACT_VERSION
-        s >> tx.contractAddr;
-		s >> tx.contractSender;
-		s >> tx.contractFun;
-		s >> tx.contractParams;
-		s >> tx.contractScriptSig;
-        s >> tx.contractOut;
-	}
-	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
-		s >> tx.branchVSeeds;
-		s >> tx.branchSeedSpec6;
-	}
-	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
-		s >> tx.sendToBranchid;
-		s >> tx.sendToTxHexData;
-        if (tx.sendToBranchid == "main") {
-            tx.pPMT.reset(new CellSpvProof());
-            s >> *tx.pPMT;
-        }
-	}
-	else if (tx.nVersion == 7){//CellTransaction::TRANS_BRANCH_VERSION_S2
-		s >> tx.fromBranchId;
-		s >> tx.fromTx;
-		s >> tx.inAmount;
-        if (tx.fromBranchId != "main") {
-            tx.pPMT.reset(new CellSpvProof());
-            s >> *tx.pPMT;
-        }
-	}
-	else if (tx.nVersion == 8){ //CellTransaction::MINE_BRANCH_MORTGAGE
-        s >> tx.sendToBranchid;
-        s >> tx.sendToTxHexData;
-    }
-    else if (tx.nVersion == 9) {//CellTransaction::SYNC_BRANCH_INFO
-        tx.pBranchBlockData.reset(new CellBranchBlockInfo);
-        s >> *tx.pBranchBlockData;
-    }
-    else if (tx.nVersion == 10){//CellTransaction::REPORT_CHEAT
-        tx.pReportData.reset(new ReportData);
-        s >> *tx.pReportData;
-        tx.pPMT.reset(new CellSpvProof());
-        s >> *tx.pPMT;
-    }
-    else if (tx.nVersion == 11) {//CellTransaction::PROVE
-        tx.pProveData.reset(new ProveData);
-        s >> *tx.pProveData;
-    }
-    else if (tx.nVersion == 13) {//CellTransaction::REDEEM_MORTGAGE
-        s >> tx.fromBranchId;
-        s >> tx.fromTx;
-        tx.pPMT.reset(new CellSpvProof());
-        s >> *tx.pPMT;
-    }
-    else if (tx.nVersion == 15) {//CellTransaction::REPORT_REWARD
-        s >> tx.reporttxid;
-    }
-    else if (tx.nVersion == 16) {//CellTransaction::LOCK_MORTGAGE_MINE_COIN
-        s >> tx.reporttxid;
-        s >> tx.coinpreouthash;
-    }
-    else if (tx.nVersion == 17) {//CellTransaction::UNLOCK_MORTGAGE_MINE_COIN
-        s >> tx.reporttxid;
-        s >> tx.coinpreouthash;
-        s >> tx.provetxid;
-    }
-}
+    ContractData(const ContractData& from)
+        : address(from.address), sender(from.sender), codeOrFunc(from.codeOrFunc), args(from.args), amountOut(from.amountOut), signature(from.signature) {}
 
-template<typename Stream, typename TxType>
-inline void SerializeTransaction(const TxType& tx, Stream& s) {
-    const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
-
-    s << tx.nVersion;
-    unsigned char flags = 0;
-    // Consistency check
-    if (fAllowWitness) {
-        /* Check whether witnesses need to be serialized. */
-        if (tx.HasWitness()) {
-            flags |= 1;
-        }
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(address);
+        READWRITE(sender);
+        READWRITE(codeOrFunc);
+        READWRITE(args);
+        READWRITE(amountOut);
+        READWRITE(signature);
     }
-    if (flags) {
-        /* Use extended format in case witnesses are to be serialized. */
-        std::vector<CellTxIn> vinDummy;
-        s << vinDummy;
-        s << flags;
-    }
-    s << tx.vin;
-    s << tx.vout;
-    if (flags & 1) {
-        for (size_t i = 0; i < tx.vin.size(); i++) {
-            s << tx.vin[i].scriptWitness.stack;
-        }
-    }
-    s << tx.nLockTime;
-
-	if (tx.nVersion == 3) {//CellTransaction::PUBLISH_CONTRACT_VERSION
-		s << tx.contractAddr;
-		s << tx.contractCode;
-		s << tx.contractSender;
-		s << tx.contractScriptSig;
-        s << tx.contractOut;
-	}
-	else if (tx.nVersion == 4) {//CellTransaction::CALL_CONTRACT_VERSION
-		s << tx.contractAddr;
-		s << tx.contractSender;
-		s << tx.contractFun;
-		s << tx.contractParams;
-		s << tx.contractScriptSig;
-        s << tx.contractOut;
-	}
-	else if (tx.nVersion == 5) {//CellTransaction::CREATE_BRANCH_VERSION
-		s << tx.branchVSeeds;
-		s << tx.branchSeedSpec6;
-	}
-	else if (tx.nVersion == 6) {//CellTransaction::TRANS_BRANCH_VERSION_S1
-		s << tx.sendToBranchid;
-		s << tx.sendToTxHexData;
-        if (tx.sendToBranchid == "main") {
-            s << *tx.pPMT;
-        }
-	}
-	else if (tx.nVersion == 7) {//CellTransaction::TRANS_BRANCH_VERSION_S2
-		s << tx.fromBranchId;
-		s << tx.fromTx;
-		s << tx.inAmount;
-        if (tx.fromBranchId != "main") {
-            s << *tx.pPMT;
-        }
-	}
-	else if (tx.nVersion == 8) { //CellTransaction::MINE_BRANCH_MORTGAGE
-        s << tx.sendToBranchid;
-        s << tx.sendToTxHexData;
-    }
-    else if (tx.nVersion == 9) {//CellTransaction::SYNC_BRANCH_INFO
-        s << *tx.pBranchBlockData;
-    }
-    else if (tx.nVersion == 10) {//CellTransaction::REPORT_CHEAT
-        s << *tx.pReportData;
-        s << *tx.pPMT;
-    }
-    else if (tx.nVersion == 11) {//CellTransaction::PROVE
-        s << *tx.pProveData;
-    }
-    else if (tx.nVersion == 13) {//CellTransaction::REDEEM_MORTGAGE
-        s << tx.fromBranchId;
-        s << tx.fromTx;
-        s << *tx.pPMT;
-    }
-    else if (tx.nVersion == 15) {//CellTransaction::REPORT_REWARD
-        s << tx.reporttxid;
-    }
-    else if (tx.nVersion == 16) {//CellTransaction::LOCK_MORTGAGE_MINE_COIN
-        s << tx.reporttxid;
-        s << tx.coinpreouthash;
-    }
-    else if (tx.nVersion == 17) {//CellTransaction::UNLOCK_MORTGAGE_MINE_COIN
-        s << tx.reporttxid;
-        s << tx.coinpreouthash;
-        s << tx.provetxid;
-    }
-}
+};
 
 /** The basic transaction that is broadcasted on the network and contained in
  * blocks.  A transaction can contain multiple inputs and outputs.
@@ -691,15 +500,6 @@ public:
     const std::vector<CellTxOut> vout;
     const uint32_t nLockTime;
 
-	//contract data
-	const std::string contractCode;
-	const CellPubKey contractSender;// sender pub addr
-	const std::string contractFun;
-	const std::string contractParams;
-    const CellScript contractScriptSig;
-    const CellContractID contractAddr;
-    const CellAmount contractOut;
-
 	//branch create data
 	const std::string branchVSeeds;
 	const std::string branchSeedSpec6;
@@ -711,6 +511,7 @@ public:
 	const std::vector<unsigned char> fromTx;
 	const uint64_t inAmount;
 	
+    const std::shared_ptr<const ContractData> pContractData;
 	const std::shared_ptr<const CellBranchBlockInfo> pBranchBlockData;
     const std::shared_ptr<const CellSpvProof> pPMT;
     const std::shared_ptr<const ReportData> pReportData;
@@ -893,15 +694,6 @@ struct CellMutableTransaction
     std::vector<CellTxOut> vout;
     uint32_t nLockTime;
 
-	//contract data
-	std::string contractCode;
-	CellPubKey contractSender;
-	std::string contractFun;
-	std::string contractParams;
-	CellScript contractScriptSig;
-    CellContractID contractAddr;
-    CellAmount contractOut;
-
 	//branch create data
 	std::string branchVSeeds;
 	std::string branchSeedSpec6;
@@ -913,9 +705,9 @@ struct CellMutableTransaction
     std::vector<unsigned char> fromTx;
 	uint64_t inAmount;
 
+    std::shared_ptr<ContractData> pContractData;
 	std::shared_ptr<CellBranchBlockInfo> pBranchBlockData;
     std::shared_ptr<CellSpvProof> pPMT;
-
     std::shared_ptr<ReportData> pReportData;
     std::shared_ptr<ProveData> pProveData;
 
@@ -931,7 +723,6 @@ struct CellMutableTransaction
     inline void Serialize(Stream& s) const {
         SerializeTransaction(*this, s);
     }
-
 
     template <typename Stream>
     inline void Unserialize(Stream& s) {
@@ -1013,9 +804,11 @@ struct CellMutableTransaction
     bool IsLockMortgageMineCoin() const {
         return nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN;
     }
+
     bool IsUnLockMortgageMineCoin() const {
         return nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN;
     }
+
     friend bool operator==(const CellMutableTransaction& a, const CellMutableTransaction& b)
     {
         return a.GetHash() == b.GetHash();
@@ -1033,53 +826,248 @@ struct CellMutableTransaction
 	CellMutableTransaction& operator=(const CellMutableTransaction& tx);
 };
 
+/**
+* Basic transaction serialization format:
+* - int32_t nVersion
+* - std::vector<CellTxIn> vin
+* - std::vector<CellTxOut> vout
+* - uint32_t nLockTime
+*
+* Extended transaction serialization format:
+* - int32_t nVersion
+* - unsigned char dummy = 0x00
+* - unsigned char flags (!= 0)
+* - std::vector<CellTxIn> vin
+* - std::vector<CellTxOut> vout
+* - if (flags & 1):
+*   - CTxWitness wit;
+* - uint32_t nLockTime
+*/
+template<typename Stream, typename TxType>
+inline void UnserializeTransaction(TxType& tx, Stream& s) {
+    const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
+
+    s >> tx.nVersion;
+    unsigned char flags = 0;
+    tx.vin.clear();
+    tx.vout.clear();
+    /* Try to read the vin. In case the dummy is there, this will be read as an empty vector. */
+    s >> tx.vin;
+    if (tx.vin.size() == 0 && fAllowWitness) {
+        /* We read a dummy or an empty vin. */
+        s >> flags;
+        if (flags != 0) {
+            s >> tx.vin;
+            s >> tx.vout;
+        }
+    }
+    else {
+        /* We read a non-empty vin. Assume a normal vout follows. */
+        s >> tx.vout;
+    }
+    if ((flags & 1) && fAllowWitness) {
+        /* The witness flag is present, and we support witnesses. */
+        flags ^= 1;
+        for (size_t i = 0; i < tx.vin.size(); i++) {
+            s >> tx.vin[i].scriptWitness.stack;
+        }
+    }
+    if (flags) {
+        /* Unknown flag in the serialization */
+        throw std::ios_base::failure("Unknown transaction optional data");
+    }
+    s >> tx.nLockTime;
+
+    if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+        tx.pContractData.reset(new ContractData);
+        s >> *tx.pContractData;
+    }
+    else if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION) {
+        s >> tx.branchVSeeds;
+        s >> tx.branchSeedSpec6;
+    }
+    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1) {
+        s >> tx.sendToBranchid;
+        s >> tx.sendToTxHexData;
+        if (tx.sendToBranchid == "main") {
+            tx.pPMT.reset(new CellSpvProof());
+            s >> *tx.pPMT;
+        }
+    }
+    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2) {
+        s >> tx.fromBranchId;
+        s >> tx.fromTx;
+        s >> tx.inAmount;
+        if (tx.fromBranchId != "main") {
+            tx.pPMT.reset(new CellSpvProof());
+            s >> *tx.pPMT;
+        }
+    }
+    else if (tx.nVersion == CellTransaction::MINE_BRANCH_MORTGAGE) {
+        s >> tx.sendToBranchid;
+        s >> tx.sendToTxHexData;
+    }
+    else if (tx.nVersion == CellTransaction::SYNC_BRANCH_INFO) {
+        tx.pBranchBlockData.reset(new CellBranchBlockInfo);
+        s >> *tx.pBranchBlockData;
+    }
+    else if (tx.nVersion == CellTransaction::REPORT_CHEAT) {
+        tx.pReportData.reset(new ReportData);
+        s >> *tx.pReportData;
+        tx.pPMT.reset(new CellSpvProof());
+        s >> *tx.pPMT;
+    }
+    else if (tx.nVersion == CellTransaction::PROVE) {
+        tx.pProveData.reset(new ProveData);
+        s >> *tx.pProveData;
+    }
+    else if (tx.nVersion == CellTransaction::REDEEM_MORTGAGE) {
+        s >> tx.fromBranchId;
+        s >> tx.fromTx;
+        tx.pPMT.reset(new CellSpvProof());
+        s >> *tx.pPMT;
+    }
+    else if (tx.nVersion == CellTransaction::REPORT_REWARD) {
+        s >> tx.reporttxid;
+    }
+    else if (tx.nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN) {
+        s >> tx.reporttxid;
+        s >> tx.coinpreouthash;
+    }
+    else if (tx.nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+        s >> tx.reporttxid;
+        s >> tx.coinpreouthash;
+        s >> tx.provetxid;
+    }
+}
+
+template<typename Stream, typename TxType>
+inline void SerializeTransaction(const TxType& tx, Stream& s) {
+    const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
+
+    s << tx.nVersion;
+    unsigned char flags = 0;
+    // Consistency check
+    if (fAllowWitness) {
+        /* Check whether witnesses need to be serialized. */
+        if (tx.HasWitness()) {
+            flags |= 1;
+        }
+    }
+    if (flags) {
+        /* Use extended format in case witnesses are to be serialized. */
+        std::vector<CellTxIn> vinDummy;
+        s << vinDummy;
+        s << flags;
+    }
+    s << tx.vin;
+    s << tx.vout;
+    if (flags & 1) {
+        for (size_t i = 0; i < tx.vin.size(); i++) {
+            s << tx.vin[i].scriptWitness.stack;
+        }
+    }
+    s << tx.nLockTime;
+
+    if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+        s << *tx.pContractData;
+    }
+    else if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION) {
+        s << tx.branchVSeeds;
+        s << tx.branchSeedSpec6;
+    }
+    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1) {
+        s << tx.sendToBranchid;
+        s << tx.sendToTxHexData;
+        if (tx.sendToBranchid == "main") {
+            s << *tx.pPMT;
+        }
+    }
+    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2) {
+        s << tx.fromBranchId;
+        s << tx.fromTx;
+        s << tx.inAmount;
+        if (tx.fromBranchId != "main") {
+            s << *tx.pPMT;
+        }
+    }
+    else if (tx.nVersion == CellTransaction::MINE_BRANCH_MORTGAGE) {
+        s << tx.sendToBranchid;
+        s << tx.sendToTxHexData;
+    }
+    else if (tx.nVersion == CellTransaction::SYNC_BRANCH_INFO) {
+        s << *tx.pBranchBlockData;
+    }
+    else if (tx.nVersion == CellTransaction::REPORT_CHEAT) {
+        s << *tx.pReportData;
+        s << *tx.pPMT;
+    }
+    else if (tx.nVersion == CellTransaction::PROVE) {
+        s << *tx.pProveData;
+    }
+    else if (tx.nVersion == CellTransaction::REDEEM_MORTGAGE) {
+        s << tx.fromBranchId;
+        s << tx.fromTx;
+        s << *tx.pPMT;
+    }
+    else if (tx.nVersion == CellTransaction::REPORT_REWARD) {
+        s << tx.reporttxid;
+    }
+    else if (tx.nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN) {
+        s << tx.reporttxid;
+        s << tx.coinpreouthash;
+    }
+    else if (tx.nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+        s << tx.reporttxid;
+        s << tx.coinpreouthash;
+        s << tx.provetxid;
+    }
+}
+
 typedef std::shared_ptr<const CellTransaction> CellTransactionRef;
 static inline CellTransactionRef MakeTransactionRef() { return std::make_shared<const CellTransaction>(); }
 template <typename Tx> static inline CellTransactionRef MakeTransactionRef(Tx&& txIn) { return std::make_shared<const CellTransaction>(std::forward<Tx>(txIn)); }
 
 inline CellTransaction::CellTransaction() : nVersion(CellTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
-    contractAddr(), contractCode(), contractSender(), contractFun(), contractParams(), contractScriptSig(),
-    branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(), contractOut(0),
-    fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash(){}
+    branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(),
+    fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(),
+    pContractData(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash() {}
+
 inline CellTransaction::CellTransaction(const CellMutableTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-    contractAddr(tx.contractAddr), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
-    contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
     branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
     pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
     pPMT(tx.pPMT == nullptr? nullptr: new CellSpvProof(*tx.pPMT)),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+
 inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
-    contractAddr(std::move(tx.contractAddr)), contractCode(std::move(tx.contractCode)), contractSender(std::move(tx.contractSender)), contractFun(std::move(tx.contractFun)), contractParams(std::move(tx.contractParams)),
-    contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
     branchVSeeds(std::move(tx.branchVSeeds)), branchSeedSpec6(std::move(tx.branchSeedSpec6)), sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(std::move(tx.fromBranchId)), fromTx(std::move(tx.fromTx)), inAmount(tx.inAmount),
-    pBranchBlockData(std::move(tx.pBranchBlockData)), pPMT(std::move(tx.pPMT)), 
-    pReportData(std::move(tx.pReportData)), pProveData(std::move(tx.pProveData)),
+    pBranchBlockData(std::move(tx.pBranchBlockData)), pPMT(std::move(tx.pPMT)),
+    pContractData(std::move(tx.pContractData)), pReportData(std::move(tx.pReportData)), pProveData(std::move(tx.pProveData)),
     reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)), hash(ComputeHash()) {}
 
 // add copy constructor, 添加了不可复制成员变量pBranchBlockData后，默认复制构造函数被删除了
 inline CellTransaction::CellTransaction(const CellTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-      contractAddr(tx.contractAddr), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
-      contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
-      branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
-      fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-      pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
-      pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)), 
-      pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
+    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
+    fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
+    pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
+    pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 
 inline CellMutableTransaction::CellMutableTransaction(const CellMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-      contractAddr(tx.contractAddr), contractCode(tx.contractCode), contractSender(tx.contractSender), contractFun(tx.contractFun), contractParams(tx.contractParams),
-      contractScriptSig(tx.contractScriptSig), contractOut(tx.contractOut),
-      branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
-      fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-      pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
-      pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)), 
-      pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
+    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
+    fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
+    pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
+    pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
 
 inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutableTransaction& tx)
@@ -1091,13 +1079,6 @@ inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutab
     vin = (tx.vin);
     vout = (tx.vout);
     nLockTime = (tx.nLockTime);
-    contractAddr = (tx.contractAddr);
-    contractCode = (tx.contractCode);
-    contractSender = (tx.contractSender);
-    contractFun = (tx.contractFun);
-    contractParams = (tx.contractParams);
-    contractScriptSig = (tx.contractScriptSig);
-    contractOut = (tx.contractOut);
     branchVSeeds = (tx.branchVSeeds);
     branchSeedSpec6 = (tx.branchSeedSpec6);
     sendToBranchid = (tx.sendToBranchid);
@@ -1107,6 +1088,7 @@ inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutab
     inAmount = (tx.inAmount);
     pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData));
     pPMT.reset(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT));
+    pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
     pReportData.reset(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData));
     pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
     reporttxid = tx.reporttxid;

@@ -58,23 +58,8 @@ std::string CellTxOut::ToString() const
 
 CellMutableTransaction::CellMutableTransaction() : nVersion(CellTransaction::CURRENT_VERSION), nLockTime(0) {}
 CellMutableTransaction::CellMutableTransaction(const CellTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) {
-	if (nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
-	{
-		contractCode = tx.contractCode;
-		contractSender = tx.contractSender;
-        contractAddr = tx.contractAddr;
-        contractScriptSig = tx.contractScriptSig;
-        contractOut = 0;
-	}
-	else if (nVersion == CellTransaction::CALL_CONTRACT_VERSION)
-	{
-		contractSender = tx.contractSender;
-		contractFun = tx.contractFun;
-        contractParams = tx.contractParams;
-        contractAddr = tx.contractAddr;
-        contractScriptSig = tx.contractScriptSig;
-        contractOut = tx.contractOut;
-	}
+	if (nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || nVersion == CellTransaction::CALL_CONTRACT_VERSION)
+        pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
 	else if (nVersion == CellTransaction::CREATE_BRANCH_VERSION)
 	{
 		branchVSeeds = tx.branchVSeeds;
