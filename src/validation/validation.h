@@ -515,7 +515,7 @@ bool LoadMempool();
 bool ReadTxDataByTxIndex(const uint256& hash, CellTransactionRef& txOut, uint256& hashBlock, bool& retflag);
 
 std::string GetBranchTxProof(const CellBlock& block,  const std::set<uint256>& setTxids);
-bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof);
+//bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof);
 
 bool GetProveInfo(const CellBlock& block, int blockHeight, CellBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
 bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block);

@@ -884,6 +884,73 @@ const BranchBlockData* BranchCache::GetBranchBlockData(const uint256 &branchhash
     return nullptr;
 }
 
+bool BranchCache::FetchDataFromSource(const uint256& branchId)
+{
+    if (mapBranchsData.count(branchId))
+        return true;
+
+    if ((readonly_db && readonly_db->HasBranchData(branchId)))//load from source
+    {
+        mapBranchsData[branchId] = readonly_db->GetBranchData(branchId);//copy to local
+        mapBranchsData[branchId].flags = BranchData::eOriginal;
+        return true;
+    }
+    else
+        return false;
+}
+
+void BranchCache::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+{
+    const uint256& branchHash = transaction->pBranchBlockData->branchID;
+    bool bgotdata = FetchDataFromSource(branchHash);
+
+    BranchDataProcesser::AddBlockInfoTxData(transaction, mainBlockHash, iTxVtxIndex, modifyBranch);
+    if (!bgotdata)
+    {
+        mapBranchsData[branchHash].flags = BranchData::eADD;
+    }
+}
+void BranchCache::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+{
+    const uint256& branchHash = transaction->pBranchBlockData->branchID;
+    bool bgotdata = FetchDataFromSource(branchHash);
+
+    BranchDataProcesser::DelBlockInfoTxData(transaction, mainBlockHash, iTxVtxIndex, modifyBranch);
+
+}
+bool BranchCache::AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch)
+{
+    const uint256& branchId = tx->pReportData->reportedBranchId;
+    bool bgotdata = FetchDataFromSource(branchId);
+
+    bool ret = BranchDataProcesser::AddReportTxData(tx, brokenChainBranch);
+    return ret;
+}
+bool BranchCache::AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch)
+{
+    const uint256& branchId = tx->pProveData->branchId;
+    bool bgotdata = FetchDataFromSource(branchId);
+
+    bool ret = BranchDataProcesser::AddProveTxData(tx, brokenChainBranch);
+    return ret;
+}
+bool BranchCache::DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
+{
+    const uint256& branchId = tx->pReportData->reportedBranchId;
+    bool bgotdata = FetchDataFromSource(branchId);
+
+    bool ret = BranchDataProcesser::DelReportTxData(tx, brokenChainBranch, modifyBranch);
+    return ret;
+}
+bool BranchCache::DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
+{
+    const uint256& branchId = tx->pProveData->branchId;
+    bool bgotdata = FetchDataFromSource(branchId);
+
+    bool ret = BranchDataProcesser::DelProveTxData(tx, brokenChainBranch, modifyBranch);
+    return ret;
+}
+
 BranchDb::BranchDb(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe)
     : db(path, nCacheSize, fMemory, fWipe, true)
 {

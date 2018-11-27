@@ -217,8 +217,17 @@ public:
 
     uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
     //override>
+    // overwrite, before do modify to data, load data from readonly_db if data not exist in local db.
+    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    //
 private:
-    //MAPBRANCHS_DATA mapBranchCache;
+    bool FetchDataFromSource(const uint256& branchId);
+private:
     void RemoveFromCache(const CellTransaction& tx);
 };
 
@@ -236,8 +245,6 @@ public:
     BranchDb& operator=(const BranchDb&) = delete;
     
     void LoadData();
-
-    //std::map<uint256, uint16_t> mReortTxFlag;
 // <override
     //uint256 GetBranchTipHash(const uint256& branchid) override;
     //uint32_t GetBranchHeight(const uint256& branchid) override;
@@ -262,7 +269,6 @@ protected:
     bool WriteModifyToDB(const std::set<uint256>& modifyBranch) override;
 protected:
     CellDBWrapper db;
-    //MAPBRANCHS_DATA mapBranchsData;
 };
 
 extern BranchDb* g_pBranchDb;

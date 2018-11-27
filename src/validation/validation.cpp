@@ -2490,7 +2490,8 @@ bool static DisconnectTip(CellValidationState& state, const CellChainParams& cha
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
-        g_pBranchDb->Flush(pblock, false);
+        if (g_pBranchDb)
+            g_pBranchDb->Flush(pblock, false);
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
     // Write the chain state to disk, if necessary.
@@ -2631,7 +2632,8 @@ bool static ConnectTip(CellValidationState& state, const CellChainParams& chainp
         bool flushed = view.Flush();
         assert(flushed);
         pBranchChainTxRecordsDb->Flush(bccache);
-        g_pBranchDb->Flush(pthisBlock, true);
+        if (g_pBranchDb)
+            g_pBranchDb->Flush(pthisBlock, true);
     }
     int64_t nTime4 = GetTimeMicros(); nTimeFlush += nTime4 - nTime3;
     LogPrint(BCLog::BENCH, "  - Flush: %.2fms [%.2fs]\n", (nTime4 - nTime3) * 0.001, nTimeFlush * 0.000001);
@@ -3320,7 +3322,8 @@ bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consen
     // checks that use witness data may be performed here.
 
     // Size limits
-    if (block.vtx.empty() || block.vtx.size() * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT || ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
+    if (block.vtx.empty() || block.vtx.size() * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT || 
+        ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
 
     // First transaction must be coinbase, the rest must not be
@@ -5209,24 +5212,24 @@ std::string GetBranchTxProof(const CellBlock& block,  const std::set<uint256>& s
 }
 
 
-bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof)
-{
-
-    std::vector<unsigned char> txData(ParseHex(txProof));
-    CellDataStream ssMB(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-    CellMerkleBlock merkleBlock;
-    ssMB >> merkleBlock;
-
-    std::vector<uint256> vMatch;
-    std::vector<unsigned int> vIndex;
-    BranchData bData = g_pBranchDb->GetBranchData(branchHash);
-    BranchBlockData bBlockData = bData.mapHeads[block.GetHash()];
-    uint256 hashMerkleRoot = bBlockData.header.hashMerkleRoot;
-
-    if (merkleBlock.txn.ExtractMatches(vMatch, vIndex) != hashMerkleRoot)
-        return false;
-    return true;
-}
+//bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof)
+//{
+//
+//    std::vector<unsigned char> txData(ParseHex(txProof));
+//    CellDataStream ssMB(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+//    CellMerkleBlock merkleBlock;
+//    ssMB >> merkleBlock;
+//
+//    std::vector<uint256> vMatch;
+//    std::vector<unsigned int> vIndex;
+//    BranchData bData = g_pBranchDb->GetBranchData(branchHash);
+//    BranchBlockData bBlockData = bData.mapHeads[block.GetHash()];
+//    uint256 hashMerkleRoot = bBlockData.header.hashMerkleRoot;
+//
+//    if (merkleBlock.txn.ExtractMatches(vMatch, vIndex) != hashMerkleRoot)
+//        return false;
+//    return true;
+//}
 
 bool GetTxVinBlockData(const CellBlock& block, const CellTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData)
 {
