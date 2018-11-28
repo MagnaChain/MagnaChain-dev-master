@@ -223,11 +223,8 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
         o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));
         o.pushKV("hex", HexStr(tx.pContractData->signature.begin(), tx.pContractData->signature.end()));
         entry.pushKV("scontractScriptSig", o);
-	}
-	if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
-	{
-		entry.pushKV("callfun", tx.pContractData->codeOrFunc);
-		entry.pushKV("params", tx.pContractData->args);
+        entry.pushKV("callfun", tx.pContractData->codeOrFunc);
+        entry.pushKV("params", tx.pContractData->args);
 	}
 	if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION)
 	{
