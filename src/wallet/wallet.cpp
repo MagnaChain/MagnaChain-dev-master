@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -2408,8 +2408,8 @@ std::map<MCTxDestination, std::vector<MCOutput>> MCWallet::ListCoins() const
     // MCWalletTx objects, callers to this function really should acquire the
     // cs_wallet lock before calling it. However, the current caller doesn't
     // acquire this lock yet. There was an attempt to add the missing lock in
-    // https://github.com/bitcoin/bitcoin/pull/10340, but that change has been
-    // postponed until after https://github.com/bitcoin/bitcoin/pull/10244 to
+    // https://github.com/magnachain/magnachain/pull/10340, but that change has been
+    // postponed until after https://github.com/magnachain/magnachain/pull/10244 to
     // avoid adding some extra complexity to the Qt code.
 
     std::map<MCTxDestination, std::vector<MCOutput>> result;
@@ -4111,8 +4111,8 @@ void MCWallet::GetKeyBirthTimes(std::map<MCTxDestination, int64_t> &mapKeyBirth)
  *   the block time.
  *
  * For more information see MCWalletTx::nTimeSmart,
- * https://bitcointalk.org/?topic=54527, or
- * https://github.com/bitcoin/bitcoin/pull/1393.
+ * https://magnachaintalk.org/?topic=54527, or
+ * https://github.com/magnachain/magnachain/pull/1393.
  */
 unsigned int MCWallet::ComputeTimeSmart(const MCWalletTx& wtx) const
 {

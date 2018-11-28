@@ -26,9 +26,9 @@ Build-Depends: debhelper,
  python,
  libzmq3-dev
 Standards-Version: 3.9.2
-Homepage: https://bitcoincore.org/
-Vcs-Git: git://github.com/bitcoin/bitcoin.git
-Vcs-Browser: https://github.com/bitcoin/bitcoin
+Homepage: https://magnachaincore.org/
+Vcs-Git: git://github.com/magnachain/magnachain.git
+Vcs-Browser: https://github.com/magnachain/magnachain
 
 Package: magnachaind
 Architecture: any

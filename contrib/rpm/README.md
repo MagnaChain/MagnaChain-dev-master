@@ -19,7 +19,7 @@ reference the release tarball available from https://magnachain.org/bin/ and
 `Source1` should reference the BerkeleyDB source.
 
 Sources 10-99 are for source files that are maintained in the
-[MagnaChain git repository](https://github.com/bitcoin/bitcoin) but are not part of
+[MagnaChain git repository](https://github.com/magnachain/magnachain) but are not part of
 the release tarball. Most of these will reside in the `contrib` sub-directory.
 
 Sources 10-19 should be reserved for miscellaneous configuration files.

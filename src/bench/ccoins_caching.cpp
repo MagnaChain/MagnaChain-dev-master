@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -53,7 +53,7 @@ SetupDummyInputs(MCBasicKeyStore& keystoreRet, MCCoinsViewCache& coinsRet)
 // many times micro-benchmarks of the database showed completely different
 // characteristics than e.g. reindex timings. But that's not a requirement of
 // every benchmark."
-// (https://github.com/bitcoin/bitcoin/issues/7883#issuecomment-224807484)
+// (https://github.com/magnachain/magnachain/issues/7883#issuecomment-224807484)
 static void MCCoinsCaching(benchmark::State& state)
 {
     MCBasicKeyStore keystore;

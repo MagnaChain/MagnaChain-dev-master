@@ -2,7 +2,7 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: MagnaChain
 Upstream-Contact: Satoshi Nakamoto <satoshin@gmx.com>
  irc://#magnachain@freenode.net
-Source: https://github.com/bitcoin/bitcoin
+Source: https://github.com/magnachain/magnachain
 
 Files: *
 Copyright: 2009-2017, MagnaChain Core Developers
@@ -83,7 +83,7 @@ Files: src/qt/res/icons/about.png
        src/qt/res/src/magnachain.svg
 Copyright: Bitboy, Jonas Schnelli
 License: public-domain
-Comment: Site: https://bitcointalk.org/?topic=1756.0
+Comment: Site: https://magnachaintalk.org/?topic=1756.0
 
 
 License: Expat

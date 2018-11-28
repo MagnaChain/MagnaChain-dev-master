@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef BITCOIN_BRANCHDB_H
-#define BITCOIN_BRANCHDB_H
+#ifndef MAGNACHAIN_BRANCHDB_H
+#define MAGNACHAIN_BRANCHDB_H
 
 #include "chain.h"
 #include "io/dbwrapper.h"
@@ -276,4 +276,4 @@ extern BranchDb* g_pBranchDb;
 //branch mempool tx cache data
 extern BranchCache* g_pBranchDataMemCache;
 
-#endif // BITCOIN_BRANCHDB_H
+#endif // MAGNACHAIN_BRANCHDB_H

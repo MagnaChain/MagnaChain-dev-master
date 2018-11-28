@@ -7,9 +7,9 @@ User=magnachain
 Group=magnachain
 
 Type=forking
-PIDFile=/var/lib/bitcoind/bitcoind.pid
-ExecStart=/usr/bin/bitcoind -daemon -pid=/var/lib/bitcoind/bitcoind.pid \
--conf=/etc/magnachain/magnachain.conf -datadir=/var/lib/bitcoind -disablewallet
+PIDFile=/var/lib/magnachaind/magnachaind.pid
+ExecStart=/usr/bin/magnachaind -daemon -pid=/var/lib/magnachaind/magnachaind.pid \
+-conf=/etc/magnachain/magnachain.conf -datadir=/var/lib/magnachaind -disablewallet
 
 Restart=always
 PrivateTmp=true

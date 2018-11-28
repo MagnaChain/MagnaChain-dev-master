@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 # Test for -rpcbind, as well as -rpcallowip and -rpcconnect
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.netutil import *
 
 
-class RPCBindTest(BitcoinTestFramework):
+class RPCBindTest(MagnaChainTestFramework):
 
     def __init__(self):
         super().__init__()
@@ -36,7 +36,7 @@ class RPCBindTest(BitcoinTestFramework):
         binds = ['-rpcbind='+addr for addr in addresses]
         self.nodes = start_nodes(self.num_nodes, self.options.tmpdir, [base_args + binds], connect_to)
         try:
-            pid = bitcoind_processes[0].pid
+            pid = magnachaind_processes[0].pid
             assert_equal(set(get_bind_addrs(pid)), set(expected))
         finally:
             stop_nodes(self.nodes)

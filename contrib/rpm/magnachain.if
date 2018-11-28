@@ -12,13 +12,13 @@
 ## </summary>
 ## </param>
 #
-interface(`bitcoin_domtrans',`
+interface(`magnachain_domtrans',`
 	gen_require(`
-		type bitcoin_t, bitcoin_exec_t;
+		type magnachain_t, magnachain_exec_t;
 	')
 
 	corecmd_search_bin($1)
-	domtrans_pattern($1, bitcoin_exec_t, bitcoin_t)
+	domtrans_pattern($1, magnachain_exec_t, magnachain_t)
 ')
 
 
@@ -32,12 +32,12 @@ interface(`bitcoin_domtrans',`
 ##	</summary>
 ## </param>
 #
-interface(`bitcoin_initrc_domtrans',`
+interface(`magnachain_initrc_domtrans',`
 	gen_require(`
-		type bitcoin_initrc_exec_t;
+		type magnachain_initrc_exec_t;
 	')
 
-	init_labeled_script_domtrans($1, bitcoin_initrc_exec_t)
+	init_labeled_script_domtrans($1, magnachain_initrc_exec_t)
 ')
 
 
@@ -51,12 +51,12 @@ interface(`bitcoin_initrc_domtrans',`
 ##	</summary>
 ## </param>
 #
-interface(`bitcoin_search_lib',`
+interface(`magnachain_search_lib',`
 	gen_require(`
-		type bitcoin_var_lib_t;
+		type magnachain_var_lib_t;
 	')
 
-	allow $1 bitcoin_var_lib_t:dir search_dir_perms;
+	allow $1 magnachain_var_lib_t:dir search_dir_perms;
 	files_search_var_lib($1)
 ')
 
@@ -70,13 +70,13 @@ interface(`bitcoin_search_lib',`
 ##	</summary>
 ## </param>
 #
-interface(`bitcoin_read_lib_files',`
+interface(`magnachain_read_lib_files',`
 	gen_require(`
-		type bitcoin_var_lib_t;
+		type magnachain_var_lib_t;
 	')
 
 	files_search_var_lib($1)
-	read_files_pattern($1, bitcoin_var_lib_t, bitcoin_var_lib_t)
+	read_files_pattern($1, magnachain_var_lib_t, magnachain_var_lib_t)
 ')
 
 ########################################
@@ -89,13 +89,13 @@ interface(`bitcoin_read_lib_files',`
 ##	</summary>
 ## </param>
 #
-interface(`bitcoin_manage_lib_files',`
+interface(`magnachain_manage_lib_files',`
 	gen_require(`
-		type bitcoin_var_lib_t;
+		type magnachain_var_lib_t;
 	')
 
 	files_search_var_lib($1)
-	manage_files_pattern($1, bitcoin_var_lib_t, bitcoin_var_lib_t)
+	manage_files_pattern($1, magnachain_var_lib_t, magnachain_var_lib_t)
 ')
 
 ########################################
@@ -108,13 +108,13 @@ interface(`bitcoin_manage_lib_files',`
 ##	</summary>
 ## </param>
 #
-interface(`bitcoin_manage_lib_dirs',`
+interface(`magnachain_manage_lib_dirs',`
 	gen_require(`
-		type bitcoin_var_lib_t;
+		type magnachain_var_lib_t;
 	')
 
 	files_search_var_lib($1)
-	manage_dirs_pattern($1, bitcoin_var_lib_t, bitcoin_var_lib_t)
+	manage_dirs_pattern($1, magnachain_var_lib_t, magnachain_var_lib_t)
 ')
 
 
@@ -135,23 +135,23 @@ interface(`bitcoin_manage_lib_dirs',`
 ## </param>
 ## <rolecap/>
 #
-interface(`bitcoin_admin',`
+interface(`magnachain_admin',`
 	gen_require(`
-		type bitcoin_t;
-		type bitcoin_initrc_exec_t;
-		type bitcoin_var_lib_t;
+		type magnachain_t;
+		type magnachain_initrc_exec_t;
+		type magnachain_var_lib_t;
 	')
 
-	allow $1 bitcoin_t:process { ptrace signal_perms };
-	ps_process_pattern($1, bitcoin_t)
+	allow $1 magnachain_t:process { ptrace signal_perms };
+	ps_process_pattern($1, magnachain_t)
 
-	bitcoin_initrc_domtrans($1)
+	magnachain_initrc_domtrans($1)
 	domain_system_change_exemption($1)
-	role_transition $2 bitcoin_initrc_exec_t system_r;
+	role_transition $2 magnachain_initrc_exec_t system_r;
 	allow $2 system_r;
 
 	files_search_var_lib($1)
-	admin_pattern($1, bitcoin_var_lib_t)
+	admin_pattern($1, magnachain_var_lib_t)
 
 ')
 

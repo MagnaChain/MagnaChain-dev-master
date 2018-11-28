@@ -8,6 +8,6 @@ Comment[tr]=MagnaChain, eşten eşe kriptografik sanal para birimi
 Exec=magnachain-qt %u
 Terminal=false
 Type=Application
-Icon=bitcoin128
+Icon=magnachain128
 MimeType=x-scheme-handler/magnachain;
 Categories=Office;Finance;

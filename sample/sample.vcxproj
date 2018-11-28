@@ -161,7 +161,7 @@
     <ProjectReference Include="..\db-4.8.30\build_windows\db_static.vcxproj">
       <Project>{671539aa-d9a6-4b7b-8044-61b511d6f432}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\_bitcoin_common.vcxproj">
+    <ProjectReference Include="..\_magnachain_common.vcxproj">
       <Project>{8effd767-7623-4556-9a30-36533462915e}</Project>
     </ProjectReference>
   </ItemGroup>

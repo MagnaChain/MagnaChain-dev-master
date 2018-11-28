@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import (start_nodes, connect_nodes, sync_blocks, assert_equal)
 from decimal import Decimal
 
@@ -18,7 +18,7 @@ ImportNode = collections.namedtuple("ImportNode", "rescan")
 
 
 def call_import_rpc(call, data, address, scriptPubKey, pubkey, key, label, node, rescan):
-    """Helper that calls a wallet import RPC on a bitcoin node."""
+    """Helper that calls a wallet import RPC on a magnachain node."""
     watchonly = data != Data.priv
     if call == Call.single:
         if data == Data.address:
@@ -45,14 +45,14 @@ def call_import_rpc(call, data, address, scriptPubKey, pubkey, key, label, node,
 # List of RPCs that import a wallet key or address in various ways.
 IMPORT_RPCS = [functools.partial(call_import_rpc, call, data) for call, data in itertools.product(Call, Data)]
 
-# List of bitcoind nodes that will import keys.
+# List of magnachaind nodes that will import keys.
 IMPORT_NODES = [
     ImportNode(rescan=True),
     ImportNode(rescan=False),
 ]
 
 
-class ImportRescanTest(BitcoinTestFramework):
+class ImportRescanTest(MagnaChainTestFramework):
     def __init__(self):
         super().__init__()
         self.num_nodes = 1 + len(IMPORT_NODES)

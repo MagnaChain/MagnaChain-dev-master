@@ -650,5 +650,5 @@ img.userimg {max-width: 100%}
 .trustscore{white-space:nowrap}
 .nohover:hover{text-decoration:none}
 
-a.ul[href^="https://bitcointalk.org/"]:hover {color:green !important}
-a.ul[href^="http://bitcointalk.org/"]:hover {color:green !important}
+a.ul[href^="https://magnachaintalk.org/"]:hover {color:green !important}
+a.ul[href^="http://magnachaintalk.org/"]:hover {color:green !important}
