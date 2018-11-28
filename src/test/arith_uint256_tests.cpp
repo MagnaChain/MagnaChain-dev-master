@@ -6,7 +6,7 @@
 #include "coding/uint256.h"
 #include "coding/arith_uint256.h"
 #include "misc/version.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/test/unit_test.hpp>
 #include <stdint.h>

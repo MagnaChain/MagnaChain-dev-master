@@ -6,7 +6,7 @@
 #include "receiverequestdialog.h"
 #include "ui_receiverequestdialog.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiconstants.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
@@ -23,7 +23,7 @@
 #endif
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h" /* for USE_QRCODE */
+#include "config/magnachain-config.h" /* for USE_QRCODE */
 #endif
 
 #ifdef USE_QRCODE

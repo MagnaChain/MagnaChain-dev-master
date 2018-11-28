@@ -7,7 +7,7 @@
 #include "transaction/txmempool.h"
 #include "utils/util.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/test/unit_test.hpp>
 #include <list>

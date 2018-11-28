@@ -4,13 +4,13 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "optionsdialog.h"
 #include "ui_optionsdialog.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 
@@ -78,12 +78,12 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     /* Display elements init */
     QDir translations(":translations");
 
-    ui->celllinkAtStartup->setToolTip(ui->celllinkAtStartup->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
-    ui->celllinkAtStartup->setText(ui->celllinkAtStartup->text().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->magnachainAtStartup->setToolTip(ui->magnachainAtStartup->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
+    ui->magnachainAtStartup->setText(ui->magnachainAtStartup->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
-    ui->openCellLinkConfButton->setToolTip(ui->openCellLinkConfButton->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->openCellLinkConfButton->setToolTip(ui->openCellLinkConfButton->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
-    ui->lang->setToolTip(ui->lang->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->lang->setToolTip(ui->lang->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
     ui->lang->addItem(QString("(") + tr("default") + QString(")"), QVariant(""));
     for (const QString &langStr : translations.entryList())
     {
@@ -177,7 +177,7 @@ void OptionsDialog::setModel(OptionsModel *_model)
 void OptionsDialog::setMapper()
 {
     /* Main */
-    mapper->addMapping(ui->celllinkAtStartup, OptionsModel::StartAtStartup);
+    mapper->addMapping(ui->magnachainAtStartup, OptionsModel::StartAtStartup);
     mapper->addMapping(ui->threadsScriptVerif, OptionsModel::ThreadsScriptVerif);
     mapper->addMapping(ui->databaseCache, OptionsModel::DatabaseCache);
 

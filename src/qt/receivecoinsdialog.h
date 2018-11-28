@@ -27,7 +27,7 @@ QT_BEGIN_NAMESPACE
 class QModelIndex;
 QT_END_NAMESPACE
 
-/** Dialog for requesting payment of celllinks */
+/** Dialog for requesting payment of magnachains */
 class ReceiveCoinsDialog : public QDialog
 {
     Q_OBJECT

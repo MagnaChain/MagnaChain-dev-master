@@ -5,7 +5,7 @@
 
 #include "io/streams.h"
 #include "support/allocators/zeroafterfree.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/assign/std/vector.hpp> // for 'operator+=()'
 #include <boost/test/unit_test.hpp>

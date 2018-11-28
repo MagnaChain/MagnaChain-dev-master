@@ -6,7 +6,7 @@
 #ifndef BITCOIN_WALLET_TEST_FIXTURE_H
 #define BITCOIN_WALLET_TEST_FIXTURE_H
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 /** Testing setup and teardown for wallet.
  */

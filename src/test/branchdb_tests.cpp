@@ -9,7 +9,7 @@
 #include "coding/arith_uint256.h"
 #include "chain/chainparams.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <vector>
 

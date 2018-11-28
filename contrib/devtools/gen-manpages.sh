@@ -5,9 +5,9 @@ SRCDIR=${SRCDIR:-$TOPDIR/src}
 MANDIR=${MANDIR:-$TOPDIR/doc/man}
 
 BITCOIND=${BITCOIND:-$SRCDIR/bitcoind}
-BITCOINCLI=${BITCOINCLI:-$SRCDIR/celllink-cli}
-BITCOINTX=${BITCOINTX:-$SRCDIR/celllink-tx}
-BITCOINQT=${BITCOINQT:-$SRCDIR/qt/celllink-qt}
+BITCOINCLI=${BITCOINCLI:-$SRCDIR/magnachain-cli}
+BITCOINTX=${BITCOINTX:-$SRCDIR/magnachain-tx}
+BITCOINQT=${BITCOINQT:-$SRCDIR/qt/magnachain-qt}
 
 [ ! -x $BITCOIND ] && echo "$BITCOIND not found or not executable." && exit 1
 
@@ -16,7 +16,7 @@ BTCVER=($($BITCOINCLI --version | head -n1 | awk -F'[ -]' '{ print $6, $7 }'))
 
 # Create a footer file with copyright content.
 # This gets autodetected fine for bitcoind if --version-string is not set,
-# but has different outcomes for celllink-qt and celllink-cli.
+# but has different outcomes for magnachain-qt and magnachain-cli.
 echo "[COPYRIGHT]" > footer.h2m
 $BITCOIND --version | sed -n '1!p' >> footer.h2m
 

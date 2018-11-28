@@ -1849,7 +1849,7 @@ static bool FindUndoPos(CellValidationState &state, int nFile, CellDiskBlockPos 
 static CellCheckQueue<CScriptCheck> scriptcheckqueue(128);
 
 void ThreadScriptCheck() {
-    RenameThread("celllink-scriptch");
+    RenameThread("magnachain-scriptch");
     scriptcheckqueue.Thread();
 }
 

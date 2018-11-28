@@ -5,7 +5,7 @@
 
 #include "test/scriptnum10.h"
 #include "script/script.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/test/unit_test.hpp>
 #include <limits.h>

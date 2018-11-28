@@ -12,7 +12,7 @@
 #include "misc/random.h"
 #include "script/standard.h"
 #include "script/sign.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "utils/utiltime.h"
 #include "io/core_io.h"
 #include "key/keystore.h"

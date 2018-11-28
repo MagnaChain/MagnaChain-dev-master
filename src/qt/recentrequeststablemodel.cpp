@@ -5,7 +5,7 @@
 
 #include "recentrequeststablemodel.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 

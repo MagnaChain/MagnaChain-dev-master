@@ -5,7 +5,7 @@
 
 #include "data/tx_invalid.json.h"
 #include "data/tx_valid.json.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include "misc/clientversion.h"
 #include "validation/checkqueue.h"

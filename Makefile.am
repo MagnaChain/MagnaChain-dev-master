@@ -15,7 +15,7 @@ export PYTHONPATH
 
 if BUILD_CELLLINK_LIBS
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = libcelllinkconsensus.pc
+pkgconfig_DATA = libmagnachainconsensus.pc
 endif
 
 CELLLINKD_BIN=$(top_builddir)/src/$(CELLLINK_DAEMON_NAME)$(EXEEXT)
@@ -35,14 +35,14 @@ OSX_BACKGROUND_IMAGE_DPIS=36 72
 OSX_DSSTORE_GEN=$(top_srcdir)/contrib/macdeploy/custom_dsstore.py
 OSX_DEPLOY_SCRIPT=$(top_srcdir)/contrib/macdeploy/macdeployqtplus
 OSX_FANCY_PLIST=$(top_srcdir)/contrib/macdeploy/fancy.plist
-OSX_INSTALLER_ICONS=$(top_srcdir)/src/qt/res/icons/celllink.icns
+OSX_INSTALLER_ICONS=$(top_srcdir)/src/qt/res/icons/magnachain.icns
 OSX_PLIST=$(top_builddir)/share/qt/Info.plist #not installed
 OSX_QT_TRANSLATIONS = da,de,es,hu,ru,uk,zh_CN,zh_TW
 
 DIST_DOCS = $(wildcard doc/*.md) $(wildcard doc/release-notes/*.md)
-DIST_CONTRIB = $(top_srcdir)/contrib/celllink-cli.bash-completion \
-	       $(top_srcdir)/contrib/celllink-tx.bash-completion \
-	       $(top_srcdir)/contrib/celllinkd.bash-completion \
+DIST_CONTRIB = $(top_srcdir)/contrib/magnachain-cli.bash-completion \
+	       $(top_srcdir)/contrib/magnachain-tx.bash-completion \
+	       $(top_srcdir)/contrib/magnachaind.bash-completion \
 	       $(top_srcdir)/contrib/init \
 	       $(top_srcdir)/contrib/rpm
 DIST_SHARE = \
@@ -52,7 +52,7 @@ DIST_SHARE = \
 BIN_CHECKS=$(top_srcdir)/contrib/devtools/symbol-check.py \
            $(top_srcdir)/contrib/devtools/security-check.py
 
-WINDOWS_PACKAGING = $(top_srcdir)/share/pixmaps/celllink.ico \
+WINDOWS_PACKAGING = $(top_srcdir)/share/pixmaps/magnachain.ico \
   $(top_srcdir)/share/pixmaps/nsis-header.bmp \
   $(top_srcdir)/share/pixmaps/nsis-wizard.bmp \
   $(top_srcdir)/doc/README_windows.txt
@@ -64,9 +64,9 @@ OSX_PACKAGING = $(OSX_DEPLOY_SCRIPT) $(OSX_FANCY_PLIST) $(OSX_INSTALLER_ICONS) \
   $(top_srcdir)/contrib/macdeploy/detached-sig-create.sh
 
 COVERAGE_INFO = baseline.info \
-  test_celllink_filtered.info total_coverage.info \
+  test_magnachain_filtered.info total_coverage.info \
   baseline_filtered.info functional_test.info functional_test_filtered.info \
-  test_celllink_coverage.info test_celllink.info
+  test_magnachain_coverage.info test_magnachain.info
 
 dist-hook:
 	-$(GIT) archive --format=tar HEAD -- src/clientversion.cpp | $(AMTAR) -C $(top_distdir) -xf -
@@ -92,7 +92,7 @@ $(OSX_APP)/Contents/Info.plist: $(OSX_PLIST)
 	$(MKDIR_P) $(@D)
 	$(INSTALL_DATA) $< $@
 
-$(OSX_APP)/Contents/Resources/celllink.icns: $(OSX_INSTALLER_ICONS)
+$(OSX_APP)/Contents/Resources/magnachain.icns: $(OSX_INSTALLER_ICONS)
 	$(MKDIR_P) $(@D)
 	$(INSTALL_DATA) $< $@
 
@@ -105,7 +105,7 @@ $(OSX_APP)/Contents/Resources/Base.lproj/InfoPlist.strings:
 	echo '{	CFBundleDisplayName = "$(PACKAGE_NAME)"; CFBundleName = "$(PACKAGE_NAME)"; }' > $@
 
 OSX_APP_BUILT=$(OSX_APP)/Contents/PkgInfo $(OSX_APP)/Contents/Resources/empty.lproj \
-  $(OSX_APP)/Contents/Resources/celllink.icns $(OSX_APP)/Contents/Info.plist \
+  $(OSX_APP)/Contents/Resources/magnachain.icns $(OSX_APP)/Contents/Info.plist \
   $(OSX_APP)/Contents/MacOS/CellLink-Qt $(OSX_APP)/Contents/Resources/Base.lproj/InfoPlist.strings
 
 osx_volname:
@@ -179,16 +179,16 @@ baseline_filtered.info: baseline.info
 	$(abs_builddir)/contrib/filter-lcov.py $(LCOV_FILTER_PATTERN) $< $@
 	$(LCOV) -a $@ $(LCOV_OPTS) -o $@
 
-test_celllink.info: baseline_filtered.info
+test_magnachain.info: baseline_filtered.info
 	$(MAKE) -C src/ check
-	$(LCOV) -c $(LCOV_OPTS) -d $(abs_builddir)/src -t test_celllink -o $@
+	$(LCOV) -c $(LCOV_OPTS) -d $(abs_builddir)/src -t test_magnachain -o $@
 	$(LCOV) -z $(LCOV_OPTS) -d $(abs_builddir)/src
 
-test_celllink_filtered.info: test_celllink.info
+test_magnachain_filtered.info: test_magnachain.info
 	$(abs_builddir)/contrib/filter-lcov.py $(LCOV_FILTER_PATTERN) $< $@
 	$(LCOV) -a $@ $(LCOV_OPTS) -o $@
 
-functional_test.info: test_celllink_filtered.info
+functional_test.info: test_magnachain_filtered.info
 	-@TIMEOUT=15 test/functional/test_runner.py $(EXTENDED_FUNCTIONAL_TESTS)
 	$(LCOV) -c $(LCOV_OPTS) -d $(abs_builddir)/src --t functional-tests -o $@
 	$(LCOV) -z $(LCOV_OPTS) -d $(abs_builddir)/src
@@ -197,13 +197,13 @@ functional_test_filtered.info: functional_test.info
 	$(abs_builddir)/contrib/filter-lcov.py $(LCOV_FILTER_PATTERN) $< $@
 	$(LCOV) -a $@ $(LCOV_OPTS) -o $@
 
-test_celllink_coverage.info: baseline_filtered.info test_celllink_filtered.info
-	$(LCOV) -a $(LCOV_OPTS) baseline_filtered.info -a test_celllink_filtered.info -o $@
+test_magnachain_coverage.info: baseline_filtered.info test_magnachain_filtered.info
+	$(LCOV) -a $(LCOV_OPTS) baseline_filtered.info -a test_magnachain_filtered.info -o $@
 
-total_coverage.info: test_celllink_filtered.info functional_test_filtered.info
-	$(LCOV) -a $(LCOV_OPTS) baseline_filtered.info -a test_celllink_filtered.info -a functional_test_filtered.info -o $@ | $(GREP) "\%" | $(AWK) '{ print substr($$3,2,50) "/" $$5 }' > coverage_percent.txt
+total_coverage.info: test_magnachain_filtered.info functional_test_filtered.info
+	$(LCOV) -a $(LCOV_OPTS) baseline_filtered.info -a test_magnachain_filtered.info -a functional_test_filtered.info -o $@ | $(GREP) "\%" | $(AWK) '{ print substr($$3,2,50) "/" $$5 }' > coverage_percent.txt
 
-test_celllink.coverage/.dirstamp:  test_celllink_coverage.info
+test_magnachain.coverage/.dirstamp:  test_magnachain_coverage.info
 	$(GENHTML) -s $(LCOV_OPTS) $< -o $(@D)
 	@touch $@
 
@@ -211,7 +211,7 @@ total.coverage/.dirstamp: total_coverage.info
 	$(GENHTML) -s $(LCOV_OPTS) $< -o $(@D)
 	@touch $@
 
-cov: test_celllink.coverage/.dirstamp total.coverage/.dirstamp
+cov: test_magnachain.coverage/.dirstamp total.coverage/.dirstamp
 
 endif
 
@@ -220,8 +220,8 @@ dist_noinst_SCRIPTS = autogen.sh
 EXTRA_DIST = $(DIST_SHARE) test/functional/test_runner.py test/functional $(DIST_CONTRIB) $(DIST_DOCS) $(WINDOWS_PACKAGING) $(OSX_PACKAGING) $(BIN_CHECKS)
 
 EXTRA_DIST += \
-    test/util/celllink-util-test.py \
-    test/util/data/celllink-util-test.json \
+    test/util/magnachain-util-test.py \
+    test/util/data/magnachain-util-test.json \
     test/util/data/blanktxv1.hex \
     test/util/data/blanktxv1.json \
     test/util/data/blanktxv2.hex \
@@ -279,5 +279,5 @@ CLEANFILES = $(OSX_DMG) $(CELLLINK_WIN_INSTALLER)
 DISTCHECK_CONFIGURE_FLAGS = --enable-man
 
 clean-local:
-	rm -rf coverage_percent.txt test_celllink.coverage/ total.coverage/ test/tmp/ cache/ $(OSX_APP)
+	rm -rf coverage_percent.txt test_magnachain.coverage/ total.coverage/ test/tmp/ cache/ $(OSX_APP)
 	rm -rf test/functional/__pycache__

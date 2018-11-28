@@ -11,7 +11,7 @@
 #include "net/netbase.h"
 #include "univalue.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/algorithm/string.hpp>
 #include <boost/test/unit_test.hpp>

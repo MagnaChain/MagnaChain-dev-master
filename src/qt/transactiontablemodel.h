@@ -6,7 +6,7 @@
 #ifndef CELLLINK_QT_TRANSACTIONTABLEMODEL_H
 #define CELLLINK_QT_TRANSACTIONTABLEMODEL_H
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 
 #include <QAbstractTableModel>
 #include <QStringList>

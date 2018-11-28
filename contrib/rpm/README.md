@@ -15,7 +15,7 @@ It is considered good form for all sources to reference a URL where the source
 can be downloaded.
 
 Sources 0-9 should be reserved for source code tarballs. `Source0` should
-reference the release tarball available from https://celllink.org/bin/ and
+reference the release tarball available from https://magnachain.org/bin/ and
 `Source1` should reference the BerkeleyDB source.
 
 Sources 10-99 are for source files that are maintained in the
@@ -23,7 +23,7 @@ Sources 10-99 are for source files that are maintained in the
 the release tarball. Most of these will reside in the `contrib` sub-directory.
 
 Sources 10-19 should be reserved for miscellaneous configuration files.
-Currently only `Source10` is used, for the example `celllink.conf` file.
+Currently only `Source10` is used, for the example `magnachain.conf` file.
 
 Sources 20-29 should be reserved for man pages. Currently only `Source20`
 through `Source23` are used.
@@ -34,17 +34,17 @@ release, the full URL specified in the RPM spec file will not work. You can get
 them from the git repository where you retrieved this file.
 
 Sources 100+ are for files that are not source tarballs and are not maintained
-in the celllink git repository. At present only an SVG version of the CellLink
+in the magnachain git repository. At present only an SVG version of the CellLink
 icon is used.
 
 ## Patches
 
 In general, patches should be avoided. When a packager feels a patch is
-necessary, the packager should bring the problem to the attention of the celllink
+necessary, the packager should bring the problem to the attention of the magnachain
 developers so that an official fix to the issue can make it into the next
 release.
 
-### Patch0 celllink-0.12.0-libressl.patch
+### Patch0 magnachain-0.12.0-libressl.patch
 
 This patch is only needed if building against LibreSSL. LibreSSL is not the
 standard TLS library on most Linux distributions. The patch will likely not be
@@ -91,7 +91,7 @@ assigned to them in the `touch` command that specifies the time stamp.
 
 ## SVG, PNG, and XPM Icons
 
-The `celllink.svg` file is from the source listed as `Source100`. It is used as
+The `magnachain.svg` file is from the source listed as `Source100`. It is used as
 the source for the PNG and XPM files. The generated PNG and XPM files are given
 the same time stamp as the source SVG file as a means of indicating they are
 derived from it.
@@ -99,7 +99,7 @@ derived from it.
 ## Systemd
 
 This spec file assumes the target distribution uses systemd. That really only
-matters for the `celllink-server` package. At this point, most RPM based
+matters for the `magnachain-server` package. At this point, most RPM based
 distributions that still receive vendor updates do in fact use systemd.
 
 The files to control the service are created in the RPM spec file itself using
@@ -112,7 +112,7 @@ command that specifies the time stamp.
 
 ## SELinux
 
-The `celllink-server` package should have SELinux support. How to properly do
+The `magnachain-server` package should have SELinux support. How to properly do
 that *may* vary by distribution and version of distribution.
 
 The SELinux stuff in this RPM spec file *should* be correct for CentOS, RHEL,
@@ -156,7 +156,7 @@ developed on (CentOS 7).
 ## Legacy Credit
 
 This RPM spec file is largely based upon the work of Michael Hampton at
-[Ringing Liberty](https://www.ringingliberty.com/celllink/). He has been
+[Ringing Liberty](https://www.ringingliberty.com/magnachain/). He has been
 packaging CellLink for Fedora at least since 2012.
 
 Most of the differences between his packaging and this package are stylistic in
@@ -174,9 +174,9 @@ academic.
 specifying a build without the Qt GUI, or specifying which version of the Qt
 libraries to use.
 
-4. I renamed the `celllink` package that contains the Qt GUI to `celllink-core` as
+4. I renamed the `magnachain` package that contains the Qt GUI to `magnachain-core` as
 that appears to be how the general population refers to it, in contrast to
-`celllink-xt` or `celllink-classic`. I wanted to make sure the general population
+`magnachain-xt` or `magnachain-classic`. I wanted to make sure the general population
 knows what they are getting when installing the GUI package.
 
 As far as minor differences, I generally prefer to assign the file permissions

@@ -26,7 +26,7 @@ QT_BEGIN_NAMESPACE
 class QUrl;
 QT_END_NAMESPACE
 
-/** Dialog for sending celllinks */
+/** Dialog for sending magnachains */
 class SendCoinsDialog : public QDialog
 {
     Q_OBJECT

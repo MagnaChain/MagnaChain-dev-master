@@ -5,7 +5,7 @@
 
 #include "compat/sanity.h"
 #include "key/key.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/test/unit_test.hpp>
 

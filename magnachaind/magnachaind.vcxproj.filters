@@ -4,6 +4,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\celllinkd.cpp" />
+    <ClCompile Include="..\src\magnachaind.cpp" />
   </ItemGroup>
 </Project>

@@ -3,7 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "address/addrman.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include <string>
 #include <boost/test/unit_test.hpp>
 

@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "utils/util.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <string>
 #include <vector>
@@ -21,7 +21,7 @@ static void ResetArgs(const std::string& strArg)
       boost::split(vecArg, strArg, boost::is_space(), boost::token_compress_on);
 
     // Insert dummy executable name:
-    vecArg.insert(vecArg.begin(), "testcelllink");
+    vecArg.insert(vecArg.begin(), "testmagnachain");
 
     // Convert to char*:
     std::vector<const char*> vecChar;

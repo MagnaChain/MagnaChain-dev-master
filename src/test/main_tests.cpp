@@ -11,7 +11,7 @@
 #define BOOST_TEST_MODULE maintest
 #endif 
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/signals2/signal.hpp>
 #include <boost/test/unit_test.hpp>

@@ -13,7 +13,7 @@ Construct a linear, no-fork, best version of the blockchain.
 
 ### [Qos](/contrib/qos) ###
 
-A Linux bash script that will set up traffic control (tc) to limit the outgoing bandwidth for connections to the CellLink network. This means one can have an always-on bitcoind instance running, and another local bitcoind/celllink-qt instance which connects to this node and receives blocks from it.
+A Linux bash script that will set up traffic control (tc) to limit the outgoing bandwidth for connections to the CellLink network. This means one can have an always-on bitcoind instance running, and another local bitcoind/magnachain-qt instance which connects to this node and receives blocks from it.
 
 ### [Seeds](/contrib/seeds) ###
 Utility to generate the pnSeed[] array that is compiled into the client.
@@ -22,8 +22,8 @@ Build Tools and Keys
 ---------------------
 
 ### [Debian](/contrib/debian) ###
-Contains files used to package bitcoind/celllink-qt
-for Debian-based Linux systems. If you compile bitcoind/celllink-qt yourself, there are some useful files here.
+Contains files used to package bitcoind/magnachain-qt
+for Debian-based Linux systems. If you compile bitcoind/magnachain-qt yourself, there are some useful files here.
 
 ### [Gitian-descriptors](/contrib/gitian-descriptors) ###
 Notes on getting Gitian builds up and running using KVM.
@@ -35,7 +35,7 @@ PGP keys used for signing MagnaChain Core [Gitian release](/doc/release-process.
 Scripts and notes for Mac builds. 
 
 ### [RPM](/contrib/rpm) ###
-RPM spec file for building celllink-core on RPM based distributions
+RPM spec file for building magnachain-core on RPM based distributions
 
 ### [Gitian-build](/contrib/gitian-build.sh) ###
 Script for running full Gitian builds.
@@ -47,4 +47,4 @@ Test and Verify Tools
 Utilities to generate test vectors for the data-driven CellLink tests.
 
 ### [Verify Binaries](/contrib/verifybinaries) ###
-This script attempts to download and verify the signature file SHA256SUMS.asc from celllink.org.
+This script attempts to download and verify the signature file SHA256SUMS.asc from magnachain.org.

@@ -5,7 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "init.h"
@@ -138,7 +138,7 @@ bool ShutdownRequested()
 /**
  * This is a minimally invasive approach to shutdown on LevelDB read errors from the
  * chainstate, while keeping user interface out of the common library, which is shared
- * between celllinkd, and celllink-qt and non-server tools.
+ * between magnachaind, and magnachain-qt and non-server tools.
 */
 class CellCoinsViewErrorCatcher : public CellCoinsViewBacked
 {
@@ -189,7 +189,7 @@ void Shutdown()
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("celllink-shutoff");
+    RenameThread("magnachain-shutoff");
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -661,7 +661,7 @@ void CleanupBlockRevFiles()
 void ThreadImport(std::vector<fs::path> vImportFiles)
 {
     const CellChainParams& chainparams = Params();
-    RenameThread("celllink-loadblk");
+    RenameThread("magnachain-loadblk");
 
     {
     CImportingNow imp;
@@ -854,7 +854,7 @@ void InitLogging()
     fLogTimestamps = gArgs.GetBoolArg("-logtimestamps", DEFAULT_LOGTIMESTAMPS);
     fLogTimeMicros = gArgs.GetBoolArg("-logtimemicros", DEFAULT_LOGTIMEMICROS);
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
-    LogPrintf("Celllink version %s\n", FormatFullVersion());
+    LogPrintf("MagnaChain version %s\n", FormatFullVersion());
 }
 
 namespace { // Variables internal to initialization process only

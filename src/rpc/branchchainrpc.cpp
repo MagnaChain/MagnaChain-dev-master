@@ -191,10 +191,10 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     std::string strMortgageAddress = request.params[2].get_str();
     CellLinkAddress kAddress(strMortgageAddress);
     if (!kAddress.IsValid())
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid celllink address for genesis block address");
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid magnachain address for genesis block address");
     CellKeyID mortgagekey;
     if (!kAddress.GetKeyID(mortgagekey)){
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Celllink public key address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
     }
 
     CellCoinControl coin_control;
@@ -432,7 +432,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
                 "\n Send an amount to a branch chain's address.\n"
                 "\nArguments:\n"
                 "1. \"branchid\"             (string, required) Send to target chain's Branchid,if send to main chain, branchid is \"main\".\n"
-                "2. \"address\"              (string, required) The target chain's celllink address to send to.\n"
+                "2. \"address\"              (string, required) The target chain's magnachain address to send to.\n"
                 "3. \"amount\"               (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
                 "\nReturns the hash of the created branch chain.\n"
                 "\nResult:\n"
@@ -489,12 +489,12 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     const std::string& strAddress = request.params[1].get_str();
     CellLinkAddress address(strAddress);
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid celllink str address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain str address");
 
     CellKeyID keyId;
     if (!address.GetKeyID(keyId))
     {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid celllink keyid");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain keyid");
     }
 
     CellAmount nAmount = AmountFromValue(request.params[2]);
@@ -837,7 +837,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     const std::string& strAddress = request.params[2].get_str();
     CellLinkAddress address(strAddress);
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid celllink pubkey hash address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain pubkey hash address");
     if (address.IsScript())
     {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Can not use script address");
@@ -845,11 +845,11 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     CellKeyID pubKeyId;
     if (!address.GetKeyID(pubKeyId))
     {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid celllink keyid");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain keyid");
     }
 
     int nCoinHeight = 0;//指定币高度
-    // 抵押vout脚本 branch id , celllink coin address
+    // 抵押vout脚本 branch id , magnachain coin address
     const CellScript scriptPubKey = CellScript() << OP_MINE_BRANCH_MORTGAGE << ToByteVector(branchHash) << (nCoinHeight) << OP_2DROP << OP_DUP << OP_HASH160 << ToByteVector(pubKeyId) << OP_EQUALVERIFY << OP_CHECKSIG;
 
     CellCoinControl coin_control;

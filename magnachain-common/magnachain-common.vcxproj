@@ -776,7 +776,7 @@
     <ClCompile Include="..\src\rpc\protocol.cpp" />
     <ClCompile Include="..\src\rpc\rawtransaction.cpp" />
     <ClCompile Include="..\src\rpc\server.cpp" />
-    <ClCompile Include="..\src\script\celllinkconsensus.cpp" />
+    <ClCompile Include="..\src\script\magnachainconsensus.cpp" />
     <ClCompile Include="..\src\script\interpreter.cpp" />
     <ClCompile Include="..\src\script\ismine.cpp" />
     <ClCompile Include="..\src\script\script.cpp" />
@@ -848,7 +848,7 @@
     <ClInclude Include="..\src\compat\byteswap.h" />
     <ClInclude Include="..\src\compat\endian.h" />
     <ClInclude Include="..\src\compat\sanity.h" />
-    <ClInclude Include="..\src\config\celllink-config.h" />
+    <ClInclude Include="..\src\config\magnachain-config.h" />
     <ClInclude Include="..\src\consensus\consensus.h" />
     <ClInclude Include="..\src\consensus\merkle.h" />
     <ClInclude Include="..\src\consensus\params.h" />
@@ -1000,7 +1000,7 @@
     <ClInclude Include="..\src\rpc\protocol.h" />
     <ClInclude Include="..\src\rpc\register.h" />
     <ClInclude Include="..\src\rpc\server.h" />
-    <ClInclude Include="..\src\script\celllinkconsensus.h" />
+    <ClInclude Include="..\src\script\magnachainconsensus.h" />
     <ClInclude Include="..\src\script\interpreter.h" />
     <ClInclude Include="..\src\script\ismine.h" />
     <ClInclude Include="..\src\script\script.h" />

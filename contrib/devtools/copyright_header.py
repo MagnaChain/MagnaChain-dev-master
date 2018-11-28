@@ -277,7 +277,7 @@ Usage:
     $ ./copyright_header.py report <base_directory> [verbose]
 
 Arguments:
-    <base_directory> - The base directory of a celllink source code repository.
+    <base_directory> - The base directory of a magnachain source code repository.
     [verbose] - Includes a list of every file of each subcategory in the report.
 """
 
@@ -433,7 +433,7 @@ Usage:
     $ ./copyright_header.py update <base_directory>
 
 Arguments:
-    <base_directory> - The base directory of a celllink source code repository.
+    <base_directory> - The base directory of a magnachain source code repository.
 """
 
 def print_file_action_message(filename, action):
@@ -555,7 +555,7 @@ Usage:
     $ ./copyright_header.py insert <file>
 
 Arguments:
-    <file> - A source file in the celllink repository.
+    <file> - A source file in the magnachain repository.
 """
 
 def insert_cmd(argv):

@@ -5,7 +5,7 @@
 
 #include "chain/chain.h"
 #include "utils/util.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <vector>
 

@@ -5,7 +5,7 @@
 
 #include "qvalidatedlineedit.h"
 
-#include "celllinkaddressvalidator.h"
+#include "magnachainaddressvalidator.h"
 #include "guiconstants.h"
 
 QValidatedLineEdit::QValidatedLineEdit(QWidget *parent) :

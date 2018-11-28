@@ -5,7 +5,7 @@
 
 #include "paymentserver.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 
@@ -48,14 +48,14 @@
 #endif
 
 const int CELLLINK_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
-const QString CELLLINK_IPC_PREFIX("celllink:");
+const QString CELLLINK_IPC_PREFIX("magnachain:");
 // BIP70 payment protocol messages
 const char* BIP70_MESSAGE_PAYMENTACK = "PaymentACK";
 const char* BIP70_MESSAGE_PAYMENTREQUEST = "PaymentRequest";
 // BIP71 payment protocol media types
-const char* BIP71_MIMETYPE_PAYMENT = "application/celllink-payment";
-const char* BIP71_MIMETYPE_PAYMENTACK = "application/celllink-paymentack";
-const char* BIP71_MIMETYPE_PAYMENTREQUEST = "application/celllink-paymentrequest";
+const char* BIP71_MIMETYPE_PAYMENT = "application/magnachain-payment";
+const char* BIP71_MIMETYPE_PAYMENTACK = "application/magnachain-paymentack";
+const char* BIP71_MIMETYPE_PAYMENTREQUEST = "application/magnachain-paymentrequest";
 
 struct X509StoreDeleter {
       void operator()(X509_STORE* b) {
@@ -208,11 +208,11 @@ void PaymentServer::ipcParseCommandLine(int argc, char* argv[])
         if (arg.startsWith("-"))
             continue;
 
-        // If the celllink: URI contains a payment request, we are not able to detect the
+        // If the magnachain: URI contains a payment request, we are not able to detect the
         // network as that would require fetching and parsing the payment request.
         // That means clicking such an URI which contains a testnet payment request
         // will start a mainnet instance and throw a "wrong network" error.
-        if (arg.startsWith(CELLLINK_IPC_PREFIX, Qt::CaseInsensitive)) // celllink: URI
+        if (arg.startsWith(CELLLINK_IPC_PREFIX, Qt::CaseInsensitive)) // magnachain: URI
         {
             savedPaymentRequests.append(arg);
 
@@ -310,7 +310,7 @@ PaymentServer::PaymentServer(QObject* parent, bool startLocalServer) :
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     // Install global event filter to catch QFileOpenEvents
-    // on Mac: sent when you click celllink: links
+    // on Mac: sent when you click magnachain: links
     // other OSes: helpful when dealing with payment request files
     if (parent)
         parent->installEventFilter(this);
@@ -327,7 +327,7 @@ PaymentServer::PaymentServer(QObject* parent, bool startLocalServer) :
         if (!uriServer->listen(name)) {
             // constructor is called early in init, so don't use "Q_EMIT message()" here
             QMessageBox::critical(0, tr("Payment request error"),
-                tr("Cannot start celllink: click-to-pay handler"));
+                tr("Cannot start magnachain: click-to-pay handler"));
         }
         else {
             connect(uriServer, SIGNAL(newConnection()), this, SLOT(handleURIConnection()));
@@ -342,7 +342,7 @@ PaymentServer::~PaymentServer()
 }
 
 //
-// OSX-specific way of handling celllink: URIs and PaymentRequest mime types.
+// OSX-specific way of handling magnachain: URIs and PaymentRequest mime types.
 // Also used by paymentservertests.cpp and when opening a payment request file
 // via "Open URI..." menu entry.
 //
@@ -368,7 +368,7 @@ void PaymentServer::initNetManager()
     if (netManager != nullptr)
         delete netManager;
 
-    // netManager is used to fetch paymentrequests given in celllink: URIs
+    // netManager is used to fetch paymentrequests given in magnachain: URIs
     netManager = new QNetworkAccessManager(this);
 
     QNetworkProxy proxy;
@@ -408,7 +408,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
         return;
     }
 
-    if (s.startsWith(CELLLINK_IPC_PREFIX, Qt::CaseInsensitive)) // celllink: URI
+    if (s.startsWith(CELLLINK_IPC_PREFIX, Qt::CaseInsensitive)) // magnachain: URI
     {
 #if QT_VERSION < 0x050000
         QUrl uri(s);
@@ -564,7 +564,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
             addresses.append(QString::fromStdString(CellLinkAddress(dest).ToString()));
         }
         else if (!recipient.authenticatedMerchant.isEmpty()) {
-            // Unauthenticated payment requests to custom celllink addresses are not supported
+            // Unauthenticated payment requests to custom magnachain addresses are not supported
             // (there is no good way to tell the user where they are paying in a way they'd
             // have a chance of understanding).
             Q_EMIT message(tr("Payment request rejected"),

@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "rpcconsole.h"
@@ -436,7 +436,7 @@ RPCConsole::RPCConsole(const PlatformStyle *_platformStyle, QWidget *parent) :
         move(QApplication::desktop()->availableGeometry().center() - frameGeometry().center());
     }
 
-    ui->openDebugLogfileButton->setToolTip(ui->openDebugLogfileButton->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->openDebugLogfileButton->setToolTip(ui->openDebugLogfileButton->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
     if (platformStyle->getImagesOnButtons()) {
         ui->openDebugLogfileButton->setIcon(platformStyle->SingleColorIcon(":/icons/export"));
@@ -749,7 +749,7 @@ void RPCConsole::clear(bool clearHistory)
     QString clsKey = "Ctrl-L";
 #endif
 	 
-    message(CMD_REPLY, (tr("Welcome to the %1 RPC console.").arg(QApplication::translate("celllink-core", PACKAGE_NAME)) + "<br>" +
+    message(CMD_REPLY, (tr("Welcome to the %1 RPC console.").arg(QApplication::translate("magnachain-core", PACKAGE_NAME)) + "<br>" +
                         tr("Use up and down arrows to navigate history, and %1 to clear screen.").arg("<b>"+clsKey+"</b>") + "<br>" +
                         tr("Type <b>help</b> for an overview of available commands.")) +
                         "<br><span class=\"secwarning\">" +

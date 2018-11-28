@@ -5,7 +5,7 @@
 
 #include "chain/chain.h"
 #include "misc/versionbits.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "chain/chainparams.h"
 #include "validation/validation.h"
 #include "consensus/params.h"

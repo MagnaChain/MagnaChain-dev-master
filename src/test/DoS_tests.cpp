@@ -15,7 +15,7 @@
 #include "utils/util.h"
 #include "validation/validation.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <stdint.h>
 

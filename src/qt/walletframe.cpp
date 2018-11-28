@@ -5,7 +5,7 @@
 
 #include "walletframe.h"
 
-#include "celllinkgui.h"
+#include "magnachaingui.h"
 #include "walletview.h"
 
 #include <cstdio>

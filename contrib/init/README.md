@@ -5,7 +5,7 @@ Upstart: bitcoind.conf
 OpenRC:  bitcoind.openrc
          bitcoind.openrcconf
 CentOS:  bitcoind.init
-OS X:    org.celllink.bitcoind.plist
+OS X:    org.magnachain.bitcoind.plist
 ```
 have been made available to assist packagers in creating node packages here.
 

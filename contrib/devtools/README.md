@@ -94,7 +94,7 @@ the commit it claims to have been updated to.
 To use, make sure that you have fetched the upstream repository branch in which the subtree is
 maintained:
 * for `src/secp256k1`: https://github.com/bitcoin-core/secp256k1.git (branch master)
-* for `src/leveldb`: https://github.com/bitcoin-core/leveldb.git (branch celllink-fork)
+* for `src/leveldb`: https://github.com/bitcoin-core/leveldb.git (branch magnachain-fork)
 * for `src/univalue`: https://github.com/bitcoin-core/univalue.git (branch master)
 * for `src/crypto/ctaes`: https://github.com/bitcoin-core/ctaes.git (branch master)
 
@@ -112,7 +112,7 @@ For example:
   ./github-merge.py 3077
 
 (in any git repository) will help you merge pull request #3077 for the
-celllink/celllink repository.
+magnachain/magnachain repository.
 
 What it does:
 * Fetch master and the pull request.
@@ -130,16 +130,16 @@ couldn't mess with the sources.
 
 Setup
 ---------
-Configuring the github-merge tool for the celllink repository is done in the following way:
+Configuring the github-merge tool for the magnachain repository is done in the following way:
 
-    git config githubmerge.repository celllink/celllink
+    git config githubmerge.repository magnachain/magnachain
     git config githubmerge.testcmd "make -j4 check" (adapt to whatever you want to use for testing)
     git config --global user.signingkey mykeyid (if you want to GPG sign)
 
 optimize-pngs.py
 ================
 
-A script to optimize png files in the celllink
+A script to optimize png files in the magnachain
 repository (requires pngcrush).
 
 security-check.py and test-security-check.py

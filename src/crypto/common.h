@@ -7,7 +7,7 @@
 #define CELLLINK_CRYPTO_COMMON_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include <stdint.h>

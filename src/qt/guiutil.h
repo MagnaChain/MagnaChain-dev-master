@@ -45,7 +45,7 @@ namespace GUIUtil
     void setupAddressWidget(QValidatedLineEdit *widget, QWidget *parent);
     void setupAmountWidget(QLineEdit *widget, QWidget *parent);
 
-    // Parse "celllink:" URI into recipient object, return true on successful parsing
+    // Parse "magnachain:" URI into recipient object, return true on successful parsing
     bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out);
     bool parseCellLinkURI(QString uri, SendCoinsRecipient *out);
     QString formatCellLinkURI(const SendCoinsRecipient &info);

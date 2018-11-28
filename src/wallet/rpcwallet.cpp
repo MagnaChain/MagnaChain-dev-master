@@ -155,7 +155,7 @@ UniValue getnewaddress(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. \"account\"        (string, optional) DEPRECATED. The account name for the address to be linked to. If not provided, the default account \"\" is used. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created if there is no account by the given name.\n"
             "\nResult:\n"
-            "\"address\"    (string) The new celllink address\n"
+            "\"address\"    (string) The new magnachain address\n"
             "\nExamples:\n"
             + HelpExampleCli("getnewaddress", "")
             + HelpExampleRpc("getnewaddress", "")
@@ -208,7 +208,7 @@ UniValue getaccountaddress(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
             "\nResult:\n"
-            "\"address\"          (string) The account celllink address\n"
+            "\"address\"          (string) The account magnachain address\n"
             "\nExamples:\n"
             + HelpExampleCli("getaccountaddress", "")
             + HelpExampleCli("getaccountaddress", "\"\"")
@@ -276,7 +276,7 @@ UniValue setaccount(const JSONRPCRequest& request)
             "setaccount \"address\" \"account\"\n"
             "\nDEPRECATED. Sets the account associated with the given address.\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address to be associated with an account.\n"
+            "1. \"address\"         (string, required) The magnachain address to be associated with an account.\n"
             "2. \"account\"         (string, required) The account to assign the address to.\n"
             "\nExamples:\n"
             + HelpExampleCli("setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XX\" \"tabby\"")
@@ -322,7 +322,7 @@ UniValue getaccount(const JSONRPCRequest& request)
             "getaccount \"address\"\n"
             "\nDEPRECATED. Returns the account associated with the given address.\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address for account lookup.\n"
+            "1. \"address\"         (string, required) The magnachain address for account lookup.\n"
             "\nResult:\n"
             "\"accountname\"        (string) the account address\n"
             "\nExamples:\n"
@@ -359,7 +359,7 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
             "1. \"account\"        (string, required) The account name.\n"
             "\nResult:\n"
             "[                     (json array of string)\n"
-            "  \"address\"         (string) a celllink address associated with the given account\n"
+            "  \"address\"         (string) a magnachain address associated with the given account\n"
             "  ,...\n"
             "]\n"
             "\nExamples:\n"
@@ -438,7 +438,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
             "\nSend an amount to a given address.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
-            "1. \"address\"            (string, required) The celllink address to send to.\n"
+            "1. \"address\"            (string, required) The magnachain address to send to.\n"
             "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "3. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
@@ -603,7 +603,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 			"\n rebroadcast the branch chain transaction by txid, in case that transction has not be send to the target chain .\n"
 			"\nArguments:\n"
 			"1. \"code\"                         (string, required) The compiled code in hex format\n"
-			"2. \"fundaddress\"                  (string, required) The celllink address owns coins to use\n"
+			"2. \"fundaddress\"                  (string, required) The magnachain address owns coins to use\n"
 			"3. \"senderaddress\"                (string, required) The hex pubkey of address as constact caller address\n"
 			"4. \"amount\"                       (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send to constact. eg 0.1\n"
 			"5. \"changeaddress\"                (string, required) The address for change may be\n"
@@ -816,7 +816,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 			"\nsend to contract .\n"
 			"\nArguments:\n"
 			"1. \"contractaddress\"       (string, required) The contract address need to send\n"
-			"2. \"fundaddress\"	          (string, required) The celllink address of fund to be used\n"
+			"2. \"fundaddress\"	          (string, required) The magnachain address of fund to be used\n"
 			"3. \"amount\"	              (number, required) The amount need to be send to contract\n"
 			"4. \"senderpubkey\"          (string, required) The hex pubkey of address of sender\n"
 			"5. \"changeaddress\"         (string, required) The address for change may be\n"
@@ -939,7 +939,7 @@ UniValue listaddressgroupings(const JSONRPCRequest& request)
             "[\n"
             "  [\n"
             "    [\n"
-            "      \"address\",            (string) The celllink address\n"
+            "      \"address\",            (string) The magnachain address\n"
             "      amount,                 (numeric) The amount in " + CURRENCY_UNIT + "\n"
             "      \"account\"             (string, optional) DEPRECATED. The account\n"
             "    ]\n"
@@ -988,7 +988,7 @@ UniValue signmessage(const JSONRPCRequest& request)
             "\nSign a message with the private key of an address"
             + HelpRequiringPassphrase(pwallet) + "\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address to use for the private key.\n"
+            "1. \"address\"         (string, required) The magnachain address to use for the private key.\n"
             "2. \"message\"         (string, required) The message to create a signature of.\n"
             "\nResult:\n"
             "\"signature\"          (string) The signature of the message encoded in base 64\n"
@@ -1046,7 +1046,7 @@ UniValue getreceivedbyaddress(const JSONRPCRequest& request)
             "getreceivedbyaddress \"address\" ( minconf )\n"
             "\nReturns the total amount received by the given address in transactions with at least minconf confirmations.\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address for transactions.\n"
+            "1. \"address\"         (string, required) The magnachain address for transactions.\n"
             "2. minconf             (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
             "\nResult:\n"
             "amount   (numeric) The total amount in " + CURRENCY_UNIT + " received at this address.\n"
@@ -1286,14 +1286,14 @@ UniValue sendfrom(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
         throw std::runtime_error(
             "sendfrom \"fromaccount\" \"toaddress\" amount ( minconf \"comment\" \"comment_to\" )\n"
-            "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a celllink address."
+            "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a magnachain address."
             + HelpRequiringPassphrase(pwallet) + "\n"
             "\nArguments:\n"
             "1. \"fromaccount\"       (string, required) The name of the account to send funds from. May be the default account using \"\".\n"
             "                       Specifying an account does not influence coin selection, but it does associate the newly created\n"
             "                       transaction with the account, so the account's balance computation and transaction history can reflect\n"
             "                       the spend.\n"
-            "2. \"toaddress\"         (string, required) The celllink address to send funds to.\n"
+            "2. \"toaddress\"         (string, required) The magnachain address to send funds to.\n"
             "3. amount                (numeric or string, required) The amount in " + CURRENCY_UNIT + " (transaction fee is added on top).\n"
             "4. minconf               (numeric, optional, default=1) Only use funds with at least this many confirmations.\n"
             "5. \"comment\"           (string, optional) A comment used to store what the transaction is for. \n"
@@ -1366,7 +1366,7 @@ UniValue sendmany(const JSONRPCRequest& request)
             "1. \"fromaccount\"         (string, required) DEPRECATED. The account to send the funds from. Should be \"\" for the default account\n"
             "2. \"amounts\"             (string, required) A json object with addresses and amounts\n"
             "    {\n"
-            "      \"address\":amount   (numeric or string) The celllink address is the key, the numeric amount (can be string) in " + CURRENCY_UNIT + " is the value\n"
+            "      \"address\":amount   (numeric or string) The magnachain address is the key, the numeric amount (can be string) in " + CURRENCY_UNIT + " is the value\n"
             "      ,...\n"
             "    }\n"
             "3. minconf                 (numeric, optional, default=1) Only use the balance confirmed at least this many times.\n"
@@ -1513,15 +1513,15 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
 
             "\nArguments:\n"
             "1. nrequired        (numeric, required) The number of required signatures out of the n keys or addresses.\n"
-            "2. \"keys\"         (string, required) A json array of celllink addresses or hex-encoded public keys\n"
+            "2. \"keys\"         (string, required) A json array of magnachain addresses or hex-encoded public keys\n"
             "     [\n"
-            "       \"address\"  (string) celllink address or hex-encoded public key\n"
+            "       \"address\"  (string) magnachain address or hex-encoded public key\n"
             "       ...,\n"
             "     ]\n"
             "3. \"account\"      (string, optional) DEPRECATED. An account to assign the addresses to.\n"
 
             "\nResult:\n"
-            "\"address\"         (string) A celllink address associated with the keys.\n"
+            "\"address\"         (string) A magnachain address associated with the keys.\n"
 
             "\nExamples:\n"
             "\nAdd a multisig address from 2 addresses\n"
@@ -2004,7 +2004,7 @@ UniValue listtransactions(const JSONRPCRequest& request)
             "  {\n"
             "    \"account\":\"accountname\",       (string) DEPRECATED. The account name associated with the transaction. \n"
             "                                                It will be \"\" for the default account.\n"
-            "    \"address\":\"address\",    (string) The celllink address of the transaction. Not present for \n"
+            "    \"address\":\"address\",    (string) The magnachain address of the transaction. Not present for \n"
             "                                                move transactions (category = move).\n"
             "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off blockchain)\n"
             "                                                transaction between accounts, and not associated with an address,\n"
@@ -2218,7 +2218,7 @@ UniValue listsinceblock(const JSONRPCRequest& request)
             "{\n"
             "  \"transactions\": [\n"
             "    \"account\":\"accountname\",       (string) DEPRECATED. The account name associated with the transaction. Will be \"\" for the default account.\n"
-            "    \"address\":\"address\",    (string) The celllink address of the transaction. Not present for move transactions (category = move).\n"
+            "    \"address\":\"address\",    (string) The magnachain address of the transaction. Not present for move transactions (category = move).\n"
             "    \"category\":\"send|receive\",     (string) The transaction category. 'send' has negative amounts, 'receive' has positive amounts.\n"
             "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the 'move' category for moves \n"
             "                                          outbound. It is positive for the 'receive' category, and for the 'move' category for inbound funds.\n"
@@ -2361,7 +2361,7 @@ UniValue gettransaction(const JSONRPCRequest& request)
             "  \"details\" : [\n"
             "    {\n"
             "      \"account\" : \"accountname\",      (string) DEPRECATED. The account name involved in the transaction, can be \"\" for the default account.\n"
-            "      \"address\" : \"address\",          (string) The celllink address involved in the transaction\n"
+            "      \"address\" : \"address\",          (string) The magnachain address involved in the transaction\n"
             "      \"category\" : \"send|receive\",    (string) The category, either 'send' or 'receive'\n"
             "      \"amount\" : x.xxx,                 (numeric) The amount in " + CURRENCY_UNIT + "\n"
             "      \"label\" : \"label\",              (string) A comment for the address/transaction, if any\n"
@@ -3057,9 +3057,9 @@ UniValue listunspent(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. minconf          (numeric, optional, default=1) The minimum confirmations to filter\n"
             "2. maxconf          (numeric, optional, default=9999999) The maximum confirmations to filter\n"
-            "3. \"addresses\"      (string) A json array of celllink addresses to filter\n"
+            "3. \"addresses\"      (string) A json array of magnachain addresses to filter\n"
             "    [\n"
-            "      \"address\"     (string) celllink address\n"
+            "      \"address\"     (string) magnachain address\n"
             "      ,...\n"
             "    ]\n"
             "4. include_unsafe (bool, optional, default=true) Include outputs that are not safe to spend\n"
@@ -3076,7 +3076,7 @@ UniValue listunspent(const JSONRPCRequest& request)
             "  {\n"
             "    \"txid\" : \"txid\",          (string) the transaction id \n"
             "    \"vout\" : n,               (numeric) the vout value\n"
-            "    \"address\" : \"address\",    (string) the celllink address\n"
+            "    \"address\" : \"address\",    (string) the magnachain address\n"
             "    \"account\" : \"account\",    (string) DEPRECATED. The associated account, or \"\" for the default account\n"
             "    \"scriptPubKey\" : \"key\",   (string) the script key\n"
             "    \"amount\" : x.xxx,         (numeric) the transaction output amount in " + CURRENCY_UNIT + "\n"
@@ -3309,7 +3309,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
                             "1. \"hexstring\"           (string, required) The hex string of the raw transaction\n"
                             "2. options                 (object, optional)\n"
                             "   {\n"
-                            "     \"changeAddress\"          (string, optional, default pool address) The celllink address to receive the change\n"
+                            "     \"changeAddress\"          (string, optional, default pool address) The magnachain address to receive the change\n"
                             "     \"changePosition\"         (numeric, optional, default random) The index of the change output\n"
                             "     \"includeWatching\"        (boolean, optional, default false) Also select inputs which are watch only\n"
                             "     \"lockUnspents\"           (boolean, optional, default false) Lock selected unspent outputs\n"
@@ -3383,7 +3383,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
             CellLinkAddress address(options["changeAddress"].get_str());
 
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "changeAddress must be a valid celllink address");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "changeAddress must be a valid magnachain address");
 
             coinControl.destChange = address.Get();
         }
@@ -3608,7 +3608,7 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
 	if (request.fHelp || request.params.size() < 1 || request.params.size() > 5)
 		throw std::runtime_error(
 			"getaddresscoins fromaddress\n"
-			"\nGet coins by celllink address\n"
+			"\nGet coins by magnachain address\n"
 			"\nArguments:\n"
 			"1. \"address\"                      (string, required) The address for input coins\n"
             "2. \"withscript\"                   (bool, optional) Option for return script or not, default false.\n"

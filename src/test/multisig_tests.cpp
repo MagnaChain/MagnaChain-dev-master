@@ -12,7 +12,7 @@
 #include "script/sign.h"
 #include "script/ismine.h"
 #include "coding/uint256.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 
 #include <boost/test/unit_test.hpp>

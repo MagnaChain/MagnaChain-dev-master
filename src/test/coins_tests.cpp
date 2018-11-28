@@ -8,7 +8,7 @@
 #include "coding/uint256.h"
 #include "transaction/undo.h"
 #include "utils/utilstrencodings.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "validation/validation.h"
 #include "consensus/validation.h"
 

@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "io/fs.h"
@@ -121,16 +121,16 @@ Intro::Intro(QWidget *parent) :
     signalled(false)
 {
     ui->setupUi(this);
-    ui->welcomeLabel->setText(ui->welcomeLabel->text().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
-    ui->storageLabel->setText(ui->storageLabel->text().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->welcomeLabel->setText(ui->welcomeLabel->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
+    ui->storageLabel->setText(ui->storageLabel->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
     ui->lblExplanation1->setText(ui->lblExplanation1->text()
-        .arg(QApplication::translate("celllink-core", PACKAGE_NAME))
+        .arg(QApplication::translate("magnachain-core", PACKAGE_NAME))
         .arg(BLOCK_CHAIN_SIZE)
         .arg(2009)
         .arg(tr("CellLink"))
     );
-    ui->lblExplanation2->setText(ui->lblExplanation2->text().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->lblExplanation2->setText(ui->lblExplanation2->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
     uint64_t pruneTarget = std::max<int64_t>(0, gArgs.GetArg("-prune", 0));
     requiredSpace = BLOCK_CHAIN_SIZE;
@@ -147,7 +147,7 @@ Intro::Intro(QWidget *parent) :
     }
     requiredSpace += CHAIN_STATE_SIZE;
     ui->sizeWarningLabel->setText(
-        tr("%1 will download and store a copy of the CellLink block chain.").arg(QApplication::translate("celllink-core", PACKAGE_NAME)) + " " +
+        tr("%1 will download and store a copy of the CellLink block chain.").arg(QApplication::translate("magnachain-core", PACKAGE_NAME)) + " " +
         storageRequiresMsg.arg(requiredSpace) + " " +
         tr("The wallet will also be stored in this directory.")
     );
@@ -204,7 +204,7 @@ bool Intro::pickDataDirectory()
         /* If current default data directory does not exist, let the user choose one */
         Intro intro;
         intro.setDataDirectory(dataDir);
-        intro.setWindowIcon(QIcon(":icons/celllink"));
+        intro.setWindowIcon(QIcon(":icons/magnachain"));
 
         while(true)
         {
@@ -218,7 +218,7 @@ bool Intro::pickDataDirectory()
                 TryCreateDirectories(GUIUtil::qstringToBoostPath(dataDir));
                 break;
             } catch (const fs::filesystem_error&) {
-                QMessageBox::critical(0, QApplication::translate("celllink-core", PACKAGE_NAME),
+                QMessageBox::critical(0, QApplication::translate("magnachain-core", PACKAGE_NAME),
                     tr("Error: Specified data directory \"%1\" cannot be created.").arg(dataDir));
                 /* fall through, back to choosing screen */
             }
@@ -228,8 +228,8 @@ bool Intro::pickDataDirectory()
         settings.setValue("fReset", false);
     }
     /* Only override -datadir if different from the default, to make it possible to
-     * override -datadir in the celllink.conf file in the default data directory
-     * (to be consistent with celllinkd behavior)
+     * override -datadir in the magnachain.conf file in the default data directory
+     * (to be consistent with magnachaind behavior)
      */
     if(dataDir != getDefaultDataDirectory())
         gArgs.SoftSetArg("-datadir", GUIUtil::qstringToBoostPath(dataDir).string()); // use OS locale for path setting

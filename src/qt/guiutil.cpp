@@ -5,8 +5,8 @@
 
 #include "guiutil.h"
 
-#include "celllinkaddressvalidator.h"
-#include "celllinkunits.h"
+#include "magnachainaddressvalidator.h"
+#include "magnachainunits.h"
 #include "qvalidatedlineedit.h"
 #include "walletmodel.h"
 
@@ -146,8 +146,8 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
 
 bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
 {
-    // return if URI is not valid or is no celllink: URI
-    if(!uri.isValid() || uri.scheme() != QString("celllink"))
+    // return if URI is not valid or is no magnachain: URI
+    if(!uri.isValid() || uri.scheme() != QString("magnachain"))
         return false;
 
     SendCoinsRecipient rv;
@@ -207,13 +207,13 @@ bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
 
 bool parseCellLinkURI(QString uri, SendCoinsRecipient *out)
 {
-    // Convert celllink:// to celllink:
+    // Convert magnachain:// to magnachain:
     //
-    //    Cannot handle this later, because celllink:// will cause Qt to see the part after // as host,
+    //    Cannot handle this later, because magnachain:// will cause Qt to see the part after // as host,
     //    which will lower-case it (and thus invalidate the address).
-    if(uri.startsWith("celllink://", Qt::CaseInsensitive))
+    if(uri.startsWith("magnachain://", Qt::CaseInsensitive))
     {
-        uri.replace(0, 10, "celllink:");
+        uri.replace(0, 10, "magnachain:");
     }
     QUrl uriInstance(uri);
     return parseCellLinkURI(uriInstance, out);
@@ -221,7 +221,7 @@ bool parseCellLinkURI(QString uri, SendCoinsRecipient *out)
 
 QString formatCellLinkURI(const SendCoinsRecipient &info)
 {
-    QString ret = QString("celllink:%1").arg(info.address);
+    QString ret = QString("magnachain:%1").arg(info.address);
     int paramCount = 0;
 
     if (info.amount)
@@ -428,7 +428,7 @@ bool openCellLinkConf()
     
     configFile.close();
     
-    /* Open celllink.conf with the associated application */
+    /* Open magnachain.conf with the associated application */
     return QDesktopServices::openUrl(QUrl::fromLocalFile(boostPathToQString(pathConfig)));
 }
 
@@ -714,8 +714,8 @@ fs::path static GetAutostartFilePath()
 {
     std::string chain = ChainNameFromCommandLine();
     if (chain == CellBaseChainParams::MAIN)
-        return GetAutostartDir() / "celllink.desktop";
-    return GetAutostartDir() / strprintf("celllink-%s.lnk", chain);
+        return GetAutostartDir() / "magnachain.desktop";
+    return GetAutostartDir() / strprintf("magnachain-%s.lnk", chain);
 }
 
 bool GetStartOnSystemStartup()
@@ -754,7 +754,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         if (!optionFile.good())
             return false;
         std::string chain = ChainNameFromCommandLine();
-        // Write a celllink.desktop file to the autostart directory:
+        // Write a magnachain.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
         if (chain == CellBaseChainParams::MAIN)
@@ -781,7 +781,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
 LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef findUrl);
 LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef findUrl)
 {
-    // loop through the list of startup items and try to find the celllink app
+    // loop through the list of startup items and try to find the magnachain app
     CFArrayRef listSnapshot = LSSharedFileListCopySnapshot(list, nullptr);
     for(int i = 0; i < CFArrayGetCount(listSnapshot); i++) {
         LSSharedFileListItemRef item = (LSSharedFileListItemRef)CFArrayGetValueAtIndex(listSnapshot, i);
@@ -813,21 +813,21 @@ LSSharedFileListItemRef findStartupItemInList(LSSharedFileListRef list, CFURLRef
 
 bool GetStartOnSystemStartup()
 {
-    CFURLRef celllinkAppUrl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+    CFURLRef magnachainAppUrl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
     LSSharedFileListRef loginItems = LSSharedFileListCreate(nullptr, kLSSharedFileListSessionLoginItems, nullptr);
-    LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, celllinkAppUrl);
+    LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, magnachainAppUrl);
     return !!foundItem; // return boolified object
 }
 
 bool SetStartOnSystemStartup(bool fAutoStart)
 {
-    CFURLRef celllinkAppUrl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
+    CFURLRef magnachainAppUrl = CFBundleCopyBundleURL(CFBundleGetMainBundle());
     LSSharedFileListRef loginItems = LSSharedFileListCreate(nullptr, kLSSharedFileListSessionLoginItems, nullptr);
-    LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, celllinkAppUrl);
+    LSSharedFileListItemRef foundItem = findStartupItemInList(loginItems, magnachainAppUrl);
 
     if(fAutoStart && !foundItem) {
-        // add celllink app to startup item list
-        LSSharedFileListInsertItemURL(loginItems, kLSSharedFileListItemBeforeFirst, nullptr, nullptr, celllinkAppUrl, nullptr, nullptr);
+        // add magnachain app to startup item list
+        LSSharedFileListInsertItemURL(loginItems, kLSSharedFileListItemBeforeFirst, nullptr, nullptr, magnachainAppUrl, nullptr, nullptr);
     }
     else if(!fAutoStart && foundItem) {
         // remove item

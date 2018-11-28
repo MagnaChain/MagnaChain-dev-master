@@ -11,7 +11,7 @@
 #include <vector>
 
 /**
- * CellBaseChainParams defines the base parameters (shared between celllink-cli and celllinkd)
+ * CellBaseChainParams defines the base parameters (shared between magnachain-cli and magnachaind)
  * of a given instance of the CellLink system.
  */
 class CellBaseChainParams

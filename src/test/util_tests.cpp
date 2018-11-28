@@ -10,7 +10,7 @@
 #include "thread/sync.h"
 #include "utils/utilstrencodings.h"
 #include "utils/utilmoneystr.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <stdint.h>
 #include <vector>

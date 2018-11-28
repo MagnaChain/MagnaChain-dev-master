@@ -13,7 +13,7 @@
 
 #include "support/events.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <vector>
 

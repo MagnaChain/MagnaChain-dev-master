@@ -584,7 +584,7 @@
     <ClCompile Include="..\src\init.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\script\celllinkconsensus.cpp">
+    <ClCompile Include="..\src\script\magnachainconsensus.cpp">
       <Filter>src\script</Filter>
     </ClCompile>
     <ClCompile Include="..\src\chain\branchdb.cpp">
@@ -1112,7 +1112,7 @@
     <ClInclude Include="..\src\misc\reverselock.h">
       <Filter>src\misc</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\config\celllink-config.h">
+    <ClInclude Include="..\src\config\magnachain-config.h">
       <Filter>src\config</Filter>
     </ClInclude>
     <ClInclude Include="..\src\crypto\ctaes\ctaes.h">
@@ -1121,7 +1121,7 @@
     <ClInclude Include="..\src\init.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="..\src\script\celllinkconsensus.h">
+    <ClInclude Include="..\src\script\magnachainconsensus.h">
       <Filter>src\script</Filter>
     </ClInclude>
     <ClInclude Include="..\src\chain\branchdb.h">

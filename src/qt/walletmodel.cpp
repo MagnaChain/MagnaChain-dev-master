@@ -236,7 +236,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             total += subtotal;
         }
         else
-        {   // User-entered celllink address / amount:
+        {   // User-entered magnachain address / amount:
             if(!validateAddress(rcp.address))
             {
                 return InvalidAddress;
@@ -327,7 +327,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
                 rcp.paymentRequest.SerializeToString(&value);
                 newTx->vOrderForm.push_back(make_pair(key, value));
             }
-            else if (!rcp.message.isEmpty()) // Message from normal celllink:URI (celllink:123...?message=example)
+            else if (!rcp.message.isEmpty()) // Message from normal magnachain:URI (magnachain:123...?message=example)
                 newTx->vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
         }
 

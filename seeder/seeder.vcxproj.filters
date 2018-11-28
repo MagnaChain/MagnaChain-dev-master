@@ -24,7 +24,7 @@
     <ClCompile Include="util.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="celllink.cpp">
+    <ClCompile Include="magnachain.cpp">
       <Filter>src</Filter>
     </ClCompile>
   </ItemGroup>
@@ -56,7 +56,7 @@
     <ClInclude Include="util.h">
       <Filter>src</Filter>
     </ClInclude>
-    <ClInclude Include="celllink.h">
+    <ClInclude Include="magnachain.h">
       <Filter>src</Filter>
     </ClInclude>
   </ItemGroup>

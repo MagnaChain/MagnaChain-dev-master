@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 ###   This script attempts to download the signature file SHA256SUMS.asc from
-###   bitcoincore.org and celllink.org and compares them.
+###   bitcoincore.org and magnachain.org and compares them.
 ###   It first checks if the signature passes, and then downloads the files specified in
 ###   the file, and checks if the hashes of these files match those that are specified
 ###   in the signature file.
@@ -24,9 +24,9 @@ TMPFILE="hashes.tmp"
 SIGNATUREFILENAME="SHA256SUMS.asc"
 RCSUBDIR="test"
 HOST1="https://bitcoincore.org"
-HOST2="https://celllink.org"
+HOST2="https://magnachain.org"
 BASEDIR="/bin/"
-VERSIONPREFIX="celllink-core-"
+VERSIONPREFIX="magnachain-core-"
 RCVERSIONSTRING="rc"
 
 if [ ! -d "$WORKINGDIR" ]; then
@@ -37,7 +37,7 @@ cd "$WORKINGDIR"
 
 #test if a version number has been passed as an argument
 if [ -n "$1" ]; then
-   #let's also check if the version number includes the prefix 'celllink-',
+   #let's also check if the version number includes the prefix 'magnachain-',
    #  and add this prefix if it doesn't
    if [[ $1 == "$VERSIONPREFIX"* ]]; then
       VERSION="$1"
@@ -97,7 +97,7 @@ fi
 
 WGETOUT=$(wget -N -O "$SIGNATUREFILENAME.2" "$HOST2$BASEDIR$SIGNATUREFILENAME" 2>&1)
 if [ $? -ne 0 ]; then
-   echo "celllink.org failed to provide signature file, but bitcoincore.org did?"
+   echo "magnachain.org failed to provide signature file, but bitcoincore.org did?"
    echo "wget output:"
    echo "$WGETOUT"|sed 's/^/\t/g'
    clean_up $SIGNATUREFILENAME
@@ -106,7 +106,7 @@ fi
 
 SIGFILEDIFFS="$(diff $SIGNATUREFILENAME $SIGNATUREFILENAME.2)"
 if [ "$SIGFILEDIFFS" != "" ]; then
-   echo "celllink.org and bitcoincore.org signature files were not equal?"
+   echo "magnachain.org and bitcoincore.org signature files were not equal?"
    clean_up $SIGNATUREFILENAME $SIGNATUREFILENAME.2
    exit 4
 fi

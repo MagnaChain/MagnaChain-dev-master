@@ -4,6 +4,6 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\celllink-cli.cpp" />
+    <ClCompile Include="..\src\magnachain-cli.cpp" />
   </ItemGroup>
 </Project>

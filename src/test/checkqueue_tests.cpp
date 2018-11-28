@@ -7,7 +7,7 @@
 #include "utils/utiltime.h"
 #include "validation/validation.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "validation/checkqueue.h"
 #include <boost/test/unit_test.hpp>
 #include <boost/thread.hpp>

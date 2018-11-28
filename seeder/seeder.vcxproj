@@ -115,7 +115,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="celllink.cpp" />
+    <ClCompile Include="magnachain.cpp" />
     <ClCompile Include="db.cpp" />
     <ClCompile Include="dns.c" />
     <ClCompile Include="main.cpp" />
@@ -124,7 +124,7 @@
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="celllink.h" />
+    <ClInclude Include="magnachain.h" />
     <ClInclude Include="compat.h" />
     <ClInclude Include="db.h" />
     <ClInclude Include="dns.h" />

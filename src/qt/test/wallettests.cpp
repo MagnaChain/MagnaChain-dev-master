@@ -1,6 +1,6 @@
 #include "wallettests.h"
 
-#include "qt/celllinkamountfield.h"
+#include "qt/magnachainamountfield.h"
 #include "qt/callback.h"
 #include "qt/optionsmodel.h"
 #include "qt/platformstyle.h"
@@ -10,7 +10,7 @@
 #include "qt/transactiontablemodel.h"
 #include "qt/transactionview.h"
 #include "qt/walletmodel.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "validation/validation.h"
 #include "wallet/wallet.h"
 
@@ -137,9 +137,9 @@ void BumpFee(TransactionView& view, const uint256& txid, bool expectDisabled, st
 //
 // This also requires overriding the default minimal Qt platform:
 //
-//     src/qt/test/test_celllink-qt -platform xcb      # Linux
-//     src/qt/test/test_celllink-qt -platform windows  # Windows
-//     src/qt/test/test_celllink-qt -platform cocoa    # macOS
+//     src/qt/test/test_magnachain-qt -platform xcb      # Linux
+//     src/qt/test/test_magnachain-qt -platform windows  # Windows
+//     src/qt/test/test_magnachain-qt -platform cocoa    # macOS
 void TestSendCoins()
 {
     // Set up wallet and chain with 105 blocks (5 mature blocks for spending).

@@ -8,7 +8,7 @@
 #define CELLLINK_COMPAT_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #ifdef _WIN32

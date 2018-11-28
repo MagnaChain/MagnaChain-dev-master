@@ -5,7 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "net/net.h"
@@ -1480,7 +1480,7 @@ void ThreadMapPort()
             }
         }
 
-        std::string strDesc = "Celllink " + FormatFullVersion();
+        std::string strDesc = "MagnaChain " + FormatFullVersion();
 
         try {
             while (true) {

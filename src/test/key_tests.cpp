@@ -10,7 +10,7 @@
 #include "coding/uint256.h"
 #include "utils/util.h"
 #include "utils/utilstrencodings.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <string>
 #include <vector>

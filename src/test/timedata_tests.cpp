@@ -4,7 +4,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 //
 #include "misc/timedata.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/test/unit_test.hpp>
 

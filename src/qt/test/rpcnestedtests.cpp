@@ -12,7 +12,7 @@
 #include "rpc/register.h"
 #include "rpc/server.h"
 #include "rpcconsole.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "univalue.h"
 #include "utils/util.h"
 

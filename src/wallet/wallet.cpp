@@ -2915,7 +2915,7 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 
             // Create change script that will be used if we need change
             // TODO: pass in scriptChange instead of reservekey so
-            // change transaction isn't always pay-to-celllink-address
+            // change transaction isn't always pay-to-magnachain-address
             CellScript scriptChange;
 
 			// 获取一个找零地址

@@ -5,7 +5,7 @@
 #include <boost/test/unit_test.hpp>
 #include "misc/cuckoocache.h"
 #include "script/sigcache.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "misc/random.h"
 #include <thread>
 

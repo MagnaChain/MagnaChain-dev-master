@@ -6,7 +6,7 @@
 #include "overviewpage.h"
 #include "ui_overviewpage.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "clientmodel.h"
 #include "guiconstants.h"
 #include "guiutil.h"

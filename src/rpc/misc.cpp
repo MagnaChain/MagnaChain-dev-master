@@ -349,9 +349,9 @@ UniValue createmultisig(const JSONRPCRequest& request)
 
             "\nArguments:\n"
             "1. nrequired      (numeric, required) The number of required signatures out of the n keys or addresses.\n"
-            "2. \"keys\"       (string, required) A json array of keys which are celllink addresses or hex-encoded public keys\n"
+            "2. \"keys\"       (string, required) A json array of keys which are magnachain addresses or hex-encoded public keys\n"
             "     [\n"
-            "       \"key\"    (string) celllink address or hex-encoded public key\n"
+            "       \"key\"    (string) magnachain address or hex-encoded public key\n"
             "       ,...\n"
             "     ]\n"
 
@@ -389,7 +389,7 @@ UniValue verifymessage(const JSONRPCRequest& request)
             "verifymessage \"address\" \"signature\" \"message\"\n"
             "\nVerify a signed message\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address to use for the signature.\n"
+            "1. \"address\"         (string, required) The magnachain address to use for the signature.\n"
             "2. \"signature\"       (string, required) The signature provided by the signer in base 64 encoding (see signmessage).\n"
             "3. \"message\"         (string, required) The message that was signed.\n"
             "\nResult:\n"
@@ -658,7 +658,7 @@ UniValue echo(const JSONRPCRequest& request)
             "echo|echojson \"message\" ...\n"
             "\nSimply echo back the input arguments. This command is for testing.\n"
             "\nThe difference between echo and echojson is that echojson has argument conversion enabled in the client-side table in"
-            "celllink-cli and the GUI. There is no server-side difference."
+            "magnachain-cli and the GUI. There is no server-side difference."
         );
 
     return request.params;

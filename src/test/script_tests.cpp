@@ -13,12 +13,12 @@
 #include "script/sign.h"
 #include "utils/util.h"
 #include "utils/utilstrencodings.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "rpc/server.h"
 #include "univalue.h"
 
 #if defined(HAVE_CONSENSUS_LIB)
-#include "script/celllinkconsensus.h"
+#include "script/magnachainconsensus.h"
 #endif
 
 #include <fstream>
@@ -170,13 +170,13 @@ void DoTest(const CellScript& scriptPubKey, const CellScript& scriptSig, const C
 #if defined(HAVE_CONSENSUS_LIB)
     CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << tx2;
-    int libconsensus_flags = flags & celllinkconsensus_SCRIPT_FLAGS_VERIFY_ALL;
+    int libconsensus_flags = flags & magnachainconsensus_SCRIPT_FLAGS_VERIFY_ALL;
     if (libconsensus_flags == flags) {
-        if (flags & celllinkconsensus_SCRIPT_FLAGS_VERIFY_WITNESS) {
-            BOOST_CHECK_MESSAGE(celllinkconsensus_verify_script_with_amount(scriptPubKey.data(), scriptPubKey.size(), txCredit.vout[0].nValue, (const unsigned char*)&stream[0], stream.size(), 0, libconsensus_flags, nullptr) == expect, message);
+        if (flags & magnachainconsensus_SCRIPT_FLAGS_VERIFY_WITNESS) {
+            BOOST_CHECK_MESSAGE(magnachainconsensus_verify_script_with_amount(scriptPubKey.data(), scriptPubKey.size(), txCredit.vout[0].nValue, (const unsigned char*)&stream[0], stream.size(), 0, libconsensus_flags, nullptr) == expect, message);
         } else {
-            BOOST_CHECK_MESSAGE(celllinkconsensus_verify_script_with_amount(scriptPubKey.data(), scriptPubKey.size(), 0, (const unsigned char*)&stream[0], stream.size(), 0, libconsensus_flags, nullptr) == expect, message);
-            BOOST_CHECK_MESSAGE(celllinkconsensus_verify_script(scriptPubKey.data(), scriptPubKey.size(), (const unsigned char*)&stream[0], stream.size(), 0, libconsensus_flags, nullptr) == expect,message);
+            BOOST_CHECK_MESSAGE(magnachainconsensus_verify_script_with_amount(scriptPubKey.data(), scriptPubKey.size(), 0, (const unsigned char*)&stream[0], stream.size(), 0, libconsensus_flags, nullptr) == expect, message);
+            BOOST_CHECK_MESSAGE(magnachainconsensus_verify_script(scriptPubKey.data(), scriptPubKey.size(), (const unsigned char*)&stream[0], stream.size(), 0, libconsensus_flags, nullptr) == expect,message);
         }
     }
 #endif

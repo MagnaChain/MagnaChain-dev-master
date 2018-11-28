@@ -9,7 +9,7 @@
 #include <getopt.h>
 #include <atomic>
 
-#include "celllink.h"
+#include "magnachain.h"
 #include "db.h"
 
 using namespace std;
@@ -36,7 +36,7 @@ public:
   CellDnsSeedOpts() : nThreads(96), nDnsThreads(4), nPort(53), mbox(NULL), ns(NULL), host(NULL), tor(NULL), fUseTestNet(false), fWipeBan(false), fWipeIgnore(false), ipv4_proxy(NULL), ipv6_proxy(NULL) {}
 
   void ParseCommandLine(int argc, char **argv) {
-    static const char *help = "Celllink-seeder\n"
+    static const char *help = "MagnaChain-seeder\n"
                               "Usage: %s -h <host> -n <ns> [-m <mbox>] [-t <threads>] [-p <port>]\n"
                               "\n"
                               "Options:\n"

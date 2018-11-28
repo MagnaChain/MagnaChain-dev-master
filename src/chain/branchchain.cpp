@@ -5,7 +5,7 @@
 #include "rpc/branchchainrpc.h"
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "chainparamsbase.h"
@@ -222,7 +222,7 @@ UniValue CallRPC(const CellRPCConfig& rpccfg, const std::string& strMethod, cons
 //#ifdef  WIN32
 //	strCommand = "cell-cli.exe ";
 //#else
-//	strCommand = "celllink-cli ";
+//	strCommand = "magnachain-cli ";
 //#endif 
 //	strCommand = tfm::format("%s -rpcuser=%s -rpcpassword=%s -rpcconnect=%s -rpcport=%d %s", 
 //		strCommand, rpccfg.strUser, rpccfg.strPassword, rpccfg.strIp, rpccfg.iPort, strMethod);

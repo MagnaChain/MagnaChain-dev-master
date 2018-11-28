@@ -6,7 +6,7 @@
 #include "misc/random.h"
 #include "thread/scheduler.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>

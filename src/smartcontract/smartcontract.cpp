@@ -276,7 +276,7 @@ bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLi
 }
 
 // generate contract address
-// format: sender address keyid + block address + new celllink address + contract script file hash
+// format: sender address keyid + block address + new magnachain address + contract script file hash
 CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& code)
 {
     CellHashWriter ss(SER_GETHASH, 0);
@@ -294,7 +294,7 @@ CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddres
         blockAddress = chainActive[chainActive.Height() - COINBASE_MATURITY]->GetBlockHash().GetHex();
     ss << blockAddress;
 
-    // new celllink address
+    // new magnachain address
     if (pWallet != nullptr) {
         CellPubKey newKey;
         if (!pWallet->GetKeyFromPool(newKey))

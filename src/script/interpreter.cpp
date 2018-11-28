@@ -1201,7 +1201,7 @@ public:
     template<typename S>
     void Serialize(S &s) const {
         // Serialize nVersion
-        //::Serialize(s, txTo.nVersion); change for diff from celllink
+        //::Serialize(s, txTo.nVersion); change for diff from magnachain
         // Serialize vin
         unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
         unsigned int nRealInputs = 0;

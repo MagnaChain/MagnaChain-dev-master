@@ -6,7 +6,7 @@
 #include "transactionview.h"
 
 #include "addresstablemodel.h"
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "csvmodelwriter.h"
 #include "editaddressdialog.h"
 #include "guiutil.h"

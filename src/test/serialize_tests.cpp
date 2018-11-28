@@ -6,7 +6,7 @@
 #include "io/serialize.h"
 #include "io/streams.h"
 #include "coding/hash.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <stdint.h>
 

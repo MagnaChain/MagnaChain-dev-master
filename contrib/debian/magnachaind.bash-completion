@@ -1,0 +1,2 @@
+contrib/bitcoind.bash-completion	bitcoind
+contrib/magnachain-cli.bash-completion	magnachain-cli

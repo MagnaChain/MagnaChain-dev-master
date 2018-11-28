@@ -12,7 +12,7 @@
 #define CELLLINK_UTIL_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "net/compat.h"
@@ -310,7 +310,7 @@ void RenameThread(const char* name);
  */
 template <typename Callable> void TraceThread(const char* name,  Callable func)
 {
-    std::string s = strprintf("celllink-%s", name);
+    std::string s = strprintf("magnachain-%s", name);
     RenameThread(s.c_str());
     try
     {

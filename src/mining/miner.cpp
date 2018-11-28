@@ -847,7 +847,7 @@ void static GenerateSleep()
 void static CellLinkMiner(const CellChainParams& chainparams)
 {
     LogPrintf("CellLinkMiner started\n");
-	RenameThread("celllink-miner");
+	RenameThread("magnachain-miner");
 
 	unsigned int nExtraNonce = 0;
 

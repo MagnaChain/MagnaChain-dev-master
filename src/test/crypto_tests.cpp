@@ -13,7 +13,7 @@
 #include "crypto/hmac_sha512.h"
 #include "misc/random.h"
 #include "utils/utilstrencodings.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <vector>
 

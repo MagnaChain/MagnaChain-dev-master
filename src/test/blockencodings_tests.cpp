@@ -8,7 +8,7 @@
 #include "chain/chainparams.h"
 #include "misc/random.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/test/unit_test.hpp>
 
