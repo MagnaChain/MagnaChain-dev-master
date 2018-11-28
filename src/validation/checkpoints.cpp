@@ -16,7 +16,7 @@
 
 namespace Checkpoints {
 
-    CellBlockIndex* GetLastCheckpoint(const CellCheckpointData& data)
+    MCBlockIndex* GetLastCheckpoint(const MCCheckpointData& data)
     {
         const MapCheckpoints& checkpoints = data.mapCheckpoints;
 

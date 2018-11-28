@@ -12,17 +12,17 @@
 
 #include <boost/test/unit_test.hpp>
 
-std::vector<std::pair<uint256, CellTransactionRef>> extra_txn;
+std::vector<std::pair<uint256, MCTransactionRef>> extra_txn;
 
 struct RegtestingSetup : public TestingSetup {
-    RegtestingSetup() : TestingSetup(CellBaseChainParams::REGTEST) {}
+    RegtestingSetup() : TestingSetup(MCBaseChainParams::REGTEST) {}
 };
 
 BOOST_FIXTURE_TEST_SUITE(blockencodings_tests, RegtestingSetup)
 
-static CellBlock BuildBlockTestCase() {
-    CellBlock block;
-    CellMutableTransaction tx;
+static MCBlock BuildBlockTestCase() {
+    MCBlock block;
+    MCMutableTransaction tx;
     tx.vin.resize(1);
     tx.vin[0].scriptSig.resize(10);
     tx.vout.resize(1);
@@ -58,21 +58,21 @@ static CellBlock BuildBlockTestCase() {
 
 BOOST_AUTO_TEST_CASE(SimpleRoundTripTest)
 {
-    CellTxMemPool pool;
+    MCTxMemPool pool;
     TestMemPoolEntryHelper entry;
-    CellBlock block(BuildBlockTestCase());
+    MCBlock block(BuildBlockTestCase());
 
     pool.addUnchecked(block.vtx[2]->GetHash(), entry.FromTx(*block.vtx[2]));
     BOOST_CHECK_EQUAL(pool.mapTx.find(block.vtx[2]->GetHash())->GetSharedTx().use_count(), SHARED_TX_OFFSET + 0);
 
     // Do a simple ShortTxIDs RT
     {
-        CellBlockHeaderAndShortTxIDs shortIDs(block, true);
+        MCBlockHeaderAndShortTxIDs shortIDs(block, true);
 
-        CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << shortIDs;
 
-        CellBlockHeaderAndShortTxIDs shortIDs2;
+        MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
         PartiallyDownloadedBlock partialBlock(&pool);
@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(SimpleRoundTripTest)
         pool.removeRecursive(*block.vtx[2]);
         BOOST_CHECK_EQUAL(pool.size(), poolSize - 1);
 
-        CellBlock block2;
+        MCBlock block2;
         {
             PartiallyDownloadedBlock tmp = partialBlock;
             BOOST_CHECK(partialBlock.FillBlock(block2, {}) == READ_STATUS_INVALID); // No transactions
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(SimpleRoundTripTest)
         bool mutated;
         BOOST_CHECK(block.hashMerkleRoot != BlockMerkleRoot(block2, &mutated));
 
-        CellBlock block3;
+        MCBlock block3;
         BOOST_CHECK(partialBlock.FillBlock(block3, {block.vtx[1]}) == READ_STATUS_OK);
         BOOST_CHECK_EQUAL(block.GetHash().ToString(), block3.GetHash().ToString());
         BOOST_CHECK_EQUAL(block.hashMerkleRoot.ToString(), BlockMerkleRoot(block3, &mutated).ToString());
@@ -112,25 +112,25 @@ BOOST_AUTO_TEST_CASE(SimpleRoundTripTest)
 }
 
 class TestHeaderAndShortIDs {
-    // Utility to encode custom CellBlockHeaderAndShortTxIDs
+    // Utility to encode custom MCBlockHeaderAndShortTxIDs
 public:
-    CellBlockHeader header;
+    MCBlockHeader header;
     uint64_t nonce;
     std::vector<uint64_t> shorttxids;
     std::vector<PrefilledTransaction> prefilledtxn;
 
-    TestHeaderAndShortIDs(const CellBlockHeaderAndShortTxIDs& orig) {
-        CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+    TestHeaderAndShortIDs(const MCBlockHeaderAndShortTxIDs& orig) {
+        MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << orig;
         stream >> *this;
     }
-    TestHeaderAndShortIDs(const CellBlock& block) :
-        TestHeaderAndShortIDs(CellBlockHeaderAndShortTxIDs(block, true)) {}
+    TestHeaderAndShortIDs(const MCBlock& block) :
+        TestHeaderAndShortIDs(MCBlockHeaderAndShortTxIDs(block, true)) {}
 
     uint64_t GetShortID(const uint256& txhash) const {
-        CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << *this;
-        CellBlockHeaderAndShortTxIDs base;
+        MCBlockHeaderAndShortTxIDs base;
         stream >> base;
         return base.GetShortID(txhash);
     }
@@ -157,9 +157,9 @@ public:
 
 BOOST_AUTO_TEST_CASE(NonCoinbasePreforwardRTTest)
 {
-    CellTxMemPool pool;
+    MCTxMemPool pool;
     TestMemPoolEntryHelper entry;
-    CellBlock block(BuildBlockTestCase());
+    MCBlock block(BuildBlockTestCase());
 
     pool.addUnchecked(block.vtx[2]->GetHash(), entry.FromTx(*block.vtx[2]));
     BOOST_CHECK_EQUAL(pool.mapTx.find(block.vtx[2]->GetHash())->GetSharedTx().use_count(), SHARED_TX_OFFSET + 0);
@@ -175,10 +175,10 @@ BOOST_AUTO_TEST_CASE(NonCoinbasePreforwardRTTest)
         shortIDs.shorttxids[0] = shortIDs.GetShortID(block.vtx[0]->GetHash());
         shortIDs.shorttxids[1] = shortIDs.GetShortID(block.vtx[2]->GetHash());
 
-        CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << shortIDs;
 
-        CellBlockHeaderAndShortTxIDs shortIDs2;
+        MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
         PartiallyDownloadedBlock partialBlock(&pool);
@@ -189,7 +189,7 @@ BOOST_AUTO_TEST_CASE(NonCoinbasePreforwardRTTest)
 
         BOOST_CHECK_EQUAL(pool.mapTx.find(block.vtx[2]->GetHash())->GetSharedTx().use_count(), SHARED_TX_OFFSET + 1);
 
-        CellBlock block2;
+        MCBlock block2;
         {
             PartiallyDownloadedBlock tmp = partialBlock;
             BOOST_CHECK(partialBlock.FillBlock(block2, {}) == READ_STATUS_INVALID); // No transactions
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(NonCoinbasePreforwardRTTest)
         bool mutated;
         BOOST_CHECK(block.hashMerkleRoot != BlockMerkleRoot(block2, &mutated));
 
-        CellBlock block3;
+        MCBlock block3;
         PartiallyDownloadedBlock partialBlockCopy = partialBlock;
         BOOST_CHECK(partialBlock.FillBlock(block3, {block.vtx[0]}) == READ_STATUS_OK);
         BOOST_CHECK_EQUAL(block.GetHash().ToString(), block3.GetHash().ToString());
@@ -223,9 +223,9 @@ BOOST_AUTO_TEST_CASE(NonCoinbasePreforwardRTTest)
 
 BOOST_AUTO_TEST_CASE(SufficientPreforwardRTTest)
 {
-    CellTxMemPool pool;
+    MCTxMemPool pool;
     TestMemPoolEntryHelper entry;
-    CellBlock block(BuildBlockTestCase());
+    MCBlock block(BuildBlockTestCase());
 
     pool.addUnchecked(block.vtx[1]->GetHash(), entry.FromTx(*block.vtx[1]));
     BOOST_CHECK_EQUAL(pool.mapTx.find(block.vtx[1]->GetHash())->GetSharedTx().use_count(), SHARED_TX_OFFSET + 0);
@@ -241,10 +241,10 @@ BOOST_AUTO_TEST_CASE(SufficientPreforwardRTTest)
         shortIDs.shorttxids.resize(1);
         shortIDs.shorttxids[0] = shortIDs.GetShortID(block.vtx[1]->GetHash());
 
-        CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << shortIDs;
 
-        CellBlockHeaderAndShortTxIDs shortIDs2;
+        MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
         PartiallyDownloadedBlock partialBlock(&pool);
@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE(SufficientPreforwardRTTest)
 
         BOOST_CHECK_EQUAL(pool.mapTx.find(block.vtx[1]->GetHash())->GetSharedTx().use_count(), SHARED_TX_OFFSET + 1);
 
-        CellBlock block2;
+        MCBlock block2;
         PartiallyDownloadedBlock partialBlockCopy = partialBlock;
         BOOST_CHECK(partialBlock.FillBlock(block2, {}) == READ_STATUS_OK);
         BOOST_CHECK_EQUAL(block.GetHash().ToString(), block2.GetHash().ToString());
@@ -273,14 +273,14 @@ BOOST_AUTO_TEST_CASE(SufficientPreforwardRTTest)
 
 BOOST_AUTO_TEST_CASE(EmptyBlockRoundTripTest)
 {
-    CellTxMemPool pool;
-    CellMutableTransaction coinbase;
+    MCTxMemPool pool;
+    MCMutableTransaction coinbase;
     coinbase.vin.resize(1);
     coinbase.vin[0].scriptSig.resize(10);
     coinbase.vout.resize(1);
     coinbase.vout[0].nValue = 42;
 
-    CellBlock block;
+    MCBlock block;
     block.vtx.resize(1);
     block.vtx[0] = MakeTransactionRef(std::move(coinbase));
     block.nVersion = 42;
@@ -294,20 +294,20 @@ BOOST_AUTO_TEST_CASE(EmptyBlockRoundTripTest)
 
     // Test simple header round-trip with only coinbase
     {
-        CellBlockHeaderAndShortTxIDs shortIDs(block, false);
+        MCBlockHeaderAndShortTxIDs shortIDs(block, false);
 
-        CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
         stream << shortIDs;
 
-        CellBlockHeaderAndShortTxIDs shortIDs2;
+        MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
         PartiallyDownloadedBlock partialBlock(&pool);
         BOOST_CHECK(partialBlock.InitData(shortIDs2, extra_txn) == READ_STATUS_OK);
         BOOST_CHECK(partialBlock.IsTxAvailable(0));
 
-        CellBlock block2;
-        std::vector<CellTransactionRef> vtx_missing;
+        MCBlock block2;
+        std::vector<MCTransactionRef> vtx_missing;
         BOOST_CHECK(partialBlock.FillBlock(block2, vtx_missing) == READ_STATUS_OK);
         BOOST_CHECK_EQUAL(block.GetHash().ToString(), block2.GetHash().ToString());
         BOOST_CHECK_EQUAL(block.hashMerkleRoot.ToString(), BlockMerkleRoot(block2, &mutated).ToString());
@@ -324,7 +324,7 @@ BOOST_AUTO_TEST_CASE(TransactionsRequestSerializationTest) {
     req1.indexes[2] = 3;
     req1.indexes[3] = 4;
 
-    CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << req1;
 
     BlockTransactionsRequest req2;

@@ -13,7 +13,7 @@
 
 static const int64_t DEFAULT_MAX_TIME_ADJUSTMENT = 70 * 60;
 
-class CellNetAddr;
+class MCNetAddr;
 
 /** 
  * Median filter over a stream of values.
@@ -74,6 +74,6 @@ public:
 /** Functions to keep track of adjusted P2P time */
 int64_t GetTimeOffset();
 int64_t GetAdjustedTime();
-void AddTimeData(const CellNetAddr& ip, int64_t nTime);
+void AddTimeData(const MCNetAddr& ip, int64_t nTime);
 
 #endif // CELLLINK_TIMEDATA_H

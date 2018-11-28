@@ -9,7 +9,7 @@
 #include "utils/util.h"
 #include "misc/warnings.h"
 
-CellCriticalSection cs_warnings;
+MCCriticalSection cs_warnings;
 std::string strMiscWarning;
 bool fLargeWorkForkFound = false;
 bool fLargeWorkInvalidChainFound = false;

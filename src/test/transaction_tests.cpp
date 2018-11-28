@@ -115,8 +115,8 @@ BOOST_AUTO_TEST_CASE(tx_valid)
                 continue;
             }
 
-            std::map<CellOutPoint, CellScript> mapprevOutScriptPubKeys;
-            std::map<CellOutPoint, int64_t> mapprevOutValues;
+            std::map<MCOutPoint, MCScript> mapprevOutScriptPubKeys;
+            std::map<MCOutPoint, int64_t> mapprevOutValues;
             UniValue inputs = test[0].get_array();
             bool fValid = true;
 	    for (unsigned int inpIdx = 0; inpIdx < inputs.size(); inpIdx++) {
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(tx_valid)
                     fValid = false;
                     break;
                 }
-                CellOutPoint outpoint(uint256S(vinput[0].get_str()), vinput[1].get_int());
+                MCOutPoint outpoint(uint256S(vinput[0].get_str()), vinput[1].get_int());
                 mapprevOutScriptPubKeys[outpoint] = ParseScript(vinput[2].get_str());
                 if (vinput.size() >= 4)
                 {
@@ -146,10 +146,10 @@ BOOST_AUTO_TEST_CASE(tx_valid)
             }
 
             std::string transaction = test[1].get_str();
-            CellDataStream stream(ParseHex(transaction), SER_NETWORK, PROTOCOL_VERSION);
-            CellTransaction tx(deserialize, stream);
+            MCDataStream stream(ParseHex(transaction), SER_NETWORK, PROTOCOL_VERSION);
+            MCTransaction tx(deserialize, stream);
 
-            CellValidationState state;
+            MCValidationState state;
             BOOST_CHECK_MESSAGE(CheckTransaction(tx, state), strTest);
             BOOST_CHECK(state.IsValid());
 
@@ -162,7 +162,7 @@ BOOST_AUTO_TEST_CASE(tx_valid)
                     break;
                 }
 
-                CellAmount amount = 0;
+                MCAmount amount = 0;
                 if (mapprevOutValues.count(tx.vin[i].prevout)) {
                     amount = mapprevOutValues[tx.vin[i].prevout];
                 }
@@ -202,8 +202,8 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
                 continue;
             }
 
-            std::map<CellOutPoint, CellScript> mapprevOutScriptPubKeys;
-            std::map<CellOutPoint, int64_t> mapprevOutValues;
+            std::map<MCOutPoint, MCScript> mapprevOutScriptPubKeys;
+            std::map<MCOutPoint, int64_t> mapprevOutValues;
             UniValue inputs = test[0].get_array();
             bool fValid = true;
 	    for (unsigned int inpIdx = 0; inpIdx < inputs.size(); inpIdx++) {
@@ -219,7 +219,7 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
                     fValid = false;
                     break;
                 }
-                CellOutPoint outpoint(uint256S(vinput[0].get_str()), vinput[1].get_int());
+                MCOutPoint outpoint(uint256S(vinput[0].get_str()), vinput[1].get_int());
                 mapprevOutScriptPubKeys[outpoint] = ParseScript(vinput[2].get_str());
                 if (vinput.size() >= 4)
                 {
@@ -233,10 +233,10 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
             }
 
             std::string transaction = test[1].get_str();
-            CellDataStream stream(ParseHex(transaction), SER_NETWORK, PROTOCOL_VERSION );
-            CellTransaction tx(deserialize, stream);
+            MCDataStream stream(ParseHex(transaction), SER_NETWORK, PROTOCOL_VERSION );
+            MCTransaction tx(deserialize, stream);
 
-            CellValidationState state;
+            MCValidationState state;
             fValid = CheckTransaction(tx, state) && state.IsValid();
 
             PrecomputedTransactionData txdata(tx);
@@ -249,7 +249,7 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
                 }
 
                 unsigned int verify_flags = ParseScriptFlags(test[2].get_str());
-                CellAmount amount = 0;
+                MCAmount amount = 0;
                 if (mapprevOutValues.count(tx.vin[i].prevout)) {
                     amount = mapprevOutValues[tx.vin[i].prevout];
                 }
@@ -268,10 +268,10 @@ BOOST_AUTO_TEST_CASE(basic_transaction_tests)
     // Random real transaction (e2769b09e784f32f62ef849763d4f45b98e07ba658647343b915ff832b110436)
     unsigned char ch[] = {0x01, 0x00, 0x00, 0x00, 0x01, 0x6b, 0xff, 0x7f, 0xcd, 0x4f, 0x85, 0x65, 0xef, 0x40, 0x6d, 0xd5, 0xd6, 0x3d, 0x4f, 0xf9, 0x4f, 0x31, 0x8f, 0xe8, 0x20, 0x27, 0xfd, 0x4d, 0xc4, 0x51, 0xb0, 0x44, 0x74, 0x01, 0x9f, 0x74, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x8c, 0x49, 0x30, 0x46, 0x02, 0x21, 0x00, 0xda, 0x0d, 0xc6, 0xae, 0xce, 0xfe, 0x1e, 0x06, 0xef, 0xdf, 0x05, 0x77, 0x37, 0x57, 0xde, 0xb1, 0x68, 0x82, 0x09, 0x30, 0xe3, 0xb0, 0xd0, 0x3f, 0x46, 0xf5, 0xfc, 0xf1, 0x50, 0xbf, 0x99, 0x0c, 0x02, 0x21, 0x00, 0xd2, 0x5b, 0x5c, 0x87, 0x04, 0x00, 0x76, 0xe4, 0xf2, 0x53, 0xf8, 0x26, 0x2e, 0x76, 0x3e, 0x2d, 0xd5, 0x1e, 0x7f, 0xf0, 0xbe, 0x15, 0x77, 0x27, 0xc4, 0xbc, 0x42, 0x80, 0x7f, 0x17, 0xbd, 0x39, 0x01, 0x41, 0x04, 0xe6, 0xc2, 0x6e, 0xf6, 0x7d, 0xc6, 0x10, 0xd2, 0xcd, 0x19, 0x24, 0x84, 0x78, 0x9a, 0x6c, 0xf9, 0xae, 0xa9, 0x93, 0x0b, 0x94, 0x4b, 0x7e, 0x2d, 0xb5, 0x34, 0x2b, 0x9d, 0x9e, 0x5b, 0x9f, 0xf7, 0x9a, 0xff, 0x9a, 0x2e, 0xe1, 0x97, 0x8d, 0xd7, 0xfd, 0x01, 0xdf, 0xc5, 0x22, 0xee, 0x02, 0x28, 0x3d, 0x3b, 0x06, 0xa9, 0xd0, 0x3a, 0xcf, 0x80, 0x96, 0x96, 0x8d, 0x7d, 0xbb, 0x0f, 0x91, 0x78, 0xff, 0xff, 0xff, 0xff, 0x02, 0x8b, 0xa7, 0x94, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x19, 0x76, 0xa9, 0x14, 0xba, 0xde, 0xec, 0xfd, 0xef, 0x05, 0x07, 0x24, 0x7f, 0xc8, 0xf7, 0x42, 0x41, 0xd7, 0x3b, 0xc0, 0x39, 0x97, 0x2d, 0x7b, 0x88, 0xac, 0x40, 0x94, 0xa8, 0x02, 0x00, 0x00, 0x00, 0x00, 0x19, 0x76, 0xa9, 0x14, 0xc1, 0x09, 0x32, 0x48, 0x3f, 0xec, 0x93, 0xed, 0x51, 0xf5, 0xfe, 0x95, 0xe7, 0x25, 0x59, 0xf2, 0xcc, 0x70, 0x43, 0xf9, 0x88, 0xac, 0x00, 0x00, 0x00, 0x00, 0x00};
     std::vector<unsigned char> vch(ch, ch + sizeof(ch) -1);
-    CellDataStream stream(vch, SER_DISK, CLIENT_VERSION);
-    CellMutableTransaction tx;
+    MCDataStream stream(vch, SER_DISK, CLIENT_VERSION);
+    MCMutableTransaction tx;
     stream >> tx;
-    CellValidationState state;
+    MCValidationState state;
     BOOST_CHECK_MESSAGE(CheckTransaction(tx, state) && state.IsValid(), "Simple deserialized transaction should be valid.");
 
     // Check that duplicate txins fail
@@ -285,14 +285,14 @@ BOOST_AUTO_TEST_CASE(basic_transaction_tests)
 // paid to a TX_PUBKEY, the second 21 and 22 CENT outputs
 // paid to a TX_PUBKEYHASH.
 //
-static std::vector<CellMutableTransaction>
-SetupDummyInputs(CellBasicKeyStore& keystoreRet, CellCoinsViewCache& coinsRet)
+static std::vector<MCMutableTransaction>
+SetupDummyInputs(MCBasicKeyStore& keystoreRet, MCCoinsViewCache& coinsRet)
 {
-    std::vector<CellMutableTransaction> dummyTransactions;
+    std::vector<MCMutableTransaction> dummyTransactions;
     dummyTransactions.resize(2);
 
     // Add some keys to the keystore:
-    CellKey key[4];
+    MCKey key[4];
     for (int i = 0; i < 4; i++)
     {
         key[i].MakeNewKey(i % 2);
@@ -319,12 +319,12 @@ SetupDummyInputs(CellBasicKeyStore& keystoreRet, CellCoinsViewCache& coinsRet)
 
 BOOST_AUTO_TEST_CASE(test_Get)
 {
-    CellBasicKeyStore keystore;
-    CellCoinsView coinsDummy;
-    CellCoinsViewCache coins(&coinsDummy);
-    std::vector<CellMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
+    MCBasicKeyStore keystore;
+    MCCoinsView coinsDummy;
+    MCCoinsViewCache coins(&coinsDummy);
+    std::vector<MCMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
 
-    CellMutableTransaction t1;
+    MCMutableTransaction t1;
     t1.vin.resize(3);
     t1.vin[0].prevout.hash = dummyTransactions[0].GetHash();
     t1.vin[0].prevout.n = 1;
@@ -343,17 +343,17 @@ BOOST_AUTO_TEST_CASE(test_Get)
     BOOST_CHECK_EQUAL(coins.GetValueIn(t1), (50+21+22)*CENT);
 }
 
-void CreateCreditAndSpend(const CellKeyStore& keystore, const CellScript& outscript, CellTransactionRef& output, CellMutableTransaction& input, bool success = true)
+void CreateCreditAndSpend(const MCKeyStore& keystore, const MCScript& outscript, MCTransactionRef& output, MCMutableTransaction& input, bool success = true)
 {
-    CellMutableTransaction outputm;
+    MCMutableTransaction outputm;
     outputm.nVersion = 1;
     outputm.vin.resize(1);
     outputm.vin[0].prevout.SetNull();
-    outputm.vin[0].scriptSig = CellScript();
+    outputm.vin[0].scriptSig = MCScript();
     outputm.vout.resize(1);
     outputm.vout[0].nValue = 1;
     outputm.vout[0].scriptPubKey = outscript;
-    CellDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
     ssout << outputm;
     ssout >> output;
     assert(output->vin.size() == 1);
@@ -361,17 +361,17 @@ void CreateCreditAndSpend(const CellKeyStore& keystore, const CellScript& outscr
     assert(output->vout.size() == 1);
     assert(output->vout[0] == outputm.vout[0]);
 
-    CellMutableTransaction inputm;
+    MCMutableTransaction inputm;
     inputm.nVersion = 1;
     inputm.vin.resize(1);
     inputm.vin[0].prevout.hash = output->GetHash();
     inputm.vin[0].prevout.n = 0;
     inputm.vout.resize(1);
     inputm.vout[0].nValue = 1;
-    inputm.vout[0].scriptPubKey = CellScript();
+    inputm.vout[0].scriptPubKey = MCScript();
     bool ret = SignSignature(keystore, *output, inputm, 0, SIGHASH_ALL);
     assert(ret == success);
-    CellDataStream ssin(SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream ssin(SER_NETWORK, PROTOCOL_VERSION);
     ssin << inputm;
     ssin >> input;
     assert(input.vin.size() == 1);
@@ -381,22 +381,22 @@ void CreateCreditAndSpend(const CellKeyStore& keystore, const CellScript& outscr
     assert(input.vin[0].scriptWitness.stack == inputm.vin[0].scriptWitness.stack);
 }
 
-void CheckWithFlag(const CellTransactionRef& output, const CellMutableTransaction& input, int flags, bool success)
+void CheckWithFlag(const MCTransactionRef& output, const MCMutableTransaction& input, int flags, bool success)
 {
     ScriptError error;
-    CellTransaction inputi(input);
+    MCTransaction inputi(input);
     bool ret = VerifyScript(inputi.vin[0].scriptSig, output->vout[0].scriptPubKey, &inputi.vin[0].scriptWitness, flags, TransactionSignatureChecker(&inputi, 0, output->vout[0].nValue), &error);
     assert(ret == success);
 }
 
-static CellScript PushAll(const std::vector<valtype>& values)
+static MCScript PushAll(const std::vector<valtype>& values)
 {
-    CellScript result;
+    MCScript result;
     for (const valtype& v : values) {
         if (v.size() == 0) {
             result << OP_0;
         } else if (v.size() == 1 && v[0] >= 1 && v[0] <= 16) {
-            result << CellScript::EncodeOP_N(v[0]);
+            result << MCScript::EncodeOP_N(v[0]);
         } else {
             result << v;
         }
@@ -404,7 +404,7 @@ static CellScript PushAll(const std::vector<valtype>& values)
     return result;
 }
 
-void ReplaceRedeemScript(CellScript& script, const CellScript& redeemScript)
+void ReplaceRedeemScript(MCScript& script, const MCScript& redeemScript)
 {
     std::vector<valtype> stack;
     EvalScript(stack, script, SCRIPT_VERIFY_STRICTENC, BaseSignatureChecker(), SIGVERSION_BASE);
@@ -414,15 +414,15 @@ void ReplaceRedeemScript(CellScript& script, const CellScript& redeemScript)
 }
 
 BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
-    CellMutableTransaction mtx;
+    MCMutableTransaction mtx;
     mtx.nVersion = 1;
 
-    CellKey key;
+    MCKey key;
     key.MakeNewKey(true); // Need to use compressed keys in segwit or the signing will fail
-    CellBasicKeyStore keystore;
+    MCBasicKeyStore keystore;
     keystore.AddKeyPubKey(key, key.GetPubKey());
-    CellKeyID hash = key.GetPubKey().GetID();
-    CellScript scriptPubKey = CellScript() << OP_0 << std::vector<unsigned char>(hash.begin(), hash.end());
+    MCKeyID hash = key.GetPubKey().GetID();
+    MCScript scriptPubKey = MCScript() << OP_0 << std::vector<unsigned char>(hash.begin(), hash.end());
 
     std::vector<int> sigHashes;
     sigHashes.push_back(SIGHASH_NONE | SIGHASH_ANYONECANPAY);
@@ -437,15 +437,15 @@ BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
         uint32_t i = mtx.vin.size();
         uint256 prevId;
         prevId.SetHex("0000000000000000000000000000000000000000000000000000000000000100");
-        CellOutPoint outpoint(prevId, i);
+        MCOutPoint outpoint(prevId, i);
 
         mtx.vin.resize(mtx.vin.size() + 1);
         mtx.vin[i].prevout = outpoint;
-        mtx.vin[i].scriptSig = CellScript();
+        mtx.vin[i].scriptSig = MCScript();
 
         mtx.vout.resize(mtx.vout.size() + 1);
         mtx.vout[i].nValue = 1000;
-        mtx.vout[i].scriptPubKey = CellScript() << OP_1;
+        mtx.vout[i].scriptPubKey = MCScript() << OP_1;
     }
 
     // sign all inputs
@@ -454,19 +454,19 @@ BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
         assert(hashSigned);
     }
 
-    CellDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream ssout(SER_NETWORK, PROTOCOL_VERSION);
     auto vstream = WithOrVersion(&ssout, 0);
     vstream << mtx;
-    CellTransaction tx(deserialize, vstream);
+    MCTransaction tx(deserialize, vstream);
 
     // check all inputs concurrently, with the cache
     PrecomputedTransactionData txdata(tx);
     boost::thread_group threadGroup;
-    CellCheckQueue<CScriptCheck> scriptcheckqueue(128);
-    CellCheckQueueControl<CScriptCheck> control(&scriptcheckqueue);
+    MCCheckQueue<CScriptCheck> scriptcheckqueue(128);
+    MCCheckQueueControl<CScriptCheck> control(&scriptcheckqueue);
 
     for (int i=0; i<20; i++)
-        threadGroup.create_thread(boost::bind(&CellCheckQueue<CScriptCheck>::Thread, boost::ref(scriptcheckqueue)));
+        threadGroup.create_thread(boost::bind(&MCCheckQueue<CScriptCheck>::Thread, boost::ref(scriptcheckqueue)));
 
     std::vector<Coin> coins;
     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
@@ -480,7 +480,7 @@ BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
 
     for(uint32_t i = 0; i < mtx.vin.size(); i++) {
         std::vector<CScriptCheck> vChecks;
-        const CellTxOut& output = coins[tx.vin[i].prevout.n].out;
+        const MCTxOut& output = coins[tx.vin[i].prevout.n].out;
         CScriptCheck check(output.scriptPubKey, output.nValue, tx, i, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, false, &txdata);
         vChecks.push_back(CScriptCheck());
         check.swap(vChecks.back());
@@ -496,9 +496,9 @@ BOOST_AUTO_TEST_CASE(test_big_witness_transaction) {
 
 BOOST_AUTO_TEST_CASE(test_witness)
 {
-    CellBasicKeyStore keystore, keystore2;
-    CellKey key1, key2, key3, key1L, key2L;
-    CellPubKey pubkey1, pubkey2, pubkey3, pubkey1L, pubkey2L;
+    MCBasicKeyStore keystore, keystore2;
+    MCKey key1, key2, key3, key1L, key2L;
+    MCPubKey pubkey1, pubkey2, pubkey3, pubkey1L, pubkey2L;
     key1.MakeNewKey(true);
     key2.MakeNewKey(true);
     key3.MakeNewKey(true);
@@ -513,12 +513,12 @@ BOOST_AUTO_TEST_CASE(test_witness)
     keystore.AddKeyPubKey(key2, pubkey2);
     keystore.AddKeyPubKey(key1L, pubkey1L);
     keystore.AddKeyPubKey(key2L, pubkey2L);
-    CellScript scriptPubkey1, scriptPubkey2, scriptPubkey1L, scriptPubkey2L, scriptMulti;
+    MCScript scriptPubkey1, scriptPubkey2, scriptPubkey1L, scriptPubkey2L, scriptMulti;
     scriptPubkey1 << ToByteVector(pubkey1) << OP_CHECKSIG;
     scriptPubkey2 << ToByteVector(pubkey2) << OP_CHECKSIG;
     scriptPubkey1L << ToByteVector(pubkey1L) << OP_CHECKSIG;
     scriptPubkey2L << ToByteVector(pubkey2L) << OP_CHECKSIG;
-    std::vector<CellPubKey> oneandthree;
+    std::vector<MCPubKey> oneandthree;
     oneandthree.push_back(pubkey1);
     oneandthree.push_back(pubkey3);
     scriptMulti = GetScriptForMultisig(2, oneandthree);
@@ -536,8 +536,8 @@ BOOST_AUTO_TEST_CASE(test_witness)
     keystore2.AddCScript(GetScriptForWitness(scriptMulti));
     keystore2.AddKeyPubKey(key3, pubkey3);
 
-    CellTransactionRef output1, output2;
-    CellMutableTransaction input1, input2;
+    MCTransactionRef output1, output2;
+    MCMutableTransaction input1, input2;
     SignatureData sigdata;
 
     // Normal pay-to-compressed-pubkey.
@@ -553,8 +553,8 @@ BOOST_AUTO_TEST_CASE(test_witness)
     CheckWithFlag(output1, input2, STANDARD_SCRIPT_VERIFY_FLAGS, false);
 
     // P2SH pay-to-compressed-pubkey.
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(scriptPubkey1)), output1, input1);
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(scriptPubkey2)), output2, input2);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(scriptPubkey1)), output1, input1);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(scriptPubkey2)), output2, input2);
     ReplaceRedeemScript(input2.vin[0].scriptSig, scriptPubkey1);
     CheckWithFlag(output1, input1, 0, true);
     CheckWithFlag(output1, input1, SCRIPT_VERIFY_P2SH, true);
@@ -578,8 +578,8 @@ BOOST_AUTO_TEST_CASE(test_witness)
     CheckWithFlag(output1, input2, STANDARD_SCRIPT_VERIFY_FLAGS, false);
 
     // P2SH witness pay-to-compressed-pubkey (v0).
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(GetScriptForWitness(scriptPubkey1))), output1, input1);
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(GetScriptForWitness(scriptPubkey2))), output2, input2);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(GetScriptForWitness(scriptPubkey1))), output1, input1);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(GetScriptForWitness(scriptPubkey2))), output2, input2);
     ReplaceRedeemScript(input2.vin[0].scriptSig, GetScriptForWitness(scriptPubkey1));
     CheckWithFlag(output1, input1, 0, true);
     CheckWithFlag(output1, input1, SCRIPT_VERIFY_P2SH, true);
@@ -603,8 +603,8 @@ BOOST_AUTO_TEST_CASE(test_witness)
     CheckWithFlag(output1, input2, STANDARD_SCRIPT_VERIFY_FLAGS, false);
 
     // P2SH pay-to-uncompressed-pubkey.
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(scriptPubkey1L)), output1, input1);
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(scriptPubkey2L)), output2, input2);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(scriptPubkey1L)), output1, input1);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(scriptPubkey2L)), output2, input2);
     ReplaceRedeemScript(input2.vin[0].scriptSig, scriptPubkey1L);
     CheckWithFlag(output1, input1, 0, true);
     CheckWithFlag(output1, input1, SCRIPT_VERIFY_P2SH, true);
@@ -620,8 +620,8 @@ BOOST_AUTO_TEST_CASE(test_witness)
     CreateCreditAndSpend(keystore, GetScriptForWitness(scriptPubkey2L), output2, input2, false);
 
     // Signing disabled for P2SH witness pay-to-uncompressed-pubkey (v1).
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(GetScriptForWitness(scriptPubkey1L))), output1, input1, false);
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(GetScriptForWitness(scriptPubkey2L))), output2, input2, false);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(GetScriptForWitness(scriptPubkey1L))), output1, input1, false);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(GetScriptForWitness(scriptPubkey2L))), output2, input2, false);
 
     // Normal 2-of-2 multisig
     CreateCreditAndSpend(keystore, scriptMulti, output1, input1, false);
@@ -633,10 +633,10 @@ BOOST_AUTO_TEST_CASE(test_witness)
     CheckWithFlag(output1, input1, STANDARD_SCRIPT_VERIFY_FLAGS, true);
 
     // P2SH 2-of-2 multisig
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(scriptMulti)), output1, input1, false);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(scriptMulti)), output1, input1, false);
     CheckWithFlag(output1, input1, 0, true);
     CheckWithFlag(output1, input1, SCRIPT_VERIFY_P2SH, false);
-    CreateCreditAndSpend(keystore2, GetScriptForDestination(CellScriptID(scriptMulti)), output2, input2, false);
+    CreateCreditAndSpend(keystore2, GetScriptForDestination(MCScriptID(scriptMulti)), output2, input2, false);
     CheckWithFlag(output2, input2, 0, true);
     CheckWithFlag(output2, input2, SCRIPT_VERIFY_P2SH, false);
     BOOST_CHECK(*output1 == *output2);
@@ -657,10 +657,10 @@ BOOST_AUTO_TEST_CASE(test_witness)
     CheckWithFlag(output1, input1, STANDARD_SCRIPT_VERIFY_FLAGS, true);
 
     // P2SH witness 2-of-2 multisig
-    CreateCreditAndSpend(keystore, GetScriptForDestination(CellScriptID(GetScriptForWitness(scriptMulti))), output1, input1, false);
+    CreateCreditAndSpend(keystore, GetScriptForDestination(MCScriptID(GetScriptForWitness(scriptMulti))), output1, input1, false);
     CheckWithFlag(output1, input1, SCRIPT_VERIFY_P2SH, true);
     CheckWithFlag(output1, input1, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, false);
-    CreateCreditAndSpend(keystore2, GetScriptForDestination(CellScriptID(GetScriptForWitness(scriptMulti))), output2, input2, false);
+    CreateCreditAndSpend(keystore2, GetScriptForDestination(MCScriptID(GetScriptForWitness(scriptMulti))), output2, input2, false);
     CheckWithFlag(output2, input2, SCRIPT_VERIFY_P2SH, true);
     CheckWithFlag(output2, input2, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, false);
     BOOST_CHECK(*output1 == *output2);
@@ -672,19 +672,19 @@ BOOST_AUTO_TEST_CASE(test_witness)
 BOOST_AUTO_TEST_CASE(test_IsStandard)
 {
     LOCK(cs_main);
-    CellBasicKeyStore keystore;
-    CellCoinsView coinsDummy;
-    CellCoinsViewCache coins(&coinsDummy);
-    std::vector<CellMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
+    MCBasicKeyStore keystore;
+    MCCoinsView coinsDummy;
+    MCCoinsViewCache coins(&coinsDummy);
+    std::vector<MCMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
 
-    CellMutableTransaction t;
+    MCMutableTransaction t;
     t.vin.resize(1);
     t.vin[0].prevout.hash = dummyTransactions[0].GetHash();
     t.vin[0].prevout.n = 1;
     t.vin[0].scriptSig << std::vector<unsigned char>(65, 0);
     t.vout.resize(1);
     t.vout[0].nValue = 90*CENT;
-    CellKey key;
+    MCKey key;
     key.MakeNewKey(true);
     t.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());
 
@@ -692,7 +692,7 @@ BOOST_AUTO_TEST_CASE(test_IsStandard)
     BOOST_CHECK(IsStandardTx(t, reason));
 
     // Check dust with default relay fee:
-    CellAmount nDustThreshold = 182 * dustRelayFee.GetFeePerK()/1000;
+    MCAmount nDustThreshold = 182 * dustRelayFee.GetFeePerK()/1000;
     BOOST_CHECK_EQUAL(nDustThreshold, 546);
     // dust:
     t.vout[0].nValue = nDustThreshold - 1;
@@ -703,60 +703,60 @@ BOOST_AUTO_TEST_CASE(test_IsStandard)
 
     // Check dust with odd relay fee to verify rounding:
     // nDustThreshold = 182 * 3702 / 1000
-    dustRelayFee = CellFeeRate(3702);
+    dustRelayFee = MCFeeRate(3702);
     // dust:
     t.vout[0].nValue = 673 - 1;
     BOOST_CHECK(!IsStandardTx(t, reason));
     // not dust:
     t.vout[0].nValue = 673;
     BOOST_CHECK(IsStandardTx(t, reason));
-    dustRelayFee = CellFeeRate(DUST_RELAY_TX_FEE);
+    dustRelayFee = MCFeeRate(DUST_RELAY_TX_FEE);
 
-    t.vout[0].scriptPubKey = CellScript() << OP_1;
+    t.vout[0].scriptPubKey = MCScript() << OP_1;
     BOOST_CHECK(!IsStandardTx(t, reason));
 
     // MAX_OP_RETURN_RELAY-byte TX_NULL_DATA (standard)
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
     BOOST_CHECK_EQUAL(MAX_OP_RETURN_RELAY, t.vout[0].scriptPubKey.size());
     BOOST_CHECK(IsStandardTx(t, reason));
 
     // MAX_OP_RETURN_RELAY+1-byte TX_NULL_DATA (non-standard)
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3800");
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3804678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef3800");
     BOOST_CHECK_EQUAL(MAX_OP_RETURN_RELAY + 1, t.vout[0].scriptPubKey.size());
     BOOST_CHECK(!IsStandardTx(t, reason));
 
     // Data payload can be encoded in any way...
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << ParseHex("");
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << ParseHex("");
     BOOST_CHECK(IsStandardTx(t, reason));
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << ParseHex("00") << ParseHex("01");
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << ParseHex("00") << ParseHex("01");
     BOOST_CHECK(IsStandardTx(t, reason));
     // OP_RESERVED *is* considered to be a PUSHDATA type opcode by IsPushOnly()!
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << OP_RESERVED << -1 << 0 << ParseHex("01") << 2 << 3 << 4 << 5 << 6 << 7 << 8 << 9 << 10 << 11 << 12 << 13 << 14 << 15 << 16;
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << OP_RESERVED << -1 << 0 << ParseHex("01") << 2 << 3 << 4 << 5 << 6 << 7 << 8 << 9 << 10 << 11 << 12 << 13 << 14 << 15 << 16;
     BOOST_CHECK(IsStandardTx(t, reason));
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << 0 << ParseHex("01") << 2 << ParseHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << 0 << ParseHex("01") << 2 << ParseHex("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     BOOST_CHECK(IsStandardTx(t, reason));
 
     // ...so long as it only contains PUSHDATA's
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << OP_RETURN;
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << OP_RETURN;
     BOOST_CHECK(!IsStandardTx(t, reason));
 
     // TX_NULL_DATA w/o PUSHDATA
     t.vout.resize(1);
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN;
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN;
     BOOST_CHECK(IsStandardTx(t, reason));
 
     // Only one TX_NULL_DATA permitted in all cases
     t.vout.resize(2);
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
-    t.vout[1].scriptPubKey = CellScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[1].scriptPubKey = MCScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
     BOOST_CHECK(!IsStandardTx(t, reason));
 
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
-    t.vout[1].scriptPubKey = CellScript() << OP_RETURN;
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38");
+    t.vout[1].scriptPubKey = MCScript() << OP_RETURN;
     BOOST_CHECK(!IsStandardTx(t, reason));
 
-    t.vout[0].scriptPubKey = CellScript() << OP_RETURN;
-    t.vout[1].scriptPubKey = CellScript() << OP_RETURN;
+    t.vout[0].scriptPubKey = MCScript() << OP_RETURN;
+    t.vout[1].scriptPubKey = MCScript() << OP_RETURN;
     BOOST_CHECK(!IsStandardTx(t, reason));
 }
 

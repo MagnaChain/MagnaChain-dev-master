@@ -1,4 +1,4 @@
-/* src/config/magnachain-config.h.  Generated from CellTxOutCompressor.in by configure.  */
+/* src/config/magnachain-config.h.  Generated from MCTxOutCompressor.in by configure.  */
 /* src/config/magnachain-config.h.in.  Generated from configure.ac by autoheader.  */
 #ifndef CELLLINK_CONFIG_H
 #define CELLLINK_CONFIG_H

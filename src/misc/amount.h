@@ -10,10 +10,10 @@
 #include <stdint.h>
 
 /** Amount in satoshis (Can be negative) */
-typedef int64_t CellAmount;
+typedef int64_t MCAmount;
 
-static const CellAmount COIN = 100000000;
-static const CellAmount CENT = 1000000;
+static const MCAmount COIN = 100000000;
+static const MCAmount CENT = 1000000;
 
 /** No amount larger than this (in satoshi) is valid.
  *
@@ -24,7 +24,7 @@ static const CellAmount CENT = 1000000;
  * critical; in unusual circumstances like a(nother) overflow bug that allowed
  * for the creation of coins out of thin air modification could lead to a fork.
  * */
-static const CellAmount MAX_MONEY = 3000000000 * COIN;
-inline bool MoneyRange(const CellAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
+static const MCAmount MAX_MONEY = 3000000000 * COIN;
+inline bool MoneyRange(const MCAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
 #endif //  CELLLINK_AMOUNT_H

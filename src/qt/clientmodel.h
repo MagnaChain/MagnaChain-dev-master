@@ -15,7 +15,7 @@ class BanTableModel;
 class OptionsModel;
 class PeerTableModel;
 
-class CellBlockIndex;
+class MCBlockIndex;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
@@ -61,7 +61,7 @@ public:
     quint64 getTotalBytesRecv() const;
     quint64 getTotalBytesSent() const;
 
-    double getVerificationProgress(const CellBlockIndex *tip) const;
+    double getVerificationProgress(const MCBlockIndex *tip) const;
     QDateTime getLastBlockDate() const;
 
     //! Return true if core is doing initial block download

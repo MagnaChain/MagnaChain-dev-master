@@ -12,9 +12,9 @@
 #include "primitives/transaction.h"
 #include "io/serialize.h"
 
-/** Undo information for a CellTxIn
+/** Undo information for a MCTxIn
  *
- *  Contains the prevout's CellTxOut being spent, and its metadata as well
+ *  Contains the prevout's MCTxOut being spent, and its metadata as well
  *  (coinbase or not, height). The serialization contains a dummy value of
  *  zero. This is be compatible with older versions which expect to see
  *  the transaction version there.
@@ -31,7 +31,7 @@ public:
             // Required to maintain compatibility with older undo format.
             ::Serialize(s, (unsigned char)0);
         }
-        ::Serialize(s, CellTxOutCompressor(REF(txout->out)));
+        ::Serialize(s, MCTxOutCompressor(REF(txout->out)));
     }
 
     TxInUndoSerializer(const Coin* coin) : txout(coin) {}
@@ -55,17 +55,17 @@ public:
             int nVersionDummy;
             ::Unserialize(s, VARINT(nVersionDummy));
         }
-        ::Unserialize(s, REF(CellTxOutCompressor(REF(txout->out))));
+        ::Unserialize(s, REF(MCTxOutCompressor(REF(txout->out))));
     }
 
     TxInUndoDeserializer(Coin* coin) : txout(coin) {}
 };
 
-static const size_t MIN_TRANSACTION_INPUT_WEIGHT = WITNESS_SCALE_FACTOR * ::GetSerializeSize(CellTxIn(), SER_NETWORK, PROTOCOL_VERSION);
+static const size_t MIN_TRANSACTION_INPUT_WEIGHT = WITNESS_SCALE_FACTOR * ::GetSerializeSize(MCTxIn(), SER_NETWORK, PROTOCOL_VERSION);
 static const size_t MAX_INPUTS_PER_BLOCK = MAX_BLOCK_WEIGHT / MIN_TRANSACTION_INPUT_WEIGHT;
 
-/** Undo information for a CellTransaction */
-class CellTxUndo
+/** Undo information for a MCTransaction */
+class MCTxUndo
 {
 public:
     // undo information for all txins
@@ -96,11 +96,11 @@ public:
     }
 };
 
-/** Undo information for a CellBlock */
-class CellBlockUndo
+/** Undo information for a MCBlock */
+class MCBlockUndo
 {
 public:
-    std::vector<CellTxUndo> vtxundo; // for all but the coinbase
+    std::vector<MCTxUndo> vtxundo; // for all but the coinbase
 
     ADD_SERIALIZE_METHODS;
 

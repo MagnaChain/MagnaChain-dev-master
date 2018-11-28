@@ -46,7 +46,7 @@ public:
     void fixup(QString &input) const
     {
         bool valid = false;
-        CellAmount val = parse(input, &valid);
+        MCAmount val = parse(input, &valid);
         if(valid)
         {
             input = MagnaChainUnits::format(currentUnit, val, false, MagnaChainUnits::separatorAlways);
@@ -54,12 +54,12 @@ public:
         }
     }
 
-    CellAmount value(bool *valid_out=0) const
+    MCAmount value(bool *valid_out=0) const
     {
         return parse(text(), valid_out);
     }
 
-    void setValue(const CellAmount& value)
+    void setValue(const MCAmount& value)
     {
         lineEdit()->setText(MagnaChainUnits::format(currentUnit, value, false, MagnaChainUnits::separatorAlways));
         Q_EMIT valueChanged();
@@ -68,16 +68,16 @@ public:
     void stepBy(int steps)
     {
         bool valid = false;
-        CellAmount val = value(&valid);
+        MCAmount val = value(&valid);
         val = val + steps * singleStep;
-        val = qMin(qMax(val, CellAmount(0)), MagnaChainUnits::maxMoney());
+        val = qMin(qMax(val, MCAmount(0)), MagnaChainUnits::maxMoney());
         setValue(val);
     }
 
     void setDisplayUnit(int unit)
     {
         bool valid = false;
-        CellAmount val = value(&valid);
+        MCAmount val = value(&valid);
 
         currentUnit = unit;
 
@@ -87,7 +87,7 @@ public:
             clear();
     }
 
-    void setSingleStep(const CellAmount& step)
+    void setSingleStep(const MCAmount& step)
     {
         singleStep = step;
     }
@@ -127,7 +127,7 @@ public:
 
 private:
     int currentUnit;
-    CellAmount singleStep;
+    MCAmount singleStep;
     mutable QSize cachedMinimumSizeHint;
 
     /**
@@ -135,9 +135,9 @@ private:
      * return validity.
      * @note Must return 0 if !valid.
      */
-    CellAmount parse(const QString &text, bool *valid_out=0) const
+    MCAmount parse(const QString &text, bool *valid_out=0) const
     {
-        CellAmount val = 0;
+        MCAmount val = 0;
         bool valid = MagnaChainUnits::parse(currentUnit, text, &val);
         if(valid)
         {
@@ -174,7 +174,7 @@ protected:
 
         StepEnabled rv = 0;
         bool valid = false;
-        CellAmount val = value(&valid);
+        MCAmount val = value(&valid);
         if(valid)
         {
             if(val > 0)
@@ -266,12 +266,12 @@ QWidget *MagnaChainAmountField::setupTabChain(QWidget *prev)
     return unit;
 }
 
-CellAmount MagnaChainAmountField::value(bool *valid_out) const
+MCAmount MagnaChainAmountField::value(bool *valid_out) const
 {
     return amount->value(valid_out);
 }
 
-void MagnaChainAmountField::setValue(const CellAmount& value)
+void MagnaChainAmountField::setValue(const MCAmount& value)
 {
     amount->setValue(value);
 }
@@ -297,7 +297,7 @@ void MagnaChainAmountField::setDisplayUnit(int newUnit)
     unit->setValue(newUnit);
 }
 
-void MagnaChainAmountField::setSingleStep(const CellAmount& step)
+void MagnaChainAmountField::setSingleStep(const MCAmount& step)
 {
     amount->setSingleStep(step);
 }

@@ -33,7 +33,7 @@
 // Settings
 static proxyType proxyInfo[NET_MAX];
 static proxyType nameProxy;
-static CellCriticalSection cs_proxyInfos;
+static MCCriticalSection cs_proxyInfos;
 int nConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
 bool fNameLookup = DEFAULT_NAME_LOOKUP;
 
@@ -59,12 +59,12 @@ std::string GetNetworkName(enum Network net) {
     }
 }
 
-bool static LookupIntern(const char *pszName, std::vector<CellNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
+bool static LookupIntern(const char *pszName, std::vector<MCNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
 {
     vIP.clear();
 
     {
-        CellNetAddr addr;
+        MCNetAddr addr;
         if (addr.SetSpecial(std::string(pszName))) {
             vIP.push_back(addr);
             return true;
@@ -90,18 +90,18 @@ bool static LookupIntern(const char *pszName, std::vector<CellNetAddr>& vIP, uns
     struct addrinfo *aiTrav = aiRes;
     while (aiTrav != nullptr && (nMaxSolutions == 0 || vIP.size() < nMaxSolutions))
     {
-        CellNetAddr resolved;
+        MCNetAddr resolved;
         if (aiTrav->ai_family == AF_INET)
         {
             assert(aiTrav->ai_addrlen >= sizeof(sockaddr_in));
-            resolved = CellNetAddr(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr);
+            resolved = MCNetAddr(((struct sockaddr_in*)(aiTrav->ai_addr))->sin_addr);
         }
 
         if (aiTrav->ai_family == AF_INET6)
         {
             assert(aiTrav->ai_addrlen >= sizeof(sockaddr_in6));
             struct sockaddr_in6* s6 = (struct sockaddr_in6*) aiTrav->ai_addr;
-            resolved = CellNetAddr(s6->sin6_addr, s6->sin6_scope_id);
+            resolved = MCNetAddr(s6->sin6_addr, s6->sin6_scope_id);
         }
         /* Never allow resolving to an internal address. Consider any such result invalid */
         if (!resolved.IsInternal()) {
@@ -116,7 +116,7 @@ bool static LookupIntern(const char *pszName, std::vector<CellNetAddr>& vIP, uns
     return (vIP.size() > 0);
 }
 
-bool LookupHost(const char *pszName, std::vector<CellNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
+bool LookupHost(const char *pszName, std::vector<MCNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup)
 {
     std::string strHost(pszName);
     if (strHost.empty())
@@ -129,9 +129,9 @@ bool LookupHost(const char *pszName, std::vector<CellNetAddr>& vIP, unsigned int
     return LookupIntern(strHost.c_str(), vIP, nMaxSolutions, fAllowLookup);
 }
 
-bool LookupHost(const char *pszName, CellNetAddr& addr, bool fAllowLookup)
+bool LookupHost(const char *pszName, MCNetAddr& addr, bool fAllowLookup)
 {
-    std::vector<CellNetAddr> vIP;
+    std::vector<MCNetAddr> vIP;
     LookupHost(pszName, vIP, 1, fAllowLookup);
     if(vIP.empty())
         return false;
@@ -139,7 +139,7 @@ bool LookupHost(const char *pszName, CellNetAddr& addr, bool fAllowLookup)
     return true;
 }
 
-bool Lookup(const char *pszName, std::vector<CellService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions)
+bool Lookup(const char *pszName, std::vector<MCService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions)
 {
     if (pszName[0] == 0)
         return false;
@@ -147,19 +147,19 @@ bool Lookup(const char *pszName, std::vector<CellService>& vAddr, int portDefaul
     std::string hostname = "";
     SplitHostPort(std::string(pszName), port, hostname);
 
-    std::vector<CellNetAddr> vIP;
+    std::vector<MCNetAddr> vIP;
     bool fRet = LookupIntern(hostname.c_str(), vIP, nMaxSolutions, fAllowLookup);
     if (!fRet)
         return false;
     vAddr.resize(vIP.size());
     for (unsigned int i = 0; i < vIP.size(); i++)
-        vAddr[i] = CellService(vIP[i], port);
+        vAddr[i] = MCService(vIP[i], port);
     return true;
 }
 
-bool Lookup(const char *pszName, CellService& addr, int portDefault, bool fAllowLookup)
+bool Lookup(const char *pszName, MCService& addr, int portDefault, bool fAllowLookup)
 {
-    std::vector<CellService> vService;
+    std::vector<MCService> vService;
     bool fRet = Lookup(pszName, vService, portDefault, fAllowLookup, 1);
     if (!fRet)
         return false;
@@ -167,13 +167,13 @@ bool Lookup(const char *pszName, CellService& addr, int portDefault, bool fAllow
     return true;
 }
 
-CellService LookupNumeric(const char *pszName, int portDefault)
+MCService LookupNumeric(const char *pszName, int portDefault)
 {
-    CellService addr;
+    MCService addr;
     // "1.2:345" will fail to resolve the ip, but will still set the port.
     // If the ip fails to resolve, re-init the result.
     if(!Lookup(pszName, addr, portDefault, false))
-        addr = CellService();
+        addr = MCService();
     return addr;
 }
 
@@ -453,7 +453,7 @@ static bool Socks5(const std::string& strDest, int port, const ProxyCredentials 
     return true;
 }
 
-bool static ConnectSocketDirectly(const CellService &addrConnect, SOCKET& hSocketRet, int nTimeout)
+bool static ConnectSocketDirectly(const MCService &addrConnect, SOCKET& hSocketRet, int nTimeout)
 {
     hSocketRet = INVALID_SOCKET;
 
@@ -579,10 +579,10 @@ bool HaveNameProxy() {
     return nameProxy.IsValid();
 }
 
-bool IsProxy(const CellNetAddr &addr) {
+bool IsProxy(const MCNetAddr &addr) {
     LOCK(cs_proxyInfos);
     for (int i = 0; i < NET_MAX; i++) {
-        if (addr == (CellNetAddr)proxyInfo[i].proxy)
+        if (addr == (MCNetAddr)proxyInfo[i].proxy)
             return true;
     }
     return false;
@@ -613,7 +613,7 @@ static bool ConnectThroughProxy(const proxyType &proxy, const std::string& strDe
     return true;
 }
 
-bool ConnectSocket(const CellService &addrDest, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed)
+bool ConnectSocket(const MCService &addrDest, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed)
 {
     proxyType proxy;
     if (outProxyConnectionFailed)
@@ -625,7 +625,7 @@ bool ConnectSocket(const CellService &addrDest, SOCKET& hSocketRet, int nTimeout
         return ConnectSocketDirectly(addrDest, hSocketRet, nTimeout);
 }
 
-bool ConnectSocketByName(CellService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed)
+bool ConnectSocketByName(MCService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed)
 {
     std::string strDest;
     int port = portDefault;
@@ -638,7 +638,7 @@ bool ConnectSocketByName(CellService &addr, SOCKET& hSocketRet, const char *pszD
     proxyType proxy;
     GetNameProxy(proxy);
 
-    std::vector<CellService> addrResolved;
+    std::vector<MCService> addrResolved;
     if (Lookup(strDest.c_str(), addrResolved, port, fNameLookup && !HaveNameProxy(), 256)) {
         if (addrResolved.size() > 0) {
             addr = addrResolved[GetRand(addrResolved.size())];
@@ -646,7 +646,7 @@ bool ConnectSocketByName(CellService &addr, SOCKET& hSocketRet, const char *pszD
         }
     }
 
-    addr = CellService();
+    addr = MCService();
 
     if (!HaveNameProxy())
         return false;
@@ -657,12 +657,12 @@ bool LookupSubNet(const char* pszName, CSubNet& ret)
 {
     std::string strSubnet(pszName);
     size_t slash = strSubnet.find_last_of('/');
-    std::vector<CellNetAddr> vIP;
+    std::vector<MCNetAddr> vIP;
 
     std::string strAddress = strSubnet.substr(0, slash);
     if (LookupHost(strAddress.c_str(), vIP, 1, false))
     {
-        CellNetAddr network = vIP[0];
+        MCNetAddr network = vIP[0];
         if (slash != strSubnet.npos)
         {
             std::string strNetmask = strSubnet.substr(slash + 1);

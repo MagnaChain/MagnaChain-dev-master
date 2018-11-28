@@ -16,7 +16,7 @@
 
 /* Return positive answer if transaction should be shown in list.
  */
-bool TransactionRecord::showTransaction(const CellWalletTx &wtx)
+bool TransactionRecord::showTransaction(const MCWalletTx &wtx)
 {
     // There are currently no cases where we hide transactions, but
     // we may want to use this in the future for things like RBF.
@@ -24,15 +24,15 @@ bool TransactionRecord::showTransaction(const CellWalletTx &wtx)
 }
 
 /*
- * Decompose CellWallet transaction to model transaction records.
+ * Decompose MCWallet transaction to model transaction records.
  */
-QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWallet *wallet, const CellWalletTx &wtx)
+QList<TransactionRecord> TransactionRecord::decomposeTransaction(const MCWallet *wallet, const MCWalletTx &wtx)
 {
     QList<TransactionRecord> parts;
     int64_t nTime = wtx.GetTxTime();
-    CellAmount nCredit = wtx.GetCredit(ISMINE_ALL);
-    CellAmount nDebit = wtx.GetDebit(ISMINE_ALL);
-    CellAmount nNet = nCredit - nDebit;
+    MCAmount nCredit = wtx.GetCredit(ISMINE_ALL);
+    MCAmount nDebit = wtx.GetDebit(ISMINE_ALL);
+    MCAmount nNet = nCredit - nDebit;
     uint256 hash = wtx.GetHash();
     std::map<std::string, std::string> mapValue = wtx.mapValue;
 
@@ -43,12 +43,12 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
         //
         for(unsigned int i = 0; i < wtx.tx->vout.size(); i++)
         {
-            const CellTxOut& txout = wtx.tx->vout[i];
+            const MCTxOut& txout = wtx.tx->vout[i];
             isminetype mine = wallet->IsMine(txout);
             if(mine)
             {
                 TransactionRecord sub(hash, nTime);
-                CellTxDestination address;
+                MCTxDestination address;
                 sub.idx = i; // vout index
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
@@ -78,7 +78,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
     {
         bool involvesWatchAddress = false;
         isminetype fAllFromMe = ISMINE_SPENDABLE;
-        for (const CellTxIn& txin : wtx.tx->vin)
+        for (const MCTxIn& txin : wtx.tx->vin)
         {
             isminetype mine = wallet->IsMine(txin);
             if(mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
@@ -86,7 +86,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
         }
 
         isminetype fAllToMe = ISMINE_SPENDABLE;
-        for (const CellTxOut& txout : wtx.tx->vout)
+        for (const MCTxOut& txout : wtx.tx->vout)
         {
             isminetype mine = wallet->IsMine(txout);
             if(mine & ISMINE_WATCH_ONLY) involvesWatchAddress = true;
@@ -96,7 +96,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
         if (fAllFromMe && fAllToMe)
         {
             // Payment to self
-            CellAmount nChange = wtx.GetChange();
+            MCAmount nChange = wtx.GetChange();
 
             parts.append(TransactionRecord(hash, nTime, TransactionRecord::SendToSelf, "",
                             -(nDebit - nChange), nCredit - nChange));
@@ -107,11 +107,11 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
             //
             // Debit
             //
-            CellAmount nTxFee = nDebit - wtx.tx->GetValueOut();
+            MCAmount nTxFee = nDebit - wtx.tx->GetValueOut();
 
             for (unsigned int nOut = 0; nOut < wtx.tx->vout.size(); nOut++)
             {
-                const CellTxOut& txout = wtx.tx->vout[nOut];
+                const MCTxOut& txout = wtx.tx->vout[nOut];
                 TransactionRecord sub(hash, nTime);
                 sub.idx = nOut;
                 sub.involvesWatchAddress = involvesWatchAddress;
@@ -123,7 +123,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
                     continue;
                 }
 
-                CellTxDestination address;
+                MCTxDestination address;
                 if (ExtractDestination(txout.scriptPubKey, address))
                 {
                     // Sent to MagnaChain Address
@@ -137,7 +137,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
                     sub.address = mapValue["to"];
                 }
 
-                CellAmount nValue = txout.nValue;
+                MCAmount nValue = txout.nValue;
                 /* Add fee to first output */
                 if (nTxFee > 0)
                 {
@@ -162,13 +162,13 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CellWalle
     return parts;
 }
 
-void TransactionRecord::updateStatus(const CellWalletTx &wtx)
+void TransactionRecord::updateStatus(const MCWalletTx &wtx)
 {
     AssertLockHeld(cs_main);
     // Determine transaction status
 
     // Find the block the tx is in
-    CellBlockIndex* pindex = nullptr;
+    MCBlockIndex* pindex = nullptr;
     BlockMap::iterator mi = mapBlockIndex.find(wtx.hashBlock);
     if (mi != mapBlockIndex.end())
         pindex = (*mi).second;

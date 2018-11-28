@@ -338,7 +338,7 @@ void TransactionView::changedAmount()
 {
     if(!transactionProxyModel)
         return;
-    CellAmount amount_parsed = 0;
+    MCAmount amount_parsed = 0;
     if (MagnaChainUnits::parse(model->getOptionsModel()->getDisplayUnit(), amountWidget->text(), &amount_parsed)) {
         transactionProxyModel->setMinAmount(amount_parsed);
     }
@@ -378,11 +378,11 @@ void TransactionView::exportClicked()
 
     if(!writer.write()) {
         Q_EMIT message(tr("Exporting Failed"), tr("There was an error trying to save the transaction history to %1.").arg(filename),
-            CellClientUIInterface::MSG_ERROR);
+            MCClientUIInterface::MSG_ERROR);
     }
     else {
         Q_EMIT message(tr("Exporting Successful"), tr("The transaction history was successfully saved to %1.").arg(filename),
-            CellClientUIInterface::MSG_INFORMATION);
+            MCClientUIInterface::MSG_INFORMATION);
     }
 }
 

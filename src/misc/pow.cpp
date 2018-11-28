@@ -12,7 +12,7 @@
 #include "coding/uint256.h"
 
 /*
-unsigned int GetNextWorkRequired(const CellBlockIndex* pindexLast, const CellBlockHeader *pblock, const Consensus::Params& params)
+unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHeader *pblock, const Consensus::Params& params)
 {
     assert(pindexLast != nullptr);
     unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
@@ -30,7 +30,7 @@ unsigned int GetNextWorkRequired(const CellBlockIndex* pindexLast, const CellBlo
             else
             {
                 // Return the last non-special-min-difficulty-rules-block
-                const CellBlockIndex* pindex = pindexLast;
+                const MCBlockIndex* pindex = pindexLast;
                 while (pindex->pprev && pindex->nHeight % params.DifficultyAdjustmentInterval() != 0 && pindex->nBits == nProofOfWorkLimit)
                     pindex = pindex->pprev;
                 return pindex->nBits;
@@ -42,14 +42,14 @@ unsigned int GetNextWorkRequired(const CellBlockIndex* pindexLast, const CellBlo
     // Go back by what we want to be 14 days worth of blocks
     int nHeightFirst = pindexLast->nHeight - (params.DifficultyAdjustmentInterval()-1);
     assert(nHeightFirst >= 0);
-    const CellBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
+    const MCBlockIndex* pindexFirst = pindexLast->GetAncestor(nHeightFirst);
     assert(pindexFirst);
 
     return CalculateNextWorkRequired(pindexLast, pindexFirst->GetBlockTime(), params);
 }
 */
 
-unsigned int CalculateNextWorkRequired(const CellBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
+unsigned int CalculateNextWorkRequired(const MCBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params& params)
 {
     if (params.fPowNoRetargeting)
         return pindexLast->nBits;

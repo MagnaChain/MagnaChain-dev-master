@@ -41,7 +41,7 @@
 
 class OptionsModel;
 
-class CellWallet;
+class MCWallet;
 
 QT_BEGIN_NAMESPACE
 class QApplication;
@@ -96,7 +96,7 @@ public:
     // Verify the payment request size is valid as per BIP70
     static bool verifySize(qint64 requestSize);
     // Verify the payment request amount is valid
-    static bool verifyAmount(const CellAmount& requestAmount);
+    static bool verifyAmount(const MCAmount& requestAmount);
 
 Q_SIGNALS:
     // Fired when a valid payment request is received
@@ -114,7 +114,7 @@ public Q_SLOTS:
     void uiReady();
 
     // Submit Payment message to a merchant, get back PaymentACK:
-    void fetchPaymentACK(CellWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
+    void fetchPaymentACK(MCWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
 
     // Handle an incoming URI, URI with local file scheme or file
     void handleURIOrFile(const QString& s);

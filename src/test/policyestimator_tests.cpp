@@ -17,12 +17,12 @@ BOOST_FIXTURE_TEST_SUITE(policyestimator_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
 {
-    CellBlockPolicyEstimator feeEst;
-    CellTxMemPool mpool(&feeEst);
+    MCBlockPolicyEstimator feeEst;
+    MCTxMemPool mpool(&feeEst);
     TestMemPoolEntryHelper entry;
-    CellAmount basefee(2000);
-    CellAmount deltaFee(100);
-    std::vector<CellAmount> feeV;
+    MCAmount basefee(2000);
+    MCAmount deltaFee(100);
+    std::vector<MCAmount> feeV;
 
     // Populate vectors of increasing fees
     for (int j = 0; j < 10; j++) {
@@ -36,18 +36,18 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     std::vector<uint256> txHashes[10];
 
     // Create a transaction template
-    CellScript garbage;
+    MCScript garbage;
     for (unsigned int i = 0; i < 128; i++)
         garbage.push_back('X');
-    CellMutableTransaction tx;
+    MCMutableTransaction tx;
     tx.vin.resize(1);
     tx.vin[0].scriptSig = garbage;
     tx.vout.resize(1);
     tx.vout[0].nValue=0LL;
-    CellFeeRate baseRate(basefee, GetVirtualTransactionSize(tx));
+    MCFeeRate baseRate(basefee, GetVirtualTransactionSize(tx));
 
     // Create a fake block
-    std::vector<CellTransactionRef> block;
+    std::vector<MCTransactionRef> block;
     int blocknum = 0;
 
     // Loop through 200 blocks
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             // 9/10 blocks add 2nd highest and so on until ...
             // 1/10 blocks add lowest fee transactions
             while (txHashes[9-h].size()) {
-                CellTransactionRef ptx = mpool.get(txHashes[9-h].back());
+                MCTransactionRef ptx = mpool.get(txHashes[9-h].back());
                 if (ptx)
                     block.push_back(ptx);
                 txHashes[9-h].pop_back();
@@ -81,13 +81,13 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             // At this point we should need to combine 3 buckets to get enough data points
             // So estimateFee(1) should fail and estimateFee(2) should return somewhere around
             // 9*baserate.  estimateFee(2) %'s are 100,100,90 = average 97%
-            BOOST_CHECK(feeEst.estimateFee(1) == CellFeeRate(0));
+            BOOST_CHECK(feeEst.estimateFee(1) == MCFeeRate(0));
             BOOST_CHECK(feeEst.estimateFee(2).GetFeePerK() < 9*baseRate.GetFeePerK() + deltaFee);
             BOOST_CHECK(feeEst.estimateFee(2).GetFeePerK() > 9*baseRate.GetFeePerK() - deltaFee);
         }
     }
 
-    std::vector<CellAmount> origFeeEst;
+    std::vector<MCAmount> origFeeEst;
     // Highest feerate is 10*baseRate and gets in all blocks,
     // second highest feerate is 9*baseRate and gets in 9/10 blocks = 90%,
     // third highest feerate is 8*base rate, and gets in 8/10 blocks = 80%,
@@ -115,7 +115,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     while (blocknum < 250)
         mpool.removeForBlock(block, ++blocknum);
 
-    BOOST_CHECK(feeEst.estimateFee(1) == CellFeeRate(0));
+    BOOST_CHECK(feeEst.estimateFee(1) == MCFeeRate(0));
     for (int i = 2; i < 10;i++) {
         BOOST_CHECK(feeEst.estimateFee(i).GetFeePerK() < origFeeEst[i-1] + deltaFee);
         BOOST_CHECK(feeEst.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
@@ -137,14 +137,14 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     }
 
     for (int i = 1; i < 10;i++) {
-        BOOST_CHECK(feeEst.estimateFee(i) == CellFeeRate(0) || feeEst.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        BOOST_CHECK(feeEst.estimateFee(i) == MCFeeRate(0) || feeEst.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
     }
 
     // Mine all those transactions
     // Estimates should still not be below original
     for (int j = 0; j < 10; j++) {
         while(txHashes[j].size()) {
-            CellTransactionRef ptx = mpool.get(txHashes[j].back());
+            MCTransactionRef ptx = mpool.get(txHashes[j].back());
             if (ptx)
                 block.push_back(ptx);
             txHashes[j].pop_back();
@@ -152,9 +152,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     }
     mpool.removeForBlock(block, 266);
     block.clear();
-    BOOST_CHECK(feeEst.estimateFee(1) == CellFeeRate(0));
+    BOOST_CHECK(feeEst.estimateFee(1) == MCFeeRate(0));
     for (int i = 2; i < 10;i++) {
-        BOOST_CHECK(feeEst.estimateFee(i) == CellFeeRate(0) || feeEst.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        BOOST_CHECK(feeEst.estimateFee(i) == MCFeeRate(0) || feeEst.estimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
     }
 
     // Mine 400 more blocks where everything is mined every block
@@ -165,7 +165,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
                 tx.vin[0].prevout.n = 10000*blocknum+100*j+k;
                 uint256 hash = tx.GetHash();
                 mpool.addUnchecked(hash, entry.Fee(feeV[j]).Time(GetTime()).Height(blocknum).FromTx(tx));
-                CellTransactionRef ptx = mpool.get(hash);
+                MCTransactionRef ptx = mpool.get(hash);
                 if (ptx)
                     block.push_back(ptx);
 
@@ -174,7 +174,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
         mpool.removeForBlock(block, ++blocknum);
         block.clear();
     }
-    BOOST_CHECK(feeEst.estimateFee(1) == CellFeeRate(0));
+    BOOST_CHECK(feeEst.estimateFee(1) == MCFeeRate(0));
     for (int i = 2; i < 9; i++) { // At 9, the original estimate was already at the bottom (b/c scale = 2)
         BOOST_CHECK(feeEst.estimateFee(i).GetFeePerK() < origFeeEst[i-1] - deltaFee);
     }

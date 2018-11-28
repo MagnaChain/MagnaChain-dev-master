@@ -39,7 +39,7 @@ UniValue getconnectioncount(const JSONRPCRequest& request)
     if(!g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    return (int)g_connman->GetNodeCount(CellConnman::CONNECTIONS_ALL);
+    return (int)g_connman->GetNodeCount(MCConnman::CONNECTIONS_ALL);
 }
 
 UniValue ping(const JSONRPCRequest& request)
@@ -59,7 +59,7 @@ UniValue ping(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
     // Request that each node send a ping during next message processing pass
-    g_connman->ForEachNode([](CellNode* pnode) {
+    g_connman->ForEachNode([](MCNode* pnode) {
         pnode->fPingQueued = true;
     });
     return NullUniValue;
@@ -121,12 +121,12 @@ UniValue getpeerinfo(const JSONRPCRequest& request)
     if(!g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    std::vector<CellNodeStats> vstats;
+    std::vector<MCNodeStats> vstats;
     g_connman->GetNodeStats(vstats);
 
     UniValue ret(UniValue::VARR);
 
-    for (const CellNodeStats& stats : vstats) {
+    for (const MCNodeStats& stats : vstats) {
         UniValue obj(UniValue::VOBJ);
         CNodeStateStats statestats;
         bool fStateStats = GetNodeStateStats(stats.nodeid, statestats);
@@ -216,7 +216,7 @@ UniValue addnode(const JSONRPCRequest& request)
 
     if (strCommand == "onetry")
     {
-        CellAddress addr;
+        MCAddress addr;
         g_connman->OpenNetworkConnection(addr, false, nullptr, strNode.c_str());
         return NullUniValue;
     }
@@ -465,7 +465,7 @@ UniValue getnetworkinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
     if (g_connman) {
         obj.push_back(Pair("networkactive", g_connman->GetNetworkActive()));
-        obj.push_back(Pair("connections",   (int)g_connman->GetNodeCount(CellConnman::CONNECTIONS_ALL)));
+        obj.push_back(Pair("connections",   (int)g_connman->GetNodeCount(MCConnman::CONNECTIONS_ALL)));
     }
     obj.push_back(Pair("networks",      GetNetworksInfo()));
     obj.push_back(Pair("relayfee",      ValueFromAmount(::minRelayTxFee.GetFeePerK())));
@@ -473,7 +473,7 @@ UniValue getnetworkinfo(const JSONRPCRequest& request)
     UniValue localAddresses(UniValue::VARR);
     {
         LOCK(cs_mapLocalHost);
-        for (const std::pair<CellNetAddr, LocalServiceInfo> &item : mapLocalHost)
+        for (const std::pair<MCNetAddr, LocalServiceInfo> &item : mapLocalHost)
         {
             UniValue rec(UniValue::VOBJ);
             rec.push_back(Pair("address", item.first.ToString()));
@@ -511,14 +511,14 @@ UniValue setban(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
     CSubNet subNet;
-    CellNetAddr netAddr;
+    MCNetAddr netAddr;
     bool isSubnet = false;
 
     if (request.params[0].get_str().find("/") != std::string::npos)
         isSubnet = true;
 
     if (!isSubnet) {
-        CellNetAddr resolved;
+        MCNetAddr resolved;
         LookupHost(request.params[0].get_str().c_str(), resolved, false);
         netAddr = resolved;
     }
@@ -571,7 +571,7 @@ UniValue listbanned(const JSONRPCRequest& request)
     UniValue bannedAddresses(UniValue::VARR);
     for (banmap_t::iterator it = banMap.begin(); it != banMap.end(); it++)
     {
-        CellBanEntry banEntry = (*it).second;
+        MCBanEntry banEntry = (*it).second;
         UniValue rec(UniValue::VOBJ);
         rec.push_back(Pair("address", (*it).first.ToString()));
         rec.push_back(Pair("banned_until", banEntry.nBanUntil));

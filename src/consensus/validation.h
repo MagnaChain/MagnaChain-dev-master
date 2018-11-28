@@ -25,7 +25,7 @@ static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
 static const unsigned char REJECT_CHECKPOINT = 0x43;
 
 /** Capture information about block/transaction validation */
-class CellValidationState {
+class MCValidationState {
 private:
     enum mode_state {
         MODE_VALID,   //!< everything ok
@@ -38,7 +38,7 @@ private:
     bool corruptionPossible;
     std::string strDebugMessage;
 public:
-    CellValidationState() : mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false) {}
+    MCValidationState() : mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false) {}
     bool DoS(int level, bool ret = false,
              unsigned int chRejectCodeIn=0, const std::string &strRejectReasonIn="",
              bool corruptionIn=false,
@@ -91,7 +91,7 @@ public:
     std::string GetDebugMessage() const { return strDebugMessage; }
 };
 
-static inline int64_t GetTransactionWeight(const CellTransaction& tx, SmartLuaState* sls = nullptr)
+static inline int64_t GetTransactionWeight(const MCTransaction& tx, SmartLuaState* sls = nullptr)
 {
     int factor = 1;
     int basepart = 0;
@@ -113,7 +113,7 @@ static inline int64_t GetTransactionWeight(const CellTransaction& tx, SmartLuaSt
     return (part1 + part2) * factor + basepart;
 }
 
-static inline int64_t GetBlockWeight(const CellBlock& block)
+static inline int64_t GetBlockWeight(const MCBlock& block)
 {
     // This implements the weight = (stripped_size * 4) + witness_size formula,
     // using only serialization with and without witness data. As witness_size
@@ -121,6 +121,6 @@ static inline int64_t GetBlockWeight(const CellBlock& block)
     // weight = (stripped_size * 3) + total_size.
     return ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION);
 }
-bool CheckBlockHeaderSignature(const CellBlockHeader& block);
+bool CheckBlockHeaderSignature(const MCBlockHeader& block);
 
 #endif // CELLLINK_CONSENSUS_VALIDATION_H

@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////
 
 /*
-CellCriticalSection mutex;
+MCCriticalSection mutex;
     boost::recursive_mutex mutex;
 
 LOCK(mutex);
@@ -89,10 +89,10 @@ void static inline DeleteLock(void* cs) {}
  * Wrapped boost mutex: supports recursive locking, but no waiting
  * TODO: We should move away from using the recursive lock by default.
  */
-class CellCriticalSection : public AnnotatedMixin<boost::recursive_mutex>
+class MCCriticalSection : public AnnotatedMixin<boost::recursive_mutex>
 {
 public:
-    ~CellCriticalSection() {
+    ~MCCriticalSection() {
         DeleteLock((void*)this);
     }
 };
@@ -101,7 +101,7 @@ public:
 typedef AnnotatedMixin<boost::mutex> CWaitableCriticalSection;
 
 /** Just a typedef for boost::condition_variable, can be wrapped later if desired */
-typedef boost::condition_variable CellConditionVariable;
+typedef boost::condition_variable MCConditionVariable;
 
 #ifdef DEBUG_LOCKCONTENTION
 void PrintLockContention(const char* pszName, const char* pszFile, int nLine);
@@ -168,14 +168,14 @@ public:
     }
 };
 
-typedef CMutexLock<CellCriticalSection> CellCriticalBlock;
+typedef CMutexLock<MCCriticalSection> MCCriticalBlock;
 
 #define PASTE(x, y) x ## y
 #define PASTE2(x, y) PASTE(x, y)
 
-#define LOCK(cs) CellCriticalBlock PASTE2(criticalblock, __COUNTER__)(cs, #cs, __FILE__, __LINE__)
-#define LOCK2(cs1, cs2) CellCriticalBlock criticalblock1(cs1, #cs1, __FILE__, __LINE__), criticalblock2(cs2, #cs2, __FILE__, __LINE__)
-#define TRY_LOCK(cs, name) CellCriticalBlock name(cs, #cs, __FILE__, __LINE__, true)
+#define LOCK(cs) MCCriticalBlock PASTE2(criticalblock, __COUNTER__)(cs, #cs, __FILE__, __LINE__)
+#define LOCK2(cs1, cs2) MCCriticalBlock criticalblock1(cs1, #cs1, __FILE__, __LINE__), criticalblock2(cs2, #cs2, __FILE__, __LINE__)
+#define TRY_LOCK(cs, name) MCCriticalBlock name(cs, #cs, __FILE__, __LINE__, true)
 
 #define ENTER_CRITICAL_SECTION(cs)                            \
     {                                                         \

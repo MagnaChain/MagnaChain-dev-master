@@ -155,7 +155,7 @@ void SendCoinsDialog::setModel(WalletModel *_model)
 
         setBalance(_model->getBalance(), _model->getUnconfirmedBalance(), _model->getImmatureBalance(),
                    _model->getWatchBalance(), _model->getWatchUnconfirmedBalance(), _model->getWatchImmatureBalance());
-        connect(_model, SIGNAL(balanceChanged(CellAmount,CellAmount,CellAmount,CellAmount,CellAmount,CellAmount)), this, SLOT(setBalance(CellAmount,CellAmount,CellAmount,CellAmount,CellAmount,CellAmount)));
+        connect(_model, SIGNAL(balanceChanged(MCAmount,MCAmount,MCAmount,MCAmount,MCAmount,MCAmount)), this, SLOT(setBalance(MCAmount,MCAmount,MCAmount,MCAmount,MCAmount,MCAmount)));
         connect(_model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
         updateDisplayUnit();
 
@@ -179,7 +179,7 @@ void SendCoinsDialog::setModel(WalletModel *_model)
         connect(ui->checkBoxMinimumFee, SIGNAL(stateChanged(int)), this, SLOT(coinControlUpdateLabels()));
         connect(ui->optInRBF, SIGNAL(stateChanged(int)), this, SLOT(updateSmartFeeLabel()));
         connect(ui->optInRBF, SIGNAL(stateChanged(int)), this, SLOT(coinControlUpdateLabels()));
-        ui->customFee->setSingleStep(CellWallet::GetRequiredFee(1000));
+        ui->customFee->setSingleStep(MCWallet::GetRequiredFee(1000));
         updateFeeSectionControls();
         updateMinFeeLabel();
         updateSmartFeeLabel();
@@ -257,8 +257,8 @@ void SendCoinsDialog::on_sendButton_clicked()
     WalletModelTransaction currentTransaction(recipients);
     WalletModel::SendCoinsReturn prepareStatus;
 
-    // Always use a CellCoinControl instance, use the CoinControlDialog instance if CoinControl has been enabled
-    CellCoinControl ctrl;
+    // Always use a MCCoinControl instance, use the CoinControlDialog instance if CoinControl has been enabled
+    MCCoinControl ctrl;
     if (model->getOptionsModel()->getCoinControlFeatures())
         ctrl = *CoinControlDialog::coinControl;
 
@@ -275,7 +275,7 @@ void SendCoinsDialog::on_sendButton_clicked()
         return;
     }
 
-    CellAmount txFee = currentTransaction.getTransactionFee();
+    MCAmount txFee = currentTransaction.getTransactionFee();
 
     // Format confirmation message
     QStringList formatted;
@@ -331,7 +331,7 @@ void SendCoinsDialog::on_sendButton_clicked()
 
     // add total amount in all subdivision units
     questionString.append("<hr />");
-    CellAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee;
+    MCAmount totalAmount = currentTransaction.getTotalTransactionAmount() + txFee;
     QStringList alternativeUnits;
     for (MagnaChainUnits::Unit u : MagnaChainUnits::availableUnits())
     {
@@ -506,8 +506,8 @@ bool SendCoinsDialog::handlePaymentRequest(const SendCoinsRecipient &rv)
     return true;
 }
 
-void SendCoinsDialog::setBalance(const CellAmount& balance, const CellAmount& unconfirmedBalance, const CellAmount& immatureBalance,
-                                 const CellAmount& watchBalance, const CellAmount& watchUnconfirmedBalance, const CellAmount& watchImmatureBalance)
+void SendCoinsDialog::setBalance(const MCAmount& balance, const MCAmount& unconfirmedBalance, const MCAmount& immatureBalance,
+                                 const MCAmount& watchBalance, const MCAmount& watchUnconfirmedBalance, const MCAmount& watchImmatureBalance)
 {
     Q_UNUSED(unconfirmedBalance);
     Q_UNUSED(immatureBalance);
@@ -531,9 +531,9 @@ void SendCoinsDialog::updateDisplayUnit()
 
 void SendCoinsDialog::processSendCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg)
 {
-    QPair<QString, CellClientUIInterface::MessageBoxFlags> msgParams;
+    QPair<QString, MCClientUIInterface::MessageBoxFlags> msgParams;
     // Default to a warning message, override if error message is needed
-    msgParams.second = CellClientUIInterface::MSG_WARNING;
+    msgParams.second = MCClientUIInterface::MSG_WARNING;
 
     // This comment is specific to SendCoinsDialog usage of WalletModel::SendCoinsReturn.
     // WalletModel::TransactionCommitFailed is used only in WalletModel::sendCoins()
@@ -557,18 +557,18 @@ void SendCoinsDialog::processSendCoinsReturn(const WalletModel::SendCoinsReturn 
         break;
     case WalletModel::TransactionCreationFailed:
         msgParams.first = tr("Transaction creation failed!");
-        msgParams.second = CellClientUIInterface::MSG_ERROR;
+        msgParams.second = MCClientUIInterface::MSG_ERROR;
         break;
     case WalletModel::TransactionCommitFailed:
         msgParams.first = tr("The transaction was rejected with the following reason: %1").arg(sendCoinsReturn.reasonCommitFailed);
-        msgParams.second = CellClientUIInterface::MSG_ERROR;
+        msgParams.second = MCClientUIInterface::MSG_ERROR;
         break;
     case WalletModel::AbsurdFee:
         msgParams.first = tr("A fee higher than %1 is considered an absurdly high fee.").arg(MagnaChainUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), maxTxFee));
         break;
     case WalletModel::PaymentRequestExpired:
         msgParams.first = tr("Payment request expired.");
-        msgParams.second = CellClientUIInterface::MSG_ERROR;
+        msgParams.second = MCClientUIInterface::MSG_ERROR;
         break;
     // included to prevent a compiler warning.
     case WalletModel::OK:
@@ -602,7 +602,7 @@ void SendCoinsDialog::on_buttonMinimizeFee_clicked()
 
 void SendCoinsDialog::setMinimumFee()
 {
-    ui->customFee->setValue(CellWallet::GetRequiredFee(1000));
+    ui->customFee->setValue(MCWallet::GetRequiredFee(1000));
 }
 
 void SendCoinsDialog::updateFeeSectionControls()
@@ -634,14 +634,14 @@ void SendCoinsDialog::updateMinFeeLabel()
 {
     if (model && model->getOptionsModel())
         ui->checkBoxMinimumFee->setText(tr("Pay only the required fee of %1").arg(
-            MagnaChainUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), CellWallet::GetRequiredFee(1000)) + "/kB")
+            MagnaChainUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), MCWallet::GetRequiredFee(1000)) + "/kB")
         );
 }
 
-void SendCoinsDialog::updateCoinControlState(CellCoinControl& ctrl)
+void SendCoinsDialog::updateCoinControlState(MCCoinControl& ctrl)
 {
     if (ui->radioCustomFee->isChecked()) {
-        ctrl.m_feerate = CellFeeRate(ui->customFee->value());
+        ctrl.m_feerate = MCFeeRate(ui->customFee->value());
     } else {
         ctrl.m_feerate.reset();
     }
@@ -655,11 +655,11 @@ void SendCoinsDialog::updateSmartFeeLabel()
 {
     if(!model || !model->getOptionsModel())
         return;
-    CellCoinControl coin_control;
+    MCCoinControl coin_control;
     updateCoinControlState(coin_control);
     coin_control.m_feerate.reset(); // Explicitly use only fee estimation rate for smart fee labels
     FeeCalculation feeCalc;
-    CellFeeRate feeRate = CellFeeRate(CellWallet::GetMinimumFee(1000, coin_control, ::mempool, ::feeEstimator, &feeCalc));
+    MCFeeRate feeRate = MCFeeRate(MCWallet::GetMinimumFee(1000, coin_control, ::mempool, ::feeEstimator, &feeCalc));
 
     ui->labelSmartFee->setText(MagnaChainUnits::formatWithUnit(model->getOptionsModel()->getDisplayUnit(), feeRate.GetFeePerK()) + "/kB");
 
@@ -749,7 +749,7 @@ void SendCoinsDialog::coinControlChangeChecked(int state)
 {
     if (state == Qt::Unchecked)
     {
-        CoinControlDialog::coinControl->destChange = CellNoDestination();
+        CoinControlDialog::coinControl->destChange = MCNoDestination();
         ui->labelCoinControlChangeLabel->clear();
     }
     else
@@ -765,7 +765,7 @@ void SendCoinsDialog::coinControlChangeEdited(const QString& text)
     if (model && model->getAddressTableModel())
     {
         // Default to no change address until verified
-        CoinControlDialog::coinControl->destChange = CellNoDestination();
+        CoinControlDialog::coinControl->destChange = MCNoDestination();
         ui->labelCoinControlChangeLabel->setStyleSheet("QLabel{color:red;}");
 
         MagnaChainAddress addr = MagnaChainAddress(text.toStdString());
@@ -780,7 +780,7 @@ void SendCoinsDialog::coinControlChangeEdited(const QString& text)
         }
         else // Valid address
         {
-            const CellTxDestination dest = addr.Get();
+            const MCTxDestination dest = addr.Get();
             if (!model->IsSpendable(dest)) {
                 ui->labelCoinControlChangeLabel->setText(tr("Warning: Unknown change address"));
 

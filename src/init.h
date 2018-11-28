@@ -9,8 +9,8 @@
 
 #include <string>
 
-class CellScheduler;
-class CellWallet;
+class MCScheduler;
+class MCWallet;
 
 namespace boost
 {
@@ -55,7 +55,7 @@ bool AppInitLockDataDirectory();
  * @note This should only be done after daemonization. Call Shutdown() if this function fails.
  * @pre Parameters should be parsed and config file should be read, AppInitLockDataDirectory should have been called.
  */
-bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler);
+bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler);
 
 /** The help message mode determines what help message to show */
 enum HelpMessageMode {

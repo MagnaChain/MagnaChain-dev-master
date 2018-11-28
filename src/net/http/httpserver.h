@@ -16,7 +16,7 @@ static const int DEFAULT_HTTP_SERVER_TIMEOUT=30;
 
 struct evhttp_request;
 struct event_base;
-class CellService;
+class MCService;
 class HTTPRequest;
 
 /** Initialize HTTP server.
@@ -77,9 +77,9 @@ public:
      */
     std::string GetURI();
 
-    /** Get CellService (address:ip) for the origin of the http request.
+    /** Get MCService (address:ip) for the origin of the http request.
      */
-    CellService GetPeer();
+    MCService GetPeer();
 
     /** Get request method.
      */

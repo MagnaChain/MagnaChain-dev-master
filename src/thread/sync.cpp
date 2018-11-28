@@ -60,7 +60,7 @@ typedef std::set<std::pair<void*, void*> > InvLockOrders;
 struct LockData {
     // Very ugly hack: as the global constructs and destructors run single
     // threaded, we use this boolean to know whether LockData still exists,
-    // as DeleteLock can get called by global CellCriticalSection destructors
+    // as DeleteLock can get called by global MCCriticalSection destructors
     // after LockData disappears.
     bool available;
     LockData() : available(true) {}

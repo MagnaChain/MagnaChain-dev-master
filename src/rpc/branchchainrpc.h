@@ -7,12 +7,12 @@
 #include "misc/amount.h"
 #include "coding/uint256.h"
 
-class CellBlock;
-class CellBlockIndex;
-class CellTransaction;
+class MCBlock;
+class MCBlockIndex;
+class MCTransaction;
 
-CellAmount GetCreateBranchMortgage(const CellBlock* pBlock=nullptr, const CellBlockIndex* pBlockIndex=nullptr);
+MCAmount GetCreateBranchMortgage(const MCBlock* pBlock=nullptr, const MCBlockIndex* pBlockIndex=nullptr);
 
-uint256 GetBranchTxHash(const CellTransaction& tx);
+uint256 GetBranchTxHash(const MCTransaction& tx);
 
 #endif //  BRANCHCHAIN_PRC_H

@@ -69,11 +69,11 @@ static AddressTableEntry::Type translateTransactionType(const QString &strPurpos
 class AddressTablePriv
 {
 public:
-    CellWallet *wallet;
+    MCWallet *wallet;
     QList<AddressTableEntry> cachedAddressTable;
     AddressTableModel *parent;
 
-    AddressTablePriv(CellWallet *_wallet, AddressTableModel *_parent):
+    AddressTablePriv(MCWallet *_wallet, AddressTableModel *_parent):
         wallet(_wallet), parent(_parent) {}
 
     void refreshAddressTable()
@@ -81,7 +81,7 @@ public:
         cachedAddressTable.clear();
         {
             LOCK(wallet->cs_wallet);
-            for (const std::pair<CellTxDestination, CellAddressBookData>& item : wallet->mapAddressBook)
+            for (const std::pair<MCTxDestination, MCAddressBookData>& item : wallet->mapAddressBook)
             {
                 const MagnaChainAddress& address = item.first;
                 bool fMine = IsMine(*wallet, address.Get());
@@ -164,7 +164,7 @@ public:
     }
 };
 
-AddressTableModel::AddressTableModel(CellWallet *_wallet, WalletModel *parent) :
+AddressTableModel::AddressTableModel(MCWallet *_wallet, WalletModel *parent) :
     QAbstractTableModel(parent),walletModel(parent),wallet(_wallet),priv(0)
 {
     columns << tr("Label") << tr("Address");
@@ -247,7 +247,7 @@ bool AddressTableModel::setData(const QModelIndex &index, const QVariant &value,
     if(role == Qt::EditRole)
     {
         LOCK(wallet->cs_wallet); /* For SetAddressBook / DelAddressBook */
-        CellTxDestination curAddress = MagnaChainAddress(rec->address.toStdString()).Get();
+        MCTxDestination curAddress = MagnaChainAddress(rec->address.toStdString()).Get();
         if(index.column() == Label)
         {
             // Do nothing, if old label == new label
@@ -258,9 +258,9 @@ bool AddressTableModel::setData(const QModelIndex &index, const QVariant &value,
             }
             wallet->SetAddressBook(curAddress, value.toString().toStdString(), strPurpose);
         } else if(index.column() == Address) {
-            CellTxDestination newAddress = MagnaChainAddress(value.toString().toStdString()).Get();
+            MCTxDestination newAddress = MagnaChainAddress(value.toString().toStdString()).Get();
             // Refuse to set invalid address, set error status and return false
-            if(boost::get<CellNoDestination>(&newAddress))
+            if(boost::get<MCNoDestination>(&newAddress))
             {
                 editStatus = INVALID_ADDRESS;
                 return false;
@@ -369,7 +369,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     else if(type == Receive)
     {
         // Generate a new address to associate with given label
-        CellPubKey newKey;
+        MCPubKey newKey;
         if(!wallet->GetKeyFromPool(newKey))
         {
             WalletModel::UnlockContext ctx(walletModel->requestUnlock());
@@ -425,7 +425,7 @@ QString AddressTableModel::labelForAddress(const QString &address) const
     {
         LOCK(wallet->cs_wallet);
         MagnaChainAddress address_parsed(address.toStdString());
-        std::map<CellTxDestination, CellAddressBookData>::iterator mi = wallet->mapAddressBook.find(address_parsed.Get());
+        std::map<MCTxDestination, MCAddressBookData>::iterator mi = wallet->mapAddressBook.find(address_parsed.Get());
         if (mi != wallet->mapAddressBook.end())
         {
             return QString::fromStdString(mi->second.name);

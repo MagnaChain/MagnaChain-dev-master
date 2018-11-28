@@ -35,8 +35,8 @@
 #endif
 
 
-class CellScheduler;
-class CellNode;
+class MCScheduler;
+class MCNode;
 
 namespace boost {
     class thread_group;
@@ -95,13 +95,13 @@ typedef int64_t NodeId;
 struct AddedNodeInfo
 {
     std::string strAddedNode;
-    CellService resolvedAddress;
+    MCService resolvedAddress;
     bool fConnected;
     bool fInbound;
 };
 
-class CellNodeStats;
-class CellClientUIInterface;
+class MCNodeStats;
+class MCClientUIInterface;
 
 struct CSerializedNetMsg
 {
@@ -117,7 +117,7 @@ struct CSerializedNetMsg
 };
 
 class NetEventsInterface;
-class CellConnman
+class MCConnman
 {
 public:
 
@@ -137,7 +137,7 @@ public:
         int nMaxAddnode = 0;
         int nMaxFeeler = 0;
         int nBestHeight = 0;
-        CellClientUIInterface* uiInterface = nullptr;
+        MCClientUIInterface* uiInterface = nullptr;
         NetEventsInterface* m_msgproc = nullptr;
         unsigned int nSendBufferMaxSize = 0;
         unsigned int nReceiveFloodSize = 0;
@@ -145,7 +145,7 @@ public:
         uint64_t nMaxOutboundLimit = 0;
         std::vector<std::string> vSeedNodes;
         std::vector<CSubNet> vWhitelistedRange;
-        std::vector<CellService> vBinds, vWhiteBinds;
+        std::vector<MCService> vBinds, vWhiteBinds;
     };
 
     void Init(const Options& connOptions) {
@@ -165,19 +165,19 @@ public:
         vWhitelistedRange = connOptions.vWhitelistedRange;
     }
 
-    CellConnman(uint64_t seed0, uint64_t seed1);
-    ~CellConnman();
-    bool Start(CellScheduler& scheduler, const Options& options);
+    MCConnman(uint64_t seed0, uint64_t seed1);
+    ~MCConnman();
+    bool Start(MCScheduler& scheduler, const Options& options);
     void Stop();
     void Interrupt();
     bool GetNetworkActive() const { return fNetworkActive; };
     void SetNetworkActive(bool active);
-    bool OpenNetworkConnection(const CellAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false, bool fFeeler = false, bool manual_connection = false);
+    bool OpenNetworkConnection(const MCAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound = nullptr, const char *strDest = nullptr, bool fOneShot = false, bool fFeeler = false, bool manual_connection = false);
     bool CheckIncomingNonce(uint64_t nonce);
 
-    bool ForNode(NodeId id, std::function<bool(CellNode* pnode)> func);
+    bool ForNode(NodeId id, std::function<bool(MCNode* pnode)> func);
 
-    void PushMessage(CellNode* pnode, CSerializedNetMsg&& msg);
+    void PushMessage(MCNode* pnode, CSerializedNetMsg&& msg);
 
     template<typename Callable>
     void ForEachNode(Callable&& func)
@@ -223,10 +223,10 @@ public:
 
     // Addrman functions
     size_t GetAddressCount() const;
-    void SetServices(const CellService &addr, ServiceFlags nServices);
-    void MarkAddressGood(const CellAddress& addr);
-    void AddNewAddresses(const std::vector<CellAddress>& vAddr, const CellAddress& addrFrom, int64_t nTimePenalty = 0);
-    std::vector<CellAddress> GetAddresses();
+    void SetServices(const MCService &addr, ServiceFlags nServices);
+    void MarkAddressGood(const MCAddress& addr);
+    void AddNewAddresses(const std::vector<MCAddress>& vAddr, const MCAddress& addrFrom, int64_t nTimePenalty = 0);
+    std::vector<MCAddress> GetAddresses();
 
     // Denial-of-service detection/prevention
     // The idea is to detect peers that are behaving
@@ -242,12 +242,12 @@ public:
     // dangerous, because it can cause a network split
     // between nodes running old code and nodes running
     // new code.
-    void Ban(const CellNetAddr& netAddr, const BanReason& reason, int64_t bantimeoffset = 0, bool sinceUnixEpoch = false);
+    void Ban(const MCNetAddr& netAddr, const BanReason& reason, int64_t bantimeoffset = 0, bool sinceUnixEpoch = false);
     void Ban(const CSubNet& subNet, const BanReason& reason, int64_t bantimeoffset = 0, bool sinceUnixEpoch = false);
     void ClearBanned(); // needed for unit testing
-    bool IsBanned(CellNetAddr ip);
+    bool IsBanned(MCNetAddr ip);
     bool IsBanned(CSubNet subnet);
-    bool Unban(const CellNetAddr &ip);
+    bool Unban(const MCNetAddr &ip);
     bool Unban(const CSubNet &ip);
     void GetBanned(banmap_t &banmap);
     void SetBanned(const banmap_t &banmap);
@@ -270,7 +270,7 @@ public:
     std::vector<AddedNodeInfo> GetAddedNodeInfo();
 
     size_t GetNodeCount(NumConnections num);
-    void GetNodeStats(std::vector<CellNodeStats>& vstats);
+    void GetNodeStats(std::vector<MCNodeStats>& vstats);
     bool DisconnectNode(const std::string& node);
     bool DisconnectNode(NodeId id);
 
@@ -317,9 +317,9 @@ private:
         ListenSocket(SOCKET socket_, bool whitelisted_) : socket(socket_), whitelisted(whitelisted_) {}
     };
 
-    bool BindListenPort(const CellService &bindAddr, std::string& strError, bool fWhitelisted = false);
-    bool Bind(const CellService &addr, unsigned int flags);
-    bool InitBinds(const std::vector<CellService>& binds, const std::vector<CellService>& whiteBinds);
+    bool BindListenPort(const MCService &bindAddr, std::string& strError, bool fWhitelisted = false);
+    bool Bind(const MCService &addr, unsigned int flags);
+    bool InitBinds(const std::vector<MCService>& binds, const std::vector<MCService>& whiteBinds);
     void ThreadOpenAddedConnections();
     void AddOneShot(const std::string& strDest);
     void ProcessOneShot();
@@ -329,22 +329,22 @@ private:
     void ThreadSocketHandler();
     void ThreadDNSAddressSeed();
 
-    uint64_t CalculateKeyedNetGroup(const CellAddress& ad) const;
+    uint64_t CalculateKeyedNetGroup(const MCAddress& ad) const;
 
-    CellNode* FindNode(const CellNetAddr& ip);
-    CellNode* FindNode(const CSubNet& subNet);
-    CellNode* FindNode(const std::string& addrName);
-    CellNode* FindNode(const CellService& addr);
+    MCNode* FindNode(const MCNetAddr& ip);
+    MCNode* FindNode(const CSubNet& subNet);
+    MCNode* FindNode(const std::string& addrName);
+    MCNode* FindNode(const MCService& addr);
 
     bool AttemptToEvictConnection();
-    CellNode* ConnectNode(CellAddress addrConnect, const char *pszDest, bool fCountFailure);
-    bool IsWhitelistedRange(const CellNetAddr &addr);
+    MCNode* ConnectNode(MCAddress addrConnect, const char *pszDest, bool fCountFailure);
+    bool IsWhitelistedRange(const MCNetAddr &addr);
 
-    void DeleteNode(CellNode* pnode);
+    void DeleteNode(MCNode* pnode);
 
     NodeId GetNewNodeId();
 
-    size_t SocketSendData(CellNode *pnode) const;
+    size_t SocketSendData(MCNode *pnode) const;
     //!check is the banlist has unwritten changes
     bool BannedSetIsDirty();
     //!set the "dirty" flag for the banlist
@@ -360,11 +360,11 @@ private:
     void RecordBytesSent(uint64_t bytes);
 
     // Whether the node should be passed out in ForEach* callbacks
-    static bool NodeFullyConnected(const CellNode* pnode);
+    static bool NodeFullyConnected(const MCNode* pnode);
 
     // Network usage totals
-    CellCriticalSection cs_totalBytesRecv;
-    CellCriticalSection cs_totalBytesSent;
+    MCCriticalSection cs_totalBytesRecv;
+    MCCriticalSection cs_totalBytesSent;
     uint64_t nTotalBytesRecv;
     uint64_t nTotalBytesSent;
 
@@ -384,17 +384,17 @@ private:
     std::vector<ListenSocket> vhListenSocket;
     std::atomic<bool> fNetworkActive;
     banmap_t setBanned;
-    CellCriticalSection cs_setBanned;
+    MCCriticalSection cs_setBanned;
     bool setBannedIsDirty;
     bool fAddressesInitialized;
-    CellAddrMan addrman;
+    MCAddrMan addrman;
     std::deque<std::string> vOneShots;
-    CellCriticalSection cs_vOneShots;
+    MCCriticalSection cs_vOneShots;
     std::vector<std::string> vAddedNodes;
-    CellCriticalSection cs_vAddedNodes;
-    std::vector<CellNode*> vNodes;
-    std::list<CellNode*> vNodesDisconnected;
-    mutable CellCriticalSection cs_vNodes;
+    MCCriticalSection cs_vAddedNodes;
+    std::vector<MCNode*> vNodes;
+    std::list<MCNode*> vNodesDisconnected;
+    mutable MCCriticalSection cs_vNodes;
     std::atomic<NodeId> nLastNodeId;
 
     /** Services this instance offers */
@@ -410,7 +410,7 @@ private:
     int nMaxAddnode;
     int nMaxFeeler;
     std::atomic<int> nBestHeight;
-    CellClientUIInterface* clientInterface;
+    MCClientUIInterface* clientInterface;
     NetEventsInterface* m_msgproc;
 
     /** SipHasher seeds for deterministic randomness */
@@ -436,13 +436,13 @@ private:
      *  This takes the place of a feeler connection */
     std::atomic_bool m_try_another_outbound_peer;
 
-    friend struct CellConnmanTest;
+    friend struct MCConnmanTest;
 };
-extern std::unique_ptr<CellConnman> g_connman;
+extern std::unique_ptr<MCConnman> g_connman;
 void Discover(boost::thread_group& threadGroup);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
-bool BindListenPort(const CellService &bindAddr, std::string& strError, bool fWhitelisted = false);
+bool BindListenPort(const MCService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
 struct CombinerAll
 {
@@ -465,9 +465,9 @@ struct CombinerAll
 class NetEventsInterface
 {
 public:
-    virtual bool ProcessMessages(CellNode* pnode, std::atomic<bool>& interrupt) = 0;
-    virtual bool SendMessages(CellNode* pnode, std::atomic<bool>& interrupt) = 0;
-    virtual void InitializeNode(CellNode* pnode) = 0;
+    virtual bool ProcessMessages(MCNode* pnode, std::atomic<bool>& interrupt) = 0;
+    virtual bool SendMessages(MCNode* pnode, std::atomic<bool>& interrupt) = 0;
+    virtual void InitializeNode(MCNode* pnode) = 0;
     virtual void FinalizeNode(NodeId id, bool& update_connection_time) = 0;
 };
 
@@ -482,20 +482,20 @@ enum
     LOCAL_MAX
 };
 
-bool IsPeerAddrLocalGood(CellNode *pnode);
-void AdvertiseLocal(CellNode *pnode);
+bool IsPeerAddrLocalGood(MCNode *pnode);
+void AdvertiseLocal(MCNode *pnode);
 void SetLimited(enum Network net, bool fLimited = true);
 bool IsLimited(enum Network net);
-bool IsLimited(const CellNetAddr& addr);
-bool AddLocal(const CellService& addr, int nScore = LOCAL_NONE);
-bool AddLocal(const CellNetAddr& addr, int nScore = LOCAL_NONE);
-bool RemoveLocal(const CellService& addr);
-bool SeenLocal(const CellService& addr);
-bool IsLocal(const CellService& addr);
-bool GetLocal(CellService &addr, const CellNetAddr *paddrPeer = nullptr);
+bool IsLimited(const MCNetAddr& addr);
+bool AddLocal(const MCService& addr, int nScore = LOCAL_NONE);
+bool AddLocal(const MCNetAddr& addr, int nScore = LOCAL_NONE);
+bool RemoveLocal(const MCService& addr);
+bool SeenLocal(const MCService& addr);
+bool IsLocal(const MCService& addr);
+bool GetLocal(MCService &addr, const MCNetAddr *paddrPeer = nullptr);
 bool IsReachable(enum Network net);
-bool IsReachable(const CellNetAddr &addr);
-CellAddress GetLocalAddress(const CellNetAddr *paddrPeer, ServiceFlags nLocalServices);
+bool IsReachable(const MCNetAddr &addr);
+MCAddress GetLocalAddress(const MCNetAddr *paddrPeer, ServiceFlags nLocalServices);
 
 
 extern bool fDiscover;
@@ -512,11 +512,11 @@ struct LocalServiceInfo {
     int nPort;
 };
 
-extern CellCriticalSection cs_mapLocalHost;
-extern std::map<CellNetAddr, LocalServiceInfo> mapLocalHost;
+extern MCCriticalSection cs_mapLocalHost;
+extern std::map<MCNetAddr, LocalServiceInfo> mapLocalHost;
 typedef std::map<std::string, uint64_t> mapMsgCmdSize; //command, total bytes
 
-class CellNodeStats
+class MCNodeStats
 {
 public:
     NodeId nodeid;
@@ -543,9 +543,9 @@ public:
     // Our address, as reported by the peer
     std::string addrLocal;
     // Address of this peer
-    CellAddress addr;
+    MCAddress addr;
     // Bind address of our side of the connection
-    CellAddress addrBind;
+    MCAddress addrBind;
 };
 
 
@@ -558,16 +558,16 @@ private:
 public:
     bool in_data;                   // parsing header (false) or data (true)
 
-    CellDataStream hdrbuf;             // partially received header
-    CellMessageHeader hdr;             // complete header
+    MCDataStream hdrbuf;             // partially received header
+    MCMessageHeader hdr;             // complete header
     unsigned int nHdrPos;
 
-    CellDataStream vRecv;              // received message data
+    MCDataStream vRecv;              // received message data
     unsigned int nDataPos;
 
     int64_t nTime;                  // time (in microseconds) of message receipt.
 
-    CNetMessage(const CellMessageHeader::MessageStartChars& pchMessageStartIn, int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), hdr(pchMessageStartIn), vRecv(nTypeIn, nVersionIn) {
+    CNetMessage(const MCMessageHeader::MessageStartChars& pchMessageStartIn, int nTypeIn, int nVersionIn) : hdrbuf(nTypeIn, nVersionIn), hdr(pchMessageStartIn), vRecv(nTypeIn, nVersionIn) {
         hdrbuf.resize(24);
         in_data = false;
         nHdrPos = 0;
@@ -596,9 +596,9 @@ public:
 
 
 /** Information about a peer */
-class CellNode
+class MCNode
 {
-    friend class CellConnman;
+    friend class MCConnman;
 public:
     // socket
     std::atomic<ServiceFlags> nServices;
@@ -608,17 +608,17 @@ public:
     size_t nSendOffset; // offset inside the first vSendMsg already sent
     uint64_t nSendBytes;
     std::deque<std::vector<unsigned char>> vSendMsg;
-    CellCriticalSection cs_vSend;
-    CellCriticalSection cs_hSocket;
-    CellCriticalSection cs_vRecv;
+    MCCriticalSection cs_vSend;
+    MCCriticalSection cs_hSocket;
+    MCCriticalSection cs_vRecv;
 
-    CellCriticalSection cs_vProcessMsg;
+    MCCriticalSection cs_vProcessMsg;
     std::list<CNetMessage> vProcessMsg;
     size_t nProcessQueueSize;
 
-    CellCriticalSection cs_sendProcessing;
+    MCCriticalSection cs_sendProcessing;
 
-    std::deque<CellInv> vRecvGetData;
+    std::deque<MCInv> vRecvGetData;
     uint64_t nRecvBytes;
     std::atomic<int> nRecvVersion;
 
@@ -627,16 +627,16 @@ public:
     const int64_t nTimeConnected;
     std::atomic<int64_t> nTimeOffset;
     // Address of this peer
-    const CellAddress addr;
+    const MCAddress addr;
     // Bind address of our side of the connection
-    const CellAddress addrBind;
+    const MCAddress addrBind;
     std::atomic<int> nVersion;
     // strSubVer is whatever byte array we read from the wire. However, this field is intended
     // to be printed out, displayed to humans in various forms and so on. So we sanitize it and
     // store the sanitized version in cleanSubVer. The original should be used when dealing with
     // the network or wire types and the cleaned string used when displayed or logged.
     std::string strSubVer, cleanSubVer;
-    CellCriticalSection cs_SubVer; // used for both cleanSubVer and strSubVer
+    MCCriticalSection cs_SubVer; // used for both cleanSubVer and strSubVer
     bool fWhitelisted; // This peer can bypass DoS banning.
     bool fFeeler; // If true this node is being used as a short lived feeler.
     bool fOneShot;
@@ -652,8 +652,8 @@ public:
     bool fRelayTxes; //protected by cs_filter
     bool fSentAddr;
     CSemaphoreGrant grantOutbound;
-    CellCriticalSection cs_filter;
-    CellBloomFilter* pfilter;
+    MCCriticalSection cs_filter;
+    MCBloomFilter* pfilter;
     std::atomic<int> nRefCount;
 
     const uint64_t nKeyedNetGroup;
@@ -669,15 +669,15 @@ public:
     std::atomic<int> nStartingHeight;
 
     // flood relay
-    std::vector<CellAddress> vAddrToSend;
-    CellRollingBloomFilter addrKnown;
+    std::vector<MCAddress> vAddrToSend;
+    MCRollingBloomFilter addrKnown;
     bool fGetAddr;
     std::set<uint256> setKnown;
     int64_t nNextAddrSend;
     int64_t nNextLocalAddrSend;
 
     // inventory based relay
-    CellRollingBloomFilter filterInventoryKnown;
+    MCRollingBloomFilter filterInventoryKnown;
     // Set of transaction ids we still have to announce.
     // They are sorted by the mempool before relay, so the order is not important.
     std::set<uint256> setInventoryTxToSend;
@@ -685,9 +685,9 @@ public:
     // There is no final sorting before sending, as they are always sent immediately
     // and in the order requested.
     std::vector<uint256> vInventoryBlockToSend;
-    CellCriticalSection cs_inventory;
+    MCCriticalSection cs_inventory;
     std::set<uint256> setAskFor;
-    std::multimap<int64_t, CellInv> mapAskFor;
+    std::multimap<int64_t, MCInv> mapAskFor;
     int64_t nNextInvSend;
     // Used for headers announcements - unfiltered blocks to relay
     // Also protected by cs_inventory
@@ -714,17 +714,17 @@ public:
     // Whether a ping is requested.
     std::atomic<bool> fPingQueued;
     // Minimum fee rate with which to filter inv's to this node
-    CellAmount minFeeFilter;
-    CellCriticalSection cs_feeFilter;
-    CellAmount lastSentFeeFilter;
+    MCAmount minFeeFilter;
+    MCCriticalSection cs_feeFilter;
+    MCAmount lastSentFeeFilter;
     int64_t nextSendTimeFeeFilter;
 
-    CellNode(NodeId id, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const CellAddress &addrIn, uint64_t nKeyedNetGroupIn, uint64_t nLocalHostNonceIn, const CellAddress &addrBindIn, const std::string &addrNameIn = "", bool fInboundIn = false);
-    ~CellNode();
+    MCNode(NodeId id, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const MCAddress &addrIn, uint64_t nKeyedNetGroupIn, uint64_t nLocalHostNonceIn, const MCAddress &addrBindIn, const std::string &addrNameIn = "", bool fInboundIn = false);
+    ~MCNode();
 
 private:
-    CellNode(const CellNode&);
-    void operator=(const CellNode&);
+    MCNode(const MCNode&);
+    void operator=(const MCNode&);
     const NodeId id;
 
 
@@ -735,12 +735,12 @@ private:
     int nSendVersion;
     std::list<CNetMessage> vRecvMsg;  // Used only by SocketHandler thread
 
-    mutable CellCriticalSection cs_addrName;
+    mutable MCCriticalSection cs_addrName;
     std::string addrName;
 
     // Our address, as reported by the peer
-    CellService addrLocal;
-    mutable CellCriticalSection cs_addrLocal;
+    MCService addrLocal;
+    mutable MCCriticalSection cs_addrLocal;
 public:
 
     NodeId GetId() const {
@@ -774,11 +774,11 @@ public:
     void SetSendVersion(int nVersionIn);
     int GetSendVersion() const;
 
-    CellService GetAddrLocal() const;
+    MCService GetAddrLocal() const;
     //! May not be called more than once
-    void SetAddrLocal(const CellService& addrLocalIn);
+    void SetAddrLocal(const MCService& addrLocalIn);
 
-    CellNode* AddRef()
+    MCNode* AddRef()
     {
         nRefCount++;
         return this;
@@ -791,12 +791,12 @@ public:
 
 
 
-    void AddAddressKnown(const CellAddress& _addr)
+    void AddAddressKnown(const MCAddress& _addr)
     {
         addrKnown.insert(_addr.GetKey());
     }
 
-    void PushAddress(const CellAddress& _addr, FastRandomContext &insecure_rand)
+    void PushAddress(const MCAddress& _addr, FastRandomContext &insecure_rand)
     {
         // Known checking here is only to save space from duplicates.
         // SendMessages will filter it again for knowns that were added
@@ -811,7 +811,7 @@ public:
     }
 
 
-    void AddInventoryKnown(const CellInv& inv)
+    void AddInventoryKnown(const MCInv& inv)
     {
         {
             LOCK(cs_inventory);
@@ -819,7 +819,7 @@ public:
         }
     }
 
-    void PushInventory(const CellInv& inv)
+    void PushInventory(const MCInv& inv)
     {
         LOCK(cs_inventory);
         if (inv.type == MSG_TX) {
@@ -837,11 +837,11 @@ public:
         vBlockHashesToAnnounce.push_back(hash);
     }
 
-    void AskFor(const CellInv& inv);
+    void AskFor(const MCInv& inv);
 
     void CloseSocketDisconnect();
 
-    void copyStats(CellNodeStats &stats);
+    void copyStats(MCNodeStats &stats);
 
     ServiceFlags GetLocalServices() const
     {

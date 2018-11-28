@@ -17,7 +17,7 @@ BOOST_FIXTURE_TEST_SUITE(skiplist_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(skiplist_test)
 {
-    std::vector<CellBlockIndex> vIndex(SKIPLIST_LENGTH);
+    std::vector<MCBlockIndex> vIndex(SKIPLIST_LENGTH);
 
     for (int i=0; i<SKIPLIST_LENGTH; i++) {
         vIndex[i].nHeight = i;
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(getlocator_test)
 {
     // Build a main chain 100000 blocks long.
     std::vector<uint256> vHashMain(100000);
-    std::vector<CellBlockIndex> vBlocksMain(100000);
+    std::vector<MCBlockIndex> vBlocksMain(100000);
     for (unsigned int i=0; i<vBlocksMain.size(); i++) {
         vHashMain[i] = ArithToUint256(i); // Set the hash equal to the height, so we can quickly check the distances.
         vBlocksMain[i].nHeight = i;
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(getlocator_test)
 
     // Build a branch that splits off at block 49999, 50000 blocks long.
     std::vector<uint256> vHashSide(50000);
-    std::vector<CellBlockIndex> vBlocksSide(50000);
+    std::vector<MCBlockIndex> vBlocksSide(50000);
     for (unsigned int i=0; i<vBlocksSide.size(); i++) {
         vHashSide[i] = ArithToUint256(i + 50000 + (arith_uint256(1) << 128)); // Add 1<<128 to the hashes, so GetLow64() still returns the height.
         vBlocksSide[i].nHeight = i + 50000;
@@ -72,15 +72,15 @@ BOOST_AUTO_TEST_CASE(getlocator_test)
         BOOST_CHECK(vBlocksSide[i].pprev == nullptr || vBlocksSide[i].nHeight == vBlocksSide[i].pprev->nHeight + 1);
     }
 
-    // Build a CellChain for the main branch.
-    CellChain chain;
+    // Build a MCChain for the main branch.
+    MCChain chain;
     chain.SetTip(&vBlocksMain.back());
 
     // Test 100 random starting points for locators.
     for (int n=0; n<100; n++) {
         int r = InsecureRandRange(150000);
-        CellBlockIndex* tip = (r < 100000) ? &vBlocksMain[r] : &vBlocksSide[r - 100000];
-        CellBlockLocator locator = chain.GetLocator(tip);
+        MCBlockIndex* tip = (r < 100000) ? &vBlocksMain[r] : &vBlocksSide[r - 100000];
+        MCBlockLocator locator = chain.GetLocator(tip);
 
         // The first result must be the block itself, the last one must be genesis.
         BOOST_CHECK(locator.vHave.front() == tip->GetBlockHash());
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(getlocator_test)
 BOOST_AUTO_TEST_CASE(findearliestatleast_test)
 {
     std::vector<uint256> vHashMain(100000);
-    std::vector<CellBlockIndex> vBlocksMain(100000);
+    std::vector<MCBlockIndex> vBlocksMain(100000);
     for (unsigned int i=0; i<vBlocksMain.size(); i++) {
         vHashMain[i] = ArithToUint256(i); // Set the hash equal to the height
         vBlocksMain[i].nHeight = i;
@@ -128,8 +128,8 @@ BOOST_AUTO_TEST_CASE(findearliestatleast_test)
         BOOST_CHECK(curTimeMax == vBlocksMain[i].nTimeMax);
     }
 
-    // Build a CellChain for the main branch.
-    CellChain chain;
+    // Build a MCChain for the main branch.
+    MCChain chain;
     chain.SetTip(&vBlocksMain.back());
 
     // Verify that FindEarliestAtLeast is correct.
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(findearliestatleast_test)
         // Pick a random element in vBlocksMain.
         int r = InsecureRandRange(vBlocksMain.size());
         int64_t test_time = vBlocksMain[r].nTime;
-        CellBlockIndex *ret = chain.FindEarliestAtLeast(test_time);
+        MCBlockIndex *ret = chain.FindEarliestAtLeast(test_time);
         BOOST_CHECK(ret->nTimeMax >= test_time);
         BOOST_CHECK((ret->pprev==nullptr) || ret->pprev->nTimeMax < test_time);
         BOOST_CHECK(vBlocksMain[r].GetAncestor(ret->nHeight) == ret);
@@ -146,9 +146,9 @@ BOOST_AUTO_TEST_CASE(findearliestatleast_test)
 
 BOOST_AUTO_TEST_CASE(findearliestatleast_edge_test)
 {
-    std::list<CellBlockIndex> blocks;
+    std::list<MCBlockIndex> blocks;
     for (unsigned int timeMax : {100, 100, 100, 200, 200, 200, 300, 300, 300}) {
-        CellBlockIndex* prev = blocks.empty() ? nullptr : &blocks.back();
+        MCBlockIndex* prev = blocks.empty() ? nullptr : &blocks.back();
         blocks.emplace_back();
         blocks.back().nHeight = prev ? prev->nHeight + 1 : 0;
         blocks.back().pprev = prev;
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(findearliestatleast_edge_test)
         blocks.back().nTimeMax = timeMax;
     }
 
-    CellChain chain;
+    MCChain chain;
     chain.SetTip(&blocks.back());
 
     BOOST_CHECK_EQUAL(chain.FindEarliestAtLeast(50)->nHeight, 0);

@@ -15,7 +15,7 @@ const unsigned int WALLET_CRYPTO_SALT_SIZE = 8;
 const unsigned int WALLET_CRYPTO_IV_SIZE = 16;
 
 /**
- * Private key encryption is done based on a CellMasterKey,
+ * Private key encryption is done based on a MCMasterKey,
  * which holds a salt and random encryption key.
  * 
  * CMasterKeys are encrypted using AES-256-CBC using a key
@@ -30,7 +30,7 @@ const unsigned int WALLET_CRYPTO_IV_SIZE = 16;
  */
 
 /** Master key for wallet encryption */
-class CellMasterKey
+class MCMasterKey
 {
 public:
     std::vector<unsigned char> vchCryptedKey;
@@ -54,7 +54,7 @@ public:
         READWRITE(vchOtherDerivationParameters);
     }
 
-    CellMasterKey()
+    MCMasterKey()
     {
         // 25000 rounds is just under 0.1 seconds on a 1.86 GHz Pentium M
         // ie slightly lower than the lowest hardware we need bother supporting
@@ -64,7 +64,7 @@ public:
     }
 };
 
-typedef std::vector<unsigned char, secure_allocator<unsigned char> > CellKeyingMaterial;
+typedef std::vector<unsigned char, secure_allocator<unsigned char> > MCKeyingMaterial;
 
 namespace wallet_crypto
 {
@@ -72,7 +72,7 @@ namespace wallet_crypto
 }
 
 /** Encryption/decryption context with key information */
-class CellCrypter
+class MCCrypter
 {
 friend class wallet_crypto::TestCrypter; // for test access to chKey/chIV
 private:
@@ -84,9 +84,9 @@ private:
 
 public:
     bool SetKeyFromPassphrase(const SecureString &strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod);
-    bool Encrypt(const CellKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext) const;
-    bool Decrypt(const std::vector<unsigned char>& vchCiphertext, CellKeyingMaterial& vchPlaintext) const;
-    bool SetKey(const CellKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV);
+    bool Encrypt(const MCKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext) const;
+    bool Decrypt(const std::vector<unsigned char>& vchCiphertext, MCKeyingMaterial& vchPlaintext) const;
+    bool SetKey(const MCKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV);
 
     void CleanKey()
     {
@@ -95,14 +95,14 @@ public:
         fKeySet = false;
     }
 
-    CellCrypter()
+    MCCrypter()
     {
         fKeySet = false;
         vchKey.resize(WALLET_CRYPTO_KEY_SIZE);
         vchIV.resize(WALLET_CRYPTO_IV_SIZE);
     }
 
-    ~CellCrypter()
+    ~MCCrypter()
     {
         CleanKey();
     }
@@ -111,12 +111,12 @@ public:
 /** Keystore which keeps the private keys encrypted.
  * It derives from the basic key store, which is used if no encryption is active.
  */
-class CellCryptoKeyStore : public CellBasicKeyStore
+class MCCryptoKeyStore : public MCBasicKeyStore
 {
 private:
     CryptedKeyMap mapCryptedKeys;
 
-    CellKeyingMaterial vMasterKey;
+    MCKeyingMaterial vMasterKey;
 
     //! if fUseCrypto is true, mapKeys must be empty
     //! if fUseCrypto is false, vMasterKey must be empty
@@ -129,12 +129,12 @@ protected:
     bool SetCrypted();
 
     //! will encrypt previously unencrypted keys
-    bool EncryptKeys(CellKeyingMaterial& vMasterKeyIn);
+    bool EncryptKeys(MCKeyingMaterial& vMasterKeyIn);
 
-    bool Unlock(const CellKeyingMaterial& vMasterKeyIn);
+    bool Unlock(const MCKeyingMaterial& vMasterKeyIn);
 
 public:
-    CellCryptoKeyStore() : fUseCrypto(false), fDecryptionThoroughlyChecked(false)
+    MCCryptoKeyStore() : fUseCrypto(false), fDecryptionThoroughlyChecked(false)
     {
     }
 
@@ -157,25 +157,25 @@ public:
 
     bool Lock();
 
-    virtual bool AddCryptedKey(const CellPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddKeyPubKey(const CellKey& key, const CellPubKey &pubkey) override;
-    bool HaveKey(const CellKeyID &address) const override
+    virtual bool AddCryptedKey(const MCPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+    bool AddKeyPubKey(const MCKey& key, const MCPubKey &pubkey) override;
+    bool HaveKey(const MCKeyID &address) const override
     {
         {
             LOCK(cs_KeyStore);
             if (!IsCrypted())
-                return CellBasicKeyStore::HaveKey(address);
+                return MCBasicKeyStore::HaveKey(address);
             return mapCryptedKeys.count(address) > 0;
         }
         return false;
     }
-    bool GetKey(const CellKeyID &address, CellKey& keyOut) const override;
-    bool GetPubKey(const CellKeyID &address, CellPubKey& vchPubKeyOut) const override;
-    void GetKeys(std::set<CellKeyID> &setAddress) const override
+    bool GetKey(const MCKeyID &address, MCKey& keyOut) const override;
+    bool GetPubKey(const MCKeyID &address, MCPubKey& vchPubKeyOut) const override;
+    void GetKeys(std::set<MCKeyID> &setAddress) const override
     {
         if (!IsCrypted())
         {
-            CellBasicKeyStore::GetKeys(setAddress);
+            MCBasicKeyStore::GetKeys(setAddress);
             return;
         }
         setAddress.clear();
@@ -191,7 +191,7 @@ public:
      * Wallet status (encrypted, locked) changed.
      * Note: Called without locks held.
      */
-    boost::signals2::signal<void (CellCryptoKeyStore* wallet)> NotifyStatusChanged;
+    boost::signals2::signal<void (MCCryptoKeyStore* wallet)> NotifyStatusChanged;
 };
 
 #endif // CELLLINK_WALLET_CRYPTER_H

@@ -45,9 +45,9 @@ static const char DB_COINLIST = 'A';
 namespace
 {
 struct CoinEntry {
-    CellOutPoint* outpoint;
+    MCOutPoint* outpoint;
     char key;
-    CoinEntry(const CellOutPoint* ptr) : outpoint(const_cast<CellOutPoint*>(ptr)), key(DB_COIN) {}
+    CoinEntry(const MCOutPoint* ptr) : outpoint(const_cast<MCOutPoint*>(ptr)), key(DB_COIN) {}
 
     template <typename Stream>
     void Serialize(Stream& s) const
@@ -67,21 +67,21 @@ struct CoinEntry {
 };
 }
 
-CellCoinsViewDB::CellCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
+MCCoinsViewDB::MCCoinsViewDB(size_t nCacheSize, bool fMemory, bool fWipe) : db(GetDataDir() / "chainstate", nCacheSize, fMemory, fWipe, true)
 {
 }
 
-bool CellCoinsViewDB::GetCoin(const CellOutPoint& outpoint, Coin& coin) const
+bool MCCoinsViewDB::GetCoin(const MCOutPoint& outpoint, Coin& coin) const
 {
     return db.Read(CoinEntry(&outpoint), coin);
 }
 
-bool CellCoinsViewDB::HaveCoin(const CellOutPoint& outpoint) const
+bool MCCoinsViewDB::HaveCoin(const MCOutPoint& outpoint) const
 {
     return db.Exists(CoinEntry(&outpoint));
 }
 
-uint256 CellCoinsViewDB::GetBestBlock() const
+uint256 MCCoinsViewDB::GetBestBlock() const
 {
     uint256 hashBestChain;
     if (!db.Read(DB_BEST_BLOCK, hashBestChain))
@@ -89,7 +89,7 @@ uint256 CellCoinsViewDB::GetBestBlock() const
     return hashBestChain;
 }
 
-std::vector<uint256> CellCoinsViewDB::GetHeadBlocks() const
+std::vector<uint256> MCCoinsViewDB::GetHeadBlocks() const
 {
     std::vector<uint256> vhashHeadBlocks;
     if (!db.Read(DB_HEAD_BLOCKS, vhashHeadBlocks)) {
@@ -98,9 +98,9 @@ std::vector<uint256> CellCoinsViewDB::GetHeadBlocks() const
     return vhashHeadBlocks;
 }
 
-bool CellCoinsViewDB::BatchWrite(CellCoinsMap& mapCoins, const uint256& hashBlock)
+bool MCCoinsViewDB::BatchWrite(MCCoinsMap& mapCoins, const uint256& hashBlock)
 {
-    CellDBBatch batch(db);
+    MCDBBatch batch(db);
     size_t count = 0;
     size_t changed = 0;
     size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
@@ -125,7 +125,7 @@ bool CellCoinsViewDB::BatchWrite(CellCoinsMap& mapCoins, const uint256& hashBloc
     batch.Write(DB_HEAD_BLOCKS, std::vector<uint256>{hashBlock, old_tip});
 
     for (auto it = mapCoins.begin(); it != mapCoins.end();) {
-        if (it->second.flags & CellCoinsCacheEntry::DIRTY) {
+        if (it->second.flags & MCCoinsCacheEntry::DIRTY) {
             CoinEntry entry(&it->first);
             if (it->second.coin.IsSpent())
                 batch.Erase(entry);
@@ -134,7 +134,7 @@ bool CellCoinsViewDB::BatchWrite(CellCoinsMap& mapCoins, const uint256& hashBloc
             changed++;
         }
         count++;
-        CellCoinsMap::iterator itOld = it++;
+        MCCoinsMap::iterator itOld = it++;
         mapCoins.erase(itOld);
         if (batch.SizeEstimate() > batch_size) {
             LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
@@ -163,21 +163,21 @@ bool CellCoinsViewDB::BatchWrite(CellCoinsMap& mapCoins, const uint256& hashBloc
     return ret;
 }
 
-size_t CellCoinsViewDB::EstimateSize() const
+size_t MCCoinsViewDB::EstimateSize() const
 {
     return db.EstimateSize(DB_COIN, (char)(DB_COIN + 1));
 }
 
-CellBlockTreeDB::CellBlockTreeDB(size_t nCacheSize, bool fMemory, bool fWipe) : CellDBWrapper(GetDataDir() / "blocks" / "index", nCacheSize, fMemory, fWipe)
+MCBlockTreeDB::MCBlockTreeDB(size_t nCacheSize, bool fMemory, bool fWipe) : MCDBWrapper(GetDataDir() / "blocks" / "index", nCacheSize, fMemory, fWipe)
 {
 }
 
-bool CellBlockTreeDB::ReadBlockFileInfo(int nFile, CellBlockFileInfo& info)
+bool MCBlockTreeDB::ReadBlockFileInfo(int nFile, MCBlockFileInfo& info)
 {
     return Read(std::make_pair(DB_BLOCK_FILES, nFile), info);
 }
 
-bool CellBlockTreeDB::WriteReindexing(bool fReindexing)
+bool MCBlockTreeDB::WriteReindexing(bool fReindexing)
 {
     if (fReindexing)
         return Write(DB_REINDEX_FLAG, '1');
@@ -185,20 +185,20 @@ bool CellBlockTreeDB::WriteReindexing(bool fReindexing)
         return Erase(DB_REINDEX_FLAG);
 }
 
-bool CellBlockTreeDB::ReadReindexing(bool& fReindexing)
+bool MCBlockTreeDB::ReadReindexing(bool& fReindexing)
 {
     fReindexing = Exists(DB_REINDEX_FLAG);
     return true;
 }
 
-bool CellBlockTreeDB::ReadLastBlockFile(int& nFile)
+bool MCBlockTreeDB::ReadLastBlockFile(int& nFile)
 {
     return Read(DB_LAST_BLOCK, nFile);
 }
 
-CellCoinsViewCursor* CellCoinsViewDB::Cursor() const
+MCCoinsViewCursor* MCCoinsViewDB::Cursor() const
 {
-    CellCoinsViewDBCursor* i = new CellCoinsViewDBCursor(const_cast<CellDBWrapper&>(db).NewIterator(), GetBestBlock());
+    MCCoinsViewDBCursor* i = new MCCoinsViewDBCursor(const_cast<MCDBWrapper&>(db).NewIterator(), GetBestBlock());
     /* It seems that there are no "const iterators" for LevelDB.  Since we
        only need read operations on it, use a const-cast to get around
        that restriction.  */
@@ -214,7 +214,7 @@ CellCoinsViewCursor* CellCoinsViewDB::Cursor() const
     return i;
 }
 
-bool CellCoinsViewDBCursor::GetKey(CellOutPoint& key) const
+bool MCCoinsViewDBCursor::GetKey(MCOutPoint& key) const
 {
     // Return cached key
     if (keyTmp.first == DB_COIN) {
@@ -224,22 +224,22 @@ bool CellCoinsViewDBCursor::GetKey(CellOutPoint& key) const
     return false;
 }
 
-bool CellCoinsViewDBCursor::GetValue(Coin& coin) const
+bool MCCoinsViewDBCursor::GetValue(Coin& coin) const
 {
     return pcursor->GetValue(coin);
 }
 
-unsigned int CellCoinsViewDBCursor::GetValueSize() const
+unsigned int MCCoinsViewDBCursor::GetValueSize() const
 {
     return pcursor->GetValueSize();
 }
 
-bool CellCoinsViewDBCursor::Valid() const
+bool MCCoinsViewDBCursor::Valid() const
 {
     return keyTmp.first == DB_COIN;
 }
 
-void CellCoinsViewDBCursor::Next()
+void MCCoinsViewDBCursor::Next()
 {
     pcursor->Next();
     CoinEntry entry(&keyTmp.second);
@@ -250,38 +250,38 @@ void CellCoinsViewDBCursor::Next()
     }
 }
 
-bool CellBlockTreeDB::WriteBatchSync(const std::vector<std::pair<int, const CellBlockFileInfo*>>& fileInfo, int nLastFile, const std::vector<const CellBlockIndex*>& blockinfo)
+bool MCBlockTreeDB::WriteBatchSync(const std::vector<std::pair<int, const MCBlockFileInfo*>>& fileInfo, int nLastFile, const std::vector<const MCBlockIndex*>& blockinfo)
 {
-    CellDBBatch batch(*this);
-    for (std::vector<std::pair<int, const CellBlockFileInfo*>>::const_iterator it = fileInfo.begin(); it != fileInfo.end(); it++) {
+    MCDBBatch batch(*this);
+    for (std::vector<std::pair<int, const MCBlockFileInfo*>>::const_iterator it = fileInfo.begin(); it != fileInfo.end(); it++) {
         batch.Write(std::make_pair(DB_BLOCK_FILES, it->first), *it->second);
     }
     batch.Write(DB_LAST_BLOCK, nLastFile);
-    for (std::vector<const CellBlockIndex*>::const_iterator it = blockinfo.begin(); it != blockinfo.end(); it++) {
-        batch.Write(std::make_pair(DB_BLOCK_INDEX, (*it)->GetBlockHash()), CellDiskBlockIndex(*it));
+    for (std::vector<const MCBlockIndex*>::const_iterator it = blockinfo.begin(); it != blockinfo.end(); it++) {
+        batch.Write(std::make_pair(DB_BLOCK_INDEX, (*it)->GetBlockHash()), MCDiskBlockIndex(*it));
     }
     return WriteBatch(batch, true);
 }
 
-bool CellBlockTreeDB::ReadTxIndex(const uint256& txid, CellDiskTxPos& pos)
+bool MCBlockTreeDB::ReadTxIndex(const uint256& txid, MCDiskTxPos& pos)
 {
     return Read(std::make_pair(DB_TXINDEX, txid), pos);
 }
 
-bool CellBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, CellDiskTxPos>>& vect)
+bool MCBlockTreeDB::WriteTxIndex(const std::vector<std::pair<uint256, MCDiskTxPos>>& vect)
 {
-    CellDBBatch batch(*this);
-    for (std::vector<std::pair<uint256, CellDiskTxPos>>::const_iterator it = vect.begin(); it != vect.end(); it++)
+    MCDBBatch batch(*this);
+    for (std::vector<std::pair<uint256, MCDiskTxPos>>::const_iterator it = vect.begin(); it != vect.end(); it++)
         batch.Write(std::make_pair(DB_TXINDEX, it->first), it->second);
     return WriteBatch(batch);
 }
 
-bool CellBlockTreeDB::WriteFlag(const std::string& name, bool fValue)
+bool MCBlockTreeDB::WriteFlag(const std::string& name, bool fValue)
 {
     return Write(std::make_pair(DB_FLAG, name), fValue ? '1' : '0');
 }
 
-bool CellBlockTreeDB::ReadFlag(const std::string& name, bool& fValue)
+bool MCBlockTreeDB::ReadFlag(const std::string& name, bool& fValue)
 {
     char ch;
     if (!Read(std::make_pair(DB_FLAG, name), ch))
@@ -290,9 +290,9 @@ bool CellBlockTreeDB::ReadFlag(const std::string& name, bool& fValue)
     return true;
 }
 
-bool CellBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CellBlockIndex*(const uint256&)> insertBlockIndex)
+bool MCBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<MCBlockIndex*(const uint256&)> insertBlockIndex)
 {
-    std::unique_ptr<CellDBIterator> pcursor(NewIterator());
+    std::unique_ptr<MCDBIterator> pcursor(NewIterator());
 
     pcursor->Seek(std::make_pair(DB_BLOCK_INDEX, uint256()));
 
@@ -301,10 +301,10 @@ bool CellBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParam
         boost::this_thread::interruption_point();
         std::pair<char, uint256> key;
         if (pcursor->GetKey(key) && key.first == DB_BLOCK_INDEX) {
-            CellDiskBlockIndex diskindex;
+            MCDiskBlockIndex diskindex;
             if (pcursor->GetValue(diskindex)) {
                 // Construct block index object
-                CellBlockIndex* pindexNew = insertBlockIndex(diskindex.GetBlockHash());
+                MCBlockIndex* pindexNew = insertBlockIndex(diskindex.GetBlockHash());
                 pindexNew->pprev = insertBlockIndex(diskindex.hashPrev);
                 pindexNew->nHeight = diskindex.nHeight;
                 pindexNew->nFile = diskindex.nFile;
@@ -337,20 +337,20 @@ bool CellBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParam
 namespace
 {
 //! Legacy class to deserialize pre-pertxout database entries without reindex.
-class CellCoins
+class MCCoins
 {
 public:
     //! whether transaction is a coinbase
     bool fCoinBase;
 
     //! unspent transaction outputs; spent outputs are .IsNull(); spent outputs at the end of the array are dropped
-    std::vector<CellTxOut> vout;
+    std::vector<MCTxOut> vout;
 
     //! at which height this transaction was included in the active block chain
     int nHeight;
 
     //! empty constructor
-    CellCoins() : fCoinBase(false), vout(0), nHeight(0) {}
+    MCCoins() : fCoinBase(false), vout(0), nHeight(0) {}
 
     template <typename Stream>
     void Unserialize(Stream& s)
@@ -378,10 +378,10 @@ public:
                 nMaskCode--;
         }
         // txouts themself
-        vout.assign(vAvail.size(), CellTxOut());
+        vout.assign(vAvail.size(), MCTxOut());
         for (unsigned int i = 0; i < vAvail.size(); i++) {
             if (vAvail[i])
-                ::Unserialize(s, REF(CellTxOutCompressor(vout[i])));
+                ::Unserialize(s, REF(MCTxOutCompressor(vout[i])));
         }
         // coinbase height
         ::Unserialize(s, VARINT(nHeight));
@@ -393,9 +393,9 @@ public:
  *
  * Currently implemented: from the per-tx utxo model (0.8..0.14.x) to per-txout.
  */
-bool CellCoinsViewDB::Upgrade()
+bool MCCoinsViewDB::Upgrade()
 {
-    std::unique_ptr<CellDBIterator> pcursor(db.NewIterator());
+    std::unique_ptr<MCDBIterator> pcursor(db.NewIterator());
     pcursor->Seek(std::make_pair(DB_COINS, uint256()));
     if (!pcursor->Valid()) {
         return true;
@@ -405,7 +405,7 @@ bool CellCoinsViewDB::Upgrade()
     LogPrintf("Upgrading utxo-set database...\n");
     LogPrintf("[0%%]...");
     size_t batch_size = 1 << 24;
-    CellDBBatch batch(db);
+    MCDBBatch batch(db);
     uiInterface.SetProgressBreakAction(StartShutdown);
     int reportDone = 0;
     std::pair<unsigned char, uint256> key;
@@ -426,11 +426,11 @@ bool CellCoinsViewDB::Upgrade()
                     reportDone = percentageDone / 10;
                 }
             }
-            CellCoins old_coins;
+            MCCoins old_coins;
             if (!pcursor->GetValue(old_coins)) {
-                return error("%s: cannot parse CellCoins record", __func__);
+                return error("%s: cannot parse MCCoins record", __func__);
             }
-            CellOutPoint outpoint(key.second, 0);
+            MCOutPoint outpoint(key.second, 0);
             for (size_t i = 0; i < old_coins.vout.size(); ++i) {
                 if (!old_coins.vout[i].IsNull() && !old_coins.vout[i].scriptPubKey.IsUnspendable()) {
                     Coin newcoin(std::move(old_coins.vout[i]), old_coins.nHeight, old_coins.fCoinBase);
@@ -486,23 +486,23 @@ private:
 public:
     CoinCacheVisitor(uint160& cache) : key(cache) {}
 
-    bool operator()(const CellContractID& id) const { 
+    bool operator()(const MCContractID& id) const { 
         key = id;
         return true;
     }
-    bool operator()(const CellKeyID& id) const {
+    bool operator()(const MCKeyID& id) const {
         key = id;
         return true;
     }
-    bool operator()(const CellScriptID& id) const { return false; }
-    bool operator()(const CellNoDestination& no) const { return false; }
+    bool operator()(const MCScriptID& id) const { return false; }
+    bool operator()(const MCNoDestination& no) const { return false; }
 };
 
 
 // coin list db
-static void CoinListGetParent(const CellOutPoint& outpoint, const Coin& coin, CoinList& kList)
+static void CoinListGetParent(const MCOutPoint& outpoint, const Coin& coin, CoinList& kList)
 {
-    CellTxDestination kChildDest;
+    MCTxDestination kChildDest;
     if (!ExtractDestination(coin.out.scriptPubKey, kChildDest))
         return;
 
@@ -510,22 +510,22 @@ static void CoinListGetParent(const CellOutPoint& outpoint, const Coin& coin, Co
     if (!kChildAddr.IsValid() || kChildAddr.IsScript() || coin.IsCoinBase())
         return;
 
-    CellTransactionRef kTx;
+    MCTransactionRef kTx;
     uint256 hashBlock;
     if (!GetTransactionWithCoin(outpoint, coin, kTx, Params().GetConsensus(), hashBlock)) {
         assert(false);
         return;
     }
-    CellTxIn kTxIn = kTx->vin[0];
+    MCTxIn kTxIn = kTx->vin[0];
     if (kTxIn.prevout.hash.IsNull())
         return;
-    CellTransactionRef kTrans;
+    MCTransactionRef kTrans;
     if (!GetTransactionWithOutpoint(kTxIn.prevout, kTrans, Params().GetConsensus(), hashBlock)) {
         assert(false);
         return;
     }
 
-    CellTxDestination kParentDest;
+    MCTxDestination kParentDest;
     ExtractDestination(kTrans->vout[kTxIn.prevout.n].scriptPubKey, kParentDest);
     MagnaChainAddress kParentAddr(kParentDest);
     if (!kParentAddr.IsValid() || kParentAddr.IsScript())
@@ -534,14 +534,14 @@ static void CoinListGetParent(const CellOutPoint& outpoint, const Coin& coin, Co
     //std::string strParent = kParentAddr.ToString();
 
     //LogPrintf("%s: Set parent:%s - %s \n", __func__, strChildAddr, strParent);
-    const CellKeyID& kParentKey = boost::get<CellKeyID>(kParentDest);
+    const MCKeyID& kParentKey = boost::get<MCKeyID>(kParentDest);
     //kList.parent = (const uint160&)kParentKey;
 }
 
-static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, CellTxDestination& kDest)
+static inline bool GetCoinDest(const MCOutPoint& outpoint, const Coin& coin, MCTxDestination& kDest)
 {
-    CellScript pScript = coin.out.scriptPubKey;
-    CellTransactionRef kTx;
+    MCScript pScript = coin.out.scriptPubKey;
+    MCTransactionRef kTx;
 
     if (coin.IsSpent()) {
         Coin dbCoin;
@@ -560,22 +560,22 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
     if (!ExtractDestination(pScript, kDest)) {
         opcodetype opcode;
         std::vector<unsigned char> vch;
-        CellScript::const_iterator pc = pScript.begin();
-        CellScript::const_iterator end = pScript.end();
+        MCScript::const_iterator pc = pScript.begin();
+        MCScript::const_iterator end = pScript.end();
         pScript.GetOp(pc, opcode, vch);
 
         if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE) {
             vch.clear();
             vch.assign(pc + 1, end);
             uint160 key = uint160(vch);
-            kDest = CellContractID(key);
+            kDest = MCContractID(key);
         }
         else if (opcode == OP_TRANS_BRANCH){
             if (!pScript.GetOp(pc, opcode, vch) || vch.size() != sizeof(uint256))
                 return false;
             
             uint256 branchhash(vch);
-            kDest = CellKeyID(Hash160(branchhash.begin(), branchhash.end()));// branch coin address
+            kDest = MCKeyID(Hash160(branchhash.begin(), branchhash.end()));// branch coin address
         } else
             return false;
     }
@@ -586,22 +586,22 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
     return true;
 }
 
-void CoinListDB::ImportCoins(CellCoinsMap& mapCoins)
+void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
 {
-    CellCoinListMap& map = cache;
-    for (CellCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ++it) {
-        if (it->second.flags & CellCoinsCacheEntry::DIRTY) {
+    MCCoinListMap& map = cache;
+    for (MCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ++it) {
+        if (it->second.flags & MCCoinsCacheEntry::DIRTY) {
             const Coin& coin = it->second.coin;
-            const CellOutPoint& outpoint = it->first;
+            const MCOutPoint& outpoint = it->first;
 
-            CellTxDestination kDest;
+            MCTxDestination kDest;
             if (!GetCoinDest(outpoint, coin, kDest))
                 continue;
 
             uint160 kKey;
             boost::apply_visitor(CoinCacheVisitor(kKey), kDest);
 
-            CellCoinListMap::iterator mit = cache.find(kKey);
+            MCCoinListMap::iterator mit = cache.find(kKey);
             CoinListPtr pList = nullptr;
             if (mit == cache.end()) {
                 pList.reset(new CoinList());
@@ -612,8 +612,8 @@ void CoinListDB::ImportCoins(CellCoinsMap& mapCoins)
             }
 
             if (coin.IsSpent()) {
-                for (std::vector<CellOutPoint>::iterator vit = pList->coins.begin(); vit != pList->coins.end(); ++vit) {
-                    const CellOutPoint& to = *vit;
+                for (std::vector<MCOutPoint>::iterator vit = pList->coins.begin(); vit != pList->coins.end(); ++vit) {
+                    const MCOutPoint& to = *vit;
                     if (to.hash == outpoint.hash && to.n == outpoint.n) {
                         pList->coins.erase(vit);
                         break;
@@ -622,8 +622,8 @@ void CoinListDB::ImportCoins(CellCoinsMap& mapCoins)
             } else {
                 bool bGot = false;
                 // safe check
-                for (std::vector<CellOutPoint>::iterator vit = pList->coins.begin(); vit != pList->coins.end(); ++vit) {
-                    const CellOutPoint& to = *vit;
+                for (std::vector<MCOutPoint>::iterator vit = pList->coins.begin(); vit != pList->coins.end(); ++vit) {
+                    const MCOutPoint& to = *vit;
                     if (to.hash == outpoint.hash && to.n == outpoint.n) {
                         bGot = true;
                         LogPrint(BCLog::COINDB, "COIN_LIST, Readd trans : %s %d \n", to.hash.ToString(), to.n);
@@ -642,12 +642,12 @@ void CoinListDB::ImportCoins(CellCoinsMap& mapCoins)
 
 void CoinListDB::Flush(void)
 {
-    CellDBBatch batch(*plistDB);
+    MCDBBatch batch(*plistDB);
 
     size_t iTotalCoin = 0;
     size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
 
-    for (CellCoinListMap::iterator it = cache.begin(); it != cache.end(); ++it) {
+    for (MCCoinListMap::iterator it = cache.begin(); it != cache.end(); ++it) {
         const uint160& kKey = it->first;
         const CoinList& kList = *it->second;
         iTotalCoin += kList.coins.size();
@@ -672,7 +672,7 @@ void CoinListDB::Flush(void)
 CoinListPtr CoinListDB::GetList(const uint160& kAddr) const
 {
     // not cache list read from db, cause it's not modified
-    CellCoinListMap::const_iterator mit = cache.find(kAddr);
+    MCCoinListMap::const_iterator mit = cache.find(kAddr);
     if (mit == cache.end()) {
         CoinListPtr pList(new CoinList());
         plistDB->Read(CoinListEntry(&kAddr), *pList);

@@ -20,7 +20,7 @@ class QTimer;
 QT_END_NAMESPACE
 
 struct CNodeCombinedStats {
-    CellNodeStats nodeStats;
+    MCNodeStats nodeStats;
     CNodeStateStats nodeStateStats;
     bool fNodeStateStatsAvailable;
 };

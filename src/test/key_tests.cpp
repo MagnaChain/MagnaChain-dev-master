@@ -41,19 +41,19 @@ BOOST_AUTO_TEST_CASE(key_test1)
     BOOST_CHECK( bsecret2C.SetString(strSecret2C));
     BOOST_CHECK(!baddress1.SetString(strAddressBad));
 
-    CellKey key1  = bsecret1.GetKey();
+    MCKey key1  = bsecret1.GetKey();
     BOOST_CHECK(key1.IsCompressed() == false);
-    CellKey key2  = bsecret2.GetKey();
+    MCKey key2  = bsecret2.GetKey();
     BOOST_CHECK(key2.IsCompressed() == false);
-    CellKey key1C = bsecret1C.GetKey();
+    MCKey key1C = bsecret1C.GetKey();
     BOOST_CHECK(key1C.IsCompressed() == true);
-    CellKey key2C = bsecret2C.GetKey();
+    MCKey key2C = bsecret2C.GetKey();
     BOOST_CHECK(key2C.IsCompressed() == true);
 
-    CellPubKey pubkey1  = key1. GetPubKey();
-    CellPubKey pubkey2  = key2. GetPubKey();
-    CellPubKey pubkey1C = key1C.GetPubKey();
-    CellPubKey pubkey2C = key2C.GetPubKey();
+    MCPubKey pubkey1  = key1. GetPubKey();
+    MCPubKey pubkey2  = key2. GetPubKey();
+    MCPubKey pubkey1C = key1C.GetPubKey();
+    MCPubKey pubkey2C = key2C.GetPubKey();
 
     BOOST_CHECK(key1.VerifyPubKey(pubkey1));
     BOOST_CHECK(!key1.VerifyPubKey(pubkey1C));
@@ -75,10 +75,10 @@ BOOST_AUTO_TEST_CASE(key_test1)
     BOOST_CHECK(!key2C.VerifyPubKey(pubkey2));
     BOOST_CHECK(key2C.VerifyPubKey(pubkey2C));
 
-    BOOST_CHECK(addr1.Get()  == CellTxDestination(pubkey1.GetID()));
-    BOOST_CHECK(addr2.Get()  == CellTxDestination(pubkey2.GetID()));
-    BOOST_CHECK(addr1C.Get() == CellTxDestination(pubkey1C.GetID()));
-    BOOST_CHECK(addr2C.Get() == CellTxDestination(pubkey2C.GetID()));
+    BOOST_CHECK(addr1.Get()  == MCTxDestination(pubkey1.GetID()));
+    BOOST_CHECK(addr2.Get()  == MCTxDestination(pubkey2.GetID()));
+    BOOST_CHECK(addr1C.Get() == MCTxDestination(pubkey1C.GetID()));
+    BOOST_CHECK(addr2C.Get() == MCTxDestination(pubkey2C.GetID()));
 
     for (int n=0; n<16; n++)
     {
@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(key_test1)
         BOOST_CHECK(key1C.SignCompact(hashMsg, csign1C));
         BOOST_CHECK(key2C.SignCompact(hashMsg, csign2C));
 
-        CellPubKey rkey1, rkey2, rkey1C, rkey2C;
+        MCPubKey rkey1, rkey2, rkey1C, rkey2C;
 
         BOOST_CHECK(rkey1.RecoverCompact (hashMsg, csign1));
         BOOST_CHECK(rkey2.RecoverCompact (hashMsg, csign2));

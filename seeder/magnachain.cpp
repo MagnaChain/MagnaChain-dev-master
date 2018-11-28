@@ -11,19 +11,19 @@
 
 using namespace std;
 
-class CellNode {
+class MCNode {
   SOCKET sock;
-  CellDataStream vSend;
-  CellDataStream vRecv;
+  MCDataStream vSend;
+  MCDataStream vRecv;
   unsigned int nHeaderStart;
   unsigned int nMessageStart;
   int nVersion;
   string strSubVer;
   int nStartingHeight;
-  vector<CellAddress> *vAddr;
+  vector<MCAddress> *vAddr;
   int ban;
   int64 doneAfter;
-  CellAddress you;
+  MCAddress you;
 
   int GetTimeout() {
       if (you.IsTor())
@@ -35,7 +35,7 @@ class CellNode {
   void BeginMessage(const char *pszCommand) {
     if (nHeaderStart != -1) AbortMessage();
     nHeaderStart = vSend.size();
-    vSend << CellMessageHeader(pszCommand, 0);
+    vSend << MCMessageHeader(pszCommand, 0);
     nMessageStart = vSend.size();
 //    printf("%s: SEND %s\n", ToString(you).c_str(), pszCommand); 
   }
@@ -50,13 +50,13 @@ class CellNode {
   void EndMessage() {
     if (nHeaderStart == -1) return;
     unsigned int nSize = vSend.size() - nMessageStart;
-    memcpy((char*)&vSend[nHeaderStart] + offsetof(CellMessageHeader, nMessageSize), &nSize, sizeof(nSize));
+    memcpy((char*)&vSend[nHeaderStart] + offsetof(MCMessageHeader, nMessageSize), &nSize, sizeof(nSize));
     if (vSend.GetVersion() >= 209) {
       uint256 hash = Hash(vSend.begin() + nMessageStart, vSend.end());
       unsigned int nChecksum = 0;
       memcpy(&nChecksum, &hash, sizeof(nChecksum));
-      assert(nMessageStart - nHeaderStart >= offsetof(CellMessageHeader, nChecksum) + sizeof(nChecksum));
-      memcpy((char*)&vSend[nHeaderStart] + offsetof(CellMessageHeader, nChecksum), &nChecksum, sizeof(nChecksum));
+      assert(nMessageStart - nHeaderStart >= offsetof(MCMessageHeader, nChecksum) + sizeof(nChecksum));
+      memcpy((char*)&vSend[nHeaderStart] + offsetof(MCMessageHeader, nChecksum), &nChecksum, sizeof(nChecksum));
     }
     nHeaderStart = -1;
     nMessageStart = -1;
@@ -78,7 +78,7 @@ class CellNode {
     int64 nTime = time(NULL);
     uint64 nLocalNonce = CELLLINK_SEED_NONCE;
     int64 nLocalServices = 0;
-    CellAddress me(CellService("0.0.0.0"));
+    MCAddress me(MCService("0.0.0.0"));
     BeginMessage("version");
     int nBestHeight = GetRequireHeight();
     string ver = "/magnachain-seeder:0.01/";
@@ -97,13 +97,13 @@ class CellNode {
     }
   }
 
-  bool ProcessMessage(string strCommand, CellDataStream& vRecv) {
+  bool ProcessMessage(string strCommand, MCDataStream& vRecv) {
 //    printf("%s: RECV %s\n", ToString(you).c_str(), strCommand.c_str());
     if (strCommand == "version") {
       int64 nTime;
       string strBranchId;
-      CellAddress addrMe;
-      CellAddress addrFrom;
+      MCAddress addrMe;
+      MCAddress addrFrom;
       uint64 nNonce = 1;
       vRecv >> nVersion >> you.nServices >> nTime >> strBranchId >> addrMe;
 
@@ -138,16 +138,16 @@ class CellNode {
     }
     
     if (strCommand == "addr" && vAddr) {
-      vector<CellAddress> vAddrNew;
+      vector<MCAddress> vAddrNew;
       vRecv >> vAddrNew;
       // printf("%s: got %i addresses\n", ToString(you).c_str(), (int)vAddrNew.size());
       int64 now = time(NULL);
-      vector<CellAddress>::iterator it = vAddrNew.begin();
+      vector<MCAddress>::iterator it = vAddrNew.begin();
       if (vAddrNew.size() > 1) {
         if (doneAfter == 0 || doneAfter > now + 1) doneAfter = now + 1;
       }
       while (it != vAddrNew.end()) {
-        CellAddress &addr = *it;
+        MCAddress &addr = *it;
 //        printf("%s: got address %s\n", ToString(you).c_str(), addr.ToString().c_str(), (int)(vAddr->size()));
         it++;
         if (addr.nTime <= 100000000 || addr.nTime > now + 600)
@@ -166,8 +166,8 @@ class CellNode {
   bool ProcessMessages() {
     if (vRecv.empty()) return false;
     do {
-      CellDataStream::iterator pstart = search(vRecv.begin(), vRecv.end(), BEGIN(pchMessageStart), END(pchMessageStart));
-      int nHeaderSize = vRecv.GetSerializeSize(CellMessageHeader());
+      MCDataStream::iterator pstart = search(vRecv.begin(), vRecv.end(), BEGIN(pchMessageStart), END(pchMessageStart));
+      int nHeaderSize = vRecv.GetSerializeSize(MCMessageHeader());
       if (vRecv.end() - pstart < nHeaderSize) {
         if (vRecv.size() > nHeaderSize) {
           vRecv.erase(vRecv.begin(), vRecv.end() - nHeaderSize);
@@ -176,7 +176,7 @@ class CellNode {
       }
       vRecv.erase(vRecv.begin(), pstart);
       vector<char> vHeaderSave(vRecv.begin(), vRecv.begin() + nHeaderSize);
-      CellMessageHeader hdr;
+      MCMessageHeader hdr;
       vRecv >> hdr;
       if (!hdr.IsValid()) { 
         // printf("%s: BAD (invalid header)\n", ToString(you).c_str());
@@ -199,7 +199,7 @@ class CellNode {
         memcpy(&nChecksum, &hash, sizeof(nChecksum));
         if (nChecksum != hdr.nChecksum) continue;
       }
-      CellDataStream vMsg(vRecv.begin(), vRecv.begin() + nMessageSize, vRecv.nType, vRecv.nVersion);
+      MCDataStream vMsg(vRecv.begin(), vRecv.begin() + nMessageSize, vRecv.nType, vRecv.nVersion);
       vRecv.ignore(nMessageSize);
       if (ProcessMessage(strCommand, vMsg))
         return true;
@@ -209,7 +209,7 @@ class CellNode {
   }
   
 public:
-  CellNode(const CellService& ip, vector<CellAddress>* vAddrIn) : you(ip), nHeaderStart(-1), nMessageStart(-1), vAddr(vAddrIn), ban(0), doneAfter(0), nVersion(0) {
+  MCNode(const MCService& ip, vector<MCAddress>* vAddrIn) : you(ip), nHeaderStart(-1), nMessageStart(-1), vAddr(vAddrIn), ban(0), doneAfter(0), nVersion(0) {
     vSend.SetType(SER_NETWORK);
     vSend.SetVersion(0);
     vRecv.SetType(SER_NETWORK);
@@ -283,9 +283,9 @@ public:
   }
 };
 
-bool TestNode(const CellService &cip, int &ban, int &clientV, std::string &clientSV, int &blocks, vector<CellAddress>* vAddr) {
+bool TestNode(const MCService &cip, int &ban, int &clientV, std::string &clientSV, int &blocks, vector<MCAddress>* vAddr) {
   try {
-    CellNode node(cip, vAddr);
+    MCNode node(cip, vAddr);
     bool ret = node.Run();
     if (!ret) {
       ban = node.GetBan();
@@ -305,8 +305,8 @@ bool TestNode(const CellService &cip, int &ban, int &clientV, std::string &clien
 
 /*
 int main(void) {
-  CellService ip("magnachain.sipa.be", 8333, true);
-  vector<CellAddress> vAddr;
+  MCService ip("magnachain.sipa.be", 8333, true);
+  vector<MCAddress> vAddr;
   vAddr.clear();
   int ban = 0;
   bool ret = TestNode(ip, ban, vAddr);

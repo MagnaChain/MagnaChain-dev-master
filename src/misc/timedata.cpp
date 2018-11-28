@@ -17,7 +17,7 @@
 #include "misc/warnings.h"
 
 
-static CellCriticalSection cs_nTimeOffset;
+static MCCriticalSection cs_nTimeOffset;
 static int64_t nTimeOffset = 0;
 
 /**
@@ -45,11 +45,11 @@ static int64_t abs64(int64_t n)
 
 #define CELLLINK_TIMEDATA_MAX_SAMPLES 200
 
-void AddTimeData(const CellNetAddr& ip, int64_t nOffsetSample)
+void AddTimeData(const MCNetAddr& ip, int64_t nOffsetSample)
 {
     LOCK(cs_nTimeOffset);
     // Ignore duplicates
-    static std::set<CellNetAddr> setKnown;
+    static std::set<MCNetAddr> setKnown;
     if (setKnown.size() == CELLLINK_TIMEDATA_MAX_SAMPLES)
         return;
     if (!setKnown.insert(ip).second)
@@ -104,7 +104,7 @@ void AddTimeData(const CellNetAddr& ip, int64_t nOffsetSample)
                     fDone = true;
                     std::string strMessage = strprintf(_("Please check that your computer's date and time are correct! If your clock is wrong, %s will not work properly."), _(PACKAGE_NAME));
                     SetMiscWarning(strMessage);
-                    uiInterface.ThreadSafeMessageBox(strMessage, "", CellClientUIInterface::MSG_WARNING);
+                    uiInterface.ThreadSafeMessageBox(strMessage, "", MCClientUIInterface::MSG_WARNING);
                 }
             }
         }

@@ -165,7 +165,7 @@ static int ecdsa_signature_parse_der_lax(const secp256k1_context* ctx, secp256k1
     return 1;
 }
 
-bool CellPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchSig) const {
+bool MCPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& vchSig) const {
     if (!IsValid())
         return false;
     secp256k1_pubkey pubkey;
@@ -182,7 +182,7 @@ bool CellPubKey::Verify(const uint256 &hash, const std::vector<unsigned char>& v
     return secp256k1_ecdsa_verify(secp256k1_context_verify, &sig, hash.begin(), &pubkey);
 }
 
-bool CellPubKey::RecoverCompact(const uint256 &hash, const std::vector<unsigned char>& vchSig) {
+bool MCPubKey::RecoverCompact(const uint256 &hash, const std::vector<unsigned char>& vchSig) {
     if (vchSig.size() != 65)
         return false;
     int recid = (vchSig[0] - 27) & 3;
@@ -202,14 +202,14 @@ bool CellPubKey::RecoverCompact(const uint256 &hash, const std::vector<unsigned 
     return true;
 }
 
-bool CellPubKey::IsFullyValid() const {
+bool MCPubKey::IsFullyValid() const {
     if (!IsValid())
         return false;
     secp256k1_pubkey pubkey;
     return secp256k1_ec_pubkey_parse(secp256k1_context_verify, &pubkey, &(*this)[0], size());
 }
 
-bool CellPubKey::Decompress() {
+bool MCPubKey::Decompress() {
     if (!IsValid())
         return false;
     secp256k1_pubkey pubkey;
@@ -223,7 +223,7 @@ bool CellPubKey::Decompress() {
     return true;
 }
 
-bool CellPubKey::Derive(CellPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const {
+bool MCPubKey::Derive(MCPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const {
     assert(IsValid());
     assert((nChild >> 31) == 0);
     assert(begin() + 33 == end());
@@ -244,7 +244,7 @@ bool CellPubKey::Derive(CellPubKey& pubkeyChild, ChainCode &ccChild, unsigned in
     return true;
 }
 
-void CellExtPubKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
+void MCExtPubKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
     code[0] = nDepth;
     memcpy(code+1, vchFingerprint, 4);
     code[5] = (nChild >> 24) & 0xFF; code[6] = (nChild >> 16) & 0xFF;
@@ -254,7 +254,7 @@ void CellExtPubKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
     memcpy(code+41, pubkey.begin(), 33);
 }
 
-void CellExtPubKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
+void MCExtPubKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
     nDepth = code[0];
     memcpy(vchFingerprint, code+1, 4);
     nChild = (code[5] << 24) | (code[6] << 16) | (code[7] << 8) | code[8];
@@ -262,15 +262,15 @@ void CellExtPubKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
     pubkey.Set(code+41, code+BIP32_EXTKEY_SIZE);
 }
 
-bool CellExtPubKey::Derive(CellExtPubKey &out, unsigned int _nChild) const {
+bool MCExtPubKey::Derive(MCExtPubKey &out, unsigned int _nChild) const {
     out.nDepth = nDepth + 1;
-    CellKeyID id = pubkey.GetID();
+    MCKeyID id = pubkey.GetID();
     memcpy(&out.vchFingerprint[0], &id, 4);
     out.nChild = _nChild;
     return pubkey.Derive(out.pubkey, out.chaincode, _nChild, chaincode);
 }
 
-/* static */ bool CellPubKey::CheckLowS(const std::vector<unsigned char>& vchSig) {
+/* static */ bool MCPubKey::CheckLowS(const std::vector<unsigned char>& vchSig) {
     secp256k1_ecdsa_signature sig;
     if (!ecdsa_signature_parse_der_lax(secp256k1_context_verify, &sig, vchSig.data(), vchSig.size())) {
         return false;

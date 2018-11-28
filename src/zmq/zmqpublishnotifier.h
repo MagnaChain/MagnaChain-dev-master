@@ -8,7 +8,7 @@
 
 #include "zmq/zmqabstractnotifier.h"
 
-class CellBlockIndex;
+class MCBlockIndex;
 
 class CZMQAbstractPublishNotifier : public CZMQAbstractNotifier
 {
@@ -32,25 +32,25 @@ public:
 class CZMQPublishHashBlockNotifier : public CZMQAbstractPublishNotifier
 {
 public:
-    bool NotifyBlock(const CellBlockIndex *pindex) override;
+    bool NotifyBlock(const MCBlockIndex *pindex) override;
 };
 
 class CZMQPublishHashTransactionNotifier : public CZMQAbstractPublishNotifier
 {
 public:
-    bool NotifyTransaction(const CellTransaction &transaction) override;
+    bool NotifyTransaction(const MCTransaction &transaction) override;
 };
 
 class CZMQPublishRawBlockNotifier : public CZMQAbstractPublishNotifier
 {
 public:
-    bool NotifyBlock(const CellBlockIndex *pindex) override;
+    bool NotifyBlock(const MCBlockIndex *pindex) override;
 };
 
 class CZMQPublishRawTransactionNotifier : public CZMQAbstractPublishNotifier
 {
 public:
-    bool NotifyTransaction(const CellTransaction &transaction) override;
+    bool NotifyTransaction(const MCTransaction &transaction) override;
 };
 
 #endif // CELLLINK_ZMQ_ZMQPUBLISHNOTIFIER_H

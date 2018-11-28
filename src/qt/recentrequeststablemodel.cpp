@@ -13,7 +13,7 @@
 #include "io/streams.h"
 
 
-RecentRequestsTableModel::RecentRequestsTableModel(CellWallet *wallet, WalletModel *parent) :
+RecentRequestsTableModel::RecentRequestsTableModel(MCWallet *wallet, WalletModel *parent) :
     QAbstractTableModel(parent), walletModel(parent)
 {
     Q_UNUSED(wallet);
@@ -170,7 +170,7 @@ void RecentRequestsTableModel::addNewRequest(const SendCoinsRecipient &recipient
     newEntry.date = QDateTime::currentDateTime();
     newEntry.recipient = recipient;
 
-    CellDataStream ss(SER_DISK, CLIENT_VERSION);
+    MCDataStream ss(SER_DISK, CLIENT_VERSION);
     ss << newEntry;
 
     if (!walletModel->saveReceiveRequest(recipient.address.toStdString(), newEntry.id, ss.str()))
@@ -183,7 +183,7 @@ void RecentRequestsTableModel::addNewRequest(const SendCoinsRecipient &recipient
 void RecentRequestsTableModel::addNewRequest(const std::string &recipient)
 {
     std::vector<char> data(recipient.begin(), recipient.end());
-    CellDataStream ss(data, SER_DISK, CLIENT_VERSION);
+    MCDataStream ss(data, SER_DISK, CLIENT_VERSION);
 
     RecentRequestEntry entry;
     ss >> entry;

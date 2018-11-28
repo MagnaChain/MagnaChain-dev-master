@@ -22,18 +22,18 @@ class MagnaChainAmountField: public QWidget
 {
     Q_OBJECT
 
-    // ugly hack: for some unknown reason CellAmount (instead of qint64) does not work here as expected
+    // ugly hack: for some unknown reason MCAmount (instead of qint64) does not work here as expected
     // discussion: https://github.com/magnachain/magnachain/pull/5117
     Q_PROPERTY(qint64 value READ value WRITE setValue NOTIFY valueChanged USER true)
 
 public:
     explicit MagnaChainAmountField(QWidget *parent = 0);
 
-    CellAmount value(bool *value=0) const;
-    void setValue(const CellAmount& value);
+    MCAmount value(bool *value=0) const;
+    void setValue(const MCAmount& value);
 
     /** Set single step in satoshis **/
-    void setSingleStep(const CellAmount& step);
+    void setSingleStep(const MCAmount& step);
 
     /** Make read-only **/
     void setReadOnly(bool fReadOnly);

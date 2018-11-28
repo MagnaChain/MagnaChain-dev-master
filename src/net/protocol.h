@@ -25,7 +25,7 @@
  * (4) size.
  * (4) checksum.
  */
-class CellMessageHeader
+class MCMessageHeader
 {
 public:
     enum {
@@ -40,8 +40,8 @@ public:
     };
     typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
 
-    CellMessageHeader(const MessageStartChars& pchMessageStartIn);
-    CellMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
+    MCMessageHeader(const MessageStartChars& pchMessageStartIn);
+    MCMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
 
     std::string GetCommand() const;
     bool IsValid(const MessageStartChars& messageStart) const;
@@ -224,7 +224,7 @@ extern const char *FEEFILTER;
  */
 extern const char *SENDCMPCT;
 /**
- * Contains a CellBlockHeaderAndShortTxIDs object - providing a header and
+ * Contains a MCBlockHeaderAndShortTxIDs object - providing a header and
  * list of "short txids".
  * @since protocol version 70014 as described by BIP 152
  */
@@ -278,12 +278,12 @@ enum ServiceFlags : uint64_t {
     // BIP process.
 };
 
-/** A CellService with information about it as peer */
-class CellAddress : public CellService
+/** A MCService with information about it as peer */
+class MCAddress : public MCService
 {
 public:
-    CellAddress();
-    explicit CellAddress(CellService ipIn, ServiceFlags nServicesIn);
+    MCAddress();
+    explicit MCAddress(MCService ipIn, ServiceFlags nServicesIn);
 
     void Init();
 
@@ -303,7 +303,7 @@ public:
         uint64_t nServicesInt = nServices;
         READWRITE(nServicesInt);
         nServices = (ServiceFlags)nServicesInt;
-        READWRITE(*(CellService*)this);
+        READWRITE(*(MCService*)this);
     }
 
     // TODO: make private (improves encapsulation)
@@ -336,11 +336,11 @@ enum GetDataMsg
 };
 
 /** inv message data */
-class CellInv
+class MCInv
 {
 public:
-    CellInv();
-    CellInv(int typeIn, const uint256& hashIn);
+    MCInv();
+    MCInv(int typeIn, const uint256& hashIn);
 
     ADD_SERIALIZE_METHODS;
 
@@ -351,7 +351,7 @@ public:
         READWRITE(hash);
     }
 
-    friend bool operator<(const CellInv& a, const CellInv& b);
+    friend bool operator<(const MCInv& a, const MCInv& b);
 
     std::string GetCommand() const;
     std::string ToString() const;

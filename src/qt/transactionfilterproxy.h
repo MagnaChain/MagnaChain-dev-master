@@ -41,7 +41,7 @@ public:
       @note Type filter takes a bit field created with TYPE() or ALL_TYPES
      */
     void setTypeFilter(quint32 modes);
-    void setMinAmount(const CellAmount& minimum);
+    void setMinAmount(const MCAmount& minimum);
     void setWatchOnlyFilter(WatchOnlyFilter filter);
 
     /** Set maximum number of rows returned, -1 if unlimited. */
@@ -61,7 +61,7 @@ private:
     QString addrPrefix;
     quint32 typeFilter;
     WatchOnlyFilter watchOnlyFilter;
-    CellAmount minAmount;
+    MCAmount minAmount;
     int limitRows;
     bool showInactive;
 };

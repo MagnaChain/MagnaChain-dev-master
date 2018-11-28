@@ -41,9 +41,9 @@ QString MagnaChainUnits::name(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("Cell");
-    case mBTC: return QString("mCell");
-    case uBTC: return QString::fromUtf8("μCell");
+    case BTC: return QString("MC");
+    case mBTC: return QString("mMC");
+    case uBTC: return QString::fromUtf8("μMC");
     default: return QString("???");
     }
 }
@@ -52,9 +52,9 @@ QString MagnaChainUnits::description(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("Cells");
-    case mBTC: return QString("Milli-Cells (1 / 1" THIN_SP_UTF8 "000)");
-    case uBTC: return QString("Micro-Cells (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+    case BTC: return QString("MCs");
+    case mBTC: return QString("Milli-MCs (1 / 1" THIN_SP_UTF8 "000)");
+    case uBTC: return QString("Micro-MCs (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
     default: return QString("???");
     }
 }
@@ -81,7 +81,7 @@ int MagnaChainUnits::decimals(int unit)
     }
 }
 
-QString MagnaChainUnits::format(int unit, const CellAmount& nIn, bool fPlus, SeparatorStyle separators)
+QString MagnaChainUnits::format(int unit, const MCAmount& nIn, bool fPlus, SeparatorStyle separators)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
@@ -120,12 +120,12 @@ QString MagnaChainUnits::format(int unit, const CellAmount& nIn, bool fPlus, Sep
 // Please take care to use formatHtmlWithUnit instead, when
 // appropriate.
 
-QString MagnaChainUnits::formatWithUnit(int unit, const CellAmount& amount, bool plussign, SeparatorStyle separators)
+QString MagnaChainUnits::formatWithUnit(int unit, const MCAmount& amount, bool plussign, SeparatorStyle separators)
 {
     return format(unit, amount, plussign, separators) + QString(" ") + name(unit);
 }
 
-QString MagnaChainUnits::formatHtmlWithUnit(int unit, const CellAmount& amount, bool plussign, SeparatorStyle separators)
+QString MagnaChainUnits::formatHtmlWithUnit(int unit, const MCAmount& amount, bool plussign, SeparatorStyle separators)
 {
     QString str(formatWithUnit(unit, amount, plussign, separators));
     str.replace(QChar(THIN_SP_CP), QString(THIN_SP_HTML));
@@ -133,7 +133,7 @@ QString MagnaChainUnits::formatHtmlWithUnit(int unit, const CellAmount& amount, 
 }
 
 
-bool MagnaChainUnits::parse(int unit, const QString &value, CellAmount *val_out)
+bool MagnaChainUnits::parse(int unit, const QString &value, MCAmount *val_out)
 {
     if(!valid(unit) || value.isEmpty())
         return false; // Refuse to parse invalid unit or empty string
@@ -164,7 +164,7 @@ bool MagnaChainUnits::parse(int unit, const QString &value, CellAmount *val_out)
     {
         return false; // Longer numbers will exceed 63 bits
     }
-    CellAmount retvalue(str.toLongLong(&ok));
+    MCAmount retvalue(str.toLongLong(&ok));
     if(val_out)
     {
         *val_out = retvalue;
@@ -208,7 +208,7 @@ QVariant MagnaChainUnits::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-CellAmount MagnaChainUnits::maxMoney()
+MCAmount MagnaChainUnits::maxMoney()
 {
     return MAX_MONEY;
 }

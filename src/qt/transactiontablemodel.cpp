@@ -58,17 +58,17 @@ struct TxLessThan
 class TransactionTablePriv
 {
 public:
-    TransactionTablePriv(CellWallet *_wallet, TransactionTableModel *_parent) :
+    TransactionTablePriv(MCWallet *_wallet, TransactionTableModel *_parent) :
         wallet(_wallet),
         parent(_parent)
     {
     }
 
-    CellWallet *wallet;
+    MCWallet *wallet;
     TransactionTableModel *parent;
 
     /* Local cache of wallet.
-     * As it is in the same order as the CellWallet, by definition
+     * As it is in the same order as the MCWallet, by definition
      * this is sorted by sha256.
      */
     QList<TransactionRecord> cachedWallet;
@@ -81,7 +81,7 @@ public:
         cachedWallet.clear();
         {
             LOCK2(cs_main, wallet->cs_wallet);
-            for(std::map<uint256, CellWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
+            for(std::map<uint256, MCWalletTx>::iterator it = wallet->mapWallet.begin(); it != wallet->mapWallet.end(); ++it)
             {
                 if(TransactionRecord::showTransaction(it->second))
                     cachedWallet.append(TransactionRecord::decomposeTransaction(wallet, it->second));
@@ -131,7 +131,7 @@ public:
             {
                 LOCK2(cs_main, wallet->cs_wallet);
                 // Find transaction in wallet
-                std::map<uint256, CellWalletTx>::iterator mi = wallet->mapWallet.find(hash);
+                std::map<uint256, MCWalletTx>::iterator mi = wallet->mapWallet.find(hash);
                 if(mi == wallet->mapWallet.end())
                 {
                     qWarning() << "TransactionTablePriv::updateWallet: Warning: Got CT_NEW, but transaction is not in wallet";
@@ -199,7 +199,7 @@ public:
                 TRY_LOCK(wallet->cs_wallet, lockWallet);
                 if(lockWallet && rec->statusUpdateNeeded())
                 {
-                    std::map<uint256, CellWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
+                    std::map<uint256, MCWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
 
                     if(mi != wallet->mapWallet.end())
                     {
@@ -216,7 +216,7 @@ public:
     {
         {
             LOCK2(cs_main, wallet->cs_wallet);
-            std::map<uint256, CellWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
+            std::map<uint256, MCWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
             if(mi != wallet->mapWallet.end())
             {
                 return TransactionDesc::toHTML(wallet, mi->second, rec, unit);
@@ -228,17 +228,17 @@ public:
     QString getTxHex(TransactionRecord *rec)
     {
         LOCK2(cs_main, wallet->cs_wallet);
-        std::map<uint256, CellWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
+        std::map<uint256, MCWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
         if(mi != wallet->mapWallet.end())
         {
-            std::string strHex = EncodeHexTx(static_cast<CellTransaction>(mi->second));
+            std::string strHex = EncodeHexTx(static_cast<MCTransaction>(mi->second));
             return QString::fromStdString(strHex);
         }
         return QString();
     }
 };
 
-TransactionTableModel::TransactionTableModel(const PlatformStyle *_platformStyle, CellWallet* _wallet, WalletModel *parent):
+TransactionTableModel::TransactionTableModel(const PlatformStyle *_platformStyle, MCWallet* _wallet, WalletModel *parent):
         QAbstractTableModel(parent),
         wallet(_wallet),
         walletModel(parent),
@@ -738,10 +738,10 @@ private:
 static bool fQueueNotifications = false;
 static std::vector< TransactionNotification > vQueueNotifications;
 
-static void NotifyTransactionChanged(TransactionTableModel *ttm, CellWallet *wallet, const uint256 &hash, ChangeType status)
+static void NotifyTransactionChanged(TransactionTableModel *ttm, MCWallet *wallet, const uint256 &hash, ChangeType status)
 {
     // Find transaction in wallet
-    std::map<uint256, CellWalletTx>::iterator mi = wallet->mapWallet.find(hash);
+    std::map<uint256, MCWalletTx>::iterator mi = wallet->mapWallet.find(hash);
     // Determine whether to show transaction or not (determine this here so that no relocking is needed in GUI thread)
     bool inWallet = mi != wallet->mapWallet.end();
     bool showTransaction = (inWallet && TransactionRecord::showTransaction(mi->second));

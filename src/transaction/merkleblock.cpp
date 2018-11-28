@@ -10,7 +10,7 @@
 #include "consensus/consensus.h"
 #include "utils/utilstrencodings.h"
 
-CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter, const std::set<uint256>* txids)
+MCMerkleBlock::MCMerkleBlock(const MCBlock& block, MCBloomFilter* filter, const std::set<uint256>* txids)
 {
     header = block.GetBlockHeader();
 
@@ -36,5 +36,5 @@ CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter
         vHashes.push_back(hash);
     }
 
-    txn = CellPartialMerkleTree(vHashes, vMatch);
+    txn = MCPartialMerkleTree(vHashes, vMatch);
 }

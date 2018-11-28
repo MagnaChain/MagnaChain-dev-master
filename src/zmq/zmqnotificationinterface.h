@@ -11,10 +11,10 @@
 #include <map>
 #include <list>
 
-class CellBlockIndex;
+class MCBlockIndex;
 class CZMQAbstractNotifier;
 
-class CZMQNotificationInterface : public CellValidationInterface
+class CZMQNotificationInterface : public MCValidationInterface
 {
 public:
     virtual ~CZMQNotificationInterface();
@@ -25,11 +25,11 @@ protected:
     bool Initialize();
     void Shutdown();
 
-    // CellValidationInterface
-    void TransactionAddedToMempool(const CellTransactionRef& tx) override;
-    void BlockConnected(const std::shared_ptr<const CellBlock>& pblock, const CellBlockIndex* pindexConnected, const std::vector<CellTransactionRef>& vtxConflicted) override;
-    void BlockDisconnected(const std::shared_ptr<const CellBlock>& pblock) override;
-    void UpdatedBlockTip(const CellBlockIndex *pindexNew, const CellBlockIndex *pindexFork, bool fInitialDownload) override;
+    // MCValidationInterface
+    void TransactionAddedToMempool(const MCTransactionRef& tx) override;
+    void BlockConnected(const std::shared_ptr<const MCBlock>& pblock, const MCBlockIndex* pindexConnected, const std::vector<MCTransactionRef>& vtxConflicted) override;
+    void BlockDisconnected(const std::shared_ptr<const MCBlock>& pblock) override;
+    void UpdatedBlockTip(const MCBlockIndex *pindexNew, const MCBlockIndex *pindexFork, bool fInitialDownload) override;
 
 private:
     CZMQNotificationInterface();

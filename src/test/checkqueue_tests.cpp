@@ -136,12 +136,12 @@ std::atomic<size_t> FakeCheckCheckCompletion::n_calls{0};
 std::atomic<size_t> MemoryCheck::fake_allocated_memory{0};
 
 // Queue Typedefs
-typedef CellCheckQueue<FakeCheckCheckCompletion> Correct_Queue;
-typedef CellCheckQueue<FakeCheck> Standard_Queue;
-typedef CellCheckQueue<FailingCheck> Failing_Queue;
-typedef CellCheckQueue<UniqueCheck> Unique_Queue;
-typedef CellCheckQueue<MemoryCheck> Memory_Queue;
-typedef CellCheckQueue<FrozenCleanupCheck> FrozenCleanup_Queue;
+typedef MCCheckQueue<FakeCheckCheckCompletion> Correct_Queue;
+typedef MCCheckQueue<FakeCheck> Standard_Queue;
+typedef MCCheckQueue<FailingCheck> Failing_Queue;
+typedef MCCheckQueue<UniqueCheck> Unique_Queue;
+typedef MCCheckQueue<MemoryCheck> Memory_Queue;
+typedef MCCheckQueue<FrozenCleanupCheck> FrozenCleanup_Queue;
 
 
 /** This test case checks that the CCheckQueue works properly
@@ -159,7 +159,7 @@ void Correct_Queue_range(std::vector<size_t> range)
     for (auto i : range) {
         size_t total = i;
         FakeCheckCheckCompletion::n_calls = 0;
-        CellCheckQueueControl<FakeCheckCheckCompletion> control(small_queue.get());
+        MCCheckQueueControl<FakeCheckCheckCompletion> control(small_queue.get());
         while (total) {
             vChecks.resize(std::min(total, (size_t) InsecureRandRange(10)));
             total -= vChecks.size();
@@ -222,7 +222,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueue_Catches_Failure)
     }
 
     for (size_t i = 0; i < 1001; ++i) {
-        CellCheckQueueControl<FailingCheck> control(fail_queue.get());
+        MCCheckQueueControl<FailingCheck> control(fail_queue.get());
         size_t remaining = i;
         while (remaining) {
             size_t r = InsecureRandRange(10);
@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueue_Recovers_From_Failure)
 
     for (auto times = 0; times < 10; ++times) {
         for (bool end_fails : {true, false}) {
-            CellCheckQueueControl<FailingCheck> control(fail_queue.get());
+            MCCheckQueueControl<FailingCheck> control(fail_queue.get());
             {
                 std::vector<FailingCheck> vChecks;
                 vChecks.resize(100, false);
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueue_UniqueCheck)
     size_t COUNT = 100000;
     size_t total = COUNT;
     {
-        CellCheckQueueControl<UniqueCheck> control(queue.get());
+        MCCheckQueueControl<UniqueCheck> control(queue.get());
         while (total) {
             size_t r = InsecureRandRange(10);
             std::vector<UniqueCheck> vChecks;
@@ -319,7 +319,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueue_Memory)
     for (size_t i = 0; i < 1000; ++i) {
         size_t total = i;
         {
-            CellCheckQueueControl<MemoryCheck> control(queue.get());
+            MCCheckQueueControl<MemoryCheck> control(queue.get());
             while (total) {
                 size_t r = InsecureRandRange(10);
                 std::vector<MemoryCheck> vChecks;
@@ -349,7 +349,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueue_FrozenCleanup)
         tg.create_thread([&]{queue->Thread();});
     }
     std::thread t0([&]() {
-        CellCheckQueueControl<FrozenCleanupCheck> control(queue.get());
+        MCCheckQueueControl<FrozenCleanupCheck> control(queue.get());
         std::vector<FrozenCleanupCheck> vChecks(1);
         // Freezing can't be the default initialized behavior given how the queue
         // swaps in default initialized Checks (otherwise freezing destructor
@@ -390,7 +390,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueueControl_Locks)
         for (size_t i = 0; i < 3; ++i) {
             tg.create_thread(
                     [&]{
-                    CellCheckQueueControl<FakeCheck> control(queue.get());
+                    MCCheckQueueControl<FakeCheck> control(queue.get());
                     // While sleeping, no other thread should execute to this point
                     auto observed = ++nThreads;
                     MilliSleep(10);
@@ -411,7 +411,7 @@ BOOST_AUTO_TEST_CASE(test_CheckQueueControl_Locks)
             bool done_ack {false};
             std::unique_lock<std::mutex> l(m);
             tg.create_thread([&]{
-                    CellCheckQueueControl<FakeCheck> control(queue.get());
+                    MCCheckQueueControl<FakeCheck> control(queue.get());
                     std::unique_lock<std::mutex> ll(m);
                     has_lock = true;
                     cv.notify_one();

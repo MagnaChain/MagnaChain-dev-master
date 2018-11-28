@@ -22,7 +22,7 @@
 #include <stdint.h>
 #include <string>
 
-QString TransactionDesc::FormatTxStatus(const CellWalletTx& wtx)
+QString TransactionDesc::FormatTxStatus(const MCWalletTx& wtx)
 {
     AssertLockHeld(cs_main);
     if (!CheckFinalTx(wtx))
@@ -48,7 +48,7 @@ QString TransactionDesc::FormatTxStatus(const CellWalletTx& wtx)
     }
 }
 
-QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, TransactionRecord *rec, int unit)
+QString TransactionDesc::toHTML(MCWallet *wallet, MCWalletTx &wtx, TransactionRecord *rec, int unit)
 {
     QString strHTML;
 
@@ -57,9 +57,9 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
     strHTML += "<html><font face='verdana, arial, helvetica, sans-serif'>";
 
     int64_t nTime = wtx.GetTxTime();
-    CellAmount nCredit = wtx.GetCredit(ISMINE_ALL);
-    CellAmount nDebit = wtx.GetDebit(ISMINE_ALL);
-    CellAmount nNet = nCredit - nDebit;
+    MCAmount nCredit = wtx.GetCredit(ISMINE_ALL);
+    MCAmount nDebit = wtx.GetDebit(ISMINE_ALL);
+    MCAmount nNet = nCredit - nDebit;
 
     strHTML += "<b>" + tr("Status") + ":</b> " + FormatTxStatus(wtx);
     int nRequests = wtx.GetRequestCount();
@@ -94,7 +94,7 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
             // Credit
             if (MagnaChainAddress(rec->address).IsValid())
             {
-                CellTxDestination address = MagnaChainAddress(rec->address).Get();
+                MCTxDestination address = MagnaChainAddress(rec->address).Get();
                 if (wallet->mapAddressBook.count(address))
                 {
                     strHTML += "<b>" + tr("From") + ":</b> " + tr("unknown") + "<br>";
@@ -119,7 +119,7 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
         // Online transaction
         std::string strAddress = wtx.mapValue["to"];
         strHTML += "<b>" + tr("To") + ":</b> ";
-        CellTxDestination dest = MagnaChainAddress(strAddress).Get();
+        MCTxDestination dest = MagnaChainAddress(strAddress).Get();
         if (wallet->mapAddressBook.count(dest) && !wallet->mapAddressBook[dest].name.empty())
             strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[dest].name) + " ";
         strHTML += GUIUtil::HtmlEscape(strAddress) + "<br>";
@@ -133,8 +133,8 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
         //
         // Coinbase
         //
-        CellAmount nUnmatured = 0;
-        for (const CellTxOut& txout : wtx.tx->vout)
+        MCAmount nUnmatured = 0;
+        for (const MCTxOut& txout : wtx.tx->vout)
             nUnmatured += wallet->GetCredit(txout, ISMINE_ALL);
         strHTML += "<b>" + tr("Credit") + ":</b> ";
         if (wtx.IsInMainChain())
@@ -153,14 +153,14 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
     else
     {
         isminetype fAllFromMe = ISMINE_SPENDABLE;
-        for (const CellTxIn& txin : wtx.tx->vin)
+        for (const MCTxIn& txin : wtx.tx->vin)
         {
             isminetype mine = wallet->IsMine(txin);
             if(fAllFromMe > mine) fAllFromMe = mine;
         }
 
         isminetype fAllToMe = ISMINE_SPENDABLE;
-        for (const CellTxOut& txout : wtx.tx->vout)
+        for (const MCTxOut& txout : wtx.tx->vout)
         {
             isminetype mine = wallet->IsMine(txout);
             if(fAllToMe > mine) fAllToMe = mine;
@@ -174,7 +174,7 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
             //
             // Debit
             //
-            for (const CellTxOut& txout : wtx.tx->vout)
+            for (const MCTxOut& txout : wtx.tx->vout)
             {
                 // Ignore change
                 isminetype toSelf = wallet->IsMine(txout);
@@ -184,7 +184,7 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
                 if (!wtx.mapValue.count("to") || wtx.mapValue["to"].empty())
                 {
                     // Offline transaction
-                    CellTxDestination address;
+                    MCTxDestination address;
                     if (ExtractDestination(txout.scriptPubKey, address))
                     {
                         strHTML += "<b>" + tr("To") + ":</b> ";
@@ -207,13 +207,13 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
             if (fAllToMe)
             {
                 // Payment to self
-                CellAmount nChange = wtx.GetChange();
-                CellAmount nValue = nCredit - nChange;
+                MCAmount nChange = wtx.GetChange();
+                MCAmount nValue = nCredit - nChange;
                 strHTML += "<b>" + tr("Total debit") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, -nValue) + "<br>";
                 strHTML += "<b>" + tr("Total credit") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, nValue) + "<br>";
             }
 
-            CellAmount nTxFee = nDebit - wtx.tx->GetValueOut();
+            MCAmount nTxFee = nDebit - wtx.tx->GetValueOut();
             if (nTxFee > 0)
                 strHTML += "<b>" + tr("Transaction fee") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, -nTxFee) + "<br>";
         }
@@ -222,10 +222,10 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
             //
             // Mixed debit transaction
             //
-            for (const CellTxIn& txin : wtx.tx->vin)
+            for (const MCTxIn& txin : wtx.tx->vin)
                 if (wallet->IsMine(txin))
                     strHTML += "<b>" + tr("Debit") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, -wallet->GetDebit(txin, ISMINE_ALL)) + "<br>";
-            for (const CellTxOut& txout : wtx.tx->vout)
+            for (const MCTxOut& txout : wtx.tx->vout)
                 if (wallet->IsMine(txout))
                     strHTML += "<b>" + tr("Credit") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, wallet->GetCredit(txout, ISMINE_ALL)) + "<br>";
         }
@@ -277,10 +277,10 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
     if (logCategories != BCLog::NONE)
     {
         strHTML += "<hr><br>" + tr("Debug information") + "<br><br>";
-        for (const CellTxIn& txin : wtx.tx->vin)
+        for (const MCTxIn& txin : wtx.tx->vin)
             if(wallet->IsMine(txin))
                 strHTML += "<b>" + tr("Debit") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, -wallet->GetDebit(txin, ISMINE_ALL)) + "<br>";
-        for (const CellTxOut& txout : wtx.tx->vout)
+        for (const MCTxOut& txout : wtx.tx->vout)
             if(wallet->IsMine(txout))
                 strHTML += "<b>" + tr("Credit") + ":</b> " + MagnaChainUnits::formatHtmlWithUnit(unit, wallet->GetCredit(txout, ISMINE_ALL)) + "<br>";
 
@@ -290,17 +290,17 @@ QString TransactionDesc::toHTML(CellWallet *wallet, CellWalletTx &wtx, Transacti
         strHTML += "<br><b>" + tr("Inputs") + ":</b>";
         strHTML += "<ul>";
 
-        for (const CellTxIn& txin : wtx.tx->vin)
+        for (const MCTxIn& txin : wtx.tx->vin)
         {
-            CellOutPoint prevout = txin.prevout;
+            MCOutPoint prevout = txin.prevout;
 
             Coin prev;
             if(pcoinsTip->GetCoin(prevout, prev))
             {
                 {
                     strHTML += "<li>";
-                    const CellTxOut &vout = prev.out;
-                    CellTxDestination address;
+                    const MCTxOut &vout = prev.out;
+                    MCTxDestination address;
                     if (ExtractDestination(vout.scriptPubKey, address))
                     {
                         if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].name.empty())

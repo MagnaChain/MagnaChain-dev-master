@@ -11,7 +11,7 @@
 /** Testing setup and teardown for wallet.
  */
 struct WalletTestingSetup: public TestingSetup {
-    WalletTestingSetup(const std::string& chainName = CellBaseChainParams::MAIN);
+    WalletTestingSetup(const std::string& chainName = MCBaseChainParams::MAIN);
     ~WalletTestingSetup();
 };
 

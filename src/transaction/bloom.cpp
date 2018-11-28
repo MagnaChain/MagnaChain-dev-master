@@ -19,7 +19,7 @@
 #define LN2SQUARED 0.4804530139182014246671025263266649717305529515945455
 #define LN2 0.6931471805599453094172321214581765680755001343602552
 
-CellBloomFilter::CellBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweakIn, unsigned char nFlagsIn) :
+MCBloomFilter::MCBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweakIn, unsigned char nFlagsIn) :
     /**
      * The ideal size for a bloom filter with a given number of elements and false positive rate is:
      * - nElements * log(fp rate) / ln(2)^2
@@ -39,8 +39,8 @@ CellBloomFilter::CellBloomFilter(const unsigned int nElements, const double nFPR
 {
 }
 
-// Private constructor used by CellRollingBloomFilter
-CellBloomFilter::CellBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweakIn) :
+// Private constructor used by MCRollingBloomFilter
+MCBloomFilter::MCBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweakIn) :
     vData((unsigned int)(-1  / LN2SQUARED * nElements * log(nFPRate)) / 8),
     isFull(false),
     isEmpty(true),
@@ -50,13 +50,13 @@ CellBloomFilter::CellBloomFilter(const unsigned int nElements, const double nFPR
 {
 }
 
-inline unsigned int CellBloomFilter::Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const
+inline unsigned int MCBloomFilter::Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const
 {
     // 0xFBA4C795 chosen as it guarantees a reasonable bit difference between nHashNum values.
     return MurmurHash3(nHashNum * 0xFBA4C795 + nTweak, vDataToHash) % (vData.size() * 8);
 }
 
-void CellBloomFilter::insert(const std::vector<unsigned char>& vKey)
+void MCBloomFilter::insert(const std::vector<unsigned char>& vKey)
 {
     if (isFull)
         return;
@@ -69,21 +69,21 @@ void CellBloomFilter::insert(const std::vector<unsigned char>& vKey)
     isEmpty = false;
 }
 
-void CellBloomFilter::insert(const CellOutPoint& outpoint)
+void MCBloomFilter::insert(const MCOutPoint& outpoint)
 {
-    CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << outpoint;
     std::vector<unsigned char> data(stream.begin(), stream.end());
     insert(data);
 }
 
-void CellBloomFilter::insert(const uint256& hash)
+void MCBloomFilter::insert(const uint256& hash)
 {
     std::vector<unsigned char> data(hash.begin(), hash.end());
     insert(data);
 }
 
-bool CellBloomFilter::contains(const std::vector<unsigned char>& vKey) const
+bool MCBloomFilter::contains(const std::vector<unsigned char>& vKey) const
 {
     if (isFull)
         return true;
@@ -99,39 +99,39 @@ bool CellBloomFilter::contains(const std::vector<unsigned char>& vKey) const
     return true;
 }
 
-bool CellBloomFilter::contains(const CellOutPoint& outpoint) const
+bool MCBloomFilter::contains(const MCOutPoint& outpoint) const
 {
-    CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << outpoint;
     std::vector<unsigned char> data(stream.begin(), stream.end());
     return contains(data);
 }
 
-bool CellBloomFilter::contains(const uint256& hash) const
+bool MCBloomFilter::contains(const uint256& hash) const
 {
     std::vector<unsigned char> data(hash.begin(), hash.end());
     return contains(data);
 }
 
-void CellBloomFilter::clear()
+void MCBloomFilter::clear()
 {
     vData.assign(vData.size(),0);
     isFull = false;
     isEmpty = true;
 }
 
-void CellBloomFilter::reset(const unsigned int nNewTweak)
+void MCBloomFilter::reset(const unsigned int nNewTweak)
 {
     clear();
     nTweak = nNewTweak;
 }
 
-bool CellBloomFilter::IsWithinSizeConstraints() const
+bool MCBloomFilter::IsWithinSizeConstraints() const
 {
     return vData.size() <= MAX_BLOOM_FILTER_SIZE && nHashFuncs <= MAX_HASH_FUNCS;
 }
 
-bool CellBloomFilter::IsRelevantAndUpdate(const CellTransaction& tx)
+bool MCBloomFilter::IsRelevantAndUpdate(const MCTransaction& tx)
 {
     bool fFound = false;
     // Match if the filter contains the hash of tx
@@ -146,12 +146,12 @@ bool CellBloomFilter::IsRelevantAndUpdate(const CellTransaction& tx)
 
     for (unsigned int i = 0; i < tx.vout.size(); i++)
     {
-        const CellTxOut& txout = tx.vout[i];
+        const MCTxOut& txout = tx.vout[i];
         // Match if the filter contains any arbitrary script data element in any scriptPubKey in tx
         // If this matches, also add the specific output that was matched.
         // This means clients don't have to update the filter themselves when a new relevant tx 
         // is discovered in order to find spending transactions, which avoids round-tripping and race conditions.
-        CellScript::const_iterator pc = txout.scriptPubKey.begin();
+        MCScript::const_iterator pc = txout.scriptPubKey.begin();
         std::vector<unsigned char> data;
         while (pc < txout.scriptPubKey.end())
         {
@@ -162,14 +162,14 @@ bool CellBloomFilter::IsRelevantAndUpdate(const CellTransaction& tx)
             {
                 fFound = true;
                 if ((nFlags & BLOOM_UPDATE_MASK) == BLOOM_UPDATE_ALL)
-                    insert(CellOutPoint(hash, i));
+                    insert(MCOutPoint(hash, i));
                 else if ((nFlags & BLOOM_UPDATE_MASK) == BLOOM_UPDATE_P2PUBKEY_ONLY)
                 {
                     txnouttype type;
                     std::vector<std::vector<unsigned char> > vSolutions;
                     if (Solver(txout.scriptPubKey, type, vSolutions) &&
                             (type == TX_PUBKEY || type == TX_MULTISIG))
-                        insert(CellOutPoint(hash, i));
+                        insert(MCOutPoint(hash, i));
                 }
                 break;
             }
@@ -179,14 +179,14 @@ bool CellBloomFilter::IsRelevantAndUpdate(const CellTransaction& tx)
     if (fFound)
         return true;
 
-    for (const CellTxIn& txin : tx.vin)
+    for (const MCTxIn& txin : tx.vin)
     {
         // Match if the filter contains an outpoint tx spends
         if (contains(txin.prevout))
             return true;
 
         // Match if the filter contains any arbitrary script data element in any scriptSig in tx
-        CellScript::const_iterator pc = txin.scriptSig.begin();
+        MCScript::const_iterator pc = txin.scriptSig.begin();
         std::vector<unsigned char> data;
         while (pc < txin.scriptSig.end())
         {
@@ -201,7 +201,7 @@ bool CellBloomFilter::IsRelevantAndUpdate(const CellTransaction& tx)
     return false;
 }
 
-void CellBloomFilter::UpdateEmptyFull()
+void MCBloomFilter::UpdateEmptyFull()
 {
     bool full = true;
     bool empty = true;
@@ -214,7 +214,7 @@ void CellBloomFilter::UpdateEmptyFull()
     isEmpty = empty;
 }
 
-CellRollingBloomFilter::CellRollingBloomFilter(const unsigned int nElements, const double fpRate)
+MCRollingBloomFilter::MCRollingBloomFilter(const unsigned int nElements, const double fpRate)
 {
     double logFpRate = log(fpRate);
     /* The optimal number of hash functions is log(fpRate) / log(0.5), but
@@ -241,12 +241,12 @@ CellRollingBloomFilter::CellRollingBloomFilter(const unsigned int nElements, con
     reset();
 }
 
-/* Similar to CellBloomFilter::Hash */
+/* Similar to MCBloomFilter::Hash */
 static inline uint32_t RollingBloomHash(unsigned int nHashNum, uint32_t nTweak, const std::vector<unsigned char>& vDataToHash) {
     return MurmurHash3(nHashNum * 0xFBA4C795 + nTweak, vDataToHash);
 }
 
-void CellRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
+void MCRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
 {
     if (nEntriesThisGeneration == nEntriesPerGeneration) {
         nEntriesThisGeneration = 0;
@@ -276,13 +276,13 @@ void CellRollingBloomFilter::insert(const std::vector<unsigned char>& vKey)
     }
 }
 
-void CellRollingBloomFilter::insert(const uint256& hash)
+void MCRollingBloomFilter::insert(const uint256& hash)
 {
     std::vector<unsigned char> vData(hash.begin(), hash.end());
     insert(vData);
 }
 
-bool CellRollingBloomFilter::contains(const std::vector<unsigned char>& vKey) const
+bool MCRollingBloomFilter::contains(const std::vector<unsigned char>& vKey) const
 {
     for (int n = 0; n < nHashFuncs; n++) {
         uint32_t h = RollingBloomHash(n, nTweak, vKey);
@@ -296,13 +296,13 @@ bool CellRollingBloomFilter::contains(const std::vector<unsigned char>& vKey) co
     return true;
 }
 
-bool CellRollingBloomFilter::contains(const uint256& hash) const
+bool MCRollingBloomFilter::contains(const uint256& hash) const
 {
     std::vector<unsigned char> vData(hash.begin(), hash.end());
     return contains(vData);
 }
 
-void CellRollingBloomFilter::reset()
+void MCRollingBloomFilter::reset()
 {
     nTweak = GetRand(std::numeric_limits<unsigned int>::max());
     nEntriesThisGeneration = 0;

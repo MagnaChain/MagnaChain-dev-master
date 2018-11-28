@@ -12,8 +12,8 @@
 #include <QList>
 #include <QString>
 
-class CellWallet;
-class CellWalletTx;
+class MCWallet;
+class MCWalletTx;
 
 /** UI model for transaction status. The transaction status is the part of a transaction that will change over time.
  */
@@ -99,16 +99,16 @@ public:
 
     TransactionRecord(uint256 _hash, qint64 _time,
                 Type _type, const std::string &_address,
-                const CellAmount& _debit, const CellAmount& _credit):
+                const MCAmount& _debit, const MCAmount& _credit):
             hash(_hash), time(_time), type(_type), address(_address), debit(_debit), credit(_credit),
             idx(0)
     {
     }
 
-    /** Decompose CellWallet transaction to model transaction records.
+    /** Decompose MCWallet transaction to model transaction records.
      */
-    static bool showTransaction(const CellWalletTx &wtx);
-    static QList<TransactionRecord> decomposeTransaction(const CellWallet *wallet, const CellWalletTx &wtx);
+    static bool showTransaction(const MCWalletTx &wtx);
+    static QList<TransactionRecord> decomposeTransaction(const MCWallet *wallet, const MCWalletTx &wtx);
 
     /** @name Immutable transaction attributes
       @{*/
@@ -116,8 +116,8 @@ public:
     qint64 time;
     Type type;
     std::string address;
-    CellAmount debit;
-    CellAmount credit;
+    MCAmount debit;
+    MCAmount credit;
     /**@}*/
 
     /** Subtransaction index, for sort key */
@@ -137,7 +137,7 @@ public:
 
     /** Update status from core wallet tx.
      */
-    void updateStatus(const CellWalletTx &wtx);
+    void updateStatus(const MCWalletTx &wtx);
 
     /** Return whether a status update is needed.
      */

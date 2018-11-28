@@ -11,11 +11,11 @@
 BOOST_FIXTURE_TEST_SUITE(merkle_tests, TestingSetup)
 
 // Older version of the merkle root computation code, for comparison.
-static uint256 BlockBuildMerkleTree(const CellBlock& block, bool* fMutated, std::vector<uint256>& vMerkleTree)
+static uint256 BlockBuildMerkleTree(const MCBlock& block, bool* fMutated, std::vector<uint256>& vMerkleTree)
 {
     vMerkleTree.clear();
     vMerkleTree.reserve(block.vtx.size() * 2 + 16); // Safe upper bound for the number of total nodes.
-    for (std::vector<CellTransactionRef>::const_iterator it(block.vtx.begin()); it != block.vtx.end(); ++it)
+    for (std::vector<MCTransactionRef>::const_iterator it(block.vtx.begin()); it != block.vtx.end(); ++it)
         vMerkleTree.push_back((*it)->GetHash());
     int j = 0;
     bool mutated = false;
@@ -40,7 +40,7 @@ static uint256 BlockBuildMerkleTree(const CellBlock& block, bool* fMutated, std:
 }
 
 // Older version of the merkle branch computation code, for comparison.
-static std::vector<uint256> BlockGetMerkleBranch(const CellBlock& block, const std::vector<uint256>& vMerkleTree, int nIndex)
+static std::vector<uint256> BlockGetMerkleBranch(const MCBlock& block, const std::vector<uint256>& vMerkleTree, int nIndex)
 {
     std::vector<uint256> vMerkleBranch;
     int j = 0;
@@ -81,10 +81,10 @@ BOOST_AUTO_TEST_CASE(merkle_test)
             if (duplicate3 >= ntx2) break;
             int ntx3 = ntx2 + duplicate3;
             // Build a block with ntx different transactions.
-            CellBlock block;
+            MCBlock block;
             block.vtx.resize(ntx);
             for (int j = 0; j < ntx; j++) {
-                CellMutableTransaction mtx;
+                MCMutableTransaction mtx;
                 mtx.nLockTime = j;
                 block.vtx[j] = MakeTransactionRef(std::move(mtx));
             }

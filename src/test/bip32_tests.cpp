@@ -90,8 +90,8 @@ TestVector test3 =
 
 void RunTest(const TestVector &test) {
     std::vector<unsigned char> seed = ParseHex(test.strHexMaster);
-    CellExtKey key;
-    CellExtPubKey pubkey;
+    MCExtKey key;
+    MCExtPubKey pubkey;
     key.SetMaster(&seed[0], seed.size());
     pubkey = key.Neuter();
     for (const TestDerivation &derive : test.vDerive) {
@@ -104,7 +104,7 @@ void RunTest(const TestVector &test) {
         BOOST_CHECK(b58key.ToString() == derive.prv);
 
         MagnaChainExtKey b58keyDecodeCheck(derive.prv);
-        CellExtKey checkKey = b58keyDecodeCheck.GetKey();
+        MCExtKey checkKey = b58keyDecodeCheck.GetKey();
         assert(checkKey == key); //ensure a base58 decoded key also matches
 
         // Test public key
@@ -112,32 +112,32 @@ void RunTest(const TestVector &test) {
         BOOST_CHECK(b58pubkey.ToString() == derive.pub);
 
         MagnaChainExtPubKey b58PubkeyDecodeCheck(derive.pub);
-        CellExtPubKey checkPubKey = b58PubkeyDecodeCheck.GetKey();
+        MCExtPubKey checkPubKey = b58PubkeyDecodeCheck.GetKey();
         assert(checkPubKey == pubkey); //ensure a base58 decoded pubkey also matches
 
         // Derive new keys
-        CellExtKey keyNew;
+        MCExtKey keyNew;
         BOOST_CHECK(key.Derive(keyNew, derive.nChild));
-        CellExtPubKey pubkeyNew = keyNew.Neuter();
+        MCExtPubKey pubkeyNew = keyNew.Neuter();
         if (!(derive.nChild & 0x80000000)) {
             // Compare with public derivation
-            CellExtPubKey pubkeyNew2;
+            MCExtPubKey pubkeyNew2;
             BOOST_CHECK(pubkey.Derive(pubkeyNew2, derive.nChild));
             BOOST_CHECK(pubkeyNew == pubkeyNew2);
         }
         key = keyNew;
         pubkey = pubkeyNew;
 
-        CellDataStream ssPub(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssPub(SER_DISK, CLIENT_VERSION);
         ssPub << pubkeyNew;
         BOOST_CHECK(ssPub.size() == 75);
 
-        CellDataStream ssPriv(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssPriv(SER_DISK, CLIENT_VERSION);
         ssPriv << keyNew;
         BOOST_CHECK(ssPriv.size() == 75);
 
-        CellExtPubKey pubCheck;
-        CellExtKey privCheck;
+        MCExtPubKey pubCheck;
+        MCExtKey privCheck;
         ssPub >> pubCheck;
         ssPriv >> privCheck;
 

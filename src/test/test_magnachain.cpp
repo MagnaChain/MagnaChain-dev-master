@@ -26,13 +26,13 @@
 
 #include <memory>
 
-void CellConnmanTest::AddNode(CellNode& node)
+void MCConnmanTest::AddNode(MCNode& node)
 {
     LOCK(g_connman->cs_vNodes);
     g_connman->vNodes.push_back(&node);
 }
 
-void CellConnmanTest::ClearNodes()
+void MCConnmanTest::ClearNodes()
 {
     LOCK(g_connman->cs_vNodes);
     g_connman->vNodes.clear();
@@ -43,7 +43,7 @@ FastRandomContext insecure_rand_ctx(insecure_rand_seed);
 
 extern bool fPrintToConsole;
 extern void noui_connect();
-extern bool SignatureCoinbaseTransaction(int nHeight, const CellKeyStore* keystoreIn, CellMutableTransaction& txNew, CellAmount nValue, const CellScript& scriptPubKey);
+extern bool SignatureCoinbaseTransaction(int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& txNew, MCAmount nValue, const MCScript& scriptPubKey);
 
 BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
 {
@@ -71,7 +71,7 @@ BasicTestingSetup::~BasicTestingSetup()
 
 TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(chainName)
 {
-    const CellChainParams& chainparams = Params();
+    const MCChainParams& chainparams = Params();
         // Ideally we'd move all the RPC tests to the functional testing framework
         // instead of unit tests, but for now we need these here.
 
@@ -82,14 +82,14 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         gArgs.ForceSetArg("-datadir", pathTemp.string());
 
         // Note that because we don't bother running a scheduler thread here,
-        // callbacks via CellValidationInterface are unreliable, but that's OK,
+        // callbacks via MCValidationInterface are unreliable, but that's OK,
         // our unit tests aren't testing multiple parts of the code at once.
         GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
 
         mempool.setSanityCheck(1.0);
-        pblocktree = new CellBlockTreeDB(1 << 20, true);
-        pcoinsdbview = new CellCoinsViewDB(1 << 23, true);
-        pcoinsTip = new CellCoinsViewCache(pcoinsdbview);
+        pblocktree = new MCBlockTreeDB(1 << 20, true);
+        pcoinsdbview = new MCCoinsViewDB(1 << 23, true);
+        pcoinsTip = new MCCoinsViewCache(pcoinsdbview);
 		pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
 		mpContractDb = new ContractDataDB(GetDataDir() / "contract", 1 << 23, false, false);
 		pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", 1 << 23, false, false);
@@ -97,7 +97,7 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
             throw std::runtime_error("LoadGenesisBlock failed.");
         }
         {
-            CellValidationState state;
+            MCValidationState state;
             if (!ActivateBestChain(state, chainparams)) {
                 throw std::runtime_error("ActivateBestChain failed.");
             }
@@ -105,7 +105,7 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         nScriptCheckThreads = 3;
         for (int i=0; i < nScriptCheckThreads-1; i++)
             threadGroup.create_thread(&ThreadScriptCheck);
-        g_connman = std::unique_ptr<CellConnman>(new CellConnman(0x1337, 0x1337)); // Deterministic randomness for tests.
+        g_connman = std::unique_ptr<MCConnman>(new MCConnman(0x1337, 0x1337)); // Deterministic randomness for tests.
         connman = g_connman.get();
         peerLogic.reset(new PeerLogicValidation(connman, scheduler));
 }
@@ -128,15 +128,15 @@ TestingSetup::~TestingSetup()
         fs::remove_all(pathTemp);
 }
 
-TestChain100Setup::TestChain100Setup() : TestingSetup(CellBaseChainParams::REGTEST)
+TestChain100Setup::TestChain100Setup() : TestingSetup(MCBaseChainParams::REGTEST)
 {
     // Generate a 100-block chain:
     coinbaseKey.MakeNewKey(true);
-    CellScript scriptPubKey = CellScript() <<  ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
+    MCScript scriptPubKey = MCScript() <<  ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
     for (int i = 0; i < COINBASE_MATURITY; i++)
     {
-        std::vector<CellMutableTransaction> noTxns;
-        CellBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
+        std::vector<MCMutableTransaction> noTxns;
+        MCBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
         coinbaseTxns.push_back(*b.vtx[0]);
     }
 }
@@ -145,20 +145,20 @@ TestChain100Setup::TestChain100Setup() : TestingSetup(CellBaseChainParams::REGTE
 // Create a new block with just given transactions, coinbase paying to
 // scriptPubKey, and try to add it to the current chain.
 //
-CellBlock
-TestChain100Setup::CreateAndProcessBlock(const std::vector<CellMutableTransaction>& txns, const CellScript& scriptPubKey)
+MCBlock
+TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns, const MCScript& scriptPubKey)
 {
-    const CellChainParams& chainparams = Params();
-	//CellWallet tempWallet;
+    const MCChainParams& chainparams = Params();
+	//MCWallet tempWallet;
 	//tempWallet.AddKey(coinbaseKey);
-    //std::unique_ptr<CellBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
+    //std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
     ContractContext contractContext;
-	std::unique_ptr<CellBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
-    CellBlock& block = pblocktemplate->block;
+	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
+    MCBlock& block = pblocktemplate->block;
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
     block.vtx.resize(1);
-    for (const CellMutableTransaction& tx : txns)
+    for (const MCMutableTransaction& tx : txns)
         block.vtx.push_back(MakeTransactionRef(tx));
     // IncrementExtraNonce creates a valid coinbase and merkleRoot
     unsigned int extraNonce = 0;
@@ -166,10 +166,10 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<CellMutableTransactio
 
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
-    std::shared_ptr<CellBlock> shared_pblock = std::make_shared<CellBlock>(block);
+    std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(block);
     ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false);
 
-    CellBlock result = block;
+    MCBlock result = block;
     return result;
 }
 
@@ -178,12 +178,12 @@ TestChain100Setup::~TestChain100Setup()
 }
 
 
-CellTxMemPoolEntry TestMemPoolEntryHelper::FromTx(const CellMutableTransaction &tx) {
-    CellTransaction txn(tx);
+MCTxMemPoolEntry TestMemPoolEntryHelper::FromTx(const MCMutableTransaction &tx) {
+    MCTransaction txn(tx);
     return FromTx(txn);
 }
 
-CellTxMemPoolEntry TestMemPoolEntryHelper::FromTx(const CellTransaction &txn) {
-    return CellTxMemPoolEntry(MakeTransactionRef(txn), nFee, nTime, nHeight,
+MCTxMemPoolEntry TestMemPoolEntryHelper::FromTx(const MCTransaction &txn) {
+    return MCTxMemPoolEntry(MakeTransactionRef(txn), nFee, nTime, nHeight,
                            spendsCoinbase, sigOpCost, lp);
 }

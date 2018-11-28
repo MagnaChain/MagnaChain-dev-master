@@ -76,7 +76,7 @@ UniValue getinfo(const JSONRPCRequest& request)
         );
 
 #ifdef ENABLE_WALLET
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 
     LOCK2(cs_main, pwallet ? &pwallet->cs_wallet : nullptr);
 #else
@@ -100,10 +100,10 @@ UniValue getinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("blocks",        (int)chainActive.Height()));
     obj.push_back(Pair("timeoffset",    GetTimeOffset()));
     if(g_connman)
-        obj.push_back(Pair("connections",   (int)g_connman->GetNodeCount(CellConnman::CONNECTIONS_ALL)));
+        obj.push_back(Pair("connections",   (int)g_connman->GetNodeCount(MCConnman::CONNECTIONS_ALL)));
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : std::string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
-    obj.push_back(Pair("testnet",       Params().NetworkIDString() == CellBaseChainParams::TESTNET));
+    obj.push_back(Pair("testnet",       Params().NetworkIDString() == MCBaseChainParams::TESTNET));
 #ifdef ENABLE_WALLET
     if (pwallet) {
         obj.push_back(Pair("keypoololdest", pwallet->GetOldestKeyPoolTime()));
@@ -128,15 +128,15 @@ UniValue testrpc(const JSONRPCRequest& request)
 class DescribeAddressVisitor : public boost::static_visitor<UniValue>
 {
 public:
-    CellWallet * const pwallet;
+    MCWallet * const pwallet;
 
-    DescribeAddressVisitor(CellWallet *_pwallet) : pwallet(_pwallet) {}
+    DescribeAddressVisitor(MCWallet *_pwallet) : pwallet(_pwallet) {}
 
-    UniValue operator()(const CellNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
+    UniValue operator()(const MCNoDestination &dest) const { return UniValue(UniValue::VOBJ); }
 
-    UniValue operator()(const CellContractID &contractID) const {
+    UniValue operator()(const MCContractID &contractID) const {
         UniValue obj(UniValue::VOBJ);
-        CellPubKey vchPubKey;
+        MCPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
         if (pwallet && pwallet->GetPubKey(contractID, vchPubKey)) {
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
@@ -145,9 +145,9 @@ public:
         return obj;
     }
 
-    UniValue operator()(const CellKeyID &keyID) const {
+    UniValue operator()(const MCKeyID &keyID) const {
         UniValue obj(UniValue::VOBJ);
-        CellPubKey vchPubKey;
+        MCPubKey vchPubKey;
         obj.push_back(Pair("isscript", false));
         if (pwallet && pwallet->GetPubKey(keyID, vchPubKey)) {
             obj.push_back(Pair("pubkey", HexStr(vchPubKey)));
@@ -156,19 +156,19 @@ public:
         return obj;
     }
 
-    UniValue operator()(const CellScriptID &scriptID) const {
+    UniValue operator()(const MCScriptID &scriptID) const {
         UniValue obj(UniValue::VOBJ);
-        CellScript subscript;
+        MCScript subscript;
         obj.push_back(Pair("isscript", true));
         if (pwallet && pwallet->GetCScript(scriptID, subscript)) {
-            std::vector<CellTxDestination> addresses;
+            std::vector<MCTxDestination> addresses;
             txnouttype whichType;
             int nRequired;
             ExtractDestinations(subscript, whichType, addresses, nRequired);
             obj.push_back(Pair("script", GetTxnOutputType(whichType)));
             obj.push_back(Pair("hex", HexStr(subscript.begin(), subscript.end())));
             UniValue a(UniValue::VARR);
-            for (const CellTxDestination& addr : addresses)
+            for (const MCTxDestination& addr : addresses)
                 a.push_back(MagnaChainAddress(addr).ToString());
             obj.push_back(Pair("addresses", a));
             if (whichType == TX_MULTISIG)
@@ -216,7 +216,7 @@ UniValue validateaddress(const JSONRPCRequest& request)
         );
 
 #ifdef ENABLE_WALLET
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 
     LOCK2(cs_main, pwallet ? &pwallet->cs_wallet : nullptr);
 #else
@@ -230,11 +230,11 @@ UniValue validateaddress(const JSONRPCRequest& request)
     ret.push_back(Pair("isvalid", isValid));
     if (isValid)
     {
-        CellTxDestination dest = address.Get();
+        MCTxDestination dest = address.Get();
         std::string currentAddress = address.ToString();
         ret.push_back(Pair("address", currentAddress));
 
-        CellScript scriptPubKey = GetScriptForDestination(dest);
+        MCScript scriptPubKey = GetScriptForDestination(dest);
         ret.push_back(Pair("scriptPubKey", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
 
 #ifdef ENABLE_WALLET
@@ -246,12 +246,12 @@ UniValue validateaddress(const JSONRPCRequest& request)
         if (pwallet && pwallet->mapAddressBook.count(dest)) {
             ret.push_back(Pair("account", pwallet->mapAddressBook[dest].name));
         }
-        CellKeyID keyID;
+        MCKeyID keyID;
         if (pwallet) {
             const auto& meta = pwallet->mapKeyMetadata;
             auto it = address.GetKeyID(keyID) ? meta.find(keyID) : meta.end();
             if (it == meta.end()) {
-                it = meta.find(CellScriptID(scriptPubKey));
+                it = meta.find(MCScriptID(scriptPubKey));
             }
             if (it != meta.end()) {
                 ret.push_back(Pair("timestamp", it->second.nCreateTime));
@@ -267,12 +267,12 @@ UniValue validateaddress(const JSONRPCRequest& request)
 }
 
 // Needed even with !ENABLE_WALLET, to pass (ignored) pointers around
-class CellWallet;
+class MCWallet;
 
 /**
  * Used by addmultisigaddress / createmultisig:
  */
-CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniValue& params)
+MCScript _createmultisig_redeemScript(MCWallet * const pwallet, const UniValue& params)
 {
     int nRequired = params[0].get_int();
     const UniValue& keys = params[1].get_array();
@@ -286,7 +286,7 @@ CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniVal
                       "(got %u keys, but need at least %d to redeem)", keys.size(), nRequired));
     if (keys.size() > 16)
         throw std::runtime_error("Number of addresses involved in the multisignature address creation > 16\nReduce the number");
-    std::vector<CellPubKey> pubkeys;
+    std::vector<MCPubKey> pubkeys;
     pubkeys.resize(keys.size());
     for (unsigned int i = 0; i < keys.size(); i++)
     {
@@ -295,11 +295,11 @@ CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniVal
         // Case 1: MagnaChain address and we have full public key:
         MagnaChainAddress address(ks);
         if (pwallet && address.IsValid()) {
-            CellKeyID keyID;
+            MCKeyID keyID;
             if (!address.GetKeyID(keyID))
                 throw std::runtime_error(
                     strprintf("%s does not refer to a key",ks));
-            CellPubKey vchPubKey;
+            MCPubKey vchPubKey;
             if (!pwallet->GetPubKey(keyID, vchPubKey)) {
                 throw std::runtime_error(
                     strprintf("no full public key for address %s",ks));
@@ -314,7 +314,7 @@ CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniVal
 #endif
         if (IsHex(ks))
         {
-            CellPubKey vchPubKey(ParseHex(ks));
+            MCPubKey vchPubKey(ParseHex(ks));
             if (!vchPubKey.IsFullyValid())
                 throw std::runtime_error(" Invalid public key: "+ks);
             pubkeys[i] = vchPubKey;
@@ -324,7 +324,7 @@ CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniVal
             throw std::runtime_error(" Invalid public key: "+ks);
         }
     }
-    CellScript result = GetScriptForMultisig(nRequired, pubkeys);
+    MCScript result = GetScriptForMultisig(nRequired, pubkeys);
 
     if (result.size() > MAX_SCRIPT_ELEMENT_SIZE)
         throw std::runtime_error(
@@ -336,9 +336,9 @@ CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniVal
 UniValue createmultisig(const JSONRPCRequest& request)
 {
 #ifdef ENABLE_WALLET
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 #else
-    CellWallet * const pwallet = nullptr;
+    MCWallet * const pwallet = nullptr;
 #endif
 
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -371,8 +371,8 @@ UniValue createmultisig(const JSONRPCRequest& request)
     }
 
     // Construct using pay-to-script-hash:
-    CellScript inner = _createmultisig_redeemScript(pwallet, request.params);
-    CellScriptID innerID(inner);
+    MCScript inner = _createmultisig_redeemScript(pwallet, request.params);
+    MCScriptID innerID(inner);
     MagnaChainAddress address(innerID);
 
     UniValue result(UniValue::VOBJ);
@@ -415,7 +415,7 @@ UniValue verifymessage(const JSONRPCRequest& request)
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
-    CellKeyID keyID;
+    MCKeyID keyID;
     if (!addr.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
 
@@ -425,11 +425,11 @@ UniValue verifymessage(const JSONRPCRequest& request)
     if (fInvalid)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Malformed base64 encoding");
 
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << strMessage;
 
-    CellPubKey pubkey;
+    MCPubKey pubkey;
     if (!pubkey.RecoverCompact(ss.GetHash(), vchSig))
         return false;
 
@@ -463,11 +463,11 @@ UniValue signmessagewithprivkey(const JSONRPCRequest& request)
     bool fGood = vchSecret.SetString(strPrivkey);
     if (!fGood)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
-    CellKey key = vchSecret.GetKey();
+    MCKey key = vchSecret.GetKey();
     if (!key.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
 
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << strMessage;
 

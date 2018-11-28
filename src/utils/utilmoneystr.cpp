@@ -10,7 +10,7 @@
 #include "misc/tinyformat.h"
 #include "utils/utilstrencodings.h"
 
-std::string FormatMoney(const CellAmount& n)
+std::string FormatMoney(const MCAmount& n)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
@@ -32,12 +32,12 @@ std::string FormatMoney(const CellAmount& n)
 }
 
 
-bool ParseMoney(const std::string& str, CellAmount& nRet)
+bool ParseMoney(const std::string& str, MCAmount& nRet)
 {
     return ParseMoney(str.c_str(), nRet);
 }
 
-bool ParseMoney(const char* pszIn, CellAmount& nRet)
+bool ParseMoney(const char* pszIn, MCAmount& nRet)
 {
     std::string strWhole;
     int64_t nUnits = 0;
@@ -71,7 +71,7 @@ bool ParseMoney(const char* pszIn, CellAmount& nRet)
     if (nUnits < 0 || nUnits > COIN)
         return false;
     int64_t nWhole = atoi64(strWhole);
-    CellAmount nValue = nWhole*COIN + nUnits;
+    MCAmount nValue = nWhole*COIN + nUnits;
 
     nRet = nValue;
     return true;

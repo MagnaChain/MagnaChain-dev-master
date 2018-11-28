@@ -15,34 +15,34 @@
 extern const std::string CURRENCY_UNIT;
 
 /**
- * Fee rate in satoshis per kilobyte: CellAmount / kB
+ * Fee rate in satoshis per kilobyte: MCAmount / kB
  */
-class CellFeeRate
+class MCFeeRate
 {
 private:
-    CellAmount nSatoshisPerK; // unit is satoshis-per-1,000-bytes
+    MCAmount nSatoshisPerK; // unit is satoshis-per-1,000-bytes
 public:
     /** Fee rate of 0 satoshis per kB */
-    CellFeeRate() : nSatoshisPerK(0) { }
-    explicit CellFeeRate(const CellAmount& _nSatoshisPerK): nSatoshisPerK(_nSatoshisPerK) { }
+    MCFeeRate() : nSatoshisPerK(0) { }
+    explicit MCFeeRate(const MCAmount& _nSatoshisPerK): nSatoshisPerK(_nSatoshisPerK) { }
     /** Constructor for a fee rate in satoshis per kB. The size in bytes must not exceed (2^63 - 1)*/
-    CellFeeRate(const CellAmount& nFeePaid, size_t nBytes);
-    CellFeeRate(const CellFeeRate& other) { nSatoshisPerK = other.nSatoshisPerK; }
+    MCFeeRate(const MCAmount& nFeePaid, size_t nBytes);
+    MCFeeRate(const MCFeeRate& other) { nSatoshisPerK = other.nSatoshisPerK; }
     /**
      * Return the fee in satoshis for the given size in bytes.
      */
-    CellAmount GetFee(size_t nBytes) const;
+    MCAmount GetFee(size_t nBytes) const;
     /**
      * Return the fee in satoshis for a size of 1000 bytes
      */
-    CellAmount GetFeePerK() const { return GetFee(1000); }
-    friend bool operator<(const CellFeeRate& a, const CellFeeRate& b) { return a.nSatoshisPerK < b.nSatoshisPerK; }
-    friend bool operator>(const CellFeeRate& a, const CellFeeRate& b) { return a.nSatoshisPerK > b.nSatoshisPerK; }
-    friend bool operator==(const CellFeeRate& a, const CellFeeRate& b) { return a.nSatoshisPerK == b.nSatoshisPerK; }
-    friend bool operator<=(const CellFeeRate& a, const CellFeeRate& b) { return a.nSatoshisPerK <= b.nSatoshisPerK; }
-    friend bool operator>=(const CellFeeRate& a, const CellFeeRate& b) { return a.nSatoshisPerK >= b.nSatoshisPerK; }
-    friend bool operator!=(const CellFeeRate& a, const CellFeeRate& b) { return a.nSatoshisPerK != b.nSatoshisPerK; }
-    CellFeeRate& operator+=(const CellFeeRate& a) { nSatoshisPerK += a.nSatoshisPerK; return *this; }
+    MCAmount GetFeePerK() const { return GetFee(1000); }
+    friend bool operator<(const MCFeeRate& a, const MCFeeRate& b) { return a.nSatoshisPerK < b.nSatoshisPerK; }
+    friend bool operator>(const MCFeeRate& a, const MCFeeRate& b) { return a.nSatoshisPerK > b.nSatoshisPerK; }
+    friend bool operator==(const MCFeeRate& a, const MCFeeRate& b) { return a.nSatoshisPerK == b.nSatoshisPerK; }
+    friend bool operator<=(const MCFeeRate& a, const MCFeeRate& b) { return a.nSatoshisPerK <= b.nSatoshisPerK; }
+    friend bool operator>=(const MCFeeRate& a, const MCFeeRate& b) { return a.nSatoshisPerK >= b.nSatoshisPerK; }
+    friend bool operator!=(const MCFeeRate& a, const MCFeeRate& b) { return a.nSatoshisPerK != b.nSatoshisPerK; }
+    MCFeeRate& operator+=(const MCFeeRate& a) { nSatoshisPerK += a.nSatoshisPerK; return *this; }
     std::string ToString() const;
 
     ADD_SERIALIZE_METHODS;

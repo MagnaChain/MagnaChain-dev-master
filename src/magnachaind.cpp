@@ -67,7 +67,7 @@ bool AppInit(int argc, char* argv[])
 
 
     boost::thread_group threadGroup;
-    CellScheduler scheduler;
+    MCScheduler scheduler;
 
     bool fRet = false;
 

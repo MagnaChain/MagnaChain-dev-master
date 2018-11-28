@@ -211,7 +211,7 @@ inline bool IsSwitchChar(char c)
 class ArgsManager
 {
 protected:
-    CellCriticalSection cs_args;
+    MCCriticalSection cs_args;
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
 public:

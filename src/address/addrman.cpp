@@ -10,28 +10,28 @@
 #include "io/serialize.h"
 #include "io/streams.h"
 
-int CellAddrInfo::GetTriedBucket(const uint256& nKey) const
+int MCAddrInfo::GetTriedBucket(const uint256& nKey) const
 {
-    uint64_t hash1 = (CellHashWriter(SER_GETHASH, 0) << nKey << GetKey()).GetHash().GetCheapHash();
-    uint64_t hash2 = (CellHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << (hash1 % ADDRMAN_TRIED_BUCKETS_PER_GROUP)).GetHash().GetCheapHash();
+    uint64_t hash1 = (MCHashWriter(SER_GETHASH, 0) << nKey << GetKey()).GetHash().GetCheapHash();
+    uint64_t hash2 = (MCHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << (hash1 % ADDRMAN_TRIED_BUCKETS_PER_GROUP)).GetHash().GetCheapHash();
     return hash2 % ADDRMAN_TRIED_BUCKET_COUNT;
 }
 
-int CellAddrInfo::GetNewBucket(const uint256& nKey, const CellNetAddr& src) const
+int MCAddrInfo::GetNewBucket(const uint256& nKey, const MCNetAddr& src) const
 {
     std::vector<unsigned char> vchSourceGroupKey = src.GetGroup();
-    uint64_t hash1 = (CellHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << vchSourceGroupKey).GetHash().GetCheapHash();
-    uint64_t hash2 = (CellHashWriter(SER_GETHASH, 0) << nKey << vchSourceGroupKey << (hash1 % ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP)).GetHash().GetCheapHash();
+    uint64_t hash1 = (MCHashWriter(SER_GETHASH, 0) << nKey << GetGroup() << vchSourceGroupKey).GetHash().GetCheapHash();
+    uint64_t hash2 = (MCHashWriter(SER_GETHASH, 0) << nKey << vchSourceGroupKey << (hash1 % ADDRMAN_NEW_BUCKETS_PER_SOURCE_GROUP)).GetHash().GetCheapHash();
     return hash2 % ADDRMAN_NEW_BUCKET_COUNT;
 }
 
-int CellAddrInfo::GetBucketPosition(const uint256 &nKey, bool fNew, int nBucket) const
+int MCAddrInfo::GetBucketPosition(const uint256 &nKey, bool fNew, int nBucket) const
 {
-    uint64_t hash1 = (CellHashWriter(SER_GETHASH, 0) << nKey << (fNew ? 'N' : 'K') << nBucket << GetKey()).GetHash().GetCheapHash();
+    uint64_t hash1 = (MCHashWriter(SER_GETHASH, 0) << nKey << (fNew ? 'N' : 'K') << nBucket << GetKey()).GetHash().GetCheapHash();
     return hash1 % ADDRMAN_BUCKET_SIZE;
 }
 
-bool CellAddrInfo::IsTerrible(int64_t nNow) const
+bool MCAddrInfo::IsTerrible(int64_t nNow) const
 {
     if (nLastTry && nLastTry >= nNow - 60) // never remove things tried in the last minute
         return false;
@@ -51,7 +51,7 @@ bool CellAddrInfo::IsTerrible(int64_t nNow) const
     return false;
 }
 
-double CellAddrInfo::GetChance(int64_t nNow) const
+double MCAddrInfo::GetChance(int64_t nNow) const
 {
     double fChance = 1.0;
     int64_t nSinceLastTry = std::max<int64_t>(nNow - nLastTry, 0);
@@ -66,23 +66,23 @@ double CellAddrInfo::GetChance(int64_t nNow) const
     return fChance;
 }
 
-CellAddrInfo* CellAddrMan::Find(const CellNetAddr& addr, int* pnId)
+MCAddrInfo* MCAddrMan::Find(const MCNetAddr& addr, int* pnId)
 {
-    std::map<CellNetAddr, int>::iterator it = mapAddr.find(addr);
+    std::map<MCNetAddr, int>::iterator it = mapAddr.find(addr);
     if (it == mapAddr.end())
         return nullptr;
     if (pnId)
         *pnId = (*it).second;
-    std::map<int, CellAddrInfo>::iterator it2 = mapInfo.find((*it).second);
+    std::map<int, MCAddrInfo>::iterator it2 = mapInfo.find((*it).second);
     if (it2 != mapInfo.end())
         return &(*it2).second;
     return nullptr;
 }
 
-CellAddrInfo* CellAddrMan::Create(const CellAddress& addr, const CellNetAddr& addrSource, int* pnId)
+MCAddrInfo* MCAddrMan::Create(const MCAddress& addr, const MCNetAddr& addrSource, int* pnId)
 {
     int nId = nIdCount++;
-    mapInfo[nId] = CellAddrInfo(addr, addrSource);
+    mapInfo[nId] = MCAddrInfo(addr, addrSource);
     mapAddr[addr] = nId;
     mapInfo[nId].nRandomPos = vRandom.size();
     vRandom.push_back(nId);
@@ -91,7 +91,7 @@ CellAddrInfo* CellAddrMan::Create(const CellAddress& addr, const CellNetAddr& ad
     return &mapInfo[nId];
 }
 
-void CellAddrMan::SwapRandom(unsigned int nRndPos1, unsigned int nRndPos2)
+void MCAddrMan::SwapRandom(unsigned int nRndPos1, unsigned int nRndPos2)
 {
     if (nRndPos1 == nRndPos2)
         return;
@@ -111,10 +111,10 @@ void CellAddrMan::SwapRandom(unsigned int nRndPos1, unsigned int nRndPos2)
     vRandom[nRndPos2] = nId1;
 }
 
-void CellAddrMan::Delete(int nId)
+void MCAddrMan::Delete(int nId)
 {
     assert(mapInfo.count(nId) != 0);
-    CellAddrInfo& info = mapInfo[nId];
+    MCAddrInfo& info = mapInfo[nId];
     assert(!info.fInTried);
     assert(info.nRefCount == 0);
 
@@ -125,12 +125,12 @@ void CellAddrMan::Delete(int nId)
     nNew--;
 }
 
-void CellAddrMan::ClearNew(int nUBucket, int nUBucketPos)
+void MCAddrMan::ClearNew(int nUBucket, int nUBucketPos)
 {
     // if there is an entry in the specified bucket, delete it.
     if (vvNew[nUBucket][nUBucketPos] != -1) {
         int nIdDelete = vvNew[nUBucket][nUBucketPos];
-        CellAddrInfo& infoDelete = mapInfo[nIdDelete];
+        MCAddrInfo& infoDelete = mapInfo[nIdDelete];
         assert(infoDelete.nRefCount > 0);
         infoDelete.nRefCount--;
         vvNew[nUBucket][nUBucketPos] = -1;
@@ -140,7 +140,7 @@ void CellAddrMan::ClearNew(int nUBucket, int nUBucketPos)
     }
 }
 
-void CellAddrMan::MakeTried(CellAddrInfo& info, int nId)
+void MCAddrMan::MakeTried(MCAddrInfo& info, int nId)
 {
     // remove the entry from all new buckets
     for (int bucket = 0; bucket < ADDRMAN_NEW_BUCKET_COUNT; bucket++) {
@@ -163,7 +163,7 @@ void CellAddrMan::MakeTried(CellAddrInfo& info, int nId)
         // find an item to evict
         int nIdEvict = vvTried[nKBucket][nKBucketPos];
         assert(mapInfo.count(nIdEvict) == 1);
-        CellAddrInfo& infoOld = mapInfo[nIdEvict];
+        MCAddrInfo& infoOld = mapInfo[nIdEvict];
 
         // Remove the to-be-evicted item from the tried set.
         infoOld.fInTried = false;
@@ -188,21 +188,21 @@ void CellAddrMan::MakeTried(CellAddrInfo& info, int nId)
     info.fInTried = true;
 }
 
-void CellAddrMan::Good_(const CellService& addr, int64_t nTime)
+void MCAddrMan::Good_(const MCService& addr, int64_t nTime)
 {
     int nId;
 
     nLastGood = nTime;
 
-    CellAddrInfo* pinfo = Find(addr, &nId);
+    MCAddrInfo* pinfo = Find(addr, &nId);
 
     // if not found, bail out
     if (!pinfo)
         return;
 
-    CellAddrInfo& info = *pinfo;
+    MCAddrInfo& info = *pinfo;
 
-    // check whether we are talking about the exact same CellService (including same port)
+    // check whether we are talking about the exact same MCService (including same port)
     if (info != addr)
         return;
 
@@ -240,7 +240,7 @@ void CellAddrMan::Good_(const CellService& addr, int64_t nTime)
     MakeTried(info, nId);
 }
 
-bool CellAddrMan::Add_(const CellAddress& addr, const CellNetAddr& source, int64_t nTimePenalty)
+bool MCAddrMan::Add_(const MCAddress& addr, const MCNetAddr& source, int64_t nTimePenalty)
 {
 	/*
     if (!addr.IsRoutable())
@@ -249,7 +249,7 @@ bool CellAddrMan::Add_(const CellAddress& addr, const CellNetAddr& source, int64
 	
     bool fNew = false;
     int nId;
-    CellAddrInfo* pinfo = Find(addr, &nId);
+    MCAddrInfo* pinfo = Find(addr, &nId);
 
     // Do not set a penalty for a source's self-announcement
     if (addr == source) {
@@ -296,7 +296,7 @@ bool CellAddrMan::Add_(const CellAddress& addr, const CellNetAddr& source, int64
     if (vvNew[nUBucket][nUBucketPos] != nId) {
         bool fInsert = vvNew[nUBucket][nUBucketPos] == -1;
         if (!fInsert) {
-            CellAddrInfo& infoExisting = mapInfo[vvNew[nUBucket][nUBucketPos]];
+            MCAddrInfo& infoExisting = mapInfo[vvNew[nUBucket][nUBucketPos]];
             if (infoExisting.IsTerrible() || (infoExisting.nRefCount > 1 && pinfo->nRefCount == 0)) {
                 // Overwrite the existing new table entry.
                 fInsert = true;
@@ -315,17 +315,17 @@ bool CellAddrMan::Add_(const CellAddress& addr, const CellNetAddr& source, int64
     return fNew;
 }
 
-void CellAddrMan::Attempt_(const CellService& addr, bool fCountFailure, int64_t nTime)
+void MCAddrMan::Attempt_(const MCService& addr, bool fCountFailure, int64_t nTime)
 {
-    CellAddrInfo* pinfo = Find(addr);
+    MCAddrInfo* pinfo = Find(addr);
 
     // if not found, bail out
     if (!pinfo)
         return;
 
-    CellAddrInfo& info = *pinfo;
+    MCAddrInfo& info = *pinfo;
 
-    // check whether we are talking about the exact same CellService (including same port)
+    // check whether we are talking about the exact same MCService (including same port)
     if (info != addr)
         return;
 
@@ -337,13 +337,13 @@ void CellAddrMan::Attempt_(const CellService& addr, bool fCountFailure, int64_t 
     }
 }
 
-CellAddrInfo CellAddrMan::Select_(bool newOnly)
+MCAddrInfo MCAddrMan::Select_(bool newOnly)
 {
     if (size() == 0)
-        return CellAddrInfo();
+        return MCAddrInfo();
 
     if (newOnly && nNew == 0)
-        return CellAddrInfo();
+        return MCAddrInfo();
 
     // Use a 50% chance for choosing between tried and new table entries.
     if (!newOnly &&
@@ -359,7 +359,7 @@ CellAddrInfo CellAddrMan::Select_(bool newOnly)
             }
             int nId = vvTried[nKBucket][nKBucketPos];
             assert(mapInfo.count(nId) == 1);
-            CellAddrInfo& info = mapInfo[nId];
+            MCAddrInfo& info = mapInfo[nId];
             if (RandomInt(1 << 30) < fChanceFactor * info.GetChance() * (1 << 30))
                 return info;
             fChanceFactor *= 1.2;
@@ -376,7 +376,7 @@ CellAddrInfo CellAddrMan::Select_(bool newOnly)
             }
             int nId = vvNew[nUBucket][nUBucketPos];
             assert(mapInfo.count(nId) == 1);
-            CellAddrInfo& info = mapInfo[nId];
+            MCAddrInfo& info = mapInfo[nId];
             if (RandomInt(1 << 30) < fChanceFactor * info.GetChance() * (1 << 30))
                 return info;
             fChanceFactor *= 1.2;
@@ -385,7 +385,7 @@ CellAddrInfo CellAddrMan::Select_(bool newOnly)
 }
 
 #ifdef DEBUG_ADDRMAN
-int CellAddrMan::Check_()
+int MCAddrMan::Check_()
 {
     std::set<int> setTried;
     std::map<int, int> mapNew;
@@ -393,9 +393,9 @@ int CellAddrMan::Check_()
     if (vRandom.size() != nTried + nNew)
         return -7;
 
-    for (std::map<int, CellAddrInfo>::iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
+    for (std::map<int, MCAddrInfo>::iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
         int n = (*it).first;
-        CellAddrInfo& info = (*it).second;
+        MCAddrInfo& info = (*it).second;
         if (info.fInTried) {
             if (!info.nLastSuccess)
                 return -1;
@@ -462,7 +462,7 @@ int CellAddrMan::Check_()
 }
 #endif
 
-void CellAddrMan::GetAddr_(std::vector<CellAddress>& vAddr)
+void MCAddrMan::GetAddr_(std::vector<MCAddress>& vAddr)
 {
     unsigned int nNodes = ADDRMAN_GETADDR_MAX_PCT * vRandom.size() / 100;
     if (nNodes > ADDRMAN_GETADDR_MAX)
@@ -477,23 +477,23 @@ void CellAddrMan::GetAddr_(std::vector<CellAddress>& vAddr)
         SwapRandom(n, nRndPos);
         assert(mapInfo.count(vRandom[n]) == 1);
 
-        const CellAddrInfo& ai = mapInfo[vRandom[n]];
+        const MCAddrInfo& ai = mapInfo[vRandom[n]];
         if (!ai.IsTerrible())
             vAddr.push_back(ai);
     }
 }
 
-void CellAddrMan::Connected_(const CellService& addr, int64_t nTime)
+void MCAddrMan::Connected_(const MCService& addr, int64_t nTime)
 {
-    CellAddrInfo* pinfo = Find(addr);
+    MCAddrInfo* pinfo = Find(addr);
 
     // if not found, bail out
     if (!pinfo)
         return;
 
-    CellAddrInfo& info = *pinfo;
+    MCAddrInfo& info = *pinfo;
 
-    // check whether we are talking about the exact same CellService (including same port)
+    // check whether we are talking about the exact same MCService (including same port)
     if (info != addr)
         return;
 
@@ -503,17 +503,17 @@ void CellAddrMan::Connected_(const CellService& addr, int64_t nTime)
         info.nTime = nTime;
 }
 
-void CellAddrMan::SetServices_(const CellService& addr, ServiceFlags nServices)
+void MCAddrMan::SetServices_(const MCService& addr, ServiceFlags nServices)
 {
-    CellAddrInfo* pinfo = Find(addr);
+    MCAddrInfo* pinfo = Find(addr);
 
     // if not found, bail out
     if (!pinfo)
         return;
 
-    CellAddrInfo& info = *pinfo;
+    MCAddrInfo& info = *pinfo;
 
-    // check whether we are talking about the exact same CellService (including same port)
+    // check whether we are talking about the exact same MCService (including same port)
     if (info != addr)
         return;
 
@@ -521,6 +521,6 @@ void CellAddrMan::SetServices_(const CellService& addr, ServiceFlags nServices)
     info.nServices = nServices;
 }
 
-int CellAddrMan::RandomInt(int nMax){
+int MCAddrMan::RandomInt(int nMax){
     return GetRandInt(nMax);
 }

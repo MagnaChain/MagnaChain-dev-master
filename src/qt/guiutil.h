@@ -51,7 +51,7 @@ namespace GUIUtil
     QString formatMagnaChainURI(const SendCoinsRecipient &info);
 
     // Returns true if given address+amount meets "dust" definition
-    bool isDust(const QString& address, const CellAmount& amount);
+    bool isDust(const QString& address, const MCAmount& amount);
 
     // HTML escaping for rich text controls
     QString HtmlEscape(const QString& str, bool fMultiLine=false);
@@ -189,7 +189,7 @@ namespace GUIUtil
     /* Convert seconds into a QString with days, hours, mins, secs */
     QString formatDurationStr(int secs);
 
-    /* Format CellNodeStats.nServices bitmask into a user-readable string */
+    /* Format MCNodeStats.nServices bitmask into a user-readable string */
     QString formatServicesStr(quint64 mask);
 
     /* Format a CNodeCombinedStats.dPingTime into a user-readable string or display N/A, if 0*/

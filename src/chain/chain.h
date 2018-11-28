@@ -29,7 +29,7 @@ static const int64_t MAX_FUTURE_BLOCK_TIME = 2 * 60 * 60;
  */
 static const int64_t TIMESTAMP_WINDOW = MAX_FUTURE_BLOCK_TIME;
 
-class CellBlockFileInfo
+class MCBlockFileInfo
 {
 public:
     unsigned int nBlocks;      //!< number of blocks stored in file
@@ -63,7 +63,7 @@ public:
          nTimeLast = 0;
      }
 
-     CellBlockFileInfo() {
+     MCBlockFileInfo() {
          SetNull();
      }
 
@@ -83,7 +83,7 @@ public:
      }
 };
 
-struct CellDiskBlockPos
+struct MCDiskBlockPos
 {
     int nFile;
     unsigned int nPos;
@@ -96,20 +96,20 @@ struct CellDiskBlockPos
         READWRITE(VARINT(nPos));
     }
 
-    CellDiskBlockPos() {
+    MCDiskBlockPos() {
         SetNull();
     }
 
-    CellDiskBlockPos(int nFileIn, unsigned int nPosIn) {
+    MCDiskBlockPos(int nFileIn, unsigned int nPosIn) {
         nFile = nFileIn;
         nPos = nPosIn;
     }
 
-    friend bool operator==(const CellDiskBlockPos &a, const CellDiskBlockPos &b) {
+    friend bool operator==(const MCDiskBlockPos &a, const MCDiskBlockPos &b) {
         return (a.nFile == b.nFile && a.nPos == b.nPos);
     }
 
-    friend bool operator!=(const CellDiskBlockPos &a, const CellDiskBlockPos &b) {
+    friend bool operator!=(const MCDiskBlockPos &a, const MCDiskBlockPos &b) {
         return !(a == b);
     }
 
@@ -137,7 +137,7 @@ enum BlockStatus: uint32_t {
     /**
      * Only first tx is coinbase, 2 <= coinbase input script length <= 100, transactions valid, no duplicate txids,
      * sigops, size, merkle root. Implies all parents are at least TREE but not necessarily TRANSACTIONS. When all
-     * parent blocks also have TRANSACTIONS, CellBlockIndex::nChainTx will be set.
+     * parent blocks also have TRANSACTIONS, MCBlockIndex::nChainTx will be set.
      */
     BLOCK_VALID_TRANSACTIONS =    3,
 
@@ -168,17 +168,17 @@ enum BlockStatus: uint32_t {
  * candidates to be the next block. A blockindex may have multiple pprev pointing
  * to it, but at most one of them can be part of the currently active branch.
  */
-class CellBlockIndex
+class MCBlockIndex
 {
 public:
-    //! pointer to the hash of the block, if any. Memory is owned by this CellBlockIndex
+    //! pointer to the hash of the block, if any. Memory is owned by this MCBlockIndex
     const uint256* phashBlock;
 
     //! pointer to the index of the predecessor of this block
-    CellBlockIndex* pprev;
+    MCBlockIndex* pprev;
 
     //! pointer to the index of some further predecessor of this block
-    CellBlockIndex* pskip;
+    MCBlockIndex* pskip;
 
     //! height of the entry in the chain. The genesis block has height 0
     int nHeight;
@@ -215,8 +215,8 @@ public:
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
-	CellOutPoint prevoutStake;
-	CellScript vchBlockSig;
+	MCOutPoint prevoutStake;
+	MCScript vchBlockSig;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
     int32_t nSequenceId;
@@ -251,12 +251,12 @@ public:
 		prevoutStake.SetNull();
     }
 
-    CellBlockIndex()
+    MCBlockIndex()
     {
         SetNull();
     }
 
-    CellBlockIndex(const CellBlockHeader& block)
+    MCBlockIndex(const MCBlockHeader& block)
     {
         SetNull();
 
@@ -271,8 +271,8 @@ public:
 		prevoutStake   = block.prevoutStake;
     }
 
-    CellDiskBlockPos GetBlockPos() const {
-        CellDiskBlockPos ret;
+    MCDiskBlockPos GetBlockPos() const {
+        MCDiskBlockPos ret;
         if (nStatus & BLOCK_HAVE_DATA) {
             ret.nFile = nFile;
             ret.nPos  = nDataPos;
@@ -280,8 +280,8 @@ public:
         return ret;
     }
 
-    CellDiskBlockPos GetUndoPos() const {
-        CellDiskBlockPos ret;
+    MCDiskBlockPos GetUndoPos() const {
+        MCDiskBlockPos ret;
         if (nStatus & BLOCK_HAVE_UNDO) {
             ret.nFile = nFile;
             ret.nPos  = nUndoPos;
@@ -289,9 +289,9 @@ public:
         return ret;
     }
 
-    CellBlockHeader GetBlockHeader() const
+    MCBlockHeader GetBlockHeader() const
     {
-        CellBlockHeader block;
+        MCBlockHeader block;
         block.nVersion       = nVersion;
         if (pprev)
             block.hashPrevBlock = pprev->GetBlockHash();
@@ -329,7 +329,7 @@ public:
         int64_t* pbegin = &pmedian[nMedianTimeSpan];
         int64_t* pend = &pmedian[nMedianTimeSpan];
 
-        const CellBlockIndex* pindex = this;
+        const MCBlockIndex* pindex = this;
         for (int i = 0; i < nMedianTimeSpan && pindex; i++, pindex = pindex->pprev)
             *(--pbegin) = pindex->GetBlockTime();
 
@@ -339,7 +339,7 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("CellBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithData=%s, merkleRootWithPrevData=%s, hashBlock=%s)",
+        return strprintf("MCBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithData=%s, merkleRootWithPrevData=%s, hashBlock=%s)",
             pprev, nHeight,
             hashMerkleRoot.ToString(),
             hashMerkleRootWithData.ToString(),
@@ -374,29 +374,29 @@ public:
     void BuildSkip();
 
     //! Efficiently find an ancestor of this block.
-    CellBlockIndex* GetAncestor(int height);
-    const CellBlockIndex* GetAncestor(int height) const;
+    MCBlockIndex* GetAncestor(int height);
+    const MCBlockIndex* GetAncestor(int height) const;
 };
 
-arith_uint256 GetBlockProof(const CellBlockIndex& block);
+arith_uint256 GetBlockProof(const MCBlockIndex& block);
 arith_uint256 GetBlockProof(uint32_t blockBits);
 /** Return the time it would take to redo the work difference between from and to, assuming the current hashrate corresponds to the difficulty at tip, in seconds. */
-int64_t GetBlockProofEquivalentTime(const CellBlockIndex& to, const CellBlockIndex& from, const CellBlockIndex& tip, const Consensus::Params&);
+int64_t GetBlockProofEquivalentTime(const MCBlockIndex& to, const MCBlockIndex& from, const MCBlockIndex& tip, const Consensus::Params&);
 /** Find the forking point between two chain tips. */
-const CellBlockIndex* LastCommonAncestor(const CellBlockIndex* pa, const CellBlockIndex* pb);
+const MCBlockIndex* LastCommonAncestor(const MCBlockIndex* pa, const MCBlockIndex* pb);
 
 
 /** Used to marshal pointers into hashes for db storage. */
-class CellDiskBlockIndex : public CellBlockIndex
+class MCDiskBlockIndex : public MCBlockIndex
 {
 public:
     uint256 hashPrev;
 
-    CellDiskBlockIndex() {
+    MCDiskBlockIndex() {
         hashPrev = uint256();
     }
 
-    explicit CellDiskBlockIndex(const CellBlockIndex* pindex) : CellBlockIndex(*pindex) {
+    explicit MCDiskBlockIndex(const MCBlockIndex* pindex) : MCBlockIndex(*pindex) {
         hashPrev = (pprev ? pprev->GetBlockHash() : uint256());
     }
 
@@ -434,7 +434,7 @@ public:
 
     uint256 GetBlockHash() const
     {
-        CellBlockHeader block;
+        MCBlockHeader block;
         block.nVersion        = nVersion;
         block.hashPrevBlock   = hashPrev;
         block.hashMerkleRoot = hashMerkleRoot;
@@ -451,8 +451,8 @@ public:
 
     std::string ToString() const
     {
-        std::string str = "CellDiskBlockIndex(";
-        str += CellBlockIndex::ToString();
+        std::string str = "MCDiskBlockIndex(";
+        str += MCBlockIndex::ToString();
         str += strprintf("\n                hashBlock=%s, hashPrev=%s)",
             GetBlockHash().ToString(),
             hashPrev.ToString());
@@ -461,41 +461,41 @@ public:
 };
 
 /** An in-memory indexed chain of blocks. */
-class CellChain {
+class MCChain {
 private:
-    std::vector<CellBlockIndex*> vChain;
+    std::vector<MCBlockIndex*> vChain;
 
 public:
     /** Returns the index entry for the genesis block of this chain, or nullptr if none. */
-    CellBlockIndex *Genesis() const {
+    MCBlockIndex *Genesis() const {
         return vChain.size() > 0 ? vChain[0] : nullptr;
     }
 
     /** Returns the index entry for the tip of this chain, or nullptr if none. */
-    CellBlockIndex *Tip() const {
+    MCBlockIndex *Tip() const {
         return vChain.size() > 0 ? vChain[vChain.size() - 1] : nullptr;
     }
 
     /** Returns the index entry at a particular height in this chain, or nullptr if no such height exists. */
-    CellBlockIndex *operator[](int nHeight) const {
+    MCBlockIndex *operator[](int nHeight) const {
         if (nHeight < 0 || nHeight >= (int)vChain.size())
             return nullptr;
         return vChain[nHeight];
     }
 
     /** Compare two chains efficiently. */
-    friend bool operator==(const CellChain &a, const CellChain &b) {
+    friend bool operator==(const MCChain &a, const MCChain &b) {
         return a.vChain.size() == b.vChain.size() &&
                a.vChain[a.vChain.size() - 1] == b.vChain[b.vChain.size() - 1];
     }
 
     /** Efficiently check whether a block is present in this chain. */
-    bool Contains(const CellBlockIndex *pindex) const {
+    bool Contains(const MCBlockIndex *pindex) const {
         return (*this)[pindex->nHeight] == pindex;
     }
 
     /** Find the successor of a block in this chain, or nullptr if the given index is not found or is the tip. */
-    CellBlockIndex *Next(const CellBlockIndex *pindex) const {
+    MCBlockIndex *Next(const MCBlockIndex *pindex) const {
         if (Contains(pindex))
             return (*this)[pindex->nHeight + 1];
         else
@@ -508,16 +508,16 @@ public:
     }
 
     /** Set/initialize a chain with a given tip. */
-    void SetTip(CellBlockIndex *pindex);
+    void SetTip(MCBlockIndex *pindex);
 
-    /** Return a CellBlockLocator that refers to a block in this chain (by default the tip). */
-    CellBlockLocator GetLocator(const CellBlockIndex *pindex = nullptr) const;
+    /** Return a MCBlockLocator that refers to a block in this chain (by default the tip). */
+    MCBlockLocator GetLocator(const MCBlockIndex *pindex = nullptr) const;
 
     /** Find the last common block between this chain and a block index entry. */
-    const CellBlockIndex *FindFork(const CellBlockIndex *pindex) const;
+    const MCBlockIndex *FindFork(const MCBlockIndex *pindex) const;
 
     /** Find the earliest block with timestamp equal or greater than the given. */
-    CellBlockIndex* FindEarliestAtLeast(int64_t nTime) const;
+    MCBlockIndex* FindEarliestAtLeast(int64_t nTime) const;
 };
 
 #endif // CELLLINK_CHAIN_H

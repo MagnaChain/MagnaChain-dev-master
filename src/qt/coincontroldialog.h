@@ -20,7 +20,7 @@
 class PlatformStyle;
 class WalletModel;
 
-class CellCoinControl;
+class MCCoinControl;
 
 namespace Ui {
     class CoinControlDialog;
@@ -28,12 +28,12 @@ namespace Ui {
 
 #define ASYMP_UTF8 "\xE2\x89\x88"
 
-class CellCoinControlWidgetItem : public QTreeWidgetItem
+class MCCoinControlWidgetItem : public QTreeWidgetItem
 {
 public:
-    CellCoinControlWidgetItem(QTreeWidget *parent, int type = Type) : QTreeWidgetItem(parent, type) {}
-    CellCoinControlWidgetItem(int type = Type) : QTreeWidgetItem(type) {}
-    CellCoinControlWidgetItem(QTreeWidgetItem *parent, int type = Type) : QTreeWidgetItem(parent, type) {}
+    MCCoinControlWidgetItem(QTreeWidget *parent, int type = Type) : QTreeWidgetItem(parent, type) {}
+    MCCoinControlWidgetItem(int type = Type) : QTreeWidgetItem(type) {}
+    MCCoinControlWidgetItem(QTreeWidgetItem *parent, int type = Type) : QTreeWidgetItem(parent, type) {}
 
     bool operator<(const QTreeWidgetItem &other) const;
 };
@@ -52,8 +52,8 @@ public:
     // static because also called from sendcoinsdialog
     static void updateLabels(WalletModel*, QDialog*);
 
-    static QList<CellAmount> payAmounts;
-    static CellCoinControl *coinControl;
+    static QList<MCAmount> payAmounts;
+    static MCCoinControl *coinControl;
     static bool fSubtractFeeFromAmount;
 
 private:
@@ -84,7 +84,7 @@ private:
         COLUMN_TXHASH,
         COLUMN_VOUT_INDEX,
     };
-    friend class CellCoinControlWidgetItem;
+    friend class MCCoinControlWidgetItem;
 
 private Q_SLOTS:
     void showMenu(const QPoint &);

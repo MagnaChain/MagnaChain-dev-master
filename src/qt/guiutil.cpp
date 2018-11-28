@@ -107,9 +107,9 @@ QFont fixedPitchFont()
 static const uint8_t dummydata[] = {0xeb,0x15,0x23,0x1d,0xfc,0xeb,0x60,0x92,0x58,0x86,0xb6,0x7d,0x06,0x52,0x99,0x92,0x59,0x15,0xae,0xb1,0x72,0xc0,0x66,0x47};
 
 // Generate a dummy address with invalid CRC, starting with the network prefix.
-static std::string DummyAddress(const CellChainParams &params)
+static std::string DummyAddress(const MCChainParams &params)
 {
-    std::vector<unsigned char> sourcedata = params.Base58Prefix(CellChainParams::PUBKEY_ADDRESS);
+    std::vector<unsigned char> sourcedata = params.Base58Prefix(MCChainParams::PUBKEY_ADDRESS);
     sourcedata.insert(sourcedata.end(), dummydata, dummydata + sizeof(dummydata));
     for(int i=0; i<256; ++i) { // Try every trailing byte
         std::string s = EncodeBase58(sourcedata.data(), sourcedata.data() + sourcedata.size());
@@ -247,11 +247,11 @@ QString formatMagnaChainURI(const SendCoinsRecipient &info)
     return ret;
 }
 
-bool isDust(const QString& address, const CellAmount& amount)
+bool isDust(const QString& address, const MCAmount& amount)
 {
-    CellTxDestination dest = MagnaChainAddress(address.toStdString()).Get();
-    CellScript script = GetScriptForDestination(dest);
-    CellTxOut txOut(amount, script);
+    MCTxDestination dest = MagnaChainAddress(address.toStdString()).Get();
+    MCScript script = GetScriptForDestination(dest);
+    MCTxOut txOut(amount, script);
     return IsDust(txOut, ::dustRelayFee);
 }
 
@@ -615,9 +615,9 @@ TableViewLastColumnResizingFixer::TableViewLastColumnResizingFixer(QTableView* t
 fs::path static StartupShortcutPath()
 {
     std::string chain = ChainNameFromCommandLine();
-    if (chain == CellBaseChainParams::MAIN)
+    if (chain == MCBaseChainParams::MAIN)
         return GetSpecialFolderPath(CSIDL_STARTUP) / "MagnaChain.lnk";
-    if (chain == CellBaseChainParams::TESTNET) // Remove this special case when CellBaseChainParams::TESTNET = "testnet4"
+    if (chain == MCBaseChainParams::TESTNET) // Remove this special case when MCBaseChainParams::TESTNET = "testnet4"
         return GetSpecialFolderPath(CSIDL_STARTUP) / "MagnaChain (testnet).lnk";
     return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("MagnaChain (%s).lnk", chain);
 }
@@ -713,7 +713,7 @@ fs::path static GetAutostartDir()
 fs::path static GetAutostartFilePath()
 {
     std::string chain = ChainNameFromCommandLine();
-    if (chain == CellBaseChainParams::MAIN)
+    if (chain == MCBaseChainParams::MAIN)
         return GetAutostartDir() / "magnachain.desktop";
     return GetAutostartDir() / strprintf("magnachain-%s.lnk", chain);
 }
@@ -757,7 +757,7 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         // Write a magnachain.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
-        if (chain == CellBaseChainParams::MAIN)
+        if (chain == MCBaseChainParams::MAIN)
             optionFile << "Name=MagnaChain\n";
         else
             optionFile << strprintf("Name=MagnaChain (%s)\n", chain);

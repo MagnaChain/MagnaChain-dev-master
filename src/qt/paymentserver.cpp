@@ -220,16 +220,16 @@ void PaymentServer::ipcParseCommandLine(int argc, char* argv[])
             if (GUIUtil::parseMagnaChainURI(arg, &r) && !r.address.isEmpty())
             {
                 MagnaChainAddress address(r.address.toStdString());
-                auto tempCellChainParams = CreateChainParams(CellBaseChainParams::MAIN);
+                auto tempMCChainParams = CreateChainParams(MCBaseChainParams::MAIN);
 
-                if (address.IsValid(*tempCellChainParams))
+                if (address.IsValid(*tempMCChainParams))
                 {
-                    SelectParams(CellBaseChainParams::MAIN);
+                    SelectParams(MCBaseChainParams::MAIN);
                 }
                 else {
-                    tempCellChainParams = CreateChainParams(CellBaseChainParams::TESTNET);
-                    if (address.IsValid(*tempCellChainParams))
-                        SelectParams(CellBaseChainParams::TESTNET);
+                    tempMCChainParams = CreateChainParams(MCBaseChainParams::TESTNET);
+                    if (address.IsValid(*tempMCChainParams))
+                        SelectParams(MCBaseChainParams::TESTNET);
                 }
             }
         }
@@ -242,11 +242,11 @@ void PaymentServer::ipcParseCommandLine(int argc, char* argv[])
             {
                 if (request.getDetails().network() == "main")
                 {
-                    SelectParams(CellBaseChainParams::MAIN);
+                    SelectParams(MCBaseChainParams::MAIN);
                 }
                 else if (request.getDetails().network() == "test")
                 {
-                    SelectParams(CellBaseChainParams::TESTNET);
+                    SelectParams(MCBaseChainParams::TESTNET);
                 }
             }
         }
@@ -432,7 +432,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
                 qWarning() << "PaymentServer::handleURIOrFile: Invalid URL: " << fetchUrl;
                 Q_EMIT message(tr("URI handling"),
                     tr("Payment request fetch URL is invalid: %1").arg(fetchUrl.toString()),
-                    CellClientUIInterface::ICON_WARNING);
+                    MCClientUIInterface::ICON_WARNING);
             }
 
             return;
@@ -445,7 +445,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
                 MagnaChainAddress address(recipient.address.toStdString());
                 if (!address.IsValid()) {
                     Q_EMIT message(tr("URI handling"), tr("Invalid payment address %1").arg(recipient.address),
-                        CellClientUIInterface::MSG_ERROR);
+                        MCClientUIInterface::MSG_ERROR);
                 }
                 else
                     Q_EMIT receivedPaymentRequest(recipient);
@@ -453,7 +453,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
             else
                 Q_EMIT message(tr("URI handling"),
                     tr("URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters."),
-                    CellClientUIInterface::ICON_WARNING);
+                    MCClientUIInterface::ICON_WARNING);
 
             return;
         }
@@ -467,7 +467,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
         {
             Q_EMIT message(tr("Payment request file handling"),
                 tr("Payment request file cannot be read! This can be caused by an invalid payment request file."),
-                CellClientUIInterface::ICON_WARNING);
+                MCClientUIInterface::ICON_WARNING);
         }
         else if (processPaymentRequest(request, recipient))
             Q_EMIT receivedPaymentRequest(recipient);
@@ -528,7 +528,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         // Payment request network matches client network?
         if (!verifyNetwork(request.getDetails())) {
             Q_EMIT message(tr("Payment request rejected"), tr("Payment request network doesn't match client network."),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
 
             return false;
         }
@@ -537,13 +537,13 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         // This is re-checked just before sending coins in WalletModel::sendCoins().
         if (verifyExpired(request.getDetails())) {
             Q_EMIT message(tr("Payment request rejected"), tr("Payment request expired."),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
 
             return false;
         }
     } else {
         Q_EMIT message(tr("Payment request error"), tr("Payment request is not initialized."),
-            CellClientUIInterface::MSG_ERROR);
+            MCClientUIInterface::MSG_ERROR);
 
         return false;
     }
@@ -553,12 +553,12 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
 
     request.getMerchant(certStore.get(), recipient.authenticatedMerchant);
 
-    QList<std::pair<CellScript, CellAmount> > sendingTos = request.getPayTo();
+    QList<std::pair<MCScript, MCAmount> > sendingTos = request.getPayTo();
     QStringList addresses;
 
-    for (const std::pair<CellScript, CellAmount>& sendingTo : sendingTos) {
+    for (const std::pair<MCScript, MCAmount>& sendingTo : sendingTos) {
         // Extract and check destination addresses
-        CellTxDestination dest;
+        MCTxDestination dest;
         if (ExtractDestination(sendingTo.first, dest)) {
             // Append destination address
             addresses.append(QString::fromStdString(MagnaChainAddress(dest).ToString()));
@@ -569,24 +569,24 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
             // have a chance of understanding).
             Q_EMIT message(tr("Payment request rejected"),
                 tr("Unverified payment requests to custom payment scripts are unsupported."),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
             return false;
         }
 
         // MagnaChain amounts are stored as (optional) uint64 in the protobuf messages (see paymentrequest.proto),
-        // but CellAmount is defined as int64_t. Because of that we need to verify that amounts are in a valid range
+        // but MCAmount is defined as int64_t. Because of that we need to verify that amounts are in a valid range
         // and no overflow has happened.
         if (!verifyAmount(sendingTo.second)) {
-            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), CellClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), MCClientUIInterface::MSG_ERROR);
             return false;
         }
 
         // Extract and check amounts
-        CellTxOut txOut(sendingTo.second, sendingTo.first);
+        MCTxOut txOut(sendingTo.second, sendingTo.first);
         if (IsDust(txOut, ::dustRelayFee)) {
             Q_EMIT message(tr("Payment request error"), tr("Requested payment amount of %1 is too small (considered dust).")
                 .arg(MagnaChainUnits::formatWithUnit(optionsModel->getDisplayUnit(), sendingTo.second)),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
 
             return false;
         }
@@ -594,7 +594,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         recipient.amount += sendingTo.second;
         // Also verify that the final amount is still in a valid range after adding additional amounts.
         if (!verifyAmount(recipient.amount)) {
-            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), CellClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), MCClientUIInterface::MSG_ERROR);
             return false;
         }
     }
@@ -621,7 +621,7 @@ void PaymentServer::fetchRequest(const QUrl& url)
     netManager->get(netRequest);
 }
 
-void PaymentServer::fetchPaymentACK(CellWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction)
+void PaymentServer::fetchPaymentACK(MCWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction)
 {
     const payments::PaymentDetails& details = recipient.paymentRequest.getDetails();
     if (!details.has_payment_url())
@@ -641,19 +641,19 @@ void PaymentServer::fetchPaymentACK(CellWallet* wallet, SendCoinsRecipient recip
     // Create a new refund address, or re-use:
     QString account = tr("Refund from %1").arg(recipient.authenticatedMerchant);
     std::string strAccount = account.toStdString();
-    std::set<CellTxDestination> refundAddresses = wallet->GetAccountAddresses(strAccount);
+    std::set<MCTxDestination> refundAddresses = wallet->GetAccountAddresses(strAccount);
     if (!refundAddresses.empty()) {
-        CellScript s = GetScriptForDestination(*refundAddresses.begin());
+        MCScript s = GetScriptForDestination(*refundAddresses.begin());
         payments::Output* refund_to = payment.add_refund_to();
         refund_to->set_script(&s[0], s.size());
     }
     else {
-        CellPubKey newKey;
+        MCPubKey newKey;
         if (wallet->GetKeyFromPool(newKey)) {
-            CellKeyID keyID = newKey.GetID();
+            MCKeyID keyID = newKey.GetID();
             wallet->SetAddressBook(keyID, strAccount, "refund");
 
-            CellScript s = GetScriptForDestination(keyID);
+            MCScript s = GetScriptForDestination(keyID);
             payments::Output* refund_to = payment.add_refund_to();
             refund_to->set_script(&s[0], s.size());
         }
@@ -687,7 +687,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
                 .arg(reply->request().url().toString())
                 .arg(reply->size())
                 .arg(BIP70_MAX_PAYMENTREQUEST_SIZE),
-            CellClientUIInterface::MSG_ERROR);
+            MCClientUIInterface::MSG_ERROR);
         return;
     }
 
@@ -697,7 +697,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
             .arg(reply->errorString());
 
         qWarning() << "PaymentServer::netRequestFinished: " << msg;
-        Q_EMIT message(tr("Payment request error"), msg, CellClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Payment request error"), msg, MCClientUIInterface::MSG_ERROR);
         return;
     }
 
@@ -713,7 +713,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
             qWarning() << "PaymentServer::netRequestFinished: Error parsing payment request";
             Q_EMIT message(tr("Payment request error"),
                 tr("Payment request cannot be parsed!"),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
         }
         else if (processPaymentRequest(request, recipient))
             Q_EMIT receivedPaymentRequest(recipient);
@@ -729,7 +729,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
                 .arg(reply->request().url().toString());
 
             qWarning() << "PaymentServer::netRequestFinished: " << msg;
-            Q_EMIT message(tr("Payment request error"), msg, CellClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Payment request error"), msg, MCClientUIInterface::MSG_ERROR);
         }
         else
         {
@@ -747,7 +747,7 @@ void PaymentServer::reportSslErrors(QNetworkReply* reply, const QList<QSslError>
         qWarning() << "PaymentServer::reportSslErrors: " << err;
         errString += err.errorString() + "\n";
     }
-    Q_EMIT message(tr("Network request error"), errString, CellClientUIInterface::MSG_ERROR);
+    Q_EMIT message(tr("Network request error"), errString, MCClientUIInterface::MSG_ERROR);
 }
 
 void PaymentServer::setOptionsModel(OptionsModel *_optionsModel)
@@ -758,7 +758,7 @@ void PaymentServer::setOptionsModel(OptionsModel *_optionsModel)
 void PaymentServer::handlePaymentACK(const QString& paymentACKMsg)
 {
     // currently we don't further process or store the paymentACK message
-    Q_EMIT message(tr("Payment acknowledged"), paymentACKMsg, CellClientUIInterface::ICON_INFORMATION | CellClientUIInterface::MODAL);
+    Q_EMIT message(tr("Payment acknowledged"), paymentACKMsg, MCClientUIInterface::ICON_INFORMATION | MCClientUIInterface::MODAL);
 }
 
 bool PaymentServer::verifyNetwork(const payments::PaymentDetails& requestDetails)
@@ -797,7 +797,7 @@ bool PaymentServer::verifySize(qint64 requestSize)
     return fVerified;
 }
 
-bool PaymentServer::verifyAmount(const CellAmount& requestAmount)
+bool PaymentServer::verifyAmount(const MCAmount& requestAmount)
 {
     bool fVerified = MoneyRange(requestAmount);
     if (!fVerified) {

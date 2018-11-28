@@ -12,9 +12,9 @@
 
 class SendCoinsRecipient;
 
-class CellReserveKey;
-class CellWallet;
-class CellWalletTx;
+class MCReserveKey;
+class MCWallet;
+class MCWalletTx;
 
 /** Data model for a walletmodel transaction. */
 class WalletModelTransaction
@@ -25,24 +25,24 @@ public:
 
     QList<SendCoinsRecipient> getRecipients();
 
-    CellWalletTx *getTransaction();
+    MCWalletTx *getTransaction();
     unsigned int getTransactionSize();
 
-    void setTransactionFee(const CellAmount& newFee);
-    CellAmount getTransactionFee();
+    void setTransactionFee(const MCAmount& newFee);
+    MCAmount getTransactionFee();
 
-    CellAmount getTotalTransactionAmount();
+    MCAmount getTotalTransactionAmount();
 
-    void newPossibleKeyChange(CellWallet *wallet);
-    CellReserveKey *getPossibleKeyChange();
+    void newPossibleKeyChange(MCWallet *wallet);
+    MCReserveKey *getPossibleKeyChange();
 
     void reassignAmounts(int nChangePosRet); // needed for the subtract-fee-from-amount feature
 
 private:
     QList<SendCoinsRecipient> recipients;
-    CellWalletTx *walletTransaction;
-    CellReserveKey *keyChange;
-    CellAmount fee;
+    MCWalletTx *walletTransaction;
+    MCReserveKey *keyChange;
+    MCAmount fee;
 };
 
 #endif // CELLLINK_QT_WALLETMODELTRANSACTION_H

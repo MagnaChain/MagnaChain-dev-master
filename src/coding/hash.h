@@ -128,7 +128,7 @@ inline uint160 Hash160(const prevector<N, unsigned char>& vch)
 }
 
 /** A writer stream (for serialization) that computes a 256-bit hash. */
-class CellHashWriter
+class MCHashWriter
 {
 private:
     CHash256 ctx;
@@ -137,7 +137,7 @@ private:
     const int nVersion;
 public:
 
-    CellHashWriter(int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn) {}
+    MCHashWriter(int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn) {}
 
     int GetType() const { return nType; }
     int GetVersion() const { return nVersion; }
@@ -154,7 +154,7 @@ public:
     }
 
     template<typename T>
-    CellHashWriter& operator<<(const T& obj) {
+    MCHashWriter& operator<<(const T& obj) {
         // Serialize to this stream
         ::Serialize(*this, obj);
         return (*this);
@@ -163,13 +163,13 @@ public:
 
 /** Reads data from an underlying stream, while hashing the read data. */
 template<typename Source>
-class CHashVerifier : public CellHashWriter
+class CHashVerifier : public MCHashWriter
 {
 private:
     Source* source;
 
 public:
-    CHashVerifier(Source* source_) : CellHashWriter(source_->GetType(), source_->GetVersion()), source(source_) {}
+    CHashVerifier(Source* source_) : MCHashWriter(source_->GetType(), source_->GetVersion()), source(source_) {}
 
     void read(char* pch, size_t nSize)
     {
@@ -200,7 +200,7 @@ public:
 template<typename T>
 uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
 {
-    CellHashWriter ss(nType, nVersion);
+    MCHashWriter ss(nType, nVersion);
     ss << obj;
     return ss.GetHash();
 }

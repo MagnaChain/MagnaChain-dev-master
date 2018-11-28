@@ -23,10 +23,10 @@
 //
 // Usage:
 //
-// CellScheduler* s = new CellScheduler();
+// MCScheduler* s = new MCScheduler();
 // s->scheduleFromNow(doSomething, 11); // Assuming a: void doSomething() { }
 // s->scheduleFromNow(std::bind(Class::func, this, argument), 3);
-// boost::thread* t = new boost::thread(boost::bind(CellScheduler::serviceQueue, s));
+// boost::thread* t = new boost::thread(boost::bind(MCScheduler::serviceQueue, s));
 //
 // ... then at program shutdown, clean up the thread running serviceQueue:
 // t->interrupt();
@@ -35,11 +35,11 @@
 // delete s; // Must be done after thread is interrupted/joined.
 //
 
-class CellScheduler
+class MCScheduler
 {
 public:
-    CellScheduler();
-    ~CellScheduler();
+    MCScheduler();
+    ~MCScheduler();
 
     typedef std::function<void(void)> Function;
 
@@ -86,16 +86,16 @@ private:
 };
 
 /**
- * Class used by CellScheduler clients which may schedule multiple jobs
+ * Class used by MCScheduler clients which may schedule multiple jobs
  * which are required to be run serially. Does not require such jobs
  * to be executed on the same thread, but no two jobs will be executed
  * at the same time.
  */
 class SingleThreadedSchedulerClient {
 private:
-    CellScheduler *m_pscheduler;
+    MCScheduler *m_pscheduler;
 
-    CellCriticalSection m_cs_callbacks_pending;
+    MCCriticalSection m_cs_callbacks_pending;
     std::list<std::function<void (void)>> m_callbacks_pending;
     bool m_are_callbacks_running = false;
 
@@ -103,11 +103,11 @@ private:
     void ProcessQueue();
 
 public:
-    SingleThreadedSchedulerClient(CellScheduler *pschedulerIn) : m_pscheduler(pschedulerIn) {}
+    SingleThreadedSchedulerClient(MCScheduler *pschedulerIn) : m_pscheduler(pschedulerIn) {}
     void AddToProcessQueue(std::function<void (void)> func);
 
     // Processes all remaining queue members on the calling thread, blocking until queue is empty
-    // Must be called after the CellScheduler has no remaining processing threads!
+    // Must be called after the MCScheduler has no remaining processing threads!
     void EmptyQueue();
 };
 

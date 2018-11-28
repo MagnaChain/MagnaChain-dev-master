@@ -21,14 +21,14 @@ namespace block_bench {
 
 static void DeserializeBlockTest(benchmark::State& state)
 {
-    CellDataStream stream((const char*)block_bench::block413567,
+    MCDataStream stream((const char*)block_bench::block413567,
             (const char*)&block_bench::block413567[sizeof(block_bench::block413567)],
             SER_NETWORK, PROTOCOL_VERSION);
     char a = '\0';
     stream.write(&a, 1); // Prevent compaction
 
     while (state.KeepRunning()) {
-        CellBlock block;
+        MCBlock block;
         stream >> block;
         assert(stream.Rewind(sizeof(block_bench::block413567)));
     }
@@ -36,20 +36,20 @@ static void DeserializeBlockTest(benchmark::State& state)
 
 static void DeserializeAndCheckBlockTest(benchmark::State& state)
 {
-    CellDataStream stream((const char*)block_bench::block413567,
+    MCDataStream stream((const char*)block_bench::block413567,
             (const char*)&block_bench::block413567[sizeof(block_bench::block413567)],
             SER_NETWORK, PROTOCOL_VERSION);
     char a = '\0';
     stream.write(&a, 1); // Prevent compaction
 
-    const auto chainParams = CreateChainParams(CellBaseChainParams::MAIN);
+    const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
     BranchCache branhcache(nullptr);
     while (state.KeepRunning()) {
-        CellBlock block; // Note that CBlock caches its checked state, so we need to recreate it here
+        MCBlock block; // Note that CBlock caches its checked state, so we need to recreate it here
         stream >> block;
         assert(stream.Rewind(sizeof(block_bench::block413567)));
 
-        CellValidationState validationState;
+        MCValidationState validationState;
         assert(CheckBlock(block, validationState, chainParams->GetConsensus(), &branhcache));
     }
 }

@@ -12,7 +12,7 @@
 class AddressTablePriv;
 class WalletModel;
 
-class CellWallet;
+class MCWallet;
 
 /**
    Qt model of the address book in the core. This allows views to access and modify the address book.
@@ -22,7 +22,7 @@ class AddressTableModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    explicit AddressTableModel(CellWallet *wallet, WalletModel *parent = 0);
+    explicit AddressTableModel(MCWallet *wallet, WalletModel *parent = 0);
     ~AddressTableModel();
 
     enum ColumnIndex {
@@ -77,7 +77,7 @@ public:
 
 private:
     WalletModel *walletModel;
-    CellWallet *wallet;
+    MCWallet *wallet;
     AddressTablePriv *priv;
     QStringList columns;
     EditStatus editStatus;

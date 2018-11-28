@@ -11,12 +11,12 @@
 #include "utils/utilstrencodings.h"
 #include "crypto/common.h"
 
-uint256 CellBlockHeader::GetHash() const
+uint256 MCBlockHeader::GetHash() const
 {
     return SerializeHash(*this);
 }
 
-uint256 CellBlockHeader::GetHashNoSignData() const
+uint256 MCBlockHeader::GetHashNoSignData() const
 {
 	return SerializeHash(*this, SER_GETHASH | SER_WITHOUT_SIGN);
 }

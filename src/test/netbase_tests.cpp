@@ -13,9 +13,9 @@
 
 BOOST_FIXTURE_TEST_SUITE(netbase_tests, BasicTestingSetup)
 
-static CellNetAddr ResolveIP(const char* ip)
+static MCNetAddr ResolveIP(const char* ip)
 {
-    CellNetAddr addr;
+    MCNetAddr addr;
     LookupHost(ip, addr, false);
     return addr;
 }
@@ -27,9 +27,9 @@ static CSubNet ResolveSubNet(const char* subnet)
     return ret;
 }
 
-static CellNetAddr CreateInternal(const char* host)
+static MCNetAddr CreateInternal(const char* host)
 {
-    CellNetAddr addr;
+    MCNetAddr addr;
     addr.SetInternal(host);
     return addr;
 }
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(netbase_splithost)
 
 bool static TestParse(std::string src, std::string canon)
 {
-    CellService addr(LookupNumeric(src.c_str(), 65535));
+    MCService addr(LookupNumeric(src.c_str(), 65535));
     return canon == addr.ToString();
 }
 
@@ -126,8 +126,8 @@ BOOST_AUTO_TEST_CASE(onioncat_test)
 {
 
     // values from https://web.archive.org/web/20121122003543/http://www.cypherpunk.at/onioncat/wiki/OnionCat
-    CellNetAddr addr1(ResolveIP("5wyqrzbvrdsumnok.onion"));
-    CellNetAddr addr2(ResolveIP("FD87:D87E:EB43:edb1:8e4:3588:e546:35ca"));
+    MCNetAddr addr1(ResolveIP("5wyqrzbvrdsumnok.onion"));
+    MCNetAddr addr2(ResolveIP("FD87:D87E:EB43:edb1:8e4:3588:e546:35ca"));
     BOOST_CHECK(addr1 == addr2);
     BOOST_CHECK(addr1.IsTor());
     BOOST_CHECK(addr1.ToStringIP() == "5wyqrzbvrdsumnok.onion");
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(subnet_test)
     BOOST_CHECK(!ResolveSubNet("1:2:3:4:5:6:7:8/129").IsValid());
     BOOST_CHECK(!ResolveSubNet("fuzzy").IsValid());
 
-    //CellNetAddr constructor test
+    //MCNetAddr constructor test
     BOOST_CHECK(CSubNet(ResolveIP("127.0.0.1")).IsValid());
     BOOST_CHECK(CSubNet(ResolveIP("127.0.0.1")).Match(ResolveIP("127.0.0.1")));
     BOOST_CHECK(!CSubNet(ResolveIP("127.0.0.1")).Match(ResolveIP("127.0.0.2")));

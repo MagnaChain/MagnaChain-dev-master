@@ -26,7 +26,7 @@ public:
     dbwrapper_error(const std::string& msg) : std::runtime_error(msg) {}
 };
 
-class CellDBWrapper;
+class MCDBWrapper;
 
 /** These should be considered an implementation detail of the specific database.
  */
@@ -40,29 +40,29 @@ void HandleError(const leveldb::Status& status);
  * Database obfuscation should be considered an implementation detail of the
  * specific database.
  */
-const std::vector<unsigned char>& GetObfuscateKey(const CellDBWrapper &w);
+const std::vector<unsigned char>& GetObfuscateKey(const MCDBWrapper &w);
 
 };
 
-/** Batch of changes queued to be written to a CellDBWrapper */
-class CellDBBatch
+/** Batch of changes queued to be written to a MCDBWrapper */
+class MCDBBatch
 {
-    friend class CellDBWrapper;
+    friend class MCDBWrapper;
 
 private:
-    const CellDBWrapper &parent;
+    const MCDBWrapper &parent;
     leveldb::WriteBatch batch;
 
-    CellDataStream ssKey;
-    CellDataStream ssValue;
+    MCDataStream ssKey;
+    MCDataStream ssValue;
 
     size_t size_estimate;
 
 public:
     /**
-     * @param[in] _parent   CellDBWrapper that this batch is to be submitted to
+     * @param[in] _parent   MCDBWrapper that this batch is to be submitted to
      */
-    CellDBBatch(const CellDBWrapper &_parent) : parent(_parent), ssKey(SER_DISK, CLIENT_VERSION), ssValue(SER_DISK, CLIENT_VERSION), size_estimate(0) { };
+    MCDBBatch(const MCDBWrapper &_parent) : parent(_parent), ssKey(SER_DISK, CLIENT_VERSION), ssValue(SER_DISK, CLIENT_VERSION), size_estimate(0) { };
 
     void Clear()
     {
@@ -115,28 +115,28 @@ public:
     size_t SizeEstimate() const { return size_estimate; }
 };
 
-class CellDBIterator
+class MCDBIterator
 {
 private:
-    const CellDBWrapper &parent;
+    const MCDBWrapper &parent;
     leveldb::Iterator *piter;
 
 public:
 
     /**
-     * @param[in] _parent          Parent CellDBWrapper instance.
+     * @param[in] _parent          Parent MCDBWrapper instance.
      * @param[in] _piter           The original leveldb iterator.
      */
-    CellDBIterator(const CellDBWrapper &_parent, leveldb::Iterator *_piter) :
+    MCDBIterator(const MCDBWrapper &_parent, leveldb::Iterator *_piter) :
         parent(_parent), piter(_piter) { };
-    ~CellDBIterator();
+    ~MCDBIterator();
 
     bool Valid();
 
     void SeekToFirst();
 
     template<typename K> void Seek(const K& key) {
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey << key;
         leveldb::Slice slKey(ssKey.data(), ssKey.size());
@@ -148,7 +148,7 @@ public:
     template<typename K> bool GetKey(K& key) {
         leveldb::Slice slKey = piter->key();
         try {
-            CellDataStream ssKey(slKey.data(), slKey.data() + slKey.size(), SER_DISK, CLIENT_VERSION);
+            MCDataStream ssKey(slKey.data(), slKey.data() + slKey.size(), SER_DISK, CLIENT_VERSION);
             ssKey >> key;
         } catch (const std::exception&) {
             return false;
@@ -159,7 +159,7 @@ public:
     template<typename V> bool GetValue(V& value) {
         leveldb::Slice slValue = piter->value();
         try {
-            CellDataStream ssValue(slValue.data(), slValue.data() + slValue.size(), SER_DISK, CLIENT_VERSION);
+            MCDataStream ssValue(slValue.data(), slValue.data() + slValue.size(), SER_DISK, CLIENT_VERSION);
             ssValue.Xor(dbwrapper_private::GetObfuscateKey(parent));
             ssValue >> value;
         } catch (const std::exception&) {
@@ -174,9 +174,9 @@ public:
 
 };
 
-class CellDBWrapper
+class MCDBWrapper
 {
-    friend const std::vector<unsigned char>& dbwrapper_private::GetObfuscateKey(const CellDBWrapper &w);
+    friend const std::vector<unsigned char>& dbwrapper_private::GetObfuscateKey(const MCDBWrapper &w);
 private:
     //! custom environment this database is using (may be nullptr in case of default environment)
     leveldb::Env* penv;
@@ -219,13 +219,13 @@ public:
      * @param[in] obfuscate   If true, store data obfuscated via simple XOR. If false, XOR
      *                        with a zero'd byte array.
      */
-    CellDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory = false, bool fWipe = false, bool obfuscate = false);
-    ~CellDBWrapper();
+    MCDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory = false, bool fWipe = false, bool obfuscate = false);
+    ~MCDBWrapper();
 
     template <typename K, typename V>
     bool Read(const K& key, V& value) const
     {
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey << key;
         leveldb::Slice slKey(ssKey.data(), ssKey.size());
@@ -239,7 +239,7 @@ public:
             dbwrapper_private::HandleError(status);
         }
         try {
-            CellDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
+            MCDataStream ssValue(strValue.data(), strValue.data() + strValue.size(), SER_DISK, CLIENT_VERSION);
             ssValue.Xor(obfuscate_key);
             ssValue >> value;
         } catch (const std::exception&) {
@@ -251,7 +251,7 @@ public:
     template <typename K, typename V>
     bool Write(const K& key, const V& value, bool fSync = false)
     {
-        CellDBBatch batch(*this);
+        MCDBBatch batch(*this);
         batch.Write(key, value);
         return WriteBatch(batch, fSync);
     }
@@ -259,7 +259,7 @@ public:
     template <typename K>
     bool Exists(const K& key) const
     {
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey << key;
         leveldb::Slice slKey(ssKey.data(), ssKey.size());
@@ -278,12 +278,12 @@ public:
     template <typename K>
     bool Erase(const K& key, bool fSync = false)
     {
-        CellDBBatch batch(*this);
+        MCDBBatch batch(*this);
         batch.Erase(key);
         return WriteBatch(batch, fSync);
     }
 
-    bool WriteBatch(CellDBBatch& batch, bool fSync = false);
+    bool WriteBatch(MCDBBatch& batch, bool fSync = false);
 
     // not available for LevelDB; provide for compatibility with BDB
     bool Flush()
@@ -293,13 +293,13 @@ public:
 
     bool Sync()
     {
-        CellDBBatch batch(*this);
+        MCDBBatch batch(*this);
         return WriteBatch(batch, true);
     }
 
-    CellDBIterator *NewIterator()
+    MCDBIterator *NewIterator()
     {
-        return new CellDBIterator(*this, pdb->NewIterator(iteroptions));
+        return new MCDBIterator(*this, pdb->NewIterator(iteroptions));
     }
 
     /**
@@ -310,7 +310,7 @@ public:
     template<typename K>
     size_t EstimateSize(const K& key_begin, const K& key_end) const
     {
-        CellDataStream ssKey1(SER_DISK, CLIENT_VERSION), ssKey2(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey1(SER_DISK, CLIENT_VERSION), ssKey2(SER_DISK, CLIENT_VERSION);
         ssKey1.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey2.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey1 << key_begin;
@@ -329,7 +329,7 @@ public:
     template<typename K>
     void CompactRange(const K& key_begin, const K& key_end) const
     {
-        CellDataStream ssKey1(SER_DISK, CLIENT_VERSION), ssKey2(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey1(SER_DISK, CLIENT_VERSION), ssKey2(SER_DISK, CLIENT_VERSION);
         ssKey1.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey2.reserve(DBWRAPPER_PREALLOC_KEY_SIZE);
         ssKey1 << key_begin;

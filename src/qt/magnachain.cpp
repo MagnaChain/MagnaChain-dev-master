@@ -82,7 +82,7 @@ Q_IMPORT_PLUGIN(QCocoaIntegrationPlugin);
 
 // Declare meta types used for QMetaObject::invokeMethod
 Q_DECLARE_METATYPE(bool*)
-Q_DECLARE_METATYPE(CellAmount)
+Q_DECLARE_METATYPE(MCAmount)
 
 static void InitMessage(const std::string &message)
 {
@@ -196,7 +196,7 @@ Q_SIGNALS:
 
 private:
     boost::thread_group threadGroup;
-    CellScheduler scheduler;
+    MCScheduler scheduler;
 
     /// Pass fatal exception message to UI thread
     void handleRunawayException(const std::exception *e);
@@ -494,8 +494,8 @@ void MagnaChainApplication::initializeResult(bool success)
             window->addWallet(MagnaChainGUI::DEFAULT_WALLET, walletModel);
             window->setCurrentWallet(MagnaChainGUI::DEFAULT_WALLET);
 
-            connect(walletModel, SIGNAL(coinsSent(CellWallet*,SendCoinsRecipient,QByteArray)),
-                             paymentServer, SLOT(fetchPaymentACK(CellWallet*,const SendCoinsRecipient&,QByteArray)));
+            connect(walletModel, SIGNAL(coinsSent(MCWallet*,SendCoinsRecipient,QByteArray)),
+                             paymentServer, SLOT(fetchPaymentACK(MCWallet*,const SendCoinsRecipient&,QByteArray)));
         }
 #endif
 
@@ -589,9 +589,9 @@ int main(int argc, char *argv[])
 
     // Register meta types used for QMetaObject::invokeMethod
     qRegisterMetaType< bool* >();
-    //   Need to pass name here as CellAmount is a typedef (see http://qt-project.org/doc/qt-5/qmetatype.html#qRegisterMetaType)
+    //   Need to pass name here as MCAmount is a typedef (see http://qt-project.org/doc/qt-5/qmetatype.html#qRegisterMetaType)
     //   IMPORTANT if it is no longer a typedef use the normal variant above
-    qRegisterMetaType< CellAmount >("CellAmount");
+    qRegisterMetaType< MCAmount >("MCAmount");
     qRegisterMetaType< std::function<void(void)> >("std::function<void(void)>");
 
     /// 3. Application identification

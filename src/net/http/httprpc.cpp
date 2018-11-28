@@ -217,7 +217,7 @@ static bool InitRPCAuthentication()
         if (!GenerateAuthCookie(&strRPCUserColonPass)) {
             uiInterface.ThreadSafeMessageBox(
                 _("Error: A fatal internal error occurred, see debug.log for details"), // Same message as AbortNode
-                "", CellClientUIInterface::MSG_ERROR);
+                "", MCClientUIInterface::MSG_ERROR);
             return false;
         }
     } else {

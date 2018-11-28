@@ -180,24 +180,24 @@ static void RegisterLoad(const std::string& strInput)
     RegisterSetJson(key, valStr);
 }
 
-static CellAmount ExtractAndValidateValue(const std::string& strValue)
+static MCAmount ExtractAndValidateValue(const std::string& strValue)
 {
-    CellAmount value;
+    MCAmount value;
     if (!ParseMoney(strValue, value))
         throw std::runtime_error("invalid TX output value");
     return value;
 }
 
-static void MutateTxVersion(CellMutableTransaction& tx, const std::string& cmdVal)
+static void MutateTxVersion(MCMutableTransaction& tx, const std::string& cmdVal)
 {
     int64_t newVersion = atoi64(cmdVal);
-    if (newVersion < 1 || newVersion > CellTransaction::MAX_STANDARD_VERSION)
+    if (newVersion < 1 || newVersion > MCTransaction::MAX_STANDARD_VERSION)
         throw std::runtime_error("Invalid TX version requested");
 
     tx.nVersion = (int) newVersion;
 }
 
-static void MutateTxLocktime(CellMutableTransaction& tx, const std::string& cmdVal)
+static void MutateTxLocktime(MCMutableTransaction& tx, const std::string& cmdVal)
 {
     int64_t newLocktime = atoi64(cmdVal);
     if (newLocktime < 0LL || newLocktime > 0xffffffffLL)
@@ -206,7 +206,7 @@ static void MutateTxLocktime(CellMutableTransaction& tx, const std::string& cmdV
     tx.nLockTime = (unsigned int) newLocktime;
 }
 
-static void MutateTxRBFOptIn(CellMutableTransaction& tx, const std::string& strInIdx)
+static void MutateTxRBFOptIn(MCMutableTransaction& tx, const std::string& strInIdx)
 {
     // parse requested index
     int inIdx = atoi(strInIdx);
@@ -216,7 +216,7 @@ static void MutateTxRBFOptIn(CellMutableTransaction& tx, const std::string& strI
 
     // set the nSequence to MAX_INT - 2 (= RBF opt in flag)
     int cnt = 0;
-    for (CellTxIn& txin : tx.vin) {
+    for (MCTxIn& txin : tx.vin) {
         if (strInIdx == "" || cnt == inIdx) {
             if (txin.nSequence > MAX_BIP125_RBF_SEQUENCE) {
                 txin.nSequence = MAX_BIP125_RBF_SEQUENCE;
@@ -226,7 +226,7 @@ static void MutateTxRBFOptIn(CellMutableTransaction& tx, const std::string& strI
     }
 }
 
-static void MutateTxAddInput(CellMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddInput(MCMutableTransaction& tx, const std::string& strInput)
 {
     std::vector<std::string> vStrInputParts;
     boost::split(vStrInputParts, strInput, boost::is_any_of(":"));
@@ -256,11 +256,11 @@ static void MutateTxAddInput(CellMutableTransaction& tx, const std::string& strI
         nSequenceIn = std::stoul(vStrInputParts[2]);
 
     // append to transaction input list
-    CellTxIn txin(txid, vout, CellScript(), nSequenceIn);
+    MCTxIn txin(txid, vout, MCScript(), nSequenceIn);
     tx.vin.push_back(txin);
 }
 
-static void MutateTxAddOutAddr(CellMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddOutAddr(MCMutableTransaction& tx, const std::string& strInput)
 {
     // Separate into VALUE:ADDRESS
     std::vector<std::string> vStrInputParts;
@@ -270,7 +270,7 @@ static void MutateTxAddOutAddr(CellMutableTransaction& tx, const std::string& st
         throw std::runtime_error("TX output missing or too many separators");
 
     // Extract and validate VALUE
-    CellAmount value = ExtractAndValidateValue(vStrInputParts[0]);
+    MCAmount value = ExtractAndValidateValue(vStrInputParts[0]);
 
     // extract and validate ADDRESS
     std::string strAddr = vStrInputParts[1];
@@ -278,14 +278,14 @@ static void MutateTxAddOutAddr(CellMutableTransaction& tx, const std::string& st
     if (!addr.IsValid())
         throw std::runtime_error("invalid TX output address");
     // build standard output script via GetScriptForDestination()
-    CellScript scriptPubKey = GetScriptForDestination(addr.Get());
+    MCScript scriptPubKey = GetScriptForDestination(addr.Get());
 
     // construct TxOut, append to transaction output list
-    CellTxOut txout(value, scriptPubKey);
+    MCTxOut txout(value, scriptPubKey);
     tx.vout.push_back(txout);
 }
 
-static void MutateTxAddOutPubKey(CellMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddOutPubKey(MCMutableTransaction& tx, const std::string& strInput)
 {
     // Separate into VALUE:PUBKEY[:FLAGS]
     std::vector<std::string> vStrInputParts;
@@ -295,13 +295,13 @@ static void MutateTxAddOutPubKey(CellMutableTransaction& tx, const std::string& 
         throw std::runtime_error("TX output missing or too many separators");
 
     // Extract and validate VALUE
-    CellAmount value = ExtractAndValidateValue(vStrInputParts[0]);
+    MCAmount value = ExtractAndValidateValue(vStrInputParts[0]);
 
     // Extract and validate PUBKEY
-    CellPubKey pubkey(ParseHex(vStrInputParts[1]));
+    MCPubKey pubkey(ParseHex(vStrInputParts[1]));
     if (!pubkey.IsFullyValid())
         throw std::runtime_error("invalid TX output pubkey");
-    CellScript scriptPubKey = GetScriptForRawPubKey(pubkey);
+    MCScript scriptPubKey = GetScriptForRawPubKey(pubkey);
 
     // Extract and validate FLAGS
     bool bSegWit = false;
@@ -327,11 +327,11 @@ static void MutateTxAddOutPubKey(CellMutableTransaction& tx, const std::string& 
     }
 
     // construct TxOut, append to transaction output list
-    CellTxOut txout(value, scriptPubKey);
+    MCTxOut txout(value, scriptPubKey);
     tx.vout.push_back(txout);
 }
 
-static void MutateTxAddOutMultiSig(CellMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddOutMultiSig(MCMutableTransaction& tx, const std::string& strInput)
 {
     // Separate into VALUE:REQUIRED:NUMKEYS:PUBKEY1:PUBKEY2:....[:FLAGS]
     std::vector<std::string> vStrInputParts;
@@ -342,7 +342,7 @@ static void MutateTxAddOutMultiSig(CellMutableTransaction& tx, const std::string
         throw std::runtime_error("Not enough multisig parameters");
 
     // Extract and validate VALUE
-    CellAmount value = ExtractAndValidateValue(vStrInputParts[0]);
+    MCAmount value = ExtractAndValidateValue(vStrInputParts[0]);
 
     // Extract REQUIRED
     uint32_t required = stoul(vStrInputParts[1]);
@@ -359,9 +359,9 @@ static void MutateTxAddOutMultiSig(CellMutableTransaction& tx, const std::string
                             + std::to_string(required) + " of " + std::to_string(numkeys) + "signatures.");
 
     // extract and validate PUBKEYs
-    std::vector<CellPubKey> pubkeys;
+    std::vector<MCPubKey> pubkeys;
     for(int pos = 1; pos <= int(numkeys); pos++) {
-        CellPubKey pubkey(ParseHex(vStrInputParts[pos + 2]));
+        MCPubKey pubkey(ParseHex(vStrInputParts[pos + 2]));
         if (!pubkey.IsFullyValid())
             throw std::runtime_error("invalid TX output pubkey");
         pubkeys.push_back(pubkey);
@@ -380,10 +380,10 @@ static void MutateTxAddOutMultiSig(CellMutableTransaction& tx, const std::string
         throw std::runtime_error("Too many parameters");
     }
 
-    CellScript scriptPubKey = GetScriptForMultisig(required, pubkeys);
+    MCScript scriptPubKey = GetScriptForMultisig(required, pubkeys);
 
     if (bSegWit) {
-        for (CellPubKey& pubkey : pubkeys) {
+        for (MCPubKey& pubkey : pubkeys) {
             if (!pubkey.IsCompressed()) {
                 throw std::runtime_error("Uncompressed pubkeys are not useable for SegWit outputs");
             }
@@ -403,13 +403,13 @@ static void MutateTxAddOutMultiSig(CellMutableTransaction& tx, const std::string
     }
 
     // construct TxOut, append to transaction output list
-    CellTxOut txout(value, scriptPubKey);
+    MCTxOut txout(value, scriptPubKey);
     tx.vout.push_back(txout);
 }
 
-static void MutateTxAddOutData(CellMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddOutData(MCMutableTransaction& tx, const std::string& strInput)
 {
-    CellAmount value = 0;
+    MCAmount value = 0;
 
     // separate [VALUE:]DATA in string
     size_t pos = strInput.find(':');
@@ -430,11 +430,11 @@ static void MutateTxAddOutData(CellMutableTransaction& tx, const std::string& st
 
     std::vector<unsigned char> data = ParseHex(strData);
 
-    CellTxOut txout(value, CellScript() << OP_RETURN << data);
+    MCTxOut txout(value, MCScript() << OP_RETURN << data);
     tx.vout.push_back(txout);
 }
 
-static void MutateTxAddOutScript(CellMutableTransaction& tx, const std::string& strInput)
+static void MutateTxAddOutScript(MCMutableTransaction& tx, const std::string& strInput)
 {
     // separate VALUE:SCRIPT[:FLAGS]
     std::vector<std::string> vStrInputParts;
@@ -443,11 +443,11 @@ static void MutateTxAddOutScript(CellMutableTransaction& tx, const std::string& 
         throw std::runtime_error("TX output missing separator");
 
     // Extract and validate VALUE
-    CellAmount value = ExtractAndValidateValue(vStrInputParts[0]);
+    MCAmount value = ExtractAndValidateValue(vStrInputParts[0]);
 
     // extract and validate script
     std::string strScript = vStrInputParts[1];
-    CellScript scriptPubKey = ParseScript(strScript);
+    MCScript scriptPubKey = ParseScript(strScript);
 
     // Extract FLAGS
     bool bSegWit = false;
@@ -476,11 +476,11 @@ static void MutateTxAddOutScript(CellMutableTransaction& tx, const std::string& 
     }
 
     // construct TxOut, append to transaction output list
-    CellTxOut txout(value, scriptPubKey);
+    MCTxOut txout(value, scriptPubKey);
     tx.vout.push_back(txout);
 }
 
-static void MutateTxDelInput(CellMutableTransaction& tx, const std::string& strInIdx)
+static void MutateTxDelInput(MCMutableTransaction& tx, const std::string& strInIdx)
 {
     // parse requested deletion index
     int inIdx = atoi(strInIdx);
@@ -493,7 +493,7 @@ static void MutateTxDelInput(CellMutableTransaction& tx, const std::string& strI
     tx.vin.erase(tx.vin.begin() + inIdx);
 }
 
-static void MutateTxDelOutput(CellMutableTransaction& tx, const std::string& strOutIdx)
+static void MutateTxDelOutput(MCMutableTransaction& tx, const std::string& strOutIdx)
 {
     // parse requested deletion index
     int outIdx = atoi(strOutIdx);
@@ -533,11 +533,11 @@ static bool findSighashFlags(int& flags, const std::string& flagStr)
     return false;
 }
 
-static CellAmount AmountFromValue(const UniValue& value)
+static MCAmount AmountFromValue(const UniValue& value)
 {
     if (!value.isNum() && !value.isStr())
         throw std::runtime_error("Amount is not a number or string");
-    CellAmount amount;
+    MCAmount amount;
     if (!ParseFixedPoint(value.getValStr(), 8, &amount))
         throw std::runtime_error("Invalid amount");
     if (!MoneyRange(amount))
@@ -545,7 +545,7 @@ static CellAmount AmountFromValue(const UniValue& value)
     return amount;
 }
 
-static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
+static void MutateTxSign(MCMutableTransaction& tx, const std::string& flagStr)
 {
     int nHashType = SIGHASH_ALL;
 
@@ -553,19 +553,19 @@ static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
         if (!findSighashFlags(nHashType, flagStr))
             throw std::runtime_error("unknown sighash flag/sign option");
 
-    std::vector<CellTransaction> txVariants;
+    std::vector<MCTransaction> txVariants;
     txVariants.push_back(tx);
 
     // mergedTx will end up with all the signatures; it
     // starts as a clone of the raw tx:
-    CellMutableTransaction mergedTx(txVariants[0]);
+    MCMutableTransaction mergedTx(txVariants[0]);
     bool fComplete = true;
-    CellCoinsView viewDummy;
-    CellCoinsViewCache view(&viewDummy);
+    MCCoinsView viewDummy;
+    MCCoinsViewCache view(&viewDummy);
 
     if (!registers.count("privatekeys"))
         throw std::runtime_error("privatekeys register variable must be set.");
-    CellBasicKeyStore tempKeystore;
+    MCBasicKeyStore tempKeystore;
     UniValue keysObj = registers["privatekeys"];
 
     for (unsigned int kidx = 0; kidx < keysObj.size(); kidx++) {
@@ -576,7 +576,7 @@ static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
         if (!fGood)
             throw std::runtime_error("privatekey not valid");
 
-        CellKey key = vchSecret.GetKey();
+        MCKey key = vchSecret.GetKey();
         tempKeystore.AddKey(key);
     }
 
@@ -604,9 +604,9 @@ static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
             if (nOut < 0)
                 throw std::runtime_error("vout must be positive");
 
-            CellOutPoint out(txid, nOut);
+            MCOutPoint out(txid, nOut);
             std::vector<unsigned char> pkData(ParseHexUV(prevOut["scriptPubKey"], "scriptPubKey"));
-            CellScript scriptPubKey(pkData.begin(), pkData.end());
+            MCScript scriptPubKey(pkData.begin(), pkData.end());
 
             {
                 const Coin& coin = view.AccessCoin(out);
@@ -632,26 +632,26 @@ static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
                 prevOut.exists("redeemScript")) {
                 UniValue v = prevOut["redeemScript"];
                 std::vector<unsigned char> rsData(ParseHexUV(v, "redeemScript"));
-                CellScript redeemScript(rsData.begin(), rsData.end());
+                MCScript redeemScript(rsData.begin(), rsData.end());
                 tempKeystore.AddCScript(redeemScript);
             }
         }
     }
 
-    const CellKeyStore& keystore = tempKeystore;
+    const MCKeyStore& keystore = tempKeystore;
 
     bool fHashSingle = ((nHashType & ~SIGHASH_ANYONECANPAY) == SIGHASH_SINGLE);
 
     // Sign what we can:
     for (unsigned int i = 0; i < mergedTx.vin.size(); i++) {
-        CellTxIn& txin = mergedTx.vin[i];
+        MCTxIn& txin = mergedTx.vin[i];
         const Coin& coin = view.AccessCoin(txin.prevout);
         if (coin.IsSpent()) {
             fComplete = false;
             continue;
         }
-        const CellScript& prevPubKey = coin.out.scriptPubKey;
-        const CellAmount& amount = coin.out.nValue;
+        const MCScript& prevPubKey = coin.out.scriptPubKey;
+        const MCAmount& amount = coin.out.nValue;
 
         SignatureData sigdata;
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
@@ -659,7 +659,7 @@ static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
             ProduceSignature(MutableTransactionSignatureCreator(&keystore, &mergedTx, i, amount, nHashType), prevPubKey, sigdata);
 
         // ... and merge in other signatures:
-        for (const CellTransaction& txv : txVariants)
+        for (const MCTransaction& txv : txVariants)
             sigdata = CombineSignatures(prevPubKey, MutableTransactionSignatureChecker(&mergedTx, i, amount), sigdata, DataFromTransaction(txv, i));
         UpdateTransaction(mergedTx, i, sigdata);
 
@@ -688,7 +688,7 @@ public:
     }
 };
 
-static void MutateTx(CellMutableTransaction& tx, const std::string& command,
+static void MutateTx(MCMutableTransaction& tx, const std::string& command,
                      const std::string& commandVal)
 {
     std::unique_ptr<Secp256k1Init> ecc;
@@ -736,7 +736,7 @@ static void MutateTx(CellMutableTransaction& tx, const std::string& command,
         throw std::runtime_error("unknown command");
 }
 
-static void OutputTxJSON(const CellTransaction& tx)
+static void OutputTxJSON(const MCTransaction& tx)
 {
     UniValue entry(UniValue::VOBJ);
     TxToUniv(tx, uint256(), entry);
@@ -745,21 +745,21 @@ static void OutputTxJSON(const CellTransaction& tx)
     fprintf(stdout, "%s\n", jsonOutput.c_str());
 }
 
-static void OutputTxHash(const CellTransaction& tx)
+static void OutputTxHash(const MCTransaction& tx)
 {
     std::string strHexHash = tx.GetHash().GetHex(); // the hex-encoded transaction hash (aka the transaction id)
 
     fprintf(stdout, "%s\n", strHexHash.c_str());
 }
 
-static void OutputTxHex(const CellTransaction& tx)
+static void OutputTxHex(const MCTransaction& tx)
 {
     std::string strHex = EncodeHexTx(tx);
 
     fprintf(stdout, "%s\n", strHex.c_str());
 }
 
-static void OutputTx(const CellTransaction& tx)
+static void OutputTx(const MCTransaction& tx)
 {
     if (gArgs.GetBoolArg("-json", false))
         OutputTxJSON(tx);
@@ -801,7 +801,7 @@ static int CommandLineRawTx(int argc, char* argv[])
             argv++;
         }
 
-        CellMutableTransaction tx;
+        MCMutableTransaction tx;
         int startArg;
 
         if (!fCreateBlank) {

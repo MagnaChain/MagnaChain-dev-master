@@ -19,7 +19,7 @@
 #include "transaction/txdb.h" // for -dbcache defaults
 
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h" // for CellWallet::GetRequiredFee()
+#include "wallet/wallet.h" // for MCWallet::GetRequiredFee()
 #endif
 
 #include <QDataWidgetMapper>
@@ -343,7 +343,7 @@ QValidator::State ProxyAddressValidator::validate(QString &input, int &pos) cons
 {
     Q_UNUSED(pos);
     // Validate the proxy
-    CellService serv(LookupNumeric(input.toStdString().c_str(), 9050));
+    MCService serv(LookupNumeric(input.toStdString().c_str(), 9050));
     proxyType addrProxy = proxyType(serv, true);
     if (addrProxy.IsValid())
         return QValidator::Acceptable;

@@ -13,8 +13,8 @@
 #include <boost/signals2/last_value.hpp>
 #include <boost/signals2/signal.hpp>
 
-class CellWallet;
-class CellBlockIndex;
+class MCWallet;
+class MCBlockIndex;
 
 /** General change type (added, updated, removed). */
 enum ChangeType
@@ -25,17 +25,17 @@ enum ChangeType
 };
 
 /** Signals for UI communication. */
-class CellClientUIInterface
+class MCClientUIInterface
 {
 public:
-    /** Flags for CellClientUIInterface::ThreadSafeMessageBox */
+    /** Flags for MCClientUIInterface::ThreadSafeMessageBox */
     enum MessageBoxFlags
     {
         ICON_INFORMATION    = 0,
         ICON_WARNING        = (1U << 0),
         ICON_ERROR          = (1U << 1),
         /**
-         * Mask of all available icons in CellClientUIInterface::MessageBoxFlags
+         * Mask of all available icons in MCClientUIInterface::MessageBoxFlags
          * This needs to be updated, when icons are changed there!
          */
         ICON_MASK = (ICON_INFORMATION | ICON_WARNING | ICON_ERROR),
@@ -54,7 +54,7 @@ public:
         BTN_APPLY   = 0x02000000U, // QMessageBox::Apply
         BTN_RESET   = 0x04000000U, // QMessageBox::Reset
         /**
-         * Mask of all available buttons in CellClientUIInterface::MessageBoxFlags
+         * Mask of all available buttons in MCClientUIInterface::MessageBoxFlags
          * This needs to be updated, when buttons are changed there!
          */
         BTN_MASK = (BTN_OK | BTN_YES | BTN_NO | BTN_ABORT | BTN_RETRY | BTN_IGNORE |
@@ -93,7 +93,7 @@ public:
     boost::signals2::signal<void ()> NotifyAlertChanged;
 
     /** A wallet has been loaded. */
-    boost::signals2::signal<void (CellWallet* wallet)> LoadWallet;
+    boost::signals2::signal<void (MCWallet* wallet)> LoadWallet;
 
     /** Show progress e.g. for verifychain */
     boost::signals2::signal<void (const std::string &title, int nProgress)> ShowProgress;
@@ -102,10 +102,10 @@ public:
     boost::signals2::signal<void (std::function<void(void)> action)> SetProgressBreakAction;
 
     /** New block has been accepted */
-    boost::signals2::signal<void (bool, const CellBlockIndex *)> NotifyBlockTip;
+    boost::signals2::signal<void (bool, const MCBlockIndex *)> NotifyBlockTip;
 
     /** Best header has changed */
-    boost::signals2::signal<void (bool, const CellBlockIndex *)> NotifyHeaderTip;
+    boost::signals2::signal<void (bool, const MCBlockIndex *)> NotifyHeaderTip;
 
     /** Banlist did change. */
     boost::signals2::signal<void (void)> BannedListChanged;
@@ -121,6 +121,6 @@ std::string AmountHighWarn(const std::string& optname);
 
 std::string AmountErrMsg(const char* const optname, const std::string& strValue);
 
-extern CellClientUIInterface uiInterface;
+extern MCClientUIInterface uiInterface;
 
 #endif // CELLLINK_UI_INTERFACE_H

@@ -91,7 +91,7 @@ static leveldb::Options GetOptions(size_t nCacheSize)
     return options;
 }
 
-CellDBWrapper::CellDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe, bool obfuscate)
+MCDBWrapper::MCDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe, bool obfuscate)
 {
     penv = nullptr;
     readoptions.verify_checksums = true;
@@ -142,7 +142,7 @@ CellDBWrapper::CellDBWrapper(const fs::path& path, size_t nCacheSize, bool fMemo
     LogPrintf("Using obfuscation key for %s: %s\n", path.string(), HexStr(obfuscate_key));
 }
 
-CellDBWrapper::~CellDBWrapper()
+MCDBWrapper::~MCDBWrapper()
 {
     delete pdb;
     pdb = nullptr;
@@ -156,7 +156,7 @@ CellDBWrapper::~CellDBWrapper()
     options.env = nullptr;
 }
 
-bool CellDBWrapper::WriteBatch(CellDBBatch& batch, bool fSync)
+bool MCDBWrapper::WriteBatch(MCDBBatch& batch, bool fSync)
 {
     leveldb::Status status = pdb->Write(fSync ? syncoptions : writeoptions, &batch.batch);
     dbwrapper_private::HandleError(status);
@@ -167,15 +167,15 @@ bool CellDBWrapper::WriteBatch(CellDBBatch& batch, bool fSync)
 //
 // We must use a string constructor which specifies length so that we copy
 // past the null-terminator.
-const std::string CellDBWrapper::OBFUSCATE_KEY_KEY("\000obfuscate_key", 14);
+const std::string MCDBWrapper::OBFUSCATE_KEY_KEY("\000obfuscate_key", 14);
 
-const unsigned int CellDBWrapper::OBFUSCATE_KEY_NUM_BYTES = 8;
+const unsigned int MCDBWrapper::OBFUSCATE_KEY_NUM_BYTES = 8;
 
 /**
  * Returns a string (consisting of 8 random bytes) suitable for use as an
  * obfuscating XOR key.
  */
-std::vector<unsigned char> CellDBWrapper::CreateObfuscateKey() const
+std::vector<unsigned char> MCDBWrapper::CreateObfuscateKey() const
 {
     unsigned char buff[OBFUSCATE_KEY_NUM_BYTES];
     GetRandBytes(buff, OBFUSCATE_KEY_NUM_BYTES);
@@ -183,17 +183,17 @@ std::vector<unsigned char> CellDBWrapper::CreateObfuscateKey() const
 
 }
 
-bool CellDBWrapper::IsEmpty()
+bool MCDBWrapper::IsEmpty()
 {
-    std::unique_ptr<CellDBIterator> it(NewIterator());
+    std::unique_ptr<MCDBIterator> it(NewIterator());
     it->SeekToFirst();
     return !(it->Valid());
 }
 
-CellDBIterator::~CellDBIterator() { delete piter; }
-bool CellDBIterator::Valid() { return piter->Valid(); }
-void CellDBIterator::SeekToFirst() { piter->SeekToFirst(); }
-void CellDBIterator::Next() { piter->Next(); }
+MCDBIterator::~MCDBIterator() { delete piter; }
+bool MCDBIterator::Valid() { return piter->Valid(); }
+void MCDBIterator::SeekToFirst() { piter->SeekToFirst(); }
+void MCDBIterator::Next() { piter->Next(); }
 
 namespace dbwrapper_private {
 
@@ -211,7 +211,7 @@ void HandleError(const leveldb::Status& status)
     throw dbwrapper_error("Unknown database error");
 }
 
-const std::vector<unsigned char>& GetObfuscateKey(const CellDBWrapper &w)
+const std::vector<unsigned char>& GetObfuscateKey(const MCDBWrapper &w)
 {
     return w.obfuscate_key;
 }

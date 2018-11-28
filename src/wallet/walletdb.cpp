@@ -48,7 +48,7 @@ bool CWalletDB::ErasePurpose(const std::string& strPurpose)
     return EraseIC(std::make_pair(std::string("purpose"), strPurpose));
 }
 
-bool CWalletDB::WriteTx(const CellWalletTx& wtx)
+bool CWalletDB::WriteTx(const MCWalletTx& wtx)
 {
     return WriteIC(std::make_pair(std::string("tx"), wtx.GetHash()), wtx);
 }
@@ -58,7 +58,7 @@ bool CWalletDB::EraseTx(uint256 hash)
     return EraseIC(std::make_pair(std::string("tx"), hash));
 }
 
-bool CWalletDB::WriteKey(const CellPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
+bool CWalletDB::WriteKey(const MCPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata& keyMeta)
 {
     if (!WriteIC(std::make_pair(std::string("keymeta"), vchPubKey), keyMeta, false)) {
         return false;
@@ -73,7 +73,7 @@ bool CWalletDB::WriteKey(const CellPubKey& vchPubKey, const CPrivKey& vchPrivKey
     return WriteIC(std::make_pair(std::string("key"), vchPubKey), std::make_pair(vchPrivKey, Hash(vchKey.begin(), vchKey.end())), false);
 }
 
-bool CWalletDB::WriteCryptedKey(const CellPubKey& vchPubKey,
+bool CWalletDB::WriteCryptedKey(const MCPubKey& vchPubKey,
                                 const std::vector<unsigned char>& vchCryptedSecret,
                                 const CKeyMetadata &keyMeta)
 {
@@ -89,17 +89,17 @@ bool CWalletDB::WriteCryptedKey(const CellPubKey& vchPubKey,
     return true;
 }
 
-bool CWalletDB::WriteMasterKey(unsigned int nID, const CellMasterKey& kMasterKey)
+bool CWalletDB::WriteMasterKey(unsigned int nID, const MCMasterKey& kMasterKey)
 {
     return WriteIC(std::make_pair(std::string("mkey"), nID), kMasterKey, true);
 }
 
-bool CWalletDB::WriteCScript(const uint160& hash, const CellScript& redeemScript)
+bool CWalletDB::WriteCScript(const uint160& hash, const MCScript& redeemScript)
 {
     return WriteIC(std::make_pair(std::string("cscript"), hash), redeemScript, false);
 }
 
-bool CWalletDB::WriteWatchOnly(const CellScript &dest, const CKeyMetadata& keyMeta)
+bool CWalletDB::WriteWatchOnly(const MCScript &dest, const CKeyMetadata& keyMeta)
 {
     if (!WriteIC(std::make_pair(std::string("watchmeta"), dest), keyMeta)) {
         return false;
@@ -107,7 +107,7 @@ bool CWalletDB::WriteWatchOnly(const CellScript &dest, const CKeyMetadata& keyMe
     return WriteIC(std::make_pair(std::string("watchs"), dest), '1');
 }
 
-bool CWalletDB::EraseWatchOnly(const CellScript &dest)
+bool CWalletDB::EraseWatchOnly(const MCScript &dest)
 {
     if (!EraseIC(std::make_pair(std::string("watchmeta"), dest))) {
         return false;
@@ -115,13 +115,13 @@ bool CWalletDB::EraseWatchOnly(const CellScript &dest)
     return EraseIC(std::make_pair(std::string("watchs"), dest));
 }
 
-bool CWalletDB::WriteBestBlock(const CellBlockLocator& locator)
+bool CWalletDB::WriteBestBlock(const MCBlockLocator& locator)
 {
-    WriteIC(std::string("bestblock"), CellBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
+    WriteIC(std::string("bestblock"), MCBlockLocator()); // Write empty block locator so versions that require a merkle branch automatically rescan
     return WriteIC(std::string("bestblock_nomerkle"), locator);
 }
 
-bool CWalletDB::ReadBestBlock(CellBlockLocator& locator)
+bool CWalletDB::ReadBestBlock(MCBlockLocator& locator)
 {
     if (batch.Read(std::string("bestblock"), locator) && !locator.vHave.empty()) return true;
     return batch.Read(std::string("bestblock_nomerkle"), locator);
@@ -132,17 +132,17 @@ bool CWalletDB::WriteOrderPosNext(int64_t nOrderPosNext)
     return WriteIC(std::string("orderposnext"), nOrderPosNext);
 }
 
-bool CWalletDB::WriteDefaultKey(const CellPubKey& vchPubKey)
+bool CWalletDB::WriteDefaultKey(const MCPubKey& vchPubKey)
 {
     return WriteIC(std::string("defaultkey"), vchPubKey);
 }
 
-bool CWalletDB::ReadPool(int64_t nPool, CellKeyPool& keypool)
+bool CWalletDB::ReadPool(int64_t nPool, MCKeyPool& keypool)
 {
     return batch.Read(std::make_pair(std::string("pool"), nPool), keypool);
 }
 
-bool CWalletDB::WritePool(int64_t nPool, const CellKeyPool& keypool)
+bool CWalletDB::WritePool(int64_t nPool, const MCKeyPool& keypool)
 {
     return WriteIC(std::make_pair(std::string("pool"), nPool), keypool);
 }
@@ -157,35 +157,35 @@ bool CWalletDB::WriteMinVersion(int nVersion)
     return WriteIC(std::string("minversion"), nVersion);
 }
 
-bool CWalletDB::ReadAccount(const std::string& strAccount, CellAccount& account)
+bool CWalletDB::ReadAccount(const std::string& strAccount, MCAccount& account)
 {
     account.SetNull();
     return batch.Read(std::make_pair(std::string("acc"), strAccount), account);
 }
 
-bool CWalletDB::WriteAccount(const std::string& strAccount, const CellAccount& account)
+bool CWalletDB::WriteAccount(const std::string& strAccount, const MCAccount& account)
 {
     return WriteIC(std::make_pair(std::string("acc"), strAccount), account);
 }
 
-bool CWalletDB::WriteAccountingEntry(const uint64_t nAccEntryNum, const CellAccountingEntry& acentry)
+bool CWalletDB::WriteAccountingEntry(const uint64_t nAccEntryNum, const MCAccountingEntry& acentry)
 {
     return WriteIC(std::make_pair(std::string("acentry"), std::make_pair(acentry.strAccount, nAccEntryNum)), acentry);
 }
 
-CellAmount CWalletDB::GetAccountCreditDebit(const std::string& strAccount)
+MCAmount CWalletDB::GetAccountCreditDebit(const std::string& strAccount)
 {
-    std::list<CellAccountingEntry> entries;
+    std::list<MCAccountingEntry> entries;
     ListAccountCreditDebit(strAccount, entries);
 
-    CellAmount nCreditDebit = 0;
-    for (const CellAccountingEntry& entry : entries)
+    MCAmount nCreditDebit = 0;
+    for (const MCAccountingEntry& entry : entries)
         nCreditDebit += entry.nCreditDebit;
 
     return nCreditDebit;
 }
 
-void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<CellAccountingEntry>& entries)
+void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<MCAccountingEntry>& entries)
 {
     bool fAllAccounts = (strAccount == "*");
 
@@ -196,10 +196,10 @@ void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<
     while (true)
     {
         // Read next record
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         if (setRange)
             ssKey << std::make_pair(std::string("acentry"), std::make_pair((fAllAccounts ? std::string("") : strAccount), uint64_t(0)));
-        CellDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssValue(SER_DISK, CLIENT_VERSION);
         int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue, setRange);
         setRange = false;
         if (ret == DB_NOTFOUND)
@@ -215,7 +215,7 @@ void CWalletDB::ListAccountCreditDebit(const std::string& strAccount, std::list<
         ssKey >> strType;
         if (strType != "acentry")
             break;
-        CellAccountingEntry acentry;
+        MCAccountingEntry acentry;
         ssKey >> acentry.strAccount;
         if (!fAllAccounts && acentry.strAccount != strAccount)
             break;
@@ -248,7 +248,7 @@ public:
 };
 
 bool
-ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue,
+ReadKeyValue(MCWallet* pwallet, MCDataStream& ssKey, MCDataStream& ssValue,
              CWalletScanState &wss, std::string& strType, std::string& strErr)
 {
     try {
@@ -272,10 +272,10 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         {
             uint256 hash;
             ssKey >> hash;
-            CellWalletTx wtx;
+            MCWalletTx wtx;
             ssValue >> wtx;
-            CellValidationState state;
-			CellBlockIndex *pTxBlockIndex = nullptr;
+            MCValidationState state;
+			MCBlockIndex *pTxBlockIndex = nullptr;
             BranchCache branchCache(g_pBranchDb);
 			if (wtx.tx->IsBranchCreate())
 			{
@@ -325,7 +325,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
 
             if (!wss.fAnyUnordered)
             {
-                CellAccountingEntry acentry;
+                MCAccountingEntry acentry;
                 ssValue >> acentry;
                 if (acentry.nOrderPos == -1)
                     wss.fAnyUnordered = true;
@@ -334,7 +334,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         else if (strType == "watchs")
         {
             wss.nWatchKeys++;
-            CellScript script;
+            MCScript script;
             ssKey >> script;
             char fYes;
             ssValue >> fYes;
@@ -343,14 +343,14 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         }
         else if (strType == "key" || strType == "wkey")
         {
-            CellPubKey vchPubKey;
+            MCPubKey vchPubKey;
             ssKey >> vchPubKey;
             if (!vchPubKey.IsValid())
             {
-                strErr = "Error reading wallet database: CellPubKey corrupt";
+                strErr = "Error reading wallet database: MCPubKey corrupt";
                 return false;
             }
-            CellKey key;
+            MCKey key;
             CPrivKey pkey;
             uint256 hash;
 
@@ -387,7 +387,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
 
                 if (Hash(vchKey.begin(), vchKey.end()) != hash)
                 {
-                    strErr = "Error reading wallet database: CellPubKey/CPrivKey corrupt";
+                    strErr = "Error reading wallet database: MCPubKey/CPrivKey corrupt";
                     return false;
                 }
 
@@ -409,11 +409,11 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         {
             unsigned int nID;
             ssKey >> nID;
-            CellMasterKey kMasterKey;
+            MCMasterKey kMasterKey;
             ssValue >> kMasterKey;
             if(pwallet->mapMasterKeys.count(nID) != 0)
             {
-                strErr = strprintf("Error reading wallet database: duplicate CellMasterKey id %u", nID);
+                strErr = strprintf("Error reading wallet database: duplicate MCMasterKey id %u", nID);
                 return false;
             }
             pwallet->mapMasterKeys[nID] = kMasterKey;
@@ -422,11 +422,11 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         }
         else if (strType == "ckey")
         {
-            CellPubKey vchPubKey;
+            MCPubKey vchPubKey;
             ssKey >> vchPubKey;
             if (!vchPubKey.IsValid())
             {
-                strErr = "Error reading wallet database: CellPubKey corrupt";
+                strErr = "Error reading wallet database: MCPubKey corrupt";
                 return false;
             }
             std::vector<unsigned char> vchPrivKey;
@@ -442,18 +442,18 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         }
         else if (strType == "keymeta" || strType == "watchmeta")
         {
-            CellTxDestination keyID;
+            MCTxDestination keyID;
             if (strType == "keymeta")
             {
-              CellPubKey vchPubKey;
+              MCPubKey vchPubKey;
               ssKey >> vchPubKey;
               keyID = vchPubKey.GetID();
             }
             else if (strType == "watchmeta")
             {
-              CellScript script;
+              MCScript script;
               ssKey >> script;
-              keyID = CellScriptID(script);
+              keyID = MCScriptID(script);
             }
 
             CKeyMetadata keyMeta;
@@ -470,7 +470,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         {
             int64_t nIndex;
             ssKey >> nIndex;
-            CellKeyPool keypool;
+            MCKeyPool keypool;
             ssValue >> keypool;
 
             pwallet->LoadKeyPool(nIndex, keypool);
@@ -485,7 +485,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         {
             uint160 hash;
             ssKey >> hash;
-            CellScript script;
+            MCScript script;
             ssValue >> script;
             if (!pwallet->LoadCScript(script))
             {
@@ -532,9 +532,9 @@ bool CWalletDB::IsKeyType(const std::string& strType)
             strType == "mkey" || strType == "ckey");
 }
 
-DBErrors CWalletDB::LoadWallet(CellWallet* pwallet)
+DBErrors CWalletDB::LoadWallet(MCWallet* pwallet)
 {
-    pwallet->vchDefaultKey = CellPubKey();
+    pwallet->vchDefaultKey = MCPubKey();
     CWalletScanState wss;
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
@@ -560,8 +560,8 @@ DBErrors CWalletDB::LoadWallet(CellWallet* pwallet)
         while (true)
         {
             // Read next record
-            CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
-            CellDataStream ssValue(SER_DISK, CLIENT_VERSION);
+            MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
+            MCDataStream ssValue(SER_DISK, CLIENT_VERSION);
             int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue);
             if (ret == DB_NOTFOUND)
                 break;
@@ -632,14 +632,14 @@ DBErrors CWalletDB::LoadWallet(CellWallet* pwallet)
 
     pwallet->laccentries.clear();
     ListAccountCreditDebit("*", pwallet->laccentries);
-    for (CellAccountingEntry& entry : pwallet->laccentries) {
-        pwallet->wtxOrdered.insert(make_pair(entry.nOrderPos, CellWallet::TxPair((CellWalletTx*)0, &entry)));
+    for (MCAccountingEntry& entry : pwallet->laccentries) {
+        pwallet->wtxOrdered.insert(make_pair(entry.nOrderPos, MCWallet::TxPair((MCWalletTx*)0, &entry)));
     }
 
     return result;
 }
 
-DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CellWalletTx>& vWtx)
+DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<MCWalletTx>& vWtx)
 {
     bool fNoncriticalErrors = false;
     DBErrors result = DB_LOAD_OK;
@@ -663,8 +663,8 @@ DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<Cell
         while (true)
         {
             // Read next record
-            CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
-            CellDataStream ssValue(SER_DISK, CLIENT_VERSION);
+            MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
+            MCDataStream ssValue(SER_DISK, CLIENT_VERSION);
             int ret = batch.ReadAtCursor(pcursor, ssKey, ssValue);
             if (ret == DB_NOTFOUND)
                 break;
@@ -680,7 +680,7 @@ DBErrors CWalletDB::FindWalletTx(std::vector<uint256>& vTxHash, std::vector<Cell
                 uint256 hash;
                 ssKey >> hash;
 
-                CellWalletTx wtx;
+                MCWalletTx wtx;
                 ssValue >> wtx;
 
                 vTxHash.push_back(hash);
@@ -706,7 +706,7 @@ DBErrors CWalletDB::ZapSelectTx(std::vector<uint256>& vTxHashIn, std::vector<uin
 {
     // build list of wallet TXs and hashes
     std::vector<uint256> vTxHash;
-    std::vector<CellWalletTx> vWtx;
+    std::vector<MCWalletTx> vWtx;
     DBErrors err = FindWalletTx(vTxHash, vWtx);
     if (err != DB_LOAD_OK) {
         return err;
@@ -740,7 +740,7 @@ DBErrors CWalletDB::ZapSelectTx(std::vector<uint256>& vTxHashIn, std::vector<uin
     return DB_LOAD_OK;
 }
 
-DBErrors CWalletDB::ZapWalletTx(std::vector<CellWalletTx>& vWtx)
+DBErrors CWalletDB::ZapWalletTx(std::vector<MCWalletTx>& vWtx)
 {
     // build list of wallet TXs
     std::vector<uint256> vTxHash;
@@ -768,7 +768,7 @@ void MaybeCompactWalletDB()
     }
 
     for (CWalletRef pwallet : vpwallets) {
-        CellWalletDBWrapper& dbh = pwallet->GetDBHandle();
+        MCWalletDBWrapper& dbh = pwallet->GetDBHandle();
 
         unsigned int nUpdateCounter = dbh.nUpdateCounter;
 
@@ -778,7 +778,7 @@ void MaybeCompactWalletDB()
         }
 
         if (dbh.nLastFlushed != nUpdateCounter && GetTime() - dbh.nLastWalletUpdate >= 2) {
-            if (CellDB::PeriodicFlush(dbh)) {
+            if (MCDB::PeriodicFlush(dbh)) {
                 dbh.nLastFlushed = nUpdateCounter;
             }
         }
@@ -790,9 +790,9 @@ void MaybeCompactWalletDB()
 //
 // Try to (very carefully!) recover wallet file if there is a problem.
 //
-bool CWalletDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CellDataStream ssKey, CellDataStream ssValue), std::string& out_backup_filename)
+bool CWalletDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, MCDataStream ssKey, MCDataStream ssValue), std::string& out_backup_filename)
 {
-    return CellDB::Recover(filename, callbackDataIn, recoverKVcallback, out_backup_filename);
+    return MCDB::Recover(filename, callbackDataIn, recoverKVcallback, out_backup_filename);
 }
 
 bool CWalletDB::Recover(const std::string& filename, std::string& out_backup_filename)
@@ -802,9 +802,9 @@ bool CWalletDB::Recover(const std::string& filename, std::string& out_backup_fil
     return CWalletDB::Recover(filename, nullptr, nullptr, out_backup_filename);
 }
 
-bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CellDataStream ssKey, CellDataStream ssValue)
+bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, MCDataStream ssKey, MCDataStream ssValue)
 {
-    CellWallet *dummyWallet = reinterpret_cast<CellWallet*>(callbackData);
+    MCWallet *dummyWallet = reinterpret_cast<MCWallet*>(callbackData);
     CWalletScanState dummyWss;
     std::string strType, strErr;
     bool fReadOK;
@@ -827,12 +827,12 @@ bool CWalletDB::RecoverKeysOnlyFilter(void *callbackData, CellDataStream ssKey, 
 
 bool CWalletDB::VerifyEnvironment(const std::string& walletFile, const fs::path& dataDir, std::string& errorStr)
 {
-    return CellDB::VerifyEnvironment(walletFile, dataDir, errorStr);
+    return MCDB::VerifyEnvironment(walletFile, dataDir, errorStr);
 }
 
 bool CWalletDB::VerifyDatabaseFile(const std::string& walletFile, const fs::path& dataDir, std::string& warningStr, std::string& errorStr)
 {
-    return CellDB::VerifyDatabaseFile(walletFile, dataDir, warningStr, errorStr, CWalletDB::Recover);
+    return MCDB::VerifyDatabaseFile(walletFile, dataDir, warningStr, errorStr, CWalletDB::Recover);
 }
 
 bool CWalletDB::WriteDestData(const std::string &address, const std::string &key, const std::string &value)

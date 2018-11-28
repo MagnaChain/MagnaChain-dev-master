@@ -15,19 +15,19 @@
 
 static bool noui_ThreadSafeMessageBox(const std::string& message, const std::string& caption, unsigned int style)
 {
-    bool fSecure = style & CellClientUIInterface::SECURE;
-    style &= ~CellClientUIInterface::SECURE;
+    bool fSecure = style & MCClientUIInterface::SECURE;
+    style &= ~MCClientUIInterface::SECURE;
 
     std::string strCaption;
     // Check for usage of predefined caption
     switch (style) {
-    case CellClientUIInterface::MSG_ERROR:
+    case MCClientUIInterface::MSG_ERROR:
         strCaption += _("Error");
         break;
-    case CellClientUIInterface::MSG_WARNING:
+    case MCClientUIInterface::MSG_WARNING:
         strCaption += _("Warning");
         break;
-    case CellClientUIInterface::MSG_INFORMATION:
+    case MCClientUIInterface::MSG_INFORMATION:
         strCaption += _("Information");
         break;
     default:

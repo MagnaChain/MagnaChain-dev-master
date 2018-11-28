@@ -16,11 +16,11 @@
 
 typedef std::vector<unsigned char> valtype;
 
-TransactionSignatureCreator::TransactionSignatureCreator(const CellKeyStore* keystoreIn, const CellTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
+TransactionSignatureCreator::TransactionSignatureCreator(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
 
-bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CellKeyID& address, const CellScript& scriptCode, SigVersion sigversion) const
+bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const MCKeyID& address, const MCScript& scriptCode, SigVersion sigversion) const
 {
-    CellKey key;
+    MCKey key;
     if (!keystore->GetKey(address, key))
         return false;
 
@@ -35,7 +35,7 @@ bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, 
     return true;
 }
 
-static bool Sign1(const CellKeyID& address, const BaseSignatureCreator& creator, const CellScript& scriptCode, std::vector<valtype>& ret, SigVersion sigversion)
+static bool Sign1(const MCKeyID& address, const BaseSignatureCreator& creator, const MCScript& scriptCode, std::vector<valtype>& ret, SigVersion sigversion)
 {
     std::vector<unsigned char> vchSig;
     if (!creator.CreateSig(vchSig, address, scriptCode, sigversion))
@@ -44,14 +44,14 @@ static bool Sign1(const CellKeyID& address, const BaseSignatureCreator& creator,
     return true;
 }
 
-static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const CellScript& scriptCode, std::vector<valtype>& ret, SigVersion sigversion)
+static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureCreator& creator, const MCScript& scriptCode, std::vector<valtype>& ret, SigVersion sigversion)
 {
     int nSigned = 0;
     int nRequired = multisigdata.front()[0];
     for (unsigned int i = 1; i < multisigdata.size()-1 && nSigned < nRequired; i++)
     {
         const valtype& pubkey = multisigdata[i];
-        CellKeyID keyID = CellPubKey(pubkey).GetID();
+        MCKeyID keyID = MCPubKey(pubkey).GetID();
         if (Sign1(keyID, creator, scriptCode, ret, sigversion))
             ++nSigned;
     }
@@ -64,10 +64,10 @@ static bool SignN(const std::vector<valtype>& multisigdata, const BaseSignatureC
  * unless whichTypeRet is TX_SCRIPTHASH, in which case scriptSigRet is the redemption script.
  * Returns false if scriptPubKey could not be completely satisfied.
  */
-static bool SignStep(const BaseSignatureCreator& creator, const CellScript& scriptPubKey,
+static bool SignStep(const BaseSignatureCreator& creator, const MCScript& scriptPubKey,
                      std::vector<valtype>& ret, txnouttype& whichTypeRet, SigVersion sigversion)
 {
-    CellScript scriptRet;
+    MCScript scriptRet;
     uint160 h160;
     ret.clear();
 
@@ -75,25 +75,25 @@ static bool SignStep(const BaseSignatureCreator& creator, const CellScript& scri
     if (!Solver(scriptPubKey, whichTypeRet, vSolutions))
         return false;
 
-    CellKeyID keyID;
+    MCKeyID keyID;
     switch (whichTypeRet)
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
         return false;
     case TX_PUBKEY:
-        keyID = CellPubKey(vSolutions[0]).GetID();
+        keyID = MCPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, creator, scriptPubKey, ret, sigversion);
     case TX_CREATE_BRANCH:
     case TX_MINE_MORTGAGE:
     case TX_MORTGAGE_COIN:
     case TX_PUBKEYHASH:
-        keyID = CellKeyID(uint160(vSolutions[0]));
+        keyID = MCKeyID(uint160(vSolutions[0]));
         if (!Sign1(keyID, creator, scriptPubKey, ret, sigversion))
             return false;
         else
         {
-            CellPubKey vch;
+            MCPubKey vch;
             creator.KeyStore().GetPubKey(keyID, vch);
             ret.push_back(ToByteVector(vch));
         }
@@ -126,14 +126,14 @@ static bool SignStep(const BaseSignatureCreator& creator, const CellScript& scri
     }
 }
 
-static CellScript PushAll(const std::vector<valtype>& values)
+static MCScript PushAll(const std::vector<valtype>& values)
 {
-    CellScript result;
+    MCScript result;
     for (const valtype& v : values) {
         if (v.size() == 0) {
             result << OP_0;
         } else if (v.size() == 1 && v[0] >= 1 && v[0] <= 16) {
-            result << CellScript::EncodeOP_N(v[0]);
+            result << MCScript::EncodeOP_N(v[0]);
         } else {
             result << v;
         }
@@ -141,14 +141,14 @@ static CellScript PushAll(const std::vector<valtype>& values)
     return result;
 }
 
-bool ProduceSignature(const BaseSignatureCreator& creator, const CellScript& fromPubKey, SignatureData& sigdata)
+bool ProduceSignature(const BaseSignatureCreator& creator, const MCScript& fromPubKey, SignatureData& sigdata)
 {
-    CellScript script = fromPubKey;
+    MCScript script = fromPubKey;
     std::vector<valtype> result;
     txnouttype whichType;
     bool solved = SignStep(creator, script, result, whichType, SIGVERSION_BASE);
     bool P2SH = false;
-    CellScript subscript;
+    MCScript subscript;
     sigdata.scriptWitness.stack.clear();
 
     if (solved && whichType == TX_SCRIPTHASH)
@@ -156,14 +156,14 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CellScript& fro
         // Solver returns the subscript that needs to be evaluated;
         // the final scriptSig is the signatures from that
         // and then the serialized subscript:
-        script = subscript = CellScript(result[0].begin(), result[0].end());
+        script = subscript = MCScript(result[0].begin(), result[0].end());
         solved = solved && SignStep(creator, script, result, whichType, SIGVERSION_BASE) && whichType != TX_SCRIPTHASH;
         P2SH = true;
     }
 
     if (solved && whichType == TX_WITNESS_V0_KEYHASH)
     {
-        CellScript witnessscript;
+        MCScript witnessscript;
         witnessscript << OP_DUP << OP_HASH160 << ToByteVector(result[0]) << OP_EQUALVERIFY << OP_CHECKSIG;
         txnouttype subType;
         solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0);
@@ -172,7 +172,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CellScript& fro
     }
     else if (solved && whichType == TX_WITNESS_V0_SCRIPTHASH)
     {
-        CellScript witnessscript(result[0].begin(), result[0].end());
+        MCScript witnessscript(result[0].begin(), result[0].end());
         txnouttype subType;
         solved = solved && SignStep(creator, witnessscript, result, subType, SIGVERSION_WITNESS_V0) && subType != TX_SCRIPTHASH && subType != TX_WITNESS_V0_SCRIPTHASH && subType != TX_WITNESS_V0_KEYHASH;
         result.push_back(std::vector<unsigned char>(witnessscript.begin(), witnessscript.end()));
@@ -189,7 +189,7 @@ bool ProduceSignature(const BaseSignatureCreator& creator, const CellScript& fro
     return solved && VerifyScript(sigdata.scriptSig, fromPubKey, &sigdata.scriptWitness, STANDARD_SCRIPT_VERIFY_FLAGS, creator.Checker());
 }
 
-SignatureData DataFromTransaction(const CellMutableTransaction& tx, unsigned int nIn)
+SignatureData DataFromTransaction(const MCMutableTransaction& tx, unsigned int nIn)
 {
     SignatureData data;
     assert(tx.vin.size() > nIn);
@@ -198,18 +198,18 @@ SignatureData DataFromTransaction(const CellMutableTransaction& tx, unsigned int
     return data;
 }
 
-void UpdateTransaction(CellMutableTransaction& tx, unsigned int nIn, const SignatureData& data)
+void UpdateTransaction(MCMutableTransaction& tx, unsigned int nIn, const SignatureData& data)
 {
     assert(tx.vin.size() > nIn);
     tx.vin[nIn].scriptSig = data.scriptSig;
     tx.vin[nIn].scriptWitness = data.scriptWitness;
 }
 
-bool SignSignature(const CellKeyStore &keystore, const CellScript& fromPubKey, CellMutableTransaction& txTo, unsigned int nIn, const CellAmount& amount, int nHashType)
+bool SignSignature(const MCKeyStore &keystore, const MCScript& fromPubKey, MCMutableTransaction& txTo, unsigned int nIn, const MCAmount& amount, int nHashType)
 {
     assert(nIn < txTo.vin.size());
 
-    CellTransaction txToConst(txTo);
+    MCTransaction txToConst(txTo);
     TransactionSignatureCreator creator(&keystore, &txToConst, nIn, amount, nHashType);
 
     SignatureData sigdata;
@@ -218,17 +218,17 @@ bool SignSignature(const CellKeyStore &keystore, const CellScript& fromPubKey, C
     return ret;
 }
 
-bool SignSignature(const CellKeyStore &keystore, const CellTransaction& txFrom, CellMutableTransaction& txTo, unsigned int nIn, int nHashType)
+bool SignSignature(const MCKeyStore &keystore, const MCTransaction& txFrom, MCMutableTransaction& txTo, unsigned int nIn, int nHashType)
 {
     assert(nIn < txTo.vin.size());
-    CellTxIn& txin = txTo.vin[nIn];
+    MCTxIn& txin = txTo.vin[nIn];
     assert(txin.prevout.n < txFrom.vout.size());
-    const CellTxOut& txout = txFrom.vout[txin.prevout.n];
+    const MCTxOut& txout = txFrom.vout[txin.prevout.n];
 
     return SignSignature(keystore, txout.scriptPubKey, txTo, nIn, txout.nValue, nHashType);
 }
 
-static std::vector<valtype> CombineMultisig(const CellScript& scriptPubKey, const BaseSignatureChecker& checker,
+static std::vector<valtype> CombineMultisig(const MCScript& scriptPubKey, const BaseSignatureChecker& checker,
                                const std::vector<valtype>& vSolutions,
                                const std::vector<valtype>& sigs1, const std::vector<valtype>& sigs2, SigVersion sigversion)
 {
@@ -265,7 +265,7 @@ static std::vector<valtype> CombineMultisig(const CellScript& scriptPubKey, cons
             }
         }
     }
-    // Now build a merged CellScript:
+    // Now build a merged MCScript:
     unsigned int nSigsHave = 0;
     std::vector<valtype> result; result.push_back(valtype()); // pop-one-too-many workaround
     for (unsigned int i = 0; i < nPubKeys && nSigsHave < nSigsRequired; i++)
@@ -305,7 +305,7 @@ struct Stacks
 };
 }
 
-static Stacks CombineSignatures(const CellScript& scriptPubKey, const BaseSignatureChecker& checker,
+static Stacks CombineSignatures(const MCScript& scriptPubKey, const BaseSignatureChecker& checker,
                                  const txnouttype txType, const std::vector<valtype>& vSolutions,
                                  Stacks sigs1, Stacks sigs2, SigVersion sigversion)
 {
@@ -340,7 +340,7 @@ static Stacks CombineSignatures(const CellScript& scriptPubKey, const BaseSignat
         {
             // Recur to combine:
             valtype spk = sigs1.script.back();
-            CellScript pubKey2(spk.begin(), spk.end());
+            MCScript pubKey2(spk.begin(), spk.end());
 
             txnouttype txType2;
             std::vector<std::vector<unsigned char> > vSolutions2;
@@ -361,7 +361,7 @@ static Stacks CombineSignatures(const CellScript& scriptPubKey, const BaseSignat
         else
         {
             // Recur to combine:
-            CellScript pubKey2(sigs1.witness.back().begin(), sigs1.witness.back().end());
+            MCScript pubKey2(sigs1.witness.back().begin(), sigs1.witness.back().end());
             txnouttype txType2;
             std::vector<valtype> vSolutions2;
             Solver(pubKey2, txType2, vSolutions2);
@@ -382,7 +382,7 @@ static Stacks CombineSignatures(const CellScript& scriptPubKey, const BaseSignat
     }
 }
 
-SignatureData CombineSignatures(const CellScript& scriptPubKey, const BaseSignatureChecker& checker,
+SignatureData CombineSignatures(const MCScript& scriptPubKey, const BaseSignatureChecker& checker,
                           const SignatureData& scriptSig1, const SignatureData& scriptSig2)
 {
     txnouttype txType;
@@ -399,7 +399,7 @@ class DummySignatureChecker : public BaseSignatureChecker
 public:
     DummySignatureChecker() {}
 
-    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CellScript& scriptCode, SigVersion sigversion) const override
+    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const MCScript& scriptCode, SigVersion sigversion) const override
     {
         return true;
     }
@@ -412,7 +412,7 @@ const BaseSignatureChecker& DummySignatureCreator::Checker() const
     return dummyChecker;
 }
 
-bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const CellKeyID& keyid, const CellScript& scriptCode, SigVersion sigversion) const
+bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const MCKeyID& keyid, const MCScript& scriptCode, SigVersion sigversion) const
 {
     // Create a dummy signature that is a valid DER-encoding
     vchSig.assign(72, '\000');
@@ -428,8 +428,8 @@ bool DummySignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const 
     return true;
 }
 
-uint256 GetContractHash(const CellTransaction& txTo) {
-	CellHashWriter ss(SER_GETHASH, 0);
+uint256 GetContractHash(const MCTransaction& txTo) {
+	MCHashWriter ss(SER_GETHASH, 0);
 	ss << txTo.nVersion;
 	ss << txTo.nLockTime;
 
@@ -442,7 +442,7 @@ uint256 GetContractHash(const CellTransaction& txTo) {
 		    ss << txout;
 	}
 
-	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+	if (txTo.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         ss << txTo.pContractData->address;
         ss << txTo.pContractData->sender;
 		ss << txTo.pContractData->codeOrFunc;
@@ -453,15 +453,15 @@ uint256 GetContractHash(const CellTransaction& txTo) {
 	return ss.GetHash();
 }
 
-bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn, CellScript& constractSig)
+bool SignContract(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, MCScript& constractSig)
 {
 	if (txToIn->IsSmartContract() == false)
 	{
 		return true;
 	}
 
-	CellKeyID keyAddr = txToIn->pContractData->sender.GetID();
-	CellKey key;
+	MCKeyID keyAddr = txToIn->pContractData->sender.GetID();
+	MCKey key;
 	if (!keystoreIn->GetKey(keyAddr, key))
 		return false;
 
@@ -479,7 +479,7 @@ bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn,
 	return CheckContractSign(txToIn, constractSig);
 }
 
-bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constractSig)
+bool CheckContractSign(const MCTransaction* txToIn, const MCScript& constractSig)
 {
 	if (!txToIn->IsSmartContract())
 		return true;
@@ -487,7 +487,7 @@ bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constrac
 	// Hash type is one byte tacked on to the end of the signature
 	std::vector<unsigned char> vchSig;
 	opcodetype opcode;
-	CellScript::const_iterator pc = constractSig.begin();
+	MCScript::const_iterator pc = constractSig.begin();
 	if (!constractSig.GetOp(pc, opcode, vchSig) || vchSig.empty())
 		return false;
 

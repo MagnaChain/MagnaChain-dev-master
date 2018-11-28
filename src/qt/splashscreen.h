@@ -9,7 +9,7 @@
 #include <functional>
 #include <QSplashScreen>
 
-class CellWallet;
+class MCWallet;
 class NetworkStyle;
 
 /** Class for the splashscreen with information of the running client.
@@ -48,14 +48,14 @@ private:
     /** Disconnect core signals to splash screen */
     void unsubscribeFromCoreSignals();
     /** Connect wallet signals to splash screen */
-    void ConnectWallet(CellWallet*);
+    void ConnectWallet(MCWallet*);
 
     QPixmap pixmap;
     QString curMessage;
     QColor curColor;
     int curAlignment;
 
-    QList<CellWallet*> connectedWallets;
+    QList<MCWallet*> connectedWallets;
 
     std::function<void(void)> breakAction;
 };

@@ -10,8 +10,8 @@
 
 #include <map>
 
-class CellBlockIndex;
-struct CellCheckpointData;
+class MCBlockIndex;
+struct MCCheckpointData;
 
 /**
  * Block-chain checkpoints are compiled-in sanity checks.
@@ -20,8 +20,8 @@ struct CellCheckpointData;
 namespace Checkpoints
 {
 
-//! Returns last CellBlockIndex* in mapBlockIndex that is a checkpoint
-CellBlockIndex* GetLastCheckpoint(const CellCheckpointData& data);
+//! Returns last MCBlockIndex* in mapBlockIndex that is a checkpoint
+MCBlockIndex* GetLastCheckpoint(const MCCheckpointData& data);
 
 } //namespace Checkpoints
 

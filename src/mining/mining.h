@@ -8,15 +8,15 @@
 
 #include "script/script.h"
 
-class CellKeyStore;
-class CellOutput;
+class MCKeyStore;
+class MCOutput;
 class UniValue;
 
 typedef void(*GenerateBlockCB)();
 /** Generate blocks (mine) */
-UniValue generateBlocks(CellWallet* keystoreIn, std::vector<CellOutput>& vecOutputs, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf = nullptr, CellChainParams* pp = nullptr, CellCoinsViewCache *pcoinsCache = nullptr );
+UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutputs, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf = nullptr, MCChainParams* pp = nullptr, MCCoinsViewCache *pcoinsCache = nullptr );
 
-void GenerateCells(bool fGenerate, int nThreads, const CellChainParams& chainparams);
+void GenerateMCs(bool fGenerate, int nThreads, const MCChainParams& chainparams);
 
 
 /** Check bounds on a command line confirm target */

@@ -11,12 +11,12 @@
 
 #include <stdint.h>
 
-class CellBlockHeader;
-class CellBlockIndex;
+class MCBlockHeader;
+class MCBlockIndex;
 class uint256;
 
-unsigned int GetNextWorkRequired(const CellBlockIndex* pindexLast, const CellBlockHeader *pblock, const Consensus::Params&);
-unsigned int CalculateNextWorkRequired(const CellBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params&);
+unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHeader *pblock, const Consensus::Params&);
+unsigned int CalculateNextWorkRequired(const MCBlockIndex* pindexLast, int64_t nFirstBlockTime, const Consensus::Params&);
 
 /** Check whether a block hash satisfies the proof-of-work requirement specified by nBits */
 bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&);

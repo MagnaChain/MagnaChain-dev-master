@@ -42,36 +42,36 @@ static inline bool InsecureRandBool() { return insecure_rand_ctx.randbool(); }
 struct BasicTestingSetup {
     ECCVerifyHandle globalVerifyHandle;
 
-    BasicTestingSetup(const std::string& chainName = CellBaseChainParams::MAIN);
+    BasicTestingSetup(const std::string& chainName = MCBaseChainParams::MAIN);
     ~BasicTestingSetup();
 };
 
 /** Testing setup that configures a complete environment.
  * Included are data directory, coins database, script check threads setup.
  */
-class CellConnman;
-class CellNode;
-struct CellConnmanTest {
-    static void AddNode(CellNode& node);
+class MCConnman;
+class MCNode;
+struct MCConnmanTest {
+    static void AddNode(MCNode& node);
     static void ClearNodes();
 };
 
 class PeerLogicValidation;
 struct TestingSetup: public BasicTestingSetup {
-    CellCoinsViewDB *pcoinsdbview;
+    MCCoinsViewDB *pcoinsdbview;
     fs::path pathTemp;
     boost::thread_group threadGroup;
-    CellConnman* connman;
-    CellScheduler scheduler;
+    MCConnman* connman;
+    MCScheduler scheduler;
     std::unique_ptr<PeerLogicValidation> peerLogic;
 
-    TestingSetup(const std::string& chainName = CellBaseChainParams::MAIN);
+    TestingSetup(const std::string& chainName = MCBaseChainParams::MAIN);
     ~TestingSetup();
 };
 
-class CellBlock;
-struct CellMutableTransaction;
-class CellScript;
+class MCBlock;
+struct MCMutableTransaction;
+class MCScript;
 
 //
 // Testing fixture that pre-creates a
@@ -82,21 +82,21 @@ struct TestChain100Setup : public TestingSetup {
 
     // Create a new block with just given transactions, coinbase paying to
     // scriptPubKey, and try to add it to the current chain.
-    CellBlock CreateAndProcessBlock(const std::vector<CellMutableTransaction>& txns,
-                                 const CellScript& scriptPubKey);
+    MCBlock CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns,
+                                 const MCScript& scriptPubKey);
 
     ~TestChain100Setup();
 
-    std::vector<CellTransaction> coinbaseTxns; // For convenience, coinbase transactions
-    CellKey coinbaseKey; // private/public key needed to spend coinbase transactions
+    std::vector<MCTransaction> coinbaseTxns; // For convenience, coinbase transactions
+    MCKey coinbaseKey; // private/public key needed to spend coinbase transactions
 };
 
-class CellTxMemPoolEntry;
+class MCTxMemPoolEntry;
 
 struct TestMemPoolEntryHelper
 {
     // Default values
-    CellAmount nFee;
+    MCAmount nFee;
     int64_t nTime;
     unsigned int nHeight;
     bool spendsCoinbase;
@@ -107,11 +107,11 @@ struct TestMemPoolEntryHelper
         nFee(0), nTime(0), nHeight(1),
         spendsCoinbase(false), sigOpCost(4) { }
     
-    CellTxMemPoolEntry FromTx(const CellMutableTransaction &tx);
-    CellTxMemPoolEntry FromTx(const CellTransaction &tx);
+    MCTxMemPoolEntry FromTx(const MCMutableTransaction &tx);
+    MCTxMemPoolEntry FromTx(const MCTransaction &tx);
 
     // Change the default value
-    TestMemPoolEntryHelper &Fee(CellAmount _fee) { nFee = _fee; return *this; }
+    TestMemPoolEntryHelper &Fee(MCAmount _fee) { nFee = _fee; return *this; }
     TestMemPoolEntryHelper &Time(int64_t _time) { nTime = _time; return *this; }
     TestMemPoolEntryHelper &Height(unsigned int _height) { nHeight = _height; return *this; }
     TestMemPoolEntryHelper &SpendsCoinbase(bool _flag) { spendsCoinbase = _flag; return *this; }

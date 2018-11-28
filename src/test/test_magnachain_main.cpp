@@ -9,7 +9,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-std::unique_ptr<CellConnman> g_connman;
+std::unique_ptr<MCConnman> g_connman;
 
 void Shutdown(void* parg)
 {

@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 {
     SetupEnvironment();
     SetupNetworking();
-    SelectParams(CellBaseChainParams::MAIN);
+    SelectParams(MCBaseChainParams::MAIN);
     noui_connect();
     ClearDatadirCache();
     fs::path pathTemp = fs::temp_directory_path() / strprintf("test_magnachain-qt_%lu_%i", (unsigned long)GetTime(), (int)GetRand(100000));

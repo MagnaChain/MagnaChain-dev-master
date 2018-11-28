@@ -11,9 +11,9 @@
 #include "script/script.h"
 #include "io/serialize.h"
 
-class CellKeyID;
-class CellPubKey;
-class CellScriptID;
+class MCKeyID;
+class MCPubKey;
+class MCScriptID;
 
 /** Compact serializer for scripts.
  *
@@ -37,35 +37,35 @@ private:
      */
     static const unsigned int nSpecialScripts = 6;
 
-    CellScript &script;
+    MCScript &script;
 protected:
     /**
      * These check for scripts for which a special case with a shorter encoding is defined.
-     * They are implemented separately from the CellScript test, as these test for exact byte
+     * They are implemented separately from the MCScript test, as these test for exact byte
      * sequence correspondences, and are more strict. For example, IsToPubKey also verifies
      * whether the public key is valid (as invalid ones cannot be represented in compressed
      * form).
      */
-    bool IsToKeyID(CellKeyID &hash) const;
-    bool IsToScriptID(CellScriptID &hash) const;
-    bool IsToPubKey(CellPubKey &pubkey) const;
+    bool IsToKeyID(MCKeyID &hash) const;
+    bool IsToScriptID(MCScriptID &hash) const;
+    bool IsToPubKey(MCPubKey &pubkey) const;
 
     bool Compress(std::vector<unsigned char> &out) const;
     unsigned int GetSpecialSize(unsigned int nSize) const;
     bool Decompress(unsigned int nSize, const std::vector<unsigned char> &out);
 public:
-    CScriptCompressor(CellScript &scriptIn) : script(scriptIn) { }
+    CScriptCompressor(MCScript &scriptIn) : script(scriptIn) { }
 
     template<typename Stream>
     void Serialize(Stream &s) const {
         std::vector<unsigned char> compr;
         if (Compress(compr)) {
-            s << CellFlatData(compr);
+            s << MCFlatData(compr);
             return;
         }
         unsigned int nSize = script.size() + nSpecialScripts;
         s << VARINT(nSize);
-        s << CellFlatData(script);
+        s << MCFlatData(script);
     }
 
     template<typename Stream>
@@ -74,7 +74,7 @@ public:
         s >> VARINT(nSize);
         if (nSize < nSpecialScripts) {
             std::vector<unsigned char> vch(GetSpecialSize(nSize), 0x00);
-            s >> REF(CellFlatData(vch));
+            s >> REF(MCFlatData(vch));
             Decompress(nSize, vch);
             return;
         }
@@ -85,22 +85,22 @@ public:
             s.ignore(nSize);
         } else {
             script.resize(nSize);
-            s >> REF(CellFlatData(script));
+            s >> REF(MCFlatData(script));
         }
     }
 };
 
-/** wrapper for CellTxOut that provides a more compact serialization */
-class CellTxOutCompressor
+/** wrapper for MCTxOut that provides a more compact serialization */
+class MCTxOutCompressor
 {
 private:
-    CellTxOut &txout;
+    MCTxOut &txout;
 
 public:
     static uint64_t CompressAmount(uint64_t nAmount);
     static uint64_t DecompressAmount(uint64_t nAmount);
 
-    CellTxOutCompressor(CellTxOut &txoutIn) : txout(txoutIn) { }
+    MCTxOutCompressor(MCTxOut &txoutIn) : txout(txoutIn) { }
 
     ADD_SERIALIZE_METHODS;
 

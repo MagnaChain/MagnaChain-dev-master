@@ -18,8 +18,8 @@
 /* Do not use these functions to represent or parse monetary amounts to or from
  * JSON but use AmountFromValue and ValueFromAmount for that.
  */
-std::string FormatMoney(const CellAmount& n);
-bool ParseMoney(const std::string& str, CellAmount& nRet);
-bool ParseMoney(const char* pszIn, CellAmount& nRet);
+std::string FormatMoney(const MCAmount& n);
+bool ParseMoney(const std::string& str, MCAmount& nRet);
+bool ParseMoney(const char* pszIn, MCAmount& nRet);
 
 #endif // CELLLINK_UTILMONEYSTR_H

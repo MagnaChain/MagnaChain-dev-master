@@ -20,16 +20,16 @@
 
 #include <boost/test/unit_test.hpp>
 
-bool CheckInputs(const CellTransaction& tx, CellValidationState &state, const CellCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks);
+bool CheckInputs(const MCTransaction& tx, MCValidationState &state, const MCCoinsViewCache &inputs, bool fScriptChecks, unsigned int flags, bool cacheSigStore, bool cacheFullScriptStore, PrecomputedTransactionData& txdata, std::vector<CScriptCheck> *pvChecks);
 
 BOOST_AUTO_TEST_SUITE(tx_validationcache_tests)
 
 static bool
-ToMemPool(CellMutableTransaction& tx)
+ToMemPool(MCMutableTransaction& tx)
 {
     LOCK(cs_main);
 
-    CellValidationState state;
+    MCValidationState state;
     return AcceptToMemoryPool(mempool, state, MakeTransactionRef(tx), false, nullptr, nullptr, true, 0);
 }
 
@@ -39,10 +39,10 @@ BOOST_FIXTURE_TEST_CASE(tx_mempool_block_doublespend, TestChain100Setup)
     // validated going into the memory pool does not allow
     // double-spends in blocks to pass validation when they should not.
 
-    CellScript scriptPubKey = CellScript() <<  ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
+    MCScript scriptPubKey = MCScript() <<  ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
 
     // Create a double-spend of mature coinbase txn:
-    std::vector<CellMutableTransaction> spends;
+    std::vector<MCMutableTransaction> spends;
     spends.resize(2);
     for (int i = 0; i < 2; i++)
     {
@@ -62,7 +62,7 @@ BOOST_FIXTURE_TEST_CASE(tx_mempool_block_doublespend, TestChain100Setup)
         spends[i].vin[0].scriptSig << vchSig;
     }
 
-    CellBlock block;
+    MCBlock block;
 
     // Test 1: block with both of those transactions should be rejected.
     block = CreateAndProcessBlock(spends, scriptPubKey);
@@ -81,7 +81,7 @@ BOOST_FIXTURE_TEST_CASE(tx_mempool_block_doublespend, TestChain100Setup)
     mempool.clear();
 
     // Final sanity test: first spend in mempool, second in block, that's OK:
-    std::vector<CellMutableTransaction> oneSpend;
+    std::vector<MCMutableTransaction> oneSpend;
     oneSpend.push_back(spends[0]);
     BOOST_CHECK(ToMemPool(spends[1]));
     block = CreateAndProcessBlock(oneSpend, scriptPubKey);
@@ -102,13 +102,13 @@ BOOST_FIXTURE_TEST_CASE(tx_mempool_block_doublespend, TestChain100Setup)
 // should fail.
 // Capture this interaction with the upgraded_nop argument: set it when evaluating
 // any script flag that is implemented as an upgraded NOP code.
-void ValidateCheckInputsForAllFlags(CellMutableTransaction &tx, uint32_t failing_flags, bool add_to_cache, bool upgraded_nop)
+void ValidateCheckInputsForAllFlags(MCMutableTransaction &tx, uint32_t failing_flags, bool add_to_cache, bool upgraded_nop)
 {
     PrecomputedTransactionData txdata(tx);
     // If we add many more flags, this loop can get too expensive, but we can
     // rewrite in the future to randomly pick a set of flags to evaluate.
     for (uint32_t test_flags=0; test_flags < (1U << 16); test_flags += 1) {
-        CellValidationState state;
+        MCValidationState state;
         // Filter out incompatible flag choices
         if ((test_flags & SCRIPT_VERIFY_CLEANSTACK)) {
             // CLEANSTACK requires P2SH and WITNESS, see VerifyScript() in
@@ -153,12 +153,12 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
     // that we would pass again with a different set of flags.
     InitScriptExecutionCache();
 
-    CellScript p2pk_scriptPubKey = CellScript() << ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
-    CellScript p2sh_scriptPubKey = GetScriptForDestination(CellScriptID(p2pk_scriptPubKey));
-    CellScript p2pkh_scriptPubKey = GetScriptForDestination(coinbaseKey.GetPubKey().GetID());
-    CellScript p2wpkh_scriptPubKey = GetScriptForWitness(p2pkh_scriptPubKey);
+    MCScript p2pk_scriptPubKey = MCScript() << ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
+    MCScript p2sh_scriptPubKey = GetScriptForDestination(MCScriptID(p2pk_scriptPubKey));
+    MCScript p2pkh_scriptPubKey = GetScriptForDestination(coinbaseKey.GetPubKey().GetID());
+    MCScript p2wpkh_scriptPubKey = GetScriptForWitness(p2pkh_scriptPubKey);
 
-    CellBasicKeyStore keystore;
+    MCBasicKeyStore keystore;
     keystore.AddKey(coinbaseKey);
     keystore.AddCScript(p2pk_scriptPubKey);
 
@@ -166,7 +166,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
 
     // Create 2 outputs that match the three scripts above, spending the first
     // coinbase tx.
-    CellMutableTransaction spend_tx;
+    MCMutableTransaction spend_tx;
 
     spend_tx.nVersion = 1;
     spend_tx.vin.resize(1);
@@ -178,9 +178,9 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
     spend_tx.vout[1].nValue = 11*CENT;
     spend_tx.vout[1].scriptPubKey = p2wpkh_scriptPubKey;
     spend_tx.vout[2].nValue = 11*CENT;
-    spend_tx.vout[2].scriptPubKey = CellScript() << OP_CHECKLOCKTIMEVERIFY << OP_DROP << ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
+    spend_tx.vout[2].scriptPubKey = MCScript() << OP_CHECKLOCKTIMEVERIFY << OP_DROP << ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
     spend_tx.vout[3].nValue = 11*CENT;
-    spend_tx.vout[3].scriptPubKey = CellScript() << OP_CHECKSEQUENCEVERIFY << OP_DROP << ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
+    spend_tx.vout[3].scriptPubKey = MCScript() << OP_CHECKSEQUENCEVERIFY << OP_DROP << ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
 
     // Sign, with a non-DER signature
     {
@@ -198,7 +198,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
     // under other (eg consensus) flags.
     // spend_tx is invalid according to DERSIG
     {
-        CellValidationState state;
+        MCValidationState state;
         PrecomputedTransactionData ptd_spend_tx(spend_tx);
 
         BOOST_CHECK(!CheckInputs(spend_tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG, true, true, ptd_spend_tx, nullptr));
@@ -218,7 +218,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
 
         // And if we produce a block with this tx, it should be valid (DERSIG not
         // enabled yet), even though there's no cache entry.
-        CellBlock block;
+        MCBlock block;
 
         block = CreateAndProcessBlock({spend_tx}, p2pk_scriptPubKey);
         BOOST_CHECK(chainActive.Tip()->GetBlockHash() == block.GetHash());
@@ -228,7 +228,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
     // Test P2SH: construct a transaction that is valid without P2SH, and
     // then test validity with P2SH.
     {
-        CellMutableTransaction invalid_under_p2sh_tx;
+        MCMutableTransaction invalid_under_p2sh_tx;
         invalid_under_p2sh_tx.nVersion = 1;
         invalid_under_p2sh_tx.vin.resize(1);
         invalid_under_p2sh_tx.vin[0].prevout.hash = spend_tx.GetHash();
@@ -244,7 +244,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
 
     // Test CHECKLOCKTIMEVERIFY
     {
-        CellMutableTransaction invalid_with_cltv_tx;
+        MCMutableTransaction invalid_with_cltv_tx;
         invalid_with_cltv_tx.nVersion = 1;
         invalid_with_cltv_tx.nLockTime = 100;
         invalid_with_cltv_tx.vin.resize(1);
@@ -260,20 +260,20 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         uint256 hash = SignatureHash(spend_tx.vout[2].scriptPubKey, invalid_with_cltv_tx, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
         BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
         vchSig.push_back((unsigned char)SIGHASH_ALL);
-        invalid_with_cltv_tx.vin[0].scriptSig = CellScript() << vchSig << 101;
+        invalid_with_cltv_tx.vin[0].scriptSig = MCScript() << vchSig << 101;
 
         ValidateCheckInputsForAllFlags(invalid_with_cltv_tx, SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY, true, true);
 
         // Make it valid, and check again
-        invalid_with_cltv_tx.vin[0].scriptSig = CellScript() << vchSig << 100;
-        CellValidationState state;
+        invalid_with_cltv_tx.vin[0].scriptSig = MCScript() << vchSig << 100;
+        MCValidationState state;
         PrecomputedTransactionData txdata(invalid_with_cltv_tx);
         BOOST_CHECK(CheckInputs(invalid_with_cltv_tx, state, pcoinsTip, true, SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY, true, true, txdata, nullptr));
     }
 
     // TEST CHECKSEQUENCEVERIFY
     {
-        CellMutableTransaction invalid_with_csv_tx;
+        MCMutableTransaction invalid_with_csv_tx;
         invalid_with_csv_tx.nVersion = 2;
         invalid_with_csv_tx.vin.resize(1);
         invalid_with_csv_tx.vin[0].prevout.hash = spend_tx.GetHash();
@@ -288,13 +288,13 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         uint256 hash = SignatureHash(spend_tx.vout[3].scriptPubKey, invalid_with_csv_tx, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
         BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
         vchSig.push_back((unsigned char)SIGHASH_ALL);
-        invalid_with_csv_tx.vin[0].scriptSig = CellScript() << vchSig << 101;
+        invalid_with_csv_tx.vin[0].scriptSig = MCScript() << vchSig << 101;
 
         ValidateCheckInputsForAllFlags(invalid_with_csv_tx, SCRIPT_VERIFY_CHECKSEQUENCEVERIFY, true, true);
 
         // Make it valid, and check again
-        invalid_with_csv_tx.vin[0].scriptSig = CellScript() << vchSig << 100;
-        CellValidationState state;
+        invalid_with_csv_tx.vin[0].scriptSig = MCScript() << vchSig << 100;
+        MCValidationState state;
         PrecomputedTransactionData txdata(invalid_with_csv_tx);
         BOOST_CHECK(CheckInputs(invalid_with_csv_tx, state, pcoinsTip, true, SCRIPT_VERIFY_CHECKSEQUENCEVERIFY, true, true, txdata, nullptr));
     }
@@ -304,7 +304,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
     // Test that passing CheckInputs with a valid witness doesn't imply success
     // for the same tx with a different witness.
     {
-        CellMutableTransaction valid_with_witness_tx;
+        MCMutableTransaction valid_with_witness_tx;
         valid_with_witness_tx.nVersion = 1;
         valid_with_witness_tx.vin.resize(1);
         valid_with_witness_tx.vin[0].prevout.hash = spend_tx.GetHash();
@@ -328,7 +328,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
 
     {
         // Test a transaction with multiple inputs.
-        CellMutableTransaction tx;
+        MCMutableTransaction tx;
 
         tx.nVersion = 1;
         tx.vin.resize(2);
@@ -355,7 +355,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         // Invalidate vin[1]
         tx.vin[1].scriptWitness.SetNull();
 
-        CellValidationState state;
+        MCValidationState state;
         PrecomputedTransactionData txdata(tx);
         // This transaction is now invalid under segwit, because of the second input.
         BOOST_CHECK(!CheckInputs(tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, true, true, txdata, nullptr));

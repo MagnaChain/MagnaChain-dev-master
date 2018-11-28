@@ -75,7 +75,7 @@ const static std::string allNetMessageTypes[] = {
 };
 const static std::vector<std::string> allNetMessageTypesVec(allNetMessageTypes, allNetMessageTypes+ARRAYLEN(allNetMessageTypes));
 
-CellMessageHeader::CellMessageHeader(const MessageStartChars& pchMessageStartIn)
+MCMessageHeader::MCMessageHeader(const MessageStartChars& pchMessageStartIn)
 {
     memcpy(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE);
     memset(pchCommand, 0, sizeof(pchCommand));
@@ -83,7 +83,7 @@ CellMessageHeader::CellMessageHeader(const MessageStartChars& pchMessageStartIn)
     memset(pchChecksum, 0, CHECKSUM_SIZE);
 }
 
-CellMessageHeader::CellMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn)
+MCMessageHeader::MCMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn)
 {
     memcpy(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE);
     memset(pchCommand, 0, sizeof(pchCommand));
@@ -92,12 +92,12 @@ CellMessageHeader::CellMessageHeader(const MessageStartChars& pchMessageStartIn,
     memset(pchChecksum, 0, CHECKSUM_SIZE);
 }
 
-std::string CellMessageHeader::GetCommand() const
+std::string MCMessageHeader::GetCommand() const
 {
     return std::string(pchCommand, pchCommand + strnlen(pchCommand, COMMAND_SIZE));
 }
 
-bool CellMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) const
+bool MCMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) const
 {
     // Check start string
     if (memcmp(pchMessageStart, pchMessageStartIn, MESSAGE_START_SIZE) != 0)
@@ -120,7 +120,7 @@ bool CellMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) cons
     // Message size
     if (nMessageSize > MAX_SIZE)
     {
-        LogPrintf("CellMessageHeader::IsValid(): (%s, %u bytes) nMessageSize > MAX_SIZE\n", GetCommand(), nMessageSize);
+        LogPrintf("MCMessageHeader::IsValid(): (%s, %u bytes) nMessageSize > MAX_SIZE\n", GetCommand(), nMessageSize);
         return false;
     }
 
@@ -129,37 +129,37 @@ bool CellMessageHeader::IsValid(const MessageStartChars& pchMessageStartIn) cons
 
 
 
-CellAddress::CellAddress() : CellService()
+MCAddress::MCAddress() : MCService()
 {
     Init();
 }
 
-CellAddress::CellAddress(CellService ipIn, ServiceFlags nServicesIn) : CellService(ipIn)
+MCAddress::MCAddress(MCService ipIn, ServiceFlags nServicesIn) : MCService(ipIn)
 {
     Init();
     nServices = nServicesIn;
 }
 
-void CellAddress::Init()
+void MCAddress::Init()
 {
     nServices = NODE_NONE;
     nTime = 100000000;
 }
 
-CellInv::CellInv()
+MCInv::MCInv()
 {
     type = 0;
     hash.SetNull();
 }
 
-CellInv::CellInv(int typeIn, const uint256& hashIn) : type(typeIn), hash(hashIn) {}
+MCInv::MCInv(int typeIn, const uint256& hashIn) : type(typeIn), hash(hashIn) {}
 
-bool operator<(const CellInv& a, const CellInv& b)
+bool operator<(const MCInv& a, const MCInv& b)
 {
     return (a.type < b.type || (a.type == b.type && a.hash < b.hash));
 }
 
-std::string CellInv::GetCommand() const
+std::string MCInv::GetCommand() const
 {
     std::string cmd;
     if (type & MSG_WITNESS_FLAG)
@@ -172,11 +172,11 @@ std::string CellInv::GetCommand() const
     case MSG_FILTERED_BLOCK: return cmd.append(NetMsgType::MERKLEBLOCK);
     case MSG_CMPCT_BLOCK:    return cmd.append(NetMsgType::CMPCTBLOCK);
     default:
-        throw std::out_of_range(strprintf("CellInv::GetCommand(): type=%d unknown type", type));
+        throw std::out_of_range(strprintf("MCInv::GetCommand(): type=%d unknown type", type));
     }
 }
 
-std::string CellInv::ToString() const
+std::string MCInv::ToString() const
 {
     try {
         return strprintf("%s %s", GetCommand(), hash.ToString());

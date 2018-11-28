@@ -27,9 +27,9 @@
 
 BOOST_FIXTURE_TEST_SUITE(miner_tests, TestingSetup)
 
-static CellFeeRate blockMinFeeRate = CellFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
+static MCFeeRate blockMinFeeRate = MCFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
 
-static BlockAssembler AssemblerForTest(const CellChainParams& params) {
+static BlockAssembler AssemblerForTest(const MCChainParams& params) {
     BlockAssembler::Options options;
 
     options.nBlockMaxWeight = MAX_BLOCK_WEIGHT;
@@ -73,15 +73,15 @@ struct {
     {2, 0xbbbeb305}, {2, 0xfe1c810a},
 };
 
-CellBlockIndex CreateBlockIndex(int nHeight)
+MCBlockIndex CreateBlockIndex(int nHeight)
 {
-    CellBlockIndex index;
+    MCBlockIndex index;
     index.nHeight = nHeight;
     index.pprev = chainActive.Tip();
     return index;
 }
 
-bool TestSequenceLocks(const CellTransaction &tx, int flags)
+bool TestSequenceLocks(const MCTransaction &tx, int flags)
 {
     LOCK(mempool.cs);
     return CheckSequenceLocks(tx, flags);
@@ -90,16 +90,16 @@ bool TestSequenceLocks(const CellTransaction &tx, int flags)
 // Test suite for ancestor feerate transaction selection.
 // Implemented as an additional function, rather than a separate test case,
 // to allow reusing the blockchain created in CreateNewBlock_validity.
-void TestPackageSelection(const CellChainParams& chainparams, CellScript scriptPubKey, std::vector<CellTransactionRef>& txFirst)
+void TestPackageSelection(const MCChainParams& chainparams, MCScript scriptPubKey, std::vector<MCTransactionRef>& txFirst)
 {
     // Test the ancestor feerate transaction selection.
     TestMemPoolEntryHelper entry;
 
     // Test that a medium fee transaction will be selected after a higher fee
     // rate package with a low fee rate parent.
-    CellMutableTransaction tx;
+    MCMutableTransaction tx;
     tx.vin.resize(1);
-    tx.vin[0].scriptSig = CellScript() << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_1;
     tx.vin[0].prevout.hash = txFirst[0]->GetHash();
     tx.vin[0].prevout.n = 0;
     tx.vout.resize(1);
@@ -121,7 +121,7 @@ void TestPackageSelection(const CellChainParams& chainparams, CellScript scriptP
     mempool.addUnchecked(hashHighFeeTx, entry.Fee(50000).Time(GetTime()).SpendsCoinbase(false).FromTx(tx));
 
     ContractContext contractContext;
-    std::unique_ptr<CellBlockTemplate> pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
+    std::unique_ptr<MCBlockTemplate> pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
     BOOST_CHECK(pblocktemplate->block.vtx[1]->GetHash() == hashParentTx);
     BOOST_CHECK(pblocktemplate->block.vtx[2]->GetHash() == hashHighFeeTx);
     BOOST_CHECK(pblocktemplate->block.vtx[3]->GetHash() == hashMediumFeeTx);
@@ -135,7 +135,7 @@ void TestPackageSelection(const CellChainParams& chainparams, CellScript scriptP
 
     // Calculate a fee on child transaction that will put the package just
     // below the block min tx fee (assuming 1 child tx of the same size).
-    CellAmount feeToUse = blockMinFeeRate.GetFee(2*freeTxSize) - 1;
+    MCAmount feeToUse = blockMinFeeRate.GetFee(2*freeTxSize) - 1;
 
     tx.vin[0].prevout.hash = hashFreeTx;
     tx.vout[0].nValue = 5000000000LL - 1000 - 50000 - feeToUse;
@@ -201,12 +201,12 @@ void TestPackageSelection(const CellChainParams& chainparams, CellScript scriptP
 BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 {
     // Note that by default, these tests run with size accounting enabled.
-    const auto chainParams = CreateChainParams(CellBaseChainParams::MAIN);
-    const CellChainParams& chainparams = *chainParams;
-    CellScript scriptPubKey = CellScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-    std::unique_ptr<CellBlockTemplate> pblocktemplate;
-    CellMutableTransaction tx,tx2;
-    CellScript script;
+    const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
+    const MCChainParams& chainparams = *chainParams;
+    MCScript scriptPubKey = MCScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
+    std::unique_ptr<MCBlockTemplate> pblocktemplate;
+    MCMutableTransaction tx,tx2;
+    MCScript script;
     uint256 hash;
     TestMemPoolEntryHelper entry;
     entry.nFee = 11;
@@ -222,19 +222,19 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     // We can't make transactions until we have inputs
     // Therefore, load 100 blocks :)
     int baseheight = 0;
-    std::vector<CellTransactionRef> txFirst;
+    std::vector<MCTransactionRef> txFirst;
     for (unsigned int i = 0; i < sizeof(blockinfo)/sizeof(*blockinfo); ++i)
     {
-        CellBlock *pblock = &pblocktemplate->block; // pointer for convenience
+        MCBlock *pblock = &pblocktemplate->block; // pointer for convenience
         pblock->nVersion = 1;
         pblock->nTime = chainActive.Tip()->GetMedianTimePast()+1;
-        CellMutableTransaction txCoinbase(*pblock->vtx[0]);
+        MCMutableTransaction txCoinbase(*pblock->vtx[0]);
         txCoinbase.nVersion = 1;
-        txCoinbase.vin[0].scriptSig = CellScript();
+        txCoinbase.vin[0].scriptSig = MCScript();
         txCoinbase.vin[0].scriptSig.push_back(blockinfo[i].extranonce);
         txCoinbase.vin[0].scriptSig.push_back(chainActive.Height());
         txCoinbase.vout.resize(1); // Ignore the (optional) segwit commitment added by CreateNewBlock (as the hardcoded nonces don't account for this)
-        txCoinbase.vout[0].scriptPubKey = CellScript();
+        txCoinbase.vout[0].scriptPubKey = MCScript();
         pblock->vtx[0] = MakeTransactionRef(std::move(txCoinbase));
         if (txFirst.size() == 0)
             baseheight = chainActive.Height();
@@ -242,7 +242,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
             txFirst.push_back(pblock->vtx[0]);
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
         pblock->nNonce = blockinfo[i].nonce;
-        std::shared_ptr<CellBlock> shared_pblock = std::make_shared<CellBlock>(*pblock);
+        std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
         BOOST_CHECK(ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false));
         pblock->hashPrevBlock = pblock->GetHash();
     }
@@ -251,15 +251,15 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     // Just to make sure we can still make simple blocks
     BOOST_CHECK(pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext));
 
-    const CellAmount BLOCKSUBSIDY = 50*COIN;
-    const CellAmount LOWFEE = CENT;
-    const CellAmount HIGHFEE = COIN;
-    const CellAmount HIGHERFEE = 4*COIN;
+    const MCAmount BLOCKSUBSIDY = 50*COIN;
+    const MCAmount LOWFEE = CENT;
+    const MCAmount HIGHFEE = COIN;
+    const MCAmount HIGHERFEE = 4*COIN;
 
     // block sigops > limit: 1000 CHECKMULTISIG + 1
     tx.vin.resize(1);
     // NOTE: OP_NOP is used to force 20 SigOps for the CHECKMULTISIG
-    tx.vin[0].scriptSig = CellScript() << OP_0 << OP_0 << OP_0 << OP_NOP << OP_CHECKMULTISIG << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_0 << OP_0 << OP_0 << OP_NOP << OP_CHECKMULTISIG << OP_1;
     tx.vin[0].prevout.hash = txFirst[0]->GetHash();
     tx.vin[0].prevout.n = 0;
     tx.vout.resize(1);
@@ -269,7 +269,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         tx.vout[0].nValue -= LOWFEE;
         hash = tx.GetHash();
         bool spendsCoinbase = i == 0; // only first tx spends coinbase
-        // If we don't set the # of sig ops in the CellTxMemPoolEntry, template creation fails
+        // If we don't set the # of sig ops in the MCTxMemPoolEntry, template creation fails
         mempool.addUnchecked(hash, entry.Fee(LOWFEE).Time(GetTime()).SpendsCoinbase(spendsCoinbase).FromTx(tx));
         tx.vin[0].prevout.hash = hash;
     }
@@ -284,7 +284,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
         tx.vout[0].nValue -= LOWFEE;
         hash = tx.GetHash();
         bool spendsCoinbase = i == 0; // only first tx spends coinbase
-        // If we do set the # of sig ops in the CellTxMemPoolEntry, template creation passes
+        // If we do set the # of sig ops in the MCTxMemPoolEntry, template creation passes
         mempool.addUnchecked(hash, entry.Fee(LOWFEE).Time(GetTime()).SpendsCoinbase(spendsCoinbase).SigOpsCost(80).FromTx(tx));
         tx.vin[0].prevout.hash = hash;
     }
@@ -293,7 +293,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     mempool.clear();
 
     // block size > limit
-    tx.vin[0].scriptSig = CellScript();
+    tx.vin[0].scriptSig = MCScript();
     // 18 * (520char + DROP) + OP_1 = 9433 bytes
     std::vector<unsigned char> vchData(520);
     for (unsigned int i = 0; i < 18; ++i)
@@ -321,14 +321,14 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     mempool.clear();
 
     // child with higher feerate than parent
-    tx.vin[0].scriptSig = CellScript() << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_1;
     tx.vin[0].prevout.hash = txFirst[1]->GetHash();
     tx.vout[0].nValue = BLOCKSUBSIDY-HIGHFEE;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Fee(HIGHFEE).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
     tx.vin[0].prevout.hash = hash;
     tx.vin.resize(2);
-    tx.vin[1].scriptSig = CellScript() << OP_1;
+    tx.vin[1].scriptSig = MCScript() << OP_1;
     tx.vin[1].prevout.hash = txFirst[0]->GetHash();
     tx.vin[1].prevout.n = 0;
     tx.vout[0].nValue = tx.vout[0].nValue+BLOCKSUBSIDY-HIGHERFEE; //First txn output + fresh coinbase - new txn fee
@@ -341,7 +341,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     // coinbase in mempool, template creation fails
     tx.vin.resize(1);
     tx.vin[0].prevout.SetNull();
-    tx.vin[0].scriptSig = CellScript() << OP_0 << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_0 << OP_1;
     tx.vout[0].nValue = 0;
     hash = tx.GetHash();
     // give it a fee so it'll get mined
@@ -353,14 +353,14 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     // invalid (pre-p2sh) txn in mempool, template creation fails
     tx.vin[0].prevout.hash = txFirst[0]->GetHash();
     tx.vin[0].prevout.n = 0;
-    tx.vin[0].scriptSig = CellScript() << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_1;
     tx.vout[0].nValue = BLOCKSUBSIDY-LOWFEE;
-    script = CellScript() << OP_0;
-    tx.vout[0].scriptPubKey = GetScriptForDestination(CellScriptID(script));
+    script = MCScript() << OP_0;
+    tx.vout[0].scriptPubKey = GetScriptForDestination(MCScriptID(script));
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Fee(LOWFEE).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
     tx.vin[0].prevout.hash = hash;
-    tx.vin[0].scriptSig = CellScript() << std::vector<unsigned char>(script.begin(), script.end());
+    tx.vin[0].scriptSig = MCScript() << std::vector<unsigned char>(script.begin(), script.end());
     tx.vout[0].nValue -= LOWFEE;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Fee(LOWFEE).Time(GetTime()).SpendsCoinbase(false).FromTx(tx));
@@ -370,12 +370,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 
     // double spend txn pair in mempool, template creation fails
     tx.vin[0].prevout.hash = txFirst[0]->GetHash();
-    tx.vin[0].scriptSig = CellScript() << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_1;
     tx.vout[0].nValue = BLOCKSUBSIDY-HIGHFEE;
-    tx.vout[0].scriptPubKey = CellScript() << OP_1;
+    tx.vout[0].scriptPubKey = MCScript() << OP_1;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Fee(HIGHFEE).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
-    tx.vout[0].scriptPubKey = CellScript() << OP_2;
+    tx.vout[0].scriptPubKey = MCScript() << OP_2;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Fee(HIGHFEE).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
     contractContext.ClearAll();
@@ -386,8 +386,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     int nHeight = chainActive.Height();
     // Create an actual 209999-long block chain (without valid blocks).
     while (chainActive.Tip()->nHeight < 209999) {
-        CellBlockIndex* prev = chainActive.Tip();
-        CellBlockIndex* next = new CellBlockIndex();
+        MCBlockIndex* prev = chainActive.Tip();
+        MCBlockIndex* next = new MCBlockIndex();
         next->phashBlock = new uint256(InsecureRand256());
         pcoinsTip->SetBestBlock(next->GetBlockHash());
         next->pprev = prev;
@@ -399,8 +399,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     BOOST_CHECK(pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext));
     // Extend to a 210000-long block chain.
     while (chainActive.Tip()->nHeight < 210000) {
-        CellBlockIndex* prev = chainActive.Tip();
-        CellBlockIndex* next = new CellBlockIndex();
+        MCBlockIndex* prev = chainActive.Tip();
+        MCBlockIndex* next = new MCBlockIndex();
         next->phashBlock = new uint256(InsecureRand256());
         pcoinsTip->SetBestBlock(next->GetBlockHash());
         next->pprev = prev;
@@ -412,7 +412,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     BOOST_CHECK(pblocktemplate = AssemblerForTest(chainparams).CreateNewBlock(scriptPubKey, &contractContext));
     // Delete the dummy blocks again.
     while (chainActive.Tip()->nHeight > nHeight) {
-        CellBlockIndex* del = chainActive.Tip();
+        MCBlockIndex* del = chainActive.Tip();
         chainActive.SetTip(del->pprev);
         pcoinsTip->SetBestBlock(del->pprev->GetBlockHash());
         delete del->phashBlock;
@@ -431,12 +431,12 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     prevheights.resize(1);
     tx.vin[0].prevout.hash = txFirst[0]->GetHash(); // only 1 transaction
     tx.vin[0].prevout.n = 0;
-    tx.vin[0].scriptSig = CellScript() << OP_1;
+    tx.vin[0].scriptSig = MCScript() << OP_1;
     tx.vin[0].nSequence = chainActive.Tip()->nHeight + 1; // txFirst[0] is the 2nd block
     prevheights[0] = baseheight + 1;
     tx.vout.resize(1);
     tx.vout[0].nValue = BLOCKSUBSIDY-HIGHFEE;
-    tx.vout[0].scriptPubKey = CellScript() << OP_1;
+    tx.vout[0].scriptPubKey = MCScript() << OP_1;
     tx.nLockTime = 0;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Fee(HIGHFEE).Time(GetTime()).SpendsCoinbase(true).FromTx(tx));
@@ -446,22 +446,22 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
 
     // relative time locked
     tx.vin[0].prevout.hash = txFirst[1]->GetHash();
-    tx.vin[0].nSequence = CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | (((chainActive.Tip()->GetMedianTimePast()+1-chainActive[1]->GetMedianTimePast()) >> CellTxIn::SEQUENCE_LOCKTIME_GRANULARITY) + 1); // txFirst[1] is the 3rd block
+    tx.vin[0].nSequence = MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | (((chainActive.Tip()->GetMedianTimePast()+1-chainActive[1]->GetMedianTimePast()) >> MCTxIn::SEQUENCE_LOCKTIME_GRANULARITY) + 1); // txFirst[1] is the 3rd block
     prevheights[0] = baseheight + 2;
     hash = tx.GetHash();
     mempool.addUnchecked(hash, entry.Time(GetTime()).FromTx(tx));
     BOOST_CHECK(CheckFinalTx(tx, flags)); // Locktime passes
     BOOST_CHECK(!TestSequenceLocks(tx, flags)); // Sequence locks fail
 
-    for (int i = 0; i < CellBlockIndex::nMedianTimeSpan; i++)
+    for (int i = 0; i < MCBlockIndex::nMedianTimeSpan; i++)
         chainActive.Tip()->GetAncestor(chainActive.Tip()->nHeight - i)->nTime += 512; //Trick the MedianTimePast
     BOOST_CHECK(SequenceLocks(tx, flags, &prevheights, CreateBlockIndex(chainActive.Tip()->nHeight + 1))); // Sequence locks pass 512 seconds later
-    for (int i = 0; i < CellBlockIndex::nMedianTimeSpan; i++)
+    for (int i = 0; i < MCBlockIndex::nMedianTimeSpan; i++)
         chainActive.Tip()->GetAncestor(chainActive.Tip()->nHeight - i)->nTime -= 512; //undo tricked MTP
 
     // absolute height locked
     tx.vin[0].prevout.hash = txFirst[2]->GetHash();
-    tx.vin[0].nSequence = CellTxIn::SEQUENCE_FINAL - 1;
+    tx.vin[0].nSequence = MCTxIn::SEQUENCE_FINAL - 1;
     prevheights[0] = baseheight + 3;
     tx.nLockTime = chainActive.Tip()->nHeight + 1;
     hash = tx.GetHash();
@@ -490,9 +490,9 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     BOOST_CHECK(TestSequenceLocks(tx, flags)); // Sequence locks pass
     tx.vin[0].nSequence = 1;
     BOOST_CHECK(!TestSequenceLocks(tx, flags)); // Sequence locks fail
-    tx.vin[0].nSequence = CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG;
+    tx.vin[0].nSequence = MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG;
     BOOST_CHECK(TestSequenceLocks(tx, flags)); // Sequence locks pass
-    tx.vin[0].nSequence = CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | 1;
+    tx.vin[0].nSequence = MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | 1;
     BOOST_CHECK(!TestSequenceLocks(tx, flags)); // Sequence locks fail
 
     contractContext.ClearAll();
@@ -504,7 +504,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
     // For now these will still generate a valid template until BIP68 soft fork
     BOOST_CHECK_EQUAL(pblocktemplate->block.vtx.size(), 3);
     // However if we advance height by 1 and time by 512, all of them should be mined
-    for (int i = 0; i < CellBlockIndex::nMedianTimeSpan; i++)
+    for (int i = 0; i < MCBlockIndex::nMedianTimeSpan; i++)
         chainActive.Tip()->GetAncestor(chainActive.Tip()->nHeight - i)->nTime += 512; //Trick the MedianTimePast
     chainActive.Tip()->nHeight++;
     SetMockTime(chainActive.Tip()->GetMedianTimePast() + 1);

@@ -9,80 +9,80 @@
 
 #include "script/interpreter.h"
 
-class CellKeyID;
-class CellKeyStore;
-class CellScript;
-class CellTransaction;
+class MCKeyID;
+class MCKeyStore;
+class MCScript;
+class MCTransaction;
 
-struct CellMutableTransaction;
+struct MCMutableTransaction;
 
 /** Virtual base class for signature creators. */
 class BaseSignatureCreator {
 protected:
-    const CellKeyStore* keystore;
+    const MCKeyStore* keystore;
 
 public:
-    BaseSignatureCreator(const CellKeyStore* keystoreIn) : keystore(keystoreIn) {}
-    const CellKeyStore& KeyStore() const { return *keystore; };
+    BaseSignatureCreator(const MCKeyStore* keystoreIn) : keystore(keystoreIn) {}
+    const MCKeyStore& KeyStore() const { return *keystore; };
     virtual ~BaseSignatureCreator() {}
     virtual const BaseSignatureChecker& Checker() const =0;
 
     /** Create a singular (non-script) signature. */
-    virtual bool CreateSig(std::vector<unsigned char>& vchSig, const CellKeyID& keyid, const CellScript& scriptCode, SigVersion sigversion) const =0;
+    virtual bool CreateSig(std::vector<unsigned char>& vchSig, const MCKeyID& keyid, const MCScript& scriptCode, SigVersion sigversion) const =0;
 };
 
 /** A signature creator for transactions. */
 class TransactionSignatureCreator : public BaseSignatureCreator {
-    const CellTransaction* txTo;
+    const MCTransaction* txTo;
     unsigned int nIn;
     int nHashType;
-    CellAmount amount;
+    MCAmount amount;
     const TransactionSignatureChecker checker;
 
 public:
-    TransactionSignatureCreator(const CellKeyStore* keystoreIn, const CellTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn, int nHashTypeIn=SIGHASH_ALL);
+    TransactionSignatureCreator(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, int nHashTypeIn=SIGHASH_ALL);
     const BaseSignatureChecker& Checker() const override { return checker; }
-    bool CreateSig(std::vector<unsigned char>& vchSig, const CellKeyID& keyid, const CellScript& scriptCode, SigVersion sigversion) const override;
+    bool CreateSig(std::vector<unsigned char>& vchSig, const MCKeyID& keyid, const MCScript& scriptCode, SigVersion sigversion) const override;
 };
 
 class MutableTransactionSignatureCreator : public TransactionSignatureCreator {
-    CellTransaction tx;
+    MCTransaction tx;
 
 public:
-    MutableTransactionSignatureCreator(const CellKeyStore* keystoreIn, const CellMutableTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn, int nHashTypeIn) : TransactionSignatureCreator(keystoreIn, &tx, nInIn, amountIn, nHashTypeIn), tx(*txToIn) {}
+    MutableTransactionSignatureCreator(const MCKeyStore* keystoreIn, const MCMutableTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, int nHashTypeIn) : TransactionSignatureCreator(keystoreIn, &tx, nInIn, amountIn, nHashTypeIn), tx(*txToIn) {}
 };
 
 /** A signature creator that just produces 72-byte empty signatures. */
 class DummySignatureCreator : public BaseSignatureCreator {
 public:
-    DummySignatureCreator(const CellKeyStore* keystoreIn) : BaseSignatureCreator(keystoreIn) {}
+    DummySignatureCreator(const MCKeyStore* keystoreIn) : BaseSignatureCreator(keystoreIn) {}
     const BaseSignatureChecker& Checker() const override;
-    bool CreateSig(std::vector<unsigned char>& vchSig, const CellKeyID& keyid, const CellScript& scriptCode, SigVersion sigversion) const override;
+    bool CreateSig(std::vector<unsigned char>& vchSig, const MCKeyID& keyid, const MCScript& scriptCode, SigVersion sigversion) const override;
 };
 
 struct SignatureData {
-    CellScript scriptSig;
+    MCScript scriptSig;
     CScriptWitness scriptWitness;
 
     SignatureData() {}
-    explicit SignatureData(const CellScript& script) : scriptSig(script) {}
+    explicit SignatureData(const MCScript& script) : scriptSig(script) {}
 };
 
 /** Produce a script signature using a generic signature creator. */
-bool ProduceSignature(const BaseSignatureCreator& creator, const CellScript& scriptPubKey, SignatureData& sigdata);
+bool ProduceSignature(const BaseSignatureCreator& creator, const MCScript& scriptPubKey, SignatureData& sigdata);
 
 /** Produce a script signature for a transaction. */
-bool SignSignature(const CellKeyStore &keystore, const CellScript& fromPubKey, CellMutableTransaction& txTo, unsigned int nIn, const CellAmount& amount, int nHashType);
-bool SignSignature(const CellKeyStore& keystore, const CellTransaction& txFrom, CellMutableTransaction& txTo, unsigned int nIn, int nHashType);
+bool SignSignature(const MCKeyStore &keystore, const MCScript& fromPubKey, MCMutableTransaction& txTo, unsigned int nIn, const MCAmount& amount, int nHashType);
+bool SignSignature(const MCKeyStore& keystore, const MCTransaction& txFrom, MCMutableTransaction& txTo, unsigned int nIn, int nHashType);
 
 /** Combine two script signatures using a generic signature checker, intelligently, possibly with OP_0 placeholders. */
-SignatureData CombineSignatures(const CellScript& scriptPubKey, const BaseSignatureChecker& checker, const SignatureData& scriptSig1, const SignatureData& scriptSig2);
+SignatureData CombineSignatures(const MCScript& scriptPubKey, const BaseSignatureChecker& checker, const SignatureData& scriptSig1, const SignatureData& scriptSig2);
 
 /** Extract signature data from a transaction, and insert it. */
-SignatureData DataFromTransaction(const CellMutableTransaction& tx, unsigned int nIn);
-void UpdateTransaction(CellMutableTransaction& tx, unsigned int nIn, const SignatureData& data);
+SignatureData DataFromTransaction(const MCMutableTransaction& tx, unsigned int nIn);
+void UpdateTransaction(MCMutableTransaction& tx, unsigned int nIn, const SignatureData& data);
 
-bool SignContract(const CellKeyStore* keystoreIn, const CellTransaction* txToIn, CellScript& constractSig);
-bool CheckContractSign(const CellTransaction* txToIn, const CellScript& constractSig);
+bool SignContract(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, MCScript& constractSig);
+bool CheckContractSign(const MCTransaction* txToIn, const MCScript& constractSig);
 
 #endif // CELLLINK_SCRIPT_SIGN_H

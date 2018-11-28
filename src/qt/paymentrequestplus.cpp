@@ -204,13 +204,13 @@ bool PaymentRequestPlus::getMerchant(X509_STORE* certStore, QString& merchant) c
     return fResult;
 }
 
-QList<std::pair<CellScript,CellAmount> > PaymentRequestPlus::getPayTo() const
+QList<std::pair<MCScript,MCAmount> > PaymentRequestPlus::getPayTo() const
 {
-    QList<std::pair<CellScript,CellAmount> > result;
+    QList<std::pair<MCScript,MCAmount> > result;
     for (int i = 0; i < details.outputs_size(); i++)
     {
         const unsigned char* scriptStr = (const unsigned char*)details.outputs(i).script().data();
-        CellScript s(scriptStr, scriptStr+details.outputs(i).script().size());
+        MCScript s(scriptStr, scriptStr+details.outputs(i).script().size());
 
         result.append(std::make_pair(s, details.outputs(i).amount()));
     }

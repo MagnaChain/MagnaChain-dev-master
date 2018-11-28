@@ -891,13 +891,13 @@ void MagnaChainGUI::message(const QString &title, const QString &message, unsign
     }
     else {
         switch (style) {
-        case CellClientUIInterface::MSG_ERROR:
+        case MCClientUIInterface::MSG_ERROR:
             msgType = tr("Error");
             break;
-        case CellClientUIInterface::MSG_WARNING:
+        case MCClientUIInterface::MSG_WARNING:
             msgType = tr("Warning");
             break;
-        case CellClientUIInterface::MSG_INFORMATION:
+        case MCClientUIInterface::MSG_INFORMATION:
             msgType = tr("Information");
             break;
         default:
@@ -909,20 +909,20 @@ void MagnaChainGUI::message(const QString &title, const QString &message, unsign
         strTitle += " - " + msgType;
 
     // Check for error/warning icon
-    if (style & CellClientUIInterface::ICON_ERROR) {
+    if (style & MCClientUIInterface::ICON_ERROR) {
         nMBoxIcon = QMessageBox::Critical;
         nNotifyIcon = Notificator::Critical;
     }
-    else if (style & CellClientUIInterface::ICON_WARNING) {
+    else if (style & MCClientUIInterface::ICON_WARNING) {
         nMBoxIcon = QMessageBox::Warning;
         nNotifyIcon = Notificator::Warning;
     }
 
     // Display message
-    if (style & CellClientUIInterface::MODAL) {
+    if (style & MCClientUIInterface::MODAL) {
         // Check for buttons, use OK as default, if none was supplied
         QMessageBox::StandardButton buttons;
-        if (!(buttons = (QMessageBox::StandardButton)(style & CellClientUIInterface::BTN_MASK)))
+        if (!(buttons = (QMessageBox::StandardButton)(style & MCClientUIInterface::BTN_MASK)))
             buttons = QMessageBox::Ok;
 
         showNormalIfMinimized();
@@ -986,7 +986,7 @@ void MagnaChainGUI::showEvent(QShowEvent *event)
 }
 
 #ifdef ENABLE_WALLET
-void MagnaChainGUI::incomingTransaction(const QString& date, int unit, const CellAmount& amount, const QString& type, const QString& address, const QString& label)
+void MagnaChainGUI::incomingTransaction(const QString& date, int unit, const MCAmount& amount, const QString& type, const QString& address, const QString& label)
 {
     // On new transaction, make an info balloon
     QString msg = tr("Date: %1\n").arg(date) +
@@ -997,7 +997,7 @@ void MagnaChainGUI::incomingTransaction(const QString& date, int unit, const Cel
     else if (!address.isEmpty())
         msg += tr("Address: %1\n").arg(address);
     message((amount)<0 ? tr("Sent transaction") : tr("Incoming transaction"),
-             msg, CellClientUIInterface::MSG_INFORMATION);
+             msg, MCClientUIInterface::MSG_INFORMATION);
 }
 #endif // ENABLE_WALLET
 
@@ -1163,10 +1163,10 @@ void MagnaChainGUI::showModalOverlay()
 
 static bool ThreadSafeMessageBox(MagnaChainGUI *gui, const std::string& message, const std::string& caption, unsigned int style)
 {
-    bool modal = (style & CellClientUIInterface::MODAL);
+    bool modal = (style & MCClientUIInterface::MODAL);
     // The SECURE flag has no effect in the Qt GUI.
-    // bool secure = (style & CellClientUIInterface::SECURE);
-    style &= ~CellClientUIInterface::SECURE;
+    // bool secure = (style & MCClientUIInterface::SECURE);
+    style &= ~MCClientUIInterface::SECURE;
     bool ret = false;
     // In case of modal message, use blocking connection to wait for user to click a button
     QMetaObject::invokeMethod(gui, "message",

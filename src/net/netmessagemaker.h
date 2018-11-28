@@ -20,7 +20,7 @@ public:
     {
         CSerializedNetMsg msg;
         msg.command = std::move(sCommand);
-        CellVectorWriter{ SER_NETWORK, nFlags | nVersion, msg.data, 0, std::forward<Args>(args)... };
+        MCVectorWriter{ SER_NETWORK, nFlags | nVersion, msg.data, 0, std::forward<Args>(args)... };
         return msg;
     }
 

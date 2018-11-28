@@ -52,8 +52,8 @@ public Q_SLOTS:
     void accept();
     SendCoinsEntry *addEntry();
     void updateTabsAndLabels();
-    void setBalance(const CellAmount& balance, const CellAmount& unconfirmedBalance, const CellAmount& immatureBalance,
-                    const CellAmount& watchOnlyBalance, const CellAmount& watchUnconfBalance, const CellAmount& watchImmatureBalance);
+    void setBalance(const MCAmount& balance, const MCAmount& unconfirmedBalance, const MCAmount& immatureBalance,
+                    const MCAmount& watchOnlyBalance, const MCAmount& watchUnconfBalance, const MCAmount& watchImmatureBalance);
 
 private:
     Ui::SendCoinsDialog *ui;
@@ -69,8 +69,8 @@ private:
     void processSendCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
     void minimizeFeeSection(bool fMinimize);
     void updateFeeMinimizedLabel();
-    // Update the passed in CellCoinControl with state from the GUI
-    void updateCoinControlState(CellCoinControl& ctrl);
+    // Update the passed in MCCoinControl with state from the GUI
+    void updateCoinControlState(MCCoinControl& ctrl);
 
 private Q_SLOTS:
     void on_sendButton_clicked();

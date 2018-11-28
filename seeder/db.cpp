@@ -3,7 +3,7 @@
 
 using namespace std;
 
-void CellAddrInfo::Update(bool good) {
+void MCAddrInfo::Update(bool good) {
   uint32_t now = time(NULL);
   if (ourLastTry == 0)
     ourLastTry = now - MIN_RETRY;
@@ -30,7 +30,7 @@ void CellAddrInfo::Update(bool good) {
 //  100.0 * stat1W.reliability, 100.0 * (stat1W.reliability + 1.0 - stat1W.weight), stat1W.count);
 }
 
-bool CellAddrDB::Get_(CellServiceResult &ip, int &wait) {
+bool MCAddrDB::Get_(MCServiceResult &ip, int &wait) {
   int64 now = time(NULL);
   int cont = 0;
   int tot = unkId.size() + ourId.size();
@@ -63,18 +63,18 @@ bool CellAddrDB::Get_(CellServiceResult &ip, int &wait) {
   return true;
 }
 
-int CellAddrDB::Lookup_(const CellService &ip) {
+int MCAddrDB::Lookup_(const MCService &ip) {
   if (ipToId.count(ip))
     return ipToId[ip];
   return -1;
 }
 
-void CellAddrDB::Good_(const CellService &addr, int clientV, std::string clientSV, int blocks) {
+void MCAddrDB::Good_(const MCService &addr, int clientV, std::string clientSV, int blocks) {
   int id = Lookup_(addr);
   if (id == -1) return;
   unkId.erase(id);
   banned.erase(addr);
-  CellAddrInfo &info = idToInfo[id];
+  MCAddrInfo &info = idToInfo[id];
   info.clientVersion = clientV;
   info.clientSubVersion = clientSV;
   info.blocks = blocks;
@@ -87,12 +87,12 @@ void CellAddrDB::Good_(const CellService &addr, int clientV, std::string clientS
   ourId.push_back(id);
 }
 
-void CellAddrDB::Bad_(const CellService &addr, int ban)
+void MCAddrDB::Bad_(const MCService &addr, int ban)
 {
   int id = Lookup_(addr);
   if (id == -1) return;
   unkId.erase(id);
-  CellAddrInfo &info = idToInfo[id];
+  MCAddrInfo &info = idToInfo[id];
   info.Update(false);
   uint32_t now = time(NULL);
   int ter = info.GetBanTime();
@@ -116,7 +116,7 @@ void CellAddrDB::Bad_(const CellService &addr, int ban)
   nDirty++;
 }
 
-void CellAddrDB::Skipped_(const CellService &addr)
+void MCAddrDB::Skipped_(const MCService &addr)
 {
   int id = Lookup_(addr);
   if (id == -1) return;
@@ -127,10 +127,10 @@ void CellAddrDB::Skipped_(const CellService &addr)
 }
 
 
-void CellAddrDB::Add_(const CellAddress &addr, bool force) {
+void MCAddrDB::Add_(const MCAddress &addr, bool force) {
   if (!force && !addr.IsRoutable())
     return;
-  CellService ipp(addr);
+  MCService ipp(addr);
   if (banned.count(ipp)) {
     time_t bantime = banned[ipp];
     if (force || (bantime < time(NULL) && addr.nTime > bantime))
@@ -139,7 +139,7 @@ void CellAddrDB::Add_(const CellAddress &addr, bool force) {
       return;
   }
   if (ipToId.count(ipp)) {
-    CellAddrInfo &ai = idToInfo[ipToId[ipp]];
+    MCAddrInfo &ai = idToInfo[ipToId[ipp]];
     if (addr.nTime > ai.lastTry || ai.services != addr.nServices)
     {
       ai.lastTry = addr.nTime;
@@ -151,7 +151,7 @@ void CellAddrDB::Add_(const CellAddress &addr, bool force) {
     }
     return;
   }
-  CellAddrInfo ai;
+  MCAddrInfo ai;
   ai.ip = ipp;
   ai.services = addr.nServices;
   ai.lastTry = addr.nTime;
@@ -166,7 +166,7 @@ void CellAddrDB::Add_(const CellAddress &addr, bool force) {
   nDirty++;
 }
 
-void CellAddrDB::GetIPs_(set<CellNetAddr>& ips, uint64_t requestedFlags, int max, const bool* nets) {
+void MCAddrDB::GetIPs_(set<MCNetAddr>& ips, uint64_t requestedFlags, int max, const bool* nets) {
   if (goodId.size() == 0) {
     int id = -1;
     if (ourId.size() == 0) {
@@ -199,7 +199,7 @@ void CellAddrDB::GetIPs_(set<CellNetAddr>& ips, uint64_t requestedFlags, int max
     ids.insert(goodIdFiltered[rand() % goodIdFiltered.size()]);
   }
   for (set<int>::const_iterator it = ids.begin(); it != ids.end(); it++) {
-    CellService &ip = idToInfo[*it].ip;
+    MCService &ip = idToInfo[*it].ip;
     if (nets[ip.GetNetwork()])
       ips.insert(ip);
   }

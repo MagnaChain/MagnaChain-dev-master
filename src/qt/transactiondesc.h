@@ -11,8 +11,8 @@
 
 class TransactionRecord;
 
-class CellWallet;
-class CellWalletTx;
+class MCWallet;
+class MCWalletTx;
 
 /** Provide a human-readable extended HTML description of a transaction.
  */
@@ -21,12 +21,12 @@ class TransactionDesc: public QObject
     Q_OBJECT
 
 public:
-    static QString toHTML(CellWallet *wallet, CellWalletTx &wtx, TransactionRecord *rec, int unit);
+    static QString toHTML(MCWallet *wallet, MCWalletTx &wtx, TransactionRecord *rec, int unit);
 
 private:
     TransactionDesc() {}
 
-    static QString FormatTxStatus(const CellWalletTx& wtx);
+    static QString FormatTxStatus(const MCWalletTx& wtx);
 };
 
 #endif // CELLLINK_QT_TRANSACTIONDESC_H

@@ -18,7 +18,7 @@ static const unsigned int DEFAULT_MAX_SIG_CACHE_SIZE = 32;
 // Maximum sig cache size allowed
 static const int64_t MAX_MAX_SIG_CACHE_SIZE = 16384;
 
-class CellPubKey;
+class MCPubKey;
 
 /**
  * We're hashing a nonce into the entries themselves, so we don't need extra
@@ -47,9 +47,9 @@ private:
     bool store;
 
 public:
-    CachingTransactionSignatureChecker(const CellTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn, bool storeIn, PrecomputedTransactionData& txdataIn) : TransactionSignatureChecker(txToIn, nInIn, amountIn, txdataIn), store(storeIn) {}
+    CachingTransactionSignatureChecker(const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, bool storeIn, PrecomputedTransactionData& txdataIn) : TransactionSignatureChecker(txToIn, nInIn, amountIn, txdataIn), store(storeIn) {}
 
-    bool VerifySignature(const std::vector<unsigned char>& vchSig, const CellPubKey& vchPubKey, const uint256& sighash) const override;
+    bool VerifySignature(const std::vector<unsigned char>& vchSig, const MCPubKey& vchPubKey, const uint256& sighash) const override;
 };
 
 void InitSignatureCache();

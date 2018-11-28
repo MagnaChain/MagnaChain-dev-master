@@ -18,8 +18,8 @@
 
 bool NodeLessThan::operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const
 {
-    const CellNodeStats *pLeft = &(left.nodeStats);
-    const CellNodeStats *pRight = &(right.nodeStats);
+    const MCNodeStats *pLeft = &(left.nodeStats);
+    const MCNodeStats *pRight = &(right.nodeStats);
 
     if (order == Qt::DescendingOrder)
         std::swap(pLeft, pRight);
@@ -57,13 +57,13 @@ public:
     {
         {
             cachedNodeStats.clear();
-            std::vector<CellNodeStats> vstats;
+            std::vector<MCNodeStats> vstats;
             if(g_connman)
                 g_connman->GetNodeStats(vstats);
 #if QT_VERSION >= 0x040700
             cachedNodeStats.reserve(vstats.size());
 #endif
-            for (const CellNodeStats& nodestats : vstats)
+            for (const MCNodeStats& nodestats : vstats)
             {
                 CNodeCombinedStats stats;
                 stats.nodeStateStats.nMisbehavior = 0;

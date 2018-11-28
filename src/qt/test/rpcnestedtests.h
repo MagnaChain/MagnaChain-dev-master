@@ -20,7 +20,7 @@ class RPCNestedTests : public QObject
     void rpcNestedTests();
 
 private:
-    CellCoinsViewDB *pcoinsdbview;
+    MCCoinsViewDB *pcoinsdbview;
 };
 
 #endif // CELLLINK_QT_TEST_RPC_NESTED_TESTS_H

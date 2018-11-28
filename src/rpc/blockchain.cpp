@@ -44,9 +44,9 @@ static std::mutex cs_blockchange;
 static std::condition_variable cond_blockchange;
 static CUpdatedBlock latestblock;
 
-extern void TxToJSON(const CellTransaction& tx, const uint256 hashBlock, UniValue& entry);
+extern void TxToJSON(const MCTransaction& tx, const uint256 hashBlock, UniValue& entry);
 
-double GetDifficulty(const CellBlockIndex* blockindex)
+double GetDifficulty(const MCBlockIndex* blockindex)
 {
     if (blockindex == nullptr)
     {
@@ -75,7 +75,7 @@ double GetDifficulty(const CellBlockIndex* blockindex)
     return dDiff;
 }
 
-UniValue blockheaderToJSON(const CellBlockIndex* blockindex)
+UniValue blockheaderToJSON(const MCBlockIndex* blockindex)
 {
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hash", blockindex->GetBlockHash().GetHex()));
@@ -97,13 +97,13 @@ UniValue blockheaderToJSON(const CellBlockIndex* blockindex)
 
     if (blockindex->pprev)
         result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
-    CellBlockIndex *pnext = chainActive.Next(blockindex);
+    MCBlockIndex *pnext = chainActive.Next(blockindex);
     if (pnext)
         result.push_back(Pair("nextblockhash", pnext->GetBlockHash().GetHex()));
     return result;
 }
 
-UniValue blockToJSON(const CellBlock& block, const CellBlockIndex* blockindex, bool txDetails, bool txDetailsOut)
+UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool txDetails, bool txDetailsOut)
 {
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hash", blockindex->GetBlockHash().GetHex()));
@@ -144,7 +144,7 @@ UniValue blockToJSON(const CellBlock& block, const CellBlockIndex* blockindex, b
 
     if (blockindex->pprev)
         result.push_back(Pair("previousblockhash", blockindex->pprev->GetBlockHash().GetHex()));
-    CellBlockIndex *pnext = chainActive.Next(blockindex);
+    MCBlockIndex *pnext = chainActive.Next(blockindex);
     if (pnext)
         result.push_back(Pair("nextblockhash", pnext->GetBlockHash().GetHex()));
     return result;
@@ -184,7 +184,7 @@ UniValue getbestblockhash(const JSONRPCRequest& request)
     return chainActive.Tip()->GetBlockHash().GetHex();
 }
 
-void RPCNotifyBlockChange(bool ibd, const CellBlockIndex * pindex)
+void RPCNotifyBlockChange(bool ibd, const MCBlockIndex * pindex)
 {
     if(pindex) {
         std::lock_guard<std::mutex> lock(cs_blockchange);
@@ -351,7 +351,7 @@ std::string EntryDescriptionString()
            "       ... ]\n";
 }
 
-void entryToJSON(UniValue &info, const CellTxMemPoolEntry &e)
+void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
 {
     AssertLockHeld(mempool.cs);
 
@@ -366,9 +366,9 @@ void entryToJSON(UniValue &info, const CellTxMemPoolEntry &e)
     info.push_back(Pair("ancestorcount", e.GetCountWithAncestors()));
     info.push_back(Pair("ancestorsize", e.GetSizeWithAncestors()));
     info.push_back(Pair("ancestorfees", e.GetModFeesWithAncestors()));
-    const CellTransaction& tx = e.GetTx();
+    const MCTransaction& tx = e.GetTx();
     std::set<std::string> setDepends;
-    for (const CellTxIn& txin : tx.vin)
+    for (const MCTxIn& txin : tx.vin)
     {
         if (mempool.exists(txin.prevout.hash))
             setDepends.insert(txin.prevout.hash.ToString());
@@ -389,7 +389,7 @@ UniValue mempoolToJSON(bool fVerbose)
     {
         LOCK(mempool.cs);
         UniValue o(UniValue::VOBJ);
-        for (const CellTxMemPoolEntry& e : mempool.mapTx)
+        for (const MCTxMemPoolEntry& e : mempool.mapTx)
         {
             const uint256& hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
@@ -477,27 +477,27 @@ UniValue getmempoolancestors(const JSONRPCRequest& request)
 
     LOCK(mempool.cs);
 
-    CellTxMemPool::txiter it = mempool.mapTx.find(hash);
+    MCTxMemPool::txiter it = mempool.mapTx.find(hash);
     if (it == mempool.mapTx.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
 
-    CellTxMemPool::setEntries setAncestors;
+    MCTxMemPool::setEntries setAncestors;
     uint64_t noLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
     mempool.CalculateMemPoolAncestors(*it, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
-        for (CellTxMemPool::txiter ancestorIt : setAncestors) {
+        for (MCTxMemPool::txiter ancestorIt : setAncestors) {
             o.push_back(ancestorIt->GetTx().GetHash().ToString());
         }
 
         return o;
     } else {
         UniValue o(UniValue::VOBJ);
-        for (CellTxMemPool::txiter ancestorIt : setAncestors) {
-            const CellTxMemPoolEntry &e = *ancestorIt;
+        for (MCTxMemPool::txiter ancestorIt : setAncestors) {
+            const MCTxMemPoolEntry &e = *ancestorIt;
             const uint256& _hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
             entryToJSON(info, e);
@@ -541,27 +541,27 @@ UniValue getmempooldescendants(const JSONRPCRequest& request)
 
     LOCK(mempool.cs);
 
-    CellTxMemPool::txiter it = mempool.mapTx.find(hash);
+    MCTxMemPool::txiter it = mempool.mapTx.find(hash);
     if (it == mempool.mapTx.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
 
-    CellTxMemPool::setEntries setDescendants;
+    MCTxMemPool::setEntries setDescendants;
     mempool.CalculateDescendants(it, setDescendants);
-    // CellTxMemPool::CalculateDescendants will include the given tx
+    // MCTxMemPool::CalculateDescendants will include the given tx
     setDescendants.erase(it);
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
-        for (CellTxMemPool::txiter descendantIt : setDescendants) {
+        for (MCTxMemPool::txiter descendantIt : setDescendants) {
             o.push_back(descendantIt->GetTx().GetHash().ToString());
         }
 
         return o;
     } else {
         UniValue o(UniValue::VOBJ);
-        for (CellTxMemPool::txiter descendantIt : setDescendants) {
-            const CellTxMemPoolEntry &e = *descendantIt;
+        for (MCTxMemPool::txiter descendantIt : setDescendants) {
+            const MCTxMemPoolEntry &e = *descendantIt;
             const uint256& _hash = e.GetTx().GetHash();
             UniValue info(UniValue::VOBJ);
             entryToJSON(info, e);
@@ -593,12 +593,12 @@ UniValue getmempoolentry(const JSONRPCRequest& request)
 
     LOCK(mempool.cs);
 
-    CellTxMemPool::txiter it = mempool.mapTx.find(hash);
+    MCTxMemPool::txiter it = mempool.mapTx.find(hash);
     if (it == mempool.mapTx.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not in mempool");
     }
 
-    const CellTxMemPoolEntry &e = *it;
+    const MCTxMemPoolEntry &e = *it;
     UniValue info(UniValue::VOBJ);
     entryToJSON(info, e);
     return info;
@@ -625,7 +625,7 @@ UniValue getblockhash(const JSONRPCRequest& request)
     if (nHeight < 0 || nHeight > chainActive.Height())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Block height out of range");
 
-    CellBlockIndex* pblockindex = chainActive[nHeight];
+    MCBlockIndex* pblockindex = chainActive[nHeight];
     return pblockindex->GetBlockHash().GetHex();
 }
 
@@ -675,11 +675,11 @@ UniValue getblockheader(const JSONRPCRequest& request)
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-    CellBlockIndex* pblockindex = mapBlockIndex[hash];
+    MCBlockIndex* pblockindex = mapBlockIndex[hash];
 
     if (!fVerbose)
     {
-        CellDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION);
         ssBlock << pblockindex->GetBlockHeader();
         std::string strHex = HexStr(ssBlock.begin(), ssBlock.end());
         return strHex;
@@ -763,8 +763,8 @@ UniValue getblock(const JSONRPCRequest& request)
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-    CellBlock block;
-    CellBlockIndex* pblockindex = mapBlockIndex[hash];
+    MCBlock block;
+    MCBlockIndex* pblockindex = mapBlockIndex[hash];
 
     if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
         throw JSONRPCError(RPC_MISC_ERROR, "Block not available (pruned data)");
@@ -779,7 +779,7 @@ UniValue getblock(const JSONRPCRequest& request)
 
     if (verbosity <= 0)
     {
-        CellDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
+        MCDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
         ssBlock << block;
         std::string strHex = HexStr(ssBlock.begin(), ssBlock.end());
         return strHex;
@@ -792,8 +792,8 @@ UniValue getlastblock_tx(const JSONRPCRequest& request)
 {
 	LOCK(cs_main);
 
-	CellBlock block;
-	CellBlockIndex* pblockindex = chainActive.Tip();
+	MCBlock block;
+	MCBlockIndex* pblockindex = chainActive.Tip();
 
 	if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
 		throw JSONRPCError(RPC_MISC_ERROR, "Block not available (pruned data)");
@@ -810,7 +810,7 @@ UniValue getlastblock_tx(const JSONRPCRequest& request)
 	return result;
 }
 
-struct CellCoinsStats
+struct MCCoinsStats
 {
     int nHeight;
     uint256 hashBlock;
@@ -819,12 +819,12 @@ struct CellCoinsStats
     uint64_t nBogoSize;
     uint256 hashSerialized;
     uint64_t nDiskSize;
-    CellAmount nTotalAmount;
+    MCAmount nTotalAmount;
 
-    CellCoinsStats() : nHeight(0), nTransactions(0), nTransactionOutputs(0), nBogoSize(0), nDiskSize(0), nTotalAmount(0) {}
+    MCCoinsStats() : nHeight(0), nTransactions(0), nTransactionOutputs(0), nBogoSize(0), nDiskSize(0), nTotalAmount(0) {}
 };
 
-static void ApplyStats(CellCoinsStats &stats, CellHashWriter& ss, const uint256& hash, const std::map<uint32_t, Coin>& outputs)
+static void ApplyStats(MCCoinsStats &stats, MCHashWriter& ss, const uint256& hash, const std::map<uint32_t, Coin>& outputs)
 {
     assert(!outputs.empty());
     ss << hash;
@@ -843,11 +843,11 @@ static void ApplyStats(CellCoinsStats &stats, CellHashWriter& ss, const uint256&
 }
 
 //! Calculate statistics about the unspent transaction output set
-static bool GetUTXOStats(CellCoinsView *view, CellCoinsStats &stats)
+static bool GetUTXOStats(MCCoinsView *view, MCCoinsStats &stats)
 {
-    std::unique_ptr<CellCoinsViewCursor> pcursor(view->Cursor());
+    std::unique_ptr<MCCoinsViewCursor> pcursor(view->Cursor());
 
-    CellHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+    MCHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     stats.hashBlock = pcursor->GetBestBlock();
     {
         LOCK(cs_main);
@@ -858,7 +858,7 @@ static bool GetUTXOStats(CellCoinsView *view, CellCoinsStats &stats)
     std::map<uint32_t, Coin> outputs;
     while (pcursor->Valid()) {
         boost::this_thread::interruption_point();
-        CellOutPoint key;
+        MCOutPoint key;
         Coin coin;
         if (pcursor->GetKey(key) && pcursor->GetValue(coin)) {
             if (!outputs.empty() && key.hash != prevkey) {
@@ -907,7 +907,7 @@ UniValue pruneblockchain(const JSONRPCRequest& request)
     // too low to be a block time (corresponds to timestamp from Sep 2001).
     if (heightParam > 1000000000) {
         // Add a 2 hour buffer to include blocks which might have had old timestamps
-        CellBlockIndex* pindex = chainActive.FindEarliestAtLeast(heightParam - TIMESTAMP_WINDOW);
+        MCBlockIndex* pindex = chainActive.FindEarliestAtLeast(heightParam - TIMESTAMP_WINDOW);
         if (!pindex) {
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Could not find block with at least the specified timestamp.");
         }
@@ -954,7 +954,7 @@ UniValue gettxoutsetinfo(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VOBJ);
 
-    CellCoinsStats stats;
+    MCCoinsStats stats;
     FlushStateToDisk();
     if (GetUTXOStats(pcoinsdbview, stats)) {
         ret.push_back(Pair("height", (int64_t)stats.nHeight));
@@ -1016,7 +1016,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     std::string strHash = request.params[0].get_str();
     uint256 hash(uint256S(strHash));
     int n = request.params[1].get_int();
-    CellOutPoint out(hash, n);
+    MCOutPoint out(hash, n);
     bool fMempool = true;
     if (!request.params[2].isNull())
         fMempool = request.params[2].get_bool();
@@ -1024,7 +1024,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     Coin coin;
     if (fMempool) {
         LOCK(mempool.cs);
-        CellCoinsViewMemPool view(pcoinsTip, mempool);
+        MCCoinsViewMemPool view(pcoinsTip, mempool);
         if (!view.GetCoin(out, coin) || mempool.isSpent(out)) {
             return NullUniValue;
         }
@@ -1035,7 +1035,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     }
 
     BlockMap::iterator it = mapBlockIndex.find(pcoinsTip->GetBestBlock());
-    CellBlockIndex *pindex = it->second;
+    MCBlockIndex *pindex = it->second;
     ret.push_back(Pair("bestblock", pindex->GetBlockHash().GetHex()));
     if (coin.nHeight == MEMPOOL_HEIGHT) {
         ret.push_back(Pair("confirmations", 0));
@@ -1080,7 +1080,7 @@ UniValue verifychain(const JSONRPCRequest& request)
 }
 
 /** Implementation of IsSuperMajority with better feedback */
-static UniValue SoftForkMajorityDesc(int version, CellBlockIndex* pindex, const Consensus::Params& consensusParams)
+static UniValue SoftForkMajorityDesc(int version, MCBlockIndex* pindex, const Consensus::Params& consensusParams)
 {
     UniValue rv(UniValue::VOBJ);
     bool activated = false;
@@ -1100,7 +1100,7 @@ static UniValue SoftForkMajorityDesc(int version, CellBlockIndex* pindex, const 
     return rv;
 }
 
-static UniValue SoftForkDesc(const std::string &name, int version, CellBlockIndex* pindex, const Consensus::Params& consensusParams)
+static UniValue SoftForkDesc(const std::string &name, int version, MCBlockIndex* pindex, const Consensus::Params& consensusParams)
 {
     UniValue rv(UniValue::VOBJ);
     rv.push_back(Pair("id", name));
@@ -1204,7 +1204,7 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("chain",                 Params().NetworkIDString()));
-	if (Params().NetworkIDString() == CellBaseChainParams::BRANCH && gArgs.GetArg("-branchid", "") != "")
+	if (Params().NetworkIDString() == MCBaseChainParams::BRANCH && gArgs.GetArg("-branchid", "") != "")
 	{
 		obj.push_back(Pair("branchid", gArgs.GetArg("-branchid", "")));
 	}
@@ -1218,7 +1218,7 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
     obj.push_back(Pair("pruned",                fPruneMode));
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
-    CellBlockIndex* tip = chainActive.Tip();
+    MCBlockIndex* tip = chainActive.Tip();
     UniValue softforks(UniValue::VARR);
     UniValue bip9_softforks(UniValue::VOBJ);
     softforks.push_back(SoftForkDesc("bip34", 2, tip, consensusParams));
@@ -1231,7 +1231,7 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
 
     if (fPruneMode)
     {
-        CellBlockIndex *block = chainActive.Tip();
+        MCBlockIndex *block = chainActive.Tip();
         while (block && block->pprev && (block->pprev->nStatus & BLOCK_HAVE_DATA))
             block = block->pprev;
 
@@ -1243,7 +1243,7 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
 /** Comparison function for sorting the getchaintips heads.  */
 struct CompareBlocksByHeight
 {
-    bool operator()(const CellBlockIndex* a, const CellBlockIndex* b) const
+    bool operator()(const MCBlockIndex* a, const MCBlockIndex* b) const
     {
         /* Make sure that unequal blocks with the same height do not compare
            equal. Use the pointers themselves to make a distinction. */
@@ -1297,11 +1297,11 @@ UniValue getchaintips(const JSONRPCRequest& request)
      *  - Iterate through the orphan blocks. If the block isn't pointed to by another orphan, it is a chain tip.
      *  - add chainActive.Tip()
      */
-    std::set<const CellBlockIndex*, CompareBlocksByHeight> setTips;
-    std::set<const CellBlockIndex*> setOrphans;
-    std::set<const CellBlockIndex*> setPrevs;
+    std::set<const MCBlockIndex*, CompareBlocksByHeight> setTips;
+    std::set<const MCBlockIndex*> setOrphans;
+    std::set<const MCBlockIndex*> setPrevs;
 
-    for (const std::pair<const uint256, CellBlockIndex*>& item : mapBlockIndex)
+    for (const std::pair<const uint256, MCBlockIndex*>& item : mapBlockIndex)
     {
         if (!chainActive.Contains(item.second)) {
             setOrphans.insert(item.second);
@@ -1309,7 +1309,7 @@ UniValue getchaintips(const JSONRPCRequest& request)
         }
     }
 
-    for (std::set<const CellBlockIndex*>::iterator it = setOrphans.begin(); it != setOrphans.end(); ++it)
+    for (std::set<const MCBlockIndex*>::iterator it = setOrphans.begin(); it != setOrphans.end(); ++it)
     {
         if (setPrevs.erase(*it) == 0) {
             setTips.insert(*it);
@@ -1321,7 +1321,7 @@ UniValue getchaintips(const JSONRPCRequest& request)
 
     /* Construct the output array.  */
     UniValue res(UniValue::VARR);
-    for (const CellBlockIndex* block : setTips)
+    for (const MCBlockIndex* block : setTips)
     {
         UniValue obj(UniValue::VOBJ);
         obj.push_back(Pair("height", block->nHeight));
@@ -1411,7 +1411,7 @@ UniValue preciousblock(const JSONRPCRequest& request)
 
     std::string strHash = request.params[0].get_str();
     uint256 hash(uint256S(strHash));
-    CellBlockIndex* pblockindex;
+    MCBlockIndex* pblockindex;
 
     {
         LOCK(cs_main);
@@ -1421,7 +1421,7 @@ UniValue preciousblock(const JSONRPCRequest& request)
         pblockindex = mapBlockIndex[hash];
     }
 
-    CellValidationState state;
+    MCValidationState state;
     PreciousBlock(state, Params(), pblockindex);
 
     if (!state.IsValid()) {
@@ -1447,14 +1447,14 @@ UniValue invalidateblock(const JSONRPCRequest& request)
 
     std::string strHash = request.params[0].get_str();
     uint256 hash(uint256S(strHash));
-    CellValidationState state;
+    MCValidationState state;
 
     {
         LOCK(cs_main);
         if (mapBlockIndex.count(hash) == 0)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-        CellBlockIndex* pblockindex = mapBlockIndex[hash];
+        MCBlockIndex* pblockindex = mapBlockIndex[hash];
         InvalidateBlock(state, Params(), pblockindex);
     }
 
@@ -1492,11 +1492,11 @@ UniValue reconsiderblock(const JSONRPCRequest& request)
         if (mapBlockIndex.count(hash) == 0)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
 
-        CellBlockIndex* pblockindex = mapBlockIndex[hash];
+        MCBlockIndex* pblockindex = mapBlockIndex[hash];
         ResetBlockFailureFlags(pblockindex);
     }
 
-    CellValidationState state;
+    MCValidationState state;
     ActivateBestChain(state, Params());
 
     if (!state.IsValid()) {
@@ -1526,7 +1526,7 @@ UniValue getchaintxstats(const JSONRPCRequest& request)
             + HelpExampleRpc("getchaintxstats", "2016")
         );
 
-    const CellBlockIndex* pindex;
+    const MCBlockIndex* pindex;
     int blockcount = 30 * 24 * 60 * 60 / Params().GetConsensus().nPowTargetSpacing; // By default: 1 month
 
     if (request.params.size() > 0 && !request.params[0].isNull()) {
@@ -1559,7 +1559,7 @@ UniValue getchaintxstats(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid block count: should be between 1 and the block's height");
     }
 
-    const CellBlockIndex* pindexPast = pindex->GetAncestor(pindex->nHeight - blockcount);
+    const MCBlockIndex* pindexPast = pindex->GetAncestor(pindex->nHeight - blockcount);
     int nTimeDiff = pindex->GetMedianTimePast() - pindexPast->GetMedianTimePast();
     int nTxDiff = pindex->nChainTx - pindexPast->nChainTx;
 

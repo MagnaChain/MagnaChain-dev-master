@@ -15,37 +15,37 @@
 
 typedef std::vector<unsigned char> valtype;
 
-unsigned int HaveKeys(const std::vector<valtype>& pubkeys, const CellKeyStore& keystore)
+unsigned int HaveKeys(const std::vector<valtype>& pubkeys, const MCKeyStore& keystore)
 {
     unsigned int nResult = 0;
     for (const valtype& pubkey : pubkeys)
     {
-        CellKeyID keyID = CellPubKey(pubkey).GetID();
+        MCKeyID keyID = MCPubKey(pubkey).GetID();
         if (keystore.HaveKey(keyID))
             ++nResult;
     }
     return nResult;
 }
 
-isminetype IsMine(const CellKeyStore& keystore, const CellScript& scriptPubKey, SigVersion sigversion)
+isminetype IsMine(const MCKeyStore& keystore, const MCScript& scriptPubKey, SigVersion sigversion)
 {
     bool isInvalid = false;
     return IsMine(keystore, scriptPubKey, isInvalid, sigversion);
 }
 
-isminetype IsMine(const CellKeyStore& keystore, const CellTxDestination& dest, SigVersion sigversion)
+isminetype IsMine(const MCKeyStore& keystore, const MCTxDestination& dest, SigVersion sigversion)
 {
     bool isInvalid = false;
     return IsMine(keystore, dest, isInvalid, sigversion);
 }
 
-isminetype IsMine(const CellKeyStore &keystore, const CellTxDestination& dest, bool& isInvalid, SigVersion sigversion)
+isminetype IsMine(const MCKeyStore &keystore, const MCTxDestination& dest, bool& isInvalid, SigVersion sigversion)
 {
-    CellScript script = GetScriptForDestination(dest);
+    MCScript script = GetScriptForDestination(dest);
     return IsMine(keystore, script, isInvalid, sigversion);
 }
 
-isminetype IsMine(const CellKeyStore &keystore, const CellScript& scriptPubKey, bool& isInvalid, SigVersion sigversion)
+isminetype IsMine(const MCKeyStore &keystore, const MCScript& scriptPubKey, bool& isInvalid, SigVersion sigversion)
 {
     isInvalid = false;
 
@@ -57,14 +57,14 @@ isminetype IsMine(const CellKeyStore &keystore, const CellScript& scriptPubKey, 
         return ISMINE_NO;
     }
 
-    CellKeyID keyID;
+    MCKeyID keyID;
     switch (whichType)
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
         break;
     case TX_PUBKEY:
-        keyID = CellPubKey(vSolutions[0]).GetID();
+        keyID = MCPubKey(vSolutions[0]).GetID();
         if (sigversion != SIGVERSION_BASE && vSolutions[0].size() != 33) {
             isInvalid = true;
             return ISMINE_NO;
@@ -74,21 +74,21 @@ isminetype IsMine(const CellKeyStore &keystore, const CellScript& scriptPubKey, 
         break;
     case TX_WITNESS_V0_KEYHASH:
     {
-        if (!keystore.HaveCScript(CellScriptID(CellScript() << OP_0 << vSolutions[0]))) {
+        if (!keystore.HaveCScript(MCScriptID(MCScript() << OP_0 << vSolutions[0]))) {
             // We do not support bare witness outputs unless the P2SH version of it would be
             // acceptable as well. This protects against matching before segwit activates.
             // This also applies to the P2WSH case.
             break;
         }
-        isminetype ret = ::IsMine(keystore, GetScriptForDestination(CellKeyID(uint160(vSolutions[0]))), isInvalid, SIGVERSION_WITNESS_V0);
+        isminetype ret = ::IsMine(keystore, GetScriptForDestination(MCKeyID(uint160(vSolutions[0]))), isInvalid, SIGVERSION_WITNESS_V0);
         if (ret == ISMINE_SPENDABLE || ret == ISMINE_WATCH_SOLVABLE || (ret == ISMINE_NO && isInvalid))
             return ret;
         break;
     }
     case TX_PUBKEYHASH:
-        keyID = CellKeyID(uint160(vSolutions[0]));
+        keyID = MCKeyID(uint160(vSolutions[0]));
         if (sigversion != SIGVERSION_BASE) {
-            CellPubKey pubkey;
+            MCPubKey pubkey;
             if (keystore.GetPubKey(keyID, pubkey) && !pubkey.IsCompressed()) {
                 isInvalid = true;
                 return ISMINE_NO;
@@ -100,14 +100,14 @@ isminetype IsMine(const CellKeyStore &keystore, const CellScript& scriptPubKey, 
     case TX_CREATE_BRANCH:
     case TX_MINE_MORTGAGE:
     case TX_MORTGAGE_COIN:
-        keyID = CellKeyID(uint160(vSolutions[0]));
+        keyID = MCKeyID(uint160(vSolutions[0]));
         if (keystore.HaveKey(keyID))
             return ISMINE_SPENDABLE;
         break;
     case TX_SCRIPTHASH:
     {
-        CellScriptID scriptID = CellScriptID(uint160(vSolutions[0]));
-        CellScript subscript;
+        MCScriptID scriptID = MCScriptID(uint160(vSolutions[0]));
+        MCScript subscript;
         if (keystore.GetCScript(scriptID, subscript)) {
             isminetype ret = IsMine(keystore, subscript, isInvalid);
             if (ret == ISMINE_SPENDABLE || ret == ISMINE_WATCH_SOLVABLE || (ret == ISMINE_NO && isInvalid))
@@ -117,13 +117,13 @@ isminetype IsMine(const CellKeyStore &keystore, const CellScript& scriptPubKey, 
     }
     case TX_WITNESS_V0_SCRIPTHASH:
     {
-        if (!keystore.HaveCScript(CellScriptID(CellScript() << OP_0 << vSolutions[0]))) {
+        if (!keystore.HaveCScript(MCScriptID(MCScript() << OP_0 << vSolutions[0]))) {
             break;
         }
         uint160 hash;
         CRIPEMD160().Write(&vSolutions[0][0], vSolutions[0].size()).Finalize(hash.begin());
-        CellScriptID scriptID = CellScriptID(hash);
-        CellScript subscript;
+        MCScriptID scriptID = MCScriptID(hash);
+        MCScript subscript;
         if (keystore.GetCScript(scriptID, subscript)) {
             isminetype ret = IsMine(keystore, subscript, isInvalid, SIGVERSION_WITNESS_V0);
             if (ret == ISMINE_SPENDABLE || ret == ISMINE_WATCH_SOLVABLE || (ret == ISMINE_NO && isInvalid))

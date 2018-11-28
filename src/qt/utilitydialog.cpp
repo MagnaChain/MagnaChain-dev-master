@@ -98,7 +98,7 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, bool about) :
 
         QTextTableFormat tf;
         tf.setBorderStyle(QTextFrameFormat::BorderStyle_None);
-        tf.setCellPadding(2);
+        tf.setMCPadding(2);
         QVector<QTextLength> widths;
         widths << QTextLength(QTextLength::PercentageLength, 35);
         widths << QTextLength(QTextLength::PercentageLength, 65);
@@ -111,10 +111,10 @@ HelpMessageDialog::HelpMessageDialog(QWidget *parent, bool about) :
             if (line.startsWith("  -"))
             {
                 cursor.currentTable()->appendRows(1);
-                cursor.movePosition(QTextCursor::PreviousCell);
+                cursor.movePosition(QTextCursor::PreviousMC);
                 cursor.movePosition(QTextCursor::NextRow);
                 cursor.insertText(line.trimmed());
-                cursor.movePosition(QTextCursor::NextCell);
+                cursor.movePosition(QTextCursor::NextMC);
             } else if (line.startsWith("   ")) {
                 cursor.insertText(line.trimmed()+' ');
             } else if (line.size() > 0) {

@@ -166,7 +166,7 @@ public Q_SLOTS:
        @param[in] title     the message box / notification title
        @param[in] message   the displayed text
        @param[in] style     modality and style definitions (icon and used buttons - buttons only for message boxes)
-                            @see CellClientUIInterface::MessageBoxFlags
+                            @see MCClientUIInterface::MessageBoxFlags
        @param[in] ret       pointer to a bool that will be modified to whether Ok was clicked (modal only)
     */
     void message(const QString &title, const QString &message, unsigned int style, bool *ret = nullptr);
@@ -187,7 +187,7 @@ public Q_SLOTS:
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 
     /** Show incoming transaction notification for new transactions. */
-    void incomingTransaction(const QString& date, int unit, const CellAmount& amount, const QString& type, const QString& address, const QString& label);
+    void incomingTransaction(const QString& date, int unit, const MCAmount& amount, const QString& type, const QString& address, const QString& label);
 #endif // ENABLE_WALLET
 
 private Q_SLOTS:

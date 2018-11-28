@@ -24,7 +24,7 @@
 static const unsigned int DEFAULT_WALLET_DBLOGSIZE = 100;
 static const bool DEFAULT_WALLET_PRIVDB = true;
 
-class CellDBEnv
+class MCDBEnv
 {
 private:
     bool fDbEnvInit;
@@ -36,13 +36,13 @@ private:
     void EnvShutdown();
 
 public:
-    mutable CellCriticalSection cs_db;
+    mutable MCCriticalSection cs_db;
     DbEnv *dbenv;
     std::map<std::string, int> mapFileUseCount;
     std::map<std::string, Db*> mapDb;
 
-    CellDBEnv();
-    ~CellDBEnv();
+    MCDBEnv();
+    ~MCDBEnv();
     void Reset();
 
     void MakeMock();
@@ -86,22 +86,22 @@ public:
     }
 };
 
-extern CellDBEnv bitdb;
+extern MCDBEnv bitdb;
 
 /** An instance of this class represents one database.
  * For BerkeleyDB this is just a (env, strFile) tuple.
  **/
-class CellWalletDBWrapper
+class MCWalletDBWrapper
 {
-    friend class CellDB;
+    friend class MCDB;
 public:
     /** Create dummy DB handle */
-    CellWalletDBWrapper() : nUpdateCounter(0), nLastSeen(0), nLastFlushed(0), nLastWalletUpdate(0), env(nullptr)
+    MCWalletDBWrapper() : nUpdateCounter(0), nLastSeen(0), nLastFlushed(0), nLastWalletUpdate(0), env(nullptr)
     {
     }
 
     /** Create DB handle to real database */
-    CellWalletDBWrapper(CellDBEnv *env_in, const std::string &strFile_in) :
+    MCWalletDBWrapper(MCDBEnv *env_in, const std::string &strFile_in) :
         nUpdateCounter(0), nLastSeen(0), nLastFlushed(0), nLastWalletUpdate(0), env(env_in), strFile(strFile_in)
     {
     }
@@ -131,7 +131,7 @@ public:
 
 private:
     /** BerkeleyDB specific */
-    CellDBEnv *env;
+    MCDBEnv *env;
     std::string strFile;
 
     /** Return whether this database handle is a dummy for testing.
@@ -143,7 +143,7 @@ private:
 
 
 /** RAII class that provides access to a Berkeley database */
-class CellDB
+class MCDB
 {
 protected:
     Db* pdb;
@@ -151,27 +151,27 @@ protected:
     DbTxn* activeTxn;
     bool fReadOnly;
     bool fFlushOnClose;
-    CellDBEnv *env;
+    MCDBEnv *env;
 
 public:
-    explicit CellDB(CellWalletDBWrapper& dbw, const char* pszMode = "r+", bool fFlushOnCloseIn=true);
-    ~CellDB() { Close(); }
+    explicit MCDB(MCWalletDBWrapper& dbw, const char* pszMode = "r+", bool fFlushOnCloseIn=true);
+    ~MCDB() { Close(); }
 
     void Flush();
     void Close();
-    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CellDataStream ssKey, CellDataStream ssValue), std::string& out_backup_filename);
+    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, MCDataStream ssKey, MCDataStream ssValue), std::string& out_backup_filename);
 
     /* flush the wallet passively (TRY_LOCK)
        ideal to be called periodically */
-    static bool PeriodicFlush(CellWalletDBWrapper& dbw);
+    static bool PeriodicFlush(MCWalletDBWrapper& dbw);
     /* verifies the database environment */
     static bool VerifyEnvironment(const std::string& walletFile, const fs::path& dataDir, std::string& errorStr);
     /* verifies the database file */
-    static bool VerifyDatabaseFile(const std::string& walletFile, const fs::path& dataDir, std::string& warningStr, std::string& errorStr, CellDBEnv::recoverFunc_type recoverFunc);
+    static bool VerifyDatabaseFile(const std::string& walletFile, const fs::path& dataDir, std::string& warningStr, std::string& errorStr, MCDBEnv::recoverFunc_type recoverFunc);
 
 private:
-    CellDB(const CellDB&);
-    void operator=(const CellDB&);
+    MCDB(const MCDB&);
+    void operator=(const MCDB&);
 
 public:
     template <typename K, typename T>
@@ -181,7 +181,7 @@ public:
             return false;
 
         // Key
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(ssKey.data(), ssKey.size());
@@ -195,7 +195,7 @@ public:
         if (datValue.get_data() != nullptr) {
             // Unserialize value
             try {
-                CellDataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, CLIENT_VERSION);
+                MCDataStream ssValue((char*)datValue.get_data(), (char*)datValue.get_data() + datValue.get_size(), SER_DISK, CLIENT_VERSION);
                 ssValue >> value;
                 success = true;
             } catch (const std::exception&) {
@@ -218,13 +218,13 @@ public:
             assert(!"Write called on database in read-only mode");
 
         // Key
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(ssKey.data(), ssKey.size());
 
         // Value
-        CellDataStream ssValue(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssValue(SER_DISK, CLIENT_VERSION);
         ssValue.reserve(10000);
         ssValue << value;
         Dbt datValue(ssValue.data(), ssValue.size());
@@ -247,7 +247,7 @@ public:
             assert(!"Erase called on database in read-only mode");
 
         // Key
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(ssKey.data(), ssKey.size());
@@ -267,7 +267,7 @@ public:
             return false;
 
         // Key
-        CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
         ssKey.reserve(1000);
         ssKey << key;
         Dbt datKey(ssKey.data(), ssKey.size());
@@ -291,7 +291,7 @@ public:
         return pcursor;
     }
 
-    int ReadAtCursor(Dbc* pcursor, CellDataStream& ssKey, CellDataStream& ssValue, bool setRange = false)
+    int ReadAtCursor(Dbc* pcursor, MCDataStream& ssKey, MCDataStream& ssValue, bool setRange = false)
     {
         // Read at cursor
         Dbt datKey;
@@ -367,7 +367,7 @@ public:
         return Write(std::string("version"), nVersion);
     }
 
-    bool static Rewrite(CellWalletDBWrapper& dbw, const char* pszSkip = nullptr);
+    bool static Rewrite(MCWalletDBWrapper& dbw, const char* pszSkip = nullptr);
 };
 
 #endif // CELLLINK_WALLET_DB_H

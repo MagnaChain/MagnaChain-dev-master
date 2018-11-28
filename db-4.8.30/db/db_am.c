@@ -124,7 +124,7 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 			}
 
 			/*
-			 * In CellDB, secondary indices should share a lock file
+			 * In MCDB, secondary indices should share a lock file
 			 * ID with the primary;  otherwise we're susceptible
 			 * to deadlocks.  We also use __db_cursor_int rather
 			 * than __db_cursor to create secondary update cursors
@@ -218,7 +218,7 @@ __db_cursor_int(dbp, ip, txn, dbtype, root, flags, locker, dbcp)
 		 * cursor's locker ID.
 		 *
 		 * Another case is when updating secondary indices.  Standard
-		 * CellDB locking would mean that we might block ourself:  we need
+		 * MCDB locking would mean that we might block ourself:  we need
 		 * to open an update cursor in the secondary while an update
 		 * cursor in the primary is open, and when the secondary and
 		 * primary are subdatabases or we're using env-wide locking,
@@ -539,7 +539,7 @@ __db_del(dbp, ip, txn, key, flags)
 	f_next = DB_NEXT_DUP;
 
 	/*
-	 * If locking (and we haven't already acquired CellDB locks), set the
+	 * If locking (and we haven't already acquired MCDB locks), set the
 	 * read-modify-write flag.
 	 */
 	if (STD_LOCKING(dbc)) {
@@ -809,14 +809,14 @@ __db_associate(dbp, ip, txn, sdbp, callback, flags)
 		 * We loop through the primary, putting each item we
 		 * find into the new secondary.
 		 *
-		 * If we're using CellDB, opening these two cursors puts us
-		 * in a bit of a locking tangle:  CellDB locks are done on the
+		 * If we're using MCDB, opening these two cursors puts us
+		 * in a bit of a locking tangle:  MCDB locks are done on the
 		 * primary, so that we stay deadlock-free, but that means
 		 * that updating the secondary while we have a read cursor
 		 * open on the primary will self-block.  To get around this,
 		 * we force the primary cursor to use the same locker ID
 		 * as the secondary, so they won't conflict.  This should
-		 * be harmless even if we're not using CellDB.
+		 * be harmless even if we're not using MCDB.
 		 */
 		if ((ret = __db_cursor(sdbp, ip, txn, &sdbc,
 		    CDB_LOCKING(sdbp->env) ? DB_WRITECURSOR : 0)) != 0)

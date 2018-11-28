@@ -6,17 +6,17 @@
 #include "ui/ui_interface.h"
 #include "utils/util.h"
 
-CellClientUIInterface uiInterface;
+MCClientUIInterface uiInterface;
 
 bool InitError(const std::string& str)
 {
-    uiInterface.ThreadSafeMessageBox(str, "", CellClientUIInterface::MSG_ERROR);
+    uiInterface.ThreadSafeMessageBox(str, "", MCClientUIInterface::MSG_ERROR);
     return false;
 }
 
 void InitWarning(const std::string& str)
 {
-    uiInterface.ThreadSafeMessageBox(str, "", CellClientUIInterface::MSG_WARNING);
+    uiInterface.ThreadSafeMessageBox(str, "", MCClientUIInterface::MSG_WARNING);
 }
 
 std::string AmountHighWarn(const std::string& optname)

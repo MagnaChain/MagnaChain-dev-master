@@ -17,8 +17,8 @@
 
 #include <boost/test/unit_test.hpp>
 
-int ApplyTxInUndo(Coin&& undo, CellCoinsViewCache& view, const CellOutPoint& out);
-void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, CellTxUndo &txundo, int nHeight, bool isBranch2ndBlockTx = false);
+int ApplyTxInUndo(Coin&& undo, MCCoinsViewCache& view, const MCOutPoint& out);
+void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo &txundo, int nHeight, bool isBranch2ndBlockTx = false);
 
 namespace
 {
@@ -31,15 +31,15 @@ bool operator==(const Coin &a, const Coin &b) {
            a.out == b.out;
 }
 
-class CellCoinsViewTest : public CellCoinsView
+class MCCoinsViewTest : public MCCoinsView
 {
     uint256 hashBestBlock_;
-    std::map<CellOutPoint, Coin> map_;
+    std::map<MCOutPoint, Coin> map_;
 
 public:
-    bool GetCoin(const CellOutPoint& outpoint, Coin& coin) const override
+    bool GetCoin(const MCOutPoint& outpoint, Coin& coin) const override
     {
-        std::map<CellOutPoint, Coin>::const_iterator it = map_.find(outpoint);
+        std::map<MCOutPoint, Coin>::const_iterator it = map_.find(outpoint);
         if (it == map_.end()) {
             return false;
         }
@@ -53,11 +53,11 @@ public:
 
     uint256 GetBestBlock() const override { return hashBestBlock_; }
 
-    bool BatchWrite(CellCoinsMap& mapCoins, const uint256& hashBlock) override
+    bool BatchWrite(MCCoinsMap& mapCoins, const uint256& hashBlock) override
     {
-        for (CellCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ) {
-            if (it->second.flags & CellCoinsCacheEntry::DIRTY) {
-                // Same optimization used in CellCoinsViewDB is to only write dirty entries.
+        for (MCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ) {
+            if (it->second.flags & MCCoinsCacheEntry::DIRTY) {
+                // Same optimization used in MCCoinsViewDB is to only write dirty entries.
                 map_[it->first] = it->second.coin;
                 if (it->second.coin.IsSpent() && InsecureRandRange(3) == 0) {
                     // Randomly delete empty entries on write.
@@ -72,17 +72,17 @@ public:
     }
 };
 
-class CellCoinsViewCacheTest : public CellCoinsViewCache
+class MCCoinsViewCacheTest : public MCCoinsViewCache
 {
 public:
-    CellCoinsViewCacheTest(CellCoinsView* _base) : CellCoinsViewCache(_base) {}
+    MCCoinsViewCacheTest(MCCoinsView* _base) : MCCoinsViewCache(_base) {}
 
     void SelfTest() const
     {
         // Manually recompute the dynamic usage of the whole data, and compare it.
         size_t ret = memusage::DynamicUsage(cacheCoins);
         size_t count = 0;
-        for (CellCoinsMap::iterator it = cacheCoins.begin(); it != cacheCoins.end(); it++) {
+        for (MCCoinsMap::iterator it = cacheCoins.begin(); it != cacheCoins.end(); it++) {
             ret += it->second.coin.DynamicMemoryUsage();
             ++count;
         }
@@ -90,7 +90,7 @@ public:
         BOOST_CHECK_EQUAL(DynamicMemoryUsage(), ret);
     }
 
-    CellCoinsMap& map() { return cacheCoins; }
+    MCCoinsMap& map() { return cacheCoins; }
     size_t& usage() { return cachedCoinsUsage; }
 };
 
@@ -101,7 +101,7 @@ BOOST_FIXTURE_TEST_SUITE(coins_tests, BasicTestingSetup)
 static const unsigned int NUM_SIMULATION_ITERATIONS = 40000;
 
 // This is a large randomized insert/remove simulation test on a variable-size
-// stack of caches on top of CellCoinsViewTest.
+// stack of caches on top of MCCoinsViewTest.
 //
 // It will randomly create/update/delete Coin entries to a tip of caches, with
 // txids picked from a limited list of random 256-bit hashes. Occasionally, a
@@ -123,12 +123,12 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
     bool uncached_an_entry = false;
 
     // A simple map to track what we expect the cache stack to represent.
-    std::map<CellOutPoint, Coin> result;
+    std::map<MCOutPoint, Coin> result;
 
     // The cache stack.
-    CellCoinsViewTest base; // A CellCoinsViewTest at the bottom.
-    std::vector<CellCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
-    stack.push_back(new CellCoinsViewCacheTest(&base)); // Start with one cache.
+    MCCoinsViewTest base; // A MCCoinsViewTest at the bottom.
+    std::vector<MCCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
+    stack.push_back(new MCCoinsViewCacheTest(&base)); // Start with one cache.
 
     // Use a limited set of random transaction ids, so we do test overwriting entries.
     std::vector<uint256> txids;
@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
         // Do a random modification.
         {
             uint256 txid = txids[InsecureRandRange(txids.size())]; // txid we're going to modify in this iteration.
-            Coin& coin = result[CellOutPoint(txid, 0)];
+            Coin& coin = result[MCOutPoint(txid, 0)];
 
             // Determine whether to test HaveCoin before or after Access* (or both). As these functions
             // can influence each other's behaviour by pulling things into the cache, all combinations
@@ -149,13 +149,13 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             bool test_havecoin_before = InsecureRandBits(2) == 0;
             bool test_havecoin_after = InsecureRandBits(2) == 0;
 
-            bool result_havecoin = test_havecoin_before ? stack.back()->HaveCoin(CellOutPoint(txid, 0)) : false;
-            const Coin& entry = (InsecureRandRange(500) == 0) ? AccessByTxid(*stack.back(), txid) : stack.back()->AccessCoin(CellOutPoint(txid, 0));
+            bool result_havecoin = test_havecoin_before ? stack.back()->HaveCoin(MCOutPoint(txid, 0)) : false;
+            const Coin& entry = (InsecureRandRange(500) == 0) ? AccessByTxid(*stack.back(), txid) : stack.back()->AccessCoin(MCOutPoint(txid, 0));
             BOOST_CHECK(coin == entry);
             BOOST_CHECK(!test_havecoin_before || result_havecoin == !entry.IsSpent());
 
             if (test_havecoin_after) {
-                bool ret = stack.back()->HaveCoin(CellOutPoint(txid, 0));
+                bool ret = stack.back()->HaveCoin(MCOutPoint(txid, 0));
                 BOOST_CHECK(ret == !entry.IsSpent());
             }
 
@@ -172,17 +172,17 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
                     (coin.IsSpent() ? added_an_entry : updated_an_entry) = true;
                     coin = newcoin;
                 }
-                stack.back()->AddCoin(CellOutPoint(txid, 0), std::move(newcoin), !coin.IsSpent() || InsecureRand32() & 1);
+                stack.back()->AddCoin(MCOutPoint(txid, 0), std::move(newcoin), !coin.IsSpent() || InsecureRand32() & 1);
             } else {
                 removed_an_entry = true;
                 coin.Clear();
-                stack.back()->SpendCoin(CellOutPoint(txid, 0));
+                stack.back()->SpendCoin(MCOutPoint(txid, 0));
             }
         }
 
         // One every 10 iterations, remove a random entry from the cache
         if (InsecureRandRange(10) == 0) {
-            CellOutPoint out(txids[InsecureRand32() % txids.size()], 0);
+            MCOutPoint out(txids[InsecureRand32() % txids.size()], 0);
             int cacheid = InsecureRand32() % stack.size();
             stack[cacheid]->Uncache(out);
             uncached_an_entry |= !stack[cacheid]->HaveCoinInCache(out);
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
                     found_an_entry = true;
                 }
             }
-            for (const CellCoinsViewCacheTest *test : stack) {
+            for (const MCCoinsViewCacheTest *test : stack) {
                 test->SelfTest();
             }
         }
@@ -224,13 +224,13 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
             }
             if (stack.size() == 0 || (stack.size() < 4 && InsecureRandBool())) {
                 //Add a new cache
-                CellCoinsView* tip = &base;
+                MCCoinsView* tip = &base;
                 if (stack.size() > 0) {
                     tip = stack.back();
                 } else {
                     removed_all_caches = true;
                 }
-                stack.push_back(new CellCoinsViewCacheTest(tip));
+                stack.push_back(new MCCoinsViewCacheTest(tip));
                 if (stack.size() == 4) {
                     reached_4_caches = true;
                 }
@@ -257,12 +257,12 @@ BOOST_AUTO_TEST_CASE(coins_cache_simulation_test)
 }
 
 // Store of all necessary tx and undo data for next test
-typedef std::map<CellOutPoint, std::tuple<CellTransaction,CellTxUndo,Coin>> UtxoData;
+typedef std::map<MCOutPoint, std::tuple<MCTransaction,MCTxUndo,Coin>> UtxoData;
 UtxoData utxoData;
 
-UtxoData::iterator FindRandomFrom(const std::set<CellOutPoint> &utxoSet) {
+UtxoData::iterator FindRandomFrom(const std::set<MCOutPoint> &utxoSet) {
     assert(utxoSet.size());
-    auto utxoSetIt = utxoSet.lower_bound(CellOutPoint(InsecureRand256(), 0));
+    auto utxoSetIt = utxoSet.lower_bound(MCOutPoint(InsecureRand256(), 0));
     if (utxoSetIt == utxoSet.end()) {
         utxoSetIt = utxoSet.begin();
     }
@@ -281,25 +281,25 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
 {
     bool spent_a_duplicate_coinbase = false;
     // A simple map to track what we expect the cache stack to represent.
-    std::map<CellOutPoint, Coin> result;
+    std::map<MCOutPoint, Coin> result;
 
     // The cache stack.
-    CellCoinsViewTest base; // A CellCoinsViewTest at the bottom.
-    std::vector<CellCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
-    stack.push_back(new CellCoinsViewCacheTest(&base)); // Start with one cache.
+    MCCoinsViewTest base; // A MCCoinsViewTest at the bottom.
+    std::vector<MCCoinsViewCacheTest*> stack; // A stack of CCoinsViewCaches on top.
+    stack.push_back(new MCCoinsViewCacheTest(&base)); // Start with one cache.
 
     // Track the txids we've used in various sets
-    std::set<CellOutPoint> coinbase_coins;
-    std::set<CellOutPoint> disconnected_coins;
-    std::set<CellOutPoint> duplicate_coins;
-    std::set<CellOutPoint> utxoset;
+    std::set<MCOutPoint> coinbase_coins;
+    std::set<MCOutPoint> disconnected_coins;
+    std::set<MCOutPoint> duplicate_coins;
+    std::set<MCOutPoint> utxoset;
 
     for (unsigned int i = 0; i < NUM_SIMULATION_ITERATIONS; i++) {
         uint32_t randiter = InsecureRand32();
 
         // 19/20 txs add a new transaction
         if (randiter % 20 < 19) {
-            CellMutableTransaction tx;
+            MCMutableTransaction tx;
             tx.vin.resize(1);
             tx.vout.resize(1);
             tx.vout[0].nValue = i; //Keep txs unique unless intended to duplicate
@@ -320,28 +320,28 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
                     duplicate_coins.insert(utxod->first);
                 }
                 else {
-                    coinbase_coins.insert(CellOutPoint(tx.GetHash(), 0));
+                    coinbase_coins.insert(MCOutPoint(tx.GetHash(), 0));
                 }
-                assert(CellTransaction(tx).IsCoinBase());
+                assert(MCTransaction(tx).IsCoinBase());
             }
 
             // 17/20 times reconnect previous or add a regular tx
             else {
 
-                CellOutPoint prevout;
+                MCOutPoint prevout;
                 // 1/20 times reconnect a previously disconnected tx
                 if (randiter % 20 == 2 && disconnected_coins.size()) {
                     auto utxod = FindRandomFrom(disconnected_coins);
                     tx = std::get<0>(utxod->second);
                     prevout = tx.vin[0].prevout;
-                    if (!CellTransaction(tx).IsCoinBase() && !utxoset.count(prevout)) {
+                    if (!MCTransaction(tx).IsCoinBase() && !utxoset.count(prevout)) {
                         disconnected_coins.erase(utxod->first);
                         continue;
                     }
 
                     // If this tx is already IN the UTXO, then it must be a coinbase, and it must be a duplicate
                     if (utxoset.count(utxod->first)) {
-                        assert(CellTransaction(tx).IsCoinBase());
+                        assert(MCTransaction(tx).IsCoinBase());
                         assert(duplicate_coins.count(utxod->first));
                     }
                     disconnected_coins.erase(utxod->first);
@@ -354,7 +354,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
 
                     // Construct the tx to spend the coins of prevouthash
                     tx.vin[0].prevout = prevout;
-                    assert(!CellTransaction(tx).IsCoinBase());
+                    assert(!MCTransaction(tx).IsCoinBase());
                 }
                 // In this simple test coins only have two states, spent or unspent, save the unspent state to restore
                 old_coin = result[prevout];
@@ -372,11 +372,11 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             }
             // Update the expected result to know about the new output coins
             assert(tx.vout.size() == 1);
-            const CellOutPoint outpoint(tx.GetHash(), 0);
-            result[outpoint] = Coin(tx.vout[0], height, CellTransaction(tx).IsCoinBase());
+            const MCOutPoint outpoint(tx.GetHash(), 0);
+            result[outpoint] = Coin(tx.vout[0], height, MCTransaction(tx).IsCoinBase());
 
             // Call UpdateCoins on the top cache
-            CellTxUndo undo;
+            MCTxUndo undo;
             UpdateCoins(tx, *(stack.back()), undo, height);
 
             // Update the utxo set for future spends
@@ -388,8 +388,8 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             //1/20 times undo a previous transaction
             auto utxod = FindRandomFrom(utxoset);
 
-            CellTransaction &tx = std::get<0>(utxod->second);
-            CellTxUndo &undo = std::get<1>(utxod->second);
+            MCTransaction &tx = std::get<0>(utxod->second);
+            MCTxUndo &undo = std::get<1>(utxod->second);
             Coin &orig_coin = std::get<2>(utxod->second);
 
             // Update the expected result
@@ -406,7 +406,7 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
             stack.back()->SpendCoin(utxod->first);
             // restore inputs
             if (!tx.IsCoinBase()) {
-                const CellOutPoint &out = tx.vin[0].prevout;
+                const MCOutPoint &out = tx.vin[0].prevout;
                 Coin coin = undo.vprevout[0];
                 ApplyTxInUndo(std::move(coin), *(stack.back()), out);
             }
@@ -455,11 +455,11 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
                 stack.pop_back();
             }
             if (stack.size() == 0 || (stack.size() < 4 && InsecureRandBool())) {
-                CellCoinsView* tip = &base;
+                MCCoinsView* tip = &base;
                 if (stack.size() > 0) {
                     tip = stack.back();
                 }
-                stack.push_back(new CellCoinsViewCacheTest(tip));
+                stack.push_back(new MCCoinsViewCacheTest(tip));
             }
         }
     }
@@ -477,25 +477,25 @@ BOOST_AUTO_TEST_CASE(updatecoins_simulation_test)
 BOOST_AUTO_TEST_CASE(ccoins_serialization)
 {
     // Good example
-    CellDataStream ss1(ParseHex("97f23c835800816115944e077fe7c803cfa57f29b36bf87c1d35"), SER_DISK, CLIENT_VERSION);
+    MCDataStream ss1(ParseHex("97f23c835800816115944e077fe7c803cfa57f29b36bf87c1d35"), SER_DISK, CLIENT_VERSION);
     Coin cc1;
     ss1 >> cc1;
     BOOST_CHECK_EQUAL(cc1.fCoinBase, false);
     BOOST_CHECK_EQUAL(cc1.nHeight, 203998);
     BOOST_CHECK_EQUAL(cc1.out.nValue, 60000000000ULL);
-    BOOST_CHECK_EQUAL(HexStr(cc1.out.scriptPubKey), HexStr(GetScriptForDestination(CellKeyID(uint160(ParseHex("816115944e077fe7c803cfa57f29b36bf87c1d35"))))));
+    BOOST_CHECK_EQUAL(HexStr(cc1.out.scriptPubKey), HexStr(GetScriptForDestination(MCKeyID(uint160(ParseHex("816115944e077fe7c803cfa57f29b36bf87c1d35"))))));
 
     // Good example
-    CellDataStream ss2(ParseHex("8ddf77bbd123008c988f1a4a4de2161e0f50aac7f17e7f9555caa4"), SER_DISK, CLIENT_VERSION);
+    MCDataStream ss2(ParseHex("8ddf77bbd123008c988f1a4a4de2161e0f50aac7f17e7f9555caa4"), SER_DISK, CLIENT_VERSION);
     Coin cc2;
     ss2 >> cc2;
     BOOST_CHECK_EQUAL(cc2.fCoinBase, true);
     BOOST_CHECK_EQUAL(cc2.nHeight, 120891);
     BOOST_CHECK_EQUAL(cc2.out.nValue, 110397);
-    BOOST_CHECK_EQUAL(HexStr(cc2.out.scriptPubKey), HexStr(GetScriptForDestination(CellKeyID(uint160(ParseHex("8c988f1a4a4de2161e0f50aac7f17e7f9555caa4"))))));
+    BOOST_CHECK_EQUAL(HexStr(cc2.out.scriptPubKey), HexStr(GetScriptForDestination(MCKeyID(uint160(ParseHex("8c988f1a4a4de2161e0f50aac7f17e7f9555caa4"))))));
 
     // Smallest possible example
-    CellDataStream ss3(ParseHex("000006"), SER_DISK, CLIENT_VERSION);
+    MCDataStream ss3(ParseHex("000006"), SER_DISK, CLIENT_VERSION);
     Coin cc3;
     ss3 >> cc3;
     BOOST_CHECK_EQUAL(cc3.fCoinBase, false);
@@ -504,7 +504,7 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
     BOOST_CHECK_EQUAL(cc3.out.scriptPubKey.size(), 0);
 
     // scriptPubKey that ends beyond the end of the stream
-    CellDataStream ss4(ParseHex("000007"), SER_DISK, CLIENT_VERSION);
+    MCDataStream ss4(ParseHex("000007"), SER_DISK, CLIENT_VERSION);
     try {
         Coin cc4;
         ss4 >> cc4;
@@ -513,11 +513,11 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
     }
 
     // Very large scriptPubKey (3*10^9 bytes) past the end of the stream
-    CellDataStream tmp(SER_DISK, CLIENT_VERSION);
+    MCDataStream tmp(SER_DISK, CLIENT_VERSION);
     uint64_t x = 3000000000ULL;
     tmp << VARINT(x);
     BOOST_CHECK_EQUAL(HexStr(tmp.begin(), tmp.end()), "8a95c0bb00");
-    CellDataStream ss5(ParseHex("00008a95c0bb00"), SER_DISK, CLIENT_VERSION);
+    MCDataStream ss5(ParseHex("00008a95c0bb00"), SER_DISK, CLIENT_VERSION);
     try {
         Coin cc5;
         ss5 >> cc5;
@@ -526,22 +526,22 @@ BOOST_AUTO_TEST_CASE(ccoins_serialization)
     }
 }
 
-const static CellOutPoint OUTPOINT;
-const static CellAmount PRUNED = -1;
-const static CellAmount ABSENT = -2;
-const static CellAmount FAIL = -3;
-const static CellAmount VALUE1 = 100;
-const static CellAmount VALUE2 = 200;
-const static CellAmount VALUE3 = 300;
-const static char DIRTY = CellCoinsCacheEntry::DIRTY;
-const static char FRESH = CellCoinsCacheEntry::FRESH;
+const static MCOutPoint OUTPOINT;
+const static MCAmount PRUNED = -1;
+const static MCAmount ABSENT = -2;
+const static MCAmount FAIL = -3;
+const static MCAmount VALUE1 = 100;
+const static MCAmount VALUE2 = 200;
+const static MCAmount VALUE3 = 300;
+const static char DIRTY = MCCoinsCacheEntry::DIRTY;
+const static char FRESH = MCCoinsCacheEntry::FRESH;
 const static char NO_ENTRY = -1;
 
 const static auto FLAGS = {char(0), FRESH, DIRTY, char(DIRTY | FRESH)};
 const static auto CLEAN_FLAGS = {char(0), FRESH};
 const static auto ABSENT_FLAGS = {NO_ENTRY};
 
-void SetCoinsValue(CellAmount value, Coin& coin)
+void SetCoinsValue(MCAmount value, Coin& coin)
 {
     assert(value != ABSENT);
     coin.Clear();
@@ -553,14 +553,14 @@ void SetCoinsValue(CellAmount value, Coin& coin)
     }
 }
 
-size_t InsertCoinsMapEntry(CellCoinsMap& map, CellAmount value, char flags)
+size_t InsertCoinsMapEntry(MCCoinsMap& map, MCAmount value, char flags)
 {
     if (value == ABSENT) {
         assert(flags == NO_ENTRY);
         return 0;
     }
     assert(flags != NO_ENTRY);
-    CellCoinsCacheEntry entry;
+    MCCoinsCacheEntry entry;
     entry.flags = flags;
     SetCoinsValue(value, entry.coin);
     auto inserted = map.emplace(OUTPOINT, std::move(entry));
@@ -568,7 +568,7 @@ size_t InsertCoinsMapEntry(CellCoinsMap& map, CellAmount value, char flags)
     return inserted.first->second.coin.DynamicMemoryUsage();
 }
 
-void GetCoinsMapEntry(const CellCoinsMap& map, CellAmount& value, char& flags)
+void GetCoinsMapEntry(const MCCoinsMap& map, MCAmount& value, char& flags)
 {
     auto it = map.find(OUTPOINT);
     if (it == map.end()) {
@@ -585,9 +585,9 @@ void GetCoinsMapEntry(const CellCoinsMap& map, CellAmount& value, char& flags)
     }
 }
 
-void WriteCoinsViewEntry(CellCoinsView& view, CellAmount value, char flags)
+void WriteCoinsViewEntry(MCCoinsView& view, MCAmount value, char flags)
 {
-    CellCoinsMap map;
+    MCCoinsMap map;
     InsertCoinsMapEntry(map, value, flags);
     view.BatchWrite(map, {});
 }
@@ -595,24 +595,24 @@ void WriteCoinsViewEntry(CellCoinsView& view, CellAmount value, char flags)
 class SingleEntryCacheTest
 {
 public:
-    SingleEntryCacheTest(CellAmount base_value, CellAmount cache_value, char cache_flags)
+    SingleEntryCacheTest(MCAmount base_value, MCAmount cache_value, char cache_flags)
     {
         WriteCoinsViewEntry(base, base_value, base_value == ABSENT ? NO_ENTRY : DIRTY);
         cache.usage() += InsertCoinsMapEntry(cache.map(), cache_value, cache_flags);
     }
 
-    CellCoinsView root;
-    CellCoinsViewCacheTest base{&root};
-    CellCoinsViewCacheTest cache{&base};
+    MCCoinsView root;
+    MCCoinsViewCacheTest base{&root};
+    MCCoinsViewCacheTest cache{&base};
 };
 
-void CheckAccessCoin(CellAmount base_value, CellAmount cache_value, CellAmount expected_value, char cache_flags, char expected_flags)
+void CheckAccessCoin(MCAmount base_value, MCAmount cache_value, MCAmount expected_value, char cache_flags, char expected_flags)
 {
     SingleEntryCacheTest test(base_value, cache_value, cache_flags);
     test.cache.AccessCoin(OUTPOINT);
     test.cache.SelfTest();
 
-    CellAmount result_value;
+    MCAmount result_value;
     char result_flags;
     GetCoinsMapEntry(test.cache.map(), result_value, result_flags);
     BOOST_CHECK_EQUAL(result_value, expected_value);
@@ -657,13 +657,13 @@ BOOST_AUTO_TEST_CASE(ccoins_access)
     CheckAccessCoin(VALUE1, VALUE2, VALUE2, DIRTY|FRESH, DIRTY|FRESH);
 }
 
-void CheckSpendCoins(CellAmount base_value, CellAmount cache_value, CellAmount expected_value, char cache_flags, char expected_flags)
+void CheckSpendCoins(MCAmount base_value, MCAmount cache_value, MCAmount expected_value, char cache_flags, char expected_flags)
 {
     SingleEntryCacheTest test(base_value, cache_value, cache_flags);
     test.cache.SpendCoin(OUTPOINT);
     test.cache.SelfTest();
 
-    CellAmount result_value;
+    MCAmount result_value;
     char result_flags;
     GetCoinsMapEntry(test.cache.map(), result_value, result_flags);
     BOOST_CHECK_EQUAL(result_value, expected_value);
@@ -708,14 +708,14 @@ BOOST_AUTO_TEST_CASE(ccoins_spend)
     CheckSpendCoins(VALUE1, VALUE2, ABSENT, DIRTY|FRESH, NO_ENTRY   );
 }
 
-void CheckAddCoinBase(CellAmount base_value, CellAmount cache_value, CellAmount modify_value, CellAmount expected_value, char cache_flags, char expected_flags, bool coinbase)
+void CheckAddCoinBase(MCAmount base_value, MCAmount cache_value, MCAmount modify_value, MCAmount expected_value, char cache_flags, char expected_flags, bool coinbase)
 {
     SingleEntryCacheTest test(base_value, cache_value, cache_flags);
 
-    CellAmount result_value;
+    MCAmount result_value;
     char result_flags;
     try {
-        CellTxOut output;
+        MCTxOut output;
         output.nValue = modify_value;
         test.cache.AddCoin(OUTPOINT, Coin(std::move(output), 1, coinbase), coinbase);
         test.cache.SelfTest();
@@ -737,7 +737,7 @@ void CheckAddCoinBase(CellAmount base_value, CellAmount cache_value, CellAmount 
 template <typename... Args>
 void CheckAddCoin(Args&&... args)
 {
-    for (CellAmount base_value : {ABSENT, PRUNED, VALUE1})
+    for (MCAmount base_value : {ABSENT, PRUNED, VALUE1})
         CheckAddCoinBase(base_value, std::forward<Args>(args)...);
 }
 
@@ -771,11 +771,11 @@ BOOST_AUTO_TEST_CASE(ccoins_add)
     CheckAddCoin(VALUE2, VALUE3, VALUE3, DIRTY|FRESH, DIRTY|FRESH, true );
 }
 
-void CheckWriteCoins(CellAmount parent_value, CellAmount child_value, CellAmount expected_value, char parent_flags, char child_flags, char expected_flags)
+void CheckWriteCoins(MCAmount parent_value, MCAmount child_value, MCAmount expected_value, char parent_flags, char child_flags, char expected_flags)
 {
     SingleEntryCacheTest test(ABSENT, parent_value, parent_flags);
 
-    CellAmount result_value;
+    MCAmount result_value;
     char result_flags;
     try {
         WriteCoinsViewEntry(test.cache, child_value, child_flags);
@@ -849,8 +849,8 @@ BOOST_AUTO_TEST_CASE(ccoins_write)
     // they would be too repetitive (the parent cache is never updated in these
     // cases). The loop below covers these cases and makes sure the parent cache
     // is always left unchanged.
-    for (CellAmount parent_value : {ABSENT, PRUNED, VALUE1})
-        for (CellAmount child_value : {ABSENT, PRUNED, VALUE2})
+    for (MCAmount parent_value : {ABSENT, PRUNED, VALUE1})
+        for (MCAmount child_value : {ABSENT, PRUNED, VALUE2})
             for (char parent_flags : parent_value == ABSENT ? ABSENT_FLAGS : FLAGS)
                 for (char child_flags : child_value == ABSENT ? ABSENT_FLAGS : CLEAN_FLAGS)
                     CheckWriteCoins(parent_value, child_value, parent_value, parent_flags, child_flags, parent_flags);

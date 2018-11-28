@@ -16,7 +16,7 @@ class BanTablePriv;
 
 struct CCombinedBan {
     CSubNet subnet;
-    CellBanEntry banEntry;
+    MCBanEntry banEntry;
 };
 
 class BannedNodeLessThan

@@ -13,7 +13,7 @@
 
 namespace {
 
-/** A class that deserializes a single CellTransaction one time. */
+/** A class that deserializes a single MCTransaction one time. */
 class TxInputStream
 {
 public:
@@ -77,7 +77,7 @@ static bool verify_flags(unsigned int flags)
     return (flags & ~(magnachainconsensus_SCRIPT_FLAGS_VERIFY_ALL)) == 0;
 }
 
-static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptPubKeyLen, CellAmount amount,
+static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptPubKeyLen, MCAmount amount,
                                     const unsigned char *txTo        , unsigned int txToLen,
                                     unsigned int nIn, unsigned int flags, magnachainconsensus_error* err)
 {
@@ -86,7 +86,7 @@ static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptP
     }
     try {
         TxInputStream stream(SER_NETWORK, PROTOCOL_VERSION, txTo, txToLen);
-        CellTransaction tx(deserialize, stream);
+        MCTransaction tx(deserialize, stream);
         if (nIn >= tx.vin.size())
             return set_error(err, magnachainconsensus_ERR_TX_INDEX);
         if (GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION) != txToLen)
@@ -96,7 +96,7 @@ static int verify_script(const unsigned char *scriptPubKey, unsigned int scriptP
         set_error(err, magnachainconsensus_ERR_OK);
 
         PrecomputedTransactionData txdata(tx);
-        return VerifyScript(tx.vin[nIn].scriptSig, CellScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), &tx.vin[nIn].scriptWitness, flags, TransactionSignatureChecker(&tx, nIn, amount, txdata), nullptr);
+        return VerifyScript(tx.vin[nIn].scriptSig, MCScript(scriptPubKey, scriptPubKey + scriptPubKeyLen), &tx.vin[nIn].scriptWitness, flags, TransactionSignatureChecker(&tx, nIn, amount, txdata), nullptr);
     } catch (const std::exception&) {
         return set_error(err, magnachainconsensus_ERR_TX_DESERIALIZE); // Error deserializing
     }
@@ -106,7 +106,7 @@ int magnachainconsensus_verify_script_with_amount(const unsigned char *scriptPub
                                     const unsigned char *txTo        , unsigned int txToLen,
                                     unsigned int nIn, unsigned int flags, magnachainconsensus_error* err)
 {
-    CellAmount am(amount);
+    MCAmount am(amount);
     return ::verify_script(scriptPubKey, scriptPubKeyLen, am, txTo, txToLen, nIn, flags, err);
 }
 
@@ -119,7 +119,7 @@ int magnachainconsensus_verify_script(const unsigned char *scriptPubKey, unsigne
         return set_error(err, magnachainconsensus_ERR_AMOUNT_REQUIRED);
     }
 
-    CellAmount am(0);
+    MCAmount am(0);
     return ::verify_script(scriptPubKey, scriptPubKeyLen, am, txTo, txToLen, nIn, flags, err);
 }
 

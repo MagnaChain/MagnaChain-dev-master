@@ -16,19 +16,19 @@
 #include "utils/utilstrencodings.h"
 #include "smartcontract/smartcontract.h"
 
-CellAmount GetDustThreshold(const CellTxOut& txout, const CellFeeRate& dustRelayFeeIn)
+MCAmount GetDustThreshold(const MCTxOut& txout, const MCFeeRate& dustRelayFeeIn)
 {
     // "Dust" is defined in terms of dustRelayFee,
     // which has units satoshis-per-kilobyte.
     // If you'd pay more in fees than the value of the output
     // to spend something, then we consider it dust.
     // A typical spendable non-segwit txout is 34 bytes big, and will
-    // need a CellTxIn of at least 148 bytes to spend:
+    // need a MCTxIn of at least 148 bytes to spend:
     // so dust is a spendable txout less than
     // 182*dustRelayFee/1000 (in satoshis).
     // 546 satoshis at the default rate of 3000 sat/kB.
     // A typical spendable segwit txout is 31 bytes big, and will
-    // need a CellTxIn of at least 67 bytes to spend:
+    // need a MCTxIn of at least 67 bytes to spend:
     // so dust is a spendable txout less than
     // 98*dustRelayFee/1000 (in satoshis).
     // 294 satoshis at the default rate of 3000 sat/kB.
@@ -50,7 +50,7 @@ CellAmount GetDustThreshold(const CellTxOut& txout, const CellFeeRate& dustRelay
     return dustRelayFeeIn.GetFee(nSize);
 }
 
-bool IsDust(const CellTxOut& txout, const CellFeeRate& dustRelayFeeIn)
+bool IsDust(const MCTxOut& txout, const MCFeeRate& dustRelayFeeIn)
 {
     return (txout.nValue < GetDustThreshold(txout, dustRelayFeeIn));
 }
@@ -72,13 +72,13 @@ bool IsDust(const CellTxOut& txout, const CellFeeRate& dustRelayFeeIn)
      *   DUP CHECKSIG DROP ... repeated 100 times... OP_1
      */
 
-bool IsStandard(const CellScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled)
+bool IsStandard(const MCScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled)
 {
     std::vector<std::vector<unsigned char> > vSolutions;
 	if (!Solver(scriptPubKey, whichType, vSolutions)) {
 		opcodetype opcode;
 		std::vector<unsigned char> vch;
-		CellScript::const_iterator pc = scriptPubKey.begin();
+		MCScript::const_iterator pc = scriptPubKey.begin();
 		scriptPubKey.GetOp(pc, opcode, vch);
 		if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE)
 			return true;
@@ -104,9 +104,9 @@ bool IsStandard(const CellScript& scriptPubKey, txnouttype& whichType, const boo
     return whichType != TX_NONSTANDARD;
 }
 
-bool IsStandardTx(const CellTransaction& tx, std::string& reason, const bool witnessEnabled)
+bool IsStandardTx(const MCTransaction& tx, std::string& reason, const bool witnessEnabled)
 {
-    if (tx.nVersion > CellTransaction::MAX_STANDARD_VERSION || tx.nVersion < 1) {
+    if (tx.nVersion > MCTransaction::MAX_STANDARD_VERSION || tx.nVersion < 1) {
         reason = "version";
         return false;
     }
@@ -123,7 +123,7 @@ bool IsStandardTx(const CellTransaction& tx, std::string& reason, const bool wit
         }
     }
 
-    for (const CellTxIn& txin : tx.vin)
+    for (const MCTxIn& txin : tx.vin)
     {
         // Biggest 'standard' txin is a 15-of-15 P2SH multisig with compressed
         // keys (remember the 520 byte limit on redeemScript size). That works
@@ -144,7 +144,7 @@ bool IsStandardTx(const CellTransaction& tx, std::string& reason, const bool wit
 
     unsigned int nDataOut = 0;
     txnouttype whichType;
-    for (const CellTxOut& txout : tx.vout) {
+    for (const MCTxOut& txout : tx.vout) {
         if (!::IsStandard(txout.scriptPubKey, whichType, witnessEnabled)) {
             reason = "scriptpubkey";
             return false;
@@ -170,22 +170,22 @@ bool IsStandardTx(const CellTransaction& tx, std::string& reason, const bool wit
     return true;
 }
 
-bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapInputs)
+bool AreInputsStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInputs)
 {
     if (tx.IsCoinBase())
         return true; // Coinbases don't use vin normally
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
-        const CellTxOut& prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
+        const MCTxOut& prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
 
         std::vector<std::vector<unsigned char> > vSolutions;
         txnouttype whichType;
         // get the scriptPubKey corresponding to this input:
-        const CellScript& prevScript = prev.scriptPubKey;
+        const MCScript& prevScript = prev.scriptPubKey;
 		if (!Solver(prevScript, whichType, vSolutions))
 		{
 			if (tx.IsSmartContract()) {
-				CellContractID kDest;
+				MCContractID kDest;
 				if (!prevScript.GetContractAddr(kDest))
 					return false;
 				if (kDest != tx.pContractData->address)
@@ -203,7 +203,7 @@ bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
                 return false;
             if (stack.empty())
                 return false;
-            CellScript subscript(stack.back().begin(), stack.back().end());
+            MCScript subscript(stack.back().begin(), stack.back().end());
             if (subscript.GetSigOpCount(true) > MAX_P2SH_SIGOPS) {
                 return false;
             }
@@ -213,7 +213,7 @@ bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
     return true;
 }
 
-bool IsWitnessStandard(const CellTransaction& tx, const CellCoinsViewCache& mapInputs)
+bool IsWitnessStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInputs)
 {
     if (tx.IsCoinBase())
         return true; // Coinbases are skipped
@@ -225,10 +225,10 @@ bool IsWitnessStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
         if (tx.vin[i].scriptWitness.IsNull())
             continue;
 
-        const CellTxOut &prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
+        const MCTxOut &prev = mapInputs.AccessCoin(tx.vin[i].prevout).out;
 
         // get the scriptPubKey corresponding to this input:
-        CellScript prevScript = prev.scriptPubKey;
+        MCScript prevScript = prev.scriptPubKey;
 
         if (prevScript.IsPayToScriptHash()) {
             std::vector <std::vector<unsigned char> > stack;
@@ -239,7 +239,7 @@ bool IsWitnessStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
                 return false;
             if (stack.empty())
                 return false;
-            prevScript = CellScript(stack.back().begin(), stack.back().end());
+            prevScript = MCScript(stack.back().begin(), stack.back().end());
         }
 
         int witnessversion = 0;
@@ -265,8 +265,8 @@ bool IsWitnessStandard(const CellTransaction& tx, const CellCoinsViewCache& mapI
     return true;
 }
 
-CellFeeRate incrementalRelayFee = CellFeeRate(DEFAULT_INCREMENTAL_RELAY_FEE);
-CellFeeRate dustRelayFee = CellFeeRate(DUST_RELAY_TX_FEE);
+MCFeeRate incrementalRelayFee = MCFeeRate(DEFAULT_INCREMENTAL_RELAY_FEE);
+MCFeeRate dustRelayFee = MCFeeRate(DUST_RELAY_TX_FEE);
 unsigned int nBytesPerSigOp = DEFAULT_BYTES_PER_SIGOP;
 
 int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost)
@@ -274,7 +274,7 @@ int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost)
     return (std::max(nWeight, nSigOpCost * nBytesPerSigOp) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
 }
 
-int64_t GetVirtualTransactionSize(const CellTransaction& tx, int64_t nSigOpCost, SmartLuaState* sls)
+int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, SmartLuaState* sls)
 {
     return GetVirtualTransactionSize(GetTransactionWeight(tx, sls), nSigOpCost);
 }

@@ -160,7 +160,7 @@ OverviewPage::~OverviewPage()
     delete ui;
 }
 
-void OverviewPage::setBalance(const CellAmount& balance, const CellAmount& unconfirmedBalance, const CellAmount& immatureBalance, const CellAmount& watchOnlyBalance, const CellAmount& watchUnconfBalance, const CellAmount& watchImmatureBalance)
+void OverviewPage::setBalance(const MCAmount& balance, const MCAmount& unconfirmedBalance, const MCAmount& immatureBalance, const MCAmount& watchOnlyBalance, const MCAmount& watchUnconfBalance, const MCAmount& watchImmatureBalance)
 {
     int unit = walletModel->getOptionsModel()->getDisplayUnit();
     currentBalance = balance;
@@ -234,7 +234,7 @@ void OverviewPage::setWalletModel(WalletModel *model)
         // Keep up to date with wallet
         setBalance(model->getBalance(), model->getUnconfirmedBalance(), model->getImmatureBalance(),
                    model->getWatchBalance(), model->getWatchUnconfirmedBalance(), model->getWatchImmatureBalance());
-        connect(model, SIGNAL(balanceChanged(CellAmount,CellAmount,CellAmount,CellAmount,CellAmount,CellAmount)), this, SLOT(setBalance(CellAmount,CellAmount,CellAmount,CellAmount,CellAmount,CellAmount)));
+        connect(model, SIGNAL(balanceChanged(MCAmount,MCAmount,MCAmount,MCAmount,MCAmount,MCAmount)), this, SLOT(setBalance(MCAmount,MCAmount,MCAmount,MCAmount,MCAmount,MCAmount)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(updateDisplayUnit()));
 

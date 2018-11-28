@@ -9,7 +9,7 @@
 #include "wallet/db.h"
 #include "wallet/wallet.h"
 
-CellWallet *pwalletMain;
+MCWallet *pwalletMain;
 
 WalletTestingSetup::WalletTestingSetup(const std::string& chainName):
     TestingSetup(chainName)
@@ -17,8 +17,8 @@ WalletTestingSetup::WalletTestingSetup(const std::string& chainName):
     bitdb.MakeMock();
 
     bool fFirstRun;
-    std::unique_ptr<CellWalletDBWrapper> dbw(new CellWalletDBWrapper(&bitdb, "wallet_test.dat"));
-    pwalletMain = new CellWallet(std::move(dbw));
+    std::unique_ptr<MCWalletDBWrapper> dbw(new MCWalletDBWrapper(&bitdb, "wallet_test.dat"));
+    pwalletMain = new MCWallet(std::move(dbw));
     pwalletMain->LoadWallet(fFirstRun);
     RegisterValidationInterface(pwalletMain);
 
