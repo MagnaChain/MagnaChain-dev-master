@@ -21,7 +21,7 @@
 
 #include <atomic>
 #include <boost/thread.hpp>
-
+#include "chain/branchdb.h"
 //
 // CWalletDB
 //
@@ -276,6 +276,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
             ssValue >> wtx;
             CellValidationState state;
 			CellBlockIndex *pTxBlockIndex = nullptr;
+            BranchCache branchCache(g_pBranchDb);
 			if (wtx.tx->IsBranchCreate())
 			{
 				BranchChainTxInfo chainsendinfo = pBranchChainTxRecordsDb->GetBranchChainTxInfo(hash);
@@ -284,7 +285,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
 					pTxBlockIndex = mapBlockIndex[chainsendinfo.blockhash];
 				}
 			}
-            if (!(CheckTransaction(wtx, state, true, nullptr, pTxBlockIndex) && (wtx.GetHash() == hash) && state.IsValid()))
+            if (!(CheckTransaction(wtx, state, true, nullptr, pTxBlockIndex, false, &branchCache) && (wtx.GetHash() == hash) && state.IsValid()))
                 return false;
 
             // Undo serialize changes in 31600

@@ -170,12 +170,12 @@ protected:
     void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
     void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
 
-    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
-    bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    virtual void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    virtual void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    virtual bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    virtual bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    virtual bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    virtual bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
 
     virtual bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
 protected:
@@ -218,12 +218,12 @@ public:
     uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
     //override>
     // overwrite, before do modify to data, load data from readonly_db if data not exist in local db.
-    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
-    bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch) override;
+    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch) override;
+    bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch) override;
+    bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch) override;
+    bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch) override;
+    bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch) override;
     //
 private:
     bool FetchDataFromSource(const uint256& branchId);

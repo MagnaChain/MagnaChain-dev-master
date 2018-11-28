@@ -14,6 +14,7 @@
 #include "validation/validation.h"
 #include "utils/util.h"
 
+#include "chain/branchdb.h"
 #include <unordered_map>
 
 CellBlockHeaderAndShortTxIDs::CellBlockHeaderAndShortTxIDs(const CellBlock& block, bool fUseWTXID) :
@@ -197,8 +198,9 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(CellBlock& block, const std::vect
     if (vtx_missing.size() != tx_missing_offset)
         return READ_STATUS_INVALID;
 
+    BranchCache branchcache(g_pBranchDb);
     CellValidationState state;
-    if (!CheckBlock(block, state, Params().GetConsensus())) {
+    if (!CheckBlock(block, state, Params().GetConsensus(), &branchcache)) {
         // TODO: We really want to just check merkle tree manually here,
         // but that is expensive, and CheckBlock caches a block's
         // "checked-status" (in the CellBlock?). CellBlock should be able to
