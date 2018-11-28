@@ -1194,14 +1194,14 @@ bool CheckReportTxCommonly(const CellTransaction& tx, CellValidationState& state
     return true;
 }
 
-bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
+bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache)
 {
     if (tx.IsReport())
     {
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
-        if (!g_pBranchDb->HasBranchData(reportedBranchId))
+        if (!pBranchCache->HasBranchData(reportedBranchId))
             return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
-        BranchData branchdata = g_pBranchDb->GetBranchData(reportedBranchId);
+        BranchData branchdata = pBranchCache->GetBranchData(reportedBranchId);
 
         if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
         {
@@ -1221,7 +1221,7 @@ bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state)
         }
         else if (tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA)
         {
-            if (!CheckProveContractData(tx, state))
+            if (!CheckProveContractData(tx, state, pBranchCache))
                 return state.DoS(0, false, REJECT_INVALID, "CheckProveContractData fail");
         }
         else
@@ -1368,13 +1368,13 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
     return true;
 }
 
-bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
+bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache)
 {
     if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX)
         return false;
 
     const uint256 branchId = tx.pProveData->branchId;
-    if (!g_pBranchDb->HasBranchData(branchId))
+    if (!pBranchCache->HasBranchData(branchId))
         return false;
 
     const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
@@ -1391,7 +1391,7 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
         return state.DoS(0, false, REJECT_INVALID, "Prove tx data error, first tx's hasdid is not eq proved txid");
 
     // spv check
-    BranchData branchData = g_pBranchDb->GetBranchData(branchId);
+    BranchData branchData = pBranchCache->GetBranchData(branchId);
     CellSpvProof spvProof(vectProveData[0].pCSP);
     BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
     if (pBlockData == nullptr)
@@ -1410,7 +1410,7 @@ bool CheckProveReportTx(const CellTransaction& tx, CellValidationState& state)
     return true;
 }
 
-bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
+bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache)
 {
     if (!tx.IsProve() || tx.pProveData == nullptr 
         || !(tx.pProveData->provetype == ReportType::REPORT_COINBASE || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)) 
@@ -1419,11 +1419,11 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
     }
 
     const uint256& branchId = tx.pProveData->branchId;
-    if (!g_pBranchDb->HasBranchData(branchId)) {
+    if (!pBranchCache->HasBranchData(branchId)) {
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
     }
 
-    BranchData branchData = g_pBranchDb->GetBranchData(branchId);
+    BranchData branchData = pBranchCache->GetBranchData(branchId);
     if (branchData.mapHeads.count(tx.pProveData->blockHash) == 0){
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no block data");
     }
@@ -1477,15 +1477,15 @@ bool CheckProveCoinbaseTx(const CellTransaction& tx, CellValidationState& state)
     return true;
 }
 
-bool CheckProveContractData(const CellTransaction& tx, CellValidationState& state)
+bool CheckProveContractData(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache)
 {
     if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA)
         return false;
 
     const uint256& branchId = tx.pReportData->reportedBranchId;
-    if (!g_pBranchDb->HasBranchData(branchId))
+    if (!pBranchCache->HasBranchData(branchId))
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
-    BranchData branchData = g_pBranchDb->GetBranchData(branchId);
+    BranchData branchData = pBranchCache->GetBranchData(branchId);
 
     // 先验证被举报交易及对应合约数据属于指定区块
     BranchBlockData* pReportedBlockData = branchData.GetBranchBlockData(tx.pReportData->reportedBlockHash);
@@ -1530,30 +1530,30 @@ bool CheckProveContractData(const CellTransaction& tx, CellValidationState& stat
     return false;
 }
 
-bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
+bool CheckProveTx(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache)
 {
     if (tx.IsProve())
     {
         /*
         //uint256 proveFlagHash = GetProveTxHashKey(tx);
         //check report exist, don't check in cache now. let a report tx in a mined block may be better.
-        if (g_pBranchDb->mReortTxFlag.count(proveFlagHash) == 0
-            || g_pBranchDb->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
+        if (pBranchCache->mReortTxFlag.count(proveFlagHash) == 0
+            || pBranchCache->mReortTxFlag[proveFlagHash] != RP_FLAG_REPORTED)
         {
             return state.DoS(0, false, REJECT_INVALID, "prove to report tx not exist.");
         }
         */
 
         if (tx.pProveData->provetype == ReportType::REPORT_TX){
-            if (!CheckProveReportTx(tx, state))
+            if (!CheckProveReportTx(tx, state, pBranchCache))
                 return false;
         }
         else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE){
-            if (!CheckProveCoinbaseTx(tx, state))
+            if (!CheckProveCoinbaseTx(tx, state, pBranchCache))
                 return false;
         }
         else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE) {
-            if (!CheckProveCoinbaseTx(tx, state))
+            if (!CheckProveCoinbaseTx(tx, state, pBranchCache))
                 return false;
         }
         else
@@ -1563,7 +1563,7 @@ bool CheckProveTx(const CellTransaction& tx, CellValidationState& state)
 }
 
 //
-bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex)
+bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex, BranchCache *pBranchCache)
 {
     if (!tx.IsReportReward())
         return false;
@@ -1592,10 +1592,10 @@ bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
     uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
-    if (!g_pBranchDb->HasBranchData(reportbranchid))
+    if (!pBranchCache->HasBranchData(reportbranchid))
         return false;
 
-    BranchData branchdata = g_pBranchDb->GetBranchData(reportbranchid);
+    BranchData branchdata = pBranchCache->GetBranchData(reportbranchid);
     if (!branchdata.mapHeads.count(reportblockhash))// best chain check? 1. no, 作弊过，但是数据在分叉上，也可以举报。带来麻烦是，矿工需要监控自己挖出来的分叉有没有监控。  
         return false;
 

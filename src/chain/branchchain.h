@@ -87,12 +87,12 @@ bool CheckBranchDuplicateTx(const CellTransaction& tx, CellValidationState& stat
 uint256 GetReportTxHashKey(const CellTransaction& tx);
 uint256 GetProveTxHashKey(const CellTransaction& tx);
 
-bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state);
-bool CheckProveTx(const CellTransaction& tx, CellValidationState& state);
-bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex);
+bool CheckReportCheatTx(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache);
+bool CheckProveTx(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache);
+bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex, BranchCache *pBranchCache);
 bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
 bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
-bool CheckProveContractData(const CellTransaction& tx, CellValidationState& state);
+bool CheckProveContractData(const CellTransaction& tx, CellValidationState& state, BranchCache *pBranchCache);
 
 CellMutableTransaction RevertTransaction(const CellTransaction& tx, const CellTransactionRef &pFromTx, bool fDeepRevert = false);
 

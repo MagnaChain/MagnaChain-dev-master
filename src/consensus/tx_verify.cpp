@@ -306,9 +306,9 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (tx.fromBranchId != CellBaseChainParams::MAIN) {
             //spv check
             uint256 frombranchid = uint256S(tx.fromBranchId);
-            if (!g_pBranchDb->HasBranchData(frombranchid))
+            if (!pBranchCache->HasBranchData(frombranchid))
                 return state.DoS(0, false, REJECT_INVALID, strprintf("CheckTransaction branchid error. %s", tx.fromBranchId));
-            BranchData branchdata = g_pBranchDb->GetBranchData(frombranchid);
+            BranchData branchdata = pBranchCache->GetBranchData(frombranchid);
 
             CellSpvProof spvProof(*tx.pPMT);
             BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
@@ -318,9 +318,9 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
                 return false;
 
             // best chain check
-            if (!g_pBranchDb->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
+            if (!pBranchCache->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
                 return state.DoS(1, false, REJECT_INVALID, "Branch-tx-not in best chain");
-            int minedHeight = g_pBranchDb->GetBranchBlockMinedHeight(frombranchid, tx.pPMT->blockhash);
+            int minedHeight = pBranchCache->GetBranchBlockMinedHeight(frombranchid, tx.pPMT->blockhash);
             if (minedHeight < BRANCH_CHAIN_MATURITY)
                 return state.DoS(1, false, REJECT_INVALID, strprintf("branch-tx minedHeight %d is lessthan %d", minedHeight, BRANCH_CHAIN_MATURITY));
         }
@@ -367,12 +367,16 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         }
     }
     if (tx.IsReport()){
-        if (!CheckReportCheatTx(tx, state)){
+        if (!Params().IsMainChain())
+            return state.DoS(100, false, REJECT_INVALID, "Report tx must in main chain.");
+        if (!CheckReportCheatTx(tx, state, pBranchCache)){
             return false;
         }
     }
     if (tx.IsProve()){
-        if (!CheckProveTx(tx, state)){
+        if (!Params().IsMainChain())
+            return state.DoS(100, false, REJECT_INVALID, "Prove tx must in main chain.");
+        if (!CheckProveTx(tx, state, pBranchCache)){
             return false;
         }
     }

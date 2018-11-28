@@ -2184,7 +2184,7 @@ static bool ConnectBlock(const CellBlock& block, CellValidationState& state, Cel
             }
         }
         if (tx.IsReportReward()) {
-            if (!CheckReportRewardTransaction(tx, state, pindex))
+            if (!CheckReportRewardTransaction(tx, state, pindex, pBranchCache))
                 return false;
         }
 
