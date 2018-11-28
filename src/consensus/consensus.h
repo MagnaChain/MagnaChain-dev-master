@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_CONSENSUS_H
-#define CELLLINK_CONSENSUS_CONSENSUS_H
+#ifndef MAGNACHAIN_CONSENSUS_CONSENSUS_H
+#define MAGNACHAIN_CONSENSUS_CONSENSUS_H
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -47,4 +47,4 @@ enum {
     LOCKTIME_MEDIAN_TIME_PAST = (1 << 1),
 };
 
-#endif // CELLLINK_CONSENSUS_CONSENSUS_H
+#endif // MAGNACHAIN_CONSENSUS_CONSENSUS_H

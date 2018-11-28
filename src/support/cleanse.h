@@ -4,12 +4,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SUPPORT_CLEANSE_H
-#define CELLLINK_SUPPORT_CLEANSE_H
+#ifndef MAGNACHAIN_SUPPORT_CLEANSE_H
+#define MAGNACHAIN_SUPPORT_CLEANSE_H
 
 #include <stdlib.h>
 
 // Attempt to overwrite data in the specified memory span.
 void memory_cleanse(void *ptr, size_t len);
 
-#endif // CELLLINK_SUPPORT_CLEANSE_H
+#endif // MAGNACHAIN_SUPPORT_CLEANSE_H

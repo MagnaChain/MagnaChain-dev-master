@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_ADDRESSTABLEMODEL_H
-#define CELLLINK_QT_ADDRESSTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_ADDRESSTABLEMODEL_H
+#define MAGNACHAIN_QT_ADDRESSTABLEMODEL_H
 
 #include <QAbstractTableModel>
 #include <QStringList>
@@ -93,4 +93,4 @@ public Q_SLOTS:
     friend class AddressTablePriv;
 };
 
-#endif // CELLLINK_QT_ADDRESSTABLEMODEL_H
+#endif // MAGNACHAIN_QT_ADDRESSTABLEMODEL_H

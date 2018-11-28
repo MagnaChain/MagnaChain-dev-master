@@ -7,8 +7,8 @@
 /**
  * Money parsing/formatting utilities.
  */
-#ifndef CELLLINK_UTILMONEYSTR_H
-#define CELLLINK_UTILMONEYSTR_H
+#ifndef MAGNACHAIN_UTILMONEYSTR_H
+#define MAGNACHAIN_UTILMONEYSTR_H
 
 #include <stdint.h>
 #include <string>
@@ -22,4 +22,4 @@ std::string FormatMoney(const MCAmount& n);
 bool ParseMoney(const std::string& str, MCAmount& nRet);
 bool ParseMoney(const char* pszIn, MCAmount& nRet);
 
-#endif // CELLLINK_UTILMONEYSTR_H
+#endif // MAGNACHAIN_UTILMONEYSTR_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_TRANSACTIONTABLEMODEL_H
-#define CELLLINK_QT_TRANSACTIONTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_TRANSACTIONTABLEMODEL_H
+#define MAGNACHAIN_QT_TRANSACTIONTABLEMODEL_H
 
 #include "magnachainunits.h"
 
@@ -118,4 +118,4 @@ public Q_SLOTS:
     friend class TransactionTablePriv;
 };
 
-#endif // CELLLINK_QT_TRANSACTIONTABLEMODEL_H
+#endif // MAGNACHAIN_QT_TRANSACTIONTABLEMODEL_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CELLLINKGUI_H
-#define CELLLINK_QT_CELLLINKGUI_H
+#ifndef MAGNACHAIN_QT_MAGNACHAINGUI_H
+#define MAGNACHAIN_QT_MAGNACHAINGUI_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -273,4 +273,4 @@ private Q_SLOTS:
     void onMenuSelection(QAction* action);
 };
 
-#endif // CELLLINK_QT_CELLLINKGUI_H
+#endif // MAGNACHAIN_QT_MAGNACHAINGUI_H

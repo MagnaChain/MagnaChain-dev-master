@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_TX_VERIFY_H
-#define CELLLINK_CONSENSUS_TX_VERIFY_H
+#ifndef MAGNACHAIN_CONSENSUS_TX_VERIFY_H
+#define MAGNACHAIN_CONSENSUS_TX_VERIFY_H
 
 #include <stdint.h>
 #include <vector>
@@ -86,4 +86,4 @@ bool EvaluateSequenceLocks(const MCBlockIndex& block, std::pair<int, int64_t> lo
  */
 bool SequenceLocks(const MCTransaction &tx, int flags, std::vector<int>* prevHeights, const MCBlockIndex& block);
 
-#endif // CELLLINK_CONSENSUS_TX_VERIFY_H
+#endif // MAGNACHAIN_CONSENSUS_TX_VERIFY_H

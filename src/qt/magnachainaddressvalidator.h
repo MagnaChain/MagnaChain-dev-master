@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CELLLINKADDRESSVALIDATOR_H
-#define CELLLINK_QT_CELLLINKADDRESSVALIDATOR_H
+#ifndef MAGNACHAIN_QT_MAGNACHAINADDRESSVALIDATOR_H
+#define MAGNACHAIN_QT_MAGNACHAINADDRESSVALIDATOR_H
 
 #include <QValidator>
 
@@ -33,4 +33,4 @@ public:
     State validate(QString &input, int &pos) const;
 };
 
-#endif // CELLLINK_QT_CELLLINKADDRESSVALIDATOR_H
+#endif // MAGNACHAIN_QT_MAGNACHAINADDRESSVALIDATOR_H

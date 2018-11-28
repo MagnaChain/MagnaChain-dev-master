@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PRIMITIVES_BLOCK_H
-#define CELLLINK_PRIMITIVES_BLOCK_H
+#ifndef MAGNACHAIN_PRIMITIVES_BLOCK_H
+#define MAGNACHAIN_PRIMITIVES_BLOCK_H
 
 #include "primitives/transaction.h"
 #include "io/serialize.h"
@@ -174,4 +174,4 @@ struct MCBlockLocator
     }
 };
 
-#endif // CELLLINK_PRIMITIVES_BLOCK_H
+#endif // MAGNACHAIN_PRIMITIVES_BLOCK_H

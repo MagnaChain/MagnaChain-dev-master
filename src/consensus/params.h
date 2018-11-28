@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_PARAMS_H
-#define CELLLINK_CONSENSUS_PARAMS_H
+#ifndef MAGNACHAIN_CONSENSUS_PARAMS_H
+#define MAGNACHAIN_CONSENSUS_PARAMS_H
 
 #include "coding/uint256.h"
 #include <map>
@@ -70,4 +70,4 @@ struct Params {
 };
 } // namespace Consensus
 
-#endif // CELLLINK_CONSENSUS_PARAMS_H
+#endif // MAGNACHAIN_CONSENSUS_PARAMS_H

@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_COINS_H
-#define CELLLINK_COINS_H
+#ifndef MAGNACHAIN_COINS_H
+#define MAGNACHAIN_COINS_H
 
 #include "primitives/transaction.h"
 #include "transaction/compressor.h"
@@ -366,4 +366,4 @@ void AddCoins(MCCoinsViewCache& cache, const MCTransaction& tx, int nHeight, boo
 // lookups to database, so it should be used with care.
 const Coin& AccessByTxid(const MCCoinsViewCache& cache, const uint256& txid);
 
-#endif // CELLLINK_COINS_H
+#endif // MAGNACHAIN_COINS_H

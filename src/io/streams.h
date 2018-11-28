@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_STREAMS_H
-#define CELLLINK_STREAMS_H
+#ifndef MAGNACHAIN_STREAMS_H
+#define MAGNACHAIN_STREAMS_H
 
 #include "support/allocators/zeroafterfree.h"
 #include "io/serialize.h"
@@ -707,4 +707,4 @@ public:
     }
 };
 
-#endif // CELLLINK_STREAMS_H
+#endif // MAGNACHAIN_STREAMS_H

@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_MINER_H
-#define CELLLINK_MINER_H
+#ifndef MAGNACHAIN_MINER_H
+#define MAGNACHAIN_MINER_H
 
 #include "primitives/block.h"
 #include "transaction/txmempool.h"
@@ -240,4 +240,4 @@ private:
 void IncrementExtraNonce(MCBlock* pblock, const MCBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 int64_t UpdateTime(MCBlockHeader* pblock, const Consensus::Params& consensusParams, const MCBlockIndex* pindexPrev);
 
-#endif // CELLLINK_MINER_H
+#endif // MAGNACHAIN_MINER_H

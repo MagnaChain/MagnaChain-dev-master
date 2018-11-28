@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_MERKLEBLOCK_H
-#define CELLLINK_MERKLEBLOCK_H
+#ifndef MAGNACHAIN_MERKLEBLOCK_H
+#define MAGNACHAIN_MERKLEBLOCK_H
 
 #include "io/serialize.h"
 #include "coding/uint256.h"
@@ -56,4 +56,4 @@ private:
     MCMerkleBlock(const MCBlock& block, MCBloomFilter* filter, const std::set<uint256>* txids);
 };
 
-#endif // CELLLINK_MERKLEBLOCK_H
+#endif // MAGNACHAIN_MERKLEBLOCK_H

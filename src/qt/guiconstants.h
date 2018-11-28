@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_GUICONSTANTS_H
-#define CELLLINK_QT_GUICONSTANTS_H
+#ifndef MAGNACHAIN_QT_GUICONSTANTS_H
+#define MAGNACHAIN_QT_GUICONSTANTS_H
 
 /* Milliseconds between model updates */
 static const int MODEL_UPDATE_DELAY = 250;
@@ -54,4 +54,4 @@ static const int MAX_URI_LENGTH = 255;
 #define QAPP_APP_NAME_DEFAULT "MagnaChain-Qt"
 #define QAPP_APP_NAME_TESTNET "MagnaChain-Qt-testnet"
 
-#endif // CELLLINK_QT_GUICONSTANTS_H
+#endif // MAGNACHAIN_QT_GUICONSTANTS_H

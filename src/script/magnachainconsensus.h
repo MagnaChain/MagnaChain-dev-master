@@ -4,12 +4,12 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_magnachainconsensus_H
-#define CELLLINK_magnachainconsensus_H
+#ifndef MAGNACHAIN_magnachainconsensus_H
+#define MAGNACHAIN_magnachainconsensus_H
 
 #include <stdint.h>
 
-#if defined(BUILD_CELLLINK_INTERNAL) && defined(HAVE_CONFIG_H)
+#if defined(BUILD_MAGNACHAIN_INTERNAL) && defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
   #if defined(_WIN32)
     #if defined(DLL_EXPORT)
@@ -22,7 +22,7 @@
   #elif defined(HAVE_FUNC_ATTRIBUTE_VISIBILITY)
     #define EXPORT_SYMBOL __attribute__ ((visibility ("default")))
   #endif
-#elif defined(MSC_VER) && !defined(STATIC_LIBCELLLINKCONSENSUS)
+#elif defined(MSC_VER) && !defined(STATIC_LIBMAGNACHAINCONSENSUS)
   #define EXPORT_SYMBOL __declspec(dllimport)
 #endif
 
@@ -81,4 +81,4 @@ EXPORT_SYMBOL unsigned int magnachainconsensus_version();
 
 #undef EXPORT_SYMBOL
 
-#endif // CELLLINK_magnachainconsensus_H
+#endif // MAGNACHAIN_magnachainconsensus_H

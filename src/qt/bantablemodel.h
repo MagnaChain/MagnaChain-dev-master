@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_BANTABLEMODEL_H
-#define CELLLINK_QT_BANTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_BANTABLEMODEL_H
+#define MAGNACHAIN_QT_BANTABLEMODEL_H
 
 #include "net/net.h"
 
@@ -71,4 +71,4 @@ private:
     std::unique_ptr<BanTablePriv> priv;
 };
 
-#endif // CELLLINK_QT_BANTABLEMODEL_H
+#endif // MAGNACHAIN_QT_BANTABLEMODEL_H

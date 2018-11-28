@@ -168,7 +168,7 @@
         <translation>財布の暗号化を確認します</translation>
     </message>
     <message>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR CELLLINKS&lt;/b&gt;!</source>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR MAGNACHAINS&lt;/b&gt;!</source>
         <translation>注意: 財布の暗号化やパスフレーズを忘れた場合、 &lt;b&gt;あなたのビットコインはすべて失われます。&lt;/b&gt;!</translation>
     </message>
     <message>

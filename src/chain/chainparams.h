@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHAINPARAMS_H
-#define CELLLINK_CHAINPARAMS_H
+#ifndef MAGNACHAIN_CHAINPARAMS_H
+#define MAGNACHAIN_CHAINPARAMS_H
 
 #include "chainparamsbase.h"
 #include "consensus/params.h"
@@ -151,4 +151,4 @@ class MCScript;
 typedef bool(*SignatureCoinbaseTransactionPf)(int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& tx, MCAmount nValue, const MCScript& scriptPubKey);
 extern SignatureCoinbaseTransactionPf SignatureCoinbaseTransactionPF;
 
-#endif // CELLLINK_CHAINPARAMS_H
+#endif // MAGNACHAIN_CHAINPARAMS_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_RPCWALLET_H
-#define CELLLINK_WALLET_RPCWALLET_H
+#ifndef MAGNACHAIN_WALLET_RPCWALLET_H
+#define MAGNACHAIN_WALLET_RPCWALLET_H
 
 class CRPCTable;
 class JSONRPCRequest;
@@ -29,4 +29,4 @@ void EnsureWalletIsUnlocked(MCWallet *);
 bool EnsureWalletIsAvailable(MCWallet *, bool avoidException);
 void SendMoney(MCWallet* pWallet, const MCScript& scriptPubKey, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coinCtrl, SmartLuaState* sls = nullptr);
 
-#endif //CELLLINK_WALLET_RPCWALLET_H
+#endif //MAGNACHAIN_WALLET_RPCWALLET_H

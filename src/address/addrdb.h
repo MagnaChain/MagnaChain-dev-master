@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_ADDRDB_H
-#define CELLLINK_ADDRDB_H
+#ifndef MAGNACHAIN_ADDRDB_H
+#define MAGNACHAIN_ADDRDB_H
 
 #include "io/fs.h"
 #include "io/serialize.h"
@@ -100,4 +100,4 @@ public:
     bool Read(banmap_t& banSet);
 };
 
-#endif // CELLLINK_ADDRDB_H
+#endif // MAGNACHAIN_ADDRDB_H

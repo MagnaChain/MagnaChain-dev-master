@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_INIT_H
-#define CELLLINK_INIT_H
+#ifndef MAGNACHAIN_INIT_H
+#define MAGNACHAIN_INIT_H
 
 #include <string>
 
@@ -59,8 +59,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler);
 
 /** The help message mode determines what help message to show */
 enum HelpMessageMode {
-    HMM_CELLLINKD,
-    HMM_CELLLINK_QT
+    HMM_MAGNACHAIND,
+    HMM_MAGNACHAIN_QT
 };
 
 /** Help for options shared between UI and daemon (for -help) */
@@ -68,4 +68,4 @@ std::string HelpMessage(HelpMessageMode mode);
 /** Returns licensing information (for -version) */
 std::string LicenseInfo();
 
-#endif // CELLLINK_INIT_H
+#endif // MAGNACHAIN_INIT_H

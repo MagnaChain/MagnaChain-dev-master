@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CLIENTVERSION_H
-#define CELLLINK_CLIENTVERSION_H
+#ifndef MAGNACHAIN_CLIENTVERSION_H
+#define MAGNACHAIN_CLIENTVERSION_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -51,4 +51,4 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
 
 #endif // WINDRES_PREPROC
 
-#endif // CELLLINK_CLIENTVERSION_H
+#endif // MAGNACHAIN_CLIENTVERSION_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_RECEIVECOINSDIALOG_H
-#define CELLLINK_QT_RECEIVECOINSDIALOG_H
+#ifndef MAGNACHAIN_QT_RECEIVECOINSDIALOG_H
+#define MAGNACHAIN_QT_RECEIVECOINSDIALOG_H
 
 #include "guiutil.h"
 
@@ -78,4 +78,4 @@ private Q_SLOTS:
     void copyAmount();
 };
 
-#endif // CELLLINK_QT_RECEIVECOINSDIALOG_H
+#endif // MAGNACHAIN_QT_RECEIVECOINSDIALOG_H

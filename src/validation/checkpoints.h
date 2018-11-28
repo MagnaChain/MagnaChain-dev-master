@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHECKPOINTS_H
-#define CELLLINK_CHECKPOINTS_H
+#ifndef MAGNACHAIN_CHECKPOINTS_H
+#define MAGNACHAIN_CHECKPOINTS_H
 
 #include "coding/uint256.h"
 
@@ -25,4 +25,4 @@ MCBlockIndex* GetLastCheckpoint(const MCCheckpointData& data);
 
 } //namespace Checkpoints
 
-#endif // CELLLINK_CHECKPOINTS_H
+#endif // MAGNACHAIN_CHECKPOINTS_H

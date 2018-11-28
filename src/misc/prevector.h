@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef _CELLLINK_PREVECTOR_H_
-#define _CELLLINK_PREVECTOR_H_
+#ifndef _MAGNACHAIN_PREVECTOR_H_
+#define _MAGNACHAIN_PREVECTOR_H_
 
 #include <assert.h>
 #include <stdlib.h>

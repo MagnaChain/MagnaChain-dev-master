@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_ADDRMAN_H
-#define CELLLINK_ADDRMAN_H
+#ifndef MAGNACHAIN_ADDRMAN_H
+#define MAGNACHAIN_ADDRMAN_H
 
 #include "net/netaddress.h"
 #include "net/protocol.h"
@@ -601,4 +601,4 @@ public:
 
 };
 
-#endif // CELLLINK_ADDRMAN_H
+#endif // MAGNACHAIN_ADDRMAN_H

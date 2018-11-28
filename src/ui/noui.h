@@ -3,9 +3,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NOUI_H
-#define CELLLINK_NOUI_H
+#ifndef MAGNACHAIN_NOUI_H
+#define MAGNACHAIN_NOUI_H
 
 extern void noui_connect();
 
-#endif // CELLLINK_NOUI_H
+#endif // MAGNACHAIN_NOUI_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_BLOCK_ENCODINGS_H
-#define CELLLINK_BLOCK_ENCODINGS_H
+#ifndef MAGNACHAIN_BLOCK_ENCODINGS_H
+#define MAGNACHAIN_BLOCK_ENCODINGS_H
 
 #include "primitives/block.h"
 

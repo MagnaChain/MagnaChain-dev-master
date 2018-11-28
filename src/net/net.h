@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NET_H
-#define CELLLINK_NET_H
+#ifndef MAGNACHAIN_NET_H
+#define MAGNACHAIN_NET_H
 
 #include "address/addrdb.h"
 #include "address/addrman.h"
@@ -860,4 +860,4 @@ public:
 /** Return a timestamp in the future (in microseconds) for exponentially distributed events. */
 int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds);
 
-#endif // CELLLINK_NET_H
+#endif // MAGNACHAIN_NET_H

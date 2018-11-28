@@ -168,8 +168,8 @@
         <translation>Confirmar encriptación del monedero</translation>
     </message>
     <message>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR CELLLINKS&lt;/b&gt;!</source>
-        <translation>Advertencia: Si encripta su monedero y pierde su frase clave &lt;b&gt;PERDERÁ TODOS SUS CELLLINKS&lt;/b&gt;!</translation>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR MAGNACHAINS&lt;/b&gt;!</source>
+        <translation>Advertencia: Si encripta su monedero y pierde su frase clave &lt;b&gt;PERDERÁ TODOS SUS MAGNACHAINS&lt;/b&gt;!</translation>
     </message>
     <message>
         <source>Are you sure you wish to encrypt your wallet?</source>

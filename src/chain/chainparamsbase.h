@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHAINPARAMSBASE_H
-#define CELLLINK_CHAINPARAMSBASE_H
+#ifndef MAGNACHAIN_CHAINPARAMSBASE_H
+#define MAGNACHAIN_CHAINPARAMSBASE_H
 
 #include <memory>
 #include <string>
@@ -61,4 +61,4 @@ void SelectBaseParams(const std::string& chain);
  */
 std::string ChainNameFromCommandLine();
 
-#endif // CELLLINK_CHAINPARAMSBASE_H
+#endif // MAGNACHAIN_CHAINPARAMSBASE_H

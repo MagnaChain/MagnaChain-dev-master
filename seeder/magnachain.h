@@ -1,5 +1,5 @@
-#ifndef CELLLINK_H
-#define CELLLINK_H
+#ifndef MAGNACHAIN_H
+#define MAGNACHAIN_H
 
 #include "protocol.h"
 

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_PAYMENTSERVER_H
-#define CELLLINK_QT_PAYMENTSERVER_H
+#ifndef MAGNACHAIN_QT_PAYMENTSERVER_H
+#define MAGNACHAIN_QT_PAYMENTSERVER_H
 
 // This class handles payment requests from clicking on
 // magnachain: URIs
@@ -146,4 +146,4 @@ private:
     OptionsModel *optionsModel;
 };
 
-#endif // CELLLINK_QT_PAYMENTSERVER_H
+#endif // MAGNACHAIN_QT_PAYMENTSERVER_H

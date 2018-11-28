@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_DBWRAPPER_H
-#define CELLLINK_DBWRAPPER_H
+#ifndef MAGNACHAIN_DBWRAPPER_H
+#define MAGNACHAIN_DBWRAPPER_H
 
 #include "misc/clientversion.h"
 #include "io/fs.h"
@@ -341,4 +341,4 @@ public:
 
 };
 
-#endif // CELLLINK_DBWRAPPER_H
+#endif // MAGNACHAIN_DBWRAPPER_H

@@ -6,11 +6,11 @@
 /**
  * Utility functions shared by unit tests
  */
-#ifndef CELLLINK_TEST_TESTUTIL_H
-#define CELLLINK_TEST_TESTUTIL_H
+#ifndef MAGNACHAIN_TEST_TESTUTIL_H
+#define MAGNACHAIN_TEST_TESTUTIL_H
 
 #include "io/fs.h"
 
 fs::path GetTempPath();
 
-#endif // CELLLINK_TEST_TESTUTIL_H
+#endif // MAGNACHAIN_TEST_TESTUTIL_H

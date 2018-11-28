@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_ASKPASSPHRASEDIALOG_H
-#define CELLLINK_QT_ASKPASSPHRASEDIALOG_H
+#ifndef MAGNACHAIN_QT_ASKPASSPHRASEDIALOG_H
+#define MAGNACHAIN_QT_ASKPASSPHRASEDIALOG_H
 
 #include <QDialog>
 
@@ -50,4 +50,4 @@ protected:
     bool eventFilter(QObject *object, QEvent *event);
 };
 
-#endif // CELLLINK_QT_ASKPASSPHRASEDIALOG_H
+#endif // MAGNACHAIN_QT_ASKPASSPHRASEDIALOG_H

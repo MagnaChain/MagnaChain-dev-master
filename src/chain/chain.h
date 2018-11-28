@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHAIN_H
-#define CELLLINK_CHAIN_H
+#ifndef MAGNACHAIN_CHAIN_H
+#define MAGNACHAIN_CHAIN_H
 
 #include "coding/arith_uint256.h"
 #include "primitives/block.h"
@@ -520,4 +520,4 @@ public:
     MCBlockIndex* FindEarliestAtLeast(int64_t nTime) const;
 };
 
-#endif // CELLLINK_CHAIN_H
+#endif // MAGNACHAIN_CHAIN_H

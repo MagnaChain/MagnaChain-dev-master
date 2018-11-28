@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_AMOUNT_H
-#define CELLLINK_AMOUNT_H
+#ifndef MAGNACHAIN_AMOUNT_H
+#define MAGNACHAIN_AMOUNT_H
 
 #include <stdint.h>
 
@@ -27,4 +27,4 @@ static const MCAmount CENT = 1000000;
 static const MCAmount MAX_MONEY = 3000000000 * COIN;
 inline bool MoneyRange(const MCAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
-#endif //  CELLLINK_AMOUNT_H
+#endif //  MAGNACHAIN_AMOUNT_H

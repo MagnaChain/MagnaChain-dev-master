@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_COMPRESSOR_H
-#define CELLLINK_COMPRESSOR_H
+#ifndef MAGNACHAIN_COMPRESSOR_H
+#define MAGNACHAIN_COMPRESSOR_H
 
 #include "primitives/transaction.h"
 #include "script/script.h"
@@ -119,4 +119,4 @@ public:
     }
 };
 
-#endif // CELLLINK_COMPRESSOR_H
+#endif // MAGNACHAIN_COMPRESSOR_H

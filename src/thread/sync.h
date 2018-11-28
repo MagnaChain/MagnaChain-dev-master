@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SYNC_H
-#define CELLLINK_SYNC_H
+#ifndef MAGNACHAIN_SYNC_H
+#define MAGNACHAIN_SYNC_H
 
 #include "thread/threadsafety.h"
 
@@ -287,4 +287,4 @@ public:
     }
 };
 
-#endif // CELLLINK_SYNC_H
+#endif // MAGNACHAIN_SYNC_H

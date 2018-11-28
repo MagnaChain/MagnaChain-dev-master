@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_COINCONTROLDIALOG_H
-#define CELLLINK_QT_COINCONTROLDIALOG_H
+#ifndef MAGNACHAIN_QT_COINCONTROLDIALOG_H
+#define MAGNACHAIN_QT_COINCONTROLDIALOG_H
 
 #include "misc/amount.h"
 
@@ -110,4 +110,4 @@ private Q_SLOTS:
     void updateLabelLocked();
 };
 
-#endif // CELLLINK_QT_COINCONTROLDIALOG_H
+#endif // MAGNACHAIN_QT_COINCONTROLDIALOG_H

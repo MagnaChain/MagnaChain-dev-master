@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CRYPTO_RIPEMD160_H
-#define CELLLINK_CRYPTO_RIPEMD160_H
+#ifndef MAGNACHAIN_CRYPTO_RIPEMD160_H
+#define MAGNACHAIN_CRYPTO_RIPEMD160_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,4 +26,4 @@ public:
     CRIPEMD160& Reset();
 };
 
-#endif // CELLLINK_CRYPTO_RIPEMD160_H
+#endif // MAGNACHAIN_CRYPTO_RIPEMD160_H

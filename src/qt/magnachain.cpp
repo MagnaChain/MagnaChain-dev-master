@@ -545,7 +545,7 @@ WId MagnaChainApplication::getMainWinId() const
     return window->winId();
 }
 
-#ifndef CELLLINK_QT_TEST
+#ifndef MAGNACHAIN_QT_TEST
 int main(int argc, char *argv[])
 {
 	SignatureCoinbaseTransactionPF = &SignatureCoinbaseTransaction;
@@ -631,7 +631,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
     try {
-        gArgs.ReadConfigFile(gArgs.GetArg("-conf", CELLLINK_CONF_FILENAME));
+        gArgs.ReadConfigFile(gArgs.GetArg("-conf", MAGNACHAIN_CONF_FILENAME));
     } catch (const std::exception& e) {
         QMessageBox::critical(0, QApplication::translate("magnachain-core", PACKAGE_NAME),
                               QObject::tr("Error: Cannot parse configuration file: %1. Only use key=value syntax.").arg(e.what()));
@@ -732,4 +732,4 @@ int main(int argc, char *argv[])
     }
     return rv;
 }
-#endif // CELLLINK_QT_TEST
+#endif // MAGNACHAIN_QT_TEST

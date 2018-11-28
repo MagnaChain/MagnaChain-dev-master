@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_MACDOCKICONHANDLER_H
-#define CELLLINK_QT_MACDOCKICONHANDLER_H
+#ifndef MAGNACHAIN_QT_MACDOCKICONHANDLER_H
+#define MAGNACHAIN_QT_MACDOCKICONHANDLER_H
 
 #include <QMainWindow>
 #include <QObject>
@@ -42,4 +42,4 @@ private:
     QMainWindow *mainWindow;
 };
 
-#endif // CELLLINK_QT_MACDOCKICONHANDLER_H
+#endif // MAGNACHAIN_QT_MACDOCKICONHANDLER_H

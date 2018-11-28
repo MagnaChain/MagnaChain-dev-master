@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_STANDARD_H
-#define CELLLINK_SCRIPT_STANDARD_H
+#ifndef MAGNACHAIN_SCRIPT_STANDARD_H
+#define MAGNACHAIN_SCRIPT_STANDARD_H
 
 #include "script/interpreter.h"
 #include "coding/uint256.h"
@@ -88,4 +88,4 @@ MCScript GetScriptForRawPubKey(const MCPubKey& pubkey);
 MCScript GetScriptForMultisig(int nRequired, const std::vector<MCPubKey>& keys);
 MCScript GetScriptForWitness(const MCScript& redeemscript);
 
-#endif // CELLLINK_SCRIPT_STANDARD_H
+#endif // MAGNACHAIN_SCRIPT_STANDARD_H

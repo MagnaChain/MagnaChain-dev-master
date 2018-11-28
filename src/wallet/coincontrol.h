@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_COINCONTROL_H
-#define CELLLINK_WALLET_COINCONTROL_H
+#ifndef MAGNACHAIN_WALLET_COINCONTROL_H
+#define MAGNACHAIN_WALLET_COINCONTROL_H
 
 #include "policy/feerate.h"
 #include "policy/fees.h"
@@ -85,4 +85,4 @@ private:
     std::set<MCOutPoint> setSelected;
 };
 
-#endif // CELLLINK_WALLET_COINCONTROL_H
+#endif // MAGNACHAIN_WALLET_COINCONTROL_H

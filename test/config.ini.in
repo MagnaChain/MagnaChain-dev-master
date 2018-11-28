@@ -13,6 +13,6 @@ EXEEXT=@EXEEXT@
 [components]
 # Which components are enabled. These are commented out by `configure` if they were disabled when running config.
 @ENABLE_WALLET_TRUE@ENABLE_WALLET=true
-@BUILD_CELLLINK_UTILS_TRUE@ENABLE_UTILS=true
-@BUILD_CELLLINKD_TRUE@ENABLE_CELLLINKD=true
+@BUILD_MAGNACHAIN_UTILS_TRUE@ENABLE_UTILS=true
+@BUILD_MAGNACHAIND_TRUE@ENABLE_MAGNACHAIND=true
 @ENABLE_ZMQ_TRUE@ENABLE_ZMQ=true

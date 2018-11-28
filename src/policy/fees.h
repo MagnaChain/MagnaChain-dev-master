@@ -3,8 +3,8 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef CELLLINK_POLICYESTIMATOR_H
-#define CELLLINK_POLICYESTIMATOR_H
+#ifndef MAGNACHAIN_POLICYESTIMATOR_H
+#define MAGNACHAIN_POLICYESTIMATOR_H
 
 #include "misc/amount.h"
 #include "policy/feerate.h"
@@ -295,4 +295,4 @@ private:
     FastRandomContext insecure_rand;
 };
 
-#endif /*CELLLINK_POLICYESTIMATOR_H */
+#endif /*MAGNACHAIN_POLICYESTIMATOR_H */

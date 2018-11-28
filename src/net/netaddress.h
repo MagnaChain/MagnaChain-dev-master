@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NETADDRESS_H
-#define CELLLINK_NETADDRESS_H
+#ifndef MAGNACHAIN_NETADDRESS_H
+#define MAGNACHAIN_NETADDRESS_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -175,4 +175,4 @@ class MCService : public MCNetAddr
         }
 };
 
-#endif // CELLLINK_NETADDRESS_H
+#endif // MAGNACHAIN_NETADDRESS_H

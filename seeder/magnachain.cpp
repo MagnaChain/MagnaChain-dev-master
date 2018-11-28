@@ -7,7 +7,7 @@
 #include "serialize.h"
 #include "uint256.h"
 
-#define CELLLINK_SEED_NONCE  0x0539a019ca550825ULL
+#define MAGNACHAIN_SEED_NONCE  0x0539a019ca550825ULL
 
 using namespace std;
 
@@ -76,7 +76,7 @@ class MCNode {
   
   void PushVersion() {
     int64 nTime = time(NULL);
-    uint64 nLocalNonce = CELLLINK_SEED_NONCE;
+    uint64 nLocalNonce = MAGNACHAIN_SEED_NONCE;
     int64 nLocalServices = 0;
     MCAddress me(MCService("0.0.0.0"));
     BeginMessage("version");

@@ -165,8 +165,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Tárca titkosításának megerősítése</translation>
     </message>
     <message>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR CELLLINKS&lt;/b&gt;!</source>
-        <translation>Figyelem: Ha titkosítja a tárcáját és elveszíti a jelszavát, akkor &lt;b&gt;AZ ÖSSZES CELLLINKJA ELVESZIK&lt;/b&gt;!</translation>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR MAGNACHAINS&lt;/b&gt;!</source>
+        <translation>Figyelem: Ha titkosítja a tárcáját és elveszíti a jelszavát, akkor &lt;b&gt;AZ ÖSSZES MAGNACHAINJA ELVESZIK&lt;/b&gt;!</translation>
     </message>
     <message>
         <source>Are you sure you wish to encrypt your wallet?</source>

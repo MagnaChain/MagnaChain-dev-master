@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PARTIALMERKLETREE_H
-#define CELLLINK_PARTIALMERKLETREE_H
+#ifndef MAGNACHAIN_PARTIALMERKLETREE_H
+#define MAGNACHAIN_PARTIALMERKLETREE_H
 
 #include "io/serialize.h"
 #include "coding/uint256.h"
@@ -118,4 +118,4 @@ public:
     uint256 ExtractMatches(std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex);
 };
 
-#endif // CELLLINK_PARTIALMERKLETREE_H
+#endif // MAGNACHAIN_PARTIALMERKLETREE_H

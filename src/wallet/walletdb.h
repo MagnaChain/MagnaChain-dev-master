@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_WALLETDB_H
-#define CELLLINK_WALLET_WALLETDB_H
+#ifndef MAGNACHAIN_WALLET_WALLETDB_H
+#define MAGNACHAIN_WALLET_WALLETDB_H
 
 #include "misc/amount.h"
 #include "primitives/transaction.h"
@@ -255,4 +255,4 @@ private:
 //! Compacts BDB state so that wallet.dat is self-contained (if there are changes)
 void MaybeCompactWalletDB();
 
-#endif // CELLLINK_WALLET_WALLETDB_H
+#endif // MAGNACHAIN_WALLET_WALLETDB_H

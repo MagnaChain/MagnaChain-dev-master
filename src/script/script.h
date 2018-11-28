@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_SCRIPT_H
-#define CELLLINK_SCRIPT_SCRIPT_H
+#ifndef MAGNACHAIN_SCRIPT_SCRIPT_H
+#define MAGNACHAIN_SCRIPT_SCRIPT_H
 
 #include "crypto/common.h"
 #include "misc/prevector.h"
@@ -713,4 +713,4 @@ public:
     virtual ~CReserveScript() {}
 };
 
-#endif // CELLLINK_SCRIPT_SCRIPT_H
+#endif // MAGNACHAIN_SCRIPT_SCRIPT_H

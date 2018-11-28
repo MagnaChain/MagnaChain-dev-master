@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPCCLIENT_H
-#define CELLLINK_RPCCLIENT_H
+#ifndef MAGNACHAIN_RPCCLIENT_H
+#define MAGNACHAIN_RPCCLIENT_H
 
 #include <string>
 #include <vector>
@@ -23,4 +23,4 @@ UniValue RPCConvertNamedValues(const std::string& strMethod, const std::vector<s
  */
 UniValue ParseNonRFCJSONValue(const std::string& strVal);
 
-#endif // CELLLINK_RPCCLIENT_H
+#endif // MAGNACHAIN_RPCCLIENT_H

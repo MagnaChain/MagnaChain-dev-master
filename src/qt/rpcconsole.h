@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_RPCCONSOLE_H
-#define CELLLINK_QT_RPCCONSOLE_H
+#ifndef MAGNACHAIN_QT_RPCCONSOLE_H
+#define MAGNACHAIN_QT_RPCCONSOLE_H
 
 #include "guiutil.h"
 #include "peertablemodel.h"
@@ -158,4 +158,4 @@ private:
     void updateNetworkState();
 };
 
-#endif // CELLLINK_QT_RPCCONSOLE_H
+#endif // MAGNACHAIN_QT_RPCCONSOLE_H

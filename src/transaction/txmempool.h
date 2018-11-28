@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_TXMEMPOOL_H
-#define CELLLINK_TXMEMPOOL_H
+#ifndef MAGNACHAIN_TXMEMPOOL_H
+#define MAGNACHAIN_TXMEMPOOL_H
 
 #include <map>
 #include <memory>
@@ -794,4 +794,4 @@ struct DisconnectedBlockTransactions {
     }
 };
 
-#endif // CELLLINK_TXMEMPOOL_H
+#endif // MAGNACHAIN_TXMEMPOOL_H

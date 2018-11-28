@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CLIENTMODEL_H
-#define CELLLINK_QT_CLIENTMODEL_H
+#ifndef MAGNACHAIN_QT_CLIENTMODEL_H
+#define MAGNACHAIN_QT_CLIENTMODEL_H
 
 #include <QObject>
 #include <QDateTime>
@@ -117,4 +117,4 @@ public Q_SLOTS:
     void updateBanlist();
 };
 
-#endif // CELLLINK_QT_CLIENTMODEL_H
+#endif // MAGNACHAIN_QT_CLIENTMODEL_H

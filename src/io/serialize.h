@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SERIALIZE_H
-#define CELLLINK_SERIALIZE_H
+#ifndef MAGNACHAIN_SERIALIZE_H
+#define MAGNACHAIN_SERIALIZE_H
 
 #include "compat/endian.h"
 
@@ -997,4 +997,4 @@ size_t GetSerializeSize(const S& s, const T& t)
     return (MCSizeComputer(s.GetType(), s.GetVersion()) << t).size();
 }
 
-#endif // CELLLINK_SERIALIZE_H
+#endif // MAGNACHAIN_SERIALIZE_H

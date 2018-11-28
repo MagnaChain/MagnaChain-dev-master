@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_TEST_TEST_CELLLINK_H
-#define CELLLINK_TEST_TEST_CELLLINK_H
+#ifndef MAGNACHAIN_TEST_TEST_MAGNACHAIN_H
+#define MAGNACHAIN_TEST_TEST_MAGNACHAIN_H
 
 #include "chain/chainparamsbase.h"
 #include "io/fs.h"

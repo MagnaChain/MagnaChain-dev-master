@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_ZMQ_ZMQPUBLISHNOTIFIER_H
-#define CELLLINK_ZMQ_ZMQPUBLISHNOTIFIER_H
+#ifndef MAGNACHAIN_ZMQ_ZMQPUBLISHNOTIFIER_H
+#define MAGNACHAIN_ZMQ_ZMQPUBLISHNOTIFIER_H
 
 #include "zmq/zmqabstractnotifier.h"
 
@@ -53,4 +53,4 @@ public:
     bool NotifyTransaction(const MCTransaction &transaction) override;
 };
 
-#endif // CELLLINK_ZMQ_ZMQPUBLISHNOTIFIER_H
+#endif // MAGNACHAIN_ZMQ_ZMQPUBLISHNOTIFIER_H

@@ -13,15 +13,15 @@ endif
 GZIP_ENV="-9n"
 export PYTHONPATH
 
-if BUILD_CELLLINK_LIBS
+if BUILD_MAGNACHAIN_LIBS
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libmagnachainconsensus.pc
 endif
 
-CELLLINKD_BIN=$(top_builddir)/src/$(CELLLINK_DAEMON_NAME)$(EXEEXT)
-CELLLINK_QT_BIN=$(top_builddir)/src/qt/$(CELLLINK_GUI_NAME)$(EXEEXT)
-CELLLINK_CLI_BIN=$(top_builddir)/src/$(CELLLINK_CLI_NAME)$(EXEEXT)
-CELLLINK_WIN_INSTALLER=$(PACKAGE)-$(PACKAGE_VERSION)-win$(WINDOWS_BITS)-setup$(EXEEXT)
+MAGNACHAIND_BIN=$(top_builddir)/src/$(MAGNACHAIN_DAEMON_NAME)$(EXEEXT)
+MAGNACHAIN_QT_BIN=$(top_builddir)/src/qt/$(MAGNACHAIN_GUI_NAME)$(EXEEXT)
+MAGNACHAIN_CLI_BIN=$(top_builddir)/src/$(MAGNACHAIN_CLI_NAME)$(EXEEXT)
+MAGNACHAIN_WIN_INSTALLER=$(PACKAGE)-$(PACKAGE_VERSION)-win$(WINDOWS_BITS)-setup$(EXEEXT)
 
 empty :=
 space := $(empty) $(empty)
@@ -71,11 +71,11 @@ COVERAGE_INFO = baseline.info \
 dist-hook:
 	-$(GIT) archive --format=tar HEAD -- src/clientversion.cpp | $(AMTAR) -C $(top_distdir) -xf -
 
-$(CELLLINK_WIN_INSTALLER): all-recursive
+$(MAGNACHAIN_WIN_INSTALLER): all-recursive
 	$(MKDIR_P) $(top_builddir)/release
-	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM) $(CELLLINKD_BIN) $(top_builddir)/release
-	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM) $(CELLLINK_QT_BIN) $(top_builddir)/release
-	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM) $(CELLLINK_CLI_BIN) $(top_builddir)/release
+	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM) $(MAGNACHAIND_BIN) $(top_builddir)/release
+	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM) $(MAGNACHAIN_QT_BIN) $(top_builddir)/release
+	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM) $(MAGNACHAIN_CLI_BIN) $(top_builddir)/release
 	@test -f $(MAKENSIS) && $(MAKENSIS) -V2 $(top_builddir)/share/setup.nsi || \
 	  echo error: could not build $@
 	@echo built $@
@@ -96,7 +96,7 @@ $(OSX_APP)/Contents/Resources/magnachain.icns: $(OSX_INSTALLER_ICONS)
 	$(MKDIR_P) $(@D)
 	$(INSTALL_DATA) $< $@
 
-$(OSX_APP)/Contents/MacOS/MagnaChain-Qt: $(CELLLINK_QT_BIN)
+$(OSX_APP)/Contents/MacOS/MagnaChain-Qt: $(MAGNACHAIN_QT_BIN)
 	$(MKDIR_P) $(@D)
 	STRIPPROG="$(STRIP)" $(INSTALL_STRIP_PROGRAM)  $< $@
 
@@ -157,16 +157,16 @@ appbundle: $(OSX_APP_BUILT)
 deploy: $(OSX_DMG)
 endif
 if TARGET_WINDOWS
-deploy: $(CELLLINK_WIN_INSTALLER)
+deploy: $(MAGNACHAIN_WIN_INSTALLER)
 endif
 
-$(CELLLINK_QT_BIN): FORCE
+$(MAGNACHAIN_QT_BIN): FORCE
 	$(MAKE) -C src qt/$(@F)
 
-$(CELLLINKD_BIN): FORCE
+$(MAGNACHAIND_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
-$(CELLLINK_CLI_BIN): FORCE
+$(MAGNACHAIN_CLI_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
 if USE_LCOV
@@ -272,7 +272,7 @@ EXTRA_DIST += \
     test/util/data/txcreatesignv1.json \
     test/util/data/txcreatesignv2.hex
 
-CLEANFILES = $(OSX_DMG) $(CELLLINK_WIN_INSTALLER)
+CLEANFILES = $(OSX_DMG) $(MAGNACHAIN_WIN_INSTALLER)
 
 .INTERMEDIATE: $(COVERAGE_INFO)
 

@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NETMESSAGEMAKER_H
-#define CELLLINK_NETMESSAGEMAKER_H
+#ifndef MAGNACHAIN_NETMESSAGEMAKER_H
+#define MAGNACHAIN_NETMESSAGEMAKER_H
 
 #include "net/net.h"
 #include "io/serialize.h"
@@ -34,4 +34,4 @@ private:
     const int nVersion;
 };
 
-#endif // CELLLINK_NETMESSAGEMAKER_H
+#endif // MAGNACHAIN_NETMESSAGEMAKER_H

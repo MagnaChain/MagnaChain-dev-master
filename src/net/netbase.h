@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NETBASE_H
-#define CELLLINK_NETBASE_H
+#ifndef MAGNACHAIN_NETBASE_H
+#define MAGNACHAIN_NETBASE_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -67,4 +67,4 @@ bool SetSocketNoDelay(const SOCKET& hSocket);
 struct timeval MillisToTimeval(int64_t nTimeout);
 void InterruptSocks5(bool interrupt);
 
-#endif // CELLLINK_NETBASE_H
+#endif // MAGNACHAIN_NETBASE_H

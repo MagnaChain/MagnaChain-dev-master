@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PUBKEY_H
-#define CELLLINK_PUBKEY_H
+#ifndef MAGNACHAIN_PUBKEY_H
+#define MAGNACHAIN_PUBKEY_H
 
 #include "coding/hash.h"
 #include "io/serialize.h"
@@ -256,4 +256,4 @@ public:
     ~ECCVerifyHandle();
 };
 
-#endif // CELLLINK_PUBKEY_H
+#endif // MAGNACHAIN_PUBKEY_H

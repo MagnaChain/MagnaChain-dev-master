@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_FS_H
-#define CELLLINK_FS_H
+#ifndef MAGNACHAIN_FS_H
+#define MAGNACHAIN_FS_H
 
 #include <stdio.h>
 #include <string>
@@ -22,4 +22,4 @@ namespace fsbridge {
     FILE *freopen(const fs::path& p, const char *mode, FILE *stream);
 };
 
-#endif // CELLLINK_FS_H
+#endif // MAGNACHAIN_FS_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_FEEBUMPER_H
-#define CELLLINK_WALLET_FEEBUMPER_H
+#ifndef MAGNACHAIN_WALLET_FEEBUMPER_H
+#define MAGNACHAIN_WALLET_FEEBUMPER_H
 
 #include "primitives/transaction.h"
 
@@ -59,4 +59,4 @@ private:
     MCAmount nNewFee;
 };
 
-#endif // CELLLINK_WALLET_FEEBUMPER_H
+#endif // MAGNACHAIN_WALLET_FEEBUMPER_H

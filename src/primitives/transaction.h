@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PRIMITIVES_TRANSACTION_H
-#define CELLLINK_PRIMITIVES_TRANSACTION_H
+#ifndef MAGNACHAIN_PRIMITIVES_TRANSACTION_H
+#define MAGNACHAIN_PRIMITIVES_TRANSACTION_H
 
 #include <stdint.h>
 #include "misc/amount.h"
@@ -1097,4 +1097,4 @@ inline MCMutableTransaction& MCMutableTransaction::operator=(const MCMutableTran
     return *this;
 }
 
-#endif // CELLLINK_PRIMITIVES_TRANSACTION_H
+#endif // MAGNACHAIN_PRIMITIVES_TRANSACTION_H

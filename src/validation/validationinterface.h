@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_VALIDATIONINTERFACE_H
-#define CELLLINK_VALIDATIONINTERFACE_H
+#ifndef MAGNACHAIN_VALIDATIONINTERFACE_H
+#define MAGNACHAIN_VALIDATIONINTERFACE_H
 
 #include <memory>
 
@@ -96,4 +96,4 @@ public:
 
 MCMainSignals& GetMainSignals();
 
-#endif // CELLLINK_VALIDATIONINTERFACE_H
+#endif // MAGNACHAIN_VALIDATIONINTERFACE_H

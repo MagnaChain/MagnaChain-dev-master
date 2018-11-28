@@ -8,8 +8,8 @@
  * Server/client environment: argument handling, config file parsing,
  * logging, thread wrappers, startup time
  */
-#ifndef CELLLINK_UTIL_H
-#define CELLLINK_UTIL_H
+#ifndef MAGNACHAIN_UTIL_H
+#define MAGNACHAIN_UTIL_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -54,8 +54,8 @@ extern bool fLogIPs;
 extern std::atomic<bool> fReopenDebugLog;
 extern CTranslationInterface translationInterface;
 
-extern const char * const CELLLINK_CONF_FILENAME;
-extern const char * const CELLLINK_PID_FILENAME;
+extern const char * const MAGNACHAIN_CONF_FILENAME;
+extern const char * const MAGNACHAIN_PID_FILENAME;
 
 extern std::atomic<uint32_t> logCategories;
 
@@ -350,4 +350,4 @@ void BeginSampler(std::string name);
 void EndSampler(std::string name);
 int64_t GetSamplerTotalTime(std::string name);
 
-#endif // CELLLINK_UTIL_H
+#endif // MAGNACHAIN_UTIL_H

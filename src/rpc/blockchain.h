@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPC_BLOCKCHAIN_H
-#define CELLLINK_RPC_BLOCKCHAIN_H
+#ifndef MAGNACHAIN_RPC_BLOCKCHAIN_H
+#define MAGNACHAIN_RPC_BLOCKCHAIN_H
 
 class MCBlock;
 class MCBlockIndex;

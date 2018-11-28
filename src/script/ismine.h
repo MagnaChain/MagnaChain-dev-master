@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_ISMINE_H
-#define CELLLINK_SCRIPT_ISMINE_H
+#ifndef MAGNACHAIN_SCRIPT_ISMINE_H
+#define MAGNACHAIN_SCRIPT_ISMINE_H
 
 #include "script/standard.h"
 
@@ -39,4 +39,4 @@ isminetype IsMine(const MCKeyStore& keystore, const MCScript& scriptPubKey, SigV
 isminetype IsMine(const MCKeyStore& keystore, const MCTxDestination& dest, bool& isInvalid, SigVersion = SIGVERSION_BASE);
 isminetype IsMine(const MCKeyStore& keystore, const MCTxDestination& dest, SigVersion = SIGVERSION_BASE);
 
-#endif // CELLLINK_SCRIPT_ISMINE_H
+#endif // MAGNACHAIN_SCRIPT_ISMINE_H

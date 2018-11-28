@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_DB_H
-#define CELLLINK_WALLET_DB_H
+#ifndef MAGNACHAIN_WALLET_DB_H
+#define MAGNACHAIN_WALLET_DB_H
 
 #include "misc/clientversion.h"
 #include "io/fs.h"
@@ -370,4 +370,4 @@ public:
     bool static Rewrite(MCWalletDBWrapper& dbw, const char* pszSkip = nullptr);
 };
 
-#endif // CELLLINK_WALLET_DB_H
+#endif // MAGNACHAIN_WALLET_DB_H

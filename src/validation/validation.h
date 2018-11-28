@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_VALIDATION_H
-#define CELLLINK_VALIDATION_H
+#ifndef MAGNACHAIN_VALIDATION_H
+#define MAGNACHAIN_VALIDATION_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -519,6 +519,6 @@ std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& set
 
 bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
 bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
-#endif // CELLLINK_VALIDATION_H
+#endif // MAGNACHAIN_VALIDATION_H
 
 

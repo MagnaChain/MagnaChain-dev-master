@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_UNDO_H
-#define CELLLINK_UNDO_H
+#ifndef MAGNACHAIN_UNDO_H
+#define MAGNACHAIN_UNDO_H
 
 #include "transaction/compressor.h" 
 #include "consensus/consensus.h"
@@ -110,4 +110,4 @@ public:
     }
 };
 
-#endif // CELLLINK_UNDO_H
+#endif // MAGNACHAIN_UNDO_H

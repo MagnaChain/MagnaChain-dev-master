@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_TXDB_H
-#define CELLLINK_TXDB_H
+#ifndef MAGNACHAIN_TXDB_H
+#define MAGNACHAIN_TXDB_H
 
 #include "transaction/coins.h"
 #include "io/dbwrapper.h"
@@ -178,4 +178,4 @@ public:
 	CoinListPtr GetList(const uint160& kAddr) const;
 };
 
-#endif // CELLLINK_TXDB_H
+#endif // MAGNACHAIN_TXDB_H

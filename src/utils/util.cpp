@@ -95,8 +95,8 @@
 // Application startup time (used for uptime calculation)
 const int64_t nStartupTime = GetTime();
 
-const char * const CELLLINK_CONF_FILENAME = "magnachain.conf";
-const char * const CELLLINK_PID_FILENAME = "magnachain.pid";
+const char * const MAGNACHAIN_CONF_FILENAME = "magnachain.conf";
+const char * const MAGNACHAIN_PID_FILENAME = "magnachain.pid";
 
 ArgsManager gArgs;
 bool fPrintToConsole = false;
@@ -636,7 +636,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 #ifndef WIN32
 fs::path GetPidFile()
 {
-    fs::path pathPidFile(gArgs.GetArg("-pid", CELLLINK_PID_FILENAME));
+    fs::path pathPidFile(gArgs.GetArg("-pid", MAGNACHAIN_PID_FILENAME));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }

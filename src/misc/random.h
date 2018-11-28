@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RANDOM_H
-#define CELLLINK_RANDOM_H
+#ifndef MAGNACHAIN_RANDOM_H
+#define MAGNACHAIN_RANDOM_H
 
 #include "crypto/chacha20.h"
 #include "crypto/common.h"
@@ -144,4 +144,4 @@ bool Random_SanityCheck();
 /** Initialize the RNG. */
 void RandomInit();
 
-#endif // CELLLINK_RANDOM_H
+#endif // MAGNACHAIN_RANDOM_H

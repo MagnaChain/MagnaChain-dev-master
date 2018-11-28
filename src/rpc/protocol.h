@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPCPROTOCOL_H
-#define CELLLINK_RPCPROTOCOL_H
+#ifndef MAGNACHAIN_RPCPROTOCOL_H
+#define MAGNACHAIN_RPCPROTOCOL_H
 
 #include <list>
 #include <map>
@@ -99,4 +99,4 @@ bool GetAuthCookie(std::string *cookie_out);
 /** Delete RPC authentication cookie from disk */
 void DeleteAuthCookie();
 
-#endif // CELLLINK_RPCPROTOCOL_H
+#endif // MAGNACHAIN_RPCPROTOCOL_H

@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPCSERVER_H
-#define CELLLINK_RPCSERVER_H
+#ifndef MAGNACHAIN_RPCSERVER_H
+#define MAGNACHAIN_RPCSERVER_H
 
 #include "misc/amount.h"
 #include "rpc/protocol.h"
@@ -198,4 +198,4 @@ std::string JSONRPCExecBatch(const UniValue& vReq);
 // Retrieves any serialization flags requested in command line argument
 int RPCSerializationFlags();
 
-#endif // CELLLINK_RPCSERVER_H
+#endif // MAGNACHAIN_RPCSERVER_H

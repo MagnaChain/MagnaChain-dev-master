@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_SIGN_H
-#define CELLLINK_SCRIPT_SIGN_H
+#ifndef MAGNACHAIN_SCRIPT_SIGN_H
+#define MAGNACHAIN_SCRIPT_SIGN_H
 
 #include "script/interpreter.h"
 
@@ -85,4 +85,4 @@ void UpdateTransaction(MCMutableTransaction& tx, unsigned int nIn, const Signatu
 bool SignContract(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, MCScript& constractSig);
 bool CheckContractSign(const MCTransaction* txToIn, const MCScript& constractSig);
 
-#endif // CELLLINK_SCRIPT_SIGN_H
+#endif // MAGNACHAIN_SCRIPT_SIGN_H

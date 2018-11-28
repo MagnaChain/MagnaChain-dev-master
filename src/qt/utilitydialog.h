@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_UTILITYDIALOG_H
-#define CELLLINK_QT_UTILITYDIALOG_H
+#ifndef MAGNACHAIN_QT_UTILITYDIALOG_H
+#define MAGNACHAIN_QT_UTILITYDIALOG_H
 
 #include <QDialog>
 #include <QObject>
@@ -49,4 +49,4 @@ protected:
     void closeEvent(QCloseEvent *event);
 };
 
-#endif // CELLLINK_QT_UTILITYDIALOG_H
+#endif // MAGNACHAIN_QT_UTILITYDIALOG_H

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_MERKLE
-#define CELLLINK_MERKLE
+#ifndef MAGNACHAIN_MERKLE
+#define MAGNACHAIN_MERKLE
 
 #include <stdint.h>
 #include <vector>

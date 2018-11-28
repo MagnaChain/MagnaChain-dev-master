@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_WALLET_H
-#define CELLLINK_WALLET_WALLET_H
+#ifndef MAGNACHAIN_WALLET_WALLET_H
+#define MAGNACHAIN_WALLET_WALLET_H
 
 #include "misc/amount.h"
 #include "policy/feerate.h"
@@ -1284,4 +1284,4 @@ public:
 
 class MCCoinsViewCache;
 void GetAvailableMortgageCoinsInMemPool(const MCKeyStore& keystore, std::vector<MCOutput>& vecOutput, std::map<uint256, MCWalletTx>& mapTempWallet, MCCoinsViewCache& view);
-#endif // CELLLINK_WALLET_WALLET_H
+#endif // MAGNACHAIN_WALLET_WALLET_H

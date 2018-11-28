@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPCREGISTER_H
-#define CELLLINK_RPCREGISTER_H
+#ifndef MAGNACHAIN_RPCREGISTER_H
+#define MAGNACHAIN_RPCREGISTER_H
 
 /** These are in one header file to avoid creating tons of single-function
  * headers for everything under src/rpc/ */

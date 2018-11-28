@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_WALLETMODEL_H
-#define CELLLINK_QT_WALLETMODEL_H
+#ifndef MAGNACHAIN_QT_WALLETMODEL_H
+#define MAGNACHAIN_QT_WALLETMODEL_H
 
 #include "paymentrequestplus.h"
 #include "walletmodeltransaction.h"
@@ -286,4 +286,4 @@ public Q_SLOTS:
     void pollBalanceChanged();
 };
 
-#endif // CELLLINK_QT_WALLETMODEL_H
+#endif // MAGNACHAIN_QT_WALLETMODEL_H

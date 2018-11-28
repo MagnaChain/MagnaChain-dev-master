@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CORE_IO_H
-#define CELLLINK_CORE_IO_H
+#ifndef MAGNACHAIN_CORE_IO_H
+#define MAGNACHAIN_CORE_IO_H
 
 #include "misc/amount.h"
 
@@ -37,4 +37,4 @@ std::string EncodeHexSpvProof(const MCSpvProof& spv, const int serializeFlags = 
 void ScriptPubKeyToUniv(const MCScript& scriptPubKey, UniValue& out, bool fIncludeHex);
 void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry, bool include_hex = true, int serialize_flags = 0);
 
-#endif // CELLLINK_CORE_IO_H
+#endif // MAGNACHAIN_CORE_IO_H

@@ -168,7 +168,7 @@
         <translation>Brieftaschen-Verschlüsselung bestätigen</translation>
     </message>
     <message>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR CELLLINKS&lt;/b&gt;!</source>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR MAGNACHAINS&lt;/b&gt;!</source>
         <translation>Warnung: Wenn Sie Ihre Brieftasche verschlüsseln und Ihre Passphrase verlieren, werden Sie &lt;b&gt;alle Ihre MagnaChains verlieren&lt;/b&gt;!</translation>
     </message>
     <message>

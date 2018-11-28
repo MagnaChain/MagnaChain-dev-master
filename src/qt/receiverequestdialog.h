@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_RECEIVEREQUESTDIALOG_H
-#define CELLLINK_QT_RECEIVEREQUESTDIALOG_H
+#ifndef MAGNACHAIN_QT_RECEIVEREQUESTDIALOG_H
+#define MAGNACHAIN_QT_RECEIVEREQUESTDIALOG_H
 
 #include "walletmodel.h"
 
@@ -69,4 +69,4 @@ private:
     SendCoinsRecipient info;
 };
 
-#endif // CELLLINK_QT_RECEIVEREQUESTDIALOG_H
+#endif // MAGNACHAIN_QT_RECEIVEREQUESTDIALOG_H

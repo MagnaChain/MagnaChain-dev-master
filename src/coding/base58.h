@@ -12,8 +12,8 @@
  * - E-mail usually won't line-break if there's no punctuation to break at.
  * - Double-clicking selects the whole string as one word if it's all alphanumeric.
  */
-#ifndef CELLLINK_BASE58_H
-#define CELLLINK_BASE58_H
+#ifndef MAGNACHAIN_BASE58_H
+#define MAGNACHAIN_BASE58_H
 
 #include "chain/chainparams.h"
 #include "key/key.h"
@@ -171,4 +171,4 @@ public:
 typedef MagnaChainExtKeyBase<MCExtKey, BIP32_EXTKEY_SIZE, MCChainParams::EXT_SECRET_KEY> MagnaChainExtKey;
 typedef MagnaChainExtKeyBase<MCExtPubKey, BIP32_EXTKEY_SIZE, MCChainParams::EXT_PUBLIC_KEY> MagnaChainExtPubKey;
 
-#endif // CELLLINK_BASE58_H
+#endif // MAGNACHAIN_BASE58_H

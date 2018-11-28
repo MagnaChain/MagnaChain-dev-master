@@ -8,8 +8,8 @@
 #error This header can only be compiled as C++.
 #endif
 
-#ifndef CELLLINK_PROTOCOL_H
-#define CELLLINK_PROTOCOL_H
+#ifndef MAGNACHAIN_PROTOCOL_H
+#define MAGNACHAIN_PROTOCOL_H
 
 #include "net/netaddress.h"
 #include "io/serialize.h"
@@ -362,4 +362,4 @@ public:
     uint256 hash;
 };
 
-#endif // CELLLINK_PROTOCOL_H
+#endif // MAGNACHAIN_PROTOCOL_H

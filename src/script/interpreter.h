@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_INTERPRETER_H
-#define CELLLINK_SCRIPT_INTERPRETER_H
+#ifndef MAGNACHAIN_SCRIPT_INTERPRETER_H
+#define MAGNACHAIN_SCRIPT_INTERPRETER_H
 
 #include "script/script_error.h"
 #include "primitives/transaction.h"
@@ -180,4 +180,4 @@ bool VerifyScript(const MCScript& scriptSig, const MCScript& scriptPubKey, const
 
 size_t CountWitnessSigOps(const MCScript& scriptSig, const MCScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
 
-#endif // CELLLINK_SCRIPT_INTERPRETER_H
+#endif // MAGNACHAIN_SCRIPT_INTERPRETER_H

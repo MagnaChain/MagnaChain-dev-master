@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_VALIDATION_H
-#define CELLLINK_CONSENSUS_VALIDATION_H
+#ifndef MAGNACHAIN_CONSENSUS_VALIDATION_H
+#define MAGNACHAIN_CONSENSUS_VALIDATION_H
 
 #include <string>
 #include "misc/version.h"
@@ -123,4 +123,4 @@ static inline int64_t GetBlockWeight(const MCBlock& block)
 }
 bool CheckBlockHeaderSignature(const MCBlockHeader& block);
 
-#endif // CELLLINK_CONSENSUS_VALIDATION_H
+#endif // MAGNACHAIN_CONSENSUS_VALIDATION_H

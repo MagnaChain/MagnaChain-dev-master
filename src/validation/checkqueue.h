@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHECKQUEUE_H
-#define CELLLINK_CHECKQUEUE_H
+#ifndef MAGNACHAIN_CHECKQUEUE_H
+#define MAGNACHAIN_CHECKQUEUE_H
 
 #include "thread/sync.h"
 
@@ -216,4 +216,4 @@ public:
     }
 };
 
-#endif // CELLLINK_CHECKQUEUE_H
+#endif // MAGNACHAIN_CHECKQUEUE_H

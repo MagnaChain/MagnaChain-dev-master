@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_BLOOM_H
-#define CELLLINK_BLOOM_H
+#ifndef MAGNACHAIN_BLOOM_H
+#define MAGNACHAIN_BLOOM_H
 
 #include "io/serialize.h"
 
@@ -141,4 +141,4 @@ private:
     int nHashFuncs;
 };
 
-#endif // CELLLINK_BLOOM_H
+#endif // MAGNACHAIN_BLOOM_H

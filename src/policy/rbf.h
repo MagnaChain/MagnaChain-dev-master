@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_POLICY_RBF_H
-#define CELLLINK_POLICY_RBF_H
+#ifndef MAGNACHAIN_POLICY_RBF_H
+#define MAGNACHAIN_POLICY_RBF_H
 
 #include "transaction/txmempool.h"
 
@@ -26,4 +26,4 @@ bool SignalsOptInRBF(const MCTransaction &tx);
 // as the sequence numbers of all in-mempool ancestors.
 RBFTransactionState IsRBFOptIn(const MCTransaction &tx, MCTxMemPool &pool);
 
-#endif // CELLLINK_POLICY_RBF_H
+#endif // MAGNACHAIN_POLICY_RBF_H

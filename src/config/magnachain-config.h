@@ -1,7 +1,7 @@
 /* src/config/magnachain-config.h.  Generated from MCTxOutCompressor.in by configure.  */
 /* src/config/magnachain-config.h.in.  Generated from configure.ac by autoheader.  */
-#ifndef CELLLINK_CONFIG_H
-#define CELLLINK_CONFIG_H
+#ifndef MAGNACHAIN_CONFIG_H
+#define MAGNACHAIN_CONFIG_H
 
 #ifndef _MSC_VER 
 /* Define if building universal (internal helper macro) */
@@ -858,4 +858,4 @@ significant byte first (like Motorola and SPARC, unlike Intel). */
 
 #endif 
 
-#endif	//CELLLINK_CONFIG_H
+#endif	//MAGNACHAIN_CONFIG_H

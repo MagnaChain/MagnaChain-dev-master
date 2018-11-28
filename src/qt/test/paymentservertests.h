@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_TEST_PAYMENTSERVERTESTS_H
-#define CELLLINK_QT_TEST_PAYMENTSERVERTESTS_H
+#ifndef MAGNACHAIN_QT_TEST_PAYMENTSERVERTESTS_H
+#define MAGNACHAIN_QT_TEST_PAYMENTSERVERTESTS_H
 
 #include "../paymentserver.h"
 
@@ -33,4 +33,4 @@ public:
     SendCoinsRecipient recipient;
 };
 
-#endif // CELLLINK_QT_TEST_PAYMENTSERVERTESTS_H
+#endif // MAGNACHAIN_QT_TEST_PAYMENTSERVERTESTS_H

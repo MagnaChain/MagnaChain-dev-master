@@ -6,8 +6,8 @@
 /**
  * Functionality for communicating with Tor.
  */
-#ifndef CELLLINK_TORCONTROL_H
-#define CELLLINK_TORCONTROL_H
+#ifndef MAGNACHAIN_TORCONTROL_H
+#define MAGNACHAIN_TORCONTROL_H
 
 #include "thread/scheduler.h"
 
@@ -18,4 +18,4 @@ void StartTorControl(boost::thread_group& threadGroup, MCScheduler& scheduler);
 void InterruptTorControl();
 void StopTorControl();
 
-#endif /* CELLLINK_TORCONTROL_H */
+#endif /* MAGNACHAIN_TORCONTROL_H */

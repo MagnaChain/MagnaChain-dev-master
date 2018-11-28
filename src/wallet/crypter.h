@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_CRYPTER_H
-#define CELLLINK_WALLET_CRYPTER_H
+#ifndef MAGNACHAIN_WALLET_CRYPTER_H
+#define MAGNACHAIN_WALLET_CRYPTER_H
 
 #include "key/keystore.h"
 #include "io/serialize.h"
@@ -194,4 +194,4 @@ public:
     boost::signals2::signal<void (MCCryptoKeyStore* wallet)> NotifyStatusChanged;
 };
 
-#endif // CELLLINK_WALLET_CRYPTER_H
+#endif // MAGNACHAIN_WALLET_CRYPTER_H

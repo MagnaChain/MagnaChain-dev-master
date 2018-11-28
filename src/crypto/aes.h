@@ -5,8 +5,8 @@
 //
 // C++ wrapper around ctaes, a constant-time AES implementation
 
-#ifndef CELLLINK_CRYPTO_AES_H
-#define CELLLINK_CRYPTO_AES_H
+#ifndef MAGNACHAIN_CRYPTO_AES_H
+#define MAGNACHAIN_CRYPTO_AES_H
 
 extern "C" {
 #include "crypto/ctaes/ctaes.h"
@@ -116,4 +116,4 @@ private:
     unsigned char iv[AES_BLOCKSIZE];
 };
 
-#endif // CELLLINK_CRYPTO_AES_H
+#endif // MAGNACHAIN_CRYPTO_AES_H

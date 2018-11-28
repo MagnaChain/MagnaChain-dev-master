@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_TEST_RPC_NESTED_TESTS_H
-#define CELLLINK_QT_TEST_RPC_NESTED_TESTS_H
+#ifndef MAGNACHAIN_QT_TEST_RPC_NESTED_TESTS_H
+#define MAGNACHAIN_QT_TEST_RPC_NESTED_TESTS_H
 
 #include <QObject>
 #include <QTest>
@@ -23,4 +23,4 @@ private:
     MCCoinsViewDB *pcoinsdbview;
 };
 
-#endif // CELLLINK_QT_TEST_RPC_NESTED_TESTS_H
+#endif // MAGNACHAIN_QT_TEST_RPC_NESTED_TESTS_H

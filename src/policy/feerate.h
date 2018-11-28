@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_POLICY_FEERATE_H
-#define CELLLINK_POLICY_FEERATE_H
+#ifndef MAGNACHAIN_POLICY_FEERATE_H
+#define MAGNACHAIN_POLICY_FEERATE_H
 
 #include "misc/amount.h"
 #include "io/serialize.h"
@@ -53,4 +53,4 @@ public:
     }
 };
 
-#endif //  CELLLINK_POLICY_FEERATE_H
+#endif //  MAGNACHAIN_POLICY_FEERATE_H

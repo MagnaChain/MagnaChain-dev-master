@@ -2,8 +2,8 @@
 // Copyright (c) 2016-2018 The MagnaChain developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef CELLLINK_NETBASE_H
-#define CELLLINK_NETBASE_H
+#ifndef MAGNACHAIN_NETBASE_H
+#define MAGNACHAIN_NETBASE_H
 
 #include <string>
 #include <vector>

@@ -3,8 +3,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_THREADINTERRUPT_H
-#define CELLLINK_THREADINTERRUPT_H
+#ifndef MAGNACHAIN_THREADINTERRUPT_H
+#define MAGNACHAIN_THREADINTERRUPT_H
 
 #include <atomic>
 #include <chrono>
@@ -32,4 +32,4 @@ private:
     std::atomic<bool> flag;
 };
 
-#endif //CELLLINK_THREADINTERRUPT_H
+#endif //MAGNACHAIN_THREADINTERRUPT_H

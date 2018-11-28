@@ -4,8 +4,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_KEY_H
-#define CELLLINK_KEY_H
+#ifndef MAGNACHAIN_KEY_H
+#define MAGNACHAIN_KEY_H
 
 #include "key/pubkey.h"
 #include "io/serialize.h"
@@ -191,4 +191,4 @@ void ECC_Stop(void);
 /** Check that required EC support is available at runtime. */
 bool ECC_InitSanityCheck(void);
 
-#endif // CELLLINK_KEY_H
+#endif // MAGNACHAIN_KEY_H
