@@ -9,6 +9,7 @@
 #include "validation/validation.h"
 #include "io/streams.h"
 #include "consensus/validation.h"
+#include "chain/branchdb.h"
 
 namespace block_bench {
 #include "bench/data/block413567.raw.h"
@@ -42,14 +43,14 @@ static void DeserializeAndCheckBlockTest(benchmark::State& state)
     stream.write(&a, 1); // Prevent compaction
 
     const auto chainParams = CreateChainParams(CellBaseChainParams::MAIN);
-
+    BranchCache branhcache(nullptr);
     while (state.KeepRunning()) {
         CellBlock block; // Note that CBlock caches its checked state, so we need to recreate it here
         stream >> block;
         assert(stream.Rewind(sizeof(block_bench::block413567)));
 
         CellValidationState validationState;
-        assert(CheckBlock(block, validationState, chainParams->GetConsensus()));
+        assert(CheckBlock(block, validationState, chainParams->GetConsensus(), &branhcache));
     }
 }
 
