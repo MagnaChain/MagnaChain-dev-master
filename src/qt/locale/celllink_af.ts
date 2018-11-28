@@ -1012,7 +1012,7 @@
 <context>
     <name>celllink-core</name>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>CellLink Kern</translation>
     </message>
     <message>

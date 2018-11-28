@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -24,7 +24,7 @@ public:
 class CScriptNum10
 {
 /**
- * The ScriptNum implementation from CellLink Core 0.10.0, for cross-comparison.
+ * The ScriptNum implementation from MagnaChain Core 0.10.0, for cross-comparison.
  */
 public:
 

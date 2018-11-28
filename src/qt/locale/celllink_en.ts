@@ -4101,8 +4101,8 @@
     </message>
     <message>
         <location line="-397"/>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <location line="+1"/>

@@ -772,7 +772,7 @@
 </translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>celllink core</translation>
     </message>
     <message>

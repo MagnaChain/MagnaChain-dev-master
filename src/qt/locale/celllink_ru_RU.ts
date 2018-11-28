@@ -231,7 +231,7 @@
     </message>
     <message>
         <source>CellLink</source>
-        <translation>CellLink Core</translation>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -832,8 +832,8 @@
 <context>
     <name>celllink-core</name>
     <message>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>Whitelisted peers cannot be DoS banned and their transactions are always relayed, even if they are already in the mempool, useful e.g. for a gateway</source>

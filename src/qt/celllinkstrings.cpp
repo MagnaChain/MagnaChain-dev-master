@@ -9,7 +9,7 @@
 #define UNUSED
 #endif
 static const char UNUSED *celllink_strings[] = {
-QT_TRANSLATE_NOOP("celllink-core", "CellLink Core"),
+QT_TRANSLATE_NOOP("celllink-core", "MagnaChain Core"),
 QT_TRANSLATE_NOOP("celllink-core", "The %s developers"),
 QT_TRANSLATE_NOOP("celllink-core", ""
 "(1 = keep tx meta data e.g. account owner and payment request information, 2 "
