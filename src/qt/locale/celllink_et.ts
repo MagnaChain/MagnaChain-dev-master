@@ -1758,7 +1758,7 @@
         <translation>Tööta taustal ning aktsepteeri käsklusi</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>CellLinki tuumik</translation>
     </message>
     <message>

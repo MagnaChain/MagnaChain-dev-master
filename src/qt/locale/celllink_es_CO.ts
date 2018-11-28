@@ -296,8 +296,8 @@
 <context>
     <name>celllink-core</name>
     <message>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>Insufficient funds</source>

@@ -1,5 +1,5 @@
 dnl Copyright (c) 2013-2014 The Bitcoin Core developers
-dnl Copyright (c) 2013-2014 The CellLink Core developers
+dnl Copyright (c) 2016-2019 The MagnaChain Core developers
 dnl Distributed under the MIT software license, see the accompanying
 dnl file COPYING or http://www.opensource.org/licenses/mit-license.php.
 

@@ -2714,7 +2714,7 @@
         <translation>ריצה כסוכן ברקע וקבלת פקודות</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>ליבת ביטקוין</translation>
     </message>
     <message>

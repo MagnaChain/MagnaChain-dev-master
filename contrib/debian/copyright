@@ -5,9 +5,9 @@ Upstream-Contact: Satoshi Nakamoto <satoshin@gmx.com>
 Source: https://github.com/bitcoin/bitcoin
 
 Files: *
-Copyright: 2009-2017, CellLink Core Developers
+Copyright: 2009-2017, MagnaChain Core Developers
 License: Expat
-Comment: The CellLink Core Developers encompasses the current developers listed on celllink.org,
+Comment: The MagnaChain Core Developers encompasses the current developers listed on celllink.org,
          as well as the numerous contributors to the project.
 
 Files: debian/*

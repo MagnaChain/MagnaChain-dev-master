@@ -3007,8 +3007,8 @@ Var vänlig och försök igen.</translation>
         <translation>Kunde inte starta HTTP-server. Se avlusningsloggen för detaljer.</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>The %s developers</source>

@@ -26,7 +26,7 @@
 #define COPYRIGHT_HOLDERS "The %s developers"
 
 /* Copyright holder(s) */
-#define COPYRIGHT_HOLDERS_FINAL "The CellLink Core developers"
+#define COPYRIGHT_HOLDERS_FINAL "The MagnaChain Core developers"
 
 /* Replacement for %s in copyright holders string */
 #define COPYRIGHT_HOLDERS_SUBSTITUTION "CellLink"
@@ -350,7 +350,7 @@
 #define PACKAGE_BUGREPORT "https://github.com/celllink/celllink/issues"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME "CellLink Core"
+#define PACKAGE_NAME "MagnaChain Core"
 
 /* Define to the full name and version of this package. */
 #define PACKAGE_STRING "CellLink 0.15.1"
@@ -457,10 +457,10 @@ typedef int32_t ssize_t;
 #define COPYRIGHT_HOLDERS "The %s developers"
 
 /* Copyright holder(s) */
-#define COPYRIGHT_HOLDERS_FINAL "The CellLink Core developers"
+#define COPYRIGHT_HOLDERS_FINAL "The MagnaChain Core developers"
 
 /* Replacement for %s in copyright holders string */
-#define COPYRIGHT_HOLDERS_SUBSTITUTION "CellLink Core"
+#define COPYRIGHT_HOLDERS_SUBSTITUTION "MagnaChain Core"
 
 /* Copyright year */
 #define COPYRIGHT_YEAR 2017

@@ -1123,7 +1123,7 @@
 </translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>Núcleo de CellLink</translation>
     </message>
     <message>

@@ -2963,7 +2963,7 @@ Zwróć uwagę, że poprawnie zweryfikowana wiadomość potwierdza to, że nadaw
         <translation>Uruchomienie serwera HTTP nie powiodło się. Zobacz dziennik debugowania, aby uzyskać więcej szczegółów.</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>Rdzeń CellLinka</translation>
     </message>
     <message>

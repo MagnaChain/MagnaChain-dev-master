@@ -1734,8 +1734,8 @@
         <translation>Impossible de démarrer le serveur HTTP. Voir le journal de débogage pour plus de détails.</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>&lt;category&gt; can be:</source>

@@ -1820,8 +1820,8 @@
         <translation>Berjalan dibelakang sebagai daemin dan menerima perintah</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)</source>

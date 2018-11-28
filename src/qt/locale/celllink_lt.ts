@@ -958,7 +958,7 @@
         <translation>Dirbti fone kaip šešėlyje ir priimti komandas</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>CellLink branduolys</translation>
     </message>
     <message>

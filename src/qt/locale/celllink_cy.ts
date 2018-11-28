@@ -640,7 +640,7 @@
         <translation>Opsiynau:</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>Craidd CellLink</translation>
     </message>
     <message>

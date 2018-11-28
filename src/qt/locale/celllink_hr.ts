@@ -1034,8 +1034,8 @@
         <translation>Izvršavaj u pozadini kao uslužnik i prihvaćaj komande</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
-        <translation>CellLink Core</translation>
+        <source>MagnaChain Core</source>
+        <translation>MagnaChain Core</translation>
     </message>
     <message>
         <source>Block creation options:</source>

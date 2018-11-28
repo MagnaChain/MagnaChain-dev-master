@@ -608,7 +608,7 @@
         <translation>Opciones:</translation>
     </message>
     <message>
-        <source>CellLink Core</source>
+        <source>MagnaChain Core</source>
         <translation>nucleo CellLink</translation>
     </message>
     <message>
