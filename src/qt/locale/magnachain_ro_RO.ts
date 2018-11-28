@@ -54,12 +54,12 @@
         <translation>Adresa de primire</translation>
     </message>
     <message>
-        <source>These are your CellLink addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Acestea sunt adresele tale CellLink pentru efectuarea platilor. Intotdeauna verifica atent suma de plata si adresa beneficiarului inainte de a trimite monede.</translation>
+        <source>These are your MagnaChain addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Acestea sunt adresele tale MagnaChain pentru efectuarea platilor. Intotdeauna verifica atent suma de plata si adresa beneficiarului inainte de a trimite monede.</translation>
     </message>
     <message>
-        <source>These are your CellLink addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
-        <translation>Acestea sunt adresele tale CellLink pentru receptionarea platilor. Este recomandat sa folosesti mereu o adresa noua pentru primirea platilor.</translation>
+        <source>These are your MagnaChain addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
+        <translation>Acestea sunt adresele tale MagnaChain pentru receptionarea platilor. Este recomandat sa folosesti mereu o adresa noua pentru primirea platilor.</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -152,7 +152,7 @@
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Semnează &amp;mesaj...</translation>
@@ -230,8 +230,8 @@
         <translation>Se reindexează blocurile pe disc...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>Trimite monede către o adresă CellLink</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Trimite monede către o adresă MagnaChain</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -254,8 +254,8 @@
         <translation>&amp;Verifică mesaj...</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -282,12 +282,12 @@
         <translation>Criptează cheile private ale portofelului dvs.</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Semnaţi mesaje cu adresa dvs. CellLink pentru a dovedi că vă aparţin</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Semnaţi mesaje cu adresa dvs. MagnaChain pentru a dovedi că vă aparţin</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Verificaţi mesaje pentru a vă asigura că au fost semnate cu adresa CellLink specificată</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Verificaţi mesaje pentru a vă asigura că au fost semnate cu adresa MagnaChain specificată</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -326,8 +326,8 @@
         <translation>Opţiuni linie de &amp;comandă</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to CellLink network</source>
-        <translation><numerusform>%n conexiune activă către reţeaua CellLink</numerusform><numerusform>%n conexiuni active către reţeaua CellLink</numerusform><numerusform>%n de conexiuni active către reţeaua CellLink</numerusform></translation>
+        <source>%n active connection(s) to MagnaChain network</source>
+        <translation><numerusform>%n conexiune activă către reţeaua MagnaChain</numerusform><numerusform>%n conexiuni active către reţeaua MagnaChain</numerusform><numerusform>%n de conexiuni active către reţeaua MagnaChain</numerusform></translation>
     </message>
     <message numerus="yes">
         <source>Processed %n block(s) of transaction history.</source>
@@ -732,16 +732,16 @@
         <translation>Cheltuire rest neconfirmat</translation>
     </message>
     <message>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Deschide automat în router portul aferent clientului CellLink. Funcţionează doar dacă routerul duportă UPnP şi e activat.</translation>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Deschide automat în router portul aferent clientului MagnaChain. Funcţionează doar dacă routerul duportă UPnP şi e activat.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
         <translation>Mapare port folosind &amp;UPnP</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Conectare la reţeaua CellLink printr-un proxy SOCKS.</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Conectare la reţeaua MagnaChain printr-un proxy SOCKS.</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -851,8 +851,8 @@
         <translation>Form</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>Informaţiile afişate pot fi neactualizate. Portofelul dvs. se sincronizează automat cu reţeaua CellLink după ce o conexiune este stabilită, dar acest proces nu a fost finalizat încă.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>Informaţiile afişate pot fi neactualizate. Portofelul dvs. se sincronizează automat cu reţeaua MagnaChain după ce o conexiune este stabilită, dar acest proces nu a fost finalizat încă.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -940,8 +940,8 @@
         <translation>Cantitate</translation>
     </message>
     <message>
-        <source>Enter a CellLink address (e.g. %1)</source>
-        <translation>Introduceţi o adresă CellLink (de exemplu %1)</translation>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
+        <translation>Introduceţi o adresă MagnaChain (de exemplu %1)</translation>
     </message>
     <message>
         <source>%1 d</source>
@@ -1240,8 +1240,8 @@
         <translation>R&amp;efoloseşte o adresă de primire (nu este recomandat)</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</source>
-        <translation>Un mesaj opţional de ataşat la cererea de plată, care va fi afişat cînd cererea este deschisă. Notă: Acest mesaj nu va fi trimis cu plata către reţeaua CellLink.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</source>
+        <translation>Un mesaj opţional de ataşat la cererea de plată, care va fi afişat cînd cererea este deschisă. Notă: Acest mesaj nu va fi trimis cu plata către reţeaua MagnaChain.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -1472,7 +1472,7 @@
         <translation>Aceasta este o tranzacţie normală.</translation>
     </message>
     <message>
-        <source>The CellLink address to send the payment to</source>
+        <source>The MagnaChain address to send the payment to</source>
         <translation>Adresa magnachain către care se face plata</translation>
     </message>
     <message>
@@ -1500,7 +1500,7 @@
         <translation>Introduceţi eticheta pentru ca această adresa să fie introdusă în lista de adrese folosite</translation>
     </message>
     <message>
-        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</source>
+        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</source>
         <translation>un mesaj a fost ataşat la magnachain: URI care va fi stocat cu tranzacţia pentru referinţa dvs. Notă: Acest mesaj nu va fi trimis către reţeaua magnachain.</translation>
     </message>
     <message>
@@ -1537,7 +1537,7 @@
         <translation>&amp;Semnează mesaj</translation>
     </message>
     <message>
-        <source>The CellLink address to sign the message with</source>
+        <source>The MagnaChain address to sign the message with</source>
         <translation>Adresa cu care semnaţi mesajul</translation>
     </message>
     <message>
@@ -1569,8 +1569,8 @@
         <translation>Copiază semnatura curentă în clipboard-ul sistemului</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this CellLink address</source>
-        <translation>Semnează mesajul pentru a dovedi ca deţineţi acestă adresă CellLink</translation>
+        <source>Sign the message to prove you own this MagnaChain address</source>
+        <translation>Semnează mesajul pentru a dovedi ca deţineţi acestă adresă MagnaChain</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -1589,12 +1589,12 @@
         <translation>&amp;Verifică mesaj</translation>
     </message>
     <message>
-        <source>The CellLink address the message was signed with</source>
-        <translation>Introduceţi o adresă CellLink</translation>
+        <source>The MagnaChain address the message was signed with</source>
+        <translation>Introduceţi o adresă MagnaChain</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified CellLink address</source>
-        <translation>Verificaţi mesajul pentru a vă asigura că a fost semnat cu adresa CellLink specificată</translation>
+        <source>Verify the message to ensure it was signed with the specified MagnaChain address</source>
+        <translation>Verificaţi mesajul pentru a vă asigura că a fost semnat cu adresa MagnaChain specificată</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>
@@ -1703,7 +1703,7 @@
     </message>
     <message>
         <source>MagnaChain Core</source>
-        <translation>Nucleul CellLink</translation>
+        <translation>Nucleul MagnaChain</translation>
     </message>
     <message>
         <source>Bind to given address and always listen on it. Use [host]:port notation for IPv6</source>

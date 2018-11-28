@@ -506,7 +506,7 @@ static void CoinListGetParent(const CellOutPoint& outpoint, const Coin& coin, Co
     if (!ExtractDestination(coin.out.scriptPubKey, kChildDest))
         return;
 
-    CellLinkAddress kChildAddr(kChildDest);
+    MagnaChainAddress kChildAddr(kChildDest);
     if (!kChildAddr.IsValid() || kChildAddr.IsScript() || coin.IsCoinBase())
         return;
 
@@ -527,7 +527,7 @@ static void CoinListGetParent(const CellOutPoint& outpoint, const Coin& coin, Co
 
     CellTxDestination kParentDest;
     ExtractDestination(kTrans->vout[kTxIn.prevout.n].scriptPubKey, kParentDest);
-    CellLinkAddress kParentAddr(kParentDest);
+    MagnaChainAddress kParentAddr(kParentDest);
     if (!kParentAddr.IsValid() || kParentAddr.IsScript())
         return;
     //std::string strChildAddr = kChildAddr.ToString();
@@ -580,7 +580,7 @@ static inline bool GetCoinDest(const CellOutPoint& outpoint, const Coin& coin, C
             return false;
     }
 
-    CellLinkAddress kAddr(kDest);
+    MagnaChainAddress kAddr(kDest);
     if (!kAddr.IsValid() || kAddr.IsScript())
         return false;
     return true;

@@ -29,7 +29,7 @@
 #define COPYRIGHT_HOLDERS_FINAL "The MagnaChain Core developers"
 
 /* Replacement for %s in copyright holders string */
-#define COPYRIGHT_HOLDERS_SUBSTITUTION "CellLink"
+#define COPYRIGHT_HOLDERS_SUBSTITUTION "MagnaChain"
 
 /* Copyright year */
 #define COPYRIGHT_YEAR 2017
@@ -353,10 +353,10 @@
 #define PACKAGE_NAME "MagnaChain Core"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "CellLink 0.15.1"
+#define PACKAGE_STRING "MagnaChain 0.15.1"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "CellLink"
+#define PACKAGE_TARNAME "MagnaChain"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "https://magnachain.io/"

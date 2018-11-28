@@ -39,10 +39,10 @@ class QProgressDialog;
 QT_END_NAMESPACE
 
 /**
-  CellLink GUI main class. This class represents the main window of the CellLink UI. It communicates with both the client and
+  MagnaChain GUI main class. This class represents the main window of the MagnaChain UI. It communicates with both the client and
   wallet models to give the user an up-to-date view of the current core state.
 */
-class CellLinkGUI : public QMainWindow
+class MagnaChainGUI : public QMainWindow
 {
     Q_OBJECT
 
@@ -50,8 +50,8 @@ public:
     static const QString DEFAULT_WALLET;
     static const std::string DEFAULT_UIPLATFORM;
 
-    explicit CellLinkGUI(const PlatformStyle *platformStyle, const NetworkStyle *networkStyle, QWidget *parent = 0);
-    ~CellLinkGUI();
+    explicit MagnaChainGUI(const PlatformStyle *platformStyle, const NetworkStyle *networkStyle, QWidget *parent = 0);
+    ~MagnaChainGUI();
 
     /** Set the client model.
         The client model represents the part of the core that communicates with the P2P network, and is wallet-agnostic.

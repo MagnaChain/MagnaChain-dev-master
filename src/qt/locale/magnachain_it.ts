@@ -62,12 +62,12 @@
         <translation>Indirizzi di ricezione</translation>
     </message>
     <message>
-        <source>These are your CellLink addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Questo è un elenco di indirizzi CellLink a cui puoi inviare pagamenti. Controlla sempre l'importo e l'indirizzo del beneficiario prima di inviare magnachain.</translation>
+        <source>These are your MagnaChain addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Questo è un elenco di indirizzi MagnaChain a cui puoi inviare pagamenti. Controlla sempre l'importo e l'indirizzo del beneficiario prima di inviare magnachain.</translation>
     </message>
     <message>
-        <source>These are your CellLink addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
-        <translation>Questi sono i tuoi indirizzi CellLink che puoi usare per ricevere pagamenti. Si raccomanda di generare un nuovo indirizzo per ogni transazione.</translation>
+        <source>These are your MagnaChain addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
+        <translation>Questi sono i tuoi indirizzi MagnaChain che puoi usare per ricevere pagamenti. Si raccomanda di generare un nuovo indirizzo per ogni transazione.</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -228,7 +228,7 @@
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Firma &amp;messaggio...</translation>
@@ -334,8 +334,8 @@
         <translation>Re-indicizzazione blocchi su disco...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>Invia fondi ad un indirizzo CellLink</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Invia fondi ad un indirizzo MagnaChain</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -358,8 +358,8 @@
         <translation>&amp;Verifica messaggio...</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -386,12 +386,12 @@
         <translation>Cifra le chiavi private che appartengono al tuo portamonete</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Firma messaggi con i tuoi indirizzi CellLink per dimostrarne il possesso</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Firma messaggi con i tuoi indirizzi MagnaChain per dimostrarne il possesso</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Verifica che i messaggi siano stati firmati con gli indirizzi CellLink specificati</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Verifica che i messaggi siano stati firmati con gli indirizzi MagnaChain specificati</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -430,8 +430,8 @@
         <translation>Opzioni della riga di &amp;comando</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to CellLink network</source>
-        <translation><numerusform>%n connessione attiva alla rete CellLink</numerusform><numerusform>%n connessioni alla rete CellLink attive</numerusform></translation>
+        <source>%n active connection(s) to MagnaChain network</source>
+        <translation><numerusform>%n connessione attiva alla rete MagnaChain</numerusform><numerusform>%n connessioni alla rete MagnaChain attive</numerusform></translation>
     </message>
     <message>
         <source>Indexing blocks on disk...</source>
@@ -474,8 +474,8 @@
         <translation>Aggiornato</translation>
     </message>
     <message>
-        <source>Show the %1 help message to get a list with possible CellLink command-line options</source>
-        <translation>Mostra il messaggio di aiuto di %1 per ottenere una lista di opzioni di comando per CellLink </translation>
+        <source>Show the %1 help message to get a list with possible MagnaChain command-line options</source>
+        <translation>Mostra il messaggio di aiuto di %1 per ottenere una lista di opzioni di comando per MagnaChain </translation>
     </message>
     <message>
         <source>%1 client</source>
@@ -544,8 +544,8 @@
         <translation>Il portamonete è &lt;b&gt;cifrato&lt;/b&gt; ed attualmente &lt;b&gt;bloccato&lt;/b&gt;</translation>
     </message>
     <message>
-        <source>A fatal error occurred. CellLink can no longer continue safely and will quit.</source>
-        <translation>Si è verificato un errore critico. CellLink non può più funzionare in maniera sicura e verrà chiuso.</translation>
+        <source>A fatal error occurred. MagnaChain can no longer continue safely and will quit.</source>
+        <translation>Si è verificato un errore critico. MagnaChain non può più funzionare in maniera sicura e verrà chiuso.</translation>
     </message>
 </context>
 <context>
@@ -738,7 +738,7 @@
         <translation>Modifica indirizzo d'invio</translation>
     </message>
     <message>
-        <source>The entered address "%1" is not a valid CellLink address.</source>
+        <source>The entered address "%1" is not a valid MagnaChain address.</source>
         <translation>L'indirizzo inserito "%1" non è un indirizzo magnachain valido.</translation>
     </message>
     <message>
@@ -847,8 +847,8 @@
         <translation>Dato che questa è la prima volta che il programma viene lanciato, puoi scegliere dove %1 salverà i suoi dati.</translation>
     </message>
     <message>
-        <source>%1 will download and store a copy of the CellLink block chain. At least %2GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</source>
-        <translation>%1 scaricherà e salverà una copia della Blockchain di CellLink. Saranno salvati almeno %2GB di dati in questo percorso e continueranno ad aumentare col tempo. Anche il portafoglio verrà salvato in questo percorso.</translation>
+        <source>%1 will download and store a copy of the MagnaChain block chain. At least %2GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</source>
+        <translation>%1 scaricherà e salverà una copia della Blockchain di MagnaChain. Saranno salvati almeno %2GB di dati in questo percorso e continueranno ad aumentare col tempo. Anche il portafoglio verrà salvato in questo percorso.</translation>
     </message>
     <message>
         <source>Use the default data directory</source>
@@ -1041,16 +1041,16 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>&amp;Spendi resti non confermati</translation>
     </message>
     <message>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Apri automaticamente la porta del client CellLink sul router. Il protocollo UPnP deve essere supportato da parte del router ed attivo.</translation>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Apri automaticamente la porta del client MagnaChain sul router. Il protocollo UPnP deve essere supportato da parte del router ed attivo.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
         <translation>Mappa le porte tramite &amp;UPnP</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Connessione alla rete CellLink attraverso un proxy SOCKS5.</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Connessione alla rete MagnaChain attraverso un proxy SOCKS5.</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -1089,8 +1089,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Tor</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a separate SOCKS5 proxy for Tor hidden services.</source>
-        <translation>Connette alla rete CellLink attraverso un proxy SOCKS5 separato per Tor.</translation>
+        <source>Connect to the MagnaChain network through a separate SOCKS5 proxy for Tor hidden services.</source>
+        <translation>Connette alla rete MagnaChain attraverso un proxy SOCKS5 separato per Tor.</translation>
     </message>
     <message>
         <source>Use separate SOCKS5 proxy to reach peers via Tor hidden services:</source>
@@ -1188,8 +1188,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Modulo</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>Le informazioni visualizzate potrebbero non essere aggiornate. Il portamonete si sincronizza automaticamente con la rete CellLink una volta stabilita una connessione, ma questo processo non è ancora stato completato.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>Le informazioni visualizzate potrebbero non essere aggiornate. Il portamonete si sincronizza automaticamente con la rete MagnaChain una volta stabilita una connessione, ma questo processo non è ancora stato completato.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -1279,8 +1279,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Indirizzo di pagamento non valido %1</translation>
     </message>
     <message>
-        <source>URI cannot be parsed! This can be caused by an invalid CellLink address or malformed URI parameters.</source>
-        <translation>Impossibile interpretare l'URI! I parametri dell'URI o l'indirizzo CellLink potrebbero non essere corretti.</translation>
+        <source>URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters.</source>
+        <translation>Impossibile interpretare l'URI! I parametri dell'URI o l'indirizzo MagnaChain potrebbero non essere corretti.</translation>
     </message>
     <message>
         <source>Payment request file handling</source>
@@ -1369,8 +1369,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Importo</translation>
     </message>
     <message>
-        <source>Enter a CellLink address (e.g. %1)</source>
-        <translation>Inserisci un indirizzo CellLink (ad es. %1)</translation>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
+        <translation>Inserisci un indirizzo MagnaChain (ad es. %1)</translation>
     </message>
     <message>
         <source>%1 d</source>
@@ -1789,8 +1789,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>R&amp;iusa un indirizzo di ricezione (non raccomandato)</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</source>
-        <translation>Un messaggio opzionale da allegare e mostrare all'apertura della richiesta di pagamento. Nota: Il messaggio non sarà inviato con il pagamento sulla rete CellLink.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</source>
+        <translation>Un messaggio opzionale da allegare e mostrare all'apertura della richiesta di pagamento. Nota: Il messaggio non sarà inviato con il pagamento sulla rete MagnaChain.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -1943,7 +1943,7 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
     <name>SendCoinsDialog</name>
     <message>
         <source>Send Coins</source>
-        <translation>Invia CellLink</translation>
+        <translation>Invia MagnaChain</translation>
     </message>
     <message>
         <source>Coin Control Features</source>
@@ -2182,8 +2182,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation><numerusform>Inizio delle conferme stimato entro %n blocchi.</numerusform><numerusform>Inizio delle conferme stimato entro %n blocchi.</numerusform></translation>
     </message>
     <message>
-        <source>Warning: Invalid CellLink address</source>
-        <translation>Attenzione: Indirizzo CellLink non valido</translation>
+        <source>Warning: Invalid MagnaChain address</source>
+        <translation>Attenzione: Indirizzo MagnaChain non valido</translation>
     </message>
     <message>
         <source>Warning: Unknown change address</source>
@@ -2217,8 +2217,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Questo è un normale pagamento.</translation>
     </message>
     <message>
-        <source>The CellLink address to send the payment to</source>
-        <translation>L'indirizzo CellLink a cui vuoi inviare il pagamento</translation>
+        <source>The MagnaChain address to send the payment to</source>
+        <translation>L'indirizzo MagnaChain a cui vuoi inviare il pagamento</translation>
     </message>
     <message>
         <source>Alt+A</source>
@@ -2261,8 +2261,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Inserisci un'etichetta per questo indirizzo per aggiungerlo alla lista degli indirizzi utilizzati</translation>
     </message>
     <message>
-        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</source>
-        <translation>Messaggio incluso nel magnachain URI e che sarà memorizzato con la transazione per vostro riferimento. Nota: Questo messaggio non sarà inviato attraverso la rete CellLink.</translation>
+        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</source>
+        <translation>Messaggio incluso nel magnachain URI e che sarà memorizzato con la transazione per vostro riferimento. Nota: Questo messaggio non sarà inviato attraverso la rete MagnaChain.</translation>
     </message>
     <message>
         <source>Pay To:</source>
@@ -2306,8 +2306,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>È possibile firmare messaggi/accordi con i propri indirizzi in modo da dimostrare di poter ricevere magnachain attraverso di essi. Si consiglia di prestare attenzione a non firmare dichiarazioni vaghe o casuali, attacchi di phishing potrebbero cercare di indurre ad apporre la firma su di esse. Si raccomanda di firmare esclusivamente dichiarazioni completamente dettagliate e delle quali si condivide in pieno il contenuto.</translation>
     </message>
     <message>
-        <source>The CellLink address to sign the message with</source>
-        <translation>L'indirizzo CellLink da utilizzare per firmare il messaggio</translation>
+        <source>The MagnaChain address to sign the message with</source>
+        <translation>L'indirizzo MagnaChain da utilizzare per firmare il messaggio</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -2338,8 +2338,8 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Copia la firma corrente nella clipboard</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this CellLink address</source>
-        <translation>Firma un messaggio per dimostrare di possedere questo indirizzo CellLink</translation>
+        <source>Sign the message to prove you own this MagnaChain address</source>
+        <translation>Firma un messaggio per dimostrare di possedere questo indirizzo MagnaChain</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -2362,11 +2362,11 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
         <translation>Per verificare il messaggio inserire l'indirizzo del firmatario, il messaggio e la firma nei campi sottostanti, assicurandosi di copiare esattamente anche ritorni a capo, spazi, tabulazioni, etc.. Si raccomanda di non lasciarsi fuorviare dalla firma a leggere più di quanto non sia riportato nel testo del messaggio stesso, in modo da evitare di cadere vittima di attacchi di tipo man-in-the-middle. Si ricorda che la verifica della firma dimostra soltanto che il firmatario può ricevere pagamenti con l'indirizzo corrispondente, non prova l'invio di alcuna transazione.</translation>
     </message>
     <message>
-        <source>The CellLink address the message was signed with</source>
-        <translation>L'indirizzo CellLink con cui è stato contrassegnato il messaggio</translation>
+        <source>The MagnaChain address the message was signed with</source>
+        <translation>L'indirizzo MagnaChain con cui è stato contrassegnato il messaggio</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified CellLink address</source>
+        <source>Verify the message to ensure it was signed with the specified MagnaChain address</source>
         <translation>Verifica il messaggio per accertare che sia stato firmato con l'indirizzo specificato</translation>
     </message>
     <message>
@@ -2850,7 +2850,7 @@ Per specificare più URL separarli con una barra verticale "|".</translation>
     <name>WalletModel</name>
     <message>
         <source>Send Coins</source>
-        <translation>Invia CellLink</translation>
+        <translation>Invia MagnaChain</translation>
     </message>
 </context>
 <context>

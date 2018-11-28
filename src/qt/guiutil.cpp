@@ -113,7 +113,7 @@ static std::string DummyAddress(const CellChainParams &params)
     sourcedata.insert(sourcedata.end(), dummydata, dummydata + sizeof(dummydata));
     for(int i=0; i<256; ++i) { // Try every trailing byte
         std::string s = EncodeBase58(sourcedata.data(), sourcedata.data() + sourcedata.size());
-        if (!CellLinkAddress(s).IsValid())
+        if (!MagnaChainAddress(s).IsValid())
             return s;
         sourcedata[sourcedata.size()-1] += 1;
     }
@@ -128,11 +128,11 @@ void setupAddressWidget(QValidatedLineEdit *widget, QWidget *parent)
 #if QT_VERSION >= 0x040700
     // We don't want translators to use own addresses in translations
     // and this is the only place, where this address is supplied.
-    widget->setPlaceholderText(QObject::tr("Enter a CellLink address (e.g. %1)").arg(
+    widget->setPlaceholderText(QObject::tr("Enter a MagnaChain address (e.g. %1)").arg(
         QString::fromStdString(DummyAddress(Params()))));
 #endif
-    widget->setValidator(new CellLinkAddressEntryValidator(parent));
-    widget->setCheckValidator(new CellLinkAddressCheckValidator(parent));
+    widget->setValidator(new MagnaChainAddressEntryValidator(parent));
+    widget->setCheckValidator(new MagnaChainAddressCheckValidator(parent));
 }
 
 void setupAmountWidget(QLineEdit *widget, QWidget *parent)
@@ -144,7 +144,7 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
     widget->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
 }
 
-bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
+bool parseMagnaChainURI(const QUrl &uri, SendCoinsRecipient *out)
 {
     // return if URI is not valid or is no magnachain: URI
     if(!uri.isValid() || uri.scheme() != QString("magnachain"))
@@ -187,7 +187,7 @@ bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
         {
             if(!i->second.isEmpty())
             {
-                if(!CellLinkUnits::parse(CellLinkUnits::BTC, i->second, &rv.amount))
+                if(!MagnaChainUnits::parse(MagnaChainUnits::BTC, i->second, &rv.amount))
                 {
                     return false;
                 }
@@ -205,7 +205,7 @@ bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
     return true;
 }
 
-bool parseCellLinkURI(QString uri, SendCoinsRecipient *out)
+bool parseMagnaChainURI(QString uri, SendCoinsRecipient *out)
 {
     // Convert magnachain:// to magnachain:
     //
@@ -216,17 +216,17 @@ bool parseCellLinkURI(QString uri, SendCoinsRecipient *out)
         uri.replace(0, 10, "magnachain:");
     }
     QUrl uriInstance(uri);
-    return parseCellLinkURI(uriInstance, out);
+    return parseMagnaChainURI(uriInstance, out);
 }
 
-QString formatCellLinkURI(const SendCoinsRecipient &info)
+QString formatMagnaChainURI(const SendCoinsRecipient &info)
 {
     QString ret = QString("magnachain:%1").arg(info.address);
     int paramCount = 0;
 
     if (info.amount)
     {
-        ret += QString("?amount=%1").arg(CellLinkUnits::format(CellLinkUnits::BTC, info.amount, false, CellLinkUnits::separatorNever));
+        ret += QString("?amount=%1").arg(MagnaChainUnits::format(MagnaChainUnits::BTC, info.amount, false, MagnaChainUnits::separatorNever));
         paramCount++;
     }
 
@@ -249,7 +249,7 @@ QString formatCellLinkURI(const SendCoinsRecipient &info)
 
 bool isDust(const QString& address, const CellAmount& amount)
 {
-    CellTxDestination dest = CellLinkAddress(address.toStdString()).Get();
+    CellTxDestination dest = MagnaChainAddress(address.toStdString()).Get();
     CellScript script = GetScriptForDestination(dest);
     CellTxOut txOut(amount, script);
     return IsDust(txOut, ::dustRelayFee);
@@ -416,7 +416,7 @@ void openDebugLogfile()
         QDesktopServices::openUrl(QUrl::fromLocalFile(boostPathToQString(pathDebug)));
 }
 
-bool openCellLinkConf()
+bool openMagnaChainConf()
 {
     boost::filesystem::path pathConfig = GetConfigFile(CELLLINK_CONF_FILENAME);
 
@@ -616,15 +616,15 @@ fs::path static StartupShortcutPath()
 {
     std::string chain = ChainNameFromCommandLine();
     if (chain == CellBaseChainParams::MAIN)
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "CellLink.lnk";
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "MagnaChain.lnk";
     if (chain == CellBaseChainParams::TESTNET) // Remove this special case when CellBaseChainParams::TESTNET = "testnet4"
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "CellLink (testnet).lnk";
-    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("CellLink (%s).lnk", chain);
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "MagnaChain (testnet).lnk";
+    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("MagnaChain (%s).lnk", chain);
 }
 
 bool GetStartOnSystemStartup()
 {
-    // check for CellLink*.lnk
+    // check for MagnaChain*.lnk
     return fs::exists(StartupShortcutPath());
 }
 
@@ -758,9 +758,9 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
         if (chain == CellBaseChainParams::MAIN)
-            optionFile << "Name=CellLink\n";
+            optionFile << "Name=MagnaChain\n";
         else
-            optionFile << strprintf("Name=CellLink (%s)\n", chain);
+            optionFile << strprintf("Name=MagnaChain (%s)\n", chain);
         optionFile << "Exec=" << pszExePath << strprintf(" -min -testnet=%d -regtest=%d\n", gArgs.GetBoolArg("-testnet", false), gArgs.GetBoolArg("-regtest", false));
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";

@@ -72,7 +72,7 @@ public:
 };
 
 class SmartLuaState;
-class CellLinkAddress;
+class MagnaChainAddress;
 
 struct SmartContractThreadData
 {

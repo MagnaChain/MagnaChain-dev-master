@@ -157,7 +157,7 @@ void ScriptPubKeyToUniv(const CellScript& scriptPubKey,
 
     UniValue a(UniValue::VARR);
     for (const CellTxDestination& addr : addresses)
-        a.push_back(CellLinkAddress(addr).ToString());
+        a.push_back(MagnaChainAddress(addr).ToString());
     out.pushKV("addresses", a);
 }
 

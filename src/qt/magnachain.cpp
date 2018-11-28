@@ -175,11 +175,11 @@ void DebugMessageHandler(QtMsgType type, const QMessageLogContext& context, cons
 /** Class encapsulating MagnaChain Core startup and shutdown.
  * Allows running startup and shutdown in a different thread from the UI thread.
  */
-class CellLinkCore: public QObject
+class MagnaChainCore: public QObject
 {
     Q_OBJECT
 public:
-    explicit CellLinkCore();
+    explicit MagnaChainCore();
     /** Basic initialization, before starting initialization/shutdown thread.
      * Return true on success.
      */
@@ -202,13 +202,13 @@ private:
     void handleRunawayException(const std::exception *e);
 };
 
-/** Main CellLink application object */
-class CellLinkApplication: public QApplication
+/** Main MagnaChain application object */
+class MagnaChainApplication: public QApplication
 {
     Q_OBJECT
 public:
-    explicit CellLinkApplication(int &argc, char **argv);
-    ~CellLinkApplication();
+    explicit MagnaChainApplication(int &argc, char **argv);
+    ~MagnaChainApplication();
 
 #ifdef ENABLE_WALLET
     /// Create payment server
@@ -231,7 +231,7 @@ public:
     /// Get process return value
     int getReturnValue() { return returnValue; }
 
-    /// Get window identifier of QMainWindow (CellLinkGUI)
+    /// Get window identifier of QMainWindow (MagnaChainGUI)
     WId getMainWinId() const;
 
 public Q_SLOTS:
@@ -250,7 +250,7 @@ private:
     QThread *coreThread;
     OptionsModel *optionsModel;
     ClientModel *clientModel;
-    CellLinkGUI *window;
+    MagnaChainGUI *window;
     QTimer *pollShutdownTimer;
 #ifdef ENABLE_WALLET
     PaymentServer* paymentServer;
@@ -265,18 +265,18 @@ private:
 
 #include "magnachain.moc"
 
-CellLinkCore::CellLinkCore():
+MagnaChainCore::MagnaChainCore():
     QObject()
 {
 }
 
-void CellLinkCore::handleRunawayException(const std::exception *e)
+void MagnaChainCore::handleRunawayException(const std::exception *e)
 {
     PrintExceptionContinue(e, "Runaway exception");
     Q_EMIT runawayException(QString::fromStdString(GetWarnings("gui")));
 }
 
-bool CellLinkCore::baseInitialize()
+bool MagnaChainCore::baseInitialize()
 {
     if (!AppInitBasicSetup())
     {
@@ -297,7 +297,7 @@ bool CellLinkCore::baseInitialize()
     return true;
 }
 
-void CellLinkCore::initialize()
+void MagnaChainCore::initialize()
 {
     try
     {
@@ -311,7 +311,7 @@ void CellLinkCore::initialize()
     }
 }
 
-void CellLinkCore::shutdown()
+void MagnaChainCore::shutdown()
 {
     try
     {
@@ -328,7 +328,7 @@ void CellLinkCore::shutdown()
     }
 }
 
-CellLinkApplication::CellLinkApplication(int &argc, char **argv):
+MagnaChainApplication::MagnaChainApplication(int &argc, char **argv):
     QApplication(argc, argv),
     coreThread(0),
     optionsModel(0),
@@ -344,17 +344,17 @@ CellLinkApplication::CellLinkApplication(int &argc, char **argv):
     setQuitOnLastWindowClosed(false);
 
     // UI per-platform customization
-    // This must be done inside the CellLinkApplication constructor, or after it, because
+    // This must be done inside the MagnaChainApplication constructor, or after it, because
     // PlatformStyle::instantiate requires a QApplication
     std::string platformName;
-    platformName = gArgs.GetArg("-uiplatform", CellLinkGUI::DEFAULT_UIPLATFORM);
+    platformName = gArgs.GetArg("-uiplatform", MagnaChainGUI::DEFAULT_UIPLATFORM);
     platformStyle = PlatformStyle::instantiate(QString::fromStdString(platformName));
     if (!platformStyle) // Fall back to "other" if specified name not found
         platformStyle = PlatformStyle::instantiate("other");
     assert(platformStyle);
 }
 
-CellLinkApplication::~CellLinkApplication()
+MagnaChainApplication::~MagnaChainApplication()
 {
     if(coreThread)
     {
@@ -377,27 +377,27 @@ CellLinkApplication::~CellLinkApplication()
 }
 
 #ifdef ENABLE_WALLET
-void CellLinkApplication::createPaymentServer()
+void MagnaChainApplication::createPaymentServer()
 {
     paymentServer = new PaymentServer(this);
 }
 #endif
 
-void CellLinkApplication::createOptionsModel(bool resetSettings)
+void MagnaChainApplication::createOptionsModel(bool resetSettings)
 {
     optionsModel = new OptionsModel(nullptr, resetSettings);
 }
 
-void CellLinkApplication::createWindow(const NetworkStyle *networkStyle)
+void MagnaChainApplication::createWindow(const NetworkStyle *networkStyle)
 {
-    window = new CellLinkGUI(platformStyle, networkStyle, 0);
+    window = new MagnaChainGUI(platformStyle, networkStyle, 0);
 
     pollShutdownTimer = new QTimer(window);
     connect(pollShutdownTimer, SIGNAL(timeout()), window, SLOT(detectShutdown()));
     pollShutdownTimer->start(200);
 }
 
-void CellLinkApplication::createSplashScreen(const NetworkStyle *networkStyle)
+void MagnaChainApplication::createSplashScreen(const NetworkStyle *networkStyle)
 {
     SplashScreen *splash = new SplashScreen(0, networkStyle);
     // We don't hold a direct pointer to the splash screen after creation, but the splash
@@ -407,12 +407,12 @@ void CellLinkApplication::createSplashScreen(const NetworkStyle *networkStyle)
     connect(this, SIGNAL(requestedShutdown()), splash, SLOT(close()));
 }
 
-void CellLinkApplication::startThread()
+void MagnaChainApplication::startThread()
 {
     if(coreThread)
         return;
     coreThread = new QThread(this);
-    CellLinkCore *executor = new CellLinkCore();
+    MagnaChainCore *executor = new MagnaChainCore();
     executor->moveToThread(coreThread);
 
     /*  communication to and from thread */
@@ -428,20 +428,20 @@ void CellLinkApplication::startThread()
     coreThread->start();
 }
 
-void CellLinkApplication::parameterSetup()
+void MagnaChainApplication::parameterSetup()
 {
     InitLogging();
     InitParameterInteraction();
 }
 
-void CellLinkApplication::requestInitialize()
+void MagnaChainApplication::requestInitialize()
 {
     qDebug() << __func__ << ": Requesting initialize";
     startThread();
     Q_EMIT requestedInitialize();
 }
 
-void CellLinkApplication::requestShutdown()
+void MagnaChainApplication::requestShutdown()
 {
     // Show a simple window indicating shutdown status
     // Do this first as some of the steps may take some time below,
@@ -468,7 +468,7 @@ void CellLinkApplication::requestShutdown()
     Q_EMIT requestedShutdown();
 }
 
-void CellLinkApplication::initializeResult(bool success)
+void MagnaChainApplication::initializeResult(bool success)
 {
     qDebug() << __func__ << ": Initialization result: " << success;
     // Set exit result.
@@ -491,8 +491,8 @@ void CellLinkApplication::initializeResult(bool success)
         {
             walletModel = new WalletModel(platformStyle, vpwallets[0], optionsModel);
 
-            window->addWallet(CellLinkGUI::DEFAULT_WALLET, walletModel);
-            window->setCurrentWallet(CellLinkGUI::DEFAULT_WALLET);
+            window->addWallet(MagnaChainGUI::DEFAULT_WALLET, walletModel);
+            window->setCurrentWallet(MagnaChainGUI::DEFAULT_WALLET);
 
             connect(walletModel, SIGNAL(coinsSent(CellWallet*,SendCoinsRecipient,QByteArray)),
                              paymentServer, SLOT(fetchPaymentACK(CellWallet*,const SendCoinsRecipient&,QByteArray)));
@@ -526,18 +526,18 @@ void CellLinkApplication::initializeResult(bool success)
     }
 }
 
-void CellLinkApplication::shutdownResult()
+void MagnaChainApplication::shutdownResult()
 {
     quit(); // Exit main loop after shutdown finished
 }
 
-void CellLinkApplication::handleRunawayException(const QString &message)
+void MagnaChainApplication::handleRunawayException(const QString &message)
 {
-    QMessageBox::critical(0, "Runaway exception", CellLinkGUI::tr("A fatal error occurred. CellLink can no longer continue safely and will quit.") + QString("\n\n") + message);
+    QMessageBox::critical(0, "Runaway exception", MagnaChainGUI::tr("A fatal error occurred. MagnaChain can no longer continue safely and will quit.") + QString("\n\n") + message);
     ::exit(EXIT_FAILURE);
 }
 
-WId CellLinkApplication::getMainWinId() const
+WId MagnaChainApplication::getMainWinId() const
 {
     if (!window)
         return 0;
@@ -568,7 +568,7 @@ int main(int argc, char *argv[])
     Q_INIT_RESOURCE(magnachain);
     Q_INIT_RESOURCE(magnachain_locale);
 
-    CellLinkApplication app(argc, argv);
+    MagnaChainApplication app(argc, argv);
 #if QT_VERSION > 0x050100
     // Generate high-dpi pixmaps
     QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
@@ -710,7 +710,7 @@ int main(int argc, char *argv[])
         // Perform base initialization before spinning up initialization/shutdown thread
         // This is acceptable because this function only contains steps that are quick to execute,
         // so the GUI thread won't be held up.
-        if (CellLinkCore::baseInitialize()) {
+        if (MagnaChainCore::baseInitialize()) {
             app.requestInitialize();
 #if defined(Q_OS_WIN) && QT_VERSION >= 0x050000
             WinShutdownMonitor::registerShutdownBlockReason(QObject::tr("%1 didn't yet exit safely...").arg(QApplication::translate("magnachain-core", PACKAGE_NAME)), (HWND)app.getMainWinId());

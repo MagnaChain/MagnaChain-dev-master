@@ -43,8 +43,8 @@
 
 static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellLinkAddress &toaddress, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls = nullptr);
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellScript &toScript, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls = nullptr);
+void SendFromToOther(CellWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls = nullptr);
+void SendFromToOther(CellWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const CellScript &toScript, const MagnaChainAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls = nullptr);
 
 CellWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request)
 {
@@ -149,7 +149,7 @@ UniValue getnewaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 1)
         throw std::runtime_error(
             "getnewaddress ( \"account\" )\n"
-            "\nReturns a new CellLink address for receiving payments.\n"
+            "\nReturns a new MagnaChain address for receiving payments.\n"
             "If 'account' is specified (DEPRECATED), it is added to the address book \n"
             "so payments received with the address will be credited to 'account'.\n"
             "\nArguments:\n"
@@ -181,17 +181,17 @@ UniValue getnewaddress(const JSONRPCRequest& request)
 
     pwallet->SetAddressBook(keyID, strAccount, "receive");
 
-    return CellLinkAddress(keyID).ToString();
+    return MagnaChainAddress(keyID).ToString();
 }
 
-CellLinkAddress GetAccountAddress(CellWallet* const pwallet, std::string strAccount, bool bForceNew=false)
+MagnaChainAddress GetAccountAddress(CellWallet* const pwallet, std::string strAccount, bool bForceNew=false)
 {
     CellPubKey pubKey;
     if (!pwallet->GetAccountPubkey(pubKey, strAccount, bForceNew)) {
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
     }
 
-    return CellLinkAddress(pubKey.GetID());
+    return MagnaChainAddress(pubKey.GetID());
 }
 
 UniValue getaccountaddress(const JSONRPCRequest& request)
@@ -204,7 +204,7 @@ UniValue getaccountaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "getaccountaddress \"account\"\n"
-            "\nDEPRECATED. Returns the current CellLink address for receiving payments to this account.\n"
+            "\nDEPRECATED. Returns the current MagnaChain address for receiving payments to this account.\n"
             "\nArguments:\n"
             "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
             "\nResult:\n"
@@ -237,7 +237,7 @@ UniValue getrawchangeaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 0)
         throw std::runtime_error(
             "getrawchangeaddress\n"
-            "\nReturns a new CellLink address, for receiving change.\n"
+            "\nReturns a new MagnaChain address, for receiving change.\n"
             "This is for use with raw transactions, NOT normal use.\n"
             "\nResult:\n"
             "\"address\"    (string) The address\n"
@@ -261,7 +261,7 @@ UniValue getrawchangeaddress(const JSONRPCRequest& request)
 
     CellKeyID keyID = vchPubKey.GetID();
 
-    return CellLinkAddress(keyID).ToString();
+    return MagnaChainAddress(keyID).ToString();
 }
 
 UniValue setaccount(const JSONRPCRequest& request)
@@ -285,9 +285,9 @@ UniValue setaccount(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
     std::string strAccount;
     if (request.params.size() > 1)
@@ -332,9 +332,9 @@ UniValue getaccount(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
     std::string strAccount;
     std::map<CellTxDestination, CellAddressBookData>::iterator mi = pwallet->mapAddressBook.find(address.Get());
@@ -373,8 +373,8 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
-    for (const std::pair<CellLinkAddress, CellAddressBookData>& item : pwallet->mapAddressBook) {
-        const CellLinkAddress& address = item.first;
+    for (const std::pair<MagnaChainAddress, CellAddressBookData>& item : pwallet->mapAddressBook) {
+        const MagnaChainAddress& address = item.first;
         const std::string& strName = item.second.name;
         if (strName == strAccount)
             ret.push_back(address.ToString());
@@ -464,11 +464,11 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
     if (address.IsContractID())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "CellLink address can't be contract id");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "MagnaChain address can't be contract id");
 
     // Amount
     CellAmount nAmount = AmountFromValue(request.params[1]);
@@ -628,32 +628,32 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
 	std::string rawCode(vCode.begin(), vCode.end());
 
-	CellLinkAddress fundAddr(request.params[1].get_str());
+	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink fund address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain fund address");
 	
 	std::vector<unsigned char> data(ParseHex(request.params[2].get_str()));
 	CellPubKey senderPubKey(data.begin(), data.end());
-	CellLinkAddress senderAddr(senderPubKey.GetID());
+	MagnaChainAddress senderAddr(senderPubKey.GetID());
 	if (!senderAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink sender address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain sender address");
 
 	CellAmount amount = AmountFromValue(request.params[3]);
 	if (amount <= 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-	CellLinkAddress changeAddr;
+	MagnaChainAddress changeAddr;
 	if (request.params.size() > 4)
 	{
         changeAddr.SetString(request.params[4].get_str());
 		if (!changeAddr.IsValid())
-			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink change address");
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain change address");
 	}
 	else
         changeAddr = fundAddr;
 
 	CellKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
-	CellLinkAddress contractAddr(contractId);
+	MagnaChainAddress contractAddr(contractId);
 
     UniValue ret(UniValue::VARR);
     RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
@@ -724,12 +724,12 @@ UniValue callcontract(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     std::string strContractAddr = request.params[2].get_str();
-    CellLinkAddress contractAddr(strContractAddr);
+    MagnaChainAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address");
 
     std::string strSenderAddr = request.params[3].get_str();
-    CellLinkAddress senderAddr;
+    MagnaChainAddress senderAddr;
     if (!GetSenderAddr(pwallet, strSenderAddr, senderAddr))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
 
@@ -834,13 +834,13 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
 	LOCK(cs_main);
 
-    CellLinkAddress contractAddr(request.params[0].get_str());
+    MagnaChainAddress contractAddr(request.params[0].get_str());
 	if (!contractAddr.IsValid())
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address for send");
 
-	CellLinkAddress fundAddr(request.params[1].get_str());
+	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink fund address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain fund address");
 
 	// Amount
 	CellAmount amount = AmountFromValue(request.params[2]);
@@ -850,13 +850,13 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	std::vector<unsigned char> data(ParseHex(request.params[3].get_str()));
 	CellPubKey senderPubKey(data.begin(), data.end());
 	CellKeyID senderKey = senderPubKey.GetID();
-	CellLinkAddress senderAddr(senderKey);
+	MagnaChainAddress senderAddr(senderKey);
 	if (!senderAddr.IsValid())
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
 
-	CellLinkAddress changeAddr(request.params[4].get_str());
+	MagnaChainAddress changeAddr(request.params[4].get_str());
 	if (!changeAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address for change");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address for change");
 
 	bool bSendCall = false;
 	UniValue uvIsSendCall = request.params[5];
@@ -961,11 +961,11 @@ UniValue listaddressgroupings(const JSONRPCRequest& request)
         for (CellTxDestination address : grouping)
         {
             UniValue addressInfo(UniValue::VARR);
-            addressInfo.push_back(CellLinkAddress(address).ToString());
+            addressInfo.push_back(MagnaChainAddress(address).ToString());
             addressInfo.push_back(ValueFromAmount(balances[address]));
             {
-                if (pwallet->mapAddressBook.find(CellLinkAddress(address).Get()) != pwallet->mapAddressBook.end()) {
-                    addressInfo.push_back(pwallet->mapAddressBook.find(CellLinkAddress(address).Get())->second.name);
+                if (pwallet->mapAddressBook.find(MagnaChainAddress(address).Get()) != pwallet->mapAddressBook.end()) {
+                    addressInfo.push_back(pwallet->mapAddressBook.find(MagnaChainAddress(address).Get())->second.name);
                 }
             }
             jsonGrouping.push_back(addressInfo);
@@ -1010,7 +1010,7 @@ UniValue signmessage(const JSONRPCRequest& request)
     std::string strAddress = request.params[0].get_str();
     std::string strMessage = request.params[1].get_str();
 
-    CellLinkAddress addr(strAddress);
+    MagnaChainAddress addr(strAddress);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
@@ -1063,10 +1063,10 @@ UniValue getreceivedbyaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    // CellLink address
-    CellLinkAddress address = CellLinkAddress(request.params[0].get_str());
+    // MagnaChain address
+    MagnaChainAddress address = MagnaChainAddress(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
     CellScript scriptPubKey = GetScriptForDestination(address.Get());
     if (!IsMine(*pwallet, scriptPubKey)) {
         return ValueFromAmount(0);
@@ -1316,11 +1316,11 @@ UniValue sendfrom(const JSONRPCRequest& request)
 
     std::string strAccount = AccountFromValue(request.params[0]);
 
-    CellLinkAddress address(request.params[1].get_str());
+    MagnaChainAddress address(request.params[1].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
     if (address.IsContractID())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "CellLink address can't be contract id");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "MagnaChain address can't be contract id");
 
     CellAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
@@ -1435,19 +1435,19 @@ UniValue sendmany(const JSONRPCRequest& request)
         }
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     std::vector<CellRecipient> vecSend;
 
     CellAmount totalAmount = 0;
     std::vector<std::string> keys = sendTo.getKeys();
     for (const std::string& name_ : keys)
     {
-        CellLinkAddress address(name_);
+        MagnaChainAddress address(name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid CellLink address: ") + name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid MagnaChain address: ") + name_);
 
         if (address.IsContractID())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("CellLink address can't be contract id: ") + name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("MagnaChain address can't be contract id: ") + name_);
 
         if (setAddress.count(address))
             throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ") + name_);
@@ -1508,7 +1508,7 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
     {
         std::string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
-            "Each key is a CellLink address or hex-encoded public key.\n"
+            "Each key is a MagnaChain address or hex-encoded public key.\n"
             "If 'account' is specified (DEPRECATED), assign address to that account.\n"
 
             "\nArguments:\n"
@@ -1544,7 +1544,7 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
     pwallet->AddCScript(inner);
 
     pwallet->SetAddressBook(innerID, strAccount, "send");
-    return CellLinkAddress(innerID).ToString();
+    return MagnaChainAddress(innerID).ToString();
 }
 
 class Witnessifier : public boost::static_visitor<bool>
@@ -1637,9 +1637,9 @@ UniValue addwitnessaddress(const JSONRPCRequest& request)
         }
     }
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
     Witnessifier w(pwallet);
     CellTxDestination dest = address.Get();
@@ -1650,7 +1650,7 @@ UniValue addwitnessaddress(const JSONRPCRequest& request)
 
     pwallet->SetAddressBook(w.result, "", "receive");
 
-    return CellLinkAddress(w.result).ToString();
+    return MagnaChainAddress(w.result).ToString();
 }
 
 struct tallyitem
@@ -1685,7 +1685,7 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
             filter = filter | ISMINE_WATCH_ONLY;
 
     // Tally
-    std::map<CellLinkAddress, tallyitem> mapTally;
+    std::map<MagnaChainAddress, tallyitem> mapTally;
     for (const std::pair<uint256, CellWalletTx>& pairWtx : pwallet->mapWallet) {
         const CellWalletTx& wtx = pairWtx.second;
 
@@ -1718,10 +1718,10 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
     // Reply
     UniValue ret(UniValue::VARR);
     std::map<std::string, tallyitem> mapAccountTally;
-    for (const std::pair<CellLinkAddress, CellAddressBookData>& item : pwallet->mapAddressBook) {
-        const CellLinkAddress& address = item.first;
+    for (const std::pair<MagnaChainAddress, CellAddressBookData>& item : pwallet->mapAddressBook) {
+        const MagnaChainAddress& address = item.first;
         const std::string& strAccount = item.second.name;
-        std::map<CellLinkAddress, tallyitem>::iterator it = mapTally.find(address);
+        std::map<MagnaChainAddress, tallyitem>::iterator it = mapTally.find(address);
         if (it == mapTally.end() && !fIncludeEmpty)
             continue;
 
@@ -1870,7 +1870,7 @@ UniValue listreceivedbyaccount(const JSONRPCRequest& request)
 
 static void MaybePushAddress(UniValue & entry, const CellTxDestination &dest)
 {
-    CellLinkAddress addr;
+    MagnaChainAddress addr;
     if (addr.Set(dest))
         entry.push_back(Pair("address", addr.ToString()));
 }
@@ -3111,15 +3111,15 @@ UniValue listunspent(const JSONRPCRequest& request)
         nMaxDepth = request.params[1].get_int();
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     if (request.params.size() > 2 && !request.params[2].isNull()) {
         RPCTypeCheckArgument(request.params[2], UniValue::VARR);
         UniValue inputs = request.params[2].get_array();
         for (unsigned int idx = 0; idx < inputs.size(); idx++) {
             const UniValue& input = inputs[idx];
-            CellLinkAddress address(input.get_str());
+            MagnaChainAddress address(input.get_str());
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid CellLink address: ")+input.get_str());
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid MagnaChain address: ")+input.get_str());
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+input.get_str());
            setAddress.insert(address);
@@ -3172,7 +3172,7 @@ UniValue listunspent(const JSONRPCRequest& request)
         entry.push_back(Pair("vout", out.i));
 
         if (fValidAddress) {
-            entry.push_back(Pair("address", CellLinkAddress(address).ToString()));
+            entry.push_back(Pair("address", MagnaChainAddress(address).ToString()));
 
             if (pwallet->mapAddressBook.count(address)) {
                 entry.push_back(Pair("account", pwallet->mapAddressBook[address].name));
@@ -3255,13 +3255,13 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 		if (request.params[2].get_bool())
 			filter = filter | ISMINE_WATCH_ONLY;
 
-	CellLinkAddress btcaddr(account_param);
+	MagnaChainAddress btcaddr(account_param);
 	if (!btcaddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
 	if (btcaddr.Get().type() != typeid(CellKeyID))
 	{
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 	}
 
 	const CellKeyID& kAddr = boost::get<CellKeyID>(btcaddr.Get());
@@ -3380,7 +3380,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
             true, true);
 
         if (options.exists("changeAddress")) {
-            CellLinkAddress address(options["changeAddress"].get_str());
+            MagnaChainAddress address(options["changeAddress"].get_str());
 
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "changeAddress must be a valid magnachain address");
@@ -3629,13 +3629,13 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
 			+ HelpExampleRpc("getaddresscoins", "XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj")
 		);
 
-	CellLinkAddress fromaddress(request.params[0].get_str());
+	MagnaChainAddress fromaddress(request.params[0].get_str());
 	if (!fromaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink from address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain from address");
 
 	CellKeyID kFromKeyId;
     if (!fromaddress.GetKeyID(kFromKeyId)){
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
     }
 
     bool fwithscript = false;
@@ -3709,22 +3709,22 @@ UniValue posttransaction(const std::string& strHexTx)
 }
 
 //构造一个交易，从一个地址上的转币到另外一个地址，尚未签名 
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellLinkAddress &toaddress, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls)
+void SendFromToOther(CellWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls)
 {
 	CellScript scriptPubKey = GetScriptForDestination(toaddress.Get());
 	SendFromToOther(wtxNew, fromaddress, scriptPubKey, changeaddress, nAmount, nUserFee, sls);
 }
 
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellScript &toScript, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls)
+void SendFromToOther(CellWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const CellScript &toScript, const MagnaChainAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls)
 {
 //	if (fromaddress.Get().type() != typeid(CellKeyID))
 //	{
-//		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+//		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 //	}
 
     CellKeyID kFromKeyId;
     if (!fromaddress.GetKeyID(kFromKeyId)){
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
     }
 
 	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
@@ -3828,17 +3828,17 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 			+ HelpExampleRpc("premaketransaction", "XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPX XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPi XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj 1 ")
 		);
 
-	CellLinkAddress fromaddress(request.params[0].get_str());
+	MagnaChainAddress fromaddress(request.params[0].get_str());
 	if (!fromaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink from address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain from address");
 
-	CellLinkAddress toaddress(request.params[1].get_str());
+	MagnaChainAddress toaddress(request.params[1].get_str());
 	if (!toaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink to address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain to address");
 
-	CellLinkAddress changeaddress(request.params[2].get_str());
+	MagnaChainAddress changeaddress(request.params[2].get_str());
 	if (!changeaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink change address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain change address");
 
 	// Amount
 	CellAmount nAmount = AmountFromValue(request.params[3]);
@@ -3947,13 +3947,13 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
         nMaxDepth = request.params[1].get_int();
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     if (request.params.size() > 2 && !request.params[2].isNull()) {
         RPCTypeCheckArgument(request.params[2], UniValue::VARR);
         UniValue inputs = request.params[2].get_array();
         for (unsigned int idx = 0; idx < inputs.size(); idx++) {
             const UniValue& input = inputs[idx];
-            CellLinkAddress address(input.get_str());
+            MagnaChainAddress address(input.get_str());
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Bitcoin address: ") + input.get_str());
             if (setAddress.count(address))
@@ -4008,7 +4008,7 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
         entry.push_back(Pair("vout", out.i));
 
         if (fValidAddress) {
-            entry.push_back(Pair("address", CellLinkAddress(address).ToString()));
+            entry.push_back(Pair("address", MagnaChainAddress(address).ToString()));
 
             if (pwallet->mapAddressBook.count(address)) {
                 entry.push_back(Pair("account", pwallet->mapAddressBook[address].name));

@@ -85,7 +85,7 @@ WalletView::~WalletView()
 {
 }
 
-void WalletView::setCellLinkGUI(CellLinkGUI *gui)
+void WalletView::setMagnaChainGUI(MagnaChainGUI *gui)
 {
     if (gui)
     {

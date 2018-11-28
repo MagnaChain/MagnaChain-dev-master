@@ -766,7 +766,7 @@ public:
      */
     mutable CellCriticalSection cs_wallet;
 
-	CellLinkAddress _senderAddr;
+	MagnaChainAddress _senderAddr;
 
     /** Get database handle used by this wallet. Ideally this function would
      * not be necessary.

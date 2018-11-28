@@ -151,8 +151,8 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock*
                 continue;
 
             CellContractID contractId = tx->pContractData->address;
-            CellLinkAddress contractAddr(contractId);
-            CellLinkAddress senderAddr(tx->pContractData->sender.GetID());
+            MagnaChainAddress contractAddr(contractId);
+            MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
             CellAmount amount = GetTxContractOut(*tx);
 
             UniValue ret(UniValue::VARR);

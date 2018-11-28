@@ -95,7 +95,7 @@ public:
     }
 };
 
-/** Interface to CellLink wallet from Qt view code. */
+/** Interface to MagnaChain wallet from Qt view code. */
 class WalletModel : public QObject
 {
     Q_OBJECT

@@ -48,7 +48,7 @@
     <name>BanTableModel</name>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     </context>
 <context>
     <name>CoinControlDialog</name>

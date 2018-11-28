@@ -176,7 +176,7 @@
     <name>BanTableModel</name>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Synchronizing with network...</source>
         <translation>Sinchroniseer met die netwerk ...</translation>
@@ -214,8 +214,8 @@
         <translation>&amp;Opsies</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>

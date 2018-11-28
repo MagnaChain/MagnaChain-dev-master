@@ -124,7 +124,7 @@
     <name>BanTableModel</name>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Parakstīt &amp;ziņojumu...</translation>
@@ -202,8 +202,8 @@
         <translation>Bloku reindeksēšana no diska...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>Nosūtīt bitkoinus uz CellLink adresi</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Nosūtīt bitkoinus uz MagnaChain adresi</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -226,8 +226,8 @@
         <translation>&amp;Pārbaudīt ziņojumu...</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -254,12 +254,12 @@
         <translation>Šifrēt privātās atslēgas kuras pieder tavam maciņam</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Parakstīt ziņojumus ar savām CellLink adresēm lai pierādītu ka tās pieder tev</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Parakstīt ziņojumus ar savām MagnaChain adresēm lai pierādītu ka tās pieder tev</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Pārbaudīt ziņojumus lai pārliecinātos, ka tie tika parakstīti ar norādītajām CellLink adresēm</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Pārbaudīt ziņojumus lai pārliecinātos, ka tie tika parakstīti ar norādītajām MagnaChain adresēm</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -570,8 +570,8 @@
         <translation>&amp;Tērēt neapstiprinātu atlikumu</translation>
     </message>
     <message>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Uz rūtera automātiski atvērt CellLink klienta portu. Tas strādā tikai tad, ja rūteris atbalsta UPnP un tas ir ieslēgts.</translation>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Uz rūtera automātiski atvērt MagnaChain klienta portu. Tas strādā tikai tad, ja rūteris atbalsta UPnP un tas ir ieslēgts.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
@@ -623,7 +623,7 @@
     </message>
     <message>
         <source>Whether to show coin control features or not.</source>
-        <translation>Vai rādīt CellLink kontroles funkcijas vai nē.</translation>
+        <translation>Vai rādīt MagnaChain kontroles funkcijas vai nē.</translation>
     </message>
     <message>
         <source>&amp;OK</source>
@@ -657,8 +657,8 @@
         <translation>Forma</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>Attēlotā informācija var būt novecojusi. Jūsu maciņš pēc savienojuma izveides automātiski sinhronizējas ar CellLink tīklu, taču šis process vēl nav beidzies.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>Attēlotā informācija var būt novecojusi. Jūsu maciņš pēc savienojuma izveides automātiski sinhronizējas ar MagnaChain tīklu, taču šis process vēl nav beidzies.</translation>
     </message>
     <message>
         <source>Available:</source>
@@ -932,7 +932,7 @@
     </message>
     <message>
         <source>Coin Control Features</source>
-        <translation>CellLink Kontroles Funkcijas</translation>
+        <translation>MagnaChain Kontroles Funkcijas</translation>
     </message>
     <message>
         <source>Inputs...</source>
@@ -1111,8 +1111,8 @@
         <translation>Kopēt parakstu uz sistēmas starpliktuvi</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this CellLink address</source>
-        <translation>Parakstīt ziņojumu lai pierādītu, ka esi šīs CellLink adreses īpašnieks.</translation>
+        <source>Sign the message to prove you own this MagnaChain address</source>
+        <translation>Parakstīt ziņojumu lai pierādītu, ka esi šīs MagnaChain adreses īpašnieks.</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>

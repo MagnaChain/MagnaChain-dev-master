@@ -30,7 +30,7 @@ class QUrl;
 class QWidget;
 QT_END_NAMESPACE
 
-/** Utility functions used by the CellLink Qt UI.
+/** Utility functions used by the MagnaChain Qt UI.
  */
 namespace GUIUtil
 {
@@ -46,9 +46,9 @@ namespace GUIUtil
     void setupAmountWidget(QLineEdit *widget, QWidget *parent);
 
     // Parse "magnachain:" URI into recipient object, return true on successful parsing
-    bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out);
-    bool parseCellLinkURI(QString uri, SendCoinsRecipient *out);
-    QString formatCellLinkURI(const SendCoinsRecipient &info);
+    bool parseMagnaChainURI(const QUrl &uri, SendCoinsRecipient *out);
+    bool parseMagnaChainURI(QString uri, SendCoinsRecipient *out);
+    QString formatMagnaChainURI(const SendCoinsRecipient &info);
 
     // Returns true if given address+amount meets "dust" definition
     bool isDust(const QString& address, const CellAmount& amount);
@@ -115,7 +115,7 @@ namespace GUIUtil
     void openDebugLogfile();
 
     // Open the config file
-    bool openCellLinkConf();
+    bool openMagnaChainConf();
 
     // Replace invalid default fonts with known good ones
     void SubstituteFonts(const QString& language);

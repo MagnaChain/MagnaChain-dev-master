@@ -12,7 +12,7 @@
 
 /**
  * CellBaseChainParams defines the base parameters (shared between magnachain-cli and magnachaind)
- * of a given instance of the CellLink system.
+ * of a given instance of the MagnaChain system.
  */
 class CellBaseChainParams
 {

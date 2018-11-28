@@ -35,7 +35,7 @@ enum NumConnections {
     CONNECTIONS_ALL  = (CONNECTIONS_IN | CONNECTIONS_OUT),
 };
 
-/** Model for CellLink network client. */
+/** Model for MagnaChain network client. */
 class ClientModel : public QObject
 {
     Q_OBJECT

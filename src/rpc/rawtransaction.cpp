@@ -425,7 +425,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
         rawTx.vin.push_back(in);
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     std::vector<std::string> addrList = sendTo.getKeys();
     for (const std::string& name_ : addrList) {
 
@@ -435,11 +435,11 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
             CellTxOut out(0, CellScript() << OP_RETURN << data);
             rawTx.vout.push_back(out);
         } else {
-            CellLinkAddress address(name_);
+            MagnaChainAddress address(name_);
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid MagnaChain address: ") + name_);
             if (address.IsContractID())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("CellLink address can't be contract id: ") + name_);
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("MagnaChain address can't be contract id: ") + name_);
 
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+name_);
@@ -572,7 +572,7 @@ UniValue decodescript(const JSONRPCRequest& request)
     if (type.isStr() && type.get_str() != "scripthash") {
         // P2SH cannot be wrapped in a P2SH. If this script is already a P2SH,
         // don't return the address for a P2SH of the P2SH.
-        r.push_back(Pair("p2sh", CellLinkAddress(CellScriptID(script)).ToString()));
+        r.push_back(Pair("p2sh", MagnaChainAddress(CellScriptID(script)).ToString()));
     }
 
     return r;
@@ -781,7 +781,7 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
         UniValue keys = request.params[2].get_array();
         for (unsigned int idx = 0; idx < keys.size(); idx++) {
             UniValue k = keys[idx];
-            CellLinkSecret vchSecret;
+            MagnaChainSecret vchSecret;
             bool fGood = vchSecret.SetString(k.get_str());
             if (!fGood)
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");

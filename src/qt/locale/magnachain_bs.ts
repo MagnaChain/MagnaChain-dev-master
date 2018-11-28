@@ -12,10 +12,10 @@
     <name>BanTableModel</name>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     </context>
 <context>
@@ -157,7 +157,7 @@
     <name>magnachain-core</name>
     <message>
         <source>MagnaChain Core</source>
-        <translation>CellLink Jezrga</translation>
+        <translation>MagnaChain Jezrga</translation>
     </message>
     </context>
 </TS>

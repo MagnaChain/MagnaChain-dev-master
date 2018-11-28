@@ -81,7 +81,7 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     ui->magnachainAtStartup->setToolTip(ui->magnachainAtStartup->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
     ui->magnachainAtStartup->setText(ui->magnachainAtStartup->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
-    ui->openCellLinkConfButton->setToolTip(ui->openCellLinkConfButton->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
+    ui->openMagnaChainConfButton->setToolTip(ui->openMagnaChainConfButton->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
     ui->lang->setToolTip(ui->lang->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
     ui->lang->addItem(QString("(") + tr("default") + QString(")"), QVariant(""));
@@ -115,7 +115,7 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     ui->thirdPartyTxUrls->setPlaceholderText("https://example.com/tx/%s");
 #endif
 
-    ui->unit->setModel(new CellLinkUnits(this));
+    ui->unit->setModel(new MagnaChainUnits(this));
 
     /* Widget-to-option mapper */
     mapper = new QDataWidgetMapper(this);
@@ -233,7 +233,7 @@ void OptionsDialog::on_resetButton_clicked()
     }
 }
 
-void OptionsDialog::on_openCellLinkConfButton_clicked()
+void OptionsDialog::on_openMagnaChainConfButton_clicked()
 {
     /* explain the purpose of the config file */
     QMessageBox::information(this, tr("Configuration options"),
@@ -241,7 +241,7 @@ void OptionsDialog::on_openCellLinkConfButton_clicked()
            "Additionally, any command-line options will override this configuration file."));
 
     /* show an error if there was some problem opening the file */
-    if (!GUIUtil::openCellLinkConf())
+    if (!GUIUtil::openMagnaChainConf())
         QMessageBox::critical(this, tr("Error"), tr("The configuration file could not be opened."));
 }
 

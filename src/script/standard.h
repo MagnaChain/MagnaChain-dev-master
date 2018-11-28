@@ -73,7 +73,7 @@ public:
  *  * CellNoDestination: no destination set
  *  * CellKeyID: TX_PUBKEYHASH destination
  *  * CellScriptID: TX_SCRIPTHASH destination
- *  A CellTxDestination is the internal data type encoded in a CellLinkAddress
+ *  A CellTxDestination is the internal data type encoded in a MagnaChainAddress
  */
 typedef boost::variant<CellNoDestination, CellKeyID, CellScriptID, CellContractID> CellTxDestination;
 

@@ -314,7 +314,7 @@ bool CellWallet::LoadCScript(const CellScript& redeemScript)
      * these. Do not add them to the wallet and warn. */
     if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
     {
-        std::string strAddr = CellLinkAddress(CellScriptID(redeemScript)).ToString();
+        std::string strAddr = MagnaChainAddress(CellScriptID(redeemScript)).ToString();
         LogPrintf("%s: Warning: This wallet contains a redeemScript of size %i which exceeds maximum size %i thus can never be redeemed. Do not use address %s.\n",
             __func__, redeemScript.size(), MAX_SCRIPT_ELEMENT_SIZE, strAddr);
         return true;
@@ -3177,11 +3177,11 @@ bool CellWallet::CreateTransaction(const std::vector<CellRecipient>& vecSend, Ce
 		{
 			//replace
 			CellContractID oldKey = txNew.pContractData->address;
-            CellScript oldScript = GetScriptForDestination(CellLinkAddress(oldKey).Get());
+            CellScript oldScript = GetScriptForDestination(MagnaChainAddress(oldKey).Get());
 
 			txNew.pContractData->address = GenerateContractAddressByTx(txNew);
 			//replace vout
-            CellScript newScript = GetScriptForDestination(CellLinkAddress(txNew.pContractData->address).Get());
+            CellScript newScript = GetScriptForDestination(MagnaChainAddress(txNew.pContractData->address).Get());
 			for (auto out : txNew.vout)
 			{
 				if (out.scriptPubKey == oldScript)
@@ -3515,9 +3515,9 @@ bool CellWallet::SetAddressBook(const CellTxDestination& address, const std::str
     }
     NotifyAddressBookChanged(this, address, strName, ::IsMine(*this, address) != ISMINE_NO,
                              strPurpose, (fUpdated ? CT_UPDATED : CT_NEW) );
-    if (!strPurpose.empty() && !CWalletDB(*dbw).WritePurpose(CellLinkAddress(address).ToString(), strPurpose))
+    if (!strPurpose.empty() && !CWalletDB(*dbw).WritePurpose(MagnaChainAddress(address).ToString(), strPurpose))
         return false;
-    return CWalletDB(*dbw).WriteName(CellLinkAddress(address).ToString(), strName);
+    return CWalletDB(*dbw).WriteName(MagnaChainAddress(address).ToString(), strName);
 }
 
 bool CellWallet::DelAddressBook(const CellTxDestination& address)
@@ -3526,7 +3526,7 @@ bool CellWallet::DelAddressBook(const CellTxDestination& address)
         LOCK(cs_wallet); // mapAddressBook
 
         // Delete destdata tuples associated with address
-        std::string strAddress = CellLinkAddress(address).ToString();
+        std::string strAddress = MagnaChainAddress(address).ToString();
         for (const std::pair<std::string, std::string> &item : mapAddressBook[address].destdata)
         {
             CWalletDB(*dbw).EraseDestData(strAddress, item.first);
@@ -3536,8 +3536,8 @@ bool CellWallet::DelAddressBook(const CellTxDestination& address)
 
     NotifyAddressBookChanged(this, address, "", ::IsMine(*this, address) != ISMINE_NO, "", CT_DELETED);
 
-    CWalletDB(*dbw).ErasePurpose(CellLinkAddress(address).ToString());
-    return CWalletDB(*dbw).EraseName(CellLinkAddress(address).ToString());
+    CWalletDB(*dbw).ErasePurpose(MagnaChainAddress(address).ToString());
+    return CWalletDB(*dbw).EraseName(MagnaChainAddress(address).ToString());
 }
 
 const std::string& CellWallet::GetAccountName(const CellScript& scriptPubKey) const
@@ -4164,14 +4164,14 @@ bool CellWallet::AddDestData(const CellTxDestination &dest, const std::string &k
         return false;
 
     mapAddressBook[dest].destdata.insert(std::make_pair(key, value));
-    return CWalletDB(*dbw).WriteDestData(CellLinkAddress(dest).ToString(), key, value);
+    return CWalletDB(*dbw).WriteDestData(MagnaChainAddress(dest).ToString(), key, value);
 }
 
 bool CellWallet::EraseDestData(const CellTxDestination &dest, const std::string &key)
 {
     if (!mapAddressBook[dest].destdata.erase(key))
         return false;
-    return CWalletDB(*dbw).EraseDestData(CellLinkAddress(dest).ToString(), key);
+    return CWalletDB(*dbw).EraseDestData(MagnaChainAddress(dest).ToString(), key);
 }
 
 bool CellWallet::LoadDestData(const CellTxDestination &dest, const std::string &key, const std::string &value)

@@ -844,9 +844,9 @@ void static GenerateSleep()
 	boost::this_thread::interruption_point();
 }
 
-void static CellLinkMiner(const CellChainParams& chainparams)
+void static MagnaChainMiner(const CellChainParams& chainparams)
 {
-    LogPrintf("CellLinkMiner started\n");
+    LogPrintf("MagnaChainMiner started\n");
 	RenameThread("magnachain-miner");
 
 	unsigned int nExtraNonce = 0;
@@ -898,17 +898,17 @@ void static CellLinkMiner(const CellChainParams& chainparams)
 		}
 		catch (const boost::thread_interrupted &e)
 		{
-			LogPrintf("CellLinkMiner terminated for boost::thread_interrupted\n");
+			LogPrintf("MagnaChainMiner terminated for boost::thread_interrupted\n");
             //throw;
 		}
 		catch (const std::runtime_error &e)
 		{
-			LogPrintf("CellLinkMiner runtime error: %s\n", e.what());
+			LogPrintf("MagnaChainMiner runtime error: %s\n", e.what());
 			//return;
 		}
 		catch (const std::exception& e)
 		{
-			LogPrintf("CellLinkMiner std::exception error: %s\n", e.what());
+			LogPrintf("MagnaChainMiner std::exception error: %s\n", e.what());
 			//return;
 		}
 	}
@@ -933,7 +933,7 @@ void GenerateCells(bool fGenerate, int nThreads, const CellChainParams& chainpar
 
 	minerThreads = new boost::thread_group();
 	for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&CellLinkMiner, boost::cref(chainparams)));
+        minerThreads->create_thread(boost::bind(&MagnaChainMiner, boost::cref(chainparams)));
 }
 
 
@@ -960,7 +960,7 @@ namespace BlockExplorer
         //static bool ScanBlocks(bool fNeedUnmatue, std::vector< const Coin*>& vecOutputs, std::string strAddr, bool fOnlyConfirmed = true)
         //{
         //	int iChainHeight = chainActive.Height();
-        //	CellScript kScript = GetScriptForDestination(CellLinkAddress(strAddr).Get());
+        //	CellScript kScript = GetScriptForDestination(MagnaChainAddress(strAddr).Get());
 
         //	pcoinsTip->BatchLoad();
         //	CellCoinsMap& mapCoins = pcoinsTip->GetCacheCoins();
@@ -986,7 +986,7 @@ namespace BlockExplorer
 
         static inline CoinListPtr GetCoinList(const std::string& strAddr)
         {
-            CellLinkAddress kAddr(strAddr);
+            MagnaChainAddress kAddr(strAddr);
             CellTxDestination kDest = kAddr.Get();
             return GetCoinList(kDest);
         }
@@ -1747,7 +1747,7 @@ bool CheckCoinbaseSignature(int nHeight, const CellTransaction& t)
 }
 
 /*
-static CellLinkAddress kdevAddrs[] = {
+static MagnaChainAddress kdevAddrs[] = {
     "XCNW2QxKePZieDEhC549sX819Tf3PXi54A",
     "XBuJzqnbNtispDyANSi6v6N7TD4RTk7W8F",
     "XCKSDkWueBHiREeu22v6Ct8e3qjFrtRc8u",
@@ -1821,7 +1821,7 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
     // calc mining reward
     CellTxDestination kMinerDest;
     ExtractDestination(scriptPubKeyIn, kMinerDest);
-    std::string strMineAddr = CellLinkAddress(kMinerDest).ToString();
+    std::string strMineAddr = MagnaChainAddress(kMinerDest).ToString();
     LogPrint(BCLog::MINING, "CreateNewBlock(): miner address : %s \n", strMineAddr);
     CellAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     CellAmount kMinReward = kReward;
@@ -1911,7 +1911,7 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
 	if (kParentReward > 0)
 	{
 		CellTxOut kOut;
-		CellLinkAddress kRewardAddr(strParent);
+		MagnaChainAddress kRewardAddr(strParent);
 		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
 		kOut.nValue = kParentReward;
 		coinbaseTx.vout.push_back(kOut);
@@ -1920,7 +1920,7 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
 	if (kGParentReward > 0)
 	{
 		CellTxOut kOut;
-		CellLinkAddress kRewardAddr(strGParent);
+		MagnaChainAddress kRewardAddr(strGParent);
 		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
 		kOut.nValue = kGParentReward;
 		coinbaseTx.vout.push_back(kOut);
@@ -1929,7 +1929,7 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
 	if (kG2ParentReward > 0)
 	{
 		CellTxOut kOut;
-		CellLinkAddress kRewardAddr(strG2Parent);
+		MagnaChainAddress kRewardAddr(strG2Parent);
 		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
 		kOut.nValue = kG2ParentReward;
 		coinbaseTx.vout.push_back(kOut);
@@ -1939,10 +1939,10 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
 	{
 		CellTxOut kOut;
 		uint64_t iMax = 0;
-		CellLinkAddress* pkAddr = nullptr;
+		MagnaChainAddress* pkAddr = nullptr;
 		// get a definite dev addr
 		for (int i = 0; i < sizeof(kdevAddrs)/ sizeof(kdevAddrs[0]); ++i) {
-			CellLinkAddress& kAddr = kdevAddrs[i];
+			MagnaChainAddress& kAddr = kdevAddrs[i];
 			const CellKeyID& kMinerKeyId = boost::get< const CellKeyID&>(kMinerDest);
 			CellKeyID kTestKeyId;
 			kAddr.GetKeyID(kTestKeyId);
@@ -1953,7 +1953,7 @@ CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmoun
 			}
 		}
 
-		CellLinkAddress kRewardAddr(*pkAddr);
+		MagnaChainAddress kRewardAddr(*pkAddr);
 		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
 		kOut.nValue = kDevReward;
 		coinbaseTx.vout.push_back(kOut);

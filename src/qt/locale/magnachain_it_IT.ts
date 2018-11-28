@@ -88,7 +88,7 @@
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>&amp;Transactions</source>
         <translation>Transazioni</translation>

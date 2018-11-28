@@ -37,7 +37,7 @@ Source30:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/co
 Source31:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/contrib/rpm/magnachain.fc
 Source32:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/contrib/rpm/magnachain.if
 
-Source100:	https://upload.wikimedia.org/wikipedia/commons/4/46/CellLink.svg
+Source100:	https://upload.wikimedia.org/wikipedia/commons/4/46/MagnaChain.svg
 
 %if 0%{?_use_libressl:1}
 BuildRequires:	libressl-devel
@@ -54,7 +54,7 @@ Patch0:		magnachain-0.12.0-libressl.patch
 
 
 %description
-CellLink is a digital cryptographic currency that uses peer-to-peer technology to
+MagnaChain is a digital cryptographic currency that uses peer-to-peer technology to
 operate with no central authority or banks; managing transactions and the
 issuing of bitcoins is carried out collectively by the network.
 
@@ -79,17 +79,17 @@ BuildRequires:	%{_bindir}/inkscape
 BuildRequires:	%{_bindir}/convert
 
 %description core
-CellLink is a digital cryptographic currency that uses peer-to-peer technology to
+MagnaChain is a digital cryptographic currency that uses peer-to-peer technology to
 operate with no central authority or banks; managing transactions and the
 issuing of bitcoins is carried out collectively by the network.
 
 This package contains the Qt based graphical client and node. If you are looking
-to run a CellLink wallet, this is probably the package you want.
+to run a MagnaChain wallet, this is probably the package you want.
 %endif
 
 
 %package libs
-Summary:	CellLink shared libraries
+Summary:	MagnaChain shared libraries
 Group:		System Environment/Libraries
 
 %description libs
@@ -134,7 +134,7 @@ If you use the graphical magnachain-core client then you almost certainly do not
 need this package.
 
 %package utils
-Summary:	CellLink utilities
+Summary:	MagnaChain utilities
 Group:		Applications/System
 
 %description utils
@@ -209,7 +209,7 @@ touch -a -m -t 201504280000 %{buildroot}%{_sysconfdir}/sysconfig/magnachain
 mkdir -p %{buildroot}%{_unitdir}
 cat <<EOF > %{buildroot}%{_unitdir}/magnachain.service
 [Unit]
-Description=CellLink daemon
+Description=MagnaChain daemon
 After=syslog.target network.target
 
 [Service]
@@ -265,10 +265,10 @@ mkdir -p %{buildroot}%{_datadir}/applications
 cat <<EOF > %{buildroot}%{_datadir}/applications/magnachain-core.desktop
 [Desktop Entry]
 Encoding=UTF-8
-Name=CellLink
-Comment=CellLink P2P Cryptocurrency
-Comment[fr]=CellLink, monnaie virtuelle cryptographique pair à pair
-Comment[tr]=CellLink, eşten eşe kriptografik sanal para birimi
+Name=MagnaChain
+Comment=MagnaChain P2P Cryptocurrency
+Comment[fr]=MagnaChain, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=MagnaChain, eşten eşe kriptografik sanal para birimi
 Exec=magnachain-qt %u
 Terminal=false
 Type=Application
@@ -322,7 +322,7 @@ test/functional/test_runner.py --extended
 getent group magnachain >/dev/null || groupadd -r magnachain
 getent passwd magnachain >/dev/null ||
 	useradd -r -g magnachain -d /var/lib/magnachain -s /sbin/nologin \
-	-c "CellLink wallet server" magnachain
+	-c "MagnaChain wallet server" magnachain
 exit 0
 
 %post server

@@ -96,13 +96,13 @@ public:
     bool operator> (const CellBase58Data& b58) const { return CompareTo(b58) >  0; }
 };
 
-/** base58-encoded CellLink addresses.
+/** base58-encoded MagnaChain addresses.
  * Public-key-hash-addresses have version 0 (or 111 testnet).
  * The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
  * Script-hash-addresses have version 5 (or 196 testnet).
  * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
  */
-class CellLinkAddress : public CellBase58Data {
+class MagnaChainAddress : public CellBase58Data {
 public:
     bool Set(const CellContractID &id);
     bool Set(const CellKeyID &id);
@@ -111,10 +111,10 @@ public:
     bool IsValid() const;
     bool IsValid(const CellChainParams &params) const;
 
-    CellLinkAddress() {}
-    CellLinkAddress(const CellTxDestination &dest) { Set(dest); }
-    CellLinkAddress(const std::string& strAddress) { SetString(strAddress); }
-    CellLinkAddress(const char* pszAddress) { SetString(pszAddress); }
+    MagnaChainAddress() {}
+    MagnaChainAddress(const CellTxDestination &dest) { Set(dest); }
+    MagnaChainAddress(const std::string& strAddress) { SetString(strAddress); }
+    MagnaChainAddress(const char* pszAddress) { SetString(pszAddress); }
 
     CellTxDestination Get() const;
     bool GetContractID(CellContractID &contractID) const;
@@ -126,7 +126,7 @@ public:
 /**
  * A base58-encoded secret key
  */
-class CellLinkSecret : public CellBase58Data
+class MagnaChainSecret : public CellBase58Data
 {
 public:
     void SetKey(const CellKey& vchSecret);
@@ -135,11 +135,11 @@ public:
     bool SetString(const char* pszSecret);
     bool SetString(const std::string& strSecret);
 
-    CellLinkSecret(const CellKey& vchSecret) { SetKey(vchSecret); }
-    CellLinkSecret() {}
+    MagnaChainSecret(const CellKey& vchSecret) { SetKey(vchSecret); }
+    MagnaChainSecret() {}
 };
 
-template<typename K, int Size, CellChainParams::Base58Type Type> class CellLinkExtKeyBase : public CellBase58Data
+template<typename K, int Size, CellChainParams::Base58Type Type> class MagnaChainExtKeyBase : public CellBase58Data
 {
 public:
     void SetKey(const K &key) {
@@ -157,18 +157,18 @@ public:
         return ret;
     }
 
-    CellLinkExtKeyBase(const K &key) {
+    MagnaChainExtKeyBase(const K &key) {
         SetKey(key);
     }
 
-    CellLinkExtKeyBase(const std::string& strBase58c) {
+    MagnaChainExtKeyBase(const std::string& strBase58c) {
         SetString(strBase58c.c_str(), Params().Base58Prefix(Type).size());
     }
 
-    CellLinkExtKeyBase() {}
+    MagnaChainExtKeyBase() {}
 };
 
-typedef CellLinkExtKeyBase<CellExtKey, BIP32_EXTKEY_SIZE, CellChainParams::EXT_SECRET_KEY> CellLinkExtKey;
-typedef CellLinkExtKeyBase<CellExtPubKey, BIP32_EXTKEY_SIZE, CellChainParams::EXT_PUBLIC_KEY> CellLinkExtPubKey;
+typedef MagnaChainExtKeyBase<CellExtKey, BIP32_EXTKEY_SIZE, CellChainParams::EXT_SECRET_KEY> MagnaChainExtKey;
+typedef MagnaChainExtKeyBase<CellExtPubKey, BIP32_EXTKEY_SIZE, CellChainParams::EXT_PUBLIC_KEY> MagnaChainExtPubKey;
 
 #endif // CELLLINK_BASE58_H

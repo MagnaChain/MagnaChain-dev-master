@@ -62,7 +62,7 @@
 #include "rpc/branchchainrpc.h"
 
 #if defined(NDEBUG)
-# error "CellLink cannot be compiled without assertions."
+# error "MagnaChain cannot be compiled without assertions."
 #endif
 
 /**
@@ -105,7 +105,7 @@ static void CheckBlockIndex(const Consensus::Params& consensusParams);
 /** Constant stuff for coinbase transactions we create: */
 CellScript COINBASE_FLAGS;
 
-const std::string strMessageMagic = "CellLink Signed Message:\n";
+const std::string strMessageMagic = "MagnaChain Signed Message:\n";
 
 // Internal stuff
 namespace {
@@ -389,9 +389,9 @@ SmartLuaState checkSLS;
 
 bool CheckSmartContract(const CellTransaction& tx, int saveType, CellValidationState& state, CellTxMemPoolEntry* entry, CoinAmountCache* pCoinAmountCache)
 {
-    CellLinkAddress contractAddr;
+    MagnaChainAddress contractAddr;
     contractAddr.Set(tx.pContractData->address);
-	CellLinkAddress senderAddr;
+	MagnaChainAddress senderAddr;
     senderAddr.Set(tx.pContractData->sender.GetID());
 	UniValue args;
 	args.read(tx.pContractData->args);

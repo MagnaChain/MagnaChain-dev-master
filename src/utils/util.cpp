@@ -897,7 +897,7 @@ std::string CopyrightHolders(const std::string& strPrefix)
     std::string strCopyrightHolders = strPrefix + strprintf(_(COPYRIGHT_HOLDERS), _(COPYRIGHT_HOLDERS_SUBSTITUTION));
 
     // Check for untranslated substitution to make sure MagnaChain Core copyright is not removed by accident
-    if (strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION).find("CellLink") == std::string::npos) {
+    if (strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION).find("MagnaChain") == std::string::npos) {
         strCopyrightHolders += "\n" + strPrefix + "The MagnaChain Core developers";
     }
     return strCopyrightHolders;

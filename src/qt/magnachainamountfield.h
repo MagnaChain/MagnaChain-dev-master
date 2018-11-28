@@ -18,7 +18,7 @@ QT_END_NAMESPACE
 
 /** Widget for entering magnachain amounts.
   */
-class CellLinkAmountField: public QWidget
+class MagnaChainAmountField: public QWidget
 {
     Q_OBJECT
 
@@ -27,7 +27,7 @@ class CellLinkAmountField: public QWidget
     Q_PROPERTY(qint64 value READ value WRITE setValue NOTIFY valueChanged USER true)
 
 public:
-    explicit CellLinkAmountField(QWidget *parent = 0);
+    explicit MagnaChainAmountField(QWidget *parent = 0);
 
     CellAmount value(bool *value=0) const;
     void setValue(const CellAmount& value);

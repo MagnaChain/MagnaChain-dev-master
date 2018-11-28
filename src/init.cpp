@@ -731,7 +731,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
 }
 
 /** Sanity checks
- *  Ensure that CellLink is running in a usable environment with all
+ *  Ensure that MagnaChain is running in a usable environment with all
  *  necessary library support.
  */
 bool InitSanityCheck(void)
@@ -1196,7 +1196,7 @@ static bool LockDataDirectory(bool probeOnly)
 {
     std::string strDataDir = GetDataDir().string();
 
-    // Make sure only a single CellLink process is using the data directory.
+    // Make sure only a single MagnaChain process is using the data directory.
     fs::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fsbridge::fopen(pathLockFile, "a"); // empty lock file; created if it doesn't exist.
     if (file) fclose(file);

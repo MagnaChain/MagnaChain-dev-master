@@ -62,12 +62,12 @@
         <translation>Fogadási cím</translation>
     </message>
     <message>
-        <source>These are your CellLink addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>Ezek a CellLink címeid kifizetések küldéséhez. Mindíg ellenőrizd az összeget és a fogadó címet mielőtt coinokat küldenél.</translation>
+        <source>These are your MagnaChain addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>Ezek a MagnaChain címeid kifizetések küldéséhez. Mindíg ellenőrizd az összeget és a fogadó címet mielőtt coinokat küldenél.</translation>
     </message>
     <message>
-        <source>These are your CellLink addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
-        <translation>Ezek a CellLink címeid kifizetések fogadásához. Ajánlott új címet használni minden új fogadáshoz.</translation>
+        <source>These are your MagnaChain addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
+        <translation>Ezek a MagnaChain címeid kifizetések fogadásához. Ajánlott új címet használni minden új fogadáshoz.</translation>
     </message>
     <message>
         <source>&amp;Copy Address</source>
@@ -229,7 +229,7 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Üzenet aláírása...</translation>
@@ -331,8 +331,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Lemezen lévő blokkok újraindexelése...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>CellLink küldése megadott címre</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>MagnaChain küldése megadott címre</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -355,8 +355,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Üzenet &amp;valódiságának ellenőrzése</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -383,12 +383,12 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>A tárcádhoz tartozó privát kulcsok titkosítása</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Üzenetek aláírása a CellLink-címmeiddel, amivel bizonyítod, hogy a cím a sajátod</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Üzenetek aláírása a MagnaChain-címmeiddel, amivel bizonyítod, hogy a cím a sajátod</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Üzenetek ellenőrzése, hogy valóban a megjelölt CellLink-címekkel vannak-e aláírva</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Üzenetek ellenőrzése, hogy valóban a megjelölt MagnaChain-címekkel vannak-e aláírva</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -427,8 +427,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Paran&amp;cssor kapcsolók</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to CellLink network</source>
-        <translation><numerusform>%n aktív kapcsolat a CellLink hálózathoz</numerusform><numerusform>%n aktív kapcsolat a CellLink hálózathoz</numerusform></translation>
+        <source>%n active connection(s) to MagnaChain network</source>
+        <translation><numerusform>%n aktív kapcsolat a MagnaChain hálózathoz</numerusform><numerusform>%n aktív kapcsolat a MagnaChain hálózathoz</numerusform></translation>
     </message>
     <message>
         <source>Indexing blocks on disk...</source>
@@ -471,8 +471,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Naprakész</translation>
     </message>
     <message>
-        <source>Show the %1 help message to get a list with possible CellLink command-line options</source>
-        <translation>A %1 súgó megjelenítése a CellLink lehetséges parancssori kapcsolóinak listájával</translation>
+        <source>Show the %1 help message to get a list with possible MagnaChain command-line options</source>
+        <translation>A %1 súgó megjelenítése a MagnaChain lehetséges parancssori kapcsolóinak listájával</translation>
     </message>
     <message>
         <source>%1 client</source>
@@ -541,8 +541,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Tárca &lt;b&gt;kódolva&lt;/b&gt; és jelenleg &lt;b&gt;zárva&lt;/b&gt;.</translation>
     </message>
     <message>
-        <source>A fatal error occurred. CellLink can no longer continue safely and will quit.</source>
-        <translation>Végzetes hiba történt. A CellLink működése nem biztonságos és hamarosan leáll.</translation>
+        <source>A fatal error occurred. MagnaChain can no longer continue safely and will quit.</source>
+        <translation>Végzetes hiba történt. A MagnaChain működése nem biztonságos és hamarosan leáll.</translation>
     </message>
 </context>
 <context>
@@ -731,8 +731,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Küldő cím szerkesztése</translation>
     </message>
     <message>
-        <source>The entered address "%1" is not a valid CellLink address.</source>
-        <translation>A megadott "%1" cím nem egy érvényes CellLink-cím.</translation>
+        <source>The entered address "%1" is not a valid MagnaChain address.</source>
+        <translation>A megadott "%1" cím nem egy érvényes MagnaChain-cím.</translation>
     </message>
     <message>
         <source>The entered address "%1" is already in the address book.</source>
@@ -1025,16 +1025,16 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>&amp;Költése a a jóváhagyatlan változásnak</translation>
     </message>
     <message>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>A CellLink-kliens portjának automatikus megnyitása a routeren. Ez csak akkor működik, ha a routered támogatja az UPnP-t és az engedélyezve is van rajta.</translation>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>A MagnaChain-kliens portjának automatikus megnyitása a routeren. Ez csak akkor működik, ha a routered támogatja az UPnP-t és az engedélyezve is van rajta.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
         <translation>&amp;UPnP port-feltérképezés</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Csatlakozás a CellLink hálózatához SOCKS5 proxyn keresztül</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Csatlakozás a MagnaChain hálózatához SOCKS5 proxyn keresztül</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -1069,8 +1069,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Tor</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a separate SOCKS5 proxy for Tor hidden services.</source>
-        <translation>Csatlakozás a CellLink hálózathoz külön SOCKS5 proxy használatával a Tor rejtett szolgáltatásainak eléréséhez.</translation>
+        <source>Connect to the MagnaChain network through a separate SOCKS5 proxy for Tor hidden services.</source>
+        <translation>Csatlakozás a MagnaChain hálózathoz külön SOCKS5 proxy használatával a Tor rejtett szolgáltatásainak eléréséhez.</translation>
     </message>
     <message>
         <source>Use separate SOCKS5 proxy to reach peers via Tor hidden services:</source>
@@ -1168,8 +1168,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Űrlap</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>A kijelzett információ lehet, hogy elavult. A pénztárcája automatikusan szinkronizálja magát a CellLink hálózattal miután a kapcsolat létrejön, de ez e folyamat még nem fejeződött be.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>A kijelzett információ lehet, hogy elavult. A pénztárcája automatikusan szinkronizálja magát a MagnaChain hálózattal miután a kapcsolat létrejön, de ez e folyamat még nem fejeződött be.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -1255,8 +1255,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Érvénytelen fizetési cím %1</translation>
     </message>
     <message>
-        <source>URI cannot be parsed! This can be caused by an invalid CellLink address or malformed URI parameters.</source>
-        <translation>Nem sikerült az URI elemzése! Ezt okozhatja érvénytelen CellLink cím, vagy rossz URI paraméterezés.</translation>
+        <source>URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters.</source>
+        <translation>Nem sikerült az URI elemzése! Ezt okozhatja érvénytelen MagnaChain cím, vagy rossz URI paraméterezés.</translation>
     </message>
     <message>
         <source>Payment request file handling</source>
@@ -1345,8 +1345,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Összeg</translation>
     </message>
     <message>
-        <source>Enter a CellLink address (e.g. %1)</source>
-        <translation>Ad meg egy CellLink címet (pl: %1)</translation>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
+        <translation>Ad meg egy MagnaChain címet (pl: %1)</translation>
     </message>
     <message>
         <source>%1 d</source>
@@ -1733,8 +1733,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>&amp;Újrafelhasznál egy létező fogadó címet (nem ajánlott)</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</source>
-        <translation>Egy opcionális üzenet csatolása a fizetési kérelemhez, amely megjelenik a kérelem megnyitásakor. Megjegyzés: Az üzenet nem lesz elküldve a fizetséggel a CellLink hálózaton keresztül.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</source>
+        <translation>Egy opcionális üzenet csatolása a fizetési kérelemhez, amely megjelenik a kérelem megnyitásakor. Megjegyzés: Az üzenet nem lesz elküldve a fizetséggel a MagnaChain hálózaton keresztül.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -2090,8 +2090,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Csak a szükséges %1 díj fizetése</translation>
     </message>
     <message>
-        <source>Warning: Invalid CellLink address</source>
-        <translation>Figyelmeztetés: Érvénytelen CellLink cím</translation>
+        <source>Warning: Invalid MagnaChain address</source>
+        <translation>Figyelmeztetés: Érvénytelen MagnaChain cím</translation>
     </message>
     <message>
         <source>Warning: Unknown change address</source>
@@ -2129,8 +2129,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Válassz egy korábban már használt címet</translation>
     </message>
     <message>
-        <source>The CellLink address to send the payment to</source>
-        <translation>Erre a CellLink címre küldje az összeget</translation>
+        <source>The MagnaChain address to send the payment to</source>
+        <translation>Erre a MagnaChain címre küldje az összeget</translation>
     </message>
     <message>
         <source>Alt+A</source>
@@ -2202,8 +2202,8 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Üzenet aláírása...</translation>
     </message>
     <message>
-        <source>The CellLink address to sign the message with</source>
-        <translation>CellLink cím, amivel alá kívánja írni az üzenetet</translation>
+        <source>The MagnaChain address to sign the message with</source>
+        <translation>MagnaChain cím, amivel alá kívánja írni az üzenetet</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -2234,7 +2234,7 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>A jelenleg kiválasztott aláírás másolása a rendszer-vágólapra</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this CellLink address</source>
+        <source>Sign the message to prove you own this MagnaChain address</source>
         <translation>Üzenet </translation>
     </message>
     <message>
@@ -2250,12 +2250,12 @@ Kérem a kulcsmondatban használjon &lt;b&gt; tíz vagy több véletlenszerű ka
         <translation>Üzenet ellenőrzése</translation>
     </message>
     <message>
-        <source>The CellLink address the message was signed with</source>
-        <translation>CellLink cím, amivel aláírta az üzenetet</translation>
+        <source>The MagnaChain address the message was signed with</source>
+        <translation>MagnaChain cím, amivel aláírta az üzenetet</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified CellLink address</source>
-        <translation>Ellenőrizze az üzenetet, hogy valóban a megjelölt CellLink címmel van-e aláírva</translation>
+        <source>Verify the message to ensure it was signed with the specified MagnaChain address</source>
+        <translation>Ellenőrizze az üzenetet, hogy valóban a megjelölt MagnaChain címmel van-e aláírva</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

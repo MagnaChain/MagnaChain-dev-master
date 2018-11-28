@@ -65,7 +65,7 @@
 #include <QUrlQuery>
 #endif
 
-const std::string CellLinkGUI::DEFAULT_UIPLATFORM =
+const std::string MagnaChainGUI::DEFAULT_UIPLATFORM =
 #if defined(Q_OS_MAC)
         "macosx"
 #elif defined(Q_OS_WIN)
@@ -77,9 +77,9 @@ const std::string CellLinkGUI::DEFAULT_UIPLATFORM =
 
 /** Display name for default wallet name. Uses tilde to avoid name
  * collisions in the future with additional wallets */
-const QString CellLinkGUI::DEFAULT_WALLET = "~Default";
+const QString MagnaChainGUI::DEFAULT_WALLET = "~Default";
 
-CellLinkGUI::CellLinkGUI(const PlatformStyle *_platformStyle, const NetworkStyle *networkStyle, QWidget *parent) :
+MagnaChainGUI::MagnaChainGUI(const PlatformStyle *_platformStyle, const NetworkStyle *networkStyle, QWidget *parent) :
     QMainWindow(parent),
     enableWallet(false),
     clientModel(0),
@@ -261,7 +261,7 @@ CellLinkGUI::CellLinkGUI(const PlatformStyle *_platformStyle, const NetworkStyle
 #endif
 }
 
-CellLinkGUI::~CellLinkGUI()
+MagnaChainGUI::~MagnaChainGUI()
 {
     // Unsubscribe from notifications from core
     unsubscribeFromCoreSignals();
@@ -278,7 +278,7 @@ CellLinkGUI::~CellLinkGUI()
     delete rpcConsole;
 }
 
-void CellLinkGUI::createActions()
+void MagnaChainGUI::createActions()
 {
     QActionGroup *tabGroup = new QActionGroup(this);
 
@@ -290,7 +290,7 @@ void CellLinkGUI::createActions()
     tabGroup->addAction(overviewAction);
 
     sendCoinsAction = new QAction(platformStyle->SingleColorIcon(":/icons/send"), tr("&Send"), this);
-    sendCoinsAction->setStatusTip(tr("Send coins to a CellLink address"));
+    sendCoinsAction->setStatusTip(tr("Send coins to a MagnaChain address"));
     sendCoinsAction->setToolTip(sendCoinsAction->statusTip());
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
@@ -361,9 +361,9 @@ void CellLinkGUI::createActions()
     changePassphraseAction = new QAction(platformStyle->TextColorIcon(":/icons/key"), tr("&Change Passphrase..."), this);
     changePassphraseAction->setStatusTip(tr("Change the passphrase used for wallet encryption"));
     signMessageAction = new QAction(platformStyle->TextColorIcon(":/icons/edit"), tr("Sign &message..."), this);
-    signMessageAction->setStatusTip(tr("Sign messages with your CellLink addresses to prove you own them"));
+    signMessageAction->setStatusTip(tr("Sign messages with your MagnaChain addresses to prove you own them"));
     verifyMessageAction = new QAction(platformStyle->TextColorIcon(":/icons/verify"), tr("&Verify message..."), this);
-    verifyMessageAction->setStatusTip(tr("Verify messages to ensure they were signed with specified CellLink addresses"));
+    verifyMessageAction->setStatusTip(tr("Verify messages to ensure they were signed with specified MagnaChain addresses"));
 
     openRPCConsoleAction = new QAction(platformStyle->TextColorIcon(":/icons/debugwindow"), tr("&Debug window"), this);
     openRPCConsoleAction->setStatusTip(tr("Open debugging and diagnostic console"));
@@ -380,7 +380,7 @@ void CellLinkGUI::createActions()
 
     showHelpMessageAction = new QAction(platformStyle->TextColorIcon(":/icons/info"), tr("&Command-line options"), this);
     showHelpMessageAction->setMenuRole(QAction::NoRole);
-    showHelpMessageAction->setStatusTip(tr("Show the %1 help message to get a list with possible CellLink command-line options").arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
+    showHelpMessageAction->setStatusTip(tr("Show the %1 help message to get a list with possible MagnaChain command-line options").arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
     connect(aboutAction, SIGNAL(triggered()), this, SLOT(aboutClicked()));
@@ -410,7 +410,7 @@ void CellLinkGUI::createActions()
     new QShortcut(QKeySequence(Qt::CTRL + Qt::SHIFT + Qt::Key_D), this, SLOT(showDebugWindow()));
 }
 
-void CellLinkGUI::createMenuBar()
+void MagnaChainGUI::createMenuBar()
 {
 #ifdef Q_OS_MAC
     // Create a decoupled menu bar on Mac which stays even if the window is closed
@@ -455,7 +455,7 @@ void CellLinkGUI::createMenuBar()
     help->addAction(aboutQtAction);
 }
 
-void CellLinkGUI::createToolBars()
+void MagnaChainGUI::createToolBars()
 {
     if(walletFrame)
     {
@@ -470,7 +470,7 @@ void CellLinkGUI::createToolBars()
     }
 }
 
-void CellLinkGUI::setClientModel(ClientModel *_clientModel)
+void MagnaChainGUI::setClientModel(ClientModel *_clientModel)
 {
     this->clientModel = _clientModel;
     if(_clientModel)
@@ -533,7 +533,7 @@ void CellLinkGUI::setClientModel(ClientModel *_clientModel)
 }
 
 #ifdef ENABLE_WALLET
-bool CellLinkGUI::addWallet(const QString& name, WalletModel *walletModel)
+bool MagnaChainGUI::addWallet(const QString& name, WalletModel *walletModel)
 {
     if(!walletFrame)
         return false;
@@ -541,14 +541,14 @@ bool CellLinkGUI::addWallet(const QString& name, WalletModel *walletModel)
     return walletFrame->addWallet(name, walletModel);
 }
 
-bool CellLinkGUI::setCurrentWallet(const QString& name)
+bool MagnaChainGUI::setCurrentWallet(const QString& name)
 {
     if(!walletFrame)
         return false;
     return walletFrame->setCurrentWallet(name);
 }
 
-void CellLinkGUI::removeAllWallets()
+void MagnaChainGUI::removeAllWallets()
 {
     if(!walletFrame)
         return;
@@ -557,7 +557,7 @@ void CellLinkGUI::removeAllWallets()
 }
 #endif // ENABLE_WALLET
 
-void CellLinkGUI::setWalletActionsEnabled(bool enabled)
+void MagnaChainGUI::setWalletActionsEnabled(bool enabled)
 {
     overviewAction->setEnabled(enabled);
     sendCoinsAction->setEnabled(enabled);
@@ -575,7 +575,7 @@ void CellLinkGUI::setWalletActionsEnabled(bool enabled)
     openAction->setEnabled(enabled);
 }
 
-void CellLinkGUI::createTrayIcon(const NetworkStyle *networkStyle)
+void MagnaChainGUI::createTrayIcon(const NetworkStyle *networkStyle)
 {
 #ifndef Q_OS_MAC
     trayIcon = new QSystemTrayIcon(this);
@@ -588,7 +588,7 @@ void CellLinkGUI::createTrayIcon(const NetworkStyle *networkStyle)
     notificator = new Notificator(QApplication::applicationName(), trayIcon, this);
 }
 
-void CellLinkGUI::createTrayIconMenu()
+void MagnaChainGUI::createTrayIconMenu()
 {
 #ifndef Q_OS_MAC
     // return if trayIcon is unset (only on non-Mac OSes)
@@ -625,7 +625,7 @@ void CellLinkGUI::createTrayIconMenu()
 }
 
 #ifndef Q_OS_MAC
-void CellLinkGUI::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
+void MagnaChainGUI::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 {
     if(reason == QSystemTrayIcon::Trigger)
     {
@@ -635,7 +635,7 @@ void CellLinkGUI::trayIconActivated(QSystemTrayIcon::ActivationReason reason)
 }
 #endif
 
-void CellLinkGUI::optionsClicked()
+void MagnaChainGUI::optionsClicked()
 {
     if(!clientModel || !clientModel->getOptionsModel())
         return;
@@ -645,7 +645,7 @@ void CellLinkGUI::optionsClicked()
     dlg.exec();
 }
 
-void CellLinkGUI::aboutClicked()
+void MagnaChainGUI::aboutClicked()
 {
     if(!clientModel)
         return;
@@ -654,7 +654,7 @@ void CellLinkGUI::aboutClicked()
     dlg.exec();
 }
 
-void CellLinkGUI::showDebugWindow()
+void MagnaChainGUI::showDebugWindow()
 {
     rpcConsole->showNormal();
     rpcConsole->show();
@@ -662,19 +662,19 @@ void CellLinkGUI::showDebugWindow()
     rpcConsole->activateWindow();
 }
 
-void CellLinkGUI::showDebugWindowActivateConsole()
+void MagnaChainGUI::showDebugWindowActivateConsole()
 {
     rpcConsole->setTabFocus(RPCConsole::TAB_CONSOLE);
     showDebugWindow();
 }
 
-void CellLinkGUI::showHelpMessageClicked()
+void MagnaChainGUI::showHelpMessageClicked()
 {
     helpMessageDialog->show();
 }
 
 #ifdef ENABLE_WALLET
-void CellLinkGUI::openClicked()
+void MagnaChainGUI::openClicked()
 {
     OpenURIDialog dlg(this);
     if(dlg.exec())
@@ -683,42 +683,42 @@ void CellLinkGUI::openClicked()
     }
 }
 
-void CellLinkGUI::gotoOverviewPage()
+void MagnaChainGUI::gotoOverviewPage()
 {
     overviewAction->setChecked(true);
     if (walletFrame) walletFrame->gotoOverviewPage();
 }
 
-void CellLinkGUI::gotoHistoryPage()
+void MagnaChainGUI::gotoHistoryPage()
 {
     historyAction->setChecked(true);
     if (walletFrame) walletFrame->gotoHistoryPage();
 }
 
-void CellLinkGUI::gotoReceiveCoinsPage()
+void MagnaChainGUI::gotoReceiveCoinsPage()
 {
     receiveCoinsAction->setChecked(true);
     if (walletFrame) walletFrame->gotoReceiveCoinsPage();
 }
 
-void CellLinkGUI::gotoSendCoinsPage(QString addr)
+void MagnaChainGUI::gotoSendCoinsPage(QString addr)
 {
     sendCoinsAction->setChecked(true);
     if (walletFrame) walletFrame->gotoSendCoinsPage(addr);
 }
 
-void CellLinkGUI::gotoSignMessageTab(QString addr)
+void MagnaChainGUI::gotoSignMessageTab(QString addr)
 {
     if (walletFrame) walletFrame->gotoSignMessageTab(addr);
 }
 
-void CellLinkGUI::gotoVerifyMessageTab(QString addr)
+void MagnaChainGUI::gotoVerifyMessageTab(QString addr)
 {
     if (walletFrame) walletFrame->gotoVerifyMessageTab(addr);
 }
 #endif // ENABLE_WALLET
 
-void CellLinkGUI::updateNetworkState()
+void MagnaChainGUI::updateNetworkState()
 {
     int count = clientModel->getNumConnections();
     QString icon;
@@ -734,7 +734,7 @@ void CellLinkGUI::updateNetworkState()
     QString tooltip;
 
     if (clientModel->getNetworkActive()) {
-        tooltip = tr("%n active connection(s) to CellLink network", "", count) + QString(".<br>") + tr("Click to disable network activity.");
+        tooltip = tr("%n active connection(s) to MagnaChain network", "", count) + QString(".<br>") + tr("Click to disable network activity.");
     } else {
         tooltip = tr("Network activity disabled.") + QString("<br>") + tr("Click to enable network activity again.");
         icon = ":/icons/network_disabled";
@@ -747,17 +747,17 @@ void CellLinkGUI::updateNetworkState()
     connectionsControl->setPixmap(platformStyle->SingleColorIcon(icon).pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
 }
 
-void CellLinkGUI::setNumConnections(int count)
+void MagnaChainGUI::setNumConnections(int count)
 {
     updateNetworkState();
 }
 
-void CellLinkGUI::setNetworkActive(bool networkActive)
+void MagnaChainGUI::setNetworkActive(bool networkActive)
 {
     updateNetworkState();
 }
 
-void CellLinkGUI::updateHeadersSyncProgressLabel()
+void MagnaChainGUI::updateHeadersSyncProgressLabel()
 {
     int64_t headersTipTime = clientModel->getHeaderTipTime();
     int headersTipHeight = clientModel->getHeaderTipHeight();
@@ -766,7 +766,7 @@ void CellLinkGUI::updateHeadersSyncProgressLabel()
         progressBarLabel->setText(tr("Syncing Headers (%1%)...").arg(QString::number(100.0 / (headersTipHeight+estHeadersLeft)*headersTipHeight, 'f', 1)));
 }
 
-void CellLinkGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, bool header)
+void MagnaChainGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVerificationProgress, bool header)
 {
     if (modalOverlay)
     {
@@ -876,9 +876,9 @@ void CellLinkGUI::setNumBlocks(int count, const QDateTime& blockDate, double nVe
     progressBar->setToolTip(tooltip);
 }
 
-void CellLinkGUI::message(const QString &title, const QString &message, unsigned int style, bool *ret)
+void MagnaChainGUI::message(const QString &title, const QString &message, unsigned int style, bool *ret)
 {
-    QString strTitle = tr("CellLink"); // default title
+    QString strTitle = tr("MagnaChain"); // default title
     // Default to information icon
     int nMBoxIcon = QMessageBox::Information;
     int nNotifyIcon = Notificator::Information;
@@ -904,7 +904,7 @@ void CellLinkGUI::message(const QString &title, const QString &message, unsigned
             break;
         }
     }
-    // Append title to "CellLink - "
+    // Append title to "MagnaChain - "
     if (!msgType.isEmpty())
         strTitle += " - " + msgType;
 
@@ -935,7 +935,7 @@ void CellLinkGUI::message(const QString &title, const QString &message, unsigned
         notificator->notify((Notificator::Class)nNotifyIcon, strTitle, message);
 }
 
-void CellLinkGUI::changeEvent(QEvent *e)
+void MagnaChainGUI::changeEvent(QEvent *e)
 {
     QMainWindow::changeEvent(e);
 #ifndef Q_OS_MAC // Ignored on Mac
@@ -954,7 +954,7 @@ void CellLinkGUI::changeEvent(QEvent *e)
 #endif
 }
 
-void CellLinkGUI::closeEvent(QCloseEvent *event)
+void MagnaChainGUI::closeEvent(QCloseEvent *event)
 {
 #ifndef Q_OS_MAC // Ignored on Mac
     if(clientModel && clientModel->getOptionsModel())
@@ -977,7 +977,7 @@ void CellLinkGUI::closeEvent(QCloseEvent *event)
 #endif
 }
 
-void CellLinkGUI::showEvent(QShowEvent *event)
+void MagnaChainGUI::showEvent(QShowEvent *event)
 {
     // enable the debug window when the main window shows up
     openRPCConsoleAction->setEnabled(true);
@@ -986,11 +986,11 @@ void CellLinkGUI::showEvent(QShowEvent *event)
 }
 
 #ifdef ENABLE_WALLET
-void CellLinkGUI::incomingTransaction(const QString& date, int unit, const CellAmount& amount, const QString& type, const QString& address, const QString& label)
+void MagnaChainGUI::incomingTransaction(const QString& date, int unit, const CellAmount& amount, const QString& type, const QString& address, const QString& label)
 {
     // On new transaction, make an info balloon
     QString msg = tr("Date: %1\n").arg(date) +
-                  tr("Amount: %1\n").arg(CellLinkUnits::formatWithUnit(unit, amount, true)) +
+                  tr("Amount: %1\n").arg(MagnaChainUnits::formatWithUnit(unit, amount, true)) +
                   tr("Type: %1\n").arg(type);
     if (!label.isEmpty())
         msg += tr("Label: %1\n").arg(label);
@@ -1001,14 +1001,14 @@ void CellLinkGUI::incomingTransaction(const QString& date, int unit, const CellA
 }
 #endif // ENABLE_WALLET
 
-void CellLinkGUI::dragEnterEvent(QDragEnterEvent *event)
+void MagnaChainGUI::dragEnterEvent(QDragEnterEvent *event)
 {
     // Accept only URIs
     if(event->mimeData()->hasUrls())
         event->acceptProposedAction();
 }
 
-void CellLinkGUI::dropEvent(QDropEvent *event)
+void MagnaChainGUI::dropEvent(QDropEvent *event)
 {
     if(event->mimeData()->hasUrls())
     {
@@ -1020,7 +1020,7 @@ void CellLinkGUI::dropEvent(QDropEvent *event)
     event->acceptProposedAction();
 }
 
-bool CellLinkGUI::eventFilter(QObject *object, QEvent *event)
+bool MagnaChainGUI::eventFilter(QObject *object, QEvent *event)
 {
     // Catch status tip events
     if (event->type() == QEvent::StatusTip)
@@ -1033,7 +1033,7 @@ bool CellLinkGUI::eventFilter(QObject *object, QEvent *event)
 }
 
 #ifdef ENABLE_WALLET
-bool CellLinkGUI::handlePaymentRequest(const SendCoinsRecipient& recipient)
+bool MagnaChainGUI::handlePaymentRequest(const SendCoinsRecipient& recipient)
 {
     // URI has to be valid
     if (walletFrame && walletFrame->handlePaymentRequest(recipient))
@@ -1045,7 +1045,7 @@ bool CellLinkGUI::handlePaymentRequest(const SendCoinsRecipient& recipient)
     return false;
 }
 
-void CellLinkGUI::setHDStatus(int hdEnabled)
+void MagnaChainGUI::setHDStatus(int hdEnabled)
 {
     labelWalletHDStatusIcon->setPixmap(platformStyle->SingleColorIcon(hdEnabled ? ":/icons/hd_enabled" : ":/icons/hd_disabled").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
     labelWalletHDStatusIcon->setToolTip(hdEnabled ? tr("HD key generation is <b>enabled</b>") : tr("HD key generation is <b>disabled</b>"));
@@ -1054,7 +1054,7 @@ void CellLinkGUI::setHDStatus(int hdEnabled)
     labelWalletHDStatusIcon->setEnabled(hdEnabled);
 }
 
-void CellLinkGUI::setEncryptionStatus(int status)
+void MagnaChainGUI::setEncryptionStatus(int status)
 {
     switch(status)
     {
@@ -1084,7 +1084,7 @@ void CellLinkGUI::setEncryptionStatus(int status)
 }
 #endif // ENABLE_WALLET
 
-void CellLinkGUI::showNormalIfMinimized(bool fToggleHidden)
+void MagnaChainGUI::showNormalIfMinimized(bool fToggleHidden)
 {
     if(!clientModel)
         return;
@@ -1109,12 +1109,12 @@ void CellLinkGUI::showNormalIfMinimized(bool fToggleHidden)
         hide();
 }
 
-void CellLinkGUI::toggleHidden()
+void MagnaChainGUI::toggleHidden()
 {
     showNormalIfMinimized(true);
 }
 
-void CellLinkGUI::detectShutdown()
+void MagnaChainGUI::detectShutdown()
 {
     if (ShutdownRequested())
     {
@@ -1124,7 +1124,7 @@ void CellLinkGUI::detectShutdown()
     }
 }
 
-void CellLinkGUI::showProgress(const QString &title, int nProgress)
+void MagnaChainGUI::showProgress(const QString &title, int nProgress)
 {
     if (nProgress == 0)
     {
@@ -1147,7 +1147,7 @@ void CellLinkGUI::showProgress(const QString &title, int nProgress)
         progressDialog->setValue(nProgress);
 }
 
-void CellLinkGUI::setTrayIconVisible(bool fHideTrayIcon)
+void MagnaChainGUI::setTrayIconVisible(bool fHideTrayIcon)
 {
     if (trayIcon)
     {
@@ -1155,13 +1155,13 @@ void CellLinkGUI::setTrayIconVisible(bool fHideTrayIcon)
     }
 }
 
-void CellLinkGUI::showModalOverlay()
+void MagnaChainGUI::showModalOverlay()
 {
     if (modalOverlay && (progressBar->isVisible() || modalOverlay->isLayerVisible()))
         modalOverlay->toggleVisibility();
 }
 
-static bool ThreadSafeMessageBox(CellLinkGUI *gui, const std::string& message, const std::string& caption, unsigned int style)
+static bool ThreadSafeMessageBox(MagnaChainGUI *gui, const std::string& message, const std::string& caption, unsigned int style)
 {
     bool modal = (style & CellClientUIInterface::MODAL);
     // The SECURE flag has no effect in the Qt GUI.
@@ -1178,21 +1178,21 @@ static bool ThreadSafeMessageBox(CellLinkGUI *gui, const std::string& message, c
     return ret;
 }
 
-void CellLinkGUI::subscribeToCoreSignals()
+void MagnaChainGUI::subscribeToCoreSignals()
 {
     // Connect signals to client
     uiInterface.ThreadSafeMessageBox.connect(boost::bind(ThreadSafeMessageBox, this, _1, _2, _3));
     uiInterface.ThreadSafeQuestion.connect(boost::bind(ThreadSafeMessageBox, this, _1, _3, _4));
 }
 
-void CellLinkGUI::unsubscribeFromCoreSignals()
+void MagnaChainGUI::unsubscribeFromCoreSignals()
 {
     // Disconnect signals from client
     uiInterface.ThreadSafeMessageBox.disconnect(boost::bind(ThreadSafeMessageBox, this, _1, _2, _3));
     uiInterface.ThreadSafeQuestion.disconnect(boost::bind(ThreadSafeMessageBox, this, _1, _3, _4));
 }
 
-void CellLinkGUI::toggleNetworkActive()
+void MagnaChainGUI::toggleNetworkActive()
 {
     if (clientModel) {
         clientModel->setNetworkActive(!clientModel->getNetworkActive());
@@ -1205,12 +1205,12 @@ UnitDisplayStatusBarControl::UnitDisplayStatusBarControl(const PlatformStyle *pl
 {
     createContextMenu();
     setToolTip(tr("Unit to show amounts in. Click to select another unit."));
-    QList<CellLinkUnits::Unit> units = CellLinkUnits::availableUnits();
+    QList<MagnaChainUnits::Unit> units = MagnaChainUnits::availableUnits();
     int max_width = 0;
     const QFontMetrics fm(font());
-    for (const CellLinkUnits::Unit unit : units)
+    for (const MagnaChainUnits::Unit unit : units)
     {
-        max_width = qMax(max_width, fm.width(CellLinkUnits::name(unit)));
+        max_width = qMax(max_width, fm.width(MagnaChainUnits::name(unit)));
     }
     setMinimumSize(max_width, 0);
     setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -1227,9 +1227,9 @@ void UnitDisplayStatusBarControl::mousePressEvent(QMouseEvent *event)
 void UnitDisplayStatusBarControl::createContextMenu()
 {
     menu = new QMenu(this);
-    for (CellLinkUnits::Unit u : CellLinkUnits::availableUnits())
+    for (MagnaChainUnits::Unit u : MagnaChainUnits::availableUnits())
     {
-        QAction *menuAction = new QAction(QString(CellLinkUnits::name(u)), this);
+        QAction *menuAction = new QAction(QString(MagnaChainUnits::name(u)), this);
         menuAction->setData(QVariant(u));
         menu->addAction(menuAction);
     }
@@ -1254,7 +1254,7 @@ void UnitDisplayStatusBarControl::setOptionsModel(OptionsModel *_optionsModel)
 /** When Display Units are changed on OptionsModel it will refresh the display text of the control on the status bar */
 void UnitDisplayStatusBarControl::updateDisplayUnit(int newUnits)
 {
-    setText(CellLinkUnits::name(newUnits));
+    setText(MagnaChainUnits::name(newUnits));
 }
 
 /** Shows context menu with Display Unit options by the mouse coordinates */

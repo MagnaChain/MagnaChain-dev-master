@@ -16,12 +16,12 @@
   - All lower-case letters except for 'l'
 */
 
-CellLinkAddressEntryValidator::CellLinkAddressEntryValidator(QObject *parent) :
+MagnaChainAddressEntryValidator::MagnaChainAddressEntryValidator(QObject *parent) :
     QValidator(parent)
 {
 }
 
-QValidator::State CellLinkAddressEntryValidator::validate(QString &input, int &pos) const
+QValidator::State MagnaChainAddressEntryValidator::validate(QString &input, int &pos) const
 {
     Q_UNUSED(pos);
 
@@ -81,16 +81,16 @@ QValidator::State CellLinkAddressEntryValidator::validate(QString &input, int &p
     return state;
 }
 
-CellLinkAddressCheckValidator::CellLinkAddressCheckValidator(QObject *parent) :
+MagnaChainAddressCheckValidator::MagnaChainAddressCheckValidator(QObject *parent) :
     QValidator(parent)
 {
 }
 
-QValidator::State CellLinkAddressCheckValidator::validate(QString &input, int &pos) const
+QValidator::State MagnaChainAddressCheckValidator::validate(QString &input, int &pos) const
 {
     Q_UNUSED(pos);
-    // Validate the passed CellLink address
-    CellLinkAddress addr(input.toStdString());
+    // Validate the passed MagnaChain address
+    MagnaChainAddress addr(input.toStdString());
     if (addr.IsValid())
         return QValidator::Acceptable;
 

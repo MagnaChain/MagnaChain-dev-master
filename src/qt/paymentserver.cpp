@@ -79,7 +79,7 @@ namespace // Anon namespace
 //
 static QString ipcServerName()
 {
-    QString name("CellLinkQt");
+    QString name("MagnaChainQt");
 
     // Append a simple hash of the datadir
     // Note that GetDataDir(true) returns a different path
@@ -217,9 +217,9 @@ void PaymentServer::ipcParseCommandLine(int argc, char* argv[])
             savedPaymentRequests.append(arg);
 
             SendCoinsRecipient r;
-            if (GUIUtil::parseCellLinkURI(arg, &r) && !r.address.isEmpty())
+            if (GUIUtil::parseMagnaChainURI(arg, &r) && !r.address.isEmpty())
             {
-                CellLinkAddress address(r.address.toStdString());
+                MagnaChainAddress address(r.address.toStdString());
                 auto tempCellChainParams = CreateChainParams(CellBaseChainParams::MAIN);
 
                 if (address.IsValid(*tempCellChainParams))
@@ -440,9 +440,9 @@ void PaymentServer::handleURIOrFile(const QString& s)
         else // normal URI
         {
             SendCoinsRecipient recipient;
-            if (GUIUtil::parseCellLinkURI(s, &recipient))
+            if (GUIUtil::parseMagnaChainURI(s, &recipient))
             {
-                CellLinkAddress address(recipient.address.toStdString());
+                MagnaChainAddress address(recipient.address.toStdString());
                 if (!address.IsValid()) {
                     Q_EMIT message(tr("URI handling"), tr("Invalid payment address %1").arg(recipient.address),
                         CellClientUIInterface::MSG_ERROR);
@@ -452,7 +452,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
             }
             else
                 Q_EMIT message(tr("URI handling"),
-                    tr("URI cannot be parsed! This can be caused by an invalid CellLink address or malformed URI parameters."),
+                    tr("URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters."),
                     CellClientUIInterface::ICON_WARNING);
 
             return;
@@ -561,7 +561,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         CellTxDestination dest;
         if (ExtractDestination(sendingTo.first, dest)) {
             // Append destination address
-            addresses.append(QString::fromStdString(CellLinkAddress(dest).ToString()));
+            addresses.append(QString::fromStdString(MagnaChainAddress(dest).ToString()));
         }
         else if (!recipient.authenticatedMerchant.isEmpty()) {
             // Unauthenticated payment requests to custom magnachain addresses are not supported
@@ -573,7 +573,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
             return false;
         }
 
-        // CellLink amounts are stored as (optional) uint64 in the protobuf messages (see paymentrequest.proto),
+        // MagnaChain amounts are stored as (optional) uint64 in the protobuf messages (see paymentrequest.proto),
         // but CellAmount is defined as int64_t. Because of that we need to verify that amounts are in a valid range
         // and no overflow has happened.
         if (!verifyAmount(sendingTo.second)) {
@@ -585,7 +585,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         CellTxOut txOut(sendingTo.second, sendingTo.first);
         if (IsDust(txOut, ::dustRelayFee)) {
             Q_EMIT message(tr("Payment request error"), tr("Requested payment amount of %1 is too small (considered dust).")
-                .arg(CellLinkUnits::formatWithUnit(optionsModel->getDisplayUnit(), sendingTo.second)),
+                .arg(MagnaChainUnits::formatWithUnit(optionsModel->getDisplayUnit(), sendingTo.second)),
                 CellClientUIInterface::MSG_ERROR);
 
             return false;

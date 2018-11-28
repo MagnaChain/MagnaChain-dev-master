@@ -274,7 +274,7 @@ static void MutateTxAddOutAddr(CellMutableTransaction& tx, const std::string& st
 
     // extract and validate ADDRESS
     std::string strAddr = vStrInputParts[1];
-    CellLinkAddress addr(strAddr);
+    MagnaChainAddress addr(strAddr);
     if (!addr.IsValid())
         throw std::runtime_error("invalid TX output address");
     // build standard output script via GetScriptForDestination()
@@ -322,7 +322,7 @@ static void MutateTxAddOutPubKey(CellMutableTransaction& tx, const std::string& 
     if (bScriptHash) {
         // Get the address for the redeem script, then call
         // GetScriptForDestination() to construct a P2SH scriptPubKey.
-        CellLinkAddress redeemScriptAddr(scriptPubKey);
+        MagnaChainAddress redeemScriptAddr(scriptPubKey);
         scriptPubKey = GetScriptForDestination(redeemScriptAddr.Get());
     }
 
@@ -398,7 +398,7 @@ static void MutateTxAddOutMultiSig(CellMutableTransaction& tx, const std::string
         }
         // Get the address for the redeem script, then call
         // GetScriptForDestination() to construct a P2SH scriptPubKey.
-        CellLinkAddress addr(scriptPubKey);
+        MagnaChainAddress addr(scriptPubKey);
         scriptPubKey = GetScriptForDestination(addr.Get());
     }
 
@@ -471,7 +471,7 @@ static void MutateTxAddOutScript(CellMutableTransaction& tx, const std::string& 
             throw std::runtime_error(strprintf(
                         "redeemScript exceeds size limit: %d > %d", scriptPubKey.size(), MAX_SCRIPT_ELEMENT_SIZE));
         }
-      CellLinkAddress addr(scriptPubKey);
+      MagnaChainAddress addr(scriptPubKey);
       scriptPubKey = GetScriptForDestination(addr.Get());
     }
 
@@ -571,7 +571,7 @@ static void MutateTxSign(CellMutableTransaction& tx, const std::string& flagStr)
     for (unsigned int kidx = 0; kidx < keysObj.size(); kidx++) {
         if (!keysObj[kidx].isStr())
             throw std::runtime_error("privatekey not a std::string");
-        CellLinkSecret vchSecret;
+        MagnaChainSecret vchSecret;
         bool fGood = vchSecret.SetString(keysObj[kidx].getValStr());
         if (!fGood)
             throw std::runtime_error("privatekey not valid");

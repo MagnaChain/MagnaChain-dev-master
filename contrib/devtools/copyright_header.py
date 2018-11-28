@@ -580,7 +580,7 @@ def insert_cmd(argv):
 ################################################################################
 
 USAGE = """
-copyright_header.py - utilities for managing copyright headers of 'The CellLink
+copyright_header.py - utilities for managing copyright headers of 'The MagnaChain
 Core developers' in repository source files.
 
 Usage:

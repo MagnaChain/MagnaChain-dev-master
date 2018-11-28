@@ -14,7 +14,7 @@
 - (NSString *)__bundleIdentifier
 {
     if (self == [NSBundle mainBundle]) {
-        return @"org.magnachainfoundation.CellLink-Qt";
+        return @"org.magnachainfoundation.MagnaChain-Qt";
     } else {
         return [self __bundleIdentifier];
     }

@@ -11,24 +11,24 @@
 /** Base58 entry widget validator, checks for valid characters and
  * removes some whitespace.
  */
-class CellLinkAddressEntryValidator : public QValidator
+class MagnaChainAddressEntryValidator : public QValidator
 {
     Q_OBJECT
 
 public:
-    explicit CellLinkAddressEntryValidator(QObject *parent);
+    explicit MagnaChainAddressEntryValidator(QObject *parent);
 
     State validate(QString &input, int &pos) const;
 };
 
-/** CellLink address widget validator, checks for a valid magnachain address.
+/** MagnaChain address widget validator, checks for a valid magnachain address.
  */
-class CellLinkAddressCheckValidator : public QValidator
+class MagnaChainAddressCheckValidator : public QValidator
 {
     Q_OBJECT
 
 public:
-    explicit CellLinkAddressCheckValidator(QObject *parent);
+    explicit MagnaChainAddressCheckValidator(QObject *parent);
 
     State validate(QString &input, int &pos) const;
 };

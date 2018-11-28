@@ -55,7 +55,7 @@ struct LockPoints {
 };
 
 class CellTxMemPool;
-class CellLinkAddress;
+class MagnaChainAddress;
 
 /** \class CellTxMemPoolEntry
  *

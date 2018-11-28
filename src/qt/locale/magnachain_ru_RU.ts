@@ -152,7 +152,7 @@
     <name>BanTableModel</name>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Подписать &amp;сообщение...</translation>
@@ -230,7 +230,7 @@
         <translation>&amp;Проверить сообщение...</translation>
     </message>
     <message>
-        <source>CellLink</source>
+        <source>MagnaChain</source>
         <translation>MagnaChain Core</translation>
     </message>
     <message>
@@ -442,8 +442,8 @@
         <translation>Пробросить порт через &amp;UPnP</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Подключится к сети CellLink через SOCKS5 прокси.</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Подключится к сети MagnaChain через SOCKS5 прокси.</translation>
     </message>
     <message>
         <source>Proxy &amp;IP:</source>
@@ -522,7 +522,7 @@
 <context>
     <name>QObject</name>
     <message>
-        <source>Enter a CellLink address (e.g. %1)</source>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
         <translation>Введите биткоин-адрес (напр. %1)</translation>
     </message>
     <message numerus="yes">

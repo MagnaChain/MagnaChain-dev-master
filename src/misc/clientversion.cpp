@@ -14,7 +14,7 @@
  * for both magnachaind and magnachain-core, to make it harder for attackers to
  * target servers or GUI users specifically.
  */
-const std::string CLIENT_NAME("CellLink");
+const std::string CLIENT_NAME("MagnaChain");
 
 /**
  * Client version number

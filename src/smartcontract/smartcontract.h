@@ -26,7 +26,7 @@ const int MAX_DATA_LEN = 1024 * 1024;
 class Coin;
 class CellWallet;
 class CellWalletTx;
-class CellLinkAddress;
+class MagnaChainAddress;
 class MakeBranchTxUTXO;
 
 class SmartLuaState
@@ -39,8 +39,8 @@ public:
 
     std::vector<CellTxOut> recipients;
     std::set<CellContractID> contractIds;      // lua执行期间所有调用过的合约
-    std::vector<CellLinkAddress> contractAddrs;  // 以栈形式表示当前调用合约的合约地址
-    CellLinkAddress originAddr;    // 当前调用合约的调用者最原始公钥地址
+    std::vector<MagnaChainAddress> contractAddrs;  // 以栈形式表示当前调用合约的合约地址
+    MagnaChainAddress originAddr;    // 当前调用合约的调用者最原始公钥地址
 
     int saveType;
     int64_t timestamp;                          // 执行时的时间戳
@@ -65,15 +65,15 @@ public:
     void SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache);
     bool GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo);
 
-    void Initialize(int64_t timestamp, int blockHeight, int txIndex, CellLinkAddress& callerAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
-    lua_State* GetLuaState(CellLinkAddress& contractAddr);
+    void Initialize(int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
+    lua_State* GetLuaState(MagnaChainAddress& contractAddr);
     void ReleaseLuaState(lua_State* L);
 
     void Clear();
 };
 
-extern bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLinkAddress& senderAddr);
-extern CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& code);
+extern bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
+extern CellContractID GenerateContractAddress(CellWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
 
 template<typename TxType>
 CellContractID GenerateContractAddressByTx(TxType& tx)
@@ -92,11 +92,11 @@ CellContractID GenerateContractAddressByTx(TxType& tx)
 extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
 extern bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret);
-extern bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode, UniValue& ret);
+extern bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret);
 extern bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret);
 
-extern bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
-extern bool CallContractReal(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
+extern bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
+extern bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
 extern bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret);
 
 bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txIndex, CellAmount coins, int64_t blockTime, int blockHeight, CellBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);

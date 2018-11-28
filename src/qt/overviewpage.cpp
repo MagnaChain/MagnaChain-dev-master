@@ -27,7 +27,7 @@ class TxViewDelegate : public QAbstractItemDelegate
     Q_OBJECT
 public:
     TxViewDelegate(const PlatformStyle *_platformStyle, QObject *parent=nullptr):
-        QAbstractItemDelegate(parent), unit(CellLinkUnits::BTC),
+        QAbstractItemDelegate(parent), unit(MagnaChainUnits::BTC),
         platformStyle(_platformStyle)
     {
 
@@ -85,7 +85,7 @@ public:
             foreground = option.palette.color(QPalette::Text);
         }
         painter->setPen(foreground);
-        QString amountText = CellLinkUnits::formatWithUnit(unit, amount, true, CellLinkUnits::separatorAlways);
+        QString amountText = MagnaChainUnits::formatWithUnit(unit, amount, true, MagnaChainUnits::separatorAlways);
         if(!confirmed)
         {
             amountText = QString("[") + amountText + QString("]");
@@ -169,14 +169,14 @@ void OverviewPage::setBalance(const CellAmount& balance, const CellAmount& uncon
     currentWatchOnlyBalance = watchOnlyBalance;
     currentWatchUnconfBalance = watchUnconfBalance;
     currentWatchImmatureBalance = watchImmatureBalance;
-    ui->labelBalance->setText(CellLinkUnits::formatWithUnit(unit, balance, false, CellLinkUnits::separatorAlways));
-    ui->labelUnconfirmed->setText(CellLinkUnits::formatWithUnit(unit, unconfirmedBalance, false, CellLinkUnits::separatorAlways));
-    ui->labelImmature->setText(CellLinkUnits::formatWithUnit(unit, immatureBalance, false, CellLinkUnits::separatorAlways));
-    ui->labelTotal->setText(CellLinkUnits::formatWithUnit(unit, balance + unconfirmedBalance + immatureBalance, false, CellLinkUnits::separatorAlways));
-    ui->labelWatchAvailable->setText(CellLinkUnits::formatWithUnit(unit, watchOnlyBalance, false, CellLinkUnits::separatorAlways));
-    ui->labelWatchPending->setText(CellLinkUnits::formatWithUnit(unit, watchUnconfBalance, false, CellLinkUnits::separatorAlways));
-    ui->labelWatchImmature->setText(CellLinkUnits::formatWithUnit(unit, watchImmatureBalance, false, CellLinkUnits::separatorAlways));
-    ui->labelWatchTotal->setText(CellLinkUnits::formatWithUnit(unit, watchOnlyBalance + watchUnconfBalance + watchImmatureBalance, false, CellLinkUnits::separatorAlways));
+    ui->labelBalance->setText(MagnaChainUnits::formatWithUnit(unit, balance, false, MagnaChainUnits::separatorAlways));
+    ui->labelUnconfirmed->setText(MagnaChainUnits::formatWithUnit(unit, unconfirmedBalance, false, MagnaChainUnits::separatorAlways));
+    ui->labelImmature->setText(MagnaChainUnits::formatWithUnit(unit, immatureBalance, false, MagnaChainUnits::separatorAlways));
+    ui->labelTotal->setText(MagnaChainUnits::formatWithUnit(unit, balance + unconfirmedBalance + immatureBalance, false, MagnaChainUnits::separatorAlways));
+    ui->labelWatchAvailable->setText(MagnaChainUnits::formatWithUnit(unit, watchOnlyBalance, false, MagnaChainUnits::separatorAlways));
+    ui->labelWatchPending->setText(MagnaChainUnits::formatWithUnit(unit, watchUnconfBalance, false, MagnaChainUnits::separatorAlways));
+    ui->labelWatchImmature->setText(MagnaChainUnits::formatWithUnit(unit, watchImmatureBalance, false, MagnaChainUnits::separatorAlways));
+    ui->labelWatchTotal->setText(MagnaChainUnits::formatWithUnit(unit, watchOnlyBalance + watchUnconfBalance + watchImmatureBalance, false, MagnaChainUnits::separatorAlways));
 
     // only show immature (newly mined) balance if it's non-zero, so as not to complicate things
     // for the non-mining users

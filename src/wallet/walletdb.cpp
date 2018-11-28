@@ -260,13 +260,13 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
         {
             std::string strAddress;
             ssKey >> strAddress;
-            ssValue >> pwallet->mapAddressBook[CellLinkAddress(strAddress).Get()].name;
+            ssValue >> pwallet->mapAddressBook[MagnaChainAddress(strAddress).Get()].name;
         }
         else if (strType == "purpose")
         {
             std::string strAddress;
             ssKey >> strAddress;
-            ssValue >> pwallet->mapAddressBook[CellLinkAddress(strAddress).Get()].purpose;
+            ssValue >> pwallet->mapAddressBook[MagnaChainAddress(strAddress).Get()].purpose;
         }
         else if (strType == "tx")
         {
@@ -503,7 +503,7 @@ ReadKeyValue(CellWallet* pwallet, CellDataStream& ssKey, CellDataStream& ssValue
             ssKey >> strAddress;
             ssKey >> strKey;
             ssValue >> strValue;
-            if (!pwallet->LoadDestData(CellLinkAddress(strAddress).Get(), strKey, strValue))
+            if (!pwallet->LoadDestData(MagnaChainAddress(strAddress).Get(), strKey, strValue))
             {
                 strErr = "Error reading wallet database: LoadDestData failed";
                 return false;

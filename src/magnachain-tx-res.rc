@@ -16,7 +16,7 @@ BEGIN
     BEGIN
         BLOCK "040904E4" // U.S. English - multilingual (hex)
         BEGIN
-            VALUE "CompanyName",        "CellLink"
+            VALUE "CompanyName",        "MagnaChain"
             VALUE "FileDescription",    "magnachain-tx (CLI Bitcoin transaction editor utility)"
             VALUE "FileVersion",        VER_FILEVERSION_STR
             VALUE "InternalName",       "magnachain-tx"

@@ -189,7 +189,7 @@ void WalletModel::updateWatchOnlyFlag(bool fHaveWatchonly)
 
 bool WalletModel::validateAddress(const QString &address)
 {
-    CellLinkAddress addressParsed(address.toStdString());
+    MagnaChainAddress addressParsed(address.toStdString());
     return addressParsed.IsValid();
 }
 
@@ -248,7 +248,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             setAddress.insert(rcp.address);
             ++nAddresses;
 
-            CellScript scriptPubKey = GetScriptForDestination(CellLinkAddress(rcp.address.toStdString()).Get());
+            CellScript scriptPubKey = GetScriptForDestination(MagnaChainAddress(rcp.address.toStdString()).Get());
             CellRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
             vecSend.push_back(recipient);
 
@@ -349,7 +349,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         if (!rcp.paymentRequest.IsInitialized())
         {
             std::string strAddress = rcp.address.toStdString();
-            CellTxDestination dest = CellLinkAddress(strAddress).Get();
+            CellTxDestination dest = MagnaChainAddress(strAddress).Get();
             std::string strLabel = rcp.label.toStdString();
             {
                 LOCK(wallet->cs_wallet);
@@ -465,7 +465,7 @@ static void NotifyAddressBookChanged(WalletModel *walletmodel, CellWallet *walle
         const CellTxDestination &address, const std::string &label, bool isMine,
         const std::string &purpose, ChangeType status)
 {
-    QString strAddress = QString::fromStdString(CellLinkAddress(address).ToString());
+    QString strAddress = QString::fromStdString(MagnaChainAddress(address).ToString());
     QString strLabel = QString::fromStdString(label);
     QString strPurpose = QString::fromStdString(purpose);
 
@@ -596,7 +596,7 @@ bool WalletModel::isSpent(const CellOutPoint& outpoint) const
 void WalletModel::listCoins(std::map<QString, std::vector<CellOutput> >& mapCoins) const
 {
     for (auto& group : wallet->ListCoins()) {
-        auto& resultGroup = mapCoins[QString::fromStdString(CellLinkAddress(group.first).ToString())];
+        auto& resultGroup = mapCoins[QString::fromStdString(MagnaChainAddress(group.first).ToString())];
         for (auto& coin : group.second) {
             resultGroup.emplace_back(std::move(coin));
         }
@@ -634,7 +634,7 @@ void WalletModel::loadReceiveRequests(std::vector<std::string>& vReceiveRequests
 
 bool WalletModel::saveReceiveRequest(const std::string &sAddress, const int64_t nId, const std::string &sRequest)
 {
-    CellTxDestination dest = CellLinkAddress(sAddress).Get();
+    CellTxDestination dest = MagnaChainAddress(sAddress).Get();
 
     std::stringstream ss;
     ss << nId;
@@ -690,15 +690,15 @@ bool WalletModel::bumpFee(uint256 hash)
     questionString.append("<tr><td>");
     questionString.append(tr("Current fee:"));
     questionString.append("</td><td>");
-    questionString.append(CellLinkUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), oldFee));
+    questionString.append(MagnaChainUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), oldFee));
     questionString.append("</td></tr><tr><td>");
     questionString.append(tr("Increase:"));
     questionString.append("</td><td>");
-    questionString.append(CellLinkUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee - oldFee));
+    questionString.append(MagnaChainUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee - oldFee));
     questionString.append("</td></tr><tr><td>");
     questionString.append(tr("New fee:"));
     questionString.append("</td><td>");
-    questionString.append(CellLinkUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee));
+    questionString.append(MagnaChainUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee));
     questionString.append("</td></tr></table>");
     SendConfirmationDialog confirmationDialog(tr("Confirm fee bump"), questionString);
     confirmationDialog.exec();

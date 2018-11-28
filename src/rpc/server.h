@@ -140,7 +140,7 @@ public:
 };
 
 /**
- * CellLink RPC command dispatcher.
+ * MagnaChain RPC command dispatcher.
  */
 class CRPCTable
 {

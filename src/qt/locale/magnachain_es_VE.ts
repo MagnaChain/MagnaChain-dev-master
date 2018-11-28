@@ -68,7 +68,7 @@
     <name>BanTableModel</name>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Firmar &amp;mensaje...</translation>
@@ -114,8 +114,8 @@
         <translation>Reindexando bloques en el disco...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>Enviar monedas a una dirección CellLink</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Enviar monedas a una dirección MagnaChain</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -130,8 +130,8 @@
         <translation>Abre la consola de depuración y diágnostico</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -158,12 +158,12 @@
         <translation>Encriptar las llaves privadas que pertenecen a tu billetera</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Firma mensajes con tus direcciones CellLink para probar que eres dueño de ellas</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Firma mensajes con tus direcciones MagnaChain para probar que eres dueño de ellas</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Verificar mensajes para asegurar que estaban firmados con direcciones CellLink especificas</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Verificar mensajes para asegurar que estaban firmados con direcciones MagnaChain especificas</translation>
     </message>
     <message>
         <source>&amp;File</source>

@@ -9,7 +9,7 @@
 #include <QDialog>
 #include <QObject>
 
-class CellLinkGUI;
+class MagnaChainGUI;
 
 namespace Ui {
     class HelpMessageDialog;
@@ -43,7 +43,7 @@ class ShutdownWindow : public QWidget
 
 public:
     ShutdownWindow(QWidget *parent=0, Qt::WindowFlags f=0);
-    static QWidget *showShutdownWindow(CellLinkGUI *window);
+    static QWidget *showShutdownWindow(MagnaChainGUI *window);
 
 protected:
     void closeEvent(QCloseEvent *event);

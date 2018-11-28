@@ -189,7 +189,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
     std::string strVSeeds = request.params[0].get_str();
     std::string strSeedSpec6 = request.params[1].get_str();
     std::string strMortgageAddress = request.params[2].get_str();
-    CellLinkAddress kAddress(strMortgageAddress);
+    MagnaChainAddress kAddress(strMortgageAddress);
     if (!kAddress.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid magnachain address for genesis block address");
     CellKeyID mortgagekey;
@@ -487,7 +487,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     }
 
     const std::string& strAddress = request.params[1].get_str();
-    CellLinkAddress address(strAddress);
+    MagnaChainAddress address(strAddress);
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain str address");
 
@@ -835,7 +835,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", (double)MIN_MINE_BRANCH_MORTGAGE / (double)COIN));
 
     const std::string& strAddress = request.params[2].get_str();
-    CellLinkAddress address(strAddress);
+    MagnaChainAddress address(strAddress);
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain pubkey hash address");
     if (address.IsScript())

@@ -31,8 +31,8 @@
  *
  * \section intro_sec Introduction
  *
- * This is the developer documentation of the reference client for an experimental new digital currency called CellLink (https://www.magnachain.io/),
- * which enables instant payments to anyone, anywhere in the world. CellLink uses peer-to-peer technology to operate
+ * This is the developer documentation of the reference client for an experimental new digital currency called MagnaChain (https://www.magnachain.io/),
+ * which enables instant payments to anyone, anywhere in the world. MagnaChain uses peer-to-peer technology to operate
  * with no central authority: managing transactions and issuing money are carried out collectively by the network.
  *
  * The software is a community-driven open source project, released under the MIT license.

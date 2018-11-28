@@ -126,8 +126,8 @@ public:
 BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
 {
     UniValue tests = read_json(std::string(json_tests::base58_keys_valid, json_tests::base58_keys_valid + sizeof(json_tests::base58_keys_valid)));
-    CellLinkSecret secret;
-    CellLinkAddress addr;
+    MagnaChainSecret secret;
+    MagnaChainAddress addr;
 	SELECTPARAMS(CellBaseChainParams::MAIN);
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
         {
             bool isCompressed = find_value(metadata, "isCompressed").get_bool();
             // Must be valid private key
-            // Note: CellLinkSecret::SetString tests isValid, whereas CellLinkAddress does not!
+            // Note: MagnaChainSecret::SetString tests isValid, whereas MagnaChainAddress does not!
             BOOST_CHECK_MESSAGE(secret.SetString(exp_base58string), "!SetString:"+ strTest);
             BOOST_CHECK_MESSAGE(secret.IsValid(), "!IsValid:" + strTest);
             CellKey privkey = secret.GetKey();
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
             CellKey key;
             key.Set(exp_payload.begin(), exp_payload.end(), isCompressed);
             assert(key.IsValid());
-            CellLinkSecret secret;
+            MagnaChainSecret secret;
             secret.SetKey(key);
             BOOST_CHECK_MESSAGE(secret.ToString() == exp_base58string, "result mismatch: " + strTest);
         }
@@ -232,14 +232,14 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
                 BOOST_ERROR("Bad addrtype: " << strTest);
                 continue;
             }
-            CellLinkAddress addrOut;
+            MagnaChainAddress addrOut;
             BOOST_CHECK_MESSAGE(addrOut.Set(dest), "encode dest: " + strTest);
             BOOST_CHECK_MESSAGE(addrOut.ToString() == exp_base58string, "mismatch: " + strTest);
         }
     }
 
     // Visiting a CellNoDestination must fail
-    CellLinkAddress dummyAddr;
+    MagnaChainAddress dummyAddr;
     CellTxDestination nodest = CellNoDestination();
     BOOST_CHECK(!dummyAddr.Set(nodest));
 
@@ -250,8 +250,8 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
 BOOST_AUTO_TEST_CASE(base58_keys_invalid)
 {
     UniValue tests = read_json(std::string(json_tests::base58_keys_invalid, json_tests::base58_keys_invalid + sizeof(json_tests::base58_keys_invalid))); // Negative testcases
-    CellLinkSecret secret;
-    CellLinkAddress addr;
+    MagnaChainSecret secret;
+    MagnaChainAddress addr;
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
