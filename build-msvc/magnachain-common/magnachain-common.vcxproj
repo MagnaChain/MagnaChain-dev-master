@@ -95,7 +95,7 @@
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)/../src/univalue/include;$(SolutionDir)/../db-4.8.30/build_windows</AdditionalIncludeDirectories>
-      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+      <ObjectFileName>$(IntDir)placeobj\placeobj\%(RelativeDir)</ObjectFileName>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
@@ -112,7 +112,7 @@
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include;$(SolutionDir)/db-4.8.30/build_windows</AdditionalIncludeDirectories>
-      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+      <ObjectFileName>$(IntDir)placeobj\placeobj\%(RelativeDir)</ObjectFileName>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
       <FunctionLevelLinking>
