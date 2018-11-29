@@ -2,21 +2,21 @@
 
 ## Download
 
-To post the game on MagnaChain, you need an RPC client, which can be downloaded at:
+To publish the game on MagnaChain, you need an RPC client, which can be downloaded at:
 
 Https://developers.magnachain.co/article/downloads/
 
-Choose your own version  
+Choose your own version according to your system environment
 
 ## Get the address
 
 Run the following command in the MagnaChain directory
 
-Enter on the Windows platform:
+For Windows platform, enter:
 
     Magnachain-cli.exe -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port getnewaddress
 
-Enter on the Linux /mac OS platform:
+For Linux / Mac OS platform, enter:
 
     Chmod +x loadlib.sh
     ./loadlib.sh
@@ -26,14 +26,14 @@ The command will return a new address like "XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf"
 
 The nodeIp, user, pwd, port and other parameters in the command need to fill in the corresponding real MagnaChain node parameters.
 
-## Writing a contract and publishing
+## Write a contract and publish it
 
 In the current directory, create a new file, name it game.lua, and edit:
 
 ```lua
 function init()
-	PersistentData = {}
-	PersistentData.killNumTbl = {}
+    PersistentData = {}
+    PersistentData.killNumTbl = {}
 end
 
 function killMonster()
@@ -48,11 +48,11 @@ end
     
 ```
 
-Enter on the Windows platform:
+For Windows platform, enter:
     
     Magnachain-cli.exe -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port publishcontract game.lua XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf
 
-Enter on linux /mac OS platform:
+For Linux / Mac OS platform, enter:
 
     ./magnachain-cli -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port publishcontract game.lua XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf
 
@@ -70,28 +70,27 @@ This indicates that your contract has been successfully released, and "UpcuLWL6H
 
 After our game contract is released, we can play this game by calling this contract.
 
-Enter on the Windows platform:
+For Windows platform, enter:
 
     Magnachain-cli.exe -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port callcontract true 0 UpcuLWL6HcSSH5Rc5xQy6e6yEMPQZ9xvWs XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf killMonster
 
-Enter on linux /mac OS platform:
+For Linux / Mac OS platform, enter:
 
     ./magnachain-cli -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port callcontract true 0 UpcuLWL6HcSSH5Rc5xQy6e6yEMPQZ9xvWs XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf killMonster
 
-Every time we execute a command, we will kill one more monster. Let's take a look at how much we killed in the public.
+Every time we execute a command, we will kill one more monster. Let's take a look at how many we killed.
 
-Enter on the Windows platform:
+For Windows platform, enter:
 
     Magnachain-cli.exe -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port callcontract true 0 UpcuLWL6HcSSH5Rc5xQy6e6yEMPQZ9xvWs XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf showNum
 
-Enter on linux /mac OS platform:
+For Linux / Mac OS platform, enter:
 
     ./magnachain-cli -rpcconnect=nodeIp -rpcuser=user -rpcpassword=pwd -rpcport=port callcontract true 0 UpcuLWL6HcSSH5Rc5xQy6e6yEMPQZ9xvWs XQSD7PUPNCf8psJdfFMjfWXKuaHXFwSFRf showNum
 
 This command will return the number of monsters we killed.
 
-So far, we have initially developed a game on MagnaChain. Is it very simple?
-
+So far, we have initially developed a game on MagnaChain. Isn’t  it very easy?   
 For more usage, please refer to the developer website.
 
 https://developers.magnachain.co/
