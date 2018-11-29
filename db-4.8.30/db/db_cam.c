@@ -37,7 +37,7 @@ static inline int __dbc_put_secondaries __P((DBC *,
 
 #define	CDB_LOCKING_INIT(env, dbc)					\
 	/*								\
-	 * If we are running CellDB, this had better be either a write	\
+	 * If we are running MCDB, this had better be either a write	\
 	 * cursor or an immediate writer.  If it's a regular writer,	\
 	 * that means we have an IWRITE lock and we need to upgrade	\
 	 * it to a write lock.						\
@@ -129,7 +129,7 @@ __dbc_close(dbc)
 		/*
 		 * Also, be sure not to free anything if mylock.off is
 		 * INVALID;  in some cases, such as idup'ed read cursors
-		 * and secondary update cursors, a cursor in a CellDB
+		 * and secondary update cursors, a cursor in a MCDB
 		 * environment may not have a lock at all.
 		 */
 		if ((t_ret = __LPUT(dbc, dbc->mylock)) != 0 && ret == 0)
@@ -655,7 +655,7 @@ __dbc_idup(dbc_orig, dbcp, flags)
 	    DBC_READ_COMMITTED | DBC_READ_UNCOMMITTED | DBC_WRITECURSOR));
 
 	/*
-	 * If we're in CellDB and this isn't an offpage dup cursor, then
+	 * If we're in MCDB and this isn't an offpage dup cursor, then
 	 * we need to get a lock for the duplicated cursor.
 	 */
 	if (CDB_LOCKING(env) && !F_ISSET(dbc_n, DBC_OPD) &&
@@ -1559,7 +1559,7 @@ __dbc_put_secondaries(dbc,
 		 * Open a cursor in this secondary.
 		 *
 		 * Use the same locker ID as our primary cursor, so that
-		 * we're guaranteed that the locks don't conflict (e.g. in CellDB
+		 * we're guaranteed that the locks don't conflict (e.g. in MCDB
 		 * or if we're subdatabases that share and want to lock a
 		 * metadata page).
 		 */
@@ -1568,7 +1568,7 @@ __dbc_put_secondaries(dbc,
 			goto err;
 
 		/*
-		 * If we're in CellDB, updates will fail since the new cursor
+		 * If we're in MCDB, updates will fail since the new cursor
 		 * isn't a writer.  However, we hold the WRITE lock in the
 		 * primary and will for as long as our new cursor lasts,
 		 * and the primary and secondary share a lock file ID,
@@ -2587,7 +2587,7 @@ retry:	/* Step 1. */
 	 *
 	 * !!!
 	 * We need to use __db_cursor_int here rather than simply calling
-	 * pdbp->cursor, because otherwise, if we're in CellDB, we'll allocate a
+	 * pdbp->cursor, because otherwise, if we're in MCDB, we'll allocate a
 	 * new locker ID and leave ourselves open to deadlocks.  (Even though
 	 * we're only acquiring read locks, we'll still block if there are any
 	 * waiters.)
@@ -2838,7 +2838,7 @@ __dbc_del_secondary(dbc)
 		return (ret);
 
 	/*
-	 * See comment in __dbc_put--if we're in CellDB,
+	 * See comment in __dbc_put--if we're in MCDB,
 	 * we already hold the locks we need, and we need to flag
 	 * the cursor as a WRITER so we don't run into errors
 	 * when we try to delete.
@@ -3040,7 +3040,7 @@ __dbc_del_foreign(dbc)
 		    !LF_ISSET(DB_FOREIGN_ABORT)) ? DB_RMW : 0;
 
 		/*
-		 * Handle CellDB locking.  Some of this is copied from
+		 * Handle MCDB locking.  Some of this is copied from
 		 * __dbc_del_primary, but a bit more acrobatics are required.
 		 * If we're not going to abort, then we need to get a write
 		 * cursor.  If CDB_ALLDB is set, then only one write cursor is
@@ -3053,7 +3053,7 @@ __dbc_del_foreign(dbc)
 		 *
 		 * If NULLIFY is set, we'll need a cursor on the primary to
 		 * update it with the nullified data.  Because primary and
-		 * secondary dbs share a lock file ID in CellDB, we open a cursor
+		 * secondary dbs share a lock file ID in MCDB, we open a cursor
 		 * on the secondary and then get another writeable cursor on the
 		 * primary via __db_cursor_int to avoid deadlocking.
 		 */

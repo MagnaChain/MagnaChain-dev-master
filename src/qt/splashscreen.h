@@ -1,15 +1,15 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_SPLASHSCREEN_H
-#define CELLLINK_QT_SPLASHSCREEN_H
+#ifndef MAGNACHAIN_QT_SPLASHSCREEN_H
+#define MAGNACHAIN_QT_SPLASHSCREEN_H
 
 #include <functional>
 #include <QSplashScreen>
 
-class CellWallet;
+class MCWallet;
 class NetworkStyle;
 
 /** Class for the splashscreen with information of the running client.
@@ -48,16 +48,16 @@ private:
     /** Disconnect core signals to splash screen */
     void unsubscribeFromCoreSignals();
     /** Connect wallet signals to splash screen */
-    void ConnectWallet(CellWallet*);
+    void ConnectWallet(MCWallet*);
 
     QPixmap pixmap;
     QString curMessage;
     QColor curColor;
     int curAlignment;
 
-    QList<CellWallet*> connectedWallets;
+    QList<MCWallet*> connectedWallets;
 
     std::function<void(void)> breakAction;
 };
 
-#endif // CELLLINK_QT_SPLASHSCREEN_H
+#endif // MAGNACHAIN_QT_SPLASHSCREEN_H

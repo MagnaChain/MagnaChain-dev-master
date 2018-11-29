@@ -124,7 +124,7 @@
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Podpiši &amp;sporočilo ...</translation>
@@ -202,8 +202,8 @@
         <translation>Poustvarjam kazalo blokov na disku ...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>Izvedite plačilo na naslov CellLink</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Izvedite plačilo na naslov MagnaChain</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -226,8 +226,8 @@
         <translation>&amp;Preveri sporočilo ...</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -254,12 +254,12 @@
         <translation>Šifrirajte zasebne ključe, ki se nahajajo v denarnici</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Podpišite poljubno sporočilo z enim svojih naslovov CellLink, da prejemniku sporočila dokažete, da je ta naslov v vaši lasti.</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Podpišite poljubno sporočilo z enim svojih naslovov MagnaChain, da prejemniku sporočila dokažete, da je ta naslov v vaši lasti.</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Preverite, če je bilo prejeto sporočilo podpisano z določenim naslovom CellLink</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Preverite, če je bilo prejeto sporočilo podpisano z določenim naslovom MagnaChain</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -298,8 +298,8 @@
         <translation>Opcije &amp;ukazne vrstice</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to CellLink network</source>
-        <translation><numerusform>%n aktivna povezava v omrežje CellLink</numerusform><numerusform>%n aktivni povezavi v omrežje CellLink</numerusform><numerusform>%n aktivne povezave v omrežje CellLink</numerusform><numerusform>%n aktivnih povezav v omrežje CellLink</numerusform></translation>
+        <source>%n active connection(s) to MagnaChain network</source>
+        <translation><numerusform>%n aktivna povezava v omrežje MagnaChain</numerusform><numerusform>%n aktivni povezavi v omrežje MagnaChain</numerusform><numerusform>%n aktivne povezave v omrežje MagnaChain</numerusform><numerusform>%n aktivnih povezav v omrežje MagnaChain</numerusform></translation>
     </message>
     <message>
         <source>Indexing blocks on disk...</source>
@@ -712,7 +712,7 @@
         <translation>Omogoči &amp;trošenje drobiža iz še nepotrjenih plačil</translation>
     </message>
     <message>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
         <translation>Program samodejno odpre ustrezna vrata na usmerjevalniku. To deluje samo, če vaš usmerjevalnik podpira in ima omogočen UPnP.</translation>
     </message>
     <message>
@@ -720,8 +720,8 @@
         <translation>Preslikaj vrata z uporabo &amp;UPnP</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Poveži se v omrežje CellLink preko posredniškega strežnika SOCKS5.</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Poveži se v omrežje MagnaChain preko posredniškega strežnika SOCKS5.</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -823,8 +823,8 @@
         <translation>Oblika</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>Prikazani podatki so morda zastareli. Program ob vzpostavitvi povezave samodejno sinhronizira denarnico z omrežjem CellLink, a trenutno ta proces še ni zaključen.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>Prikazani podatki so morda zastareli. Program ob vzpostavitvi povezave samodejno sinhronizira denarnico z omrežjem MagnaChain, a trenutno ta proces še ni zaključen.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -912,8 +912,8 @@
         <translation>Znesek</translation>
     </message>
     <message>
-        <source>Enter a CellLink address (e.g. %1)</source>
-        <translation>Vnesite naslov CellLink (npr. %1):</translation>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
+        <translation>Vnesite naslov MagnaChain (npr. %1):</translation>
     </message>
     <message>
         <source>%1 d</source>
@@ -1176,8 +1176,8 @@
         <translation>P&amp;onovno uporabite obstoječ naslov za prejemanje. (Ni priporočeno.)</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</source>
-        <translation>Neobvezno sporočilo kot priponka zahtevku za plačilo, ki bo prikazano, ko bo zahtevek odprt. Opomba: Opravljeno plačilo.prek omrežja CellLink tega sporočila ne bo vsebovalo.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</source>
+        <translation>Neobvezno sporočilo kot priponka zahtevku za plačilo, ki bo prikazano, ko bo zahtevek odprt. Opomba: Opravljeno plačilo.prek omrežja MagnaChain tega sporočila ne bo vsebovalo.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -1432,8 +1432,8 @@
         <translation>Plačilo je navadne vrste.</translation>
     </message>
     <message>
-        <source>The CellLink address to send the payment to</source>
-        <translation>Naslov CellLink, na katerega bo plačilo poslano</translation>
+        <source>The MagnaChain address to send the payment to</source>
+        <translation>Naslov MagnaChain, na katerega bo plačilo poslano</translation>
     </message>
     <message>
         <source>Alt+A</source>
@@ -1476,8 +1476,8 @@
         <translation>Če vnesete oznako za zgornji naslov, se bo skupaj z naslovom shranila v imenk že uporabljenih naslovov</translation>
     </message>
     <message>
-        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</source>
-        <translation>Sporočilo, ki ste ga pripeli na URI tipa magnachain:. Shranjeno bo skupaj s podatki o transakciji. Opomba: Sporočilo ne bo poslano preko omrežja CellLink.</translation>
+        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</source>
+        <translation>Sporočilo, ki ste ga pripeli na URI tipa magnachain:. Shranjeno bo skupaj s podatki o transakciji. Opomba: Sporočilo ne bo poslano preko omrežja MagnaChain.</translation>
     </message>
     <message>
         <source>Pay To:</source>
@@ -1513,8 +1513,8 @@
         <translation>S svojimi naslovi lahko podpisujete sporočila ali pogodbe in s tem dokazujete, da na teh naslovih lahko prejemate kovance. Bodite previdni in ne podpisujte ničesar nejasnega ali naključnega, ker vas zlikovci preko ribarjenja (phishing) lahko prelisičijo, da na njih prepišete svojo identiteto. Podpisujte samo podrobno opisane izjave, s katerimi se strinjate.</translation>
     </message>
     <message>
-        <source>The CellLink address to sign the message with</source>
-        <translation>Naslov CellLink, s katerim podpisujete sporočilo</translation>
+        <source>The MagnaChain address to sign the message with</source>
+        <translation>Naslov MagnaChain, s katerim podpisujete sporočilo</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -1545,7 +1545,7 @@
         <translation>Kopiranje trenutnega podpisa na sistemsko odložišče.</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this CellLink address</source>
+        <source>Sign the message to prove you own this MagnaChain address</source>
         <translation>Podpišite sporočilo, da dokažete lastništvo nad zgornjim naslovom.</translation>
     </message>
     <message>
@@ -1569,12 +1569,12 @@
         <translation>Da preverite verodostojnost sporočila, spodaj vnesite: prejemnikov naslov, prejeto sporočilo (pazljivo skopirajte vse prelome vrstic, presledke, tabulatorje ipd.,) in prejeti podpis. Da se izognete napadom tipa man-in-the-middle, vedite, da iz veljavnega podpisa ne sledi nič drugega, kot tisto, kar je navedeno v sporočilu. Podpis samo potrjuje dejstvo, da ima podpisnik v lasti prejemni naslov, ne more pa dokazati vira nobene transakcije!</translation>
     </message>
     <message>
-        <source>The CellLink address the message was signed with</source>
-        <translation>Naslov CellLink, s katerim je bilo sporočilo podpisano</translation>
+        <source>The MagnaChain address the message was signed with</source>
+        <translation>Naslov MagnaChain, s katerim je bilo sporočilo podpisano</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified CellLink address</source>
-        <translation>Preverite, ali je bilo sporočilo v resnici podpisano z navedenim naslovom CellLink.</translation>
+        <source>Verify the message to ensure it was signed with the specified MagnaChain address</source>
+        <translation>Preverite, ali je bilo sporočilo v resnici podpisano z navedenim naslovom MagnaChain.</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

@@ -80,13 +80,13 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>These are your CellLink addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
-        <translation>These are your CellLink addresses for sending payments. Always check the amount and the receiving address before sending coins.</translation>
+        <source>These are your MagnaChain addresses for sending payments. Always check the amount and the receiving address before sending coins.</source>
+        <translation>These are your MagnaChain addresses for sending payments. Always check the amount and the receiving address before sending coins.</translation>
     </message>
     <message>
         <location line="+4"/>
-        <source>These are your CellLink addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
-        <translation>These are your CellLink addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</translation>
+        <source>These are your MagnaChain addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</source>
+        <translation>These are your MagnaChain addresses for receiving payments. It is recommended to use a new receiving address for each transaction.</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -216,8 +216,8 @@
     </message>
     <message>
         <location line="+1"/>
-        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR CELLLINKS&lt;/b&gt;!</source>
-        <translation>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR CELLLINKS&lt;/b&gt;!</translation>
+        <source>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR MAGNACHAINS&lt;/b&gt;!</source>
+        <translation>Warning: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR MAGNACHAINS&lt;/b&gt;!</translation>
     </message>
     <message>
         <location line="+0"/>
@@ -302,7 +302,7 @@
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <location filename="../magnachaingui.cpp" line="+358"/>
         <source>Sign &amp;message...</source>
@@ -435,8 +435,8 @@
     </message>
     <message>
         <location line="-511"/>
-        <source>Send coins to a CellLink address</source>
-        <translation>Send coins to a CellLink address</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Send coins to a MagnaChain address</translation>
     </message>
     <message>
         <location line="+67"/>
@@ -465,8 +465,8 @@
     </message>
     <message>
         <location line="+517"/>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <location line="-743"/>
@@ -500,13 +500,13 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Sign messages with your CellLink addresses to prove you own them</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Sign messages with your MagnaChain addresses to prove you own them</translation>
     </message>
     <message>
         <location line="+2"/>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Verify messages to ensure they were signed with specified CellLink addresses</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Verify messages to ensure they were signed with specified MagnaChain addresses</translation>
     </message>
     <message>
         <location line="+58"/>
@@ -555,10 +555,10 @@
     </message>
     <message numerus="yes">
         <location line="+357"/>
-        <source>%n active connection(s) to CellLink network</source>
+        <source>%n active connection(s) to MagnaChain network</source>
         <translation>
-            <numerusform>%n active connection to CellLink network</numerusform>
-            <numerusform>%n active connections to CellLink network</numerusform>
+            <numerusform>%n active connection to MagnaChain network</numerusform>
+            <numerusform>%n active connections to MagnaChain network</numerusform>
         </translation>
     </message>
     <message>
@@ -616,8 +616,8 @@
     </message>
     <message>
         <location line="-441"/>
-        <source>Show the %1 help message to get a list with possible CellLink command-line options</source>
-        <translation>Show the %1 help message to get a list with possible CellLink command-line options</translation>
+        <source>Show the %1 help message to get a list with possible MagnaChain command-line options</source>
+        <translation>Show the %1 help message to get a list with possible MagnaChain command-line options</translation>
     </message>
     <message>
         <location line="+200"/>
@@ -696,8 +696,8 @@
     </message>
     <message>
         <location filename="../magnachain.cpp" line="+534"/>
-        <source>A fatal error occurred. CellLink can no longer continue safely and will quit.</source>
-        <translation>A fatal error occurred. CellLink can no longer continue safely and will quit.</translation>
+        <source>A fatal error occurred. MagnaChain can no longer continue safely and will quit.</source>
+        <translation>A fatal error occurred. MagnaChain can no longer continue safely and will quit.</translation>
     </message>
 </context>
 <context>
@@ -939,8 +939,8 @@
     </message>
     <message>
         <location line="+72"/>
-        <source>The entered address &quot;%1&quot; is not a valid CellLink address.</source>
-        <translation>The entered address &quot;%1&quot; is not a valid CellLink address.</translation>
+        <source>The entered address &quot;%1&quot; is not a valid MagnaChain address.</source>
+        <translation>The entered address &quot;%1&quot; is not a valid MagnaChain address.</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -1099,8 +1099,8 @@
     </message>
     <message>
         <location filename="../intro.cpp" line="+20"/>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <location line="+6"/>
@@ -1114,8 +1114,8 @@
     </message>
     <message>
         <location line="+8"/>
-        <source>%1 will download and store a copy of the CellLink block chain.</source>
-        <translation>%1 will download and store a copy of the CellLink block chain.</translation>
+        <source>%1 will download and store a copy of the MagnaChain block chain.</source>
+        <translation>%1 will download and store a copy of the MagnaChain block chain.</translation>
     </message>
     <message>
         <location line="+2"/>
@@ -1381,8 +1381,8 @@
     </message>
     <message>
         <location line="+30"/>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</translation>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -1401,8 +1401,8 @@
     </message>
     <message>
         <location line="+7"/>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Connect to the CellLink network through a SOCKS5 proxy.</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Connect to the MagnaChain network through a SOCKS5 proxy.</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -1449,8 +1449,8 @@
     </message>
     <message>
         <location line="+25"/>
-        <source>Connect to the CellLink network through a separate SOCKS5 proxy for Tor hidden services.</source>
-        <translation>Connect to the CellLink network through a separate SOCKS5 proxy for Tor hidden services.</translation>
+        <source>Connect to the MagnaChain network through a separate SOCKS5 proxy for Tor hidden services.</source>
+        <translation>Connect to the MagnaChain network through a separate SOCKS5 proxy for Tor hidden services.</translation>
     </message>
     <message>
         <location line="+105"/>
@@ -1584,8 +1584,8 @@
     <message>
         <location line="+62"/>
         <location line="+386"/>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</translation>
     </message>
     <message>
         <location line="-139"/>
@@ -1704,8 +1704,8 @@
     </message>
     <message>
         <location line="+8"/>
-        <source>URI cannot be parsed! This can be caused by an invalid CellLink address or malformed URI parameters.</source>
-        <translation>URI cannot be parsed! This can be caused by an invalid CellLink address or malformed URI parameters.</translation>
+        <source>URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters.</source>
+        <translation>URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters.</translation>
     </message>
     <message>
         <location line="+13"/>
@@ -1836,8 +1836,8 @@
     </message>
     <message>
         <location filename="../guiutil.cpp" line="+130"/>
-        <source>Enter a CellLink address (e.g. %1)</source>
-        <translation>Enter a CellLink address (e.g. %1)</translation>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
+        <translation>Enter a MagnaChain address (e.g. %1)</translation>
     </message>
     <message>
         <location line="+760"/>
@@ -2422,8 +2422,8 @@
     <message>
         <location line="-3"/>
         <location line="+46"/>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</source>
-        <translation>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</source>
+        <translation>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</translation>
     </message>
     <message>
         <location line="-30"/>
@@ -2951,8 +2951,8 @@
     </message>
     <message>
         <location line="+101"/>
-        <source>Warning: Invalid CellLink address</source>
-        <translation>Warning: Invalid CellLink address</translation>
+        <source>Warning: Invalid MagnaChain address</source>
+        <translation>Warning: Invalid MagnaChain address</translation>
     </message>
     <message>
         <location line="+5"/>
@@ -3006,8 +3006,8 @@
     </message>
     <message>
         <location line="+39"/>
-        <source>The CellLink address to send the payment to</source>
-        <translation>The CellLink address to send the payment to</translation>
+        <source>The MagnaChain address to send the payment to</source>
+        <translation>The MagnaChain address to send the payment to</translation>
     </message>
     <message>
         <location line="+23"/>
@@ -3068,8 +3068,8 @@
     </message>
     <message>
         <location line="+54"/>
-        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</source>
-        <translation>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</translation>
+        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</source>
+        <translation>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</translation>
     </message>
     <message>
         <location line="+448"/>
@@ -3130,8 +3130,8 @@
     </message>
     <message>
         <location line="+18"/>
-        <source>The CellLink address to sign the message with</source>
-        <translation>The CellLink address to sign the message with</translation>
+        <source>The MagnaChain address to sign the message with</source>
+        <translation>The MagnaChain address to sign the message with</translation>
     </message>
     <message>
         <location line="+7"/>
@@ -3172,8 +3172,8 @@
     </message>
     <message>
         <location line="+21"/>
-        <source>Sign the message to prove you own this CellLink address</source>
-        <translation>Sign the message to prove you own this CellLink address</translation>
+        <source>Sign the message to prove you own this MagnaChain address</source>
+        <translation>Sign the message to prove you own this MagnaChain address</translation>
     </message>
     <message>
         <location line="+3"/>
@@ -3203,13 +3203,13 @@
     </message>
     <message>
         <location line="+21"/>
-        <source>The CellLink address the message was signed with</source>
-        <translation>The CellLink address the message was signed with</translation>
+        <source>The MagnaChain address the message was signed with</source>
+        <translation>The MagnaChain address the message was signed with</translation>
     </message>
     <message>
         <location line="+37"/>
-        <source>Verify the message to ensure it was signed with the specified CellLink address</source>
-        <translation>Verify the message to ensure it was signed with the specified CellLink address</translation>
+        <source>Verify the message to ensure it was signed with the specified MagnaChain address</source>
+        <translation>Verify the message to ensure it was signed with the specified MagnaChain address</translation>
     </message>
     <message>
         <location line="+3"/>

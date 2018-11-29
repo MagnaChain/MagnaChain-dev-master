@@ -1,10 +1,10 @@
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NETADDRESS_H
-#define CELLLINK_NETADDRESS_H
+#ifndef MAGNACHAIN_NETADDRESS_H
+#define MAGNACHAIN_NETADDRESS_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -29,17 +29,17 @@ enum Network
 };
 
 /** IP address (IPv6, or IPv4 using mapped IPv6 range (::FFFF:0:0/96)) */
-class CellNetAddr
+class MCNetAddr
 {
     protected:
         unsigned char ip[16]; // in network byte order
         uint32_t scopeId; // for scoped/link-local ipv6 addresses
 
     public:
-        CellNetAddr();
-        CellNetAddr(const struct in_addr& ipv4Addr);
+        MCNetAddr();
+        MCNetAddr(const struct in_addr& ipv4Addr);
         void Init();
-        void SetIP(const CellNetAddr& ip);
+        void SetIP(const MCNetAddr& ip);
 
         /**
          * Set raw IPv4 or IPv6 address (in network byte order)
@@ -81,14 +81,14 @@ class CellNetAddr
         uint64_t GetHash() const;
         bool GetInAddr(struct in_addr* pipv4Addr) const;
         std::vector<unsigned char> GetGroup() const;
-        int GetReachabilityFrom(const CellNetAddr *paddrPartner = nullptr) const;
+        int GetReachabilityFrom(const MCNetAddr *paddrPartner = nullptr) const;
 
-        CellNetAddr(const struct in6_addr& pipv6Addr, const uint32_t scope = 0);
+        MCNetAddr(const struct in6_addr& pipv6Addr, const uint32_t scope = 0);
         bool GetIn6Addr(struct in6_addr* pipv6Addr) const;
 
-        friend bool operator==(const CellNetAddr& a, const CellNetAddr& b);
-        friend bool operator!=(const CellNetAddr& a, const CellNetAddr& b);
-        friend bool operator<(const CellNetAddr& a, const CellNetAddr& b);
+        friend bool operator==(const MCNetAddr& a, const MCNetAddr& b);
+        friend bool operator!=(const MCNetAddr& a, const MCNetAddr& b);
+        friend bool operator<(const MCNetAddr& a, const MCNetAddr& b);
 
         ADD_SERIALIZE_METHODS;
 
@@ -104,7 +104,7 @@ class CSubNet
 {
     protected:
         /// Network (base) address
-        CellNetAddr network;
+        MCNetAddr network;
         /// Netmask, in network byte order
         uint8_t netmask[16];
         /// Is this value valid? (only used to signal parse errors)
@@ -112,13 +112,13 @@ class CSubNet
 
     public:
         CSubNet();
-        CSubNet(const CellNetAddr &addr, int32_t mask);
-        CSubNet(const CellNetAddr &addr, const CellNetAddr &mask);
+        CSubNet(const MCNetAddr &addr, int32_t mask);
+        CSubNet(const MCNetAddr &addr, const MCNetAddr &mask);
 
         //constructor for single ip subnet (<ipv4>/32 or <ipv6>/128)
-        explicit CSubNet(const CellNetAddr &addr);
+        explicit CSubNet(const MCNetAddr &addr);
 
-        bool Match(const CellNetAddr &addr) const;
+        bool Match(const MCNetAddr &addr) const;
 
         std::string ToString() const;
         bool IsValid() const;
@@ -137,31 +137,31 @@ class CSubNet
         }
 };
 
-/** A combination of a network address (CellNetAddr) and a (TCP) port */
-class CellService : public CellNetAddr
+/** A combination of a network address (MCNetAddr) and a (TCP) port */
+class MCService : public MCNetAddr
 {
     protected:
         unsigned short port; // host order
 
     public:
-        CellService();
-        CellService(const CellNetAddr& ip, unsigned short port);
-        CellService(const struct in_addr& ipv4Addr, unsigned short port);
-        CellService(const struct sockaddr_in& addr);
+        MCService();
+        MCService(const MCNetAddr& ip, unsigned short port);
+        MCService(const struct in_addr& ipv4Addr, unsigned short port);
+        MCService(const struct sockaddr_in& addr);
         void Init();
         unsigned short GetPort() const;
         bool GetSockAddr(struct sockaddr* paddr, socklen_t *addrlen) const;
         bool SetSockAddr(const struct sockaddr* paddr);
-        friend bool operator==(const CellService& a, const CellService& b);
-        friend bool operator!=(const CellService& a, const CellService& b);
-        friend bool operator<(const CellService& a, const CellService& b);
+        friend bool operator==(const MCService& a, const MCService& b);
+        friend bool operator!=(const MCService& a, const MCService& b);
+        friend bool operator<(const MCService& a, const MCService& b);
         std::vector<unsigned char> GetKey() const;
         std::string ToString() const;
         std::string ToStringPort() const;
         std::string ToStringIPPort() const;
 
-        CellService(const struct in6_addr& ipv6Addr, unsigned short port);
-        CellService(const struct sockaddr_in6& addr);
+        MCService(const struct in6_addr& ipv6Addr, unsigned short port);
+        MCService(const struct sockaddr_in6& addr);
 
         ADD_SERIALIZE_METHODS;
 
@@ -175,4 +175,4 @@ class CellService : public CellNetAddr
         }
 };
 
-#endif // CELLLINK_NETADDRESS_H
+#endif // MAGNACHAIN_NETADDRESS_H

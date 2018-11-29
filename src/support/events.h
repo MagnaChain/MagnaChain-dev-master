@@ -1,10 +1,10 @@
-// Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SUPPORT_EVENTS_H
-#define CELLLINK_SUPPORT_EVENTS_H
+#ifndef MAGNACHAIN_SUPPORT_EVENTS_H
+#define MAGNACHAIN_SUPPORT_EVENTS_H
 
 #include <ios>
 #include <memory>
@@ -54,4 +54,4 @@ inline raii_evhttp_connection obtain_evhttp_connection_base(struct event_base* b
     return result;
 }
 
-#endif // CELLLINK_SUPPORT_EVENTS_H
+#endif // MAGNACHAIN_SUPPORT_EVENTS_H

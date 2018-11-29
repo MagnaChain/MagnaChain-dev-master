@@ -51,7 +51,7 @@ public:
     unsigned char flags;
 };
 
-class CellCreateBranchChainInfo
+class MCCreateBranchChainInfo
 {
 public:
     uint256 txid;
@@ -59,9 +59,9 @@ public:
     std::string branchVSeeds;
     std::string branchSeedSpec6;
 
-    CellCreateBranchChainInfo()
+    MCCreateBranchChainInfo()
     {}
-    CellCreateBranchChainInfo(const CellCreateBranchChainInfo& from)
+    MCCreateBranchChainInfo(const MCCreateBranchChainInfo& from)
         :txid(from.txid), blockhash(from.blockhash), branchVSeeds(from.branchVSeeds), branchSeedSpec6(from.branchSeedSpec6)
     {
     }
@@ -76,7 +76,7 @@ public:
         READWRITE(branchSeedSpec6);
     }
 
-    friend inline bool operator==(const CellCreateBranchChainInfo& a, const CellCreateBranchChainInfo& b)
+    friend inline bool operator==(const MCCreateBranchChainInfo& a, const MCCreateBranchChainInfo& b)
     {
         return a.txid == b.txid && a.blockhash == b.blockhash && a.branchVSeeds == b.branchVSeeds && a.branchSeedSpec6 == b.branchSeedSpec6;
     }
@@ -91,7 +91,7 @@ public:
     uint256 blockhash;
     uint32_t txindex;
     int32_t txnVersion;
-    CellCreateBranchChainInfo createchaininfo; // temp data, not serialize
+    MCCreateBranchChainInfo createchaininfo; // temp data, not serialize
 
     bool IsInit() { return !blockhash.IsNull() && txindex != 0; }
 
@@ -147,18 +147,18 @@ class BranchChainTxRecordsCache
 {
 public:
     //已创建的支链和发起跨链交易
-    void AddBranchChainTxRecord(const CellTransactionRef& tx, const uint256& blockhash, uint32_t txindex);
-    void DelBranchChainTxRecord(const CellTransactionRef& tx);
+    void AddBranchChainTxRecord(const MCTransactionRef& tx, const uint256& blockhash, uint32_t txindex);
+    void DelBranchChainTxRecord(const MCTransactionRef& tx);
 
     //已接收的跨链交易
-    void AddBranchChainRecvTxRecord(const CellTransactionRef& tx, const uint256& blockhash);
-    void DelBranchChainRecvTxRecord(const CellTransactionRef& tx);
+    void AddBranchChainRecvTxRecord(const MCTransactionRef& tx, const uint256& blockhash);
+    void DelBranchChainRecvTxRecord(const MCTransactionRef& tx);
 
     //锁币解锁
     /**
      * fBlockConnect is in block connect or block disconnect
      */
-    void UpdateLockMineCoin(const CellTransactionRef& ptx, bool fBlockConnect);
+    void UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect);
 
     BRANCH_CHAIN_INFO_MAP m_mapChainTxInfos;
     BRANCH_CHAIN_RECV_MAP m_mapRecvRecord;//temp record.
@@ -176,11 +176,11 @@ public:
 
     BranchChainTxInfo GetBranchChainTxInfo(const uint256& txid);
 
-    bool IsTxRecvRepeat(const CellTransaction& tx, const CellBlock* pBlock = nullptr);
+    bool IsTxRecvRepeat(const MCTransaction& tx, const MCBlock* pBlock = nullptr);
 
     void Flush(BranchChainTxRecordsCache &cache);
 
-    typedef std::vector<CellCreateBranchChainInfo> CREATE_BRANCH_TX_CONTAINER;
+    typedef std::vector<MCCreateBranchChainInfo> CREATE_BRANCH_TX_CONTAINER;
 
     size_t GetCreateBranchSize() { return m_vCreatedBranchTxs.size(); }
     const CREATE_BRANCH_TX_CONTAINER& GetCreateBranchTxsInfo() { return m_vCreatedBranchTxs; }
@@ -188,7 +188,7 @@ public:
 
     bool IsMineCoinLock(const uint256& coinhash) const;
 private:
-    CellDBWrapper m_db;
+    MCDBWrapper m_db;
     CREATE_BRANCH_TX_CONTAINER m_vCreatedBranchTxs;
 };
 extern BranchChainTxRecordsDb* pBranchChainTxRecordsDb;

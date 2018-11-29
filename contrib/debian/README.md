@@ -1,8 +1,8 @@
 
 Debian
 ====================
-This directory contains files used to package bitcoind/magnachain-qt
-for Debian-based Linux systems. If you compile bitcoind/magnachain-qt yourself, there are some useful files here.
+This directory contains files used to package magnachaind/magnachain-qt
+for Debian-based Linux systems. If you compile magnachaind/magnachain-qt yourself, there are some useful files here.
 
 ## magnachain: URI support ##
 
@@ -15,7 +15,7 @@ To install:
 
 If you build yourself, you will either need to modify the paths in
 the .desktop file or copy or symlink your magnachain-qt binary to `/usr/bin`
-and the `../../share/pixmaps/bitcoin128.png` to `/usr/share/pixmaps`
+and the `../../share/pixmaps/magnachain128.png` to `/usr/share/pixmaps`
 
 magnachain-qt.protocol (KDE)
 

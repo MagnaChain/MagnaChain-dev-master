@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -27,7 +27,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper)
     // Perform tests both obfuscated and non-obfuscated.
     for (bool obfuscate : {false, true}) {
         fs::path ph = fs::temp_directory_path() / fs::unique_path();
-        CellDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
+        MCDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
         char key = 'k';
         uint256 in = InsecureRand256();
         uint256 res;
@@ -47,7 +47,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper_batch)
     // Perform tests both obfuscated and non-obfuscated.
     for (bool obfuscate : {false, true}) {
         fs::path ph = fs::temp_directory_path() / fs::unique_path();
-        CellDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
+        MCDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
 
         char key = 'i';
         uint256 in = InsecureRand256();
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper_batch)
         uint256 in3 = InsecureRand256();
 
         uint256 res;
-        CellDBBatch batch(dbw);
+        MCDBBatch batch(dbw);
 
         batch.Write(key, in);
         batch.Write(key2, in2);
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper_iterator)
     // Perform tests both obfuscated and non-obfuscated.
     for (bool obfuscate : {false, true}) {
         fs::path ph = fs::temp_directory_path() / fs::unique_path();
-        CellDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
+        MCDBWrapper dbw(ph, (1 << 20), true, false, obfuscate);
 
         // The two keys are intentionally chosen for ordering
         char key = 'j';
@@ -93,7 +93,7 @@ BOOST_AUTO_TEST_CASE(dbwrapper_iterator)
         uint256 in2 = InsecureRand256();
         BOOST_CHECK(dbw.Write(key2, in2));
 
-        std::unique_ptr<CellDBIterator> it(const_cast<CellDBWrapper&>(dbw).NewIterator());
+        std::unique_ptr<MCDBIterator> it(const_cast<MCDBWrapper&>(dbw).NewIterator());
 
         // Be sure to seek past the obfuscation key (if it exists)
         it->Seek(key);
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     create_directories(ph);
 
     // Set up a non-obfuscated wrapper to write some initial data.
-    CellDBWrapper* dbw = new CellDBWrapper(ph, (1 << 10), false, false, false);
+    MCDBWrapper* dbw = new MCDBWrapper(ph, (1 << 10), false, false, false);
     char key = 'k';
     uint256 in = InsecureRand256();
     uint256 res;
@@ -140,7 +140,7 @@ BOOST_AUTO_TEST_CASE(existing_data_no_obfuscate)
     dbw = nullptr;
 
     // Now, set up another wrapper that wants to obfuscate the same directory
-    CellDBWrapper odbw(ph, (1 << 10), false, false, true);
+    MCDBWrapper odbw(ph, (1 << 10), false, false, true);
 
     // Check that the key/val we wrote with unobfuscated wrapper exists and 
     // is readable.
@@ -168,7 +168,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     create_directories(ph);
 
     // Set up a non-obfuscated wrapper to write some initial data.
-    CellDBWrapper* dbw = new CellDBWrapper(ph, (1 << 10), false, false, false);
+    MCDBWrapper* dbw = new MCDBWrapper(ph, (1 << 10), false, false, false);
     char key = 'k';
     uint256 in = InsecureRand256();
     uint256 res;
@@ -182,7 +182,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
     dbw = nullptr;
 
     // Simulate a -reindex by wiping the existing data store
-    CellDBWrapper odbw(ph, (1 << 10), false, true, true);
+    MCDBWrapper odbw(ph, (1 << 10), false, true, true);
 
     // Check that the key/val we wrote with unobfuscated wrapper doesn't exist
     uint256 res2;
@@ -201,7 +201,7 @@ BOOST_AUTO_TEST_CASE(existing_data_reindex)
 BOOST_AUTO_TEST_CASE(iterator_ordering)
 {
     fs::path ph = fs::temp_directory_path() / fs::unique_path();
-    CellDBWrapper dbw(ph, (1 << 20), true, false, false);
+    MCDBWrapper dbw(ph, (1 << 20), true, false, false);
     for (int x=0x00; x<256; ++x) {
         uint8_t key = x;
         uint32_t value = x*x;
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(iterator_ordering)
     }
 
     // Check that creating an iterator creates a snapshot
-    std::unique_ptr<CellDBIterator> it(const_cast<CellDBWrapper&>(dbw).NewIterator());
+    std::unique_ptr<MCDBIterator> it(const_cast<MCDBWrapper&>(dbw).NewIterator());
 
     for (int x=0x00; x<256; ++x) {
         uint8_t key = x;
@@ -279,7 +279,7 @@ BOOST_AUTO_TEST_CASE(iterator_string_ordering)
     char buf[10];
 
     fs::path ph = fs::temp_directory_path() / fs::unique_path();
-    CellDBWrapper dbw(ph, (1 << 20), true, false, false);
+    MCDBWrapper dbw(ph, (1 << 20), true, false, false);
     for (int x=0x00; x<10; ++x) {
         for (int y = 0; y < 10; y++) {
             snprintf(buf, sizeof(buf), "%d", x);
@@ -291,7 +291,7 @@ BOOST_AUTO_TEST_CASE(iterator_string_ordering)
         }
     }
 
-    std::unique_ptr<CellDBIterator> it(const_cast<CellDBWrapper&>(dbw).NewIterator());
+    std::unique_ptr<MCDBIterator> it(const_cast<MCDBWrapper&>(dbw).NewIterator());
     for (int seek_start : {0, 5}) {
         snprintf(buf, sizeof(buf), "%d", seek_start);
         StringContentsSerializer seek_key(buf);

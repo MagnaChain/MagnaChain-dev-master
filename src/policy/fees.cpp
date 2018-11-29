@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -165,13 +165,13 @@ public:
     unsigned int GetMaxConfirms() const { return scale * confAvg.size(); }
 
     /** Write state of estimation data to a file*/
-    void Write(CellAutoFile& fileout) const;
+    void Write(MCAutoFile& fileout) const;
 
     /**
      * Read saved state of estimation data from a file and replace all internal data structures and
      * variables with this state.
      */
-    void Read(CellAutoFile& filein, int nFileVersion, size_t numBuckets);
+    void Read(MCAutoFile& filein, int nFileVersion, size_t numBuckets);
 };
 
 
@@ -395,7 +395,7 @@ double TxConfirmStats::EstimateMedianVal(int confTarget, double sufficientTxVal,
     return median;
 }
 
-void TxConfirmStats::Write(CellAutoFile& fileout) const
+void TxConfirmStats::Write(MCAutoFile& fileout) const
 {
     fileout << decay;
     fileout << scale;
@@ -405,7 +405,7 @@ void TxConfirmStats::Write(CellAutoFile& fileout) const
     fileout << failAvg;
 }
 
-void TxConfirmStats::Read(CellAutoFile& filein, int nFileVersion, size_t numBuckets)
+void TxConfirmStats::Read(MCAutoFile& filein, int nFileVersion, size_t numBuckets)
 {
     // Read data file and do some very basic sanity checking
     // buckets and bucketMap are not updated yet, so don't access them
@@ -511,12 +511,12 @@ void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHe
     }
 }
 
-// This function is called from CellTxMemPool::removeUnchecked to ensure
+// This function is called from MCTxMemPool::removeUnchecked to ensure
 // txs removed from the mempool for any reason are no longer
 // tracked. Txs that were part of a block have already been removed in
 // processBlockTx to ensure they are never double tracked, but it is
 // of no harm to try to remove them again.
-bool CellBlockPolicyEstimator::removeTx(uint256 hash, bool inBlock)
+bool MCBlockPolicyEstimator::removeTx(uint256 hash, bool inBlock)
 {
     LOCK(cs_feeEstimator);
     std::map<uint256, TxStatsInfo>::iterator pos = mapMemPoolTxs.find(hash);
@@ -531,7 +531,7 @@ bool CellBlockPolicyEstimator::removeTx(uint256 hash, bool inBlock)
     }
 }
 
-CellBlockPolicyEstimator::CellBlockPolicyEstimator()
+MCBlockPolicyEstimator::MCBlockPolicyEstimator()
     : nBestSeenHeight(0), firstRecordedHeight(0), historicalFirst(0), historicalBest(0), trackedTxs(0), untrackedTxs(0)
 {
     static_assert(MIN_BUCKET_FEERATE > 0, "Min feerate must be nonzero");
@@ -549,14 +549,14 @@ CellBlockPolicyEstimator::CellBlockPolicyEstimator()
     longStats = new TxConfirmStats(buckets, bucketMap, LONG_BLOCK_PERIODS, LONG_DECAY, LONG_SCALE);
 }
 
-CellBlockPolicyEstimator::~CellBlockPolicyEstimator()
+MCBlockPolicyEstimator::~MCBlockPolicyEstimator()
 {
     delete feeStats;
     delete shortStats;
     delete longStats;
 }
 
-void CellBlockPolicyEstimator::processTransaction(const CellTxMemPoolEntry& entry, bool validFeeEstimate)
+void MCBlockPolicyEstimator::processTransaction(const MCTxMemPoolEntry& entry, bool validFeeEstimate)
 {
     LOCK(cs_feeEstimator);
     unsigned int txHeight = entry.GetHeight();
@@ -584,7 +584,7 @@ void CellBlockPolicyEstimator::processTransaction(const CellTxMemPoolEntry& entr
     trackedTxs++;
 
     // Feerates are stored and reported as BTC-per-kb:
-    CellFeeRate feeRate(entry.GetFee(), entry.GetTxSize());
+    MCFeeRate feeRate(entry.GetFee(), entry.GetTxSize());
 
     mapMemPoolTxs[hash].blockHeight = txHeight;
     unsigned int bucketIndex = feeStats->NewTx(txHeight, (double)feeRate.GetFeePerK());
@@ -595,7 +595,7 @@ void CellBlockPolicyEstimator::processTransaction(const CellTxMemPoolEntry& entr
     assert(bucketIndex == bucketIndex3);
 }
 
-bool CellBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const CellTxMemPoolEntry* entry)
+bool MCBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const MCTxMemPoolEntry* entry)
 {
     if (!removeTx(entry->GetTx().GetHash(), true)) {
         // This transaction wasn't being tracked for fee estimation
@@ -614,7 +614,7 @@ bool CellBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const C
     }
 
     // Feerates are stored and reported as BTC-per-kb:
-    CellFeeRate feeRate(entry->GetFee(), entry->GetTxSize());
+    MCFeeRate feeRate(entry->GetFee(), entry->GetTxSize());
 
     feeStats->Record(blocksToConfirm, (double)feeRate.GetFeePerK());
     shortStats->Record(blocksToConfirm, (double)feeRate.GetFeePerK());
@@ -622,8 +622,8 @@ bool CellBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const C
     return true;
 }
 
-void CellBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
-                                         std::vector<const CellTxMemPoolEntry*>& entries)
+void MCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
+                                         std::vector<const MCTxMemPoolEntry*>& entries)
 {
     LOCK(cs_feeEstimator);
     if (nBlockHeight <= nBestSeenHeight) {
@@ -671,16 +671,16 @@ void CellBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     untrackedTxs = 0;
 }
 
-CellFeeRate CellBlockPolicyEstimator::estimateFee(int confTarget) const
+MCFeeRate MCBlockPolicyEstimator::estimateFee(int confTarget) const
 {
     // It's not possible to get reasonable estimates for confTarget of 1
     if (confTarget <= 1)
-        return CellFeeRate(0);
+        return MCFeeRate(0);
 
     return estimateRawFee(confTarget, DOUBLE_SUCCESS_PCT, FeeEstimateHorizon::MED_HALFLIFE);
 }
 
-CellFeeRate CellBlockPolicyEstimator::estimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult* result) const
+MCFeeRate MCBlockPolicyEstimator::estimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult* result) const
 {
     TxConfirmStats* stats;
     double sufficientTxs = SUFFICIENT_FEETXS;
@@ -699,26 +699,26 @@ CellFeeRate CellBlockPolicyEstimator::estimateRawFee(int confTarget, double succ
         break;
     }
     default: {
-        throw std::out_of_range("CellBlockPolicyEstimator::estimateRawFee unknown FeeEstimateHorizon");
+        throw std::out_of_range("MCBlockPolicyEstimator::estimateRawFee unknown FeeEstimateHorizon");
     }
     }
 
     LOCK(cs_feeEstimator);
     // Return failure if trying to analyze a target we're not tracking
     if (confTarget <= 0 || (unsigned int)confTarget > stats->GetMaxConfirms())
-        return CellFeeRate(0);
+        return MCFeeRate(0);
     if (successThreshold > 1)
-        return CellFeeRate(0);
+        return MCFeeRate(0);
 
     double median = stats->EstimateMedianVal(confTarget, sufficientTxs, successThreshold, true, nBestSeenHeight, result);
 
     if (median < 0)
-        return CellFeeRate(0);
+        return MCFeeRate(0);
 
-    return CellFeeRate(median);
+    return MCFeeRate(median);
 }
 
-unsigned int CellBlockPolicyEstimator::HighestTargetTracked(FeeEstimateHorizon horizon) const
+unsigned int MCBlockPolicyEstimator::HighestTargetTracked(FeeEstimateHorizon horizon) const
 {
     switch (horizon) {
     case FeeEstimateHorizon::SHORT_HALFLIFE: {
@@ -731,12 +731,12 @@ unsigned int CellBlockPolicyEstimator::HighestTargetTracked(FeeEstimateHorizon h
         return longStats->GetMaxConfirms();
     }
     default: {
-        throw std::out_of_range("CellBlockPolicyEstimator::HighestTargetTracked unknown FeeEstimateHorizon");
+        throw std::out_of_range("MCBlockPolicyEstimator::HighestTargetTracked unknown FeeEstimateHorizon");
     }
     }
 }
 
-unsigned int CellBlockPolicyEstimator::BlockSpan() const
+unsigned int MCBlockPolicyEstimator::BlockSpan() const
 {
     if (firstRecordedHeight == 0) return 0;
     assert(nBestSeenHeight >= firstRecordedHeight);
@@ -744,7 +744,7 @@ unsigned int CellBlockPolicyEstimator::BlockSpan() const
     return nBestSeenHeight - firstRecordedHeight;
 }
 
-unsigned int CellBlockPolicyEstimator::HistoricalBlockSpan() const
+unsigned int MCBlockPolicyEstimator::HistoricalBlockSpan() const
 {
     if (historicalFirst == 0) return 0;
     assert(historicalBest >= historicalFirst);
@@ -754,7 +754,7 @@ unsigned int CellBlockPolicyEstimator::HistoricalBlockSpan() const
     return historicalBest - historicalFirst;
 }
 
-unsigned int CellBlockPolicyEstimator::MaxUsableEstimate() const
+unsigned int MCBlockPolicyEstimator::MaxUsableEstimate() const
 {
     // Block spans are divided by 2 to make sure there are enough potential failing data points for the estimate
     return std::min(longStats->GetMaxConfirms(), std::max(BlockSpan(), HistoricalBlockSpan()) / 2);
@@ -764,7 +764,7 @@ unsigned int CellBlockPolicyEstimator::MaxUsableEstimate() const
  * time horizon which tracks confirmations up to the desired target.  If
  * checkShorterHorizon is requested, also allow short time horizon estimates
  * for a lower target to reduce the given answer */
-double CellBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const
+double MCBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const
 {
     double estimate = -1;
     if (confTarget >= 1 && confTarget <= longStats->GetMaxConfirms()) {
@@ -803,7 +803,7 @@ double CellBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, do
 /** Ensure that for a conservative estimate, the DOUBLE_SUCCESS_PCT is also met
  * at 2 * target for any longer time horizons.
  */
-double CellBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const
+double MCBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const
 {
     double estimate = -1;
     EstimationResult tempResult;
@@ -827,7 +827,7 @@ double CellBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarg
  * estimates, however, required the 95% threshold at 2 * target be met for any
  * longer time horizons also.
  */
-CellFeeRate CellBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const
+MCFeeRate MCBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const
 {
     LOCK(cs_feeEstimator);
 
@@ -841,7 +841,7 @@ CellFeeRate CellBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalcul
 
     // Return failure if trying to analyze a target we're not tracking
     if (confTarget <= 0 || (unsigned int)confTarget > longStats->GetMaxConfirms()) {
-        return CellFeeRate(0);  // error condition
+        return MCFeeRate(0);  // error condition
     }
 
     // It's not possible to get reasonable estimates for confTarget of 1
@@ -853,7 +853,7 @@ CellFeeRate CellBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalcul
     }
     if (feeCalc) feeCalc->returnedTarget = confTarget;
 
-    if (confTarget <= 1) return CellFeeRate(0); // error condition
+    if (confTarget <= 1) return MCFeeRate(0); // error condition
 
     assert(confTarget > 0); //estimateCombinedFee and estimateConservativeFee take unsigned ints
     /** true is passed to estimateCombined fee for target/2 and target so
@@ -900,13 +900,13 @@ CellFeeRate CellBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalcul
         }
     }
 
-    if (median < 0) return CellFeeRate(0); // error condition
+    if (median < 0) return MCFeeRate(0); // error condition
 
-    return CellFeeRate(median);
+    return MCFeeRate(median);
 }
 
 
-bool CellBlockPolicyEstimator::Write(CellAutoFile& fileout) const
+bool MCBlockPolicyEstimator::Write(MCAutoFile& fileout) const
 {
     try {
         LOCK(cs_feeEstimator);
@@ -925,20 +925,20 @@ bool CellBlockPolicyEstimator::Write(CellAutoFile& fileout) const
         longStats->Write(fileout);
     }
     catch (const std::exception&) {
-        LogPrintf("CellBlockPolicyEstimator::Write(): unable to write policy estimator data (non-fatal)\n");
+        LogPrintf("MCBlockPolicyEstimator::Write(): unable to write policy estimator data (non-fatal)\n");
         return false;
     }
     return true;
 }
 
-bool CellBlockPolicyEstimator::Read(CellAutoFile& filein)
+bool MCBlockPolicyEstimator::Read(MCAutoFile& filein)
 {
     try {
         LOCK(cs_feeEstimator);
         int nVersionRequired, nVersionThatWrote;
         filein >> nVersionRequired >> nVersionThatWrote;
         if (nVersionRequired > CLIENT_VERSION)
-            return error("CellBlockPolicyEstimator::Read(): up-version (%d) fee estimate file", nVersionRequired);
+            return error("MCBlockPolicyEstimator::Read(): up-version (%d) fee estimate file", nVersionRequired);
 
         // Read fee estimates file into temporary variables so existing data
         // structures aren't corrupted if there is an exception.
@@ -1011,13 +1011,13 @@ bool CellBlockPolicyEstimator::Read(CellAutoFile& filein)
         }
     }
     catch (const std::exception& e) {
-        LogPrintf("CellBlockPolicyEstimator::Read(): unable to read policy estimator data (non-fatal): %s\n",e.what());
+        LogPrintf("MCBlockPolicyEstimator::Read(): unable to read policy estimator data (non-fatal): %s\n",e.what());
         return false;
     }
     return true;
 }
 
-void CellBlockPolicyEstimator::FlushUnconfirmed(CellTxMemPool& pool) {
+void MCBlockPolicyEstimator::FlushUnconfirmed(MCTxMemPool& pool) {
     int64_t startclear = GetTimeMicros();
     std::vector<uint256> txids;
     pool.queryHashes(txids);
@@ -1029,16 +1029,16 @@ void CellBlockPolicyEstimator::FlushUnconfirmed(CellTxMemPool& pool) {
     LogPrint(BCLog::ESTIMATEFEE, "Recorded %u unconfirmed txs from mempool in %gs\n",txids.size(), (endclear - startclear)*0.000001);
 }
 
-FeeFilterRounder::FeeFilterRounder(const CellFeeRate& minIncrementalFee)
+FeeFilterRounder::FeeFilterRounder(const MCFeeRate& minIncrementalFee)
 {
-    CellAmount minFeeLimit = std::max(CellAmount(1), minIncrementalFee.GetFeePerK() / 2);
+    MCAmount minFeeLimit = std::max(MCAmount(1), minIncrementalFee.GetFeePerK() / 2);
     feeset.insert(0);
     for (double bucketBoundary = minFeeLimit; bucketBoundary <= MAX_FILTER_FEERATE; bucketBoundary *= FEE_FILTER_SPACING) {
         feeset.insert(bucketBoundary);
     }
 }
 
-CellAmount FeeFilterRounder::round(CellAmount currentMinFee)
+MCAmount FeeFilterRounder::round(MCAmount currentMinFee)
 {
     std::set<double>::iterator it = feeset.lower_bound(currentMinFee);
     if ((it != feeset.begin() && insecure_rand.rand32() % 3 != 0) || it == feeset.end()) {

@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -8,8 +8,8 @@
  * Server/client environment: argument handling, config file parsing,
  * logging, thread wrappers, startup time
  */
-#ifndef CELLLINK_UTIL_H
-#define CELLLINK_UTIL_H
+#ifndef MAGNACHAIN_UTIL_H
+#define MAGNACHAIN_UTIL_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -54,8 +54,8 @@ extern bool fLogIPs;
 extern std::atomic<bool> fReopenDebugLog;
 extern CTranslationInterface translationInterface;
 
-extern const char * const CELLLINK_CONF_FILENAME;
-extern const char * const CELLLINK_PID_FILENAME;
+extern const char * const MAGNACHAIN_CONF_FILENAME;
+extern const char * const MAGNACHAIN_PID_FILENAME;
 
 extern std::atomic<uint32_t> logCategories;
 
@@ -211,7 +211,7 @@ inline bool IsSwitchChar(char c)
 class ArgsManager
 {
 protected:
-    CellCriticalSection cs_args;
+    MCCriticalSection cs_args;
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
 public:
@@ -350,4 +350,4 @@ void BeginSampler(std::string name);
 void EndSampler(std::string name);
 int64_t GetSamplerTotalTime(std::string name);
 
-#endif // CELLLINK_UTIL_H
+#endif // MAGNACHAIN_UTIL_H

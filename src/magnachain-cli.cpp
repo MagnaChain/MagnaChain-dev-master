@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,12 +30,12 @@ static const int CONTINUE_EXECUTION=-1;
 
 std::string HelpMessageCli()
 {
-    const auto defaultBaseParams = CreateBaseChainParams(CellBaseChainParams::MAIN);
-    const auto testnetBaseParams = CreateBaseChainParams(CellBaseChainParams::TESTNET);
+    const auto defaultBaseParams = CreateBaseChainParams(MCBaseChainParams::MAIN);
+    const auto testnetBaseParams = CreateBaseChainParams(MCBaseChainParams::TESTNET);
     std::string strUsage;
     strUsage += HelpMessageGroup(_("Options:"));
     strUsage += HelpMessageOpt("-?", _("This help message"));
-    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), CELLLINK_CONF_FILENAME));
+    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), MAGNACHAIN_CONF_FILENAME));
     strUsage += HelpMessageOpt("-datadir=<dir>", _("Specify data directory"));
     AppendParamsHelpMessages(strUsage);
     strUsage += HelpMessageOpt("-named", strprintf(_("Pass named instead of positional arguments (default: %s)"), DEFAULT_NAMED));
@@ -60,11 +60,11 @@ std::string HelpMessageCli()
 // Exception thrown on connection error.  This error is used to determine
 // when to wait if -rpcwait is given.
 //
-class CellConnectionFailed : public std::runtime_error
+class MCConnectionFailed : public std::runtime_error
 {
 public:
 
-    explicit inline CellConnectionFailed(const std::string& msg) :
+    explicit inline MCConnectionFailed(const std::string& msg) :
         std::runtime_error(msg)
     {}
 
@@ -104,7 +104,7 @@ static int AppInitRPC(int argc, char* argv[])
         return EXIT_FAILURE;
     }
     try {
-        gArgs.ReadConfigFile(gArgs.GetArg("-conf", CELLLINK_CONF_FILENAME));
+        gArgs.ReadConfigFile(gArgs.GetArg("-conf", MAGNACHAIN_CONF_FILENAME));
     } catch (const std::exception& e) {
         fprintf(stderr,"Error reading configuration file: %s\n", e.what());
         return EXIT_FAILURE;
@@ -223,7 +223,7 @@ UniValue CallRPC(const std::string& strMethod, const UniValue& params)
         if (!GetAuthCookie(&strRPCUserColonPass)) {
             throw std::runtime_error(strprintf(
                 _("Could not locate RPC credentials. No authentication cookie could be found, and no rpcpassword is set in the configuration file (%s)"),
-                    GetConfigFile(gArgs.GetArg("-conf", CELLLINK_CONF_FILENAME)).string().c_str()));
+                    GetConfigFile(gArgs.GetArg("-conf", MAGNACHAIN_CONF_FILENAME)).string().c_str()));
 
         }
     } else {
@@ -252,19 +252,19 @@ UniValue CallRPC(const std::string& strMethod, const UniValue& params)
             free(encodedURI);
         }
         else {
-            throw CellConnectionFailed("uri-encode failed");
+            throw MCConnectionFailed("uri-encode failed");
         }
     }
     int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, endpoint.c_str());
     req.release(); // ownership moved to evcon in above call
     if (r != 0) {
-        throw CellConnectionFailed("send http request failed");
+        throw MCConnectionFailed("send http request failed");
     }
 
     event_base_dispatch(base.get());
 
     if (response.status == 0)
-        throw CellConnectionFailed(strprintf("couldn't connect to server: %s (code %d)\n(make sure server is running and you are connecting to the correct RPC port)", http_errorstring(response.error), response.error));
+        throw MCConnectionFailed(strprintf("couldn't connect to server: %s (code %d)\n(make sure server is running and you are connecting to the correct RPC port)", http_errorstring(response.error), response.error));
     else if (response.status == HTTP_UNAUTHORIZED)
         throw std::runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
     else if (response.status >= 400 && response.status != HTTP_BAD_REQUEST && response.status != HTTP_NOT_FOUND && response.status != HTTP_INTERNAL_SERVER_ERROR)
@@ -326,7 +326,7 @@ int CommandLineRPC(int argc, char *argv[])
                     // Error
                     int code = error["code"].get_int();
                     if (fWait && code == RPC_IN_WARMUP)
-                        throw CellConnectionFailed("server in warmup");
+                        throw MCConnectionFailed("server in warmup");
                     strPrint = "error: " + error.write();
                     nRet = abs(code);
                     if (error.isObject())
@@ -354,7 +354,7 @@ int CommandLineRPC(int argc, char *argv[])
                 // Connection succeeded, no need to retry.
                 break;
             }
-            catch (const CellConnectionFailed&) {
+            catch (const MCConnectionFailed&) {
                 if (fWait)
                     MilliSleep(1000);
                 else

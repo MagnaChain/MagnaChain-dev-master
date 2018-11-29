@@ -1,4 +1,4 @@
-# Copyright (c) 2015-2016 The Bitcoin Core developers
+# Copyright (c) 2015-2016 The MagnaChain Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,14 +31,14 @@ bench_bench_magnachain_SOURCES = \
 
 nodist_bench_bench_magnachain_SOURCES = $(GENERATED_TEST_FILES)
 
-bench_bench_magnachain_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(EVENT_CLFAGS) $(EVENT_PTHREADS_CFLAGS) -I$(builddir)/bench/
+bench_bench_magnachain_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(EVENT_CLFAGS) $(EVENT_PTHREADS_CFLAGS) -I$(builddir)/bench/
 bench_bench_magnachain_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 bench_bench_magnachain_LDADD = \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_COMMON) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_CRYPTO) \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -46,20 +46,20 @@ bench_bench_magnachain_LDADD = \
   $(LIBUNIVALUE)
 
 if ENABLE_ZMQ
-bench_bench_magnachain_LDADD += $(LIBCELLLINK_ZMQ) $(ZMQ_LIBS)
+bench_bench_magnachain_LDADD += $(LIBMAGNACHAIN_ZMQ) $(ZMQ_LIBS)
 endif
 
 if ENABLE_WALLET
 bench_bench_magnachain_SOURCES += bench/coin_selection.cpp
-bench_bench_magnachain_LDADD += $(LIBCELLLINK_WALLET) $(LIBCELLLINK_CRYPTO)
+bench_bench_magnachain_LDADD += $(LIBMAGNACHAIN_WALLET) $(LIBMAGNACHAIN_CRYPTO)
 endif
 
 bench_bench_magnachain_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS)
 bench_bench_magnachain_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
-CLEAN_CELLLINK_BENCH = bench/*.gcda bench/*.gcno $(GENERATED_TEST_FILES)
+CLEAN_MAGNACHAIN_BENCH = bench/*.gcda bench/*.gcno $(GENERATED_TEST_FILES)
 
-CLEANFILES += $(CLEAN_CELLLINK_BENCH)
+CLEANFILES += $(CLEAN_MAGNACHAIN_BENCH)
 
 bench/checkblock.cpp: bench/data/block413567.raw.h
 
@@ -69,7 +69,7 @@ bench: $(BENCH_BINARY) FORCE
 	$(BENCH_BINARY)
 
 magnachain_bench_clean : FORCE
-	rm -f $(CLEAN_CELLLINK_BENCH) $(bench_bench_magnachain_OBJECTS) $(BENCH_BINARY)
+	rm -f $(CLEAN_MAGNACHAIN_BENCH) $(bench_bench_magnachain_OBJECTS) $(BENCH_BINARY)
 
 %.raw.h: %.raw
 	@$(MKDIR_P) $(@D)

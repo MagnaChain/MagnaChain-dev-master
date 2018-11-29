@@ -40,14 +40,14 @@ public:
     }
 };
 
-class CellContractID;
-typedef std::map<CellContractID, DBBlockContractInfo> DBContractMap;
-typedef std::map<CellContractID, ContractInfo> CONTRACT_DATA;
+class MCContractID;
+typedef std::map<MCContractID, DBBlockContractInfo> DBContractMap;
+typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
 
 class ContractTxFinalData
 {
 public:
-    CellAmount coins;
+    MCAmount coins;
     std::vector<CONTRACT_DATA> data;
 };
 
@@ -62,9 +62,9 @@ public:
     CONTRACT_DATA prevData;
 
 public:
-    void SetCache(const CellContractID& contractId, ContractInfo& contractInfo);
-    void SetData(const CellContractID& contractId, ContractInfo& contractInfo);
-    bool GetData(const CellContractID& contractId, ContractInfo& contractInfo);
+    void SetCache(const MCContractID& contractId, ContractInfo& contractInfo);
+    void SetData(const MCContractID& contractId, ContractInfo& contractInfo);
+    bool GetData(const MCContractID& contractId, ContractInfo& contractInfo);
     void Commit();
     void ClearCache();
     void ClearData();
@@ -72,7 +72,7 @@ public:
 };
 
 class SmartLuaState;
-class CellLinkAddress;
+class MagnaChainAddress;
 
 struct SmartContractThreadData
 {
@@ -80,19 +80,19 @@ struct SmartContractThreadData
     uint16_t groupSize;
     int blockHeight;
     ContractContext contractContext;
-    CellBlockIndex* pPrevBlockIndex;
+    MCBlockIndex* pPrevBlockIndex;
     CoinAmountCache* pCoinAmountCache;
     std::set<uint256> associationTransactions;
 };
 
-typedef std::map<uint256, std::vector<std::map<CellContractID, ContractInfo>>> BLOCK_CONTRACT_DATA;
+typedef std::map<uint256, std::vector<std::map<MCContractID, ContractInfo>>> BLOCK_CONTRACT_DATA;
 class ContractDataDB
 {
 private:
-    CellDBWrapper db;
+    MCDBWrapper db;
     boost::threadpool::pool threadPool;
     std::map<boost::thread::id, SmartLuaState*> threadId2SmartLuaState;
-    mutable CellCriticalSection cs_cache;
+    mutable MCCriticalSection cs_cache;
 
     // 合约缓存，同时包含多个合约对应的多个块合约数据快照
     DBContractMap contractData;
@@ -109,17 +109,17 @@ public:
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     static void InitializeThread(ContractDataDB* contractDB);
 
-    int GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
+    int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex);
 
-    bool RunBlockContract(CellBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
-    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, CellBlock* pBlock, SmartContractThreadData* threadData);
-    void ExecutiveTransactionContract(SmartLuaState* sls, CellBlock* pBlock, SmartContractThreadData* threadData);
+    bool RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
+    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, MCBlock* pBlock, SmartContractThreadData* threadData);
+    void ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* pBlock, SmartContractThreadData* threadData);
 
-    void UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* contractContext);
+    void UpdateBlockContractInfo(MCBlockIndex* pBlockIndex, ContractContext* contractContext);
     void Flush();
 };
 extern ContractDataDB* mpContractDb;
 
-extern CellAmount GetTxContractOut(const CellTransaction& tx);
+extern MCAmount GetTxContractOut(const MCTransaction& tx);
 
 #endif

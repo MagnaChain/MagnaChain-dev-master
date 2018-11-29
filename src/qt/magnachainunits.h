@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CELLLINKUNITS_H
-#define CELLLINK_QT_CELLLINKUNITS_H
+#ifndef MAGNACHAIN_QT_MAGNACHAINUNITS_H
+#define MAGNACHAIN_QT_MAGNACHAINUNITS_H
 
 #include "misc/amount.h"
 
@@ -42,17 +42,17 @@
 #define THIN_SP_UTF8 REAL_THIN_SP_UTF8
 #define THIN_SP_HTML HTML_HACK_SP
 
-/** CellLink unit definitions. Encapsulates parsing and formatting
+/** MagnaChain unit definitions. Encapsulates parsing and formatting
    and serves as list model for drop-down selection boxes.
 */
-class CellLinkUnits: public QAbstractListModel
+class MagnaChainUnits: public QAbstractListModel
 {
     Q_OBJECT
 
 public:
-    explicit CellLinkUnits(QObject *parent);
+    explicit MagnaChainUnits(QObject *parent);
 
-    /** CellLink units.
+    /** MagnaChain units.
       @note Source: https://en.magnachain.it/wiki/Units . Please add only sensible ones
      */
     enum Unit
@@ -86,13 +86,13 @@ public:
     //! Number of decimals left
     static int decimals(int unit);
     //! Format as string
-    static QString format(int unit, const CellAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    static QString format(int unit, const MCAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     //! Format as string (with unit)
-    static QString formatWithUnit(int unit, const CellAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    static QString formatWithUnit(int unit, const MCAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     //! Format as HTML string (with unit)
-    static QString formatHtmlWithUnit(int unit, const CellAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
+    static QString formatHtmlWithUnit(int unit, const MCAmount& amount, bool plussign=false, SeparatorStyle separators=separatorStandard);
     //! Parse string to coin amount
-    static bool parse(int unit, const QString &value, CellAmount *val_out);
+    static bool parse(int unit, const QString &value, MCAmount *val_out);
     //! Gets title for amount column including current display unit if optionsModel reference available */
     static QString getAmountColumnTitle(int unit);
     ///@}
@@ -119,11 +119,11 @@ public:
     }
 
     //! Return maximum number of base units (Satoshis)
-    static CellAmount maxMoney();
+    static MCAmount maxMoney();
 
 private:
-    QList<CellLinkUnits::Unit> unitlist;
+    QList<MagnaChainUnits::Unit> unitlist;
 };
-typedef CellLinkUnits::Unit CellLinkUnit;
+typedef MagnaChainUnits::Unit MagnaChainUnit;
 
-#endif // CELLLINK_QT_CELLLINKUNITS_H
+#endif // MAGNACHAIN_QT_MAGNACHAINUNITS_H

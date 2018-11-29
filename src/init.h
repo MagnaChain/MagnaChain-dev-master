@@ -1,16 +1,16 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_INIT_H
-#define CELLLINK_INIT_H
+#ifndef MAGNACHAIN_INIT_H
+#define MAGNACHAIN_INIT_H
 
 #include <string>
 
-class CellScheduler;
-class CellWallet;
+class MCScheduler;
+class MCWallet;
 
 namespace boost
 {
@@ -51,16 +51,16 @@ bool AppInitSanityChecks();
  */
 bool AppInitLockDataDirectory();
 /**
- * CellLink core main initialization.
+ * MagnaChain core main initialization.
  * @note This should only be done after daemonization. Call Shutdown() if this function fails.
  * @pre Parameters should be parsed and config file should be read, AppInitLockDataDirectory should have been called.
  */
-bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler);
+bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler);
 
 /** The help message mode determines what help message to show */
 enum HelpMessageMode {
-    HMM_CELLLINKD,
-    HMM_CELLLINK_QT
+    HMM_MAGNACHAIND,
+    HMM_MAGNACHAIN_QT
 };
 
 /** Help for options shared between UI and daemon (for -help) */
@@ -68,4 +68,4 @@ std::string HelpMessage(HelpMessageMode mode);
 /** Returns licensing information (for -version) */
 std::string LicenseInfo();
 
-#endif // CELLLINK_INIT_H
+#endif // MAGNACHAIN_INIT_H

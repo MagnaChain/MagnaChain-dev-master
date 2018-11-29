@@ -3,7 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-_bitcoin_tx() {
+_magnachain_tx() {
     local cur prev words=() cword
     local magnachain_tx
 
@@ -46,7 +46,7 @@ _bitcoin_tx() {
 
     return 0
 } &&
-complete -F _bitcoin_tx magnachain-tx
+complete -F _magnachain_tx magnachain-tx
 
 # Local variables:
 # mode: shell-script

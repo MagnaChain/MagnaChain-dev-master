@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,7 +17,7 @@ typedef std::vector<unsigned char> valtype;
 bool fAcceptDatacarrier = DEFAULT_ACCEPT_DATACARRIER;
 unsigned nMaxDatacarrierBytes = MAX_OP_RETURN_RELAY;
 
-CellScriptID::CellScriptID(const CellScript& in) : uint160(Hash160(in.begin(), in.end())) {}
+MCScriptID::MCScriptID(const MCScript& in) : uint160(Hash160(in.begin(), in.end())) {}
 
 const char* GetTxnOutputType(txnouttype t)
 {
@@ -44,41 +44,41 @@ const char* GetTxnOutputType(txnouttype t)
 /**
  * Return public keys or hashes from scriptPubKey, for 'standard' transaction types.
  */
-bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet)
+bool Solver(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet)
 {
     // Templates
-    static std::multimap<txnouttype, CellScript> mTemplates;
+    static std::multimap<txnouttype, MCScript> mTemplates;
     if (mTemplates.empty())
     {
         // Standard tx, sender provides pubkey, receiver adds signature
-        mTemplates.insert(std::make_pair(TX_PUBKEY, CellScript() << OP_PUBKEY << OP_CHECKSIG));
+        mTemplates.insert(std::make_pair(TX_PUBKEY, MCScript() << OP_PUBKEY << OP_CHECKSIG));
 
-        // CellLink address tx, sender provides hash of pubkey, receiver provides signature and pubkey
-        mTemplates.insert(std::make_pair(TX_PUBKEYHASH, CellScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
+        // MagnaChain address tx, sender provides hash of pubkey, receiver provides signature and pubkey
+        mTemplates.insert(std::make_pair(TX_PUBKEYHASH, MCScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
         // Sender provides N pubkeys, receivers provides M signatures
-        mTemplates.insert(std::make_pair(TX_MULTISIG, CellScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
+        mTemplates.insert(std::make_pair(TX_MULTISIG, MCScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
 
         //create branch mortgage
-		mTemplates.insert(std::make_pair(TX_CREATE_BRANCH, CellScript() << OP_CREATE_BRANCH << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
+		mTemplates.insert(std::make_pair(TX_CREATE_BRANCH, MCScript() << OP_CREATE_BRANCH << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
 		//cross chain send
-        mTemplates.insert(std::make_pair(TX_TRANS_BRANCH, CellScript() << OP_RETURN << OP_TRANS_BRANCH));
+        mTemplates.insert(std::make_pair(TX_TRANS_BRANCH, MCScript() << OP_RETURN << OP_TRANS_BRANCH));
         
         //send branch tx
-        mTemplates.insert(std::make_pair(TX_SEND_BRANCH, CellScript() << OP_TRANS_BRANCH << OP_HASH256_DATA));
+        mTemplates.insert(std::make_pair(TX_SEND_BRANCH, MCScript() << OP_TRANS_BRANCH << OP_HASH256_DATA));
 
         //mine branch chain mortgage(OP_HASH256_DATA is branch id of which chain will be mined)
         //前部分是数据，后部分是pay to pubkeyhash
-        mTemplates.insert(std::make_pair(TX_MINE_MORTGAGE, CellScript() << OP_MINE_BRANCH_MORTGAGE << OP_HASH256_DATA << OP_BLOCK_HIGH << OP_2DROP <<
+        mTemplates.insert(std::make_pair(TX_MINE_MORTGAGE, MCScript() << OP_MINE_BRANCH_MORTGAGE << OP_HASH256_DATA << OP_BLOCK_HIGH << OP_2DROP <<
             OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
         //mortgage coin(OP_HASH256_DATA is txid of TX_MINE_MORTGAGE tx) 用来标识挖矿币来个抵押币vout所在的交易的txid, OP_BLOCK_HIGH: pre coin height
-        mTemplates.insert(std::make_pair(TX_MORTGAGE_COIN, CellScript() << OP_MINE_BRANCH_COIN << OP_HASH256_DATA << OP_BLOCK_HIGH << OP_2DROP <<
+        mTemplates.insert(std::make_pair(TX_MORTGAGE_COIN, MCScript() << OP_MINE_BRANCH_COIN << OP_HASH256_DATA << OP_BLOCK_HIGH << OP_2DROP <<
             OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
         //redeeem mortgage coin 赎回抵押挖矿的币 OP_HASH256_DATA 是主链上 txid, vout nValue为0
-        mTemplates.insert(std::make_pair(TX_REDEEM_MORTGAGE, CellScript() << OP_RETURN << OP_REDEEM_MORTGAGE << OP_HASH256_DATA));
+        mTemplates.insert(std::make_pair(TX_REDEEM_MORTGAGE, MCScript() << OP_RETURN << OP_REDEEM_MORTGAGE << OP_HASH256_DATA));
     }
 
     vSolutionsRet.clear();
@@ -120,18 +120,18 @@ bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std
     }
 
     // Scan templates
-    const CellScript& script1 = scriptPubKey;
-    for (const std::pair<txnouttype, CellScript>& tplate : mTemplates)
+    const MCScript& script1 = scriptPubKey;
+    for (const std::pair<txnouttype, MCScript>& tplate : mTemplates)
     {
-        const CellScript& script2 = tplate.second;
+        const MCScript& script2 = tplate.second;
         vSolutionsRet.clear();
 
         opcodetype opcode1, opcode2;
         std::vector<unsigned char> vch1, vch2;
 
         // Compare
-        CellScript::const_iterator pc1 = script1.begin();
-        CellScript::const_iterator pc2 = script2.begin();
+        MCScript::const_iterator pc1 = script1.begin();
+        MCScript::const_iterator pc2 = script2.begin();
         while (true)
         {
             if (pc1 == script1.end() && pc2 == script2.end())
@@ -185,7 +185,7 @@ bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std
                 if (opcode1 == OP_0 ||
                     (opcode1 >= OP_1 && opcode1 <= OP_16))
                 {
-                    char n = (char)CellScript::DecodeOP_N(opcode1);
+                    char n = (char)MCScript::DecodeOP_N(opcode1);
                     vSolutionsRet.push_back(valtype(1, n));
                 }
                 else
@@ -218,7 +218,7 @@ bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std
     return false;
 }
 
-bool ExtractDestination(const CellScript& scriptPubKey, CellTxDestination& addressRet)
+bool ExtractDestination(const MCScript& scriptPubKey, MCTxDestination& addressRet)
 {
     std::vector<valtype> vSolutions;
     txnouttype whichType;
@@ -227,7 +227,7 @@ bool ExtractDestination(const CellScript& scriptPubKey, CellTxDestination& addre
 
     if (whichType == TX_PUBKEY)
     {
-        CellPubKey pubKey(vSolutions[0]);
+        MCPubKey pubKey(vSolutions[0]);
         if (!pubKey.IsValid())
             return false;
 
@@ -236,24 +236,24 @@ bool ExtractDestination(const CellScript& scriptPubKey, CellTxDestination& addre
     }
     else if (whichType == TX_PUBKEYHASH)
     {
-        addressRet = CellKeyID(uint160(vSolutions[0]));
+        addressRet = MCKeyID(uint160(vSolutions[0]));
         return true;
     }
     else if (whichType == TX_SCRIPTHASH)
     {
-        addressRet = CellScriptID(uint160(vSolutions[0]));
+        addressRet = MCScriptID(uint160(vSolutions[0]));
         return true;
     }
     else if (whichType == TX_CREATE_BRANCH || whichType == TX_MINE_MORTGAGE || whichType == TX_MORTGAGE_COIN)
     {
-        addressRet = CellKeyID(uint160(vSolutions[0]));
+        addressRet = MCKeyID(uint160(vSolutions[0]));
         return true;
     }
     // Multisig txns have more than one address...
     return false;
 }
 
-bool ExtractDestinations(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<CellTxDestination>& addressRet, int& nRequiredRet)
+bool ExtractDestinations(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<MCTxDestination>& addressRet, int& nRequiredRet)
 {
     addressRet.clear();
     typeRet = TX_NONSTANDARD;
@@ -270,11 +270,11 @@ bool ExtractDestinations(const CellScript& scriptPubKey, txnouttype& typeRet, st
         nRequiredRet = vSolutions.front()[0];
         for (unsigned int i = 1; i < vSolutions.size()-1; i++)
         {
-            CellPubKey pubKey(vSolutions[i]);
+            MCPubKey pubKey(vSolutions[i]);
             if (!pubKey.IsValid())
                 continue;
 
-            CellTxDestination address = pubKey.GetID();
+            MCTxDestination address = pubKey.GetID();
             addressRet.push_back(address);
         }
 
@@ -284,7 +284,7 @@ bool ExtractDestinations(const CellScript& scriptPubKey, txnouttype& typeRet, st
     else
     {
         nRequiredRet = 1;
-        CellTxDestination address;
+        MCTxDestination address;
         if (!ExtractDestination(scriptPubKey, address))
            return false;
         addressRet.push_back(address);
@@ -298,28 +298,28 @@ namespace
     class CScriptVisitor : public boost::static_visitor<bool>
     {
     private:
-        CellScript* script;
+        MCScript* script;
     public:
-        CScriptVisitor(CellScript *scriptin) { script = scriptin; }
+        CScriptVisitor(MCScript *scriptin) { script = scriptin; }
 
-        bool operator()(const CellNoDestination &dest) const {
+        bool operator()(const MCNoDestination &dest) const {
             script->clear();
             return false;
         }
 
-        bool operator()(const CellContractID &contractID) const {
+        bool operator()(const MCContractID &contractID) const {
             script->clear();
             *script << OP_CONTRACT << ToByteVector(contractID);
             return true;
         }
 
-        bool operator()(const CellKeyID &keyID) const {
+        bool operator()(const MCKeyID &keyID) const {
             script->clear();
             *script << OP_DUP << OP_HASH160 << ToByteVector(keyID) << OP_EQUALVERIFY << OP_CHECKSIG;
             return true;
         }
 
-        bool operator()(const CellScriptID &scriptID) const {
+        bool operator()(const MCScriptID &scriptID) const {
             script->clear();
             *script << OP_HASH160 << ToByteVector(scriptID) << OP_EQUAL;
             return true;
@@ -327,32 +327,32 @@ namespace
     };
 } // namespace
 
-CellScript GetScriptForDestination(const CellTxDestination& dest)
+MCScript GetScriptForDestination(const MCTxDestination& dest)
 {
-    CellScript script;
+    MCScript script;
     boost::apply_visitor(CScriptVisitor(&script), dest);
     return script;
 }
 
-CellScript GetScriptForRawPubKey(const CellPubKey& pubKey)
+MCScript GetScriptForRawPubKey(const MCPubKey& pubKey)
 {
-    return CellScript() << std::vector<unsigned char>(pubKey.begin(), pubKey.end()) << OP_CHECKSIG;
+    return MCScript() << std::vector<unsigned char>(pubKey.begin(), pubKey.end()) << OP_CHECKSIG;
 }
 
-CellScript GetScriptForMultisig(int nRequired, const std::vector<CellPubKey>& keys)
+MCScript GetScriptForMultisig(int nRequired, const std::vector<MCPubKey>& keys)
 {
-    CellScript script;
+    MCScript script;
 
-    script << CellScript::EncodeOP_N(nRequired);
-    for (const CellPubKey& key : keys)
+    script << MCScript::EncodeOP_N(nRequired);
+    for (const MCPubKey& key : keys)
         script << ToByteVector(key);
-    script << CellScript::EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
+    script << MCScript::EncodeOP_N(keys.size()) << OP_CHECKMULTISIG;
     return script;
 }
 
-CellScript GetScriptForWitness(const CellScript& redeemscript)
+MCScript GetScriptForWitness(const MCScript& redeemscript)
 {
-    CellScript ret;
+    MCScript ret;
 
     txnouttype typ;
     std::vector<std::vector<unsigned char> > vSolutions;

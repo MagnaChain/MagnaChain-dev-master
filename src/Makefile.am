@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2016 The Bitcoin Core developers
+# Copyright (c) 2013-2016 The MagnaChain Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,29 +19,29 @@ else
 LIBUNIVALUE = $(UNIVALUE_LIBS)
 endif
 
-CELLLINK_CONFIG_INCLUDES=-I$(builddir)/config
-CELLLINK_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
+MAGNACHAIN_CONFIG_INCLUDES=-I$(builddir)/config
+MAGNACHAIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
-CELLLINK_INCLUDES += -I$(srcdir)/secp256k1/include
-CELLLINK_INCLUDES += $(UNIVALUE_CFLAGS)
+MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include
+MAGNACHAIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
-LIBCELLLINK_SERVER=libmagnachain_server.a
-LIBCELLLINK_COMMON=libmagnachain_common.a
-LIBCELLLINK_CONSENSUS=libmagnachain_consensus.a
-LIBCELLLINK_CLI=libmagnachain_cli.a
-LIBCELLLINK_UTIL=libmagnachain_util.a
-LIBCELLLINK_CRYPTO=crypto/libmagnachain_crypto.a
-LIBCELLLINKQT=qt/libmagnachainqt.a
+LIBMAGNACHAIN_SERVER=libmagnachain_server.a
+LIBMAGNACHAIN_COMMON=libmagnachain_common.a
+LIBMAGNACHAIN_CONSENSUS=libmagnachain_consensus.a
+LIBMAGNACHAIN_CLI=libmagnachain_cli.a
+LIBMAGNACHAIN_UTIL=libmagnachain_util.a
+LIBMAGNACHAIN_CRYPTO=crypto/libmagnachain_crypto.a
+LIBMAGNACHAINQT=qt/libmagnachainqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
 if ENABLE_ZMQ
-LIBCELLLINK_ZMQ=libmagnachain_zmq.a
+LIBMAGNACHAIN_ZMQ=libmagnachain_zmq.a
 endif
-if BUILD_CELLLINK_LIBS
-LIBCELLLINKCONSENSUS=libmagnachainconsensus.la
+if BUILD_MAGNACHAIN_LIBS
+LIBMAGNACHAINCONSENSUS=libmagnachainconsensus.la
 endif
 if ENABLE_WALLET
-LIBCELLLINK_WALLET=libmagnachain_wallet.a
+LIBMAGNACHAIN_WALLET=libmagnachain_wallet.a
 endif
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -50,33 +50,33 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES += \
-  $(LIBCELLLINK_CRYPTO) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_COMMON) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_CLI) \
-  $(LIBCELLLINK_WALLET) \
-  $(LIBCELLLINK_ZMQ)
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_COMMON) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_CLI) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ)
 
-lib_LTLIBRARIES = $(LIBCELLLINKCONSENSUS)
+lib_LTLIBRARIES = $(LIBMAGNACHAINCONSENSUS)
 
 bin_PROGRAMS =
 noinst_PROGRAMS =
 TESTS =
 BENCHMARKS =
 
-if BUILD_CELLLINKD
+if BUILD_MAGNACHAIND
   bin_PROGRAMS += magnachaind
 endif
 
-if BUILD_CELLLINK_UTILS
+if BUILD_MAGNACHAIN_UTILS
   bin_PROGRAMS += magnachain-cli magnachain-tx
 endif
 
 .PHONY: FORCE check-symbols check-security
 # magnachain core #
-CELLLINK_CORE_H = \
+MAGNACHAIN_CORE_H = \
   address/addrdb.h \
   address/addrman.h \
   coding/base58.h \
@@ -183,7 +183,7 @@ obj/build.h: FORCE
 libmagnachain_util_a-clientversion.$(OBJEXT): obj/build.h
 
 # server: shared between magnachaind and magnachain-qt
-libmagnachain_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(MINIUPNPC_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
+libmagnachain_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MINIUPNPC_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
 libmagnachain_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_server_a_SOURCES = \
   address/addrdb.cpp \
@@ -229,10 +229,10 @@ libmagnachain_server_a_SOURCES = \
   chain/branchchain.cpp \
   chain/branchdb.cpp \
   chain/branchtxdb.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 if ENABLE_ZMQ
-libmagnachain_zmq_a_CPPFLAGS = $(CELLLINK_INCLUDES) $(ZMQ_CFLAGS)
+libmagnachain_zmq_a_CPPFLAGS = $(MAGNACHAIN_INCLUDES) $(ZMQ_CFLAGS)
 libmagnachain_zmq_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_zmq_a_SOURCES = \
   zmq/zmqabstractnotifier.cpp \
@@ -243,7 +243,7 @@ endif
 
 # wallet: shared between magnachaind and magnachain-qt, but only linked
 # when wallet enabled
-libmagnachain_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+libmagnachain_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_wallet_a_SOURCES = \
   wallet/crypter.cpp \
@@ -253,10 +253,10 @@ libmagnachain_wallet_a_SOURCES = \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
   wallet/walletdb.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 # crypto primitives library
-crypto_libmagnachain_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(CELLLINK_CONFIG_INCLUDES)
+crypto_libmagnachain_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_CONFIG_INCLUDES)
 crypto_libmagnachain_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libmagnachain_crypto_a_SOURCES = \
   crypto/aes.cpp \
@@ -317,7 +317,7 @@ crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
 endif
 
 # consensus: shared between all executables that validate any consensus rules.
-libmagnachain_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+libmagnachain_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_consensus_a_SOURCES = \
   misc/amount.h \
@@ -354,7 +354,7 @@ libmagnachain_consensus_a_SOURCES = \
   misc/version.h
 
 # common: shared between magnachaind, and magnachain-qt and non-server tools
-libmagnachain_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+libmagnachain_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_common_a_SOURCES = \
   coding/base58.cpp \
@@ -373,12 +373,12 @@ libmagnachain_common_a_SOURCES = \
   script/sign.cpp \
   script/standard.cpp \
   misc/warnings.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 # util: shared between all executables.
 # This library *must* be included to make sure that the glibc
 # backward-compatibility objects and their sanity checks are linked.
-libmagnachain_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+libmagnachain_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_util_a_SOURCES = \
   support/lockedpool.cpp \
@@ -397,25 +397,25 @@ libmagnachain_util_a_SOURCES = \
   utils/utilmoneystr.cpp \
   utils/utilstrencodings.cpp \
   utils/utiltime.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 if GLIBC_BACK_COMPAT
 libmagnachain_util_a_SOURCES += compat/glibc_compat.cpp
 endif
 
 # cli: shared between magnachain-cli and magnachain-qt
-libmagnachain_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+libmagnachain_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_cli_a_SOURCES = \
   rpc/client.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 nodist_libmagnachain_util_a_SOURCES = $(srcdir)/obj/build.h
 #
 
 # magnachaind binary #
 magnachaind_SOURCES = magnachaind.cpp
-magnachaind_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+magnachaind_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 magnachaind_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 magnachaind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
@@ -424,14 +424,14 @@ magnachaind_SOURCES += magnachaind-res.rc
 endif
 
 magnachaind_LDADD = \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_COMMON) \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_WALLET) \
-  $(LIBCELLLINK_ZMQ) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_CRYPTO) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -441,7 +441,7 @@ magnachaind_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINI
 
 # magnachain-cli binary #
 magnachain_cli_SOURCES = magnachain-cli.cpp
-magnachain_cli_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(EVENT_CFLAGS)
+magnachain_cli_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(EVENT_CFLAGS)
 magnachain_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 magnachain_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
@@ -450,17 +450,17 @@ magnachain_cli_SOURCES += magnachain-cli-res.rc
 endif
 
 magnachain_cli_LDADD = \
-  $(LIBCELLLINK_CLI) \
+  $(LIBMAGNACHAIN_CLI) \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_CRYPTO)
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_CRYPTO)
 
 magnachain_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
 #
 
 # magnachain-tx binary #
 magnachain_tx_SOURCES = magnachain-tx.cpp
-magnachain_tx_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
+magnachain_tx_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 magnachain_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 magnachain_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
@@ -469,14 +469,14 @@ magnachain_tx_SOURCES += magnachain-tx-res.rc
 endif
 
 magnachain_tx_LDADD = \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_COMMON) \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_WALLET) \
-  $(LIBCELLLINK_ZMQ) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_CRYPTO) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -486,7 +486,7 @@ magnachain_tx_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MI
 #
 
 # magnachainconsensus library #
-if BUILD_CELLLINK_LIBS
+if BUILD_MAGNACHAIN_LIBS
 include_HEADERS = script/magnachainconsensus.h
 libmagnachainconsensus_la_SOURCES = $(crypto_libmagnachain_crypto_a_SOURCES) $(libmagnachain_consensus_a_SOURCES)
 
@@ -496,7 +496,7 @@ endif
 
 libmagnachainconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
 libmagnachainconsensus_la_LIBADD = $(LIBSECP256K1)
-libmagnachainconsensus_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_CELLLINK_INTERNAL
+libmagnachainconsensus_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_MAGNACHAIN_INTERNAL
 libmagnachainconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
 endif

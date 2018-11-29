@@ -52,7 +52,7 @@
     </message>
     </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>&amp;Overview</source>
         <translation>&amp;கண்ணோட்டம்</translation>
@@ -90,8 +90,8 @@
         <translation>&amp;செய்தியை சரிசெய்...</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -709,7 +709,7 @@
     <name>magnachain-core</name>
     <message>
         <source>MagnaChain Core</source>
-        <translation>CellLink மையம்</translation>
+        <translation>MagnaChain மையம்</translation>
     </message>
     <message>
         <source>(default: %u)</source>

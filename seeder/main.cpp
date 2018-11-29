@@ -16,7 +16,7 @@ using namespace std;
 
 bool fTestNet = false;
 
-class CellDnsSeedOpts {
+class MCDnsSeedOpts {
 public:
   int nThreads;
   int nPort;
@@ -33,7 +33,7 @@ public:
   std::set<uint64_t> filter_whitelist;
   std::vector<string> seeds;
 
-  CellDnsSeedOpts() : nThreads(96), nDnsThreads(4), nPort(53), mbox(NULL), ns(NULL), host(NULL), tor(NULL), fUseTestNet(false), fWipeBan(false), fWipeIgnore(false), ipv4_proxy(NULL), ipv6_proxy(NULL) {}
+  MCDnsSeedOpts() : nThreads(96), nDnsThreads(4), nPort(53), mbox(NULL), ns(NULL), host(NULL), tor(NULL), fUseTestNet(false), fWipeBan(false), fWipeIgnore(false), ipv4_proxy(NULL), ipv6_proxy(NULL) {}
 
   void ParseCommandLine(int argc, char **argv) {
     static const char *help = "MagnaChain-seeder\n"
@@ -190,12 +190,12 @@ extern "C" {
 #include "dns.h"
 }
 
-CellAddrDB db;
+MCAddrDB db;
 
 extern "C" void* ThreadCrawler(void* data) {
   int *nThreads=(int*)data;
   do {
-    std::vector<CellServiceResult> ips;
+    std::vector<MCServiceResult> ips;
     int wait = 5;
     db.GetMany(ips, 16, wait);
     int64 now = time(NULL);
@@ -205,9 +205,9 @@ extern "C" void* ThreadCrawler(void* data) {
       Sleep(wait);
       continue;
     }
-    vector<CellAddress> addr;
+    vector<MCAddress> addr;
     for (int i=0; i<ips.size(); i++) {
-      CellServiceResult &res = ips[i];
+      MCServiceResult &res = ips[i];
       res.nBanTime = 0;
       res.nClientV = 0;
       res.nHeight = 0;
@@ -223,7 +223,7 @@ extern "C" void* ThreadCrawler(void* data) {
 
 extern "C" int GetIPList(void *thread, char *requestedHostname, addr_t *addr, int max, int ipv4, int ipv6);
 
-class CellDnsThread {
+class MCDnsThread {
 public:
   struct FlagSpecificData {
       int nIPv4, nIPv6;
@@ -249,14 +249,14 @@ public:
     FlagSpecificData& thisflag = perflag[requestedFlags];
     thisflag.cacheHits++;
     if (force || thisflag.cacheHits * 400 > (thisflag.cache.size()*thisflag.cache.size()) || (thisflag.cacheHits*thisflag.cacheHits * 20 > thisflag.cache.size() && (now - thisflag.cacheTime > 5))) {
-      set<CellNetAddr> ips;
+      set<MCNetAddr> ips;
       db.GetIPs(ips, requestedFlags, 1000, nets);
       dbQueries++;
       thisflag.cache.clear();
       thisflag.nIPv4 = 0;
       thisflag.nIPv6 = 0;
       thisflag.cache.reserve(ips.size());
-      for (set<CellNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
+      for (set<MCNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
         struct in_addr addr;
         struct in6_addr addr6;
         if ((*it).GetInAddr(&addr)) {
@@ -278,7 +278,7 @@ public:
     }
   }
 
-  CellDnsThread(CellDnsSeedOpts* opts, int idIn) : id(idIn) {
+  MCDnsThread(MCDnsSeedOpts* opts, int idIn) : id(idIn) {
     dns_opt.host = opts->host;
     dns_opt.ns = opts->ns;
     dns_opt.mbox = opts->mbox;
@@ -298,7 +298,7 @@ public:
 };
 
 extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int max, int ipv4, int ipv6) {
-  CellDnsThread *thread = (CellDnsThread*)data;
+  MCDnsThread *thread = (MCDnsThread*)data;
 
   uint64_t requestedFlags = 0;
   int hostlen = strlen(requestedHostname);
@@ -339,15 +339,15 @@ extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int 
   return max;
 }
 
-vector<CellDnsThread*> dnsThread;
+vector<MCDnsThread*> dnsThread;
 
 extern "C" void* ThreadDNS(void* arg) {
-  CellDnsThread *thread = (CellDnsThread*)arg;
+  MCDnsThread *thread = (MCDnsThread*)arg;
   thread->run();
   return nullptr;
 }
 
-int StatCompare(const CellAddrReport& a, const CellAddrReport& b) {
+int StatCompare(const MCAddrReport& a, const MCAddrReport& b) {
   if (a.uptime[4] == b.uptime[4]) {
     if (a.uptime[3] == b.uptime[3]) {
       return a.clientVersion > b.clientVersion;
@@ -366,12 +366,12 @@ extern "C" void* ThreadDumper(void*) {
     if (count < 5)
         count++;
     {
-      vector<CellAddrReport> v = db.GetAll();
+      vector<MCAddrReport> v = db.GetAll();
       sort(v.begin(), v.end(), StatCompare);
       FILE *f = fopen("dnsseed.dat.new","w+");
       if (f) {
         {
-          CellAutoFile cf(f);
+          MCAutoFile cf(f);
           cf << db;
         }
         rename("dnsseed.dat.new", "dnsseed.dat");
@@ -379,8 +379,8 @@ extern "C" void* ThreadDumper(void*) {
       FILE *d = fopen("dnsseed.dump", "w");
       fprintf(d, "# address                                        good  lastSuccess    %%(2h)   %%(8h)   %%(1d)   %%(7d)  %%(30d)  blocks      svcs  version\n");
       double stat[5]={0,0,0,0,0};
-      for (vector<CellAddrReport>::const_iterator it = v.begin(); it < v.end(); it++) {
-        CellAddrReport rep = *it;
+      for (vector<MCAddrReport>::const_iterator it = v.begin(); it < v.end(); it++) {
+        MCAddrReport rep = *it;
         fprintf(d, "%-47s  %4d  %11" PRId64 "  %6.2f%% %6.2f%% %6.2f%% %6.2f%% %6.2f%%  %6i  %08" PRIx64 "  %5i \"%s\"\n", rep.ip.ToString().c_str(), (int)rep.fGood, rep.lastSuccess, 100.0*rep.uptime[0], 100.0*rep.uptime[1], 100.0*rep.uptime[2], 100.0*rep.uptime[3], 100.0*rep.uptime[4], rep.blocks, rep.services, rep.clientVersion, rep.clientSubVersion.c_str());
         stat[0] += rep.uptime[0];
         stat[1] += rep.uptime[1];
@@ -404,7 +404,7 @@ extern "C" void* ThreadStats(void*) {
     time_t tim = time(NULL);
     struct tm *tmp = localtime(&tim);
     strftime(c, 256, "[%y-%m-%d %H:%M:%S]", tmp);
-    CellAddrDBStats stats;
+    MCAddrDBStats stats;
     db.GetStats(stats);
     if (first)
     {
@@ -432,14 +432,14 @@ static const string *seeds = mainnet_seeds;
 
 extern "C" void* ThreadSeeder(void*) {
   if (!fTestNet){
-    //db.Add(CellService("kjy2eqzk4zwi5zd3.onion", 8333), true);
+    //db.Add(MCService("kjy2eqzk4zwi5zd3.onion", 8333), true);
   }
   do {
     for (int i=0; seeds[i] != ""; i++) {
-      vector<CellNetAddr> ips;
+      vector<MCNetAddr> ips;
       LookupHost(seeds[i].c_str(), ips);
-      for (vector<CellNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
-        db.Add(CellService(*it, GetDefaultPort()), true);
+      for (vector<MCNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
+        db.Add(MCService(*it, GetDefaultPort()), true);
       }
     }
     Sleep(1800000);
@@ -450,7 +450,7 @@ extern "C" void* ThreadSeeder(void*) {
 int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
   setbuf(stdout, NULL);
-  CellDnsSeedOpts opts;
+  MCDnsSeedOpts opts;
   opts.ParseCommandLine(argc, argv);
   printf("Supporting whitelisted filters: ");
   for (std::set<uint64_t>::const_iterator it = opts.filter_whitelist.begin(); it != opts.filter_whitelist.end(); it++) {
@@ -471,21 +471,21 @@ int main(int argc, char **argv) {
   }
   
   if (opts.tor) {
-    CellService service(opts.tor, 9050);
+    MCService service(opts.tor, 9050);
     if (service.IsValid()) {
       printf("Using Tor proxy at %s\n", service.ToStringIPPort().c_str());
       SetProxy(NET_TOR, service);
     }
   }
   if (opts.ipv4_proxy) {
-    CellService service(opts.ipv4_proxy, 9050);
+    MCService service(opts.ipv4_proxy, 9050);
     if (service.IsValid()) {
       printf("Using IPv4 proxy at %s\n", service.ToStringIPPort().c_str());
       SetProxy(NET_IPV4, service);
     }
   }
   if (opts.ipv6_proxy) {
-    CellService service(opts.ipv6_proxy, 9050);
+    MCService service(opts.ipv6_proxy, 9050);
     if (service.IsValid()) {
       printf("Using IPv6 proxy at %s\n", service.ToStringIPPort().c_str());
       SetProxy(NET_IPV6, service);
@@ -516,7 +516,7 @@ int main(int argc, char **argv) {
   FILE *f = fopen("dnsseed.dat","r");
   if (f) {
     printf("Loading dnsseed.dat...");
-    CellAutoFile cf(f);
+    MCAutoFile cf(f);
     cf >> db;
     if (opts.fWipeBan)
         db.banned.clear();
@@ -529,7 +529,7 @@ int main(int argc, char **argv) {
     printf("Starting %i DNS threads for %s on %s (port %i)...", opts.nDnsThreads, opts.host, opts.ns, opts.nPort);
     dnsThread.clear();
     for (int i=0; i<opts.nDnsThreads; i++) {
-      dnsThread.push_back(new CellDnsThread(&opts, i));
+      dnsThread.push_back(new MCDnsThread(&opts, i));
       pthread_create(&threadDns, NULL, ThreadDNS, dnsThread[i]);
       printf(".");
       Sleep(20);

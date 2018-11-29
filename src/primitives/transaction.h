@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PRIMITIVES_TRANSACTION_H
-#define CELLLINK_PRIMITIVES_TRANSACTION_H
+#ifndef MAGNACHAIN_PRIMITIVES_TRANSACTION_H
+#define MAGNACHAIN_PRIMITIVES_TRANSACTION_H
 
 #include <stdint.h>
 #include "misc/amount.h"
@@ -28,14 +28,14 @@ enum ReportType {
 
 
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
-class CellOutPoint
+class MCOutPoint
 {
 public:
     uint256 hash;
     uint32_t n;
 
-    CellOutPoint(): n((uint32_t) -1) { }
-    CellOutPoint(const uint256& hashIn, uint32_t nIn): hash(hashIn), n(nIn) { }
+    MCOutPoint(): n((uint32_t) -1) { }
+    MCOutPoint(const uint256& hashIn, uint32_t nIn): hash(hashIn), n(nIn) { }
 
     ADD_SERIALIZE_METHODS;
 
@@ -48,18 +48,18 @@ public:
     void SetNull() { hash.SetNull(); n = (uint32_t) -1; }
     bool IsNull() const { return (hash.IsNull() && n == (uint32_t) -1); }
 
-    friend bool operator<(const CellOutPoint& a, const CellOutPoint& b)
+    friend bool operator<(const MCOutPoint& a, const MCOutPoint& b)
     {
         int cmp = a.hash.Compare(b.hash);
         return cmp < 0 || (cmp == 0 && a.n < b.n);
     }
 
-    friend bool operator==(const CellOutPoint& a, const CellOutPoint& b)
+    friend bool operator==(const MCOutPoint& a, const MCOutPoint& b)
     {
         return (a.hash == b.hash && a.n == b.n);
     }
 
-    friend bool operator!=(const CellOutPoint& a, const CellOutPoint& b)
+    friend bool operator!=(const MCOutPoint& a, const MCOutPoint& b)
     {
         return !(a == b);
     }
@@ -71,29 +71,29 @@ public:
  * transaction's output that it claims and a signature that matches the
  * output's public key.
  */
-class CellTxIn
+class MCTxIn
 {
 public:
-    CellOutPoint prevout;
-    CellScript scriptSig;
+    MCOutPoint prevout;
+    MCScript scriptSig;
     uint32_t nSequence;
-    CScriptWitness scriptWitness; //! Only serialized through CellTransaction
+    CScriptWitness scriptWitness; //! Only serialized through MCTransaction
 
     /* Setting nSequence to this value for every input in a transaction
      * disables nLockTime. */
     static const uint32_t SEQUENCE_FINAL = 0xffffffff;
 
     /* Below flags apply in the context of BIP 68*/
-    /* If this flag set, CellTxIn::nSequence is NOT interpreted as a
+    /* If this flag set, MCTxIn::nSequence is NOT interpreted as a
      * relative lock-time. */
     static const uint32_t SEQUENCE_LOCKTIME_DISABLE_FLAG = (1 << 31);
 
-    /* If CellTxIn::nSequence encodes a relative lock-time and this flag
+    /* If MCTxIn::nSequence encodes a relative lock-time and this flag
      * is set, the relative lock-time has units of 512 seconds,
      * otherwise it specifies blocks with a granularity of 1. */
     static const uint32_t SEQUENCE_LOCKTIME_TYPE_FLAG = (1 << 22);
 
-    /* If CellTxIn::nSequence encodes a relative lock-time, this mask is
+    /* If MCTxIn::nSequence encodes a relative lock-time, this mask is
      * applied to extract that lock-time from the sequence field. */
     static const uint32_t SEQUENCE_LOCKTIME_MASK = 0x0000ffff;
 
@@ -101,18 +101,18 @@ public:
      * same wall-clock duration, and because blocks are naturally
      * limited to occur every 600s on average, the minimum granularity
      * for time-based relative lock-time is fixed at 512 seconds.
-     * Converting from CellTxIn::nSequence to seconds is performed by
+     * Converting from MCTxIn::nSequence to seconds is performed by
      * multiplying by 512 = 2^9, or equivalently shifting up by
      * 9 bits. */
     static const int SEQUENCE_LOCKTIME_GRANULARITY = 9;
 
-    CellTxIn()
+    MCTxIn()
     {
         nSequence = SEQUENCE_FINAL;
     }
 
-    explicit CellTxIn(CellOutPoint prevoutIn, CellScript scriptSigIn=CellScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
-    CellTxIn(uint256 hashPrevTx, uint32_t nOut, CellScript scriptSigIn=CellScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
+    explicit MCTxIn(MCOutPoint prevoutIn, MCScript scriptSigIn=MCScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
+    MCTxIn(uint256 hashPrevTx, uint32_t nOut, MCScript scriptSigIn=MCScript(), uint32_t nSequenceIn=SEQUENCE_FINAL);
 
     ADD_SERIALIZE_METHODS;
 
@@ -123,14 +123,14 @@ public:
         READWRITE(nSequence);
     }
 
-    friend bool operator==(const CellTxIn& a, const CellTxIn& b)
+    friend bool operator==(const MCTxIn& a, const MCTxIn& b)
     {
         return (a.prevout   == b.prevout &&
                 a.scriptSig == b.scriptSig &&
                 a.nSequence == b.nSequence);
     }
 
-    friend bool operator!=(const CellTxIn& a, const CellTxIn& b)
+    friend bool operator!=(const MCTxIn& a, const MCTxIn& b)
     {
         return !(a == b);
     }
@@ -141,18 +141,18 @@ public:
 /** An output of a transaction.  It contains the public key that the next input
  * must be able to sign with to claim it.
  */
-class CellTxOut
+class MCTxOut
 {
 public:
-    CellAmount nValue;
-    CellScript scriptPubKey;
+    MCAmount nValue;
+    MCScript scriptPubKey;
 
-    CellTxOut()
+    MCTxOut()
     {
         SetNull();
     }
 
-    CellTxOut(const CellAmount& nValueIn, CellScript scriptPubKeyIn );
+    MCTxOut(const MCAmount& nValueIn, MCScript scriptPubKeyIn );
 
     ADD_SERIALIZE_METHODS;
 
@@ -173,13 +173,13 @@ public:
         return (nValue == -1);
     }
 
-    friend bool operator==(const CellTxOut& a, const CellTxOut& b)
+    friend bool operator==(const MCTxOut& a, const MCTxOut& b)
     {
         return (a.nValue       == b.nValue &&
                 a.scriptPubKey == b.scriptPubKey);
     }
 
-    friend bool operator!=(const CellTxOut& a, const CellTxOut& b)
+    friend bool operator!=(const MCTxOut& a, const MCTxOut& b)
     {
         return !(a == b);
     }
@@ -187,14 +187,14 @@ public:
     std::string ToString() const;
 };
 
-struct CellMutableTransaction;
+struct MCMutableTransaction;
 
-class CellBlockHeader;
-class CellBranchBlockInfo
+class MCBlockHeader;
+class MCBranchBlockInfo
 {
 public:
-    CellBranchBlockInfo();
-    CellBranchBlockInfo(const CellBranchBlockInfo&);
+    MCBranchBlockInfo();
+    MCBranchBlockInfo(const MCBranchBlockInfo&);
 
     void SetNull();
 
@@ -208,8 +208,8 @@ public:
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
 
-    CellOutPoint prevoutStake;
-    CellScript vchBlockSig;
+    MCOutPoint prevoutStake;
+    MCScript vchBlockSig;
     //additional data
     uint256 branchID;
     uint32_t blockHeight;
@@ -235,19 +235,19 @@ public:
         READWRITE(vchStakeTxData);
     }
 
-    void GetBlockHeader(CellBlockHeader& block) const;
-    void SetBlockHeader(const CellBlockHeader& block);
+    void GetBlockHeader(MCBlockHeader& block) const;
+    void SetBlockHeader(const MCBlockHeader& block);
 };
 
-class CellSpvProof
+class MCSpvProof
 {
 public:
-    CellSpvProof() = default;
-    CellSpvProof(const CellSpvProof& r) = default;
-    CellSpvProof(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch, const uint256& bh) :blockhash(bh), pmt(vTxid, vMatch) {}
+    MCSpvProof() = default;
+    MCSpvProof(const MCSpvProof& r) = default;
+    MCSpvProof(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch, const uint256& bh) :blockhash(bh), pmt(vTxid, vMatch) {}
 
     uint256 blockhash;
-    CellPartialMerkleTree pmt;
+    MCPartialMerkleTree pmt;
 
     ADD_SERIALIZE_METHODS;
 
@@ -264,7 +264,7 @@ class ProveDataItem
 public:
     uint256 blockHash;
     std::vector<unsigned char> tx;
-    CellSpvProof pCSP;
+    MCSpvProof pCSP;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -316,8 +316,8 @@ public:
 class ContractPrevData
 {
 public:
-    CellAmount coins;   // 执行合约时该合约的币数量
-    std::map<CellContractID, ContractDataFrom> dataFrom;
+    MCAmount coins;   // 执行合约时该合约的币数量
+    std::map<MCContractID, ContractDataFrom> dataFrom;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -331,11 +331,11 @@ class ReportContractData
 {
 public:
     ContractPrevData reportedContractPrevData;  // 有错误数据的交易合约数据
-    CellSpvProof reportedSpvProof;
+    MCSpvProof reportedSpvProof;
 
     uint256 proveTxHash;
-    std::map<CellContractID, ContractInfo> proveContractData;       // 被替换的数据
-    CellSpvProof proveSpvProof;
+    std::map<MCContractID, ContractInfo> proveContractData;       // 被替换的数据
+    MCSpvProof proveSpvProof;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -379,10 +379,10 @@ public:
 class ContractProveData
 {
 public:
-    CellAmount coins;
-    std::map<CellContractID, ContractInfo> contractPrevData;
-    CellPartialMerkleTree prevDataSPV;
-    CellPartialMerkleTree dataSPV;
+    MCAmount coins;
+    std::map<MCContractID, ContractInfo> contractPrevData;
+    MCPartialMerkleTree prevDataSPV;
+    MCPartialMerkleTree dataSPV;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -434,12 +434,12 @@ public:
 class ContractData
 {
 public:
-    CellContractID address;
-    CellPubKey sender;
+    MCContractID address;
+    MCPubKey sender;
     std::string codeOrFunc;
     std::string args;
-    CellAmount amountOut;
-    CellScript signature;
+    MCAmount amountOut;
+    MCScript signature;
 
     ContractData() : amountOut(0) {}
 
@@ -461,7 +461,7 @@ public:
 /** The basic transaction that is broadcasted on the network and contained in
  * blocks.  A transaction can contain multiple inputs and outputs.
  */
-class CellTransaction
+class MCTransaction
 {
 public:
     // Default transaction version.
@@ -491,13 +491,13 @@ public:
     static const int32_t MAX_STANDARD_VERSION=17;
 
     // The local variables are made const to prevent unintended modification
-    // without updating the cached hash value. However, CellTransaction is not
+    // without updating the cached hash value. However, MCTransaction is not
     // actually immutable; deserialization and assignment are implemented,
     // and bypass the constness. This is safe, as they update the entire
     // structure, including the hash.
     const int32_t nVersion;
-    const std::vector<CellTxIn> vin;
-    const std::vector<CellTxOut> vout;
+    const std::vector<MCTxIn> vin;
+    const std::vector<MCTxOut> vout;
     const uint32_t nLockTime;
 
 	//branch create data
@@ -512,8 +512,8 @@ public:
 	const uint64_t inAmount;
 	
     const std::shared_ptr<const ContractData> pContractData;
-	const std::shared_ptr<const CellBranchBlockInfo> pBranchBlockData;
-    const std::shared_ptr<const CellSpvProof> pPMT;
+	const std::shared_ptr<const MCBranchBlockInfo> pBranchBlockData;
+    const std::shared_ptr<const MCSpvProof> pPMT;
     const std::shared_ptr<const ReportData> pReportData;
     const std::shared_ptr<const ProveData> pProveData;
 
@@ -521,7 +521,7 @@ public:
     const uint256 coinpreouthash; // coin preout hash
     const uint256 provetxid; // 证明txid
 
-	bool IsExistVin(const CellTxIn &txIn) const {
+	bool IsExistVin(const MCTxIn &txIn) const {
 		auto it = find(vin.begin(), vin.end(), txIn);
 		if (it == vin.end())
 		{
@@ -529,7 +529,7 @@ public:
 		}
 		return true;
 	}
-	bool IsExistVout(const CellTxOut &txOut) const {
+	bool IsExistVout(const MCTxOut &txOut) const {
 		auto it = find(vout.begin(), vout.end(), txOut);
 		if (it == vout.end())
 		{
@@ -544,12 +544,12 @@ private:
     uint256 ComputeHash() const;
 
 public:
-    /** Construct a CellTransaction that qualifies as IsNull() */
-    CellTransaction();
-	CellTransaction(const CellTransaction& tx);
-    /** Convert a CellMutableTransaction into a CellTransaction. */
-    CellTransaction(const CellMutableTransaction &tx);
-    CellTransaction(CellMutableTransaction &&tx);
+    /** Construct a MCTransaction that qualifies as IsNull() */
+    MCTransaction();
+	MCTransaction(const MCTransaction& tx);
+    /** Convert a MCMutableTransaction into a MCTransaction. */
+    MCTransaction(const MCMutableTransaction &tx);
+    MCTransaction(MCMutableTransaction &&tx);
 
     template <typename Stream>
     inline void Serialize(Stream& s) const {
@@ -559,7 +559,7 @@ public:
     /** This deserializing constructor is provided instead of an Unserialize method.
      *  Unserialize is not possible, since it would require overwriting const fields. */
     template <typename Stream>
-    CellTransaction(deserialize_type, Stream& s) : CellTransaction(CellMutableTransaction(deserialize, s)) {}
+    MCTransaction(deserialize_type, Stream& s) : MCTransaction(MCMutableTransaction(deserialize, s)) {}
 
     bool IsNull() const {
         return vin.empty() && vout.empty();
@@ -573,8 +573,8 @@ public:
     uint256 GetWitnessHash() const;
 
     // Return sum of txouts.
-    CellAmount GetValueOut() const;
-    // GetValueIn() is a method on CellCoinsViewCache, because
+    MCAmount GetValueOut() const;
+    // GetValueIn() is a method on MCCoinsViewCache, because
     // inputs must be known to compute value in.
 
     /**
@@ -639,12 +639,12 @@ public:
 
     bool IsReport() const
     {
-        return nVersion == CellTransaction::REPORT_CHEAT;
+        return nVersion == MCTransaction::REPORT_CHEAT;
     }
 
     bool IsProve() const
     {
-        return nVersion == CellTransaction::PROVE;
+        return nVersion == MCTransaction::PROVE;
     }
 
     bool IsStake() const {
@@ -662,12 +662,12 @@ public:
         return nVersion == UNLOCK_MORTGAGE_MINE_COIN;
     }
 
-    friend bool operator==(const CellTransaction& a, const CellTransaction& b)
+    friend bool operator==(const MCTransaction& a, const MCTransaction& b)
     {
         return a.hash == b.hash;
     }
 
-    friend bool operator!=(const CellTransaction& a, const CellTransaction& b)
+    friend bool operator!=(const MCTransaction& a, const MCTransaction& b)
     {
         return a.hash != b.hash;
     }
@@ -686,12 +686,12 @@ public:
 };
 
 
-/** A mutable version of CellTransaction. */
-struct CellMutableTransaction
+/** A mutable version of MCTransaction. */
+struct MCMutableTransaction
 {
     int32_t nVersion;
-    std::vector<CellTxIn> vin;
-    std::vector<CellTxOut> vout;
+    std::vector<MCTxIn> vin;
+    std::vector<MCTxOut> vout;
     uint32_t nLockTime;
 
 	//branch create data
@@ -706,8 +706,8 @@ struct CellMutableTransaction
 	uint64_t inAmount;
 
     std::shared_ptr<ContractData> pContractData;
-	std::shared_ptr<CellBranchBlockInfo> pBranchBlockData;
-    std::shared_ptr<CellSpvProof> pPMT;
+	std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
+    std::shared_ptr<MCSpvProof> pPMT;
     std::shared_ptr<ReportData> pReportData;
     std::shared_ptr<ProveData> pProveData;
 
@@ -715,9 +715,9 @@ struct CellMutableTransaction
     uint256 coinpreouthash;
     uint256 provetxid;
 
-    CellMutableTransaction();
-	CellMutableTransaction(const CellMutableTransaction&);
-    CellMutableTransaction(const CellTransaction& tx);
+    MCMutableTransaction();
+	MCMutableTransaction(const MCMutableTransaction&);
+    MCMutableTransaction(const MCTransaction& tx);
 
     template <typename Stream>
     inline void Serialize(Stream& s) const {
@@ -730,21 +730,21 @@ struct CellMutableTransaction
     }
 
     template <typename Stream>
-    CellMutableTransaction(deserialize_type, Stream& s) {
+    MCMutableTransaction(deserialize_type, Stream& s) {
         Unserialize(s);
     }
 
-    /** Compute the hash of this CellMutableTransaction. This is computed on the
-     * fly, as opposed to GetHash() in CellTransaction, which uses a cached result.
+    /** Compute the hash of this MCMutableTransaction. This is computed on the
+     * fly, as opposed to GetHash() in MCTransaction, which uses a cached result.
      */
     uint256 GetHash() const;
 
     bool IsSmartContract() const {
-        return nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || nVersion == CellTransaction::CALL_CONTRACT_VERSION;
+        return nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION;
     }
 
     bool IsCallContract() const {
-        return nVersion == CellTransaction::CALL_CONTRACT_VERSION;
+        return nVersion == MCTransaction::CALL_CONTRACT_VERSION;
     }
 
 	//dose it have a child transaction in sendToTxHexData
@@ -755,61 +755,61 @@ struct CellMutableTransaction
 
 	bool IsBranchCreate() const
 	{
-		return nVersion == CellTransaction::CREATE_BRANCH_VERSION && !branchVSeeds.empty();
+		return nVersion == MCTransaction::CREATE_BRANCH_VERSION && !branchVSeeds.empty();
 	}
 
 	bool IsBranchChainTransStep1() const
 	{
-		return nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1 && !sendToBranchid.empty() && !sendToTxHexData.empty();
+		return nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 && !sendToBranchid.empty() && !sendToTxHexData.empty();
 	}
 
 	bool IsBranchChainTransStep2() const
 	{
-		return nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2 && inAmount > 0;
+		return nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 && inAmount > 0;
 	}
 
 	bool IsMortgage() const
 	{
-		return nVersion == CellTransaction::MINE_BRANCH_MORTGAGE;
+		return nVersion == MCTransaction::MINE_BRANCH_MORTGAGE;
 	}
 
     bool IsRedeemMortgageStatement() const
     {
-        return nVersion == CellTransaction::REDEEM_MORTGAGE_STATEMENT;
+        return nVersion == MCTransaction::REDEEM_MORTGAGE_STATEMENT;
     }
     bool IsRedeemMortgage() const
     {
-        return nVersion == CellTransaction::REDEEM_MORTGAGE;
+        return nVersion == MCTransaction::REDEEM_MORTGAGE;
     }
 
     bool IsSyncBranchInfo() const
     {
-        return nVersion == CellTransaction::SYNC_BRANCH_INFO;
+        return nVersion == MCTransaction::SYNC_BRANCH_INFO;
     }
 
     bool IsReport() const
     {
-        return nVersion == CellTransaction::REPORT_CHEAT;
+        return nVersion == MCTransaction::REPORT_CHEAT;
     }
 
     bool IsProve() const
     {
-        return nVersion == CellTransaction::PROVE;
+        return nVersion == MCTransaction::PROVE;
     }
 
     bool IsReportReward() const {
-        return nVersion == CellTransaction::REPORT_REWARD;
+        return nVersion == MCTransaction::REPORT_REWARD;
     }
 
     bool IsLockMortgageMineCoin() const {
-        return nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN;
+        return nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN;
     }
 
     bool IsUnLockMortgageMineCoin() const {
-        return nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN;
+        return nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
     }
 
-    friend bool operator==(const CellMutableTransaction& a, const CellMutableTransaction& b)
+    friend bool operator==(const MCMutableTransaction& a, const MCMutableTransaction& b)
     {
         return a.GetHash() == b.GetHash();
     }
@@ -823,22 +823,22 @@ struct CellMutableTransaction
         }
         return false;
     }
-	CellMutableTransaction& operator=(const CellMutableTransaction& tx);
+	MCMutableTransaction& operator=(const MCMutableTransaction& tx);
 };
 
 /**
 * Basic transaction serialization format:
 * - int32_t nVersion
-* - std::vector<CellTxIn> vin
-* - std::vector<CellTxOut> vout
+* - std::vector<MCTxIn> vin
+* - std::vector<MCTxOut> vout
 * - uint32_t nLockTime
 *
 * Extended transaction serialization format:
 * - int32_t nVersion
 * - unsigned char dummy = 0x00
 * - unsigned char flags (!= 0)
-* - std::vector<CellTxIn> vin
-* - std::vector<CellTxOut> vout
+* - std::vector<MCTxIn> vin
+* - std::vector<MCTxOut> vout
 * - if (flags & 1):
 *   - CTxWitness wit;
 * - uint32_t nLockTime
@@ -878,63 +878,63 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     }
     s >> tx.nLockTime;
 
-    if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         tx.pContractData.reset(new ContractData);
         s >> *tx.pContractData;
     }
-    else if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION) {
+    else if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
         s >> tx.branchVSeeds;
         s >> tx.branchSeedSpec6;
     }
-    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1) {
+    else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
         s >> tx.sendToBranchid;
         s >> tx.sendToTxHexData;
         if (tx.sendToBranchid == "main") {
-            tx.pPMT.reset(new CellSpvProof());
+            tx.pPMT.reset(new MCSpvProof());
             s >> *tx.pPMT;
         }
     }
-    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2) {
+    else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
         s >> tx.fromBranchId;
         s >> tx.fromTx;
         s >> tx.inAmount;
         if (tx.fromBranchId != "main") {
-            tx.pPMT.reset(new CellSpvProof());
+            tx.pPMT.reset(new MCSpvProof());
             s >> *tx.pPMT;
         }
     }
-    else if (tx.nVersion == CellTransaction::MINE_BRANCH_MORTGAGE) {
+    else if (tx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE) {
         s >> tx.sendToBranchid;
         s >> tx.sendToTxHexData;
     }
-    else if (tx.nVersion == CellTransaction::SYNC_BRANCH_INFO) {
-        tx.pBranchBlockData.reset(new CellBranchBlockInfo);
+    else if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
+        tx.pBranchBlockData.reset(new MCBranchBlockInfo);
         s >> *tx.pBranchBlockData;
     }
-    else if (tx.nVersion == CellTransaction::REPORT_CHEAT) {
+    else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
         tx.pReportData.reset(new ReportData);
         s >> *tx.pReportData;
-        tx.pPMT.reset(new CellSpvProof());
+        tx.pPMT.reset(new MCSpvProof());
         s >> *tx.pPMT;
     }
-    else if (tx.nVersion == CellTransaction::PROVE) {
+    else if (tx.nVersion == MCTransaction::PROVE) {
         tx.pProveData.reset(new ProveData);
         s >> *tx.pProveData;
     }
-    else if (tx.nVersion == CellTransaction::REDEEM_MORTGAGE) {
+    else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         s >> tx.fromBranchId;
         s >> tx.fromTx;
-        tx.pPMT.reset(new CellSpvProof());
+        tx.pPMT.reset(new MCSpvProof());
         s >> *tx.pPMT;
     }
-    else if (tx.nVersion == CellTransaction::REPORT_REWARD) {
+    else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
         s >> tx.reporttxid;
     }
-    else if (tx.nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN) {
+    else if (tx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN) {
         s >> tx.reporttxid;
         s >> tx.coinpreouthash;
     }
-    else if (tx.nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+    else if (tx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
         s >> tx.reporttxid;
         s >> tx.coinpreouthash;
         s >> tx.provetxid;
@@ -956,7 +956,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     if (flags) {
         /* Use extended format in case witnesses are to be serialized. */
-        std::vector<CellTxIn> vinDummy;
+        std::vector<MCTxIn> vinDummy;
         s << vinDummy;
         s << flags;
     }
@@ -969,21 +969,21 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
 
-    if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         s << *tx.pContractData;
     }
-    else if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION) {
+    else if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
         s << tx.branchVSeeds;
         s << tx.branchSeedSpec6;
     }
-    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1) {
+    else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
         s << tx.sendToBranchid;
         s << tx.sendToTxHexData;
         if (tx.sendToBranchid == "main") {
             s << *tx.pPMT;
         }
     }
-    else if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2) {
+    else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
         s << tx.fromBranchId;
         s << tx.fromTx;
         s << tx.inAmount;
@@ -991,58 +991,58 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
             s << *tx.pPMT;
         }
     }
-    else if (tx.nVersion == CellTransaction::MINE_BRANCH_MORTGAGE) {
+    else if (tx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE) {
         s << tx.sendToBranchid;
         s << tx.sendToTxHexData;
     }
-    else if (tx.nVersion == CellTransaction::SYNC_BRANCH_INFO) {
+    else if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
         s << *tx.pBranchBlockData;
     }
-    else if (tx.nVersion == CellTransaction::REPORT_CHEAT) {
+    else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
         s << *tx.pReportData;
         s << *tx.pPMT;
     }
-    else if (tx.nVersion == CellTransaction::PROVE) {
+    else if (tx.nVersion == MCTransaction::PROVE) {
         s << *tx.pProveData;
     }
-    else if (tx.nVersion == CellTransaction::REDEEM_MORTGAGE) {
+    else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         s << tx.fromBranchId;
         s << tx.fromTx;
         s << *tx.pPMT;
     }
-    else if (tx.nVersion == CellTransaction::REPORT_REWARD) {
+    else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
         s << tx.reporttxid;
     }
-    else if (tx.nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN) {
+    else if (tx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN) {
         s << tx.reporttxid;
         s << tx.coinpreouthash;
     }
-    else if (tx.nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+    else if (tx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
         s << tx.reporttxid;
         s << tx.coinpreouthash;
         s << tx.provetxid;
     }
 }
 
-typedef std::shared_ptr<const CellTransaction> CellTransactionRef;
-static inline CellTransactionRef MakeTransactionRef() { return std::make_shared<const CellTransaction>(); }
-template <typename Tx> static inline CellTransactionRef MakeTransactionRef(Tx&& txIn) { return std::make_shared<const CellTransaction>(std::forward<Tx>(txIn)); }
+typedef std::shared_ptr<const MCTransaction> MCTransactionRef;
+static inline MCTransactionRef MakeTransactionRef() { return std::make_shared<const MCTransaction>(); }
+template <typename Tx> static inline MCTransactionRef MakeTransactionRef(Tx&& txIn) { return std::make_shared<const MCTransaction>(std::forward<Tx>(txIn)); }
 
-inline CellTransaction::CellTransaction() : nVersion(CellTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
+inline MCTransaction::MCTransaction() : nVersion(MCTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
     branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(),
     fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(),
     pContractData(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash() {}
 
-inline CellTransaction::CellTransaction(const CellMutableTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+inline MCTransaction::MCTransaction(const MCMutableTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
     branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)), 
-    pPMT(tx.pPMT == nullptr? nullptr: new CellSpvProof(*tx.pPMT)),
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)), 
+    pPMT(tx.pPMT == nullptr? nullptr: new MCSpvProof(*tx.pPMT)),
     pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 
-inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
+inline MCTransaction::MCTransaction(MCMutableTransaction&& tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
     branchVSeeds(std::move(tx.branchVSeeds)), branchSeedSpec6(std::move(tx.branchSeedSpec6)), sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(std::move(tx.fromBranchId)), fromTx(std::move(tx.fromTx)), inAmount(tx.inAmount),
     pBranchBlockData(std::move(tx.pBranchBlockData)), pPMT(std::move(tx.pPMT)),
@@ -1050,27 +1050,27 @@ inline CellTransaction::CellTransaction(CellMutableTransaction&& tx) : nVersion(
     reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)), hash(ComputeHash()) {}
 
 // add copy constructor, 添加了不可复制成员变量pBranchBlockData后，默认复制构造函数被删除了
-inline CellTransaction::CellTransaction(const CellTransaction& tx)
+inline MCTransaction::MCTransaction(const MCTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
     branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
-    pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)),
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pPMT(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT)),
     pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 
-inline CellMutableTransaction::CellMutableTransaction(const CellMutableTransaction& tx)
+inline MCMutableTransaction::MCMutableTransaction(const MCMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
     branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData)),
-    pPMT(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT)),
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pPMT(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT)),
     pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
 
-inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutableTransaction& tx)
+inline MCMutableTransaction& MCMutableTransaction::operator=(const MCMutableTransaction& tx)
 {
     if (&tx == this)
         return *this;
@@ -1086,8 +1086,8 @@ inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutab
     fromBranchId = (tx.fromBranchId);
     fromTx = (tx.fromTx);
     inAmount = (tx.inAmount);
-    pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new CellBranchBlockInfo(*tx.pBranchBlockData));
-    pPMT.reset(tx.pPMT == nullptr ? nullptr : new CellSpvProof(*tx.pPMT));
+    pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData));
+    pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
     pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
     pReportData.reset(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData));
     pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
@@ -1097,4 +1097,4 @@ inline CellMutableTransaction& CellMutableTransaction::operator=(const CellMutab
     return *this;
 }
 
-#endif // CELLLINK_PRIMITIVES_TRANSACTION_H
+#endif // MAGNACHAIN_PRIMITIVES_TRANSACTION_H

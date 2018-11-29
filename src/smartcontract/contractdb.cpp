@@ -13,13 +13,13 @@
 
 ContractDataDB* mpContractDb = nullptr;
 
-CellAmount GetTxContractOut(const CellTransaction& tx)
+MCAmount GetTxContractOut(const MCTransaction& tx)
 {
-    CellAmount out = 0;
+    MCAmount out = 0;
     for (auto kOut : tx.vout) {
         opcodetype opcode;
         std::vector<unsigned char> vch;
-        CellScript::const_iterator pc1 = kOut.scriptPubKey.begin();
+        MCScript::const_iterator pc1 = kOut.scriptPubKey.begin();
         kOut.scriptPubKey.GetOp(pc1, opcode, vch);
         if (opcode == OP_CONTRACT) {
             out += kOut.nValue;
@@ -38,17 +38,17 @@ struct CmpByBlockHeight {
     }
 };
 
-void ContractContext::SetCache(const CellContractID& contractId, ContractInfo& contractInfo)
+void ContractContext::SetCache(const MCContractID& contractId, ContractInfo& contractInfo)
 {
     cache[contractId] = std::move(contractInfo);
 }
 
-void ContractContext::SetData(const CellContractID& contractId, ContractInfo& contractInfo)
+void ContractContext::SetData(const MCContractID& contractId, ContractInfo& contractInfo)
 {
     data[contractId] = std::move(contractInfo);
 }
 
-bool ContractContext::GetData(const CellContractID& contractId, ContractInfo& contractInfo)
+bool ContractContext::GetData(const MCContractID& contractId, ContractInfo& contractInfo)
 {
     if (cache.size() > 0) {
         auto it = cache.find(contractId);
@@ -110,7 +110,7 @@ void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
 
 bool interrupt;
 
-void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contractDB, CellBlock* pBlock, SmartContractThreadData* threadData)
+void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contractDB, MCBlock* pBlock, SmartContractThreadData* threadData)
 {
     auto it = contractDB->threadId2SmartLuaState.find(boost::this_thread::get_id());
     if (it == contractDB->threadId2SmartLuaState.end())
@@ -120,18 +120,18 @@ void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contract
         contractDB->ExecutiveTransactionContract(it->second, pBlock, threadData);
 }
 
-void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock* pBlock, SmartContractThreadData* threadData)
+void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* pBlock, SmartContractThreadData* threadData)
 {
 #ifndef _DEBUG
     try {
 #endif
-        std::map<CellContractID, uint256> contract2txid;
+        std::map<MCContractID, uint256> contract2txid;
         threadData->contractContext.txFinalData.data.resize(threadData->groupSize);
         for (int i = threadData->offset; i < threadData->offset + threadData->groupSize; ++i) {
             if (interrupt)
                 return;
 
-            const CellTransactionRef tx = pBlock->vtx[i];
+            const MCTransactionRef tx = pBlock->vtx[i];
             if (tx->IsNull()) {
                 interrupt = true;
                 return;
@@ -150,13 +150,13 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock*
             if (!tx->IsSmartContract())
                 continue;
 
-            CellContractID contractId = tx->pContractData->address;
-            CellLinkAddress contractAddr(contractId);
-            CellLinkAddress senderAddr(tx->pContractData->sender.GetID());
-            CellAmount amount = GetTxContractOut(*tx);
+            MCContractID contractId = tx->pContractData->address;
+            MagnaChainAddress contractAddr(contractId);
+            MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
+            MCAmount amount = GetTxContractOut(*tx);
 
             UniValue ret(UniValue::VARR);
-            if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
+            if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
                 std::string rawCode = tx->pContractData->codeOrFunc;
                 sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
                 if (!PublishContract(sls, contractAddr, rawCode, ret)) {
@@ -164,7 +164,7 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock*
                     return;
                 }
             }
-            else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+            else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
                 std::string strFuncName = tx->pContractData->codeOrFunc;
                 UniValue args;
                 args.read(tx->pContractData->args);
@@ -181,7 +181,7 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock*
                     return;
                 }
 
-                CellAmount total = 0;
+                MCAmount total = 0;
                 for (int j = 0; j < sls->recipients.size(); ++j) {
                     if (!tx->IsExistVout(sls->recipients[j])) {
                         interrupt = true;
@@ -197,7 +197,7 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock*
 
                 if (tx->pContractData->amountOut > 0) {
                     if (sls->pCoinAmountCache->HasKeyInCache(contractId)) {
-                        CellAmount amount = sls->pCoinAmountCache->GetAmount(contractId);
+                        MCAmount amount = sls->pCoinAmountCache->GetAmount(contractId);
                         threadData->contractContext.txFinalData.coins = amount + tx->pContractData->amountOut;
                     }
                 }
@@ -217,13 +217,13 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, CellBlock*
 #endif
 }
 
-bool ContractDataDB::RunBlockContract(CellBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
+bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
 {
     auto it = mapBlockIndex.find(pBlock->hashPrevBlock);
     if (it == mapBlockIndex.end())
         return false;
     
-    CellBlockIndex* pPrevBlockIndex = it->second;
+    MCBlockIndex* pPrevBlockIndex = it->second;
     int blockHeight = pPrevBlockIndex->nHeight + 1;
 
     int offset = 0;
@@ -275,7 +275,7 @@ bool ContractDataDB::RunBlockContract(CellBlock* pBlock, ContractContext* pContr
     return true;
 }
 
-void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* pContractContext)
+void ContractDataDB::UpdateBlockContractInfo(MCBlockIndex* pBlockIndex, ContractContext* pContractContext)
 {
     if (pBlockIndex == nullptr)
         return;
@@ -285,7 +285,7 @@ void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, Contra
 
     if (confirmBlockHeight > 0) {
         // 遍历缓存的合约数据，清理明确是无效分叉的数据
-        CellBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
+        MCBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
         for (auto ci : contractData) {
             DBBlockContractInfo& dbBlockContractInfo = ci.second;
 
@@ -326,7 +326,7 @@ void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, Contra
         if (blockContractInfo.code.empty())
             blockContractInfo.code = ci.second.code;
 
-        CellHashWriter ss(SER_GETHASH, 0);
+        MCHashWriter ss(SER_GETHASH, 0);
         ss << blockContractInfo.code << dbContractInfo.data;
         dbContractInfo.from.dataHash = ss.GetHash();
 
@@ -350,7 +350,7 @@ void ContractDataDB::Flush()
     int confirmBlockHeight = chainActive.Height() - DEFAULT_CHECKBLOCKS;
 
     std::vector<uint160> removes;
-    CellDBBatch batch(db);
+    MCDBBatch batch(db);
     size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
 
     for (auto it : contractData) {
@@ -383,7 +383,7 @@ void ContractDataDB::Flush()
         contractData.erase(contractId);
 }
 
-int ContractDataDB::GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex)
+int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex)
 {
     LOCK(cs_cache);
 
@@ -400,14 +400,14 @@ int ContractDataDB::GetContractInfo(const CellContractID& contractId, ContractIn
     }
 
     // 遍历获取相应节点的数据
-    CellBlockIndex* prevBlock = (currentPrevBlockIndex ? currentPrevBlockIndex : chainActive.Tip());
+    MCBlockIndex* prevBlock = (currentPrevBlockIndex ? currentPrevBlockIndex : chainActive.Tip());
     int blockHeight = prevBlock->nHeight;
     // 链表最末尾存储最高的区块
     for (DBContractList::reverse_iterator it = di->second.data.rbegin(); it != di->second.data.rend(); ++it) {
         if (it->blockHeight <= blockHeight) {
             BlockMap::iterator bi = mapBlockIndex.find(it->from.blockHash);
             assert(bi != mapBlockIndex.end());
-            CellBlockIndex* checkBlockIndex = prevBlock->GetAncestor(it->blockHeight);
+            MCBlockIndex* checkBlockIndex = prevBlock->GetAncestor(it->blockHeight);
             // 找到同一分叉时
             if (checkBlockIndex == bi->second) {
                 contractInfo.from.blockHash = it->from.blockHash;

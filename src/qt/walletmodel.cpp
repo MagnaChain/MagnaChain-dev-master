@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -38,7 +38,7 @@
 #include <QTimer>
 
 
-WalletModel::WalletModel(const PlatformStyle *platformStyle, CellWallet *_wallet, OptionsModel *_optionsModel, QObject *parent) :
+WalletModel::WalletModel(const PlatformStyle *platformStyle, MCWallet *_wallet, OptionsModel *_optionsModel, QObject *parent) :
     QObject(parent), wallet(_wallet), optionsModel(_optionsModel), addressTableModel(0),
     transactionTableModel(0),
     recentRequestsTableModel(0),
@@ -66,7 +66,7 @@ WalletModel::~WalletModel()
     unsubscribeFromCoreSignals();
 }
 
-CellAmount WalletModel::getBalance(const CellCoinControl *coinControl) const
+MCAmount WalletModel::getBalance(const MCCoinControl *coinControl) const
 {
     if (coinControl)
     {
@@ -76,12 +76,12 @@ CellAmount WalletModel::getBalance(const CellCoinControl *coinControl) const
     return wallet->GetBalance();
 }
 
-CellAmount WalletModel::getUnconfirmedBalance() const
+MCAmount WalletModel::getUnconfirmedBalance() const
 {
     return wallet->GetUnconfirmedBalance();
 }
 
-CellAmount WalletModel::getImmatureBalance() const
+MCAmount WalletModel::getImmatureBalance() const
 {
     return wallet->GetImmatureBalance();
 }
@@ -91,17 +91,17 @@ bool WalletModel::haveWatchOnly() const
     return fHaveWatchOnly;
 }
 
-CellAmount WalletModel::getWatchBalance() const
+MCAmount WalletModel::getWatchBalance() const
 {
     return wallet->GetWatchOnlyBalance();
 }
 
-CellAmount WalletModel::getWatchUnconfirmedBalance() const
+MCAmount WalletModel::getWatchUnconfirmedBalance() const
 {
     return wallet->GetUnconfirmedWatchOnlyBalance();
 }
 
-CellAmount WalletModel::getWatchImmatureBalance() const
+MCAmount WalletModel::getWatchImmatureBalance() const
 {
     return wallet->GetImmatureWatchOnlyBalance();
 }
@@ -141,12 +141,12 @@ void WalletModel::pollBalanceChanged()
 
 void WalletModel::checkBalanceChanged()
 {
-    CellAmount newBalance = getBalance();
-    CellAmount newUnconfirmedBalance = getUnconfirmedBalance();
-    CellAmount newImmatureBalance = getImmatureBalance();
-    CellAmount newWatchOnlyBalance = 0;
-    CellAmount newWatchUnconfBalance = 0;
-    CellAmount newWatchImmatureBalance = 0;
+    MCAmount newBalance = getBalance();
+    MCAmount newUnconfirmedBalance = getUnconfirmedBalance();
+    MCAmount newImmatureBalance = getImmatureBalance();
+    MCAmount newWatchOnlyBalance = 0;
+    MCAmount newWatchUnconfBalance = 0;
+    MCAmount newWatchImmatureBalance = 0;
     if (haveWatchOnly())
     {
         newWatchOnlyBalance = getWatchBalance();
@@ -189,16 +189,16 @@ void WalletModel::updateWatchOnlyFlag(bool fHaveWatchonly)
 
 bool WalletModel::validateAddress(const QString &address)
 {
-    CellLinkAddress addressParsed(address.toStdString());
+    MagnaChainAddress addressParsed(address.toStdString());
     return addressParsed.IsValid();
 }
 
-WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransaction &transaction, const CellCoinControl& coinControl)
+WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransaction &transaction, const MCCoinControl& coinControl)
 {
-    CellAmount total = 0;
+    MCAmount total = 0;
     bool fSubtractFeeFromAmount = false;
     QList<SendCoinsRecipient> recipients = transaction.getRecipients();
-    std::vector<CellRecipient> vecSend;
+    std::vector<MCRecipient> vecSend;
 
     if(recipients.empty())
     {
@@ -216,7 +216,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
         if (rcp.paymentRequest.IsInitialized())
         {   // PaymentRequest...
-            CellAmount subtotal = 0;
+            MCAmount subtotal = 0;
             const payments::PaymentDetails& details = rcp.paymentRequest.getDetails();
             for (int i = 0; i < details.outputs_size(); i++)
             {
@@ -224,9 +224,9 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 if (out.amount() <= 0) continue;
                 subtotal += out.amount();
                 const unsigned char* scriptStr = (const unsigned char*)out.script().data();
-                CellScript scriptPubKey(scriptStr, scriptStr+out.script().size());
-                CellAmount nAmount = out.amount();
-                CellRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
+                MCScript scriptPubKey(scriptStr, scriptStr+out.script().size());
+                MCAmount nAmount = out.amount();
+                MCRecipient recipient = {scriptPubKey, nAmount, rcp.fSubtractFeeFromAmount};
                 vecSend.push_back(recipient);
             }
             if (subtotal <= 0)
@@ -248,8 +248,8 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             setAddress.insert(rcp.address);
             ++nAddresses;
 
-            CellScript scriptPubKey = GetScriptForDestination(CellLinkAddress(rcp.address.toStdString()).Get());
-            CellRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+            MCScript scriptPubKey = GetScriptForDestination(MagnaChainAddress(rcp.address.toStdString()).Get());
+            MCRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
             vecSend.push_back(recipient);
 
             total += rcp.amount;
@@ -260,7 +260,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         return DuplicateAddress;
     }
 
-    CellAmount nBalance = getBalance(&coinControl);
+    MCAmount nBalance = getBalance(&coinControl);
 
     if(total > nBalance)
     {
@@ -272,12 +272,12 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
 
         transaction.newPossibleKeyChange(wallet);
 
-        CellAmount nFeeRequired = 0;
+        MCAmount nFeeRequired = 0;
         int nChangePosRet = -1;
         std::string strFailReason;
 
-        CellWalletTx *newTx = transaction.getTransaction();
-        CellReserveKey *keyChange = transaction.getPossibleKeyChange();
+        MCWalletTx *newTx = transaction.getTransaction();
+        MCReserveKey *keyChange = transaction.getPossibleKeyChange();
         bool fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, nChangePosRet, strFailReason, coinControl);
         transaction.setTransactionFee(nFeeRequired);
         if (fSubtractFeeFromAmount && fCreated)
@@ -290,7 +290,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 return SendCoinsReturn(AmountWithFeeExceedsBalance);
             }
             Q_EMIT message(tr("Send Coins"), QString::fromStdString(strFailReason),
-                         CellClientUIInterface::MSG_ERROR);
+                         MCClientUIInterface::MSG_ERROR);
             return TransactionCreationFailed;
         }
 
@@ -310,7 +310,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
 
     {
         LOCK2(cs_main, wallet->cs_wallet);
-        CellWalletTx *newTx = transaction.getTransaction();
+        MCWalletTx *newTx = transaction.getTransaction();
 
         for (const SendCoinsRecipient &rcp : transaction.getRecipients())
         {
@@ -331,12 +331,12 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
                 newTx->vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
         }
 
-        CellReserveKey *keyChange = transaction.getPossibleKeyChange();
-        CellValidationState state;
+        MCReserveKey *keyChange = transaction.getPossibleKeyChange();
+        MCValidationState state;
         if(!wallet->CommitTransaction(*newTx, *keyChange, g_connman.get(), state))
             return SendCoinsReturn(TransactionCommitFailed, QString::fromStdString(state.GetRejectReason()));
 
-        CellDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION);
         ssTx << *newTx->tx;
         transaction_array.append(&(ssTx[0]), ssTx.size());
     }
@@ -349,12 +349,12 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction &tran
         if (!rcp.paymentRequest.IsInitialized())
         {
             std::string strAddress = rcp.address.toStdString();
-            CellTxDestination dest = CellLinkAddress(strAddress).Get();
+            MCTxDestination dest = MagnaChainAddress(strAddress).Get();
             std::string strLabel = rcp.label.toStdString();
             {
                 LOCK(wallet->cs_wallet);
 
-                std::map<CellTxDestination, CellAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
+                std::map<MCTxDestination, MCAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
 
                 // Check if we have a new address or an updated label
                 if (mi == wallet->mapAddressBook.end())
@@ -455,17 +455,17 @@ bool WalletModel::backupWallet(const QString &filename)
 }
 
 // Handlers for core signals
-static void NotifyKeyStoreStatusChanged(WalletModel *walletmodel, CellCryptoKeyStore *wallet)
+static void NotifyKeyStoreStatusChanged(WalletModel *walletmodel, MCCryptoKeyStore *wallet)
 {
     qDebug() << "NotifyKeyStoreStatusChanged";
     QMetaObject::invokeMethod(walletmodel, "updateStatus", Qt::QueuedConnection);
 }
 
-static void NotifyAddressBookChanged(WalletModel *walletmodel, CellWallet *wallet,
-        const CellTxDestination &address, const std::string &label, bool isMine,
+static void NotifyAddressBookChanged(WalletModel *walletmodel, MCWallet *wallet,
+        const MCTxDestination &address, const std::string &label, bool isMine,
         const std::string &purpose, ChangeType status)
 {
-    QString strAddress = QString::fromStdString(CellLinkAddress(address).ToString());
+    QString strAddress = QString::fromStdString(MagnaChainAddress(address).ToString());
     QString strLabel = QString::fromStdString(label);
     QString strPurpose = QString::fromStdString(purpose);
 
@@ -478,7 +478,7 @@ static void NotifyAddressBookChanged(WalletModel *walletmodel, CellWallet *walle
                               Q_ARG(int, status));
 }
 
-static void NotifyTransactionChanged(WalletModel *walletmodel, CellWallet *wallet, const uint256 &hash, ChangeType status)
+static void NotifyTransactionChanged(WalletModel *walletmodel, MCWallet *wallet, const uint256 &hash, ChangeType status)
 {
     Q_UNUSED(wallet);
     Q_UNUSED(hash);
@@ -557,46 +557,46 @@ void WalletModel::UnlockContext::CopyFrom(const UnlockContext& rhs)
     rhs.relock = false;
 }
 
-bool WalletModel::getPubKey(const CellKeyID &address, CellPubKey& vchPubKeyOut) const
+bool WalletModel::getPubKey(const MCKeyID &address, MCPubKey& vchPubKeyOut) const
 {
     return wallet->GetPubKey(address, vchPubKeyOut);
 }
 
-bool WalletModel::IsSpendable(const CellTxDestination& dest) const
+bool WalletModel::IsSpendable(const MCTxDestination& dest) const
 {
     return IsMine(*wallet, dest) & ISMINE_SPENDABLE;
 }
 
-bool WalletModel::getPrivKey(const CellKeyID &address, CellKey& vchPrivKeyOut) const
+bool WalletModel::getPrivKey(const MCKeyID &address, MCKey& vchPrivKeyOut) const
 {
     return wallet->GetKey(address, vchPrivKeyOut);
 }
 
-// returns a list of CellOutputs from CellOutPoints
-void WalletModel::getOutputs(const std::vector<CellOutPoint>& vOutpoints, std::vector<CellOutput>& vOutputs)
+// returns a list of MCOutputs from MCOutPoints
+void WalletModel::getOutputs(const std::vector<MCOutPoint>& vOutpoints, std::vector<MCOutput>& vOutputs)
 {
     LOCK2(cs_main, wallet->cs_wallet);
-    for (const CellOutPoint& outpoint : vOutpoints)
+    for (const MCOutPoint& outpoint : vOutpoints)
     {
         if (!wallet->mapWallet.count(outpoint.hash)) continue;
         int nDepth = wallet->mapWallet[outpoint.hash].GetDepthInMainChain();
         if (nDepth < 0) continue;
-        CellOutput out(&wallet->mapWallet[outpoint.hash], outpoint.n, nDepth, true /* spendable */, true /* solvable */, true /* safe */);
+        MCOutput out(&wallet->mapWallet[outpoint.hash], outpoint.n, nDepth, true /* spendable */, true /* solvable */, true /* safe */);
         vOutputs.push_back(out);
     }
 }
 
-bool WalletModel::isSpent(const CellOutPoint& outpoint) const
+bool WalletModel::isSpent(const MCOutPoint& outpoint) const
 {
     LOCK2(cs_main, wallet->cs_wallet);
     return wallet->IsSpent(outpoint.hash, outpoint.n);
 }
 
 // AvailableCoins + LockedCoins grouped by wallet address (put change in one group with wallet address)
-void WalletModel::listCoins(std::map<QString, std::vector<CellOutput> >& mapCoins) const
+void WalletModel::listCoins(std::map<QString, std::vector<MCOutput> >& mapCoins) const
 {
     for (auto& group : wallet->ListCoins()) {
-        auto& resultGroup = mapCoins[QString::fromStdString(CellLinkAddress(group.first).ToString())];
+        auto& resultGroup = mapCoins[QString::fromStdString(MagnaChainAddress(group.first).ToString())];
         for (auto& coin : group.second) {
             resultGroup.emplace_back(std::move(coin));
         }
@@ -609,19 +609,19 @@ bool WalletModel::isLockedCoin(uint256 hash, unsigned int n) const
     return wallet->IsLockedCoin(hash, n);
 }
 
-void WalletModel::lockCoin(CellOutPoint& output)
+void WalletModel::lockCoin(MCOutPoint& output)
 {
     LOCK2(cs_main, wallet->cs_wallet);
     wallet->LockCoin(output);
 }
 
-void WalletModel::unlockCoin(CellOutPoint& output)
+void WalletModel::unlockCoin(MCOutPoint& output)
 {
     LOCK2(cs_main, wallet->cs_wallet);
     wallet->UnlockCoin(output);
 }
 
-void WalletModel::listLockedCoins(std::vector<CellOutPoint>& vOutpts)
+void WalletModel::listLockedCoins(std::vector<MCOutPoint>& vOutpts)
 {
     LOCK2(cs_main, wallet->cs_wallet);
     wallet->ListLockedCoins(vOutpts);
@@ -634,7 +634,7 @@ void WalletModel::loadReceiveRequests(std::vector<std::string>& vReceiveRequests
 
 bool WalletModel::saveReceiveRequest(const std::string &sAddress, const int64_t nId, const std::string &sRequest)
 {
-    CellTxDestination dest = CellLinkAddress(sAddress).Get();
+    MCTxDestination dest = MagnaChainAddress(sAddress).Get();
 
     std::stringstream ss;
     ss << nId;
@@ -661,7 +661,7 @@ bool WalletModel::abandonTransaction(uint256 hash) const
 bool WalletModel::transactionCanBeBumped(uint256 hash) const
 {
     LOCK2(cs_main, wallet->cs_wallet);
-    const CellWalletTx *wtx = wallet->GetWalletTx(hash);
+    const MCWalletTx *wtx = wallet->GetWalletTx(hash);
     return wtx && SignalsOptInRBF(*wtx) && !wtx->mapValue.count("replaced_by_txid");
 }
 
@@ -669,7 +669,7 @@ bool WalletModel::bumpFee(uint256 hash)
 {
     std::unique_ptr<CFeeBumper> feeBump;
     {
-        CellCoinControl coin_control;
+        MCCoinControl coin_control;
         coin_control.signalRbf = true;
         LOCK2(cs_main, wallet->cs_wallet);
         feeBump.reset(new CFeeBumper(wallet, hash, coin_control, 0));
@@ -684,21 +684,21 @@ bool WalletModel::bumpFee(uint256 hash)
     // allow a user based fee verification
     QString questionString = tr("Do you want to increase the fee?");
     questionString.append("<br />");
-    CellAmount oldFee = feeBump->getOldFee();
-    CellAmount newFee = feeBump->getNewFee();
+    MCAmount oldFee = feeBump->getOldFee();
+    MCAmount newFee = feeBump->getNewFee();
     questionString.append("<table style=\"text-align: left;\">");
     questionString.append("<tr><td>");
     questionString.append(tr("Current fee:"));
     questionString.append("</td><td>");
-    questionString.append(CellLinkUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), oldFee));
+    questionString.append(MagnaChainUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), oldFee));
     questionString.append("</td></tr><tr><td>");
     questionString.append(tr("Increase:"));
     questionString.append("</td><td>");
-    questionString.append(CellLinkUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee - oldFee));
+    questionString.append(MagnaChainUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee - oldFee));
     questionString.append("</td></tr><tr><td>");
     questionString.append(tr("New fee:"));
     questionString.append("</td><td>");
-    questionString.append(CellLinkUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee));
+    questionString.append(MagnaChainUnits::formatHtmlWithUnit(getOptionsModel()->getDisplayUnit(), newFee));
     questionString.append("</td></tr></table>");
     SendConfirmationDialog confirmationDialog(tr("Confirm fee bump"), questionString);
     confirmationDialog.exec();

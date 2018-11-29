@@ -1,32 +1,32 @@
-// Copyright (c) 2017-2017 The Bitcoin Core developers
+// Copyright (c) 2017-2017 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_TX_VERIFY_H
-#define CELLLINK_CONSENSUS_TX_VERIFY_H
+#ifndef MAGNACHAIN_CONSENSUS_TX_VERIFY_H
+#define MAGNACHAIN_CONSENSUS_TX_VERIFY_H
 
 #include <stdint.h>
 #include <vector>
 #include "misc/amount.h"
 
-class CellBlockIndex;
-class CellCoinsViewCache;
-class CellTransaction;
-class CellValidationState;
-class CellKeyStore;
-class CellMutableTransaction;
-class CellScript;
-class CellBlock;
+class MCBlockIndex;
+class MCCoinsViewCache;
+class MCTransaction;
+class MCValidationState;
+class MCKeyStore;
+class MCMutableTransaction;
+class MCScript;
+class MCBlock;
 class BranchCache;
 
 /** Transaction validation functions */
 
 /** Context-independent validity checks */
-bool CheckTransaction(const CellTransaction& tx, CellValidationState& state, bool fCheckDuplicateInputs=true, const CellBlock* pBlock=nullptr, 
-    const CellBlockIndex* pBlockIndex=nullptr, const bool fVerifingDB=false, BranchCache *pBranchCache=nullptr);
-bool CheckCoinbaseSignature( int nHeight, const CellTransaction& tx);
-bool SignatureCoinbaseTransaction( int nHeight, const CellKeyStore* keystoreIn, CellMutableTransaction& tx, CellAmount nValue, const CellScript& scriptPubKey);
+bool CheckTransaction(const MCTransaction& tx, MCValidationState& state, bool fCheckDuplicateInputs=true, const MCBlock* pBlock=nullptr, 
+    const MCBlockIndex* pBlockIndex=nullptr, const bool fVerifingDB=false, BranchCache *pBranchCache=nullptr);
+bool CheckCoinbaseSignature( int nHeight, const MCTransaction& tx);
+bool SignatureCoinbaseTransaction( int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& tx, MCAmount nValue, const MCScript& scriptPubKey);
 
 
 namespace Consensus {
@@ -35,7 +35,7 @@ namespace Consensus {
  * This does not modify the UTXO set. This does not check scripts and sigs.
  * Preconditions: tx.IsCoinBase() is false.
  */
-bool CheckTxInputs(const CellTransaction& tx, CellValidationState& state, const CellCoinsViewCache& inputs, int nSpendHeight);
+bool CheckTxInputs(const MCTransaction& tx, MCValidationState& state, const MCCoinsViewCache& inputs, int nSpendHeight);
 } // namespace Consensus
 
 /** Auxiliary functions for transaction validation (ideally should not be exposed) */
@@ -43,18 +43,18 @@ bool CheckTxInputs(const CellTransaction& tx, CellValidationState& state, const 
 /**
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
  * @return number of sigops this transaction's outputs will produce when spent
- * @see CellTransaction::FetchInputs
+ * @see MCTransaction::FetchInputs
  */
-unsigned int GetLegacySigOpCount(const CellTransaction& tx);
+unsigned int GetLegacySigOpCount(const MCTransaction& tx);
 
 /**
  * Count ECDSA signature operations in pay-to-script-hash inputs.
  * 
  * @param[in] mapInputs Map of previous transactions that have outputs we're spending
  * @return maximum number of sigops required to validate this transaction's inputs
- * @see CellTransaction::FetchInputs
+ * @see MCTransaction::FetchInputs
  */
-unsigned int GetP2SHSigOpCount(const CellTransaction& tx, const CellCoinsViewCache& mapInputs);
+unsigned int GetP2SHSigOpCount(const MCTransaction& tx, const MCCoinsViewCache& mapInputs);
 
 /**
  * Compute total signature operation cost of a transaction.
@@ -63,13 +63,13 @@ unsigned int GetP2SHSigOpCount(const CellTransaction& tx, const CellCoinsViewCac
  * @param[out] flags Script verification flags
  * @return Total signature operation cost of tx
  */
-int64_t GetTransactionSigOpCost(const CellTransaction& tx, const CellCoinsViewCache& inputs, int flags);
+int64_t GetTransactionSigOpCost(const MCTransaction& tx, const MCCoinsViewCache& inputs, int flags);
 
 /**
  * Check if transaction is final and can be included in a block with the
  * specified height and time. Consensus critical.
  */
-bool IsFinalTx(const CellTransaction &tx, int nBlockHeight, int64_t nBlockTime);
+bool IsFinalTx(const MCTransaction &tx, int nBlockHeight, int64_t nBlockTime);
 
 /**
  * Calculates the block height and previous block's median time past at
@@ -77,13 +77,13 @@ bool IsFinalTx(const CellTransaction &tx, int nBlockHeight, int64_t nBlockTime);
  * Also removes from the vector of input heights any entries which did not
  * correspond to sequence locked inputs as they do not affect the calculation.
  */
-std::pair<int, int64_t> CalculateSequenceLocks(const CellTransaction &tx, int flags, std::vector<int>* prevHeights, const CellBlockIndex& block);
+std::pair<int, int64_t> CalculateSequenceLocks(const MCTransaction &tx, int flags, std::vector<int>* prevHeights, const MCBlockIndex& block);
 
-bool EvaluateSequenceLocks(const CellBlockIndex& block, std::pair<int, int64_t> lockPair);
+bool EvaluateSequenceLocks(const MCBlockIndex& block, std::pair<int, int64_t> lockPair);
 /**
  * Check if transaction is final per BIP 68 sequence numbers and can be included in a block.
  * Consensus critical. Takes as input a list of heights at which tx's inputs (in order) confirmed.
  */
-bool SequenceLocks(const CellTransaction &tx, int flags, std::vector<int>* prevHeights, const CellBlockIndex& block);
+bool SequenceLocks(const MCTransaction &tx, int flags, std::vector<int>* prevHeights, const MCBlockIndex& block);
 
-#endif // CELLLINK_CONSENSUS_TX_VERIFY_H
+#endif // MAGNACHAIN_CONSENSUS_TX_VERIFY_H

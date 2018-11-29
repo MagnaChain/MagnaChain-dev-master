@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016 The Bitcoin Core developers
+// Copyright (c) 2015-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -67,8 +67,8 @@ class prevector_tester {
         for (const T& v : reverse_iterate(const_pre_vector)) {
              local_check(v == real_vector[--pos]);
         }
-        CellDataStream ss1(SER_DISK, 0);
-        CellDataStream ss2(SER_DISK, 0);
+        MCDataStream ss1(SER_DISK, 0);
+        MCDataStream ss2(SER_DISK, 0);
         ss1 << real_vector;
         ss2 << pre_vector;
         local_check_equal(ss1.size(), ss2.size());

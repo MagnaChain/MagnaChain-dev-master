@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_WALLET_H
-#define CELLLINK_WALLET_WALLET_H
+#ifndef MAGNACHAIN_WALLET_WALLET_H
+#define MAGNACHAIN_WALLET_WALLET_H
 
 #include "misc/amount.h"
 #include "policy/feerate.h"
@@ -32,32 +32,32 @@
 #include <utility>
 #include <vector>
 
-typedef CellWallet* CWalletRef;
+typedef MCWallet* CWalletRef;
 extern std::vector<CWalletRef> vpwallets;
 
 /**
  * Settings
  */
-extern CellFeeRate payTxFee;
+extern MCFeeRate payTxFee;
 extern unsigned int nTxConfirmTarget;
 extern bool bSpendZeroConfChange;
 extern bool fWalletRbf;
 
 static const unsigned int DEFAULT_KEYPOOL_SIZE = 1000;
 //! -paytxfee default
-static const CellAmount DEFAULT_TRANSACTION_FEE = 0;
+static const MCAmount DEFAULT_TRANSACTION_FEE = 0;
 //! -fallbackfee default
-static const CellAmount DEFAULT_FALLBACK_FEE = 20000;
+static const MCAmount DEFAULT_FALLBACK_FEE = 20000;
 //! -m_discard_rate default
-static const CellAmount DEFAULT_DISCARD_FEE = 10000;
+static const MCAmount DEFAULT_DISCARD_FEE = 10000;
 //! -mintxfee default
-static const CellAmount DEFAULT_TRANSACTION_MINFEE = 1000;
+static const MCAmount DEFAULT_TRANSACTION_MINFEE = 1000;
 //! minimum recommended increment for BIP 125 replacement txs
-static const CellAmount WALLET_INCREMENTAL_RELAY_FEE = 5000;
+static const MCAmount WALLET_INCREMENTAL_RELAY_FEE = 5000;
 //! target minimum change amount
-static const CellAmount MIN_CHANGE = CENT;
+static const MCAmount MIN_CHANGE = CENT;
 //! final minimum change amount after paying for fees
-static const CellAmount MIN_FINAL_CHANGE = MIN_CHANGE/2;
+static const MCAmount MIN_FINAL_CHANGE = MIN_CHANGE/2;
 //! Default for -spendzeroconfchange
 static const bool DEFAULT_SPEND_ZEROCONF_CHANGE = true;
 //! Default for -walletrejectlongchains
@@ -75,15 +75,15 @@ extern const char * DEFAULT_WALLET_DAT;
 
 static const int64_t TIMESTAMP_MIN = 0;
 
-class CellBlockIndex;
-class CellCoinControl;
-class CellOutput;
-class CellReserveKey;
-class CellScript;
-class CellScheduler;
-class CellTxMemPool;
-class CellBlockPolicyEstimator;
-class CellWalletTx;
+class MCBlockIndex;
+class MCCoinControl;
+class MCOutput;
+class MCReserveKey;
+class MCScript;
+class MCScheduler;
+class MCTxMemPool;
+class MCBlockPolicyEstimator;
+class MCWalletTx;
 struct FeeCalculation;
 enum class FeeEstimateMode;
 class LuaStateExtraData;
@@ -105,15 +105,15 @@ enum WalletFeature
 
 
 /** A key pool entry */
-class CellKeyPool
+class MCKeyPool
 {
 public:
     int64_t nTime;
-    CellPubKey vchPubKey;
+    MCPubKey vchPubKey;
     bool fInternal; // for change outputs
 
-    CellKeyPool();
-    CellKeyPool(const CellPubKey& vchPubKeyIn, bool internalIn);
+    MCKeyPool();
+    MCKeyPool(const MCPubKey& vchPubKeyIn, bool internalIn);
 
     ADD_SERIALIZE_METHODS;
 
@@ -141,22 +141,22 @@ public:
 };
 
 /** Address book data */
-class CellAddressBookData
+class MCAddressBookData
 {
 public:
     std::string name;
     std::string purpose;
 
-    CellAddressBookData() : purpose("unknown") {}
+    MCAddressBookData() : purpose("unknown") {}
 
     typedef std::map<std::string, std::string> StringMap;
     StringMap destdata;
 };
 
-struct CellRecipient
+struct MCRecipient
 {
-    CellScript scriptPubKey;
-    CellAmount nAmount;
+    MCScript scriptPubKey;
+    MCAmount nAmount;
     bool fSubtractFeeFromAmount;
 };
 
@@ -181,22 +181,22 @@ static inline void WriteOrderPos(const int64_t& nOrderPos, mapValue_t& mapValue)
     mapValue["n"] = i64tostr(nOrderPos);
 }
 
-struct CellOutputEntry
+struct MCOutputEntry
 {
-    CellTxDestination destination;
-    CellAmount amount;
+    MCTxDestination destination;
+    MCAmount amount;
     int vout;
 };
 
 /** A transaction with a merkle branch linking it to the block chain. */
-class CellMerkleTx
+class MCMerkleTx
 {
 private:
   /** Constant used in hashBlock to indicate tx has been abandoned */
     static const uint256 ABANDON_HASH;
 
 public:
-    CellTransactionRef tx;
+    MCTransactionRef tx;
     uint256 hashBlock;
 
     /* An nIndex == -1 means that hashBlock (in nonzero) refers to the earliest
@@ -206,21 +206,21 @@ public:
      */
     int nIndex;
 
-    CellMerkleTx()
+    MCMerkleTx()
     {
         SetTx(MakeTransactionRef());
         Init();
     }
 
-    CellMerkleTx(CellTransactionRef arg)
+    MCMerkleTx(MCTransactionRef arg)
     {
         SetTx(std::move(arg));
         Init();
     }
 
-    /** Helper conversion operator to allow passing CellMerkleTx where CellTransaction is expected.
+    /** Helper conversion operator to allow passing MCMerkleTx where MCTransaction is expected.
      *  TODO: adapt callers and remove this operator. */
-    operator const CellTransaction&() const { return *tx; }
+    operator const MCTransaction&() const { return *tx; }
 
     void Init()
     {
@@ -228,7 +228,7 @@ public:
         nIndex = -1;
     }
 
-    void SetTx(CellTransactionRef arg)
+    void SetTx(MCTransactionRef arg)
     {
         tx = std::move(arg);
     }
@@ -244,7 +244,7 @@ public:
         READWRITE(nIndex);
     }
 
-    void SetMerkleBranch(const CellBlockIndex* pIndex, int posInBlock);
+    void SetMerkleBranch(const MCBlockIndex* pIndex, int posInBlock);
 
     /**
      * Return depth of transaction in blockchain:
@@ -252,13 +252,13 @@ public:
      *  0  : in memory pool, waiting to be included in a block
      * >=1 : this many blocks deep in the main chain
      */
-    int GetDepthInMainChain(const CellBlockIndex* &pindexRet) const;
-    int GetDepthInMainChain() const { const CellBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
-    bool IsInMainChain() const { const CellBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet) > 0; }
+    int GetDepthInMainChain(const MCBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain() const { const MCBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
+    bool IsInMainChain() const { const MCBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet) > 0; }
     int GetBlocksToMaturity() const;
     int GetBlocksToMaturityForCoinCreateBranch() const;
     /** Pass this transaction to the mempool. Fails if absolute fee exceeds absurd fee. */
-    bool AcceptToMemoryPool(const CellAmount& nAbsurdFee, CellValidationState& state, bool executeSmartContract, bool* pfMissingInputs = nullptr);
+    bool AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, bool* pfMissingInputs = nullptr);
     bool hashUnset() const { return (hashBlock.IsNull() || hashBlock == ABANDON_HASH); }
     bool isAbandoned() const { return (hashBlock == ABANDON_HASH); }
     void setAbandoned() { hashBlock = ABANDON_HASH; }
@@ -271,10 +271,10 @@ public:
  * A transaction with a bunch of additional info that only the owner cares about.
  * It includes any unrecorded transactions needed to link it back to the block chain.
  */
-class CellWalletTx : public CellMerkleTx
+class MCWalletTx : public MCMerkleTx
 {
 private:
-    const CellWallet* pwallet;
+    const MCWallet* pwallet;
 
 public:
     /**
@@ -313,7 +313,7 @@ public:
      * transaction was received if it wasn't part of a block, with the timestamp
      * adjusted in both cases so timestamp order matches the order transactions
      * were added to the wallet. More details can be found in
-     * CellWallet::ComputeTimeSmart().
+     * MCWallet::ComputeTimeSmart().
      */
     unsigned int nTimeSmart;
     /**
@@ -335,17 +335,17 @@ public:
     mutable bool fImmatureWatchCreditCached;
     mutable bool fAvailableWatchCreditCached;
     mutable bool fChangeCached;
-    mutable CellAmount nDebitCached;
-    mutable CellAmount nCreditCached;
-    mutable CellAmount nImmatureCreditCached;
-    mutable CellAmount nAvailableCreditCached;
-    mutable CellAmount nWatchDebitCached;
-    mutable CellAmount nWatchCreditCached;
-    mutable CellAmount nImmatureWatchCreditCached;
-    mutable CellAmount nAvailableWatchCreditCached;
-    mutable CellAmount nChangeCached;
+    mutable MCAmount nDebitCached;
+    mutable MCAmount nCreditCached;
+    mutable MCAmount nImmatureCreditCached;
+    mutable MCAmount nAvailableCreditCached;
+    mutable MCAmount nWatchDebitCached;
+    mutable MCAmount nWatchCreditCached;
+    mutable MCAmount nImmatureWatchCreditCached;
+    mutable MCAmount nAvailableWatchCreditCached;
+    mutable MCAmount nChangeCached;
 	// temp data for contract
-	int32_t nVersion = CellTransaction::CURRENT_VERSION;//special version
+	int32_t nVersion = MCTransaction::CURRENT_VERSION;//special version
 
 	// temp data for branch
 	std::string branchVSeeds;
@@ -356,30 +356,30 @@ public:
 	//uint64_t inAmount;
     std::string fromBranchId;
 
-    std::shared_ptr<const CellSpvProof> pPMT;
+    std::shared_ptr<const MCSpvProof> pPMT;
     std::vector<unsigned char> fromTx;
     std::shared_ptr<ContractData> pContractData;
     std::shared_ptr<const ReportData> pReportData;
     std::shared_ptr<ProveData> pProveData;
 
     bool isDataTransaction; // transaction can be fee only, no transfer
-    std::shared_ptr<CellBranchBlockInfo> pBranchBlockData;
+    std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
 
     uint256 reporttxid;
     uint256 coinpreouthash;
     uint256 provetxid;
 
-    CellWalletTx()
+    MCWalletTx()
     {
         Init(nullptr);
     }
 
-    CellWalletTx(const CellWallet* pwalletIn, CellTransactionRef arg) : CellMerkleTx(std::move(arg))
+    MCWalletTx(const MCWallet* pwalletIn, MCTransactionRef arg) : MCMerkleTx(std::move(arg))
     {
         Init(pwalletIn);
     }
 
-    void Init(const CellWallet* pwalletIn)
+    void Init(const MCWallet* pwalletIn)
     {
         pwallet = pwalletIn;
         mapValue.clear();
@@ -429,8 +429,8 @@ public:
                 mapValue["timesmart"] = strprintf("%u", nTimeSmart);
         }
 
-        READWRITE(*(CellMerkleTx*)this);
-        std::vector<CellMerkleTx> vUnused; //!< Used to be vtxPrev
+        READWRITE(*(MCMerkleTx*)this);
+        std::vector<MCMerkleTx> vUnused; //!< Used to be vtxPrev
         READWRITE(vUnused);
         READWRITE(mapValue);
         READWRITE(vOrderForm);
@@ -468,23 +468,23 @@ public:
         fChangeCached = false;
     }
 
-    void BindWallet(CellWallet *pwalletIn)
+    void BindWallet(MCWallet *pwalletIn)
     {
         pwallet = pwalletIn;
         MarkDirty();
     }
 
     //! filter decides which addresses will count towards the debit
-    CellAmount GetDebit(const isminefilter& filter) const;
-    CellAmount GetCredit(const isminefilter& filter) const;
-    CellAmount GetImmatureCredit(bool fUseCache=true) const;
-    CellAmount GetAvailableCredit(bool fUseCache=true) const;
-    CellAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
-    CellAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
-    CellAmount GetChange() const;
+    MCAmount GetDebit(const isminefilter& filter) const;
+    MCAmount GetCredit(const isminefilter& filter) const;
+    MCAmount GetImmatureCredit(bool fUseCache=true) const;
+    MCAmount GetAvailableCredit(bool fUseCache=true) const;
+    MCAmount GetImmatureWatchOnlyCredit(const bool& fUseCache=true) const;
+    MCAmount GetAvailableWatchOnlyCredit(const bool& fUseCache=true) const;
+    MCAmount GetChange() const;
 
-    void GetAmounts(std::list<CellOutputEntry>& listReceived,
-                    std::list<CellOutputEntry>& listSent, CellAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
+    void GetAmounts(std::list<MCOutputEntry>& listReceived,
+                    std::list<MCOutputEntry>& listSent, MCAmount& nFee, std::string& strSentAccount, const isminefilter& filter) const;
 
     bool IsFromMe(const isminefilter& filter) const
     {
@@ -492,10 +492,10 @@ public:
     }
 
     // True if only scriptSigs are different
-    bool IsEquivalentTo(const CellWalletTx& tx) const;
+    bool IsEquivalentTo(const MCWalletTx& tx) const;
 
     bool IsSmartContract() const {
-        return nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || nVersion == CellTransaction::CALL_CONTRACT_VERSION;
+        return nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION;
     }
 
     bool InMempool() const;
@@ -505,45 +505,45 @@ public:
     int GetRequestCount() const;
 
     // RelayWalletTransaction may only be called if fBroadcastTransactions!
-    bool RelayWalletTransaction(CellConnman* connman);
+    bool RelayWalletTransaction(MCConnman* connman);
 
     std::set<uint256> GetConflicts() const;
 };
 
 
-class CellInputCoin {
+class MCInputCoin {
 public:
-    CellInputCoin(const CellWalletTx* walletTx, unsigned int i)
+    MCInputCoin(const MCWalletTx* walletTx, unsigned int i)
     {
         if (!walletTx)
             throw std::invalid_argument("walletTx should not be null");
         if (i >= walletTx->tx->vout.size())
             throw std::out_of_range("The output index is out of range");
 
-        outpoint = CellOutPoint(walletTx->GetHash(), i);
+        outpoint = MCOutPoint(walletTx->GetHash(), i);
         txout = walletTx->tx->vout[i];
     }
 
-    CellOutPoint outpoint;
-    CellTxOut txout;
+    MCOutPoint outpoint;
+    MCTxOut txout;
 
-    bool operator<(const CellInputCoin& rhs) const {
+    bool operator<(const MCInputCoin& rhs) const {
         return outpoint < rhs.outpoint;
     }
 
-    bool operator!=(const CellInputCoin& rhs) const {
+    bool operator!=(const MCInputCoin& rhs) const {
         return outpoint != rhs.outpoint;
     }
 
-    bool operator==(const CellInputCoin& rhs) const {
+    bool operator==(const MCInputCoin& rhs) const {
         return outpoint == rhs.outpoint;
     }
 };
 
-class CellOutput
+class MCOutput
 {
 public:
-    const CellWalletTx *tx;
+    const MCWalletTx *tx;
     int i;
     int nDepth;
 
@@ -560,7 +560,7 @@ public:
      */
     bool fSafe;
 
-    CellOutput(const CellWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, bool fSafeIn)
+    MCOutput(const MCWalletTx *txIn, int iIn, int nDepthIn, bool fSpendableIn, bool fSolvableIn, bool fSafeIn)
     {
         tx = txIn; i = iIn; nDepth = nDepthIn; fSpendable = fSpendableIn; fSolvable = fSolvableIn; fSafe = fSafeIn;
     }
@@ -602,11 +602,11 @@ public:
  * Internal transfers.
  * Database key is acentry<account><counter>.
  */
-class CellAccountingEntry
+class MCAccountingEntry
 {
 public:
     std::string strAccount;
-    CellAmount nCreditDebit;
+    MCAmount nCreditDebit;
     int64_t nTime;
     std::string strOtherAccount;
     std::string strComment;
@@ -614,7 +614,7 @@ public:
     int64_t nOrderPos; //!< position in ordered transaction list
     uint64_t nEntryNo;
 
-    CellAccountingEntry()
+    MCAccountingEntry()
     {
         SetNull();
     }
@@ -648,7 +648,7 @@ public:
 
             if (!(mapValue.empty() && _ssExtra.empty()))
             {
-                CellDataStream ss(s.GetType(), s.GetVersion());
+                MCDataStream ss(s.GetType(), s.GetVersion());
                 ss.insert(ss.begin(), '\0');
                 ss << mapValue;
                 ss.insert(ss.end(), _ssExtra.begin(), _ssExtra.end());
@@ -664,7 +664,7 @@ public:
             mapValue.clear();
             if (std::string::npos != nSepPos)
             {
-                CellDataStream ss(std::vector<char>(strComment.begin() + nSepPos + 1, strComment.end()), s.GetType(), s.GetVersion());
+                MCDataStream ss(std::vector<char>(strComment.begin() + nSepPos + 1, strComment.end()), s.GetType(), s.GetVersion());
                 ss >> mapValue;
                 _ssExtra = std::vector<char>(ss.begin(), ss.end());
             }
@@ -682,10 +682,10 @@ private:
 
 
 /** 
- * A CellWallet is an extension of a keystore, which also maintains a set of transactions and balances,
+ * A MCWallet is an extension of a keystore, which also maintains a set of transactions and balances,
  * and provides the ability to create new transactions.
  */
-class CellWallet : public CellCryptoKeyStore, public CellValidationInterface
+class MCWallet : public MCCryptoKeyStore, public MCValidationInterface
 {
 private:
     static std::atomic<bool> fFlushScheduled;
@@ -697,7 +697,7 @@ private:
      * all coins from coinControl are selected; Never select unconfirmed coins
      * if they are not ours
      */
-    bool SelectCoins(const std::vector<CellOutput>& vAvailableCoins, const CellAmount& nTargetValue, std::set<CellInputCoin>& setCoinsRet, CellAmount& nValueRet, const CellCoinControl *coinControl = nullptr) const;
+    bool SelectCoins(const std::vector<MCOutput>& vAvailableCoins, const MCAmount& nTargetValue, std::set<MCInputCoin>& setCoinsRet, MCAmount& nValueRet, const MCCoinControl *coinControl = nullptr) const;
 
     CWalletDB *pwalletdbEncryption;
 
@@ -716,9 +716,9 @@ private:
      * detect and report conflicts (double-spends or
      * mutated transactions where the mutant gets mined).
      */
-    typedef std::multimap<CellOutPoint, uint256> TxSpends;
+    typedef std::multimap<MCOutPoint, uint256> TxSpends;
     TxSpends mapTxSpends;
-    void AddToSpends(const CellOutPoint& outpoint, const uint256& wtxid);
+    void AddToSpends(const MCOutPoint& outpoint, const uint256& wtxid);
     void AddToSpends(const uint256& wtxid);
 
     /* Mark a transaction (and its in-wallet descendants) as conflicting with a particular block. */
@@ -728,18 +728,18 @@ private:
 
     /* Used by TransactionAddedToMemorypool/BlockConnected/Disconnected.
      * Should be called with pindexBlock and posInBlock if this is for a transaction that is included in a block. */
-    void SyncTransaction(const CellTransactionRef& tx, const CellBlockIndex *pindex = nullptr, int posInBlock = 0);
+    void SyncTransaction(const MCTransactionRef& tx, const MCBlockIndex *pindex = nullptr, int posInBlock = 0);
 
     /* the HD chain data model (external chain counters) */
     CHDChain hdChain;
 
     /* HD derive new child key (on internal or external chain) */
-    void DeriveNewChildKey(CWalletDB &walletdb, CKeyMetadata& metadata, CellKey& secret, bool internal = false);
+    void DeriveNewChildKey(CWalletDB &walletdb, CKeyMetadata& metadata, MCKey& secret, bool internal = false);
 
     std::set<int64_t> setInternalKeyPool;
     std::set<int64_t> setExternalKeyPool;
     int64_t m_max_keypool_index;
-    std::map<CellKeyID, int64_t> m_pool_key_to_index;
+    std::map<MCKeyID, int64_t> m_pool_key_to_index;
 
     int64_t nTimeFirstKey;
 
@@ -752,9 +752,9 @@ private:
      * of the other AddWatchOnly which accepts a timestamp and sets
      * nTimeFirstKey more intelligently for more efficient rescans.
      */
-    bool AddWatchOnly(const CellScript& dest) override;
+    bool AddWatchOnly(const MCScript& dest) override;
 
-    std::unique_ptr<CellWalletDBWrapper> dbw;
+    std::unique_ptr<MCWalletDBWrapper> dbw;
 
 protected:
 	bool fFastMode;
@@ -762,16 +762,16 @@ protected:
 public:
     /*
      * Main wallet lock.
-     * This lock protects all the fields added by CellWallet.
+     * This lock protects all the fields added by MCWallet.
      */
-    mutable CellCriticalSection cs_wallet;
+    mutable MCCriticalSection cs_wallet;
 
-	CellLinkAddress _senderAddr;
+	MagnaChainAddress _senderAddr;
 
     /** Get database handle used by this wallet. Ideally this function would
      * not be necessary.
      */
-    CellWalletDBWrapper& GetDBHandle()
+    MCWalletDBWrapper& GetDBHandle()
     {
         return *dbw;
     }
@@ -787,29 +787,29 @@ public:
         }
     }
 
-    void LoadKeyPool(int64_t nIndex, const CellKeyPool &keypool);
+    void LoadKeyPool(int64_t nIndex, const MCKeyPool &keypool);
 
     // Map from Key ID (for regular keys) or Script ID (for watch-only keys) to
     // key metadata.
-    std::map<CellTxDestination, CKeyMetadata> mapKeyMetadata;
+    std::map<MCTxDestination, CKeyMetadata> mapKeyMetadata;
 
-    typedef std::map<unsigned int, CellMasterKey> MasterKeyMap;
+    typedef std::map<unsigned int, MCMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
     unsigned int nMasterKeyMaxID;
 
     // Create wallet with dummy database handle
-    CellWallet(): dbw(new CellWalletDBWrapper())
+    MCWallet(): dbw(new MCWalletDBWrapper())
     {
         SetNull();
     }
 
     // Create wallet with passed-in database handle
-    CellWallet(std::unique_ptr<CellWalletDBWrapper> dbw_in) : dbw(std::move(dbw_in))
+    MCWallet(std::unique_ptr<MCWalletDBWrapper> dbw_in) : dbw(std::move(dbw_in))
     {
         SetNull();
     }
 
-    ~CellWallet()
+    ~MCWallet()
     {
         delete pwalletdbEncryption;
         pwalletdbEncryption = nullptr;
@@ -835,10 +835,10 @@ public:
 		fFakeWallet = false;
     }
 
-    std::map<uint256, CellWalletTx> mapWallet;
-    std::list<CellAccountingEntry> laccentries;
+    std::map<uint256, MCWalletTx> mapWallet;
+    std::list<MCAccountingEntry> laccentries;
 
-    typedef std::pair<CellWalletTx*, CellAccountingEntry*> TxPair;
+    typedef std::pair<MCWalletTx*, MCAccountingEntry*> TxPair;
     typedef std::multimap<int64_t, TxPair > TxItems;
     TxItems wtxOrdered;
 
@@ -846,13 +846,13 @@ public:
     uint64_t nAccountingEntryNumber;
     std::map<uint256, int> mapRequestCount;
 
-    std::map<CellTxDestination, CellAddressBookData> mapAddressBook;
+    std::map<MCTxDestination, MCAddressBookData> mapAddressBook;
 
-    CellPubKey vchDefaultKey;
+    MCPubKey vchDefaultKey;
 
-    std::set<CellOutPoint> setLockedCoins;
+    std::set<MCOutPoint> setLockedCoins;
 
-    const CellWalletTx* GetWalletTx(const uint256& hash) const;
+    const MCWalletTx* GetWalletTx(const uint256& hash) const;
 
     //! check whether we are allowed to upgrade (or already support) to the named feature
     bool CanSupportFeature(enum WalletFeature wf) const { AssertLockHeld(cs_wallet); return nWalletMaxVersion >= wf; }
@@ -860,18 +860,18 @@ public:
     /**
      * populate vCoins with vector of available COutputs.
      */
-	void AvailableCoins(std::vector<CellOutput>& vCoins, const CellTxDestination* dest = nullptr, bool fOnlySafe = true, const CellCoinControl *coinControl = nullptr, const CellAmount& nMinimumAmount = 1, const CellAmount& nMaximumAmount = MAX_MONEY, const CellAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999) const;
-    void AvailableMortgageCoins(std::vector<CellOutput>& vCoins, bool fOnlySafe = true, branch_script_type bsptype = BST_MORTGAGE_COIN, const CellCoinControl *coinControl = nullptr, const CellAmount& nMinimumAmount = 1, const CellAmount& nMaximumAmount = MAX_MONEY, const CellAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999);
+	void AvailableCoins(std::vector<MCOutput>& vCoins, const MCTxDestination* dest = nullptr, bool fOnlySafe = true, const MCCoinControl *coinControl = nullptr, const MCAmount& nMinimumAmount = 1, const MCAmount& nMaximumAmount = MAX_MONEY, const MCAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999) const;
+    void AvailableMortgageCoins(std::vector<MCOutput>& vCoins, bool fOnlySafe = true, branch_script_type bsptype = BST_MORTGAGE_COIN, const MCCoinControl *coinControl = nullptr, const MCAmount& nMinimumAmount = 1, const MCAmount& nMaximumAmount = MAX_MONEY, const MCAmount& nMinimumSumAmount = MAX_MONEY, const uint64_t& nMaximumCount = 0, const int& nMinDepth = 0, const int& nMaxDepth = 9999999);
 
     /**
      * Return list of available coins and locked coins grouped by non-change output address.
      */
-    std::map<CellTxDestination, std::vector<CellOutput>> ListCoins() const;
+    std::map<MCTxDestination, std::vector<MCOutput>> ListCoins() const;
 
     /**
      * Find non-change parent output.
      */
-    const CellTxOut& FindNonChangeParentOutput(const CellTransaction& tx, int output) const;
+    const MCTxOut& FindNonChangeParentOutput(const MCTransaction& tx, int output) const;
 
     /**
      * Shuffle and select coins until nTargetValue is reached while avoiding
@@ -879,15 +879,15 @@ public:
      * completion the coin set and corresponding actual target value is
      * assembled
      */
-    bool SelectCoinsMinConf(const CellAmount& nTargetValue, int nConfMine, int nConfTheirs, uint64_t nMaxAncestors, std::vector<CellOutput> vCoins, std::set<CellInputCoin>& setCoinsRet, CellAmount& nValueRet) const;
+    bool SelectCoinsMinConf(const MCAmount& nTargetValue, int nConfMine, int nConfTheirs, uint64_t nMaxAncestors, std::vector<MCOutput> vCoins, std::set<MCInputCoin>& setCoinsRet, MCAmount& nValueRet) const;
 
     bool IsSpent(const uint256& hash, unsigned int n) const;
 
     bool IsLockedCoin(uint256 hash, unsigned int n) const;
-    void LockCoin(const CellOutPoint& output);
-    void UnlockCoin(const CellOutPoint& output);
+    void LockCoin(const MCOutPoint& output);
+    void UnlockCoin(const MCOutPoint& output);
     void UnlockAllCoins();
-    void ListLockedCoins(std::vector<CellOutPoint>& vOutpts) const;
+    void ListLockedCoins(std::vector<MCOutPoint>& vOutpts) const;
 
     /*
      * Rescan abort properties
@@ -900,41 +900,41 @@ public:
      * keystore implementation
      * Generate a new key
      */
-    CellPubKey GenerateNewKey(CWalletDB& walletdb, bool internal = false);
+    MCPubKey GenerateNewKey(CWalletDB& walletdb, bool internal = false);
     //! Adds a key to the store, and saves it to disk.
-    bool AddKeyPubKey(const CellKey& key, const CellPubKey &pubkey) override;
-    bool AddKeyPubKeyWithDB(CWalletDB &walletdb,const CellKey& key, const CellPubKey &pubkey);
+    bool AddKeyPubKey(const MCKey& key, const MCPubKey &pubkey) override;
+    bool AddKeyPubKeyWithDB(CWalletDB &walletdb,const MCKey& key, const MCPubKey &pubkey);
     //! Adds a key to the store, without saving it to disk (used by LoadWallet)
-    bool LoadKey(const CellKey& key, const CellPubKey &pubkey) { return CellCryptoKeyStore::AddKeyPubKey(key, pubkey); }
+    bool LoadKey(const MCKey& key, const MCPubKey &pubkey) { return MCCryptoKeyStore::AddKeyPubKey(key, pubkey); }
     //! Load metadata (used by LoadWallet)
-    bool LoadKeyMetadata(const CellTxDestination& pubKey, const CKeyMetadata &metadata);
+    bool LoadKeyMetadata(const MCTxDestination& pubKey, const CKeyMetadata &metadata);
 
     bool LoadMinVersion(int nVersion) { AssertLockHeld(cs_wallet); nWalletVersion = nVersion; nWalletMaxVersion = std::max(nWalletMaxVersion, nVersion); return true; }
     void UpdateTimeFirstKey(int64_t nCreateTime);
 
     //! Adds an encrypted key to the store, and saves it to disk.
-    bool AddCryptedKey(const CellPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret) override;
+    bool AddCryptedKey(const MCPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret) override;
     //! Adds an encrypted key to the store, without saving it to disk (used by LoadWallet)
-    bool LoadCryptedKey(const CellPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
-    bool AddCScript(const CellScript& redeemScript) override;
-    bool LoadCScript(const CellScript& redeemScript);
+    bool LoadCryptedKey(const MCPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret);
+    bool AddCScript(const MCScript& redeemScript) override;
+    bool LoadCScript(const MCScript& redeemScript);
 
     //! Adds a destination data tuple to the store, and saves it to disk
-    bool AddDestData(const CellTxDestination &dest, const std::string &key, const std::string &value);
+    bool AddDestData(const MCTxDestination &dest, const std::string &key, const std::string &value);
     //! Erases a destination data tuple in the store and on disk
-    bool EraseDestData(const CellTxDestination &dest, const std::string &key);
+    bool EraseDestData(const MCTxDestination &dest, const std::string &key);
     //! Adds a destination data tuple to the store, without saving it to disk
-    bool LoadDestData(const CellTxDestination &dest, const std::string &key, const std::string &value);
+    bool LoadDestData(const MCTxDestination &dest, const std::string &key, const std::string &value);
     //! Look up a destination data tuple in the store, return true if found false otherwise
-    bool GetDestData(const CellTxDestination &dest, const std::string &key, std::string *value) const;
+    bool GetDestData(const MCTxDestination &dest, const std::string &key, std::string *value) const;
     //! Get all destination values matching a prefix.
     std::vector<std::string> GetDestValues(const std::string& prefix) const;
 
     //! Adds a watch-only address to the store, and saves it to disk.
-    bool AddWatchOnly(const CellScript& dest, int64_t nCreateTime);
-    bool RemoveWatchOnly(const CellScript &dest) override;
+    bool AddWatchOnly(const MCScript& dest, int64_t nCreateTime);
+    bool RemoveWatchOnly(const MCScript &dest) override;
     //! Adds a watch-only address to the store, without saving it to disk (used by LoadWallet)
-    bool LoadWatchOnly(const CellScript &dest);
+    bool LoadWatchOnly(const MCScript &dest);
 
     //! Holds a timestamp at which point the wallet is scheduled (externally) to be relocked. Caller must arrange for actual relocking to occur via Lock().
     int64_t nRelockTime;
@@ -943,8 +943,8 @@ public:
     bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
     bool EncryptWallet(const SecureString& strWalletPassphrase);
 
-    void GetKeyBirthTimes(std::map<CellTxDestination, int64_t> &mapKeyBirth) const;
-    unsigned int ComputeTimeSmart(const CellWalletTx& wtx) const;
+    void GetKeyBirthTimes(std::map<MCTxDestination, int64_t> &mapKeyBirth) const;
+    unsigned int ComputeTimeSmart(const MCWalletTx& wtx) const;
 
     /** 
      * Increment the next transaction order id
@@ -952,115 +952,115 @@ public:
      */
     int64_t IncOrderPosNext(CWalletDB *pwalletdb = nullptr);
     DBErrors ReorderTransactions();
-    bool AccountMove(std::string strFrom, std::string strTo, CellAmount nAmount, std::string strComment = "");
-    bool GetAccountPubkey(CellPubKey &pubKey, std::string strAccount, bool bForceNew = false);
+    bool AccountMove(std::string strFrom, std::string strTo, MCAmount nAmount, std::string strComment = "");
+    bool GetAccountPubkey(MCPubKey &pubKey, std::string strAccount, bool bForceNew = false);
 
     void MarkDirty();
-    bool AddToWallet(const CellWalletTx& wtxIn, bool fFlushOnClose=true);
-    bool LoadToWallet(const CellWalletTx& wtxIn);
-    void TransactionAddedToMempool(const CellTransactionRef& tx) override;
-    void BlockConnected(const std::shared_ptr<const CellBlock>& pblock, const CellBlockIndex *pindex, const std::vector<CellTransactionRef>& vtxConflicted) override;
-    void BlockDisconnected(const std::shared_ptr<const CellBlock>& pblock) override;
-    bool AddToWalletIfInvolvingMe(const CellTransactionRef& tx, const CellBlockIndex* pIndex, int posInBlock, bool fUpdate);
+    bool AddToWallet(const MCWalletTx& wtxIn, bool fFlushOnClose=true);
+    bool LoadToWallet(const MCWalletTx& wtxIn);
+    void TransactionAddedToMempool(const MCTransactionRef& tx) override;
+    void BlockConnected(const std::shared_ptr<const MCBlock>& pblock, const MCBlockIndex *pindex, const std::vector<MCTransactionRef>& vtxConflicted) override;
+    void BlockDisconnected(const std::shared_ptr<const MCBlock>& pblock) override;
+    bool AddToWalletIfInvolvingMe(const MCTransactionRef& tx, const MCBlockIndex* pIndex, int posInBlock, bool fUpdate);
     int64_t RescanFromTime(int64_t startTime, bool update);
-    CellBlockIndex* ScanForWalletTransactions(CellBlockIndex* pindexStart, bool fUpdate = false);
+    MCBlockIndex* ScanForWalletTransactions(MCBlockIndex* pindexStart, bool fUpdate = false);
     void ReacceptWalletTransactions();
-    void ResendWalletTransactions(int64_t nBestBlockTime, CellConnman* connman) override;
+    void ResendWalletTransactions(int64_t nBestBlockTime, MCConnman* connman) override;
     // ResendWalletTransactionsBefore may only be called if fBroadcastTransactions!
-    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, CellConnman* connman);
-    CellAmount GetBalance() const;
-    CellAmount GetUnconfirmedBalance() const;
-    CellAmount GetImmatureBalance() const;
-    CellAmount GetWatchOnlyBalance() const;
-    CellAmount GetUnconfirmedWatchOnlyBalance() const;
-    CellAmount GetImmatureWatchOnlyBalance() const;
-    CellAmount GetLegacyBalance(const isminefilter& filter, int minDepth, const std::string* account) const;
-    CellAmount GetAvailableBalance(const CellCoinControl* coinControl = nullptr) const;
+    std::vector<uint256> ResendWalletTransactionsBefore(int64_t nTime, MCConnman* connman);
+    MCAmount GetBalance() const;
+    MCAmount GetUnconfirmedBalance() const;
+    MCAmount GetImmatureBalance() const;
+    MCAmount GetWatchOnlyBalance() const;
+    MCAmount GetUnconfirmedWatchOnlyBalance() const;
+    MCAmount GetImmatureWatchOnlyBalance() const;
+    MCAmount GetLegacyBalance(const isminefilter& filter, int minDepth, const std::string* account) const;
+    MCAmount GetAvailableBalance(const MCCoinControl* coinControl = nullptr) const;
 
     /**
      * Insert additional inputs into the transaction by
      * calling CreateTransaction();
      */
-    bool FundTransaction(CellMutableTransaction& tx, CellAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, bool lockUnspents, const std::set<int>& setSubtractFeeFromOutputs, CellCoinControl);
-    bool SignTransaction(CellMutableTransaction& tx);
+    bool FundTransaction(MCMutableTransaction& tx, MCAmount& nFeeRet, int& nChangePosInOut, std::string& strFailReason, bool lockUnspents, const std::set<int>& setSubtractFeeFromOutputs, MCCoinControl);
+    bool SignTransaction(MCMutableTransaction& tx);
 
     /**
      * Create a new transaction paying the recipients with a set of coins
      * selected by SelectCoins(); Also create the change output, when needed
      * @note passing nChangePosInOut as -1 will result in setting a random position
      */
-    bool CreateTransaction(const std::vector<CellRecipient>& vecSend, CellWalletTx& wtxNew, CellReserveKey& reservekey, CellAmount& nFeeRet, int& nChangePosInOut,
-                           std::string& strFailReason, const CellCoinControl& coin_control, bool sign = true, SmartLuaState* sls = nullptr );
-    bool CommitTransaction(CellWalletTx& wtxNew, CellReserveKey& reservekey, CellConnman* connman, CellValidationState& state);
+    bool CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWalletTx& wtxNew, MCReserveKey& reservekey, MCAmount& nFeeRet, int& nChangePosInOut,
+                           std::string& strFailReason, const MCCoinControl& coin_control, bool sign = true, SmartLuaState* sls = nullptr );
+    bool CommitTransaction(MCWalletTx& wtxNew, MCReserveKey& reservekey, MCConnman* connman, MCValidationState& state);
 
-    void ListAccountCreditDebit(const std::string& strAccount, std::list<CellAccountingEntry>& entries);
-    bool AddAccountingEntry(const CellAccountingEntry&);
-    bool AddAccountingEntry(const CellAccountingEntry&, CWalletDB *pwalletdb);
+    void ListAccountCreditDebit(const std::string& strAccount, std::list<MCAccountingEntry>& entries);
+    bool AddAccountingEntry(const MCAccountingEntry&);
+    bool AddAccountingEntry(const MCAccountingEntry&, CWalletDB *pwalletdb);
     template <typename ContainerType>
-    bool DummySignTx(CellMutableTransaction &txNew, const ContainerType &coins) const;
+    bool DummySignTx(MCMutableTransaction &txNew, const ContainerType &coins) const;
 
-    static CellFeeRate minTxFee;
-    static CellFeeRate fallbackFee;
-    static CellFeeRate m_discard_rate;
+    static MCFeeRate minTxFee;
+    static MCFeeRate fallbackFee;
+    static MCFeeRate m_discard_rate;
     /**
      * Estimate the minimum fee considering user set parameters
      * and the required fee
      */
-    static CellAmount GetMinimumFee(unsigned int nTxBytes, const CellCoinControl& coin_control, const CellTxMemPool& pool, const CellBlockPolicyEstimator& estimator, FeeCalculation *feeCalc, CellMutableTransaction* tx = nullptr, SmartLuaState* sls = nullptr);
+    static MCAmount GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coin_control, const MCTxMemPool& pool, const MCBlockPolicyEstimator& estimator, FeeCalculation *feeCalc, MCMutableTransaction* tx = nullptr, SmartLuaState* sls = nullptr);
     /**
      * Return the minimum required fee taking into account the
      * floating relay fee and user set minimum transaction fee
      */
-    static CellAmount GetRequiredFee(unsigned int nTxBytes);
+    static MCAmount GetRequiredFee(unsigned int nTxBytes);
 
     bool NewKeyPool();
     size_t KeypoolCountExternalKeys();
     bool TopUpKeyPool(unsigned int kpSize = 0);
-    void ReserveKeyFromKeyPool(int64_t& nIndex, CellKeyPool& keypool, bool fRequestedInternal);
+    void ReserveKeyFromKeyPool(int64_t& nIndex, MCKeyPool& keypool, bool fRequestedInternal);
     void KeepKey(int64_t nIndex);
-    void ReturnKey(int64_t nIndex, bool fInternal, const CellPubKey& pubkey);
-    bool GetKeyFromPool(CellPubKey &key, bool internal = false);
+    void ReturnKey(int64_t nIndex, bool fInternal, const MCPubKey& pubkey);
+    bool GetKeyFromPool(MCPubKey &key, bool internal = false);
     int64_t GetOldestKeyPoolTime();
     /**
      * Marks all keys in the keypool up to and including reserve_key as used.
      */
     void MarkReserveKeysAsUsed(int64_t keypool_id);
-    const std::map<CellKeyID, int64_t>& GetAllReserveKeys() const { return m_pool_key_to_index; }
+    const std::map<MCKeyID, int64_t>& GetAllReserveKeys() const { return m_pool_key_to_index; }
 
-    std::set< std::set<CellTxDestination> > GetAddressGroupings();
-    std::map<CellTxDestination, CellAmount> GetAddressBalances();
+    std::set< std::set<MCTxDestination> > GetAddressGroupings();
+    std::map<MCTxDestination, MCAmount> GetAddressBalances();
 
-    std::set<CellTxDestination> GetAccountAddresses(const std::string& strAccount) const;
+    std::set<MCTxDestination> GetAccountAddresses(const std::string& strAccount) const;
 
-    isminetype IsMine(const CellTxIn& txin) const;
+    isminetype IsMine(const MCTxIn& txin) const;
     /**
      * Returns amount of debit if the input matches the
      * filter, otherwise returns 0
      */
-    CellAmount GetDebit(const CellTxIn& txin, const isminefilter& filter) const;
-	isminetype IsMine(const CellTxOut& txout) const;
-    CellAmount GetCredit(const CellTxOut& txout, const isminefilter& filter) const;
-    bool IsChange(const CellTxOut& txout) const;
-    CellAmount GetChange(const CellTxOut& txout) const;
-    bool IsMine(const CellTransaction& tx) const;
+    MCAmount GetDebit(const MCTxIn& txin, const isminefilter& filter) const;
+	isminetype IsMine(const MCTxOut& txout) const;
+    MCAmount GetCredit(const MCTxOut& txout, const isminefilter& filter) const;
+    bool IsChange(const MCTxOut& txout) const;
+    MCAmount GetChange(const MCTxOut& txout) const;
+    bool IsMine(const MCTransaction& tx) const;
     /** should probably be renamed to IsRelevantToMe */
-    bool IsFromMe(const CellTransaction& tx) const;
-    CellAmount GetDebit(const CellTransaction& tx, const isminefilter& filter) const;
+    bool IsFromMe(const MCTransaction& tx) const;
+    MCAmount GetDebit(const MCTransaction& tx, const isminefilter& filter) const;
     /** Returns whether all of the inputs match the filter */
-    bool IsAllFromMe(const CellTransaction& tx, const isminefilter& filter) const;
-    CellAmount GetCredit(const CellTransaction& tx, const isminefilter& filter) const;
-    CellAmount GetChange(const CellTransaction& tx) const;
-    void SetBestChain(const CellBlockLocator& loc) override;
+    bool IsAllFromMe(const MCTransaction& tx, const isminefilter& filter) const;
+    MCAmount GetCredit(const MCTransaction& tx, const isminefilter& filter) const;
+    MCAmount GetChange(const MCTransaction& tx) const;
+    void SetBestChain(const MCBlockLocator& loc) override;
 
     DBErrors LoadWallet(bool& fFirstRunRet);
-    DBErrors ZapWalletTx(std::vector<CellWalletTx>& vWtx);
+    DBErrors ZapWalletTx(std::vector<MCWalletTx>& vWtx);
     DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
 
-    bool SetAddressBook(const CellTxDestination& address, const std::string& strName, const std::string& purpose);
+    bool SetAddressBook(const MCTxDestination& address, const std::string& strName, const std::string& purpose);
 
-    bool DelAddressBook(const CellTxDestination& address);
+    bool DelAddressBook(const MCTxDestination& address);
 
-    const std::string& GetAccountName(const CellScript& scriptPubKey) const;
+    const std::string& GetAccountName(const MCScript& scriptPubKey) const;
 
     void Inventory(const uint256 &hash) override
     {
@@ -1080,7 +1080,7 @@ public:
         return setInternalKeyPool.size() + setExternalKeyPool.size();
     }
 
-    bool SetDefaultKey(const CellPubKey &vchPubKey);
+    bool SetDefaultKey(const MCPubKey &vchPubKey);
 
     //! signify that a particular wallet feature is now used. this may change nWalletVersion and nWalletMaxVersion if those are lower
     bool SetMinVersion(enum WalletFeature, CWalletDB* pwalletdbIn = nullptr, bool fExplicit = false);
@@ -1102,14 +1102,14 @@ public:
 
     //! Responsible for reading and validating the -wallet arguments and verifying the wallet database.
     //  This function will perform salvage on the wallet if requested, as long as only one wallet is
-    //  being loaded (CellWallet::ParameterInteraction forbids -salvagewallet, -zapwallettxes or -upgradewallet with multiwallet).
+    //  being loaded (MCWallet::ParameterInteraction forbids -salvagewallet, -zapwallettxes or -upgradewallet with multiwallet).
     static bool Verify();
     
     /** 
      * Address book entry changed.
      * @note called with lock cs_wallet held.
      */
-    boost::signals2::signal<void (CellWallet *wallet, const CellTxDestination
+    boost::signals2::signal<void (MCWallet *wallet, const MCTxDestination
             &address, const std::string &label, bool isMine,
             const std::string &purpose,
             ChangeType status)> NotifyAddressBookChanged;
@@ -1118,7 +1118,7 @@ public:
      * Wallet transaction added, removed or updated.
      * @note called with lock cs_wallet held.
      */
-    boost::signals2::signal<void (CellWallet *wallet, const uint256 &hashTx,
+    boost::signals2::signal<void (MCWallet *wallet, const uint256 &hashTx,
             ChangeType status)> NotifyTransactionChanged;
 
     /** Show progress e.g. for rescan */
@@ -1144,15 +1144,15 @@ public:
     /* Returns the wallets help message */
     static std::string GetWalletHelpString(bool showDebug);
 
-    /* Initializes the wallet, returns a new CellWallet instance or a null pointer in case of an error */
-    static CellWallet* CreateWalletFromFile(const std::string walletFile);
+    /* Initializes the wallet, returns a new MCWallet instance or a null pointer in case of an error */
+    static MCWallet* CreateWalletFromFile(const std::string walletFile);
     static bool InitLoadWallet();
 
     /**
      * Wallet post-init setup
      * Gives the wallet a chance to register repetitive tasks and complete post-init tasks
      */
-    void postInitProcess(CellScheduler& scheduler);
+    void postInitProcess(MCScheduler& scheduler);
 
     /* Wallets parameter interaction */
     static bool ParameterInteraction();
@@ -1167,42 +1167,42 @@ public:
     bool IsHDEnabled() const;
 
     /* Generates a new HD master key (will not be activated) */
-    CellPubKey GenerateNewHDMasterKey();
+    MCPubKey GenerateNewHDMasterKey();
     
     /* Set the current HD master key (will reset the chain child index counters)
        Sets the master key's version based on the current wallet version (so the
        caller must ensure the current wallet version is correct before calling
        this function). */
-    bool SetHDMasterKey(const CellPubKey& key);
+    bool SetHDMasterKey(const MCPubKey& key);
 };
 
 /** A key allocated from the key pool. */
-class CellReserveKey : public CReserveScript
+class MCReserveKey : public CReserveScript
 {
 protected:
-    CellWallet* pwallet;
+    MCWallet* pwallet;
     int64_t nIndex;
-    CellPubKey vchPubKey;
+    MCPubKey vchPubKey;
     bool fInternal;
 public:
-    CellReserveKey(CellWallet* pwalletIn)
+    MCReserveKey(MCWallet* pwalletIn)
     {
         nIndex = -1;
         pwallet = pwalletIn;
         fInternal = false;
     }
 
-    CellReserveKey() = default;
-    CellReserveKey(const CellReserveKey&) = delete;
-    CellReserveKey& operator=(const CellReserveKey&) = delete;
+    MCReserveKey() = default;
+    MCReserveKey(const MCReserveKey&) = delete;
+    MCReserveKey& operator=(const MCReserveKey&) = delete;
 
-    ~CellReserveKey()
+    ~MCReserveKey()
     {
         ReturnKey();
     }
 
     void ReturnKey();
-    bool GetReservedKey(CellPubKey &pubkey, bool internal = false);
+    bool GetReservedKey(MCPubKey &pubkey, bool internal = false);
     void KeepKey();
     void KeepScript() override { KeepKey(); }
 };
@@ -1212,19 +1212,19 @@ public:
  * Account information.
  * Stored in wallet with key "acc"+string account name.
  */
-class CellAccount
+class MCAccount
 {
 public:
-    CellPubKey vchPubKey;
+    MCPubKey vchPubKey;
 
-    CellAccount()
+    MCAccount()
     {
         SetNull();
     }
 
     void SetNull()
     {
-        vchPubKey = CellPubKey();
+        vchPubKey = MCPubKey();
     }
 
     ADD_SERIALIZE_METHODS;
@@ -1239,16 +1239,16 @@ public:
 };
 
 // Helper for producing a bunch of max-sized low-S signatures (eg 72 bytes)
-// ContainerType is meant to hold pair<CellWalletTx *, int>, and be iterable
+// ContainerType is meant to hold pair<MCWalletTx *, int>, and be iterable
 // so that each entry corresponds to each vIn, in order.
 template <typename ContainerType>
-bool CellWallet::DummySignTx(CellMutableTransaction &txNew, const ContainerType &coins) const
+bool MCWallet::DummySignTx(MCMutableTransaction &txNew, const ContainerType &coins) const
 {
     // Fill in dummy signatures for fee calculation.
     int nIn = 0;
     for (const auto& coin : coins)
     {
-        const CellScript& scriptPubKey = coin.txout.scriptPubKey;
+        const MCScript& scriptPubKey = coin.txout.scriptPubKey;
         SignatureData sigdata;
 
         if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata) && !fFakeWallet)
@@ -1264,15 +1264,15 @@ bool CellWallet::DummySignTx(CellMutableTransaction &txNew, const ContainerType 
 }
 
 //for other users, who keep their private keys
-class CellFakeWallet :public CellWallet
+class MCFakeWallet :public MCWallet
 {
 public:
-	CellFakeWallet() {
+	MCFakeWallet() {
 		fFakeWallet = true;
 	}
 
-	std::set<CellKeyID> m_ownKeys;
-	bool HaveKey(const CellKeyID &address) const override
+	std::set<MCKeyID> m_ownKeys;
+	bool HaveKey(const MCKeyID &address) const override
 	{
 		bool result;
 		{
@@ -1282,6 +1282,6 @@ public:
 	}
 };
 
-class CellCoinsViewCache;
-void GetAvailableMortgageCoinsInMemPool(const CellKeyStore& keystore, std::vector<CellOutput>& vecOutput, std::map<uint256, CellWalletTx>& mapTempWallet, CellCoinsViewCache& view);
-#endif // CELLLINK_WALLET_WALLET_H
+class MCCoinsViewCache;
+void GetAvailableMortgageCoinsInMemPool(const MCKeyStore& keystore, std::vector<MCOutput>& vecOutput, std::map<uint256, MCWalletTx>& mapTempWallet, MCCoinsViewCache& view);
+#endif // MAGNACHAIN_WALLET_WALLET_H

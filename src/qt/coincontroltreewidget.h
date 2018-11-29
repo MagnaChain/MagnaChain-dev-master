@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2014 The Bitcoin Core developers
+// Copyright (c) 2011-2014 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_COINCONTROLTREEWIDGET_H
-#define CELLLINK_QT_COINCONTROLTREEWIDGET_H
+#ifndef MAGNACHAIN_QT_COINCONTROLTREEWIDGET_H
+#define MAGNACHAIN_QT_COINCONTROLTREEWIDGET_H
 
 #include <QKeyEvent>
 #include <QTreeWidget>
@@ -20,4 +20,4 @@ protected:
     virtual void keyPressEvent(QKeyEvent *event);
 };
 
-#endif // CELLLINK_QT_COINCONTROLTREEWIDGET_H
+#endif // MAGNACHAIN_QT_COINCONTROLTREEWIDGET_H

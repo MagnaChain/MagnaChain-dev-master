@@ -1,4 +1,4 @@
-// Copyright (c) 2015 The Bitcoin Core developers
+// Copyright (c) 2015 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -21,7 +21,7 @@ static const size_t BATCHES = 101;
 static const size_t BATCH_SIZE = 30;
 static const int PREVECTOR_SIZE = 28;
 static const int QUEUE_BATCH_SIZE = 128;
-static void CellCheckQueueSpeed(benchmark::State& state)
+static void MCCheckQueueSpeed(benchmark::State& state)
 {
     struct FakeJobNoWork {
         bool operator()()
@@ -30,13 +30,13 @@ static void CellCheckQueueSpeed(benchmark::State& state)
         }
         void swap(FakeJobNoWork& x){};
     };
-    CellCheckQueue<FakeJobNoWork> queue {QUEUE_BATCH_SIZE};
+    MCCheckQueue<FakeJobNoWork> queue {QUEUE_BATCH_SIZE};
     boost::thread_group tg;
     for (auto x = 0; x < std::max(MIN_CORES, GetNumCores()); ++x) {
        tg.create_thread([&]{queue.Thread();});
     }
     while (state.KeepRunning()) {
-        CellCheckQueueControl<FakeJobNoWork> control(&queue);
+        MCCheckQueueControl<FakeJobNoWork> control(&queue);
 
         // We call Add a number of times to simulate the behavior of adding
         // a block of transactions at once.
@@ -62,7 +62,7 @@ static void CellCheckQueueSpeed(benchmark::State& state)
 // This Benchmark tests the CheckQueue with a slightly realistic workload,
 // where checks all contain a prevector that is indirect 50% of the time
 // and there is a little bit of work done between calls to Add.
-static void CellCheckQueueSpeedPrevectorJob(benchmark::State& state)
+static void MCCheckQueueSpeedPrevectorJob(benchmark::State& state)
 {
     struct PrevectorJob {
         prevector<PREVECTOR_SIZE, uint8_t> p;
@@ -77,7 +77,7 @@ static void CellCheckQueueSpeedPrevectorJob(benchmark::State& state)
         }
         void swap(PrevectorJob& x){p.swap(x.p);};
     };
-    CellCheckQueue<PrevectorJob> queue {QUEUE_BATCH_SIZE};
+    MCCheckQueue<PrevectorJob> queue {QUEUE_BATCH_SIZE};
     boost::thread_group tg;
     for (auto x = 0; x < std::max(MIN_CORES, GetNumCores()); ++x) {
        tg.create_thread([&]{queue.Thread();});
@@ -85,7 +85,7 @@ static void CellCheckQueueSpeedPrevectorJob(benchmark::State& state)
     while (state.KeepRunning()) {
         // Make insecure_rand here so that each iteration is identical.
         FastRandomContext insecure_rand(true);
-        CellCheckQueueControl<PrevectorJob> control(&queue);
+        MCCheckQueueControl<PrevectorJob> control(&queue);
         std::vector<std::vector<PrevectorJob>> vBatches(BATCHES);
         for (auto& vChecks : vBatches) {
             vChecks.reserve(BATCH_SIZE);
@@ -100,5 +100,5 @@ static void CellCheckQueueSpeedPrevectorJob(benchmark::State& state)
     tg.interrupt_all();
     tg.join_all();
 }
-BENCHMARK(CellCheckQueueSpeed);
-BENCHMARK(CellCheckQueueSpeedPrevectorJob);
+BENCHMARK(MCCheckQueueSpeed);
+BENCHMARK(MCCheckQueueSpeedPrevectorJob);

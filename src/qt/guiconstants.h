@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_GUICONSTANTS_H
-#define CELLLINK_QT_GUICONSTANTS_H
+#ifndef MAGNACHAIN_QT_GUICONSTANTS_H
+#define MAGNACHAIN_QT_GUICONSTANTS_H
 
 /* Milliseconds between model updates */
 static const int MODEL_UPDATE_DELAY = 250;
@@ -12,7 +12,7 @@ static const int MODEL_UPDATE_DELAY = 250;
 /* AskPassphraseDialog -- Maximum passphrase length */
 static const int MAX_PASSPHRASE_SIZE = 1024;
 
-/* CellLinkGUI -- Size of icons in status bar */
+/* MagnaChainGUI -- Size of icons in status bar */
 static const int STATUSBAR_ICONSIZE = 16;
 
 static const bool DEFAULT_SPLASHSCREEN = true;
@@ -49,9 +49,9 @@ static const int MAX_URI_LENGTH = 255;
 /* Number of frames in spinner animation */
 #define SPINNER_FRAMES 36
 
-#define QAPP_ORG_NAME "CellLink"
+#define QAPP_ORG_NAME "MagnaChain"
 #define QAPP_ORG_DOMAIN "magnachain.org"
-#define QAPP_APP_NAME_DEFAULT "CellLink-Qt"
-#define QAPP_APP_NAME_TESTNET "CellLink-Qt-testnet"
+#define QAPP_APP_NAME_DEFAULT "MagnaChain-Qt"
+#define QAPP_APP_NAME_TESTNET "MagnaChain-Qt-testnet"
 
-#endif // CELLLINK_QT_GUICONSTANTS_H
+#endif // MAGNACHAIN_QT_GUICONSTANTS_H

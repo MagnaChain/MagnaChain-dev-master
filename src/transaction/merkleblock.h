@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_MERKLEBLOCK_H
-#define CELLLINK_MERKLEBLOCK_H
+#ifndef MAGNACHAIN_MERKLEBLOCK_H
+#define MAGNACHAIN_MERKLEBLOCK_H
 
 #include "io/serialize.h"
 #include "coding/uint256.h"
@@ -18,30 +18,30 @@
  * Used to relay blocks as header + vector<merkle branch>
  * to filtered nodes.
  *
- * NOTE: The class assumes that the given CellBlock has *at least* 1 transaction. If the CellBlock has 0 txs, it will hit an assertion.
+ * NOTE: The class assumes that the given MCBlock has *at least* 1 transaction. If the MCBlock has 0 txs, it will hit an assertion.
  */
-class CellMerkleBlock
+class MCMerkleBlock
 {
 public:
     /** Public only for unit testing */
-    CellBlockHeader header;
-    CellPartialMerkleTree txn;
+    MCBlockHeader header;
+    MCPartialMerkleTree txn;
 
 public:
     /** Public only for unit testing and relay testing (not relayed) */
     std::vector<std::pair<unsigned int, uint256> > vMatchedTxn;
 
     /**
-     * Create from a CellBlock, filtering transactions according to filter
+     * Create from a MCBlock, filtering transactions according to filter
      * Note that this will call IsRelevantAndUpdate on the filter for each transaction,
      * thus the filter will likely be modified.
      */
-    CellMerkleBlock(const CellBlock& block, CellBloomFilter& filter) : CellMerkleBlock(block, &filter, nullptr) { }
+    MCMerkleBlock(const MCBlock& block, MCBloomFilter& filter) : MCMerkleBlock(block, &filter, nullptr) { }
 
-    // Create from a CellBlock, matching the txids in the set
-    CellMerkleBlock(const CellBlock& block, const std::set<uint256>& txids) : CellMerkleBlock(block, nullptr, &txids) { }
+    // Create from a MCBlock, matching the txids in the set
+    MCMerkleBlock(const MCBlock& block, const std::set<uint256>& txids) : MCMerkleBlock(block, nullptr, &txids) { }
 
-    CellMerkleBlock() {}
+    MCMerkleBlock() {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -53,7 +53,7 @@ public:
 
 private:
     // Combined constructor to consolidate code
-    CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter, const std::set<uint256>* txids);
+    MCMerkleBlock(const MCBlock& block, MCBloomFilter* filter, const std::set<uint256>* txids);
 };
 
-#endif // CELLLINK_MERKLEBLOCK_H
+#endif // MAGNACHAIN_MERKLEBLOCK_H

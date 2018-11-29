@@ -1,5 +1,5 @@
-#ifndef CELLLINK_QT_CALLBACK_H
-#define CELLLINK_QT_CALLBACK_H
+#ifndef MAGNACHAIN_QT_CALLBACK_H
+#define MAGNACHAIN_QT_CALLBACK_H
 
 #include <QObject>
 
@@ -27,4 +27,4 @@ FunctionCallback<F>* makeCallback(F f)
     return new FunctionCallback<F>(std::move(f));
 }
 
-#endif // CELLLINK_QT_CALLBACK_H
+#endif // MAGNACHAIN_QT_CALLBACK_H

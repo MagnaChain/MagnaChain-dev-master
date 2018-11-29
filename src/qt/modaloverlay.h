@@ -1,10 +1,10 @@
-// Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_MODALOVERLAY_H
-#define CELLLINK_QT_MODALOVERLAY_H
+#ifndef MAGNACHAIN_QT_MODALOVERLAY_H
+#define MAGNACHAIN_QT_MODALOVERLAY_H
 
 #include <QDateTime>
 #include <QWidget>
@@ -48,4 +48,4 @@ private:
     bool userClosed;
 };
 
-#endif // CELLLINK_QT_MODALOVERLAY_H
+#endif // MAGNACHAIN_QT_MODALOVERLAY_H

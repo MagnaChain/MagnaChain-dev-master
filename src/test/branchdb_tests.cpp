@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,15 +20,15 @@ class BranchDbTest : public BranchDb
 {
 public:
     BranchDbTest(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe) :BranchDb(path, nCacheSize, fMemory, fWipe){}
-    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+    void AddBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
     {
         BranchDb::AddBlockInfoTxData(transaction, mainBlockHash, iTxVtxIndex, modifyBranch);
     }
 };
 
-void AddBlockInfoTx(CellMutableTransaction &mtx, const uint256 &branchid, CellBlockHeader &header, const uint32_t &nbits, uint32_t &preblockH, uint32_t &t, CellBranchBlockInfo &firstBlock, BranchDbTest &branchdb, uint256 &temphash, const size_t &txindex, std::set<uint256> &modifyBranch)
+void AddBlockInfoTx(MCMutableTransaction &mtx, const uint256 &branchid, MCBlockHeader &header, const uint32_t &nbits, uint32_t &preblockH, uint32_t &t, MCBranchBlockInfo &firstBlock, BranchDbTest &branchdb, uint256 &temphash, const size_t &txindex, std::set<uint256> &modifyBranch)
 {
-    mtx.pBranchBlockData.reset(new CellBranchBlockInfo());
+    mtx.pBranchBlockData.reset(new MCBranchBlockInfo());
     mtx.pBranchBlockData->branchID = branchid;
 
     mtx.pBranchBlockData->hashPrevBlock = header.GetHash();
@@ -36,7 +36,7 @@ void AddBlockInfoTx(CellMutableTransaction &mtx, const uint256 &branchid, CellBl
     mtx.pBranchBlockData->blockHeight = ++preblockH;
     mtx.pBranchBlockData->nTime = t++;
     mtx.pBranchBlockData->vchStakeTxData = firstBlock.vchStakeTxData;
-    CellTransactionRef ptx = MakeTransactionRef(mtx);
+    MCTransactionRef ptx = MakeTransactionRef(mtx);
     branchdb.AddBlockInfoTxData(ptx, temphash, txindex, modifyBranch);
 }
 
@@ -47,8 +47,8 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
     BranchDbTest branchdb(fs::temp_directory_path() / fs::unique_path(), 8<<20, false, false);
 
     uint256 branchid = uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e");
-    const CellChainParams& bparams = BranchParams(branchid);
-    const CellBlock& genesisblock = bparams.GenesisBlock();
+    const MCChainParams& bparams = BranchParams(branchid);
+    const MCBlock& genesisblock = bparams.GenesisBlock();
     
     uint256 temphash;
     uint32_t t = 0;
@@ -56,29 +56,29 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
 
     uint32_t nbits = genesisblock.nBits;
 
-    CellBranchBlockInfo* pFirstBlock = new CellBranchBlockInfo();
+    MCBranchBlockInfo* pFirstBlock = new MCBranchBlockInfo();
     pFirstBlock->branchID = branchid;
 
     pFirstBlock->hashPrevBlock = genesisblock.GetHash();
     pFirstBlock->nBits = nbits;
     pFirstBlock->blockHeight = 1;
     pFirstBlock->nTime = t++;
-    CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pFirstBlock->vchStakeTxData, 0, MakeTransactionRef() };
-    CellBranchBlockInfo firstBlock(*pFirstBlock);// copy 
+    MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pFirstBlock->vchStakeTxData, 0, MakeTransactionRef() };
+    MCBranchBlockInfo firstBlock(*pFirstBlock);// copy 
 
-    CellMutableTransaction mtx;
+    MCMutableTransaction mtx;
     mtx.pBranchBlockData.reset(pFirstBlock);
     
     size_t txindex = 2;
-    CellTransactionRef ptx = MakeTransactionRef(mtx);
+    MCTransactionRef ptx = MakeTransactionRef(mtx);
     branchdb.AddBlockInfoTxData(ptx, temphash, txindex, modifyBranch);
     
-    CellBlockHeader lastchainheader;
+    MCBlockHeader lastchainheader;
     uint32_t lastchaintipheight;
     // 普通没发生分叉
     {//chain 1
         uint32_t preblockH = firstBlock.blockHeight;
-        CellBlockHeader header;
+        MCBlockHeader header;
         firstBlock.GetBlockHeader(header);
         BOOST_CHECK(branchdb.GetBranchTipHash(branchid) == header.GetHash());
 
@@ -102,7 +102,7 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
 
     {//chain 2 分叉来了，比前面多一个块
         uint32_t preblockH = firstBlock.blockHeight;
-        CellBlockHeader header;
+        MCBlockHeader header;
         firstBlock.GetBlockHeader(header);
 
         //-----------------------------------
@@ -125,7 +125,7 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
     }
     {// chain 1 back
         uint32_t preblockH = lastchaintipheight;
-        CellBlockHeader header = lastchainheader;
+        MCBlockHeader header = lastchainheader;
 
         //-----------------------------------
         AddBlockInfoTx(mtx, branchid, header, nbits, preblockH, t, firstBlock, branchdb, temphash, txindex, modifyBranch);
@@ -148,12 +148,12 @@ BOOST_AUTO_TEST_CASE(branchdb_chainactive)
 
 }
 
-void CreateTestTxToBlock(std::shared_ptr<CellBlock> &pblockNew, const uint256 &branchid, CellBlockHeader &preHeader, 
+void CreateTestTxToBlock(std::shared_ptr<MCBlock> &pblockNew, const uint256 &branchid, MCBlockHeader &preHeader, 
     const uint32_t &nbits, uint32_t &preblockH, uint32_t &branchblocktime, std::vector<unsigned char> &vchStakeTxData)
 {
-    CellMutableTransaction mtx;
-    mtx.nVersion = CellTransaction::SYNC_BRANCH_INFO;
-    mtx.pBranchBlockData = std::make_shared<CellBranchBlockInfo>();
+    MCMutableTransaction mtx;
+    mtx.nVersion = MCTransaction::SYNC_BRANCH_INFO;
+    mtx.pBranchBlockData = std::make_shared<MCBranchBlockInfo>();
     mtx.pBranchBlockData->branchID = branchid;
 
     mtx.pBranchBlockData->hashPrevBlock = preHeader.GetHash();
@@ -174,31 +174,31 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
     BOOST_CHECK(branchid == uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e"));
     BOOST_CHECK(branchid != uint256S("9af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e"));
     
-    const CellChainParams& bparams = BranchParams(branchid);
-    const CellBlock& genesisblock = bparams.GenesisBlock();
+    const MCChainParams& bparams = BranchParams(branchid);
+    const MCBlock& genesisblock = bparams.GenesisBlock();
 
     uint32_t nbits = genesisblock.nBits;
 
     std::vector<unsigned char> vchStakeTxData;
-    CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, vchStakeTxData, 0, MakeTransactionRef() };
+    MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, vchStakeTxData, 0, MakeTransactionRef() };
 
     uint32_t mainblocktime = 0;
     uint32_t branchblocktime = 0;
     uint32_t preblockH = 0;
-    CellBlockHeader preHeader = genesisblock;
-    CellBlockHeader forkHeader;
+    MCBlockHeader preHeader = genesisblock;
+    MCBlockHeader forkHeader;
     uint32_t forkHeight;
     uint256 mainpreblockhash;
     int mainblockheight = 1;
-    CellBlockIndex* pprev = nullptr;
+    MCBlockIndex* pprev = nullptr;
     std::vector<uint256> expertBranchChain;
     expertBranchChain.emplace_back(preHeader.GetHash());
     {// block 1
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         pblockNew->nBits = nbits;
         pblockNew->nTime = mainblocktime++;
         //pblockNew->hashPrevBlock;
-        CellBlockIndex* pindexNew = new CellBlockIndex(*pblockNew);
+        MCBlockIndex* pindexNew = new MCBlockIndex(*pblockNew);
         pindexNew->nHeight = mainblockheight++;
         pindexNew->pprev = pprev; pprev = pindexNew;
         mainpreblockhash = pblockNew->GetHash();
@@ -230,11 +230,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
 
     std::vector<uint256> preBlockChain;
     {//another new block
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         pblockNew->nBits = nbits;
         pblockNew->nTime = mainblocktime++;
         pblockNew->hashPrevBlock = mainpreblockhash;
-        CellBlockIndex* pindexNew = new CellBlockIndex(*pblockNew);
+        MCBlockIndex* pindexNew = new MCBlockIndex(*pblockNew);
         pindexNew->nHeight = mainblockheight++;
         pindexNew->pprev = pprev; pprev = pindexNew;
         mainpreblockhash = pblockNew->GetHash();
@@ -267,11 +267,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         preBlockChain = expertBranchChain;
     }
     {//add empty block
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         pblockNew->nBits = nbits;
         pblockNew->nTime = mainblocktime++;
         pblockNew->hashPrevBlock = mainpreblockhash;
-        CellBlockIndex* pindexNew = new CellBlockIndex(*pblockNew);
+        MCBlockIndex* pindexNew = new MCBlockIndex(*pblockNew);
         pindexNew->nHeight = mainblockheight++;
         pindexNew->pprev = pprev; pprev = pindexNew;
         mainpreblockhash = pblockNew->GetHash();
@@ -286,11 +286,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         preHeader = forkHeader;
         preblockH = forkHeight;
 
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         pblockNew->nBits = nbits;
         pblockNew->nTime = mainblocktime++;
         pblockNew->hashPrevBlock = mainpreblockhash;
-        CellBlockIndex* pindexNew = new CellBlockIndex(*pblockNew);
+        MCBlockIndex* pindexNew = new MCBlockIndex(*pblockNew);
         pindexNew->nHeight = mainblockheight++;
         pindexNew->pprev = pprev; pprev = pindexNew;
         mainpreblockhash = pblockNew->GetHash();
@@ -332,12 +332,12 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
     }
 }
 
-void NewMainBlockHead(std::shared_ptr<CellBlock> &pblockNew, const uint32_t &nbits, uint32_t &mainblocktime, uint256 &mainpreblockhash, int &mainblockheight, CellBlockIndex * &pprev)
+void NewMainBlockHead(std::shared_ptr<MCBlock> &pblockNew, const uint32_t &nbits, uint32_t &mainblocktime, uint256 &mainpreblockhash, int &mainblockheight, MCBlockIndex * &pprev)
 {
     pblockNew->nBits = nbits;
     pblockNew->nTime = mainblocktime++;
     pblockNew->hashPrevBlock = mainpreblockhash;
-    CellBlockIndex* pindexNew = new CellBlockIndex(*pblockNew);
+    MCBlockIndex* pindexNew = new MCBlockIndex(*pblockNew);
     pindexNew->nHeight = mainblockheight++;
     pindexNew->pprev = pprev; pprev = pindexNew;
     mainpreblockhash = pblockNew->GetHash();
@@ -350,29 +350,29 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
     BranchDbTest branchdb(fs::temp_directory_path() / fs::unique_path(), 8 << 20, false, false);
     uint256 branchid = uint256S("8af97c9b85ebf8b0f16b4c50cd1fa72c50dfa5d1bec93625c1dde7a4f211b65e");
 
-    const CellChainParams& bparams = BranchParams(branchid);
-    const CellBlock& genesisblock = bparams.GenesisBlock();
+    const MCChainParams& bparams = BranchParams(branchid);
+    const MCBlock& genesisblock = bparams.GenesisBlock();
 
     uint32_t nbits = genesisblock.nBits;
 
     std::vector<unsigned char> vchStakeTxData;
-    CellVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, vchStakeTxData, 0, MakeTransactionRef() };
+    MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, vchStakeTxData, 0, MakeTransactionRef() };
 
     uint32_t mainblocktime = 0;
     uint32_t branchblocktime = 0;
     uint32_t preblockH = 0;
-    CellBlockHeader preHeader = genesisblock;
-    CellBlockHeader forkHeader;
+    MCBlockHeader preHeader = genesisblock;
+    MCBlockHeader forkHeader;
     uint32_t forkHeight;
     uint256 mainpreblockhash = genesisblock.GetHash();
     int mainblockheight = 1;
-    CellBlockIndex* pprev = nullptr;
+    MCBlockIndex* pprev = nullptr;
     std::vector<uint256> expertBranchChain;
     expertBranchChain.emplace_back(preHeader.GetHash());
 
-    std::shared_ptr<CellBlock> pblock2;
+    std::shared_ptr<MCBlock> pblock2;
     {// block 1
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         for (int i=0; i<10; i++)
@@ -389,13 +389,13 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
     }
     //--------------------
     {// block 2 举报 -3
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         //add report tx---------
-        CellMutableTransaction mtx;
-        mtx.nVersion = CellTransaction::REPORT_CHEAT;
-        mtx.pPMT = std::make_shared<CellSpvProof>();
+        MCMutableTransaction mtx;
+        mtx.nVersion = MCTransaction::REPORT_CHEAT;
+        mtx.pPMT = std::make_shared<MCSpvProof>();
         mtx.pReportData = std::make_shared<ReportData>();
         mtx.pReportData->reporttype = ReportType::REPORT_TX;
         mtx.pReportData->reportedBranchId = branchid;
@@ -413,13 +413,13 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         pblock2 = pblockNew;
     }
     {// block 3 举报 -4
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         //add report tx---------
-        CellMutableTransaction mtx;
-        mtx.nVersion = CellTransaction::REPORT_CHEAT;
-        mtx.pPMT = std::make_shared<CellSpvProof>();
+        MCMutableTransaction mtx;
+        mtx.nVersion = MCTransaction::REPORT_CHEAT;
+        mtx.pPMT = std::make_shared<MCSpvProof>();
         mtx.pReportData = std::make_shared<ReportData>();
         mtx.pReportData->reporttype = ReportType::REPORT_TX;
         mtx.pReportData->reportedBranchId = branchid;
@@ -455,13 +455,13 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 5);
     }
     {// block 4 举报 -2
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         //add report tx---------
-        CellMutableTransaction mtx;
-        mtx.nVersion = CellTransaction::REPORT_CHEAT;
-        mtx.pPMT = std::make_shared<CellSpvProof>();
+        MCMutableTransaction mtx;
+        mtx.nVersion = MCTransaction::REPORT_CHEAT;
+        mtx.pPMT = std::make_shared<MCSpvProof>();
         mtx.pReportData = std::make_shared<ReportData>();
         mtx.pReportData->reporttype = ReportType::REPORT_TX;
         mtx.pReportData->reportedBranchId = branchid;
@@ -477,12 +477,12 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 5);
     }
     {//block 5 开始证明啦 -3
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         //add report tx---------
-        CellMutableTransaction mtx;
-        mtx.nVersion = CellTransaction::PROVE;
+        MCMutableTransaction mtx;
+        mtx.nVersion = MCTransaction::PROVE;
         mtx.pProveData = std::make_shared<ProveData>();
         mtx.pProveData->provetype = ReportType::REPORT_TX;
         mtx.pProveData->branchId = branchid;
@@ -499,12 +499,12 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 5);
     }
     {//block 6 开始证明啦 -4
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         //add report tx---------
-        CellMutableTransaction mtx;
-        mtx.nVersion = CellTransaction::PROVE;
+        MCMutableTransaction mtx;
+        mtx.nVersion = MCTransaction::PROVE;
         mtx.pProveData = std::make_shared<ProveData>();
         mtx.pProveData->provetype = ReportType::REPORT_TX;
         mtx.pProveData->branchId = branchid;
@@ -521,12 +521,12 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size() - 3);
     }
     {//block 7 开始证明啦 -2
-        std::shared_ptr<CellBlock> pblockNew = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblockNew = std::make_shared<MCBlock>();
         NewMainBlockHead(pblockNew, nbits, mainblocktime, mainpreblockhash, mainblockheight, pprev);
 
         //add report tx---------
-        CellMutableTransaction mtx;
-        mtx.nVersion = CellTransaction::PROVE;
+        MCMutableTransaction mtx;
+        mtx.nVersion = MCTransaction::PROVE;
         mtx.pProveData = std::make_shared<ProveData>();
         mtx.pProveData->provetype = ReportType::REPORT_TX;
         mtx.pProveData->branchId = branchid;

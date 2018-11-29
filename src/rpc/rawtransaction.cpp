@@ -1,5 +1,5 @@
 // Copyright (c) 2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 
-void TxToJSON(const CellTransaction& tx, const uint256 hashBlock, UniValue& entry)
+void TxToJSON(const MCTransaction& tx, const uint256 hashBlock, UniValue& entry)
 {
     // Call into TxToUniv() in magnachain-common to decode the transaction hex.
     //
@@ -47,7 +47,7 @@ void TxToJSON(const CellTransaction& tx, const uint256 hashBlock, UniValue& entr
         entry.push_back(Pair("blockhash", hashBlock.GetHex()));
         BlockMap::iterator mi = mapBlockIndex.find(hashBlock);
         if (mi != mapBlockIndex.end() && (*mi).second) {
-            CellBlockIndex* pindex = (*mi).second;
+            MCBlockIndex* pindex = (*mi).second;
             if (chainActive.Contains(pindex)) {
                 entry.push_back(Pair("confirmations", 1 + chainActive.Height() - pindex->nHeight));
                 entry.push_back(Pair("time", pindex->GetBlockTime()));
@@ -153,7 +153,7 @@ UniValue getrawtransaction(const JSONRPCRequest& request)
         }
     }
 
-    CellTransactionRef tx;
+    MCTransactionRef tx;
     uint256 hashBlock;
     if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string(fTxIndex ? "No such mempool or blockchain transaction"
@@ -171,7 +171,7 @@ UniValue getrawtransaction(const JSONRPCRequest& request)
 UniValue getbytxdiskpos(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
-        throw std::runtime_error("get trransaction data by CellDiskTxPos, return value info see getrawtransaction API\n");
+        throw std::runtime_error("get trransaction data by MCDiskTxPos, return value info see getrawtransaction API\n");
 
     LOCK(cs_main);
 
@@ -195,7 +195,7 @@ UniValue getbytxdiskpos(const JSONRPCRequest& request)
         }
     }
 
-    CellTransactionRef tx;
+    MCTransactionRef tx;
     uint256 hashBlock;
     bool retflag;
     bool retval = ReadTxDataByTxIndex(hash, tx, hashBlock, retflag);
@@ -247,7 +247,7 @@ UniValue gettxoutproof(const JSONRPCRequest& request)
 
     LOCK(cs_main);
 
-    CellBlockIndex* pblockindex = nullptr;
+    MCBlockIndex* pblockindex = nullptr;
 
     uint256 hashBlock;
     if (!request.params[1].isNull())
@@ -269,7 +269,7 @@ UniValue gettxoutproof(const JSONRPCRequest& request)
 
     if (pblockindex == nullptr)
     {
-        CellTransactionRef tx;
+        MCTransactionRef tx;
         if (!GetTransaction(oneTxid, tx, Params().GetConsensus(), hashBlock, false) || hashBlock.IsNull())
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Transaction not yet in block");
         if (!mapBlockIndex.count(hashBlock))
@@ -277,7 +277,7 @@ UniValue gettxoutproof(const JSONRPCRequest& request)
         pblockindex = mapBlockIndex[hashBlock];
     }
 
-    CellBlock block;
+    MCBlock block;
     if(!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
@@ -288,8 +288,8 @@ UniValue gettxoutproof(const JSONRPCRequest& request)
     if (ntxFound != setTxids.size())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Not all transactions found in specified or retrieved block");
 
-    CellDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-    CellMerkleBlock mb(block, setTxids);
+    MCDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+    MCMerkleBlock mb(block, setTxids);
     ssMB << mb;
     std::string strHex = HexStr(ssMB.begin(), ssMB.end());
     return strHex;
@@ -308,8 +308,8 @@ UniValue verifytxoutproof(const JSONRPCRequest& request)
             "[\"txid\"]      (array, strings) The txid(s) which the proof commits to, or empty array if the proof is invalid\n"
         );
 
-    CellDataStream ssMB(ParseHexV(request.params[0], "proof"), SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-    CellMerkleBlock merkleBlock;
+    MCDataStream ssMB(ParseHexV(request.params[0], "proof"), SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+    MCMerkleBlock merkleBlock;
     ssMB >> merkleBlock;
 
     UniValue res(UniValue::VARR);
@@ -376,7 +376,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
     UniValue inputs = request.params[0].get_array();
     UniValue sendTo = request.params[1].get_obj();
 
-    CellMutableTransaction rawTx;
+    MCMutableTransaction rawTx;
 
     if (request.params.size() > 2 && !request.params[2].isNull()) {
         int64_t nLockTime = request.params[2].get_int64();
@@ -420,35 +420,35 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
             }
         }
 
-        CellTxIn in(CellOutPoint(txid, nOutput), CellScript(), nSequence);
+        MCTxIn in(MCOutPoint(txid, nOutput), MCScript(), nSequence);
 
         rawTx.vin.push_back(in);
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     std::vector<std::string> addrList = sendTo.getKeys();
     for (const std::string& name_ : addrList) {
 
         if (name_ == "data") {
             std::vector<unsigned char> data = ParseHexV(sendTo[name_].getValStr(),"Data");
 
-            CellTxOut out(0, CellScript() << OP_RETURN << data);
+            MCTxOut out(0, MCScript() << OP_RETURN << data);
             rawTx.vout.push_back(out);
         } else {
-            CellLinkAddress address(name_);
+            MagnaChainAddress address(name_);
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid MagnaChain address: ") + name_);
             if (address.IsContractID())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("CellLink address can't be contract id: ") + name_);
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("MagnaChain address can't be contract id: ") + name_);
 
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+name_);
             setAddress.insert(address);
 
-            CellScript scriptPubKey = GetScriptForDestination(address.Get());
-            CellAmount nAmount = AmountFromValue(sendTo[name_]);
+            MCScript scriptPubKey = GetScriptForDestination(address.Get());
+            MCAmount nAmount = AmountFromValue(sendTo[name_]);
 
-            CellTxOut out(nAmount, scriptPubKey);
+            MCTxOut out(nAmount, scriptPubKey);
             rawTx.vout.push_back(out);
         }
     }
@@ -518,13 +518,13 @@ UniValue decoderawtransaction(const JSONRPCRequest& request)
     LOCK(cs_main);
     RPCTypeCheck(request.params, {UniValue::VSTR});
 
-    CellMutableTransaction mtx;
+    MCMutableTransaction mtx;
 
     if (!DecodeHexTx(mtx, request.params[0].get_str(), true))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
 
     UniValue result(UniValue::VOBJ);
-    TxToUniv(CellTransaction(std::move(mtx)), uint256(), result, false);
+    TxToUniv(MCTransaction(std::move(mtx)), uint256(), result, false);
 
     return result;
 }
@@ -557,10 +557,10 @@ UniValue decodescript(const JSONRPCRequest& request)
     RPCTypeCheck(request.params, {UniValue::VSTR});
 
     UniValue r(UniValue::VOBJ);
-    CellScript script;
+    MCScript script;
     if (request.params[0].get_str().size() > 0){
         std::vector<unsigned char> scriptData(ParseHexV(request.params[0], "argument"));
-        script = CellScript(scriptData.begin(), scriptData.end());
+        script = MCScript(scriptData.begin(), scriptData.end());
     } else {
         // Empty scripts are valid
     }
@@ -572,14 +572,14 @@ UniValue decodescript(const JSONRPCRequest& request)
     if (type.isStr() && type.get_str() != "scripthash") {
         // P2SH cannot be wrapped in a P2SH. If this script is already a P2SH,
         // don't return the address for a P2SH of the P2SH.
-        r.push_back(Pair("p2sh", CellLinkAddress(CellScriptID(script)).ToString()));
+        r.push_back(Pair("p2sh", MagnaChainAddress(MCScriptID(script)).ToString()));
     }
 
     return r;
 }
 
 /** Pushes a JSON object for script verification or signing errors to vErrorsRet. */
-static void TxInErrorToJSON(const CellTxIn& txin, UniValue& vErrorsRet, const std::string& strMessage)
+static void TxInErrorToJSON(const MCTxIn& txin, UniValue& vErrorsRet, const std::string& strMessage)
 {
     UniValue entry(UniValue::VOBJ);
     entry.push_back(Pair("txid", txin.prevout.hash.ToString()));
@@ -621,7 +621,7 @@ UniValue combinerawtransaction(const JSONRPCRequest& request)
 
 
     UniValue txs = request.params[0].get_array();
-    std::vector<CellMutableTransaction> txVariants(txs.size());
+    std::vector<MCMutableTransaction> txVariants(txs.size());
 
     for (unsigned int idx = 0; idx < txs.size(); idx++) {
         if (!DecodeHexTx(txVariants[idx], txs[idx].get_str(), true)) {
@@ -635,42 +635,42 @@ UniValue combinerawtransaction(const JSONRPCRequest& request)
 
     // mergedTx will end up with all the signatures; it
     // starts as a clone of the rawtx:
-    CellMutableTransaction mergedTx(txVariants[0]);
+    MCMutableTransaction mergedTx(txVariants[0]);
 
     // Fetch previous transactions (inputs):
-    CellCoinsView viewDummy;
-    CellCoinsViewCache view(&viewDummy);
+    MCCoinsView viewDummy;
+    MCCoinsViewCache view(&viewDummy);
     {
         LOCK(cs_main);
         LOCK(mempool.cs);
-        CellCoinsViewCache &viewChain = *pcoinsTip;
-        CellCoinsViewMemPool viewMempool(&viewChain, mempool);
+        MCCoinsViewCache &viewChain = *pcoinsTip;
+        MCCoinsViewMemPool viewMempool(&viewChain, mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
-        for (const CellTxIn& txin : mergedTx.vin) {
+        for (const MCTxIn& txin : mergedTx.vin) {
             view.AccessCoin(txin.prevout); // Load entries from viewChain into view; can fail.
         }
 
         view.SetBackend(viewDummy); // switch back to avoid locking mempool for too long
     }
 
-    // Use CellTransaction for the constant parts of the
+    // Use MCTransaction for the constant parts of the
     // transaction to avoid rehashing.
-    const CellTransaction txConst(mergedTx);
+    const MCTransaction txConst(mergedTx);
     // Sign what we can:
     for (unsigned int i = 0; i < mergedTx.vin.size(); i++) {
-        CellTxIn& txin = mergedTx.vin[i];
+        MCTxIn& txin = mergedTx.vin[i];
         const Coin& coin = view.AccessCoin(txin.prevout);
         if (coin.IsSpent()) {
             throw JSONRPCError(RPC_VERIFY_ERROR, "Input not found or already spent");
         }
-        const CellScript& prevPubKey = coin.out.scriptPubKey;
-        const CellAmount& amount = coin.out.nValue;
+        const MCScript& prevPubKey = coin.out.scriptPubKey;
+        const MCAmount& amount = coin.out.nValue;
 
         SignatureData sigdata;
 
         // ... and merge in other signatures:
-        for (const CellMutableTransaction& txv : txVariants) {
+        for (const MCMutableTransaction& txv : txVariants) {
             if (txv.vin.size() > i) {
                 sigdata = CombineSignatures(prevPubKey, TransactionSignatureChecker(&txConst, i, amount), sigdata, DataFromTransaction(txv, i));
             }
@@ -685,7 +685,7 @@ UniValue combinerawtransaction(const JSONRPCRequest& request)
 UniValue signrawtransaction(const JSONRPCRequest& request)
 {
 #ifdef ENABLE_WALLET
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 #endif
 
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 4)
@@ -754,20 +754,20 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
 #endif
     RPCTypeCheck(request.params, {UniValue::VSTR, UniValue::VARR, UniValue::VARR, UniValue::VSTR}, true);
 
-    CellMutableTransaction mtx;
+    MCMutableTransaction mtx;
     if (!DecodeHexTx(mtx, request.params[0].get_str(), true))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
 
     // Fetch previous transactions (inputs):
-    CellCoinsView viewDummy;
-    CellCoinsViewCache view(&viewDummy);
+    MCCoinsView viewDummy;
+    MCCoinsViewCache view(&viewDummy);
     {
         LOCK(mempool.cs);
-        CellCoinsViewCache &viewChain = *pcoinsTip;
-        CellCoinsViewMemPool viewMempool(&viewChain, mempool);
+        MCCoinsViewCache &viewChain = *pcoinsTip;
+        MCCoinsViewMemPool viewMempool(&viewChain, mempool);
         view.SetBackend(viewMempool); // temporarily switch cache backend to db+mempool view
 
-        for (const CellTxIn& txin : mtx.vin) {
+        for (const MCTxIn& txin : mtx.vin) {
             view.AccessCoin(txin.prevout); // Load entries from viewChain into view; can fail.
         }
 
@@ -775,17 +775,17 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
     }
 
     bool fGivenKeys = false;
-    CellBasicKeyStore tempKeystore;
+    MCBasicKeyStore tempKeystore;
     if (request.params.size() > 2 && !request.params[2].isNull()) {
         fGivenKeys = true;
         UniValue keys = request.params[2].get_array();
         for (unsigned int idx = 0; idx < keys.size(); idx++) {
             UniValue k = keys[idx];
-            CellLinkSecret vchSecret;
+            MagnaChainSecret vchSecret;
             bool fGood = vchSecret.SetString(k.get_str());
             if (!fGood)
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key");
-            CellKey key = vchSecret.GetKey();
+            MCKey key = vchSecret.GetKey();
             if (!key.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
             tempKeystore.AddKey(key);
@@ -820,9 +820,9 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
             if (nOut < 0)
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "vout must be positive");
 
-            CellOutPoint out(txid, nOut);
+            MCOutPoint out(txid, nOut);
             std::vector<unsigned char> pkData(ParseHexO(prevOut, "scriptPubKey"));
-            CellScript scriptPubKey(pkData.begin(), pkData.end());
+            MCScript scriptPubKey(pkData.begin(), pkData.end());
 
             {
                 const Coin& coin = view.AccessCoin(out);
@@ -855,7 +855,7 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
                 UniValue v = find_value(prevOut, "redeemScript");
                 if (!v.isNull()) {
                     std::vector<unsigned char> rsData(ParseHexV(v, "redeemScript"));
-                    CellScript redeemScript(rsData.begin(), rsData.end());
+                    MCScript redeemScript(rsData.begin(), rsData.end());
                     tempKeystore.AddCScript(redeemScript);
                 }
             }
@@ -863,9 +863,9 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
     }
 
 #ifdef ENABLE_WALLET
-    const CellKeyStore& keystore = ((fGivenKeys || !pwallet) ? tempKeystore : *pwallet);
+    const MCKeyStore& keystore = ((fGivenKeys || !pwallet) ? tempKeystore : *pwallet);
 #else
-    const CellKeyStore& keystore = tempKeystore;
+    const MCKeyStore& keystore = tempKeystore;
 #endif
 
     int nHashType = SIGHASH_ALL;
@@ -890,19 +890,19 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
     // Script verification errors
     UniValue vErrors(UniValue::VARR);
 
-    // Use CellTransaction for the constant parts of the
+    // Use MCTransaction for the constant parts of the
     // transaction to avoid rehashing.
-    const CellTransaction txConst(mtx);
+    const MCTransaction txConst(mtx);
     // Sign what we can:
     for (unsigned int i = 0; i < mtx.vin.size(); i++) {
-        CellTxIn& txin = mtx.vin[i];
+        MCTxIn& txin = mtx.vin[i];
         const Coin& coin = view.AccessCoin(txin.prevout);
         if (coin.IsSpent()) {
             TxInErrorToJSON(txin, vErrors, "Input not found or already spent");
             continue;
         }
-        const CellScript& prevPubKey = coin.out.scriptPubKey;
-        const CellAmount& amount = coin.out.nValue;
+        const MCScript& prevPubKey = coin.out.scriptPubKey;
+        const MCAmount& amount = coin.out.nValue;
 
         SignatureData sigdata;
         // Only sign SIGHASH_SINGLE if there's a corresponding output:
@@ -956,26 +956,26 @@ UniValue sendrawtransaction(const JSONRPCRequest& request)
     RPCTypeCheck(request.params, {UniValue::VSTR, UniValue::VBOOL});
 
     // parse hex string from parameter
-    CellMutableTransaction mtx;
+    MCMutableTransaction mtx;
     if (!DecodeHexTx(mtx, request.params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
-    CellTransactionRef tx(MakeTransactionRef(std::move(mtx)));
+    MCTransactionRef tx(MakeTransactionRef(std::move(mtx)));
     const uint256& hashTx = tx->GetHash();
 
-    CellAmount nMaxRawTxFee = maxTxFee;
+    MCAmount nMaxRawTxFee = maxTxFee;
     if (request.params.size() > 1 && request.params[1].get_bool())
         nMaxRawTxFee = 0;
 
-    CellCoinsViewCache &view = *pcoinsTip;
+    MCCoinsViewCache &view = *pcoinsTip;
     bool fHaveChain = false;
     for (size_t o = 0; !fHaveChain && o < tx->vout.size(); o++) {
-        const Coin& existingCoin = view.AccessCoin(CellOutPoint(hashTx, o));
+        const Coin& existingCoin = view.AccessCoin(MCOutPoint(hashTx, o));
         fHaveChain = !existingCoin.IsSpent();
     }
     bool fHaveMempool = mempool.exists(hashTx);
     if (!fHaveMempool && !fHaveChain) {
         // push to local node and sync with wallets
-        CellValidationState state;
+        MCValidationState state;
         bool fMissingInputs;
         bool fLimitFree = true;
         if (!AcceptToMemoryPool(mempool, state, std::move(tx), fLimitFree, &fMissingInputs, nullptr, false, nMaxRawTxFee)) {
@@ -994,13 +994,13 @@ UniValue sendrawtransaction(const JSONRPCRequest& request)
     if(!g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    CellInv inv(MSG_TX, hashTx);
-    g_connman->ForEachNode([&inv](CellNode* pnode)
+    MCInv inv(MSG_TX, hashTx);
+    g_connman->ForEachNode([&inv](MCNode* pnode)
     {
         pnode->PushInventory(inv);
     });
 	//Smart contract
-	if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
+	if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
 	{
 		UniValue ret(UniValue::VOBJ);
 		ret.push_back(Pair("txid", tx->GetHash().ToString()));

@@ -1,13 +1,13 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: CellLink
+Upstream-Name: MagnaChain
 Upstream-Contact: Satoshi Nakamoto <satoshin@gmx.com>
- irc://#celllink@freenode.net
-Source: https://github.com/bitcoin/bitcoin
+ irc://#magnachain@freenode.net
+Source: https://github.com/magnachain/magnachain
 
 Files: *
 Copyright: 2009-2017, MagnaChain Core Developers
 License: Expat
-Comment: The MagnaChain Core Developers encompasses the current developers listed on celllink.org,
+Comment: The MagnaChain Core Developers encompasses the current developers listed on magnachain.org,
          as well as the numerous contributors to the project.
 
 Files: debian/*
@@ -78,12 +78,12 @@ License: Expat
 Comment: Modifications of Stephan Hutchings Typicons
 
 Files: src/qt/res/icons/about.png
-       src/qt/res/icons/celllink.*
-       share/pixmaps/celllink*
-       src/qt/res/src/celllink.svg
+       src/qt/res/icons/magnachain.*
+       share/pixmaps/magnachain*
+       src/qt/res/src/magnachain.svg
 Copyright: Bitboy, Jonas Schnelli
 License: public-domain
-Comment: Site: https://bitcointalk.org/?topic=1756.0
+Comment: Site: https://magnachaintalk.org/?topic=1756.0
 
 
 License: Expat

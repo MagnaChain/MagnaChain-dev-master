@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -23,7 +23,7 @@ bool SerializeDB(Stream& stream, const Data& data)
 {
     // Write and commit header, data
     try {
-        CellHashWriter hasher(SER_DISK, CLIENT_VERSION);
+        MCHashWriter hasher(SER_DISK, CLIENT_VERSION);
         stream << FLATDATA(Params().MessageStart()) << data;
         hasher << FLATDATA(Params().MessageStart()) << data;
         stream << hasher.GetHash();
@@ -42,10 +42,10 @@ bool SerializeFileDB(const std::string& prefix, const fs::path& path, const Data
     GetRandBytes((unsigned char*)&randv, sizeof(randv));
     std::string tmpfn = strprintf("%s.%04x", prefix, randv);
 
-    // open temp output file, and associate with CellAutoFile
+    // open temp output file, and associate with MCAutoFile
     fs::path pathTmp = GetDataDir() / tmpfn;
     FILE *file = fsbridge::fopen(pathTmp, "wb");
-    CellAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
+    MCAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
     if (fileout.IsNull())
         return error("%s: Failed to open file %s", __func__, pathTmp.string());
 
@@ -95,9 +95,9 @@ bool DeserializeDB(Stream& stream, Data& data, bool fCheckSum = true)
 template <typename Data>
 bool DeserializeFileDB(const fs::path& path, Data& data)
 {
-    // open input file, and associate with CellAutoFile
+    // open input file, and associate with MCAutoFile
     FILE *file = fsbridge::fopen(path, "rb");
-    CellAutoFile filein(file, SER_DISK, CLIENT_VERSION);
+    MCAutoFile filein(file, SER_DISK, CLIENT_VERSION);
     if (filein.IsNull())
         return error("%s: Failed to open file %s", __func__, path.string());
 
@@ -106,37 +106,37 @@ bool DeserializeFileDB(const fs::path& path, Data& data)
 
 }
 
-CellBanDB::CellBanDB()
+MCBanDB::MCBanDB()
 {
     pathBanlist = GetDataDir() / "banlist.dat";
 }
 
-bool CellBanDB::Write(const banmap_t& banSet)
+bool MCBanDB::Write(const banmap_t& banSet)
 {
     return SerializeFileDB("banlist", pathBanlist, banSet);
 }
 
-bool CellBanDB::Read(banmap_t& banSet)
+bool MCBanDB::Read(banmap_t& banSet)
 {
     return DeserializeFileDB(pathBanlist, banSet);
 }
 
-CellAddrDB::CellAddrDB()
+MCAddrDB::MCAddrDB()
 {
     pathAddr = GetDataDir() / "peers.dat";
 }
 
-bool CellAddrDB::Write(const CellAddrMan& addr)
+bool MCAddrDB::Write(const MCAddrMan& addr)
 {
     return SerializeFileDB("peers", pathAddr, addr);
 }
 
-bool CellAddrDB::Read(CellAddrMan& addr)
+bool MCAddrDB::Read(MCAddrMan& addr)
 {
     return DeserializeFileDB(pathAddr, addr);
 }
 
-bool CellAddrDB::Read(CellAddrMan& addr, CellDataStream& ssPeers)
+bool MCAddrDB::Read(MCAddrMan& addr, MCDataStream& ssPeers)
 {
     bool ret = DeserializeDB(ssPeers, addr, false);
     if (!ret) {

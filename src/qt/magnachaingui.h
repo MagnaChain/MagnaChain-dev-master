@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CELLLINKGUI_H
-#define CELLLINK_QT_CELLLINKGUI_H
+#ifndef MAGNACHAIN_QT_MAGNACHAINGUI_H
+#define MAGNACHAIN_QT_MAGNACHAINGUI_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -39,10 +39,10 @@ class QProgressDialog;
 QT_END_NAMESPACE
 
 /**
-  CellLink GUI main class. This class represents the main window of the CellLink UI. It communicates with both the client and
+  MagnaChain GUI main class. This class represents the main window of the MagnaChain UI. It communicates with both the client and
   wallet models to give the user an up-to-date view of the current core state.
 */
-class CellLinkGUI : public QMainWindow
+class MagnaChainGUI : public QMainWindow
 {
     Q_OBJECT
 
@@ -50,8 +50,8 @@ public:
     static const QString DEFAULT_WALLET;
     static const std::string DEFAULT_UIPLATFORM;
 
-    explicit CellLinkGUI(const PlatformStyle *platformStyle, const NetworkStyle *networkStyle, QWidget *parent = 0);
-    ~CellLinkGUI();
+    explicit MagnaChainGUI(const PlatformStyle *platformStyle, const NetworkStyle *networkStyle, QWidget *parent = 0);
+    ~MagnaChainGUI();
 
     /** Set the client model.
         The client model represents the part of the core that communicates with the P2P network, and is wallet-agnostic.
@@ -166,7 +166,7 @@ public Q_SLOTS:
        @param[in] title     the message box / notification title
        @param[in] message   the displayed text
        @param[in] style     modality and style definitions (icon and used buttons - buttons only for message boxes)
-                            @see CellClientUIInterface::MessageBoxFlags
+                            @see MCClientUIInterface::MessageBoxFlags
        @param[in] ret       pointer to a bool that will be modified to whether Ok was clicked (modal only)
     */
     void message(const QString &title, const QString &message, unsigned int style, bool *ret = nullptr);
@@ -187,7 +187,7 @@ public Q_SLOTS:
     bool handlePaymentRequest(const SendCoinsRecipient& recipient);
 
     /** Show incoming transaction notification for new transactions. */
-    void incomingTransaction(const QString& date, int unit, const CellAmount& amount, const QString& type, const QString& address, const QString& label);
+    void incomingTransaction(const QString& date, int unit, const MCAmount& amount, const QString& type, const QString& address, const QString& label);
 #endif // ENABLE_WALLET
 
 private Q_SLOTS:
@@ -273,4 +273,4 @@ private Q_SLOTS:
     void onMenuSelection(QAction* action);
 };
 
-#endif // CELLLINK_QT_CELLLINKGUI_H
+#endif // MAGNACHAIN_QT_MAGNACHAINGUI_H

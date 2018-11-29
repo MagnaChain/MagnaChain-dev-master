@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -9,22 +9,22 @@
 
 #include <QStringList>
 
-CellLinkUnits::CellLinkUnits(QObject *parent):
+MagnaChainUnits::MagnaChainUnits(QObject *parent):
         QAbstractListModel(parent),
         unitlist(availableUnits())
 {
 }
 
-QList<CellLinkUnits::Unit> CellLinkUnits::availableUnits()
+QList<MagnaChainUnits::Unit> MagnaChainUnits::availableUnits()
 {
-    QList<CellLinkUnits::Unit> unitlist;
+    QList<MagnaChainUnits::Unit> unitlist;
     unitlist.append(BTC);
     unitlist.append(mBTC);
     unitlist.append(uBTC);
     return unitlist;
 }
 
-bool CellLinkUnits::valid(int unit)
+bool MagnaChainUnits::valid(int unit)
 {
     switch(unit)
     {
@@ -37,29 +37,29 @@ bool CellLinkUnits::valid(int unit)
     }
 }
 
-QString CellLinkUnits::name(int unit)
+QString MagnaChainUnits::name(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("Cell");
-    case mBTC: return QString("mCell");
-    case uBTC: return QString::fromUtf8("μCell");
+    case BTC: return QString("MC");
+    case mBTC: return QString("mMC");
+    case uBTC: return QString::fromUtf8("μMC");
     default: return QString("???");
     }
 }
 
-QString CellLinkUnits::description(int unit)
+QString MagnaChainUnits::description(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("Cells");
-    case mBTC: return QString("Milli-Cells (1 / 1" THIN_SP_UTF8 "000)");
-    case uBTC: return QString("Micro-Cells (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+    case BTC: return QString("MCs");
+    case mBTC: return QString("Milli-MCs (1 / 1" THIN_SP_UTF8 "000)");
+    case uBTC: return QString("Micro-MCs (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
     default: return QString("???");
     }
 }
 
-qint64 CellLinkUnits::factor(int unit)
+qint64 MagnaChainUnits::factor(int unit)
 {
     switch(unit)
     {
@@ -70,7 +70,7 @@ qint64 CellLinkUnits::factor(int unit)
     }
 }
 
-int CellLinkUnits::decimals(int unit)
+int MagnaChainUnits::decimals(int unit)
 {
     switch(unit)
     {
@@ -81,7 +81,7 @@ int CellLinkUnits::decimals(int unit)
     }
 }
 
-QString CellLinkUnits::format(int unit, const CellAmount& nIn, bool fPlus, SeparatorStyle separators)
+QString MagnaChainUnits::format(int unit, const MCAmount& nIn, bool fPlus, SeparatorStyle separators)
 {
     // Note: not using straight sprintf here because we do NOT want
     // localized number formatting.
@@ -120,12 +120,12 @@ QString CellLinkUnits::format(int unit, const CellAmount& nIn, bool fPlus, Separ
 // Please take care to use formatHtmlWithUnit instead, when
 // appropriate.
 
-QString CellLinkUnits::formatWithUnit(int unit, const CellAmount& amount, bool plussign, SeparatorStyle separators)
+QString MagnaChainUnits::formatWithUnit(int unit, const MCAmount& amount, bool plussign, SeparatorStyle separators)
 {
     return format(unit, amount, plussign, separators) + QString(" ") + name(unit);
 }
 
-QString CellLinkUnits::formatHtmlWithUnit(int unit, const CellAmount& amount, bool plussign, SeparatorStyle separators)
+QString MagnaChainUnits::formatHtmlWithUnit(int unit, const MCAmount& amount, bool plussign, SeparatorStyle separators)
 {
     QString str(formatWithUnit(unit, amount, plussign, separators));
     str.replace(QChar(THIN_SP_CP), QString(THIN_SP_HTML));
@@ -133,7 +133,7 @@ QString CellLinkUnits::formatHtmlWithUnit(int unit, const CellAmount& amount, bo
 }
 
 
-bool CellLinkUnits::parse(int unit, const QString &value, CellAmount *val_out)
+bool MagnaChainUnits::parse(int unit, const QString &value, MCAmount *val_out)
 {
     if(!valid(unit) || value.isEmpty())
         return false; // Refuse to parse invalid unit or empty string
@@ -164,7 +164,7 @@ bool CellLinkUnits::parse(int unit, const QString &value, CellAmount *val_out)
     {
         return false; // Longer numbers will exceed 63 bits
     }
-    CellAmount retvalue(str.toLongLong(&ok));
+    MCAmount retvalue(str.toLongLong(&ok));
     if(val_out)
     {
         *val_out = retvalue;
@@ -172,23 +172,23 @@ bool CellLinkUnits::parse(int unit, const QString &value, CellAmount *val_out)
     return ok;
 }
 
-QString CellLinkUnits::getAmountColumnTitle(int unit)
+QString MagnaChainUnits::getAmountColumnTitle(int unit)
 {
     QString amountTitle = QObject::tr("Amount");
-    if (CellLinkUnits::valid(unit))
+    if (MagnaChainUnits::valid(unit))
     {
-        amountTitle += " ("+CellLinkUnits::name(unit) + ")";
+        amountTitle += " ("+MagnaChainUnits::name(unit) + ")";
     }
     return amountTitle;
 }
 
-int CellLinkUnits::rowCount(const QModelIndex &parent) const
+int MagnaChainUnits::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
     return unitlist.size();
 }
 
-QVariant CellLinkUnits::data(const QModelIndex &index, int role) const
+QVariant MagnaChainUnits::data(const QModelIndex &index, int role) const
 {
     int row = index.row();
     if(row >= 0 && row < unitlist.size())
@@ -208,7 +208,7 @@ QVariant CellLinkUnits::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
-CellAmount CellLinkUnits::maxMoney()
+MCAmount MagnaChainUnits::maxMoney()
 {
     return MAX_MONEY;
 }

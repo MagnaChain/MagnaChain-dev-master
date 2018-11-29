@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016 The Bitcoin Core developers
+// Copyright (c) 2015-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -125,7 +125,7 @@ void CZMQNotificationInterface::Shutdown()
     }
 }
 
-void CZMQNotificationInterface::UpdatedBlockTip(const CellBlockIndex *pindexNew, const CellBlockIndex *pindexFork, bool fInitialDownload)
+void CZMQNotificationInterface::UpdatedBlockTip(const MCBlockIndex *pindexNew, const MCBlockIndex *pindexFork, bool fInitialDownload)
 {
     if (fInitialDownload || pindexNew == pindexFork) // In IBD or blocks were disconnected without any new ones
         return;
@@ -145,11 +145,11 @@ void CZMQNotificationInterface::UpdatedBlockTip(const CellBlockIndex *pindexNew,
     }
 }
 
-void CZMQNotificationInterface::TransactionAddedToMempool(const CellTransactionRef& ptx)
+void CZMQNotificationInterface::TransactionAddedToMempool(const MCTransactionRef& ptx)
 {
     // Used by BlockConnected and BlockDisconnected as well, because they're
     // all the same external callback.
-    const CellTransaction& tx = *ptx;
+    const MCTransaction& tx = *ptx;
 
     for (std::list<CZMQAbstractNotifier*>::iterator i = notifiers.begin(); i!=notifiers.end(); )
     {
@@ -166,17 +166,17 @@ void CZMQNotificationInterface::TransactionAddedToMempool(const CellTransactionR
     }
 }
 
-void CZMQNotificationInterface::BlockConnected(const std::shared_ptr<const CellBlock>& pblock, const CellBlockIndex* pindexConnected, const std::vector<CellTransactionRef>& vtxConflicted)
+void CZMQNotificationInterface::BlockConnected(const std::shared_ptr<const MCBlock>& pblock, const MCBlockIndex* pindexConnected, const std::vector<MCTransactionRef>& vtxConflicted)
 {
-    for (const CellTransactionRef& ptx : pblock->vtx) {
+    for (const MCTransactionRef& ptx : pblock->vtx) {
         // Do a normal notify for each transaction added in the block
         TransactionAddedToMempool(ptx);
     }
 }
 
-void CZMQNotificationInterface::BlockDisconnected(const std::shared_ptr<const CellBlock>& pblock)
+void CZMQNotificationInterface::BlockDisconnected(const std::shared_ptr<const MCBlock>& pblock)
 {
-    for (const CellTransactionRef& ptx : pblock->vtx) {
+    for (const MCTransactionRef& ptx : pblock->vtx) {
         // Do a normal notify for each transaction removed in block disconnection
         TransactionAddedToMempool(ptx);
     }

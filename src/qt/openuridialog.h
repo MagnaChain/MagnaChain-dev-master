@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2015 The Bitcoin Core developers
+// Copyright (c) 2011-2015 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_OPENURIDIALOG_H
-#define CELLLINK_QT_OPENURIDIALOG_H
+#ifndef MAGNACHAIN_QT_OPENURIDIALOG_H
+#define MAGNACHAIN_QT_OPENURIDIALOG_H
 
 #include <QDialog>
 
@@ -32,4 +32,4 @@ private:
     Ui::OpenURIDialog *ui;
 };
 
-#endif // CELLLINK_QT_OPENURIDIALOG_H
+#endif // MAGNACHAIN_QT_OPENURIDIALOG_H

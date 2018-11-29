@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_STANDARD_H
-#define CELLLINK_SCRIPT_STANDARD_H
+#ifndef MAGNACHAIN_SCRIPT_STANDARD_H
+#define MAGNACHAIN_SCRIPT_STANDARD_H
 
 #include "script/interpreter.h"
 #include "coding/uint256.h"
@@ -16,16 +16,16 @@
 
 static const bool DEFAULT_ACCEPT_DATACARRIER = true;
 
-class CellKeyID;
-class CellScript;
+class MCKeyID;
+class MCScript;
 
-/** A reference to a CellScript: the Hash160 of its serialization (see script.h) */
-class CellScriptID : public uint160
+/** A reference to a MCScript: the Hash160 of its serialization (see script.h) */
+class MCScriptID : public uint160
 {
 public:
-    CellScriptID() : uint160() {}
-    CellScriptID(const CellScript& in);
-    CellScriptID(const uint160& in) : uint160(in) {}
+    MCScriptID() : uint160() {}
+    MCScriptID(const MCScript& in);
+    MCScriptID(const uint160& in) : uint160(in) {}
 };
 
 static const unsigned int MAX_OP_RETURN_RELAY = 83; //!< bytes (+1 for OP_RETURN, +2 for the pushdata opcodes)
@@ -62,30 +62,30 @@ enum txnouttype
     TX_REDEEM_MORTGAGE,
 };
 
-class CellNoDestination {
+class MCNoDestination {
 public:
-    friend bool operator==(const CellNoDestination &a, const CellNoDestination &b) { return true; }
-    friend bool operator<(const CellNoDestination &a, const CellNoDestination &b) { return true; }
+    friend bool operator==(const MCNoDestination &a, const MCNoDestination &b) { return true; }
+    friend bool operator<(const MCNoDestination &a, const MCNoDestination &b) { return true; }
 };
 
 /** 
  * A txout script template with a specific destination. It is either:
- *  * CellNoDestination: no destination set
- *  * CellKeyID: TX_PUBKEYHASH destination
- *  * CellScriptID: TX_SCRIPTHASH destination
- *  A CellTxDestination is the internal data type encoded in a CellLinkAddress
+ *  * MCNoDestination: no destination set
+ *  * MCKeyID: TX_PUBKEYHASH destination
+ *  * MCScriptID: TX_SCRIPTHASH destination
+ *  A MCTxDestination is the internal data type encoded in a MagnaChainAddress
  */
-typedef boost::variant<CellNoDestination, CellKeyID, CellScriptID, CellContractID> CellTxDestination;
+typedef boost::variant<MCNoDestination, MCKeyID, MCScriptID, MCContractID> MCTxDestination;
 
 const char* GetTxnOutputType(txnouttype t);
 
-bool Solver(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
-bool ExtractDestination(const CellScript& scriptPubKey, CellTxDestination& addressRet);
-bool ExtractDestinations(const CellScript& scriptPubKey, txnouttype& typeRet, std::vector<CellTxDestination>& addressRet, int& nRequiredRet);
+bool Solver(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
+bool ExtractDestination(const MCScript& scriptPubKey, MCTxDestination& addressRet);
+bool ExtractDestinations(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<MCTxDestination>& addressRet, int& nRequiredRet);
 
-CellScript GetScriptForDestination(const CellTxDestination& dest);
-CellScript GetScriptForRawPubKey(const CellPubKey& pubkey);
-CellScript GetScriptForMultisig(int nRequired, const std::vector<CellPubKey>& keys);
-CellScript GetScriptForWitness(const CellScript& redeemscript);
+MCScript GetScriptForDestination(const MCTxDestination& dest);
+MCScript GetScriptForRawPubKey(const MCPubKey& pubkey);
+MCScript GetScriptForMultisig(int nRequired, const std::vector<MCPubKey>& keys);
+MCScript GetScriptForWitness(const MCScript& redeemscript);
 
-#endif // CELLLINK_SCRIPT_STANDARD_H
+#endif // MAGNACHAIN_SCRIPT_STANDARD_H

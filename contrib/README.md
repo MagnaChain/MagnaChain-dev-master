@@ -13,7 +13,7 @@ Construct a linear, no-fork, best version of the blockchain.
 
 ### [Qos](/contrib/qos) ###
 
-A Linux bash script that will set up traffic control (tc) to limit the outgoing bandwidth for connections to the CellLink network. This means one can have an always-on bitcoind instance running, and another local bitcoind/magnachain-qt instance which connects to this node and receives blocks from it.
+A Linux bash script that will set up traffic control (tc) to limit the outgoing bandwidth for connections to the MagnaChain network. This means one can have an always-on magnachaind instance running, and another local magnachaind/magnachain-qt instance which connects to this node and receives blocks from it.
 
 ### [Seeds](/contrib/seeds) ###
 Utility to generate the pnSeed[] array that is compiled into the client.
@@ -22,8 +22,8 @@ Build Tools and Keys
 ---------------------
 
 ### [Debian](/contrib/debian) ###
-Contains files used to package bitcoind/magnachain-qt
-for Debian-based Linux systems. If you compile bitcoind/magnachain-qt yourself, there are some useful files here.
+Contains files used to package magnachaind/magnachain-qt
+for Debian-based Linux systems. If you compile magnachaind/magnachain-qt yourself, there are some useful files here.
 
 ### [Gitian-descriptors](/contrib/gitian-descriptors) ###
 Notes on getting Gitian builds up and running using KVM.
@@ -44,7 +44,7 @@ Test and Verify Tools
 ---------------------
 
 ### [TestGen](/contrib/testgen) ###
-Utilities to generate test vectors for the data-driven CellLink tests.
+Utilities to generate test vectors for the data-driven MagnaChain tests.
 
 ### [Verify Binaries](/contrib/verifybinaries) ###
 This script attempts to download and verify the signature file SHA256SUMS.asc from magnachain.org.

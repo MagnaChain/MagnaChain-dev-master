@@ -1,18 +1,18 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_ISMINE_H
-#define CELLLINK_SCRIPT_ISMINE_H
+#ifndef MAGNACHAIN_SCRIPT_ISMINE_H
+#define MAGNACHAIN_SCRIPT_ISMINE_H
 
 #include "script/standard.h"
 
 #include <stdint.h>
 
-class CellKeyStore;
-class CellScript;
+class MCKeyStore;
+class MCScript;
 
 /** IsMine() return codes */
 enum isminetype
@@ -34,9 +34,9 @@ typedef uint8_t isminefilter;
  * different SIGVERSION may have different network rules. Currently the only use of isInvalid is indicate uncompressed
  * keys in SIGVERSION_WITNESS_V0 script, but could also be used in similar cases in the future
  */
-isminetype IsMine(const CellKeyStore& keystore, const CellScript& scriptPubKey, bool& isInvalid, SigVersion = SIGVERSION_BASE);
-isminetype IsMine(const CellKeyStore& keystore, const CellScript& scriptPubKey, SigVersion = SIGVERSION_BASE);
-isminetype IsMine(const CellKeyStore& keystore, const CellTxDestination& dest, bool& isInvalid, SigVersion = SIGVERSION_BASE);
-isminetype IsMine(const CellKeyStore& keystore, const CellTxDestination& dest, SigVersion = SIGVERSION_BASE);
+isminetype IsMine(const MCKeyStore& keystore, const MCScript& scriptPubKey, bool& isInvalid, SigVersion = SIGVERSION_BASE);
+isminetype IsMine(const MCKeyStore& keystore, const MCScript& scriptPubKey, SigVersion = SIGVERSION_BASE);
+isminetype IsMine(const MCKeyStore& keystore, const MCTxDestination& dest, bool& isInvalid, SigVersion = SIGVERSION_BASE);
+isminetype IsMine(const MCKeyStore& keystore, const MCTxDestination& dest, SigVersion = SIGVERSION_BASE);
 
-#endif // CELLLINK_SCRIPT_ISMINE_H
+#endif // MAGNACHAIN_SCRIPT_ISMINE_H

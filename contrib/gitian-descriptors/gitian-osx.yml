@@ -28,7 +28,7 @@ packages:
 - "python-setuptools"
 - "fonts-tuffy"
 remotes:
-- "url": "https://github.com/bitcoin/bitcoin.git"
+- "url": "https://github.com/magnachain/magnachain.git"
   "dir": "magnachain"
 files:
 - "MacOSX10.11.sdk.tar.gz"

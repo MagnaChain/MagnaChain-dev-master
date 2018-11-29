@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_STREAMS_H
-#define CELLLINK_STREAMS_H
+#ifndef MAGNACHAIN_STREAMS_H
+#define MAGNACHAIN_STREAMS_H
 
 #include "support/allocators/zeroafterfree.h"
 #include "io/serialize.h"
@@ -74,7 +74,7 @@ OverrideStream<S> WithOrVersion(S* s, int nVersionFlag)
  *
  * The referenced vector will grow as necessary
  */
-class CellVectorWriter
+class MCVectorWriter
 {
  public:
 
@@ -85,7 +85,7 @@ class CellVectorWriter
  * @param[in]  nPosIn Starting position. Vector index where writes should start. The vector will initially
  *                    grow as necessary to  max(index, vec.size()). So to append, use vec.size().
 */
-    CellVectorWriter(int nTypeIn, int nVersionIn, std::vector<unsigned char>& vchDataIn, size_t nPosIn) : nType(nTypeIn), nVersion(nVersionIn), vchData(vchDataIn), nPos(nPosIn)
+    MCVectorWriter(int nTypeIn, int nVersionIn, std::vector<unsigned char>& vchDataIn, size_t nPosIn) : nType(nTypeIn), nVersion(nVersionIn), vchData(vchDataIn), nPos(nPosIn)
     {
         if(nPos > vchData.size())
             vchData.resize(nPos);
@@ -95,7 +95,7 @@ class CellVectorWriter
  * @param[in]  args  A list of items to serialize starting at nPos.
 */
     template <typename... Args>
-    CellVectorWriter(int nTypeIn, int nVersionIn, std::vector<unsigned char>& vchDataIn, size_t nPosIn, Args&&... args) : CellVectorWriter(nTypeIn, nVersionIn, vchDataIn, nPosIn)
+    MCVectorWriter(int nTypeIn, int nVersionIn, std::vector<unsigned char>& vchDataIn, size_t nPosIn, Args&&... args) : MCVectorWriter(nTypeIn, nVersionIn, vchDataIn, nPosIn)
     {
         ::SerializeMany(*this, std::forward<Args>(args)...);
     }
@@ -112,7 +112,7 @@ class CellVectorWriter
         nPos += nSize;
     }
     template<typename T>
-    CellVectorWriter& operator<<(const T& obj)
+    MCVectorWriter& operator<<(const T& obj)
     {
         // Serialize to this stream
         ::Serialize(*this, obj);
@@ -144,7 +144,7 @@ private:
  * >> and << read and write unformatted data using the above serialization templates.
  * Fills with data in linear time; some stringstream implementations take N^2 time.
  */
-class CellDataStream
+class MCDataStream
 {
 protected:
     typedef CSerializeData vector_type;
@@ -165,38 +165,38 @@ public:
     typedef vector_type::const_iterator   const_iterator;
     typedef vector_type::reverse_iterator reverse_iterator;
 
-    explicit CellDataStream(int nTypeIn, int nVersionIn)
+    explicit MCDataStream(int nTypeIn, int nVersionIn)
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const_iterator pbegin, const_iterator pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
+    MCDataStream(const_iterator pbegin, const_iterator pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const char* pbegin, const char* pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
+    MCDataStream(const char* pbegin, const char* pend, int nTypeIn, int nVersionIn) : vch(pbegin, pend)
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const vector_type& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
+    MCDataStream(const vector_type& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const std::vector<char>& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
+    MCDataStream(const std::vector<char>& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const std::vector<unsigned char>& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
+    MCDataStream(const std::vector<unsigned char>& vchIn, int nTypeIn, int nVersionIn) : vch(vchIn.begin(), vchIn.end())
     {
         Init(nTypeIn, nVersionIn);
     }
 
     template <typename... Args>
-    CellDataStream(int nTypeIn, int nVersionIn, Args&&... args)
+    MCDataStream(int nTypeIn, int nVersionIn, Args&&... args)
     {
         Init(nTypeIn, nVersionIn);
         ::SerializeMany(*this, std::forward<Args>(args)...);
@@ -209,15 +209,15 @@ public:
         nVersion = nVersionIn;
     }
 
-    CellDataStream& operator+=(const CellDataStream& b)
+    MCDataStream& operator+=(const MCDataStream& b)
     {
         vch.insert(vch.end(), b.begin(), b.end());
         return *this;
     }
 
-    friend CellDataStream operator+(const CellDataStream& a, const CellDataStream& b)
+    friend MCDataStream operator+(const MCDataStream& a, const MCDataStream& b)
     {
-        CellDataStream ret = a;
+        MCDataStream ret = a;
         ret += b;
         return (ret);
     }
@@ -332,7 +332,7 @@ public:
     // Stream subset
     //
     bool eof() const             { return size() == 0; }
-    CellDataStream* rdbuf()         { return this; }
+    MCDataStream* rdbuf()         { return this; }
     int in_avail()               { return size(); }
 
     void SetType(int n)          { nType = n; }
@@ -350,7 +350,7 @@ public:
         {
             if (nReadPosNext > vch.size())
             {
-                throw std::ios_base::failure("CellDataStream::read(): end of data");
+                throw std::ios_base::failure("MCDataStream::read(): end of data");
             }
             memcpy(pch, &vch[nReadPos], nSize);
             nReadPos = 0;
@@ -365,13 +365,13 @@ public:
     {
         // Ignore from the beginning of the buffer
         if (nSize < 0) {
-            throw std::ios_base::failure("CellDataStream::ignore(): nSize negative");
+            throw std::ios_base::failure("MCDataStream::ignore(): nSize negative");
         }
         unsigned int nReadPosNext = nReadPos + nSize;
         if (nReadPosNext >= vch.size())
         {
             if (nReadPosNext > vch.size())
-                throw std::ios_base::failure("CellDataStream::ignore(): end of data");
+                throw std::ios_base::failure("MCDataStream::ignore(): end of data");
             nReadPos = 0;
             vch.clear();
             return;
@@ -394,7 +394,7 @@ public:
     }
 
     template<typename T>
-    CellDataStream& operator<<(const T& obj)
+    MCDataStream& operator<<(const T& obj)
     {
         // Serialize to this stream
         ::Serialize(*this, obj);
@@ -402,7 +402,7 @@ public:
     }
 
     template<typename T>
-    CellDataStream& operator>>(T& obj)
+    MCDataStream& operator>>(T& obj)
     {
         // Unserialize from this stream
         ::Unserialize(*this, obj);
@@ -453,12 +453,12 @@ public:
  * If you're returning the file pointer, return file.release().
  * If you need to close the file early, use file.fclose() instead of fclose(file).
  */
-class CellAutoFile
+class MCAutoFile
 {
 private:
     // Disallow copies
-    CellAutoFile(const CellAutoFile&);
-    CellAutoFile& operator=(const CellAutoFile&);
+    MCAutoFile(const MCAutoFile&);
+    MCAutoFile& operator=(const MCAutoFile&);
 
     const int nType;
     const int nVersion;
@@ -466,12 +466,12 @@ private:
     FILE* file;	
 
 public:
-    CellAutoFile(FILE* filenew, int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn)
+    MCAutoFile(FILE* filenew, int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn)
     {
         file = filenew;
     }
 
-    ~CellAutoFile()
+    ~MCAutoFile()
     {
         fclose();
     }
@@ -485,14 +485,14 @@ public:
     }
 
     /** Get wrapped FILE* with transfer of ownership.
-     * @note This will invalidate the CellAutoFile object, and makes it the responsibility of the caller
+     * @note This will invalidate the MCAutoFile object, and makes it the responsibility of the caller
      * of this function to clean up the returned FILE*.
      */
     FILE* release()             { FILE* ret = file; file = nullptr; return ret; }
 
     /** Get wrapped FILE* without transfer of ownership.
      * @note Ownership of the FILE* will remain with this class. Use this only if the scope of the
-     * CellAutoFile outlives use of the passed pointer.
+     * MCAutoFile outlives use of the passed pointer.
      */
     FILE* Get() const           { return file; }
 
@@ -509,20 +509,20 @@ public:
     void read(char* pch, size_t nSize)
     {
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::read: file handle is nullptr");
+            throw std::ios_base::failure("MCAutoFile::read: file handle is nullptr");
         if (fread(pch, 1, nSize, file) != nSize)
-            throw std::ios_base::failure(feof(file) ? "CellAutoFile::read: end of file" : "CellAutoFile::read: fread failed");
+            throw std::ios_base::failure(feof(file) ? "MCAutoFile::read: end of file" : "MCAutoFile::read: fread failed");
     }
 
     void ignore(size_t nSize)
     {
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::ignore: file handle is nullptr");
+            throw std::ios_base::failure("MCAutoFile::ignore: file handle is nullptr");
         unsigned char data[4096];
         while (nSize > 0) {
             size_t nNow = std::min<size_t>(nSize, sizeof(data));
             if (fread(data, 1, nNow, file) != nNow)
-                throw std::ios_base::failure(feof(file) ? "CellAutoFile::ignore: end of file" : "CellAutoFile::read: fread failed");
+                throw std::ios_base::failure(feof(file) ? "MCAutoFile::ignore: end of file" : "MCAutoFile::read: fread failed");
             nSize -= nNow;
         }
     }
@@ -530,27 +530,27 @@ public:
     void write(const char* pch, size_t nSize)
     {
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::write: file handle is nullptr");
+            throw std::ios_base::failure("MCAutoFile::write: file handle is nullptr");
         if (fwrite(pch, 1, nSize, file) != nSize)
-            throw std::ios_base::failure("CellAutoFile::write: write failed");
+            throw std::ios_base::failure("MCAutoFile::write: write failed");
     }
 
     template<typename T>
-    CellAutoFile& operator<<(const T& obj)
+    MCAutoFile& operator<<(const T& obj)
     {
         // Serialize to this stream
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::operator<<: file handle is nullptr");
+            throw std::ios_base::failure("MCAutoFile::operator<<: file handle is nullptr");
         ::Serialize(*this, obj);
         return (*this);
     }
 
     template<typename T>
-    CellAutoFile& operator>>(T& obj)
+    MCAutoFile& operator>>(T& obj)
     {
         // Unserialize from this stream
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::operator>>: file handle is nullptr");
+            throw std::ios_base::failure("MCAutoFile::operator>>: file handle is nullptr");
         ::Unserialize(*this, obj);
         return (*this);
     }
@@ -562,12 +562,12 @@ public:
  *  Will automatically close the file when it goes out of scope if not null.
  *  If you need to close the file early, use file.fclose() instead of fclose(file).
  */
-class CellBufferedFile
+class MCBufferedFile
 {
 private:
     // Disallow copies
-    CellBufferedFile(const CellBufferedFile&);
-    CellBufferedFile& operator=(const CellBufferedFile&);
+    MCBufferedFile(const MCBufferedFile&);
+    MCBufferedFile& operator=(const MCBufferedFile&);
 
     const int nType;
     const int nVersion;
@@ -591,7 +591,7 @@ protected:
             return false;
         size_t nBytes = fread((void*)&vchBuf[pos], 1, readNow, src);
         if (nBytes == 0) {
-            throw std::ios_base::failure(feof(src) ? "CellBufferedFile::Fill: end of file" : "CellBufferedFile::Fill: fread failed");
+            throw std::ios_base::failure(feof(src) ? "MCBufferedFile::Fill: end of file" : "MCBufferedFile::Fill: fread failed");
         } else {
             nSrcPos += nBytes;
             return true;
@@ -599,13 +599,13 @@ protected:
     }
 
 public:
-    CellBufferedFile(FILE *fileIn, uint64_t nBufSize, uint64_t nRewindIn, int nTypeIn, int nVersionIn) :
+    MCBufferedFile(FILE *fileIn, uint64_t nBufSize, uint64_t nRewindIn, int nTypeIn, int nVersionIn) :
         nType(nTypeIn), nVersion(nVersionIn), nSrcPos(0), nReadPos(0), nReadLimit((uint64_t)(-1)), nRewind(nRewindIn), vchBuf(nBufSize, 0)
     {
         src = fileIn;
     }
 
-    ~CellBufferedFile()
+    ~MCBufferedFile()
     {
         fclose();
     }
@@ -689,7 +689,7 @@ public:
     }
 
     template<typename T>
-    CellBufferedFile& operator>>(T& obj) {
+    MCBufferedFile& operator>>(T& obj) {
         // Unserialize from this stream
         ::Unserialize(*this, obj);
         return (*this);
@@ -707,4 +707,4 @@ public:
     }
 };
 
-#endif // CELLLINK_STREAMS_H
+#endif // MAGNACHAIN_STREAMS_H

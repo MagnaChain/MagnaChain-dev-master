@@ -223,33 +223,33 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 	return true, strPackData, unpacktable(ret)				                    \n\
 end                                                                             \n";
 
-bool GetPubKey(const CellWallet* pWallet, const CellLinkAddress& addr, CellPubKey& pubKey)
+bool GetPubKey(const MCWallet* pWallet, const MagnaChainAddress& addr, MCPubKey& pubKey)
 {
-    CellKeyID key;
+    MCKeyID key;
     if (!addr.GetKeyID(key))
         return false;
 
     return pWallet->GetPubKey(key, pubKey);
 }
 
-bool GenerateContractSender(const CellWallet* pWallet, CellLinkAddress& sendAddr)
+bool GenerateContractSender(const MCWallet* pWallet, MagnaChainAddress& sendAddr)
 {
-    std::vector<CellOutput> coins;
+    std::vector<MCOutput> coins;
     pWallet->AvailableCoins(coins);
     if (coins.size() == 0)
         return false;
 
-    CellTxDestination dest;
-    const CellOutput& out = coins[0];
-    const CellTxOut& txo = out.tx->tx->vout[out.i];
+    MCTxDestination dest;
+    const MCOutput& out = coins[0];
+    const MCTxOut& txo = out.tx->tx->vout[out.i];
     ExtractDestination(txo.scriptPubKey, dest);
     sendAddr.Set(dest);
     return true;
 }
 
-bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLinkAddress& senderAddr)
+bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr)
 {
-    CellKeyID key;
+    MCKeyID key;
     bool ret = false;
     if (!strSenderAddr.empty()) {
         senderAddr.SetString(strSenderAddr);
@@ -277,12 +277,12 @@ bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLi
 
 // generate contract address
 // format: sender address keyid + block address + new magnachain address + contract script file hash
-CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddress& senderAddr, const std::string& code)
+MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code)
 {
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
 
     // sender address keyid
-    CellKeyID senderId;
+    MCKeyID senderId;
     senderAddr.GetKeyID(senderId);
     ss << senderId;
 
@@ -296,7 +296,7 @@ CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddres
 
     // new magnachain address
     if (pWallet != nullptr) {
-        CellPubKey newKey;
+        MCPubKey newKey;
         if (!pWallet->GetKeyFromPool(newKey))
             throw std::runtime_error(strprintf("%s:%d Keypool ran out, please call keypoolrefill first", __FILE__, __LINE__));
         ss << newKey.GetID();
@@ -309,7 +309,7 @@ CellContractID GenerateContractAddress(CellWallet* pWallet, const CellLinkAddres
 
     // contract script file hash
     ss << Hash(code.begin(), code.end()).GetHex();
-    return CellContractID(Hash160(ParseHex(ss.GetHash().ToString())));
+    return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
 void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
@@ -335,30 +335,30 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pop(L, 1);
 }
 
-bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
+bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
 {
-    CellLinkAddress senderAddr;
+    MagnaChainAddress senderAddr;
     if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
         throw std::runtime_error("GetSenderAddr fail.");
 
-    CellKeyID senderKey;
-    CellPubKey senderPubKey;
+    MCKeyID senderKey;
+    MCPubKey senderPubKey;
     if (!senderAddr.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey))
         throw std::runtime_error("Get Key or PubKey fail.");
 
-    // temp addresss, replace in CellWallet::CreateTransaction
-    CellContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);
-    CellLinkAddress contractAddr(contractId);
+    // temp addresss, replace in MCWallet::CreateTransaction
+    MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);
+    MagnaChainAddress contractAddr(contractId);
 
     std::string codeout;
     sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     bool success = PublishContract(sls, contractAddr, rawCode, ret);
     if (success) {
-        CellScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
+        MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
         sls->contractIds.erase(contractId);
-        CellWalletTx wtx;
-        wtx.nVersion = CellTransaction::PUBLISH_CONTRACT_VERSION;
+        MCWalletTx wtx;
+        wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
         wtx.pContractData.reset(new ContractData);
         wtx.pContractData->codeOrFunc = rawCode;
         wtx.pContractData->sender = senderPubKey;
@@ -366,22 +366,22 @@ bool PublishContract(SmartLuaState* sls, CellWallet* pWallet, const std::string&
         wtx.pContractData->amountOut = 0;
 
         bool subtractFeeFromAmount = false;
-        CellCoinControl coinCtrl;
+        MCCoinControl coinCtrl;
         EnsureWalletIsUnlocked(pWallet);
         SendMoney(pWallet, scriptPubKey, 0, subtractFeeFromAmount, wtx, coinCtrl, sls);
 
         ret.setObject();
         ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
-        ret.push_back(Pair("contractaddress", CellLinkAddress(wtx.tx->pContractData->address).ToString()));
+        ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
         ret.push_back(Pair("senderaddress", senderAddr.ToString()));
     }
 
     return success;
 }
 
-bool PublishContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const std::string& rawCode, UniValue& ret)
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret)
 {
-    CellContractID contractId;
+    MCContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
     if (sls->GetContractInfo(contractId, contractInfo))
@@ -439,9 +439,9 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
     return success;
 }
 
-bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
-    CellContractID contractID;
+    MCContractID contractID;
     contractAddr.GetContractID(contractID);
     sls->pCoinAmountCache->TakeSnapshot(contractID);
     bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
@@ -449,12 +449,12 @@ bool CallContract(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellA
     return success;
 }
 
-bool CallContractReal(SmartLuaState* sls, CellLinkAddress& contractAddr, const CellAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
     if (amount < 0)
         throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
 
-    CellContractID contractId;
+    MCContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
     if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
@@ -567,7 +567,7 @@ int InternalCallContract(lua_State* L)
         throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
 
     std::string strContractAddr = lua_tostring(L, 1);
-    CellLinkAddress contractAddr(strContractAddr);
+    MagnaChainAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
         throw std::runtime_error(strprintf("%s contractAddr is invalid", __FUNCTION__));
 
@@ -634,23 +634,23 @@ int SendCoins(lua_State* L)
         throw std::runtime_error(strprintf("%s param2 is not a number", __FUNCTION__));
 
     std::string strDest = lua_tostring(L, 1);
-    CellLinkAddress kDest(strDest);
+    MagnaChainAddress kDest(strDest);
     if (kDest.IsContractID()) {
         lua_pushboolean(L, false);
         return 1;
     }
 
-    CellAmount amount = lua_tonumber(L, 2);
+    MCAmount amount = lua_tonumber(L, 2);
 
-    CellContractID contractID;
+    MCContractID contractID;
     sls->contractAddrs[0].GetContractID(contractID);
-    CellAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
+    MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
     if (sls->contractOut + amount > totalAmount) {
         lua_pushboolean(L, false);
         return 1;
     }
 
-    CellTxOut out;
+    MCTxOut out;
     out.nValue = amount;
     out.scriptPubKey = GetScriptForDestination(kDest.Get());
 
@@ -661,7 +661,7 @@ int SendCoins(lua_State* L)
     return 1;
 }
 
-void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, CellLinkAddress& originAddr, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache)
+void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& originAddr, ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache)
 {
     Clear();
 
@@ -687,7 +687,7 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, 
     codeLen = 0;
 }
 
-lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
+lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
 {
     lua_State* L = nullptr;
     if (_luaStates.size() > 0) {
@@ -719,7 +719,7 @@ lua_State* SmartLuaState::GetLuaState(CellLinkAddress& contractAddr)
         L->userData = this;
     }
 
-    CellKeyID contractId;
+    MCKeyID contractId;
     contractAddr.GetKeyID(contractId);
     contractIds.insert(contractId);
     contractAddrs.emplace_back(contractAddr);
@@ -752,7 +752,7 @@ void SmartLuaState::Clear()
     contractDataFrom.clear();
 }
 
-void SmartLuaState::SetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo, bool cache)
+void SmartLuaState::SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache)
 {
     LOCK(_contractCS);
     if (cache)
@@ -761,7 +761,7 @@ void SmartLuaState::SetContractInfo(const CellContractID& contractId, ContractIn
         _pContractContext->SetData(contractId, contractInfo);
 }
 
-bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractInfo& contractInfo)
+bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo)
 {
     LOCK(_contractCS);
 
@@ -773,7 +773,7 @@ bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractIn
 
     if (contractDataFrom.count(contractId) == 0) {
         if (contractInfo.from.dataHash.IsNull()) {
-            CellHashWriter ss(SER_GETHASH, 0);
+            MCHashWriter ss(SER_GETHASH, 0);
             ss << contractInfo.code << contractInfo.data;
             contractInfo.from.dataHash = ss.GetHash();
         }
@@ -783,25 +783,25 @@ bool SmartLuaState::GetContractInfo(const CellContractID& contractId, ContractIn
     return true;
 }
 
-bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txIndex, CellAmount coins, int64_t blockTime, int blockHeight, CellBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
+bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
 {
-    CellContractID contractId = tx->pContractData->address;
-    CellLinkAddress contractAddr(contractId);
-    CellLinkAddress senderAddr(tx->pContractData->sender.GetID());
-    CellAmount amount = GetTxContractOut(*tx);
+    MCContractID contractId = tx->pContractData->address;
+    MagnaChainAddress contractAddr(contractId);
+    MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
+    MCAmount amount = GetTxContractOut(*tx);
 
     CoinAmountTemp coinAmountTemp;
     coinAmountTemp.IncAmount(contractId, coins);
     CoinAmountCache coinAmountCache(&coinAmountTemp);
 
     UniValue ret(UniValue::VARR);
-    if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
+    if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx->pContractData->codeOrFunc;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
         if (!PublishContract(sls, contractAddr, rawCode, ret))
             return false;
     }
-    else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
+    else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         std::string strFuncName = tx->pContractData->codeOrFunc;
         UniValue args;
         args.read(tx->pContractData->args);
@@ -814,7 +814,7 @@ bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txInde
         if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0)
             return false;
 
-        CellAmount total = 0;
+        MCAmount total = 0;
         for (int j = 0; j < sls->recipients.size(); ++j) {
             if (!tx->IsExistVout(sls->recipients[j]))
                 return false;
@@ -830,12 +830,12 @@ bool ExecuteContract(SmartLuaState* sls, const CellTransactionRef tx, int txInde
     return true;
 }
 
-bool ExecuteBlock(SmartLuaState* sls, CellBlock* pBlock, CellBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext)
+bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext)
 {
-    std::map<CellContractID, uint256> contract2txid;
+    std::map<MCContractID, uint256> contract2txid;
     pContractContext->txFinalData.data.resize(pBlock->vtx.size());
     for (int i = offset; i < offset + count; ++i) {
-        const CellTransactionRef tx = pBlock->vtx[i];
+        const MCTransactionRef tx = pBlock->vtx[i];
         if (tx->IsNull())
             return false;
 
@@ -849,7 +849,7 @@ bool ExecuteBlock(SmartLuaState* sls, CellBlock* pBlock, CellBlockIndex* pPrevBl
 
 uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData)
 {
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << txHash;
     for (auto item : contractData)
         ss << item.first << item.second.from.txIndex << item.second.code << item.second.data;
@@ -858,12 +858,12 @@ uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractDa
 
 uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData)
 {
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << txHash << contractPrevData;
     return ss.GetHash();
 }
 
-bool VecTxMerkleLeavesWithData(const std::vector<CellTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves)
+bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves)
 {
     if (vtx.size() != contractData.size())
         return false;
@@ -873,7 +873,7 @@ bool VecTxMerkleLeavesWithData(const std::vector<CellTransactionRef>& vtx, const
     return true;
 }
 
-bool VecTxMerkleLeavesWithPrevData(const std::vector<CellTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves)
+bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves)
 {
     if (vtx.size() != contractData.size())
         return false;
@@ -883,7 +883,7 @@ bool VecTxMerkleLeavesWithPrevData(const std::vector<CellTransactionRef>& vtx, c
     return true;
 }
 
-uint256 BlockMerkleRootWithData(const CellBlock& block, const ContractContext& contractContext, bool*mutated)
+uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool*mutated)
 {
     std::vector<uint256> leaves;
     if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, leaves))
@@ -891,7 +891,7 @@ uint256 BlockMerkleRootWithData(const CellBlock& block, const ContractContext& c
     return ComputeMerkleRoot(leaves, mutated);
 }
 
-uint256 BlockMerkleRootWithPrevData(const CellBlock& block, bool* mutated)
+uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated)
 {
     std::vector<uint256> leaves;
     if (!VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, leaves))

@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -16,7 +16,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-class CPartialMerkleTreeTester : public CellPartialMerkleTree
+class CPartialMerkleTreeTester : public MCPartialMerkleTree
 {
 public:
     // flip one bit in one of the hashes - this should break the authentication
@@ -38,9 +38,9 @@ BOOST_AUTO_TEST_CASE(pmt_test1)
         unsigned int nTx = nTxCounts[i];
 
         // build a block with some dummy transactions
-        CellBlock block;
+        MCBlock block;
         for (unsigned int j=0; j<nTx; j++) {
-            CellMutableTransaction tx;
+            MCMutableTransaction tx;
             tx.nLockTime = j; // actual transaction data doesn't matter; just make the nLockTime's unique
             block.vtx.push_back(MakeTransactionRef(std::move(tx)));
         }
@@ -69,13 +69,13 @@ BOOST_AUTO_TEST_CASE(pmt_test1)
             }
 
             // build the partial merkle tree
-            CellPartialMerkleTree pmt1(vTxid, vMatch);
+            MCPartialMerkleTree pmt1(vTxid, vMatch);
 
             // serialize
-            CellDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+            MCDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
             ss << pmt1;
 
-            // verify CellPartialMerkleTree's size guarantees
+            // verify MCPartialMerkleTree's size guarantees
             unsigned int n = std::min<unsigned int>(nTx, 1 + vMatchTxid1.size()*nHeight);
             BOOST_CHECK(ss.size() <= 10 + (258*n+7)/8);
 
@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(pmt_malleability)
     };
     std::vector<bool> vMatch = {false, false, false, false, false, false, false, false, false, true, true, false};
 
-    CellPartialMerkleTree tree(vTxid, vMatch);
+    MCPartialMerkleTree tree(vTxid, vMatch);
     std::vector<unsigned int> vIndex;
     BOOST_CHECK(tree.ExtractMatches(vTxid, vIndex).IsNull());
 }

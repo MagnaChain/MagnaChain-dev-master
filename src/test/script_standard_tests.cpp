@@ -1,4 +1,4 @@
-// Copyright (c) 2017 The Bitcoin Core developers
+// Copyright (c) 2017 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,14 +18,14 @@ BOOST_FIXTURE_TEST_SUITE(script_standard_tests, BasicTestingSetup)
 
 BOOST_AUTO_TEST_CASE(script_standard_Solver_success)
 {
-    CellKey keys[3];
-    CellPubKey pubkeys[3];
+    MCKey keys[3];
+    MCPubKey pubkeys[3];
     for (int i = 0; i < 3; i++) {
         keys[i].MakeNewKey(true);
         pubkeys[i] = keys[i].GetPubKey();
     }
 
-    CellScript s;
+    MCScript s;
     txnouttype whichType;
     std::vector<std::vector<unsigned char> > solutions;
 
@@ -46,13 +46,13 @@ BOOST_AUTO_TEST_CASE(script_standard_Solver_success)
     BOOST_CHECK(solutions[0] == ToByteVector(pubkeys[0].GetID()));
 
     // TX_SCRIPTHASH
-    CellScript redeemScript(s); // initialize with leftover P2PKH script
+    MCScript redeemScript(s); // initialize with leftover P2PKH script
     s.clear();
-    s << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
+    s << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
     BOOST_CHECK(Solver(s, whichType, solutions));
     BOOST_CHECK_EQUAL(whichType, TX_SCRIPTHASH);
     BOOST_CHECK_EQUAL(solutions.size(), 1);
-    BOOST_CHECK(solutions[0] == ToByteVector(CellScriptID(redeemScript)));
+    BOOST_CHECK(solutions[0] == ToByteVector(MCScriptID(redeemScript)));
 
     // TX_MULTISIG
     s.clear();
@@ -122,12 +122,12 @@ BOOST_AUTO_TEST_CASE(script_standard_Solver_success)
 
 BOOST_AUTO_TEST_CASE(script_standard_Solver_failure)
 {
-    CellKey key;
-    CellPubKey pubkey;
+    MCKey key;
+    MCPubKey pubkey;
     key.MakeNewKey(true);
     pubkey = key.GetPubKey();
 
-    CellScript s;
+    MCScript s;
     txnouttype whichType;
     std::vector<std::vector<unsigned char> > solutions;
 
@@ -184,35 +184,35 @@ BOOST_AUTO_TEST_CASE(script_standard_Solver_failure)
 
 BOOST_AUTO_TEST_CASE(script_standard_ExtractDestination)
 {
-    CellKey key;
-    CellPubKey pubkey;
+    MCKey key;
+    MCPubKey pubkey;
     key.MakeNewKey(true);
     pubkey = key.GetPubKey();
 
-    CellScript s;
-    CellTxDestination address;
+    MCScript s;
+    MCTxDestination address;
 
     // TX_PUBKEY
     s.clear();
     s << ToByteVector(pubkey) << OP_CHECKSIG;
     BOOST_CHECK(ExtractDestination(s, address));
-    BOOST_CHECK(boost::get<CellKeyID>(&address) &&
-                *boost::get<CellKeyID>(&address) == pubkey.GetID());
+    BOOST_CHECK(boost::get<MCKeyID>(&address) &&
+                *boost::get<MCKeyID>(&address) == pubkey.GetID());
 
     // TX_PUBKEYHASH
     s.clear();
     s << OP_DUP << OP_HASH160 << ToByteVector(pubkey.GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
     BOOST_CHECK(ExtractDestination(s, address));
-    BOOST_CHECK(boost::get<CellKeyID>(&address) &&
-                *boost::get<CellKeyID>(&address) == pubkey.GetID());
+    BOOST_CHECK(boost::get<MCKeyID>(&address) &&
+                *boost::get<MCKeyID>(&address) == pubkey.GetID());
 
     // TX_SCRIPTHASH
-    CellScript redeemScript(s); // initialize with leftover P2PKH script
+    MCScript redeemScript(s); // initialize with leftover P2PKH script
     s.clear();
-    s << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
+    s << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
     BOOST_CHECK(ExtractDestination(s, address));
-    BOOST_CHECK(boost::get<CellScriptID>(&address) &&
-                *boost::get<CellScriptID>(&address) == CellScriptID(redeemScript));
+    BOOST_CHECK(boost::get<MCScriptID>(&address) &&
+                *boost::get<MCScriptID>(&address) == MCScriptID(redeemScript));
 
     // TX_MULTISIG
     s.clear();
@@ -231,22 +231,22 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestination)
 
     // TX_WITNESS_V0_SCRIPTHASH
     s.clear();
-    s << OP_0 << ToByteVector(CellScriptID(redeemScript));
+    s << OP_0 << ToByteVector(MCScriptID(redeemScript));
     BOOST_CHECK(!ExtractDestination(s, address));
 }
 
 BOOST_AUTO_TEST_CASE(script_standard_ExtractDestinations)
 {
-    CellKey keys[3];
-    CellPubKey pubkeys[3];
+    MCKey keys[3];
+    MCPubKey pubkeys[3];
     for (int i = 0; i < 3; i++) {
         keys[i].MakeNewKey(true);
         pubkeys[i] = keys[i].GetPubKey();
     }
 
-    CellScript s;
+    MCScript s;
     txnouttype whichType;
-    std::vector<CellTxDestination> addresses;
+    std::vector<MCTxDestination> addresses;
     int nRequired;
 
     // TX_PUBKEY
@@ -256,8 +256,8 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestinations)
     BOOST_CHECK_EQUAL(whichType, TX_PUBKEY);
     BOOST_CHECK_EQUAL(addresses.size(), 1);
     BOOST_CHECK_EQUAL(nRequired, 1);
-    BOOST_CHECK(boost::get<CellKeyID>(&addresses[0]) &&
-                *boost::get<CellKeyID>(&addresses[0]) == pubkeys[0].GetID());
+    BOOST_CHECK(boost::get<MCKeyID>(&addresses[0]) &&
+                *boost::get<MCKeyID>(&addresses[0]) == pubkeys[0].GetID());
 
     // TX_PUBKEYHASH
     s.clear();
@@ -266,19 +266,19 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestinations)
     BOOST_CHECK_EQUAL(whichType, TX_PUBKEYHASH);
     BOOST_CHECK_EQUAL(addresses.size(), 1);
     BOOST_CHECK_EQUAL(nRequired, 1);
-    BOOST_CHECK(boost::get<CellKeyID>(&addresses[0]) &&
-                *boost::get<CellKeyID>(&addresses[0]) == pubkeys[0].GetID());
+    BOOST_CHECK(boost::get<MCKeyID>(&addresses[0]) &&
+                *boost::get<MCKeyID>(&addresses[0]) == pubkeys[0].GetID());
 
     // TX_SCRIPTHASH
-    CellScript redeemScript(s); // initialize with leftover P2PKH script
+    MCScript redeemScript(s); // initialize with leftover P2PKH script
     s.clear();
-    s << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
+    s << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
     BOOST_CHECK(ExtractDestinations(s, whichType, addresses, nRequired));
     BOOST_CHECK_EQUAL(whichType, TX_SCRIPTHASH);
     BOOST_CHECK_EQUAL(addresses.size(), 1);
     BOOST_CHECK_EQUAL(nRequired, 1);
-    BOOST_CHECK(boost::get<CellScriptID>(&addresses[0]) &&
-                *boost::get<CellScriptID>(&addresses[0]) == CellScriptID(redeemScript));
+    BOOST_CHECK(boost::get<MCScriptID>(&addresses[0]) &&
+                *boost::get<MCScriptID>(&addresses[0]) == MCScriptID(redeemScript));
 
     // TX_MULTISIG
     s.clear();
@@ -290,10 +290,10 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestinations)
     BOOST_CHECK_EQUAL(whichType, TX_MULTISIG);
     BOOST_CHECK_EQUAL(addresses.size(), 2);
     BOOST_CHECK_EQUAL(nRequired, 2);
-    BOOST_CHECK(boost::get<CellKeyID>(&addresses[0]) &&
-                *boost::get<CellKeyID>(&addresses[0]) == pubkeys[0].GetID());
-    BOOST_CHECK(boost::get<CellKeyID>(&addresses[1]) &&
-                *boost::get<CellKeyID>(&addresses[1]) == pubkeys[1].GetID());
+    BOOST_CHECK(boost::get<MCKeyID>(&addresses[0]) &&
+                *boost::get<MCKeyID>(&addresses[0]) == pubkeys[0].GetID());
+    BOOST_CHECK(boost::get<MCKeyID>(&addresses[1]) &&
+                *boost::get<MCKeyID>(&addresses[1]) == pubkeys[1].GetID());
 
     // TX_NULL_DATA
     s.clear();
@@ -307,20 +307,20 @@ BOOST_AUTO_TEST_CASE(script_standard_ExtractDestinations)
 
     // TX_WITNESS_V0_SCRIPTHASH
     s.clear();
-    s << OP_0 << ToByteVector(CellScriptID(redeemScript));
+    s << OP_0 << ToByteVector(MCScriptID(redeemScript));
     BOOST_CHECK(!ExtractDestinations(s, whichType, addresses, nRequired));
 }
 
 BOOST_AUTO_TEST_CASE(script_standard_GetScriptFor_)
 {
-    CellKey keys[3];
-    CellPubKey pubkeys[3];
+    MCKey keys[3];
+    MCPubKey pubkeys[3];
     for (int i = 0; i < 3; i++) {
         keys[i].MakeNewKey(true);
         pubkeys[i] = keys[i].GetPubKey();
     }
 
-    CellScript expected, result;
+    MCScript expected, result;
 
     // CKeyID
     expected.clear();
@@ -329,15 +329,15 @@ BOOST_AUTO_TEST_CASE(script_standard_GetScriptFor_)
     BOOST_CHECK(result == expected);
 
     // CScriptID
-    CellScript redeemScript(result);
+    MCScript redeemScript(result);
     expected.clear();
-    expected << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
-    result = GetScriptForDestination(CellScriptID(redeemScript));
+    expected << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
+    result = GetScriptForDestination(MCScriptID(redeemScript));
     BOOST_CHECK(result == expected);
 
-    // CellNoDestination
+    // MCNoDestination
     expected.clear();
-    result = GetScriptForDestination(CellNoDestination());
+    result = GetScriptForDestination(MCNoDestination());
     BOOST_CHECK(result == expected);
 
     // GetScriptForRawPubKey
@@ -353,11 +353,11 @@ BOOST_AUTO_TEST_CASE(script_standard_GetScriptFor_)
         ToByteVector(pubkeys[1]) <<
         ToByteVector(pubkeys[2]) <<
         OP_3 << OP_CHECKMULTISIG;
-    result = GetScriptForMultisig(2, std::vector<CellPubKey>(pubkeys, pubkeys + 3));
+    result = GetScriptForMultisig(2, std::vector<MCPubKey>(pubkeys, pubkeys + 3));
     BOOST_CHECK(result == expected);
 
     // GetScriptForWitness
-    CellScript witnessScript;
+    MCScript witnessScript;
 
     witnessScript << ToByteVector(pubkeys[0]) << OP_CHECKSIG;
     expected.clear();
@@ -385,24 +385,24 @@ BOOST_AUTO_TEST_CASE(script_standard_GetScriptFor_)
 
 BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 {
-    CellKey keys[2];
-    CellPubKey pubkeys[2];
+    MCKey keys[2];
+    MCPubKey pubkeys[2];
     for (int i = 0; i < 2; i++) {
         keys[i].MakeNewKey(true);
         pubkeys[i] = keys[i].GetPubKey();
     }
 
-    CellKey uncompressedKey;
+    MCKey uncompressedKey;
     uncompressedKey.MakeNewKey(false);
-    CellPubKey uncompressedPubkey = uncompressedKey.GetPubKey();
+    MCPubKey uncompressedPubkey = uncompressedKey.GetPubKey();
 
-    CellScript scriptPubKey;
+    MCScript scriptPubKey;
     isminetype result;
     bool isInvalid;
 
     // P2PK compressed
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         scriptPubKey.clear();
         scriptPubKey << ToByteVector(pubkeys[0]) << OP_CHECKSIG;
 
@@ -420,7 +420,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2PK uncompressed
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         scriptPubKey.clear();
         scriptPubKey << ToByteVector(uncompressedPubkey) << OP_CHECKSIG;
 
@@ -438,7 +438,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2PKH compressed
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         scriptPubKey.clear();
         scriptPubKey << OP_DUP << OP_HASH160 << ToByteVector(pubkeys[0].GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
 
@@ -456,7 +456,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2PKH uncompressed
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         scriptPubKey.clear();
         scriptPubKey << OP_DUP << OP_HASH160 << ToByteVector(uncompressedPubkey.GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
 
@@ -474,13 +474,13 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2SH
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
 
-        CellScript redeemScript;
+        MCScript redeemScript;
         redeemScript << OP_DUP << OP_HASH160 << ToByteVector(pubkeys[0].GetID()) << OP_EQUALVERIFY << OP_CHECKSIG;
 
         scriptPubKey.clear();
-        scriptPubKey << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
+        scriptPubKey << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
 
         // Keystore does not have redeemScript or key
         result = IsMine(keystore, scriptPubKey, isInvalid);
@@ -502,7 +502,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2WPKH compressed
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(keys[0]);
 
         scriptPubKey.clear();
@@ -522,7 +522,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2WPKH uncompressed
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(uncompressedKey);
 
         scriptPubKey.clear();
@@ -542,7 +542,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // scriptPubKey multisig
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
 
         scriptPubKey.clear();
         scriptPubKey << OP_2 <<
@@ -572,18 +572,18 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2SH multisig
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(uncompressedKey);
         keystore.AddKey(keys[1]);
 
-        CellScript redeemScript;
+        MCScript redeemScript;
         redeemScript << OP_2 <<
             ToByteVector(uncompressedPubkey) <<
             ToByteVector(pubkeys[1]) <<
             OP_2 << OP_CHECKMULTISIG;
 
         scriptPubKey.clear();
-        scriptPubKey << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
+        scriptPubKey << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
 
         // Keystore has no redeemScript
         result = IsMine(keystore, scriptPubKey, isInvalid);
@@ -599,11 +599,11 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2WSH multisig with compressed keys
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(keys[0]);
         keystore.AddKey(keys[1]);
 
-        CellScript witnessScript;
+        MCScript witnessScript;
         witnessScript << OP_2 <<
             ToByteVector(pubkeys[0]) <<
             ToByteVector(pubkeys[1]) <<
@@ -636,11 +636,11 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2WSH multisig with uncompressed key
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(uncompressedKey);
         keystore.AddKey(keys[1]);
 
-        CellScript witnessScript;
+        MCScript witnessScript;
         witnessScript << OP_2 <<
             ToByteVector(uncompressedPubkey) <<
             ToByteVector(pubkeys[1]) <<
@@ -673,9 +673,9 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // P2WSH multisig wrapped in P2SH
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
 
-        CellScript witnessScript;
+        MCScript witnessScript;
         witnessScript << OP_2 <<
             ToByteVector(pubkeys[0]) <<
             ToByteVector(pubkeys[1]) <<
@@ -685,11 +685,11 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
         CSHA256().Write(&witnessScript[0], witnessScript.size())
             .Finalize(scriptHash.begin());
 
-        CellScript redeemScript;
+        MCScript redeemScript;
         redeemScript << OP_0 << ToByteVector(scriptHash);
 
         scriptPubKey.clear();
-        scriptPubKey << OP_HASH160 << ToByteVector(CellScriptID(redeemScript)) << OP_EQUAL;
+        scriptPubKey << OP_HASH160 << ToByteVector(MCScriptID(redeemScript)) << OP_EQUAL;
 
         // Keystore has no witnessScript, P2SH redeemScript, or keys
         result = IsMine(keystore, scriptPubKey, isInvalid);
@@ -713,7 +713,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // OP_RETURN
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(keys[0]);
 
         scriptPubKey.clear();
@@ -726,7 +726,7 @@ BOOST_AUTO_TEST_CASE(script_standard_IsMine)
 
     // Nonstandard
     {
-        CellBasicKeyStore keystore;
+        MCBasicKeyStore keystore;
         keystore.AddKey(keys[0]);
 
         scriptPubKey.clear();

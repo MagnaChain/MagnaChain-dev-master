@@ -1,10 +1,10 @@
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NETBASE_H
-#define CELLLINK_NETBASE_H
+#ifndef MAGNACHAIN_NETBASE_H
+#define MAGNACHAIN_NETBASE_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -30,11 +30,11 @@ class proxyType
 {
 public:
     proxyType(): randomize_credentials(false) {}
-    proxyType(const CellService &_proxy, bool _randomize_credentials=false): proxy(_proxy), randomize_credentials(_randomize_credentials) {}
+    proxyType(const MCService &_proxy, bool _randomize_credentials=false): proxy(_proxy), randomize_credentials(_randomize_credentials) {}
 
     bool IsValid() const { return proxy.IsValid(); }
 
-    CellService proxy;
+    MCService proxy;
     bool randomize_credentials;
 };
 
@@ -42,17 +42,17 @@ enum Network ParseNetwork(std::string net);
 std::string GetNetworkName(enum Network net);
 bool SetProxy(enum Network net, const proxyType &addrProxy);
 bool GetProxy(enum Network net, proxyType &proxyInfoOut);
-bool IsProxy(const CellNetAddr &addr);
+bool IsProxy(const MCNetAddr &addr);
 bool SetNameProxy(const proxyType &addrProxy);
 bool HaveNameProxy();
-bool LookupHost(const char *pszName, std::vector<CellNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup);
-bool LookupHost(const char *pszName, CellNetAddr& addr, bool fAllowLookup);
-bool Lookup(const char *pszName, CellService& addr, int portDefault, bool fAllowLookup);
-bool Lookup(const char *pszName, std::vector<CellService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions);
-CellService LookupNumeric(const char *pszName, int portDefault = 0);
+bool LookupHost(const char *pszName, std::vector<MCNetAddr>& vIP, unsigned int nMaxSolutions, bool fAllowLookup);
+bool LookupHost(const char *pszName, MCNetAddr& addr, bool fAllowLookup);
+bool Lookup(const char *pszName, MCService& addr, int portDefault, bool fAllowLookup);
+bool Lookup(const char *pszName, std::vector<MCService>& vAddr, int portDefault, bool fAllowLookup, unsigned int nMaxSolutions);
+MCService LookupNumeric(const char *pszName, int portDefault = 0);
 bool LookupSubNet(const char *pszName, CSubNet& subnet);
-bool ConnectSocket(const CellService &addr, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed = 0);
-bool ConnectSocketByName(CellService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed = 0);
+bool ConnectSocket(const MCService &addr, SOCKET& hSocketRet, int nTimeout, bool *outProxyConnectionFailed = 0);
+bool ConnectSocketByName(MCService &addr, SOCKET& hSocketRet, const char *pszDest, int portDefault, int nTimeout, bool *outProxyConnectionFailed = 0);
 /** Return readable error string for a network error code */
 std::string NetworkErrorString(int err);
 /** Close socket and set hSocket to INVALID_SOCKET */
@@ -67,4 +67,4 @@ bool SetSocketNoDelay(const SOCKET& hSocket);
 struct timeval MillisToTimeval(int64_t nTimeout);
 void InterruptSocks5(bool interrupt);
 
-#endif // CELLLINK_NETBASE_H
+#endif // MAGNACHAIN_NETBASE_H

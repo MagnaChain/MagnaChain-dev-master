@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PARTIALMERKLETREE_H
-#define CELLLINK_PARTIALMERKLETREE_H
+#ifndef MAGNACHAIN_PARTIALMERKLETREE_H
+#define MAGNACHAIN_PARTIALMERKLETREE_H
 
 #include "io/serialize.h"
 #include "coding/uint256.h"
@@ -48,7 +48,7 @@
  *  - byte[]     flag bits, packed per 8 in a byte, least significant bit first (<= 2*N-1 bits)
  * The size constraints follow from this.
  */
-class CellPartialMerkleTree
+class MCPartialMerkleTree
 {
 protected:
     /** the total number of transactions in the block */
@@ -92,7 +92,7 @@ public:
         std::vector<unsigned char> vBytes;
         if (ser_action.ForRead()) {
             READWRITE(vBytes);
-            CellPartialMerkleTree &us = *(const_cast<CellPartialMerkleTree*>(this));
+            MCPartialMerkleTree &us = *(const_cast<MCPartialMerkleTree*>(this));
             us.vBits.resize(vBytes.size() * 8);
             for (unsigned int p = 0; p < us.vBits.size(); p++)
                 us.vBits[p] = (vBytes[p / 8] & (1 << (p % 8))) != 0;
@@ -106,9 +106,9 @@ public:
     }
 
     /** Construct a partial merkle tree from a list of transaction ids, and a mask that selects a subset of them */
-    CellPartialMerkleTree(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch);
+    MCPartialMerkleTree(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch);
 
-    CellPartialMerkleTree();
+    MCPartialMerkleTree();
 
     /**
      * extract the matching txid's represented by this partial merkle tree
@@ -118,4 +118,4 @@ public:
     uint256 ExtractMatches(std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex);
 };
 
-#endif // CELLLINK_PARTIALMERKLETREE_H
+#endif // MAGNACHAIN_PARTIALMERKLETREE_H

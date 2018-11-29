@@ -1,7 +1,7 @@
-/* src/config/magnachain-config.h.  Generated from CellTxOutCompressor.in by configure.  */
+/* src/config/magnachain-config.h.  Generated from MCTxOutCompressor.in by configure.  */
 /* src/config/magnachain-config.h.in.  Generated from configure.ac by autoheader.  */
-#ifndef CELLLINK_CONFIG_H
-#define CELLLINK_CONFIG_H
+#ifndef MAGNACHAIN_CONFIG_H
+#define MAGNACHAIN_CONFIG_H
 
 #ifndef _MSC_VER 
 /* Define if building universal (internal helper macro) */
@@ -29,7 +29,7 @@
 #define COPYRIGHT_HOLDERS_FINAL "The MagnaChain Core developers"
 
 /* Replacement for %s in copyright holders string */
-#define COPYRIGHT_HOLDERS_SUBSTITUTION "CellLink"
+#define COPYRIGHT_HOLDERS_SUBSTITUTION "MagnaChain"
 
 /* Copyright year */
 #define COPYRIGHT_YEAR 2017
@@ -353,10 +353,10 @@
 #define PACKAGE_NAME "MagnaChain Core"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "CellLink 0.15.1"
+#define PACKAGE_STRING "MagnaChain 0.15.1"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "CellLink"
+#define PACKAGE_TARNAME "MagnaChain"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL "https://magnachain.io/"
@@ -858,4 +858,4 @@ significant byte first (like Motorola and SPARC, unlike Intel). */
 
 #endif 
 
-#endif	//CELLLINK_CONFIG_H
+#endif	//MAGNACHAIN_CONFIG_H

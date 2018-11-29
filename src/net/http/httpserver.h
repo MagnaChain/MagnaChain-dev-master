@@ -1,10 +1,10 @@
-// Copyright (c) 2015-2016 The Bitcoin Core developers
+// Copyright (c) 2015-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_HTTPSERVER_H
-#define CELLLINK_HTTPSERVER_H
+#ifndef MAGNACHAIN_HTTPSERVER_H
+#define MAGNACHAIN_HTTPSERVER_H
 
 #include <string>
 #include <stdint.h>
@@ -16,7 +16,7 @@ static const int DEFAULT_HTTP_SERVER_TIMEOUT=30;
 
 struct evhttp_request;
 struct event_base;
-class CellService;
+class MCService;
 class HTTPRequest;
 
 /** Initialize HTTP server.
@@ -77,9 +77,9 @@ public:
      */
     std::string GetURI();
 
-    /** Get CellService (address:ip) for the origin of the http request.
+    /** Get MCService (address:ip) for the origin of the http request.
      */
-    CellService GetPeer();
+    MCService GetPeer();
 
     /** Get request method.
      */
@@ -151,4 +151,4 @@ private:
 
 std::string urlDecode(const std::string &urlEncoded);
 
-#endif // CELLLINK_HTTPSERVER_H
+#endif // MAGNACHAIN_HTTPSERVER_H

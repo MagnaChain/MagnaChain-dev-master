@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -73,7 +73,7 @@ int do_fuzz()
 
     if (test_id >= TEST_ID_END) return 0;
 
-    CellDataStream ds(buffer, SER_NETWORK, INIT_PROTO_VERSION);
+    MCDataStream ds(buffer, SER_NETWORK, INIT_PROTO_VERSION);
     try {
         int nVersion;
         ds >> nVersion;
@@ -87,7 +87,7 @@ int do_fuzz()
         {
             try
             {
-                CellBlock block;
+                MCBlock block;
                 ds >> block;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -96,7 +96,7 @@ int do_fuzz()
         {
             try
             {
-                CellTransaction tx(deserialize, ds);
+                MCTransaction tx(deserialize, ds);
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
         }
@@ -104,7 +104,7 @@ int do_fuzz()
         {
             try
             {
-                CellBlockLocator bl;
+                MCBlockLocator bl;
                 ds >> bl;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -113,7 +113,7 @@ int do_fuzz()
         {
             try
             {
-                CellBlock block;
+                MCBlock block;
                 ds >> block;
                 bool mutated;
                 BlockMerkleRoot(block, &mutated);
@@ -124,7 +124,7 @@ int do_fuzz()
         {
             try
             {
-                CellAddrMan am;
+                MCAddrMan am;
                 ds >> am;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -133,7 +133,7 @@ int do_fuzz()
         {
             try
             {
-                CellBlockHeader bh;
+                MCBlockHeader bh;
                 ds >> bh;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -142,7 +142,7 @@ int do_fuzz()
         {
             try
             {
-                CellBanEntry be;
+                MCBanEntry be;
                 ds >> be;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -151,7 +151,7 @@ int do_fuzz()
         {
             try
             {
-                CellTxUndo tu;
+                MCTxUndo tu;
                 ds >> tu;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -160,7 +160,7 @@ int do_fuzz()
         {
             try
             {
-                CellBlockUndo bu;
+                MCBlockUndo bu;
                 ds >> bu;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -178,7 +178,7 @@ int do_fuzz()
         {
             try
             {
-                CellNetAddr na;
+                MCNetAddr na;
                 ds >> na;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -187,17 +187,17 @@ int do_fuzz()
         {
             try
             {
-                CellService s;
+                MCService s;
                 ds >> s;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
         }
         case CMESSAGEHEADER_DESERIALIZE:
         {
-            CellMessageHeader::MessageStartChars pchMessageStart = {0x00, 0x00, 0x00, 0x00};
+            MCMessageHeader::MessageStartChars pchMessageStart = {0x00, 0x00, 0x00, 0x00};
             try
             {
-                CellMessageHeader mh(pchMessageStart);
+                MCMessageHeader mh(pchMessageStart);
                 ds >> mh;
                 if (!mh.IsValid(pchMessageStart)) {return 0;}
             } catch (const std::ios_base::failure& e) {return 0;}
@@ -207,7 +207,7 @@ int do_fuzz()
         {
             try
             {
-                CellAddress a;
+                MCAddress a;
                 ds >> a;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -216,7 +216,7 @@ int do_fuzz()
         {
             try
             {
-                CellInv i;
+                MCInv i;
                 ds >> i;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -225,7 +225,7 @@ int do_fuzz()
         {
             try
             {
-                CellBloomFilter bf;
+                MCBloomFilter bf;
                 ds >> bf;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
@@ -234,15 +234,15 @@ int do_fuzz()
         {
             try
             {
-                CellDiskBlockIndex dbi;
+                MCDiskBlockIndex dbi;
                 ds >> dbi;
             } catch (const std::ios_base::failure& e) {return 0;}
             break;
         }
         case CTXOUTCOMPRESSOR_DESERIALIZE:
         {
-            CellTxOut to;
-            CellTxOutCompressor toc(to);
+            MCTxOut to;
+            MCTxOutCompressor toc(to);
             try
             {
                 ds >> toc;

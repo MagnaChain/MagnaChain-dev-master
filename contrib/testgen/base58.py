@@ -2,9 +2,9 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 '''
-CellLink base58 encoding and decoding.
+MagnaChain base58 encoding and decoding.
 
-Based on https://bitcointalk.org/index.php?topic=1026.0 (public domain)
+Based on https://magnachaintalk.org/index.php?topic=1026.0 (public domain)
 '''
 import hashlib
 
@@ -37,7 +37,7 @@ def b58encode(v):
         long_value = div
     result = __b58chars[long_value] + result
 
-    # CellLink does a little leading-zero-compression:
+    # MagnaChain does a little leading-zero-compression:
     # leading 0-bytes in the input become leading-1s
     nPad = 0
     for c in v:

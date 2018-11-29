@@ -1,13 +1,13 @@
 [Desktop Entry]
 Encoding=UTF-8
 Name=MagnaChain Core
-Comment=Connect to the CellLink P2P Network
-Comment[de]=Verbinde mit dem CellLink peer-to-peer Netzwerk
-Comment[fr]=CellLink, monnaie virtuelle cryptographique pair à pair
-Comment[tr]=CellLink, eşten eşe kriptografik sanal para birimi
+Comment=Connect to the MagnaChain P2P Network
+Comment[de]=Verbinde mit dem MagnaChain peer-to-peer Netzwerk
+Comment[fr]=MagnaChain, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=MagnaChain, eşten eşe kriptografik sanal para birimi
 Exec=magnachain-qt %u
 Terminal=false
 Type=Application
-Icon=bitcoin128
+Icon=magnachain128
 MimeType=x-scheme-handler/magnachain;
 Categories=Office;Finance;

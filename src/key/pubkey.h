@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PUBKEY_H
-#define CELLLINK_PUBKEY_H
+#ifndef MAGNACHAIN_PUBKEY_H
+#define MAGNACHAIN_PUBKEY_H
 
 #include "coding/hash.h"
 #include "io/serialize.h"
@@ -26,26 +26,26 @@
 
 const unsigned int BIP32_EXTKEY_SIZE = 74;
 
-/** A reference to a CellContract: the Hash160 of its serialization (see script.h) */
-class CellContractID : public uint160
+/** A reference to a MCContract: the Hash160 of its serialization (see script.h) */
+class MCContractID : public uint160
 {
 public:
-    CellContractID() : uint160() {}
-    CellContractID(const uint160& in) : uint160(in) {}
+    MCContractID() : uint160() {}
+    MCContractID(const uint160& in) : uint160(in) {}
 };
 
-/** A reference to a CellKey: the Hash160 of its serialized public key */
-class CellKeyID : public uint160
+/** A reference to a MCKey: the Hash160 of its serialized public key */
+class MCKeyID : public uint160
 {
 public:
-    CellKeyID() : uint160() {}
-    CellKeyID(const uint160& in) : uint160(in) {}
+    MCKeyID() : uint160() {}
+    MCKeyID(const uint160& in) : uint160(in) {}
 };
 
 typedef uint256 ChainCode;
 
 /** An encapsulated public key. */
-class CellPubKey
+class MCPubKey
 {
 private:
 
@@ -73,7 +73,7 @@ private:
 
 public:
     //! Construct an invalid public key.
-    CellPubKey()
+    MCPubKey()
     {
         Invalidate();
     }
@@ -91,13 +91,13 @@ public:
 
     //! Construct a public key using begin/end iterators to byte data.
     template <typename T>
-    CellPubKey(const T pbegin, const T pend)
+    MCPubKey(const T pbegin, const T pend)
     {
         Set(pbegin, pend);
     }
 
     //! Construct a public key from a byte vector.
-    CellPubKey(const std::vector<unsigned char>& _vch)
+    MCPubKey(const std::vector<unsigned char>& _vch)
     {
         Set(_vch.begin(), _vch.end());
     }
@@ -109,16 +109,16 @@ public:
     const unsigned char& operator[](unsigned int pos) const { return vch[pos]; }
 
     //! Comparator implementation.
-    friend bool operator==(const CellPubKey& a, const CellPubKey& b)
+    friend bool operator==(const MCPubKey& a, const MCPubKey& b)
     {
         return a.vch[0] == b.vch[0] &&
                memcmp(a.vch, b.vch, a.size()) == 0;
     }
-    friend bool operator!=(const CellPubKey& a, const CellPubKey& b)
+    friend bool operator!=(const MCPubKey& a, const MCPubKey& b)
     {
         return !(a == b);
     }
-    friend bool operator<(const CellPubKey& a, const CellPubKey& b)
+    friend bool operator<(const MCPubKey& a, const MCPubKey& b)
     {
         return a.vch[0] < b.vch[0] ||
                (a.vch[0] == b.vch[0] && memcmp(a.vch, b.vch, a.size()) < 0);
@@ -148,9 +148,9 @@ public:
     }
 
     //! Get the KeyID of this public key (hash of its serialization)
-    CellKeyID GetID() const
+    MCKeyID GetID() const
     {
-        return CellKeyID(Hash160(vch, vch + size()));
+        return MCKeyID(Hash160(vch, vch + size()));
     }
 
     //! Get the 256-bit hash of this public key.
@@ -196,17 +196,17 @@ public:
     bool Decompress();
 
     //! Derive BIP32 child pubkey.
-    bool Derive(CellPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
+    bool Derive(MCPubKey& pubkeyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
 };
 
-struct CellExtPubKey {
+struct MCExtPubKey {
     unsigned char nDepth;
     unsigned char vchFingerprint[4];
     unsigned int nChild;
     ChainCode chaincode;
-    CellPubKey pubkey;
+    MCPubKey pubkey;
 
-    friend bool operator==(const CellExtPubKey &a, const CellExtPubKey &b)
+    friend bool operator==(const MCExtPubKey &a, const MCExtPubKey &b)
     {
         return a.nDepth == b.nDepth &&
             memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], sizeof(vchFingerprint)) == 0 &&
@@ -217,9 +217,9 @@ struct CellExtPubKey {
 
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
-    bool Derive(CellExtPubKey& out, unsigned int nChild) const;
+    bool Derive(MCExtPubKey& out, unsigned int nChild) const;
 
-    void Serialize(CellSizeComputer& s) const
+    void Serialize(MCSizeComputer& s) const
     {
         // Optimized implementation for ::GetSerializeSize that avoids copying.
         s.seek(BIP32_EXTKEY_SIZE + 1); // add one byte for the size (compact int)
@@ -256,4 +256,4 @@ public:
     ~ECCVerifyHandle();
 };
 
-#endif // CELLLINK_PUBKEY_H
+#endif // MAGNACHAIN_PUBKEY_H

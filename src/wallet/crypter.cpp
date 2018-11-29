@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-int CellCrypter::BytesToKeySHA512AES(const std::vector<unsigned char>& chSalt, const SecureString& strKeyData, int count, unsigned char *key,unsigned char *iv) const
+int MCCrypter::BytesToKeySHA512AES(const std::vector<unsigned char>& chSalt, const SecureString& strKeyData, int count, unsigned char *key,unsigned char *iv) const
 {
     // This mimics the behavior of openssl's EVP_BytesToKey with an aes256cbc
     // cipher and sha512 message digest. Because sha512's output size (64b) is
@@ -41,7 +41,7 @@ int CellCrypter::BytesToKeySHA512AES(const std::vector<unsigned char>& chSalt, c
     return WALLET_CRYPTO_KEY_SIZE;
 }
 
-bool CellCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
+bool MCCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<unsigned char>& chSalt, const unsigned int nRounds, const unsigned int nDerivationMethod)
 {
     if (nRounds < 1 || chSalt.size() != WALLET_CRYPTO_SALT_SIZE)
         return false;
@@ -61,7 +61,7 @@ bool CellCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std
     return true;
 }
 
-bool CellCrypter::SetKey(const CellKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV)
+bool MCCrypter::SetKey(const MCKeyingMaterial& chNewKey, const std::vector<unsigned char>& chNewIV)
 {
     if (chNewKey.size() != WALLET_CRYPTO_KEY_SIZE || chNewIV.size() != WALLET_CRYPTO_IV_SIZE)
         return false;
@@ -73,7 +73,7 @@ bool CellCrypter::SetKey(const CellKeyingMaterial& chNewKey, const std::vector<u
     return true;
 }
 
-bool CellCrypter::Encrypt(const CellKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext) const
+bool MCCrypter::Encrypt(const MCKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext) const
 {
     if (!fKeySet)
         return false;
@@ -91,7 +91,7 @@ bool CellCrypter::Encrypt(const CellKeyingMaterial& vchPlaintext, std::vector<un
     return true;
 }
 
-bool CellCrypter::Decrypt(const std::vector<unsigned char>& vchCiphertext, CellKeyingMaterial& vchPlaintext) const
+bool MCCrypter::Decrypt(const std::vector<unsigned char>& vchCiphertext, MCKeyingMaterial& vchPlaintext) const
 {
     if (!fKeySet)
         return false;
@@ -110,29 +110,29 @@ bool CellCrypter::Decrypt(const std::vector<unsigned char>& vchCiphertext, CellK
 }
 
 
-static bool EncryptSecret(const CellKeyingMaterial& vMasterKey, const CellKeyingMaterial &vchPlaintext, const uint256& nIV, std::vector<unsigned char> &vchCiphertext)
+static bool EncryptSecret(const MCKeyingMaterial& vMasterKey, const MCKeyingMaterial &vchPlaintext, const uint256& nIV, std::vector<unsigned char> &vchCiphertext)
 {
-    CellCrypter cKeyCrypter;
+    MCCrypter cKeyCrypter;
     std::vector<unsigned char> chIV(WALLET_CRYPTO_IV_SIZE);
     memcpy(&chIV[0], &nIV, WALLET_CRYPTO_IV_SIZE);
     if(!cKeyCrypter.SetKey(vMasterKey, chIV))
         return false;
-    return cKeyCrypter.Encrypt(*((const CellKeyingMaterial*)&vchPlaintext), vchCiphertext);
+    return cKeyCrypter.Encrypt(*((const MCKeyingMaterial*)&vchPlaintext), vchCiphertext);
 }
 
-static bool DecryptSecret(const CellKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCiphertext, const uint256& nIV, CellKeyingMaterial& vchPlaintext)
+static bool DecryptSecret(const MCKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCiphertext, const uint256& nIV, MCKeyingMaterial& vchPlaintext)
 {
-    CellCrypter cKeyCrypter;
+    MCCrypter cKeyCrypter;
     std::vector<unsigned char> chIV(WALLET_CRYPTO_IV_SIZE);
     memcpy(&chIV[0], &nIV, WALLET_CRYPTO_IV_SIZE);
     if(!cKeyCrypter.SetKey(vMasterKey, chIV))
         return false;
-    return cKeyCrypter.Decrypt(vchCiphertext, *((CellKeyingMaterial*)&vchPlaintext));
+    return cKeyCrypter.Decrypt(vchCiphertext, *((MCKeyingMaterial*)&vchPlaintext));
 }
 
-static bool DecryptKey(const CellKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCryptedSecret, const CellPubKey& vchPubKey, CellKey& key)
+static bool DecryptKey(const MCKeyingMaterial& vMasterKey, const std::vector<unsigned char>& vchCryptedSecret, const MCPubKey& vchPubKey, MCKey& key)
 {
-    CellKeyingMaterial vchSecret;
+    MCKeyingMaterial vchSecret;
     if(!DecryptSecret(vMasterKey, vchCryptedSecret, vchPubKey.GetHash(), vchSecret))
         return false;
 
@@ -143,7 +143,7 @@ static bool DecryptKey(const CellKeyingMaterial& vMasterKey, const std::vector<u
     return key.VerifyPubKey(vchPubKey);
 }
 
-bool CellCryptoKeyStore::SetCrypted()
+bool MCCryptoKeyStore::SetCrypted()
 {
     LOCK(cs_KeyStore);
     if (fUseCrypto)
@@ -154,7 +154,7 @@ bool CellCryptoKeyStore::SetCrypted()
     return true;
 }
 
-bool CellCryptoKeyStore::Lock()
+bool MCCryptoKeyStore::Lock()
 {
     if (!SetCrypted())
         return false;
@@ -168,7 +168,7 @@ bool CellCryptoKeyStore::Lock()
     return true;
 }
 
-bool CellCryptoKeyStore::Unlock(const CellKeyingMaterial& vMasterKeyIn)
+bool MCCryptoKeyStore::Unlock(const MCKeyingMaterial& vMasterKeyIn)
 {
     {
         LOCK(cs_KeyStore);
@@ -180,9 +180,9 @@ bool CellCryptoKeyStore::Unlock(const CellKeyingMaterial& vMasterKeyIn)
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.begin();
         for (; mi != mapCryptedKeys.end(); ++mi)
         {
-            const CellPubKey &vchPubKey = (*mi).second.first;
+            const MCPubKey &vchPubKey = (*mi).second.first;
             const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
-            CellKey key;
+            MCKey key;
             if (!DecryptKey(vMasterKeyIn, vchCryptedSecret, vchPubKey, key))
             {
                 keyFail = true;
@@ -206,18 +206,18 @@ bool CellCryptoKeyStore::Unlock(const CellKeyingMaterial& vMasterKeyIn)
     return true;
 }
 
-bool CellCryptoKeyStore::AddKeyPubKey(const CellKey& key, const CellPubKey &pubkey)
+bool MCCryptoKeyStore::AddKeyPubKey(const MCKey& key, const MCPubKey &pubkey)
 {
     {
         LOCK(cs_KeyStore);
         if (!IsCrypted())
-            return CellBasicKeyStore::AddKeyPubKey(key, pubkey);
+            return MCBasicKeyStore::AddKeyPubKey(key, pubkey);
 
         if (IsLocked())
             return false;
 
         std::vector<unsigned char> vchCryptedSecret;
-        CellKeyingMaterial vchSecret(key.begin(), key.end());
+        MCKeyingMaterial vchSecret(key.begin(), key.end());
         if (!EncryptSecret(vMasterKey, vchSecret, pubkey.GetHash(), vchCryptedSecret))
             return false;
 
@@ -228,7 +228,7 @@ bool CellCryptoKeyStore::AddKeyPubKey(const CellKey& key, const CellPubKey &pubk
 }
 
 
-bool CellCryptoKeyStore::AddCryptedKey(const CellPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
+bool MCCryptoKeyStore::AddCryptedKey(const MCPubKey &vchPubKey, const std::vector<unsigned char> &vchCryptedSecret)
 {
     {
         LOCK(cs_KeyStore);
@@ -240,17 +240,17 @@ bool CellCryptoKeyStore::AddCryptedKey(const CellPubKey &vchPubKey, const std::v
     return true;
 }
 
-bool CellCryptoKeyStore::GetKey(const CellKeyID &address, CellKey& keyOut) const
+bool MCCryptoKeyStore::GetKey(const MCKeyID &address, MCKey& keyOut) const
 {
     {
         LOCK(cs_KeyStore);
         if (!IsCrypted())
-            return CellBasicKeyStore::GetKey(address, keyOut);
+            return MCBasicKeyStore::GetKey(address, keyOut);
 
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
         if (mi != mapCryptedKeys.end())
         {
-            const CellPubKey &vchPubKey = (*mi).second.first;
+            const MCPubKey &vchPubKey = (*mi).second.first;
             const std::vector<unsigned char> &vchCryptedSecret = (*mi).second.second;
             return DecryptKey(vMasterKey, vchCryptedSecret, vchPubKey, keyOut);
         }
@@ -258,12 +258,12 @@ bool CellCryptoKeyStore::GetKey(const CellKeyID &address, CellKey& keyOut) const
     return false;
 }
 
-bool CellCryptoKeyStore::GetPubKey(const CellKeyID &address, CellPubKey& vchPubKeyOut) const
+bool MCCryptoKeyStore::GetPubKey(const MCKeyID &address, MCPubKey& vchPubKeyOut) const
 {
     {
         LOCK(cs_KeyStore);
         if (!IsCrypted())
-            return CellBasicKeyStore::GetPubKey(address, vchPubKeyOut);
+            return MCBasicKeyStore::GetPubKey(address, vchPubKeyOut);
 
         CryptedKeyMap::const_iterator mi = mapCryptedKeys.find(address);
         if (mi != mapCryptedKeys.end())
@@ -272,11 +272,11 @@ bool CellCryptoKeyStore::GetPubKey(const CellKeyID &address, CellPubKey& vchPubK
             return true;
         }
         // Check for watch-only pubkeys
-        return CellBasicKeyStore::GetPubKey(address, vchPubKeyOut);
+        return MCBasicKeyStore::GetPubKey(address, vchPubKeyOut);
     }
 }
 
-bool CellCryptoKeyStore::EncryptKeys(CellKeyingMaterial& vMasterKeyIn)
+bool MCCryptoKeyStore::EncryptKeys(MCKeyingMaterial& vMasterKeyIn)
 {
     {
         LOCK(cs_KeyStore);
@@ -286,9 +286,9 @@ bool CellCryptoKeyStore::EncryptKeys(CellKeyingMaterial& vMasterKeyIn)
         fUseCrypto = true;
         for (KeyMap::value_type& mKey : mapKeys)
         {
-            const CellKey &key = mKey.second;
-            CellPubKey vchPubKey = key.GetPubKey();
-            CellKeyingMaterial vchSecret(key.begin(), key.end());
+            const MCKey &key = mKey.second;
+            MCPubKey vchPubKey = key.GetPubKey();
+            MCKeyingMaterial vchSecret(key.begin(), key.end());
             std::vector<unsigned char> vchCryptedSecret;
             if (!EncryptSecret(vMasterKeyIn, vchSecret, vchPubKey.GetHash(), vchCryptedSecret))
                 return false;

@@ -1,10 +1,10 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2011 The Bitcoin developers
+// Copyright (c) 2011 The MagnaChain developers
 // Copyright (c) 2016-2018 The MagnaChain developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
-#ifndef CELLLINK_SERIALIZE_H
-#define CELLLINK_SERIALIZE_H
+#ifndef MAGNACHAIN_SERIALIZE_H
+#define MAGNACHAIN_SERIALIZE_H
 
 #include <string>
 #include <vector>
@@ -56,15 +56,15 @@ typedef unsigned long long  uint64;
   (((((size_t)(a)) + (b) - 1) | ((PAGESIZE) - 1)) + 1) - (((size_t)(a)) & (~((PAGESIZE) - 1))))
 #endif
 
-class CellScript;
-class CellDataStream;
-class CellAutoFile;
+class MCScript;
+class MCDataStream;
+class MCAutoFile;
 static const unsigned int MAX_SIZE = 0x02000000;
 
 static const int PROTOCOL_VERSION = 60000;
 
 // Used to bypass the rule against non-const reference to temporary
-// where it makes sense with wrappers such as CellFlatData or CTxDB
+// where it makes sense with wrappers such as MCFlatData or CTxDB
 template<typename T>
 inline T& REF(const T& val)
 {
@@ -106,7 +106,7 @@ enum
     template<typename Stream>                   \
     void Serialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION) const  \
     {                                           \
-        CellSerActionSerialize ser_action;         \
+        MCSerActionSerialize ser_action;         \
         const bool fGetSize = false;            \
         const bool fWrite = true;               \
         const bool fRead = false;               \
@@ -116,7 +116,7 @@ enum
     template<typename Stream>                   \
     void Unserialize(Stream& s, int nType=0, int nVersion=PROTOCOL_VERSION)  \
     {                                           \
-        CellSerActionUnserialize ser_action;       \
+        MCSerActionUnserialize ser_action;       \
         const bool fGetSize = false;            \
         const bool fWrite = false;              \
         const bool fRead = true;                \
@@ -274,14 +274,14 @@ uint64 ReadCompactSize(Stream& is)
 // Wrapper for serializing arrays and POD
 // There's a clever template way to make arrays serialize normally, but MSVC6 doesn't support it
 //
-#define FLATDATA(obj)   REF(CellFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))
-class CellFlatData
+#define FLATDATA(obj)   REF(MCFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))
+class MCFlatData
 {
 protected:
     char* pbegin;
     char* pend;
 public:
-    CellFlatData(void* pbeginIn, void* pendIn) : pbegin((char*)pbeginIn), pend((char*)pendIn) { }
+    MCFlatData(void* pbeginIn, void* pendIn) : pbegin((char*)pbeginIn), pend((char*)pendIn) { }
     char* begin() { return pbegin; }
     const char* begin() const { return pbegin; }
     char* end() { return pend; }
@@ -370,9 +370,9 @@ template<typename Stream, typename T, typename A> void Unserialize_impl(Stream& 
 template<typename Stream, typename T, typename A> inline void Unserialize(Stream& is, std::vector<T, A>& v, int nType, int nVersion=PROTOCOL_VERSION);
 
 // others derived from vector
-extern inline unsigned int GetSerializeSize(const CellScript& v, int nType, int nVersion=PROTOCOL_VERSION);
-template<typename Stream> void Serialize(Stream& os, const CellScript& v, int nType, int nVersion=PROTOCOL_VERSION);
-template<typename Stream> void Unserialize(Stream& is, CellScript& v, int nType, int nVersion=PROTOCOL_VERSION);
+extern inline unsigned int GetSerializeSize(const MCScript& v, int nType, int nVersion=PROTOCOL_VERSION);
+template<typename Stream> void Serialize(Stream& os, const MCScript& v, int nType, int nVersion=PROTOCOL_VERSION);
+template<typename Stream> void Unserialize(Stream& is, MCScript& v, int nType, int nVersion=PROTOCOL_VERSION);
 
 // pair
 template<typename K, typename T> unsigned int GetSerializeSize(const std::pair<K, T>& item, int nType, int nVersion=PROTOCOL_VERSION);
@@ -561,19 +561,19 @@ inline void Unserialize(Stream& is, std::vector<T, A>& v, int nType, int nVersio
 //
 // others derived from vector
 //
-inline unsigned int GetSerializeSize(const CellScript& v, int nType, int nVersion)
+inline unsigned int GetSerializeSize(const MCScript& v, int nType, int nVersion)
 {
     return GetSerializeSize((const std::vector<unsigned char>&)v, nType, nVersion);
 }
 
 template<typename Stream>
-void Serialize(Stream& os, const CellScript& v, int nType, int nVersion)
+void Serialize(Stream& os, const MCScript& v, int nType, int nVersion)
 {
     Serialize(os, (const std::vector<unsigned char>&)v, nType, nVersion);
 }
 
 template<typename Stream>
-void Unserialize(Stream& is, CellScript& v, int nType, int nVersion)
+void Unserialize(Stream& is, MCScript& v, int nType, int nVersion)
 {
     Unserialize(is, (std::vector<unsigned char>&)v, nType, nVersion);
 }
@@ -746,8 +746,8 @@ void Unserialize(Stream& is, std::set<K, Pred, A>& m, int nType, int nVersion)
 // Support for IMPLEMENT_SERIALIZE and READWRITE macro
 //
 class CSerActionGetSerializeSize { };
-class CellSerActionSerialize { };
-class CellSerActionUnserialize { };
+class MCSerActionSerialize { };
+class MCSerActionUnserialize { };
 
 template<typename Stream, typename T>
 inline unsigned int SerReadWrite(Stream& s, const T& obj, int nType, int nVersion, CSerActionGetSerializeSize ser_action)
@@ -756,14 +756,14 @@ inline unsigned int SerReadWrite(Stream& s, const T& obj, int nType, int nVersio
 }
 
 template<typename Stream, typename T>
-inline unsigned int SerReadWrite(Stream& s, const T& obj, int nType, int nVersion, CellSerActionSerialize ser_action)
+inline unsigned int SerReadWrite(Stream& s, const T& obj, int nType, int nVersion, MCSerActionSerialize ser_action)
 {
     ::Serialize(s, obj, nType, nVersion);
     return 0;
 }
 
 template<typename Stream, typename T>
-inline unsigned int SerReadWrite(Stream& s, T& obj, int nType, int nVersion, CellSerActionUnserialize ser_action)
+inline unsigned int SerReadWrite(Stream& s, T& obj, int nType, int nVersion, MCSerActionUnserialize ser_action)
 {
     ::Unserialize(s, obj, nType, nVersion);
     return 0;
@@ -834,7 +834,7 @@ struct secure_allocator : public std::allocator<T>
 // >> and << read and write unformatted data using the above serialization templates.
 // Fills with data in linear time; some stringstream implementations take N^2 time.
 //
-class CellDataStream
+class MCDataStream
 {
 protected:
     typedef std::vector<char, secure_allocator<char> > vector_type;
@@ -856,34 +856,34 @@ public:
     typedef vector_type::const_iterator   const_iterator;
     typedef vector_type::reverse_iterator reverse_iterator;
 
-    explicit CellDataStream(int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION)
+    explicit MCDataStream(int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION)
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const_iterator pbegin, const_iterator pend, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(pbegin, pend)
+    MCDataStream(const_iterator pbegin, const_iterator pend, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(pbegin, pend)
     {
         Init(nTypeIn, nVersionIn);
     }
 
 #if !defined(_MSC_VER) || _MSC_VER >= 1300
-    CellDataStream(const char* pbegin, const char* pend, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(pbegin, pend)
+    MCDataStream(const char* pbegin, const char* pend, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(pbegin, pend)
     {
         Init(nTypeIn, nVersionIn);
     }
 #endif
 
-    CellDataStream(const vector_type& vchIn, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(vchIn.begin(), vchIn.end())
+    MCDataStream(const vector_type& vchIn, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(vchIn.begin(), vchIn.end())
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const std::vector<char>& vchIn, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(vchIn.begin(), vchIn.end())
+    MCDataStream(const std::vector<char>& vchIn, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch(vchIn.begin(), vchIn.end())
     {
         Init(nTypeIn, nVersionIn);
     }
 
-    CellDataStream(const std::vector<unsigned char>& vchIn, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch((char*)&vchIn.begin()[0], (char*)&vchIn.end()[0])
+    MCDataStream(const std::vector<unsigned char>& vchIn, int nTypeIn=SER_NETWORK, int nVersionIn=PROTOCOL_VERSION) : vch((char*)&vchIn.begin()[0], (char*)&vchIn.end()[0])
     {
         Init(nTypeIn, nVersionIn);
     }
@@ -897,15 +897,15 @@ public:
         exceptmask = std::ios::badbit | std::ios::failbit;
     }
 
-    CellDataStream& operator+=(const CellDataStream& b)
+    MCDataStream& operator+=(const MCDataStream& b)
     {
         vch.insert(vch.end(), b.begin(), b.end());
         return *this;
     }
 
-    friend CellDataStream operator+(const CellDataStream& a, const CellDataStream& b)
+    friend MCDataStream operator+(const MCDataStream& a, const MCDataStream& b)
     {
-        CellDataStream ret = a;
+        MCDataStream ret = a;
         ret += b;
         return (ret);
     }
@@ -1027,8 +1027,8 @@ public:
     bool good() const            { return !eof() && (state == 0); }
     void clear(short n)          { state = n; }  // name conflict with vector clear()
     short exceptions()           { return exceptmask; }
-    short exceptions(short mask) { short prev = exceptmask; exceptmask = mask; setstate(0, "CellDataStream"); return prev; }
-    CellDataStream* rdbuf()         { return this; }
+    short exceptions(short mask) { short prev = exceptmask; exceptmask = mask; setstate(0, "MCDataStream"); return prev; }
+    MCDataStream* rdbuf()         { return this; }
     int in_avail()               { return size(); }
 
     void SetType(int n)          { nType = n; }
@@ -1038,7 +1038,7 @@ public:
     void ReadVersion()           { *this >> nVersion; }
     void WriteVersion()          { *this << nVersion; }
 
-    CellDataStream& read(char* pch, int nSize)
+    MCDataStream& read(char* pch, int nSize)
     {
         // Read from the beginning of the buffer
         assert(nSize >= 0);
@@ -1047,7 +1047,7 @@ public:
         {
             if (nReadPosNext > vch.size())
             {
-                setstate(std::ios::failbit, "CellDataStream::read() : end of data");
+                setstate(std::ios::failbit, "MCDataStream::read() : end of data");
                 memset(pch, 0, nSize);
                 nSize = vch.size() - nReadPos;
             }
@@ -1061,7 +1061,7 @@ public:
         return (*this);
     }
 
-    CellDataStream& ignore(int nSize)
+    MCDataStream& ignore(int nSize)
     {
         // Ignore from the beginning of the buffer
         assert(nSize >= 0);
@@ -1070,7 +1070,7 @@ public:
         {
             if (nReadPosNext > vch.size())
             {
-                setstate(std::ios::failbit, "CellDataStream::ignore() : end of data");
+                setstate(std::ios::failbit, "MCDataStream::ignore() : end of data");
                 nSize = vch.size() - nReadPos;
             }
             nReadPos = 0;
@@ -1081,7 +1081,7 @@ public:
         return (*this);
     }
 
-    CellDataStream& write(const char* pch, int nSize)
+    MCDataStream& write(const char* pch, int nSize)
     {
         // Write to the end of the buffer
         assert(nSize >= 0);
@@ -1105,7 +1105,7 @@ public:
     }
 
     template<typename T>
-    CellDataStream& operator<<(const T& obj)
+    MCDataStream& operator<<(const T& obj)
     {
         // Serialize to this stream
         ::Serialize(*this, obj, nType, nVersion);
@@ -1113,7 +1113,7 @@ public:
     }
 
     template<typename T>
-    CellDataStream& operator>>(T& obj)
+    MCDataStream& operator>>(T& obj)
     {
         // Unserialize from this stream
         ::Unserialize(*this, obj, nType, nVersion);
@@ -1123,7 +1123,7 @@ public:
 
 #ifdef TESTCDATASTREAM
 // VC6sp6
-// CellDataStream:
+// MCDataStream:
 // n=1000       0 seconds
 // n=2000       0 seconds
 // n=4000       0 seconds
@@ -1151,10 +1151,10 @@ public:
 int main(int argc, char *argv[])
 {
     vector<unsigned char> vch(0xcc, 250);
-    printf("CellDataStream:\n");
+    printf("MCDataStream:\n");
     for (int n = 1000; n <= 4500000; n *= 2)
     {
-        CellDataStream ss;
+        MCDataStream ss;
         time_t nStart = time(NULL);
         for (int i = 0; i < n; i++)
             ss.write((char*)&vch[0], vch.size());
@@ -1187,7 +1187,7 @@ int main(int argc, char *argv[])
 //  - If you're returning the file pointer, return file.release().
 //  - If you need to close the file early, use file.fclose() instead of fclose(file).
 //
-class CellAutoFile
+class MCAutoFile
 {
 protected:
     FILE* file;
@@ -1199,7 +1199,7 @@ public:
 
     typedef FILE element_type;
 
-    CellAutoFile(FILE* filenew=NULL, int nTypeIn=SER_DISK, int nVersionIn=PROTOCOL_VERSION)
+    MCAutoFile(FILE* filenew=NULL, int nTypeIn=SER_DISK, int nVersionIn=PROTOCOL_VERSION)
     {
         file = filenew;
         nType = nTypeIn;
@@ -1208,7 +1208,7 @@ public:
         exceptmask = std::ios::badbit | std::ios::failbit;
     }
 
-    ~CellAutoFile()
+    ~MCAutoFile()
     {
         fclose();
     }
@@ -1243,7 +1243,7 @@ public:
     bool good() const            { return state == 0; }
     void clear(short n = 0)      { state = n; }
     short exceptions()           { return exceptmask; }
-    short exceptions(short mask) { short prev = exceptmask; exceptmask = mask; setstate(0, "CellAutoFile"); return prev; }
+    short exceptions(short mask) { short prev = exceptmask; exceptmask = mask; setstate(0, "MCAutoFile"); return prev; }
 
     void SetType(int n)          { nType = n; }
     int GetType()                { return nType; }
@@ -1252,21 +1252,21 @@ public:
     void ReadVersion()           { *this >> nVersion; }
     void WriteVersion()          { *this << nVersion; }
 
-    CellAutoFile& read(char* pch, int nSize)
+    MCAutoFile& read(char* pch, int nSize)
     {
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::read : file handle is NULL");
+            throw std::ios_base::failure("MCAutoFile::read : file handle is NULL");
         if (fread(pch, 1, nSize, file) != nSize)
-            setstate(std::ios::failbit, feof(file) ? "CellAutoFile::read : end of file" : "CellAutoFile::read : fread failed");
+            setstate(std::ios::failbit, feof(file) ? "MCAutoFile::read : end of file" : "MCAutoFile::read : fread failed");
         return (*this);
     }
 
-    CellAutoFile& write(const char* pch, int nSize)
+    MCAutoFile& write(const char* pch, int nSize)
     {
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::write : file handle is NULL");
+            throw std::ios_base::failure("MCAutoFile::write : file handle is NULL");
         if (fwrite(pch, 1, nSize, file) != nSize)
-            setstate(std::ios::failbit, "CellAutoFile::write : write failed");
+            setstate(std::ios::failbit, "MCAutoFile::write : write failed");
         return (*this);
     }
 
@@ -1278,21 +1278,21 @@ public:
     }
 
     template<typename T>
-    CellAutoFile& operator<<(const T& obj)
+    MCAutoFile& operator<<(const T& obj)
     {
         // Serialize to this stream
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::operator<< : file handle is NULL");
+            throw std::ios_base::failure("MCAutoFile::operator<< : file handle is NULL");
         ::Serialize(*this, obj, nType, nVersion);
         return (*this);
     }
 
     template<typename T>
-    CellAutoFile& operator>>(T& obj)
+    MCAutoFile& operator>>(T& obj)
     {
         // Unserialize from this stream
         if (!file)
-            throw std::ios_base::failure("CellAutoFile::operator>> : file handle is NULL");
+            throw std::ios_base::failure("MCAutoFile::operator>> : file handle is NULL");
         ::Unserialize(*this, obj, nType, nVersion);
         return (*this);
     }

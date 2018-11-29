@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NET_PROCESSING_H
-#define CELLLINK_NET_PROCESSING_H
+#ifndef MAGNACHAIN_NET_PROCESSING_H
+#define MAGNACHAIN_NET_PROCESSING_H
 
 #include "net/net.h"
 #include "validation/validationinterface.h"
@@ -36,23 +36,23 @@ static constexpr int64_t EXTRA_PEER_CHECK_INTERVAL = 45;
 /** Minimum time an outbound-peer-eviction candidate must be connected for, in order to evict, in seconds */
 static constexpr int64_t MINIMUM_CONNECT_TIME = 30;
 
-class PeerLogicValidation : public CellValidationInterface, public NetEventsInterface {
+class PeerLogicValidation : public MCValidationInterface, public NetEventsInterface {
 private:
-    CellConnman* const connman;
+    MCConnman* const connman;
 
 public:
-    explicit PeerLogicValidation(CellConnman* connman, CellScheduler &scheduler);
+    explicit PeerLogicValidation(MCConnman* connman, MCScheduler &scheduler);
 
-    void BlockConnected(const std::shared_ptr<const CellBlock>& pblock, const CellBlockIndex* pindexConnected, const std::vector<CellTransactionRef>& vtxConflicted) override;
-    void UpdatedBlockTip(const CellBlockIndex *pindexNew, const CellBlockIndex *pindexFork, bool fInitialDownload) override;
-    void BlockChecked(const CellBlock& block, const CellValidationState& state) override;
-    void NewPoWValidBlock(const CellBlockIndex *pindex, const std::shared_ptr<const CellBlock>& pblock) override;
+    void BlockConnected(const std::shared_ptr<const MCBlock>& pblock, const MCBlockIndex* pindexConnected, const std::vector<MCTransactionRef>& vtxConflicted) override;
+    void UpdatedBlockTip(const MCBlockIndex *pindexNew, const MCBlockIndex *pindexFork, bool fInitialDownload) override;
+    void BlockChecked(const MCBlock& block, const MCValidationState& state) override;
+    void NewPoWValidBlock(const MCBlockIndex *pindex, const std::shared_ptr<const MCBlock>& pblock) override;
 
 
-    void InitializeNode(CellNode* pnode) override;
+    void InitializeNode(MCNode* pnode) override;
     void FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) override;
     /** Process protocol messages received from a given node */
-    bool ProcessMessages(CellNode* pfrom, std::atomic<bool>& interrupt) override;
+    bool ProcessMessages(MCNode* pfrom, std::atomic<bool>& interrupt) override;
     /**
     * Send queued protocol messages to be sent to a give node.
     *
@@ -60,9 +60,9 @@ public:
     * @param[in]   interrupt       Interrupt condition for processing threads
     * @return                      True if there is more work to be done
     */
-    bool SendMessages(CellNode* pto, std::atomic<bool>& interrupt) override;
+    bool SendMessages(MCNode* pto, std::atomic<bool>& interrupt) override;
 
-    void ConsiderEviction(CellNode *pto, int64_t time_in_seconds);
+    void ConsiderEviction(MCNode *pto, int64_t time_in_seconds);
     void CheckForStaleTipAndEvictPeers(const Consensus::Params &consensusParams);
     void EvictExtraOutboundPeers(int64_t time_in_seconds);
 
@@ -82,4 +82,4 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats);
 /** Increase a node's misbehavior score. */
 void Misbehaving(NodeId nodeid, int howmuch);
 
-#endif // CELLLINK_NET_PROCESSING_H
+#endif // MAGNACHAIN_NET_PROCESSING_H

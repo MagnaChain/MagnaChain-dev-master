@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -26,7 +26,7 @@
 #include <QDebug>
 #include <QTimer>
 
-class CellBlockIndex;
+class MCBlockIndex;
 
 static int64_t nLastHeaderTipUpdateNotification = 0;
 static int64_t nLastBlockTipUpdateNotification = 0;
@@ -56,14 +56,14 @@ ClientModel::~ClientModel()
 
 int ClientModel::getNumConnections(unsigned int flags) const
 {
-    CellConnman::NumConnections connections = CellConnman::CONNECTIONS_NONE;
+    MCConnman::NumConnections connections = MCConnman::CONNECTIONS_NONE;
 
     if(flags == CONNECTIONS_IN)
-        connections = CellConnman::CONNECTIONS_IN;
+        connections = MCConnman::CONNECTIONS_IN;
     else if (flags == CONNECTIONS_OUT)
-        connections = CellConnman::CONNECTIONS_OUT;
+        connections = MCConnman::CONNECTIONS_OUT;
     else if (flags == CONNECTIONS_ALL)
-        connections = CellConnman::CONNECTIONS_ALL;
+        connections = MCConnman::CONNECTIONS_ALL;
 
     if(g_connman)
          return g_connman->GetNodeCount(connections);
@@ -136,9 +136,9 @@ size_t ClientModel::getMempoolDynamicUsage() const
     return mempool.DynamicMemoryUsage();
 }
 
-double ClientModel::getVerificationProgress(const CellBlockIndex *tipIn) const
+double ClientModel::getVerificationProgress(const MCBlockIndex *tipIn) const
 {
-    CellBlockIndex *tip = const_cast<CellBlockIndex *>(tipIn);
+    MCBlockIndex *tip = const_cast<MCBlockIndex *>(tipIn);
     if (!tip)
     {
         LOCK(cs_main);
@@ -286,7 +286,7 @@ static void BannedListChanged(ClientModel *clientmodel)
     QMetaObject::invokeMethod(clientmodel, "updateBanlist", Qt::QueuedConnection);
 }
 
-static void BlockTipChanged(ClientModel *clientmodel, bool initialSync, const CellBlockIndex *pIndex, bool fHeader)
+static void BlockTipChanged(ClientModel *clientmodel, bool initialSync, const MCBlockIndex *pIndex, bool fHeader)
 {
     // lock free async UI updates in case we have a new block tip
     // during initial sync, only update the UI if the last update

@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_TXDB_H
-#define CELLLINK_TXDB_H
+#ifndef MAGNACHAIN_TXDB_H
+#define MAGNACHAIN_TXDB_H
 
 #include "transaction/coins.h"
 #include "io/dbwrapper.h"
@@ -16,9 +16,9 @@
 #include <utility>
 #include <vector>
 
-class CellBlock;
-class CellBlockIndex;
-class CellCoinsViewDBCursor;
+class MCBlock;
+class MCBlockIndex;
+class MCCoinsViewDBCursor;
 class uint256;
 class UniValue;
 
@@ -36,14 +36,14 @@ static const int64_t nMinDbCache = 4;
 static const int64_t nMaxBlockDBCache = 2;
 //! Max memory allocated to block tree DB specific cache, if -txindex (MiB)
 // Unlike for the UTXO database, for the txindex scenario the leveldb cache make
-// a meaningful difference: https://github.com/bitcoin/bitcoin/pull/8273#issuecomment-229601991
+// a meaningful difference: https://github.com/magnachain/magnachain/pull/8273#issuecomment-229601991
 static const int64_t nMaxBlockDBAndTxIndexCache = 1024;
 //! Max memory allocated to coin DB specific cache (MiB)
 static const int64_t nMaxCoinsDBCache = 8;
 //！Max number of storage blocks for smart contracts.
 static const int64_t nMaxBlockContractDB = 100;
 
-struct CellDiskTxPos : public CellDiskBlockPos
+struct MCDiskTxPos : public MCDiskBlockPos
 {
     unsigned int nTxOffset; // after header
 
@@ -51,51 +51,51 @@ struct CellDiskTxPos : public CellDiskBlockPos
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*(CellDiskBlockPos*)this);
+        READWRITE(*(MCDiskBlockPos*)this);
         READWRITE(VARINT(nTxOffset));
     }
 
-    CellDiskTxPos(const CellDiskBlockPos &blockIn, unsigned int nTxOffsetIn) : CellDiskBlockPos(blockIn.nFile, blockIn.nPos), nTxOffset(nTxOffsetIn) {
+    MCDiskTxPos(const MCDiskBlockPos &blockIn, unsigned int nTxOffsetIn) : MCDiskBlockPos(blockIn.nFile, blockIn.nPos), nTxOffset(nTxOffsetIn) {
     }
 
-    CellDiskTxPos() {
+    MCDiskTxPos() {
         SetNull();
     }
 
     void SetNull() {
-        CellDiskBlockPos::SetNull();
+        MCDiskBlockPos::SetNull();
         nTxOffset = 0;
     }
 };
 
-/** CellCoinsView backed by the coin database (chainstate/) */
-class CellCoinsViewDB : public CellCoinsView
+/** MCCoinsView backed by the coin database (chainstate/) */
+class MCCoinsViewDB : public MCCoinsView
 {
 protected:
-    CellDBWrapper db;
+    MCDBWrapper db;
 public:
-    CellCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    MCCoinsViewDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 
-    bool GetCoin(const CellOutPoint &outpoint, Coin &coin) const override;
-    bool HaveCoin(const CellOutPoint &outpoint) const override;
+    bool GetCoin(const MCOutPoint &outpoint, Coin &coin) const override;
+    bool HaveCoin(const MCOutPoint &outpoint) const override;
     uint256 GetBestBlock() const override;
     std::vector<uint256> GetHeadBlocks() const override;
-    bool BatchWrite(CellCoinsMap &mapCoins, const uint256 &hashBlock) override;
-    CellCoinsViewCursor *Cursor() const override;
+    bool BatchWrite(MCCoinsMap &mapCoins, const uint256 &hashBlock) override;
+    MCCoinsViewCursor *Cursor() const override;
 
     //! Attempt to update from an older database format. Returns whether an error occurred.
     bool Upgrade();
     size_t EstimateSize() const override;
-	CellDBWrapper* GetDb() { return &db; }
+	MCDBWrapper* GetDb() { return &db; }
 };
 
-/** Specialization of CellCoinsViewCursor to iterate over a CellCoinsViewDB */
-class CellCoinsViewDBCursor: public CellCoinsViewCursor
+/** Specialization of MCCoinsViewCursor to iterate over a MCCoinsViewDB */
+class MCCoinsViewDBCursor: public MCCoinsViewCursor
 {
 public:
-    ~CellCoinsViewDBCursor() {}
+    ~MCCoinsViewDBCursor() {}
 
-    bool GetKey(CellOutPoint &key) const override;
+    bool GetKey(MCOutPoint &key) const override;
     bool GetValue(Coin &coin) const override;
     unsigned int GetValueSize() const override;
 
@@ -103,39 +103,39 @@ public:
     void Next() override;
 
 private:
-    CellCoinsViewDBCursor(CellDBIterator* pcursorIn, const uint256 &hashBlockIn):
-        CellCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
-    std::unique_ptr<CellDBIterator> pcursor;
-    std::pair<char, CellOutPoint> keyTmp;
+    MCCoinsViewDBCursor(MCDBIterator* pcursorIn, const uint256 &hashBlockIn):
+        MCCoinsViewCursor(hashBlockIn), pcursor(pcursorIn) {}
+    std::unique_ptr<MCDBIterator> pcursor;
+    std::pair<char, MCOutPoint> keyTmp;
 
-    friend class CellCoinsViewDB;
+    friend class MCCoinsViewDB;
 };
 
 /** Access to the block database (blocks/index/) */
-class CellBlockTreeDB : public CellDBWrapper
+class MCBlockTreeDB : public MCDBWrapper
 {
 public:
-    CellBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    MCBlockTreeDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
 private:
-    CellBlockTreeDB(const CellBlockTreeDB&);
-    void operator=(const CellBlockTreeDB&);
+    MCBlockTreeDB(const MCBlockTreeDB&);
+    void operator=(const MCBlockTreeDB&);
 public:
-    bool WriteBatchSync(const std::vector<std::pair<int, const CellBlockFileInfo*> >& fileInfo, int nLastFile, const std::vector<const CellBlockIndex*>& blockinfo);
-    bool ReadBlockFileInfo(int nFile, CellBlockFileInfo &fileinfo);
+    bool WriteBatchSync(const std::vector<std::pair<int, const MCBlockFileInfo*> >& fileInfo, int nLastFile, const std::vector<const MCBlockIndex*>& blockinfo);
+    bool ReadBlockFileInfo(int nFile, MCBlockFileInfo &fileinfo);
     bool ReadLastBlockFile(int &nFile);
     bool WriteReindexing(bool fReindex);
     bool ReadReindexing(bool &fReindex);
-    bool ReadTxIndex(const uint256 &txid, CellDiskTxPos &pos);
-    bool WriteTxIndex(const std::vector<std::pair<uint256, CellDiskTxPos> > &list);
+    bool ReadTxIndex(const uint256 &txid, MCDiskTxPos &pos);
+    bool WriteTxIndex(const std::vector<std::pair<uint256, MCDiskTxPos> > &list);
     bool WriteFlag(const std::string &name, bool fValue);
     bool ReadFlag(const std::string &name, bool &fValue);
-    bool LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<CellBlockIndex*(const uint256&)> insertBlockIndex);
+    bool LoadBlockIndexGuts(const Consensus::Params& consensusParams, std::function<MCBlockIndex*(const uint256&)> insertBlockIndex);
 };
 
 class CoinList
 {
 public:
-	std::vector<CellOutPoint> coins;
+	std::vector<MCOutPoint> coins;
 
 	ADD_SERIALIZE_METHODS;
 
@@ -154,28 +154,28 @@ public:
 	}
 };
 
-typedef std::unordered_map<uint160, std::shared_ptr<CoinList>, U160Hasher> CellCoinListMap;
+typedef std::unordered_map<uint160, std::shared_ptr<CoinList>, U160Hasher> MCCoinListMap;
 typedef std::shared_ptr<CoinList> CoinListPtr;
 
 // coin list db
 class CoinListDB
 {
 public:
-    CoinListDB(CellDBWrapper* pDB) : plistDB(pDB)
+    CoinListDB(MCDBWrapper* pDB) : plistDB(pDB)
     {
         assert(pDB);
 	}
 
 protected:
-	CellDBWrapper* plistDB;
-	CellCoinListMap cache;
+	MCDBWrapper* plistDB;
+	MCCoinListMap cache;
 
 public:
 	void Flush(void);
 
-	void ImportCoins(CellCoinsMap& cacheCoins);
+	void ImportCoins(MCCoinsMap& cacheCoins);
 
 	CoinListPtr GetList(const uint160& kAddr) const;
 };
 
-#endif // CELLLINK_TXDB_H
+#endif // MAGNACHAIN_TXDB_H

@@ -44,14 +44,14 @@ bool BranchBlockData::IsDead()
     return !isAllProve;
 }
 
-void BranchBlockData::InitDataFromTx(const CellTransaction& tx)
+void BranchBlockData::InitDataFromTx(const MCTransaction& tx)
 {
     //set block header
     tx.pBranchBlockData->GetBlockHeader(this->header);
 
     this->nHeight = tx.pBranchBlockData->blockHeight;
 
-    CellDataStream cds(tx.pBranchBlockData->vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
+    MCDataStream cds(tx.pBranchBlockData->vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
     cds >> (this->pStakeTx);
 
     this->txHash = tx.GetHash();
@@ -59,8 +59,8 @@ void BranchBlockData::InitDataFromTx(const CellTransaction& tx)
 
 void BranchData::InitBranchGenesisBlockData(const uint256 &branchid)
 {
-    const CellChainParams& bparams = BranchParams(branchid);
-    const CellBlock& genesisblock = bparams.GenesisBlock();
+    const MCChainParams& bparams = BranchParams(branchid);
+    const MCBlock& genesisblock = bparams.GenesisBlock();
     if (mapHeads.count(genesisblock.GetHash()))
         return;
 
@@ -420,7 +420,7 @@ uint16_t BranchDataProcesser::GetTxReportState(const uint256& rpBranchId, const 
         return branchdata.mapHeads[rpBlockId].mapReportStatus[flagHash];
 }
 
-void BranchDataProcesser::Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect)
+void BranchDataProcesser::Flush(const std::shared_ptr<const MCBlock>& pblock, bool fConnect)
 {
     if (!Params().IsMainChain())
         return;
@@ -431,14 +431,14 @@ void BranchDataProcesser::Flush(const std::shared_ptr<const CellBlock>& pblock, 
         OnDisconnectBlock(pblock);
 }
 
-void BranchDataProcesser::OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock)
+void BranchDataProcesser::OnConnectBlock(const std::shared_ptr<const MCBlock>& pblock)
 {
     std::set<uint256> modifyBranch;// 修改过的branch data的branchid
     std::set<uint256> brokenChainBranch;
-    const CellBlock& block = *pblock;
+    const MCBlock& block = *pblock;
     const uint256 mainBlockHash = block.GetHash();
     for (size_t i = 0; i < block.vtx.size(); ++i) {
-        CellTransactionRef tx = block.vtx[i];
+        MCTransactionRef tx = block.vtx[i];
         if (tx->IsSyncBranchInfo()) {
             AddBlockInfoTxData(tx, mainBlockHash, i, modifyBranch);
         }
@@ -473,14 +473,14 @@ void BranchDataProcesser::OnConnectBlock(const std::shared_ptr<const CellBlock>&
     bool retdb = WriteModifyToDB(modifyBranch);
 }
 
-void BranchDataProcesser::OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock)
+void BranchDataProcesser::OnDisconnectBlock(const std::shared_ptr<const MCBlock>& pblock)
 {
     std::set<uint256> modifyBranch;
     std::set<uint256> brokenChainBranch;// no use
-    const CellBlock& block = *pblock;
+    const MCBlock& block = *pblock;
     const uint256 mainBlockHash = block.GetHash();
     for (int i = block.vtx.size() - 1; i >= 0; i--) {
-        CellTransactionRef tx = block.vtx[i];
+        MCTransactionRef tx = block.vtx[i];
         if (tx->IsSyncBranchInfo()) {
             DelBlockInfoTxData(tx, mainBlockHash, i, modifyBranch);
         }
@@ -504,7 +504,7 @@ void BranchDataProcesser::OnDisconnectBlock(const std::shared_ptr<const CellBloc
 }
 
 //interface for test easy
-void BranchDataProcesser::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+void BranchDataProcesser::AddBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     BranchBlockData bBlockData;
     //LogPrintf("bBlockData.deadstatus = %d 111", bBlockData.deadstatus);
@@ -529,7 +529,7 @@ void BranchDataProcesser::AddBlockInfoTxData(CellTransactionRef &transaction, co
 }
 
 //interface for test easy
-void BranchDataProcesser::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+void BranchDataProcesser::DelBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     BranchBlockData bBlockData;
     bBlockData.InitDataFromTx(*transaction);
@@ -544,7 +544,7 @@ void BranchDataProcesser::DelBlockInfoTxData(CellTransactionRef &transaction, co
 }
 
 
-bool BranchDataProcesser::AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch)
+bool BranchDataProcesser::AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
     uint256 reportFlagHash = GetReportTxHashKey(*tx);
     //-----------
@@ -569,7 +569,7 @@ bool BranchDataProcesser::AddReportTxData(CellTransactionRef &tx, std::set<uint2
     return true;
 }
 
-bool BranchDataProcesser::AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch)
+bool BranchDataProcesser::AddProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
     uint256 proveFlagHash = GetProveTxHashKey(*tx);
     //-----------
@@ -595,7 +595,7 @@ bool BranchDataProcesser::AddProveTxData(CellTransactionRef &tx, std::set<uint25
     return true;
 }
 
-bool BranchDataProcesser::DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
+bool BranchDataProcesser::DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
     uint256 reportFlagHash = GetReportTxHashKey(*tx);
     //-----------
@@ -623,7 +623,7 @@ bool BranchDataProcesser::DelReportTxData(CellTransactionRef &tx, std::set<uint2
     return true;
 }
 
-bool BranchDataProcesser::DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
+bool BranchDataProcesser::DelProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
     uint256 proveFlagHash = GetProveTxHashKey(*tx);
     //-----------
@@ -657,7 +657,7 @@ bool BranchDataProcesser::WriteModifyToDB(const std::set<uint256>& modifyBranch)
     return true;
 }
 
-bool BranchCache::HasInCache(const CellTransaction& tx)
+bool BranchCache::HasInCache(const MCTransaction& tx)
 {
     if (tx.IsSyncBranchInfo())
     {
@@ -678,7 +678,7 @@ bool BranchCache::HasInCache(const CellTransaction& tx)
     return false;
 }
 
-void BranchCache::AddToCache(const CellTransaction& tx)
+void BranchCache::AddToCache(const MCTransaction& tx)
 {
     if (tx.IsSyncBranchInfo()) {
         BranchBlockData blockData;
@@ -806,7 +806,7 @@ uint16_t BranchCache::GetTxReportState(const uint256& rpBranchId, const uint256&
 
 // Use in follow situation. 1.After finish build block
 // keep cache 
-void BranchCache::RemoveFromCache(const CellTransaction& tx)
+void BranchCache::RemoveFromCache(const MCTransaction& tx)
 {
     if (tx.IsSyncBranchInfo())
     {
@@ -838,7 +838,7 @@ void BranchCache::RemoveFromCache(const CellTransaction& tx)
     }
 }
 
-void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
+void BranchCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
 {
     for (const auto& tx : vtx)
     {
@@ -846,7 +846,7 @@ void BranchCache::RemoveFromBlock(const std::vector<CellTransactionRef>& vtx)
     }
 }
 
-std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const CellTransaction& tx)
+std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const MCTransaction& tx)
 {
     std::vector<uint256> vecRet;
     if (!tx.IsSyncBranchInfo()){
@@ -914,7 +914,7 @@ bool BranchCache::FetchDataFromSource(const uint256& branchId)
         return false;
 }
 
-void BranchCache::AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+void BranchCache::AddBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     const uint256& branchHash = transaction->pBranchBlockData->branchID;
     bool bgotdata = FetchDataFromSource(branchHash);
@@ -925,7 +925,7 @@ void BranchCache::AddBlockInfoTxData(CellTransactionRef &transaction, const uint
         mapBranchsData[branchHash].flags = BranchData::eADD;
     }
 }
-void BranchCache::DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
+void BranchCache::DelBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     const uint256& branchHash = transaction->pBranchBlockData->branchID;
     bool bgotdata = FetchDataFromSource(branchHash);
@@ -933,7 +933,7 @@ void BranchCache::DelBlockInfoTxData(CellTransactionRef &transaction, const uint
     BranchDataProcesser::DelBlockInfoTxData(transaction, mainBlockHash, iTxVtxIndex, modifyBranch);
 
 }
-bool BranchCache::AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch)
+bool BranchCache::AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
     const uint256& branchId = tx->pReportData->reportedBranchId;
     bool bgotdata = FetchDataFromSource(branchId);
@@ -941,7 +941,7 @@ bool BranchCache::AddReportTxData(CellTransactionRef &tx, std::set<uint256> &bro
     bool ret = BranchDataProcesser::AddReportTxData(tx, brokenChainBranch);
     return ret;
 }
-bool BranchCache::AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch)
+bool BranchCache::AddProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
     const uint256& branchId = tx->pProveData->branchId;
     bool bgotdata = FetchDataFromSource(branchId);
@@ -949,7 +949,7 @@ bool BranchCache::AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brok
     bool ret = BranchDataProcesser::AddProveTxData(tx, brokenChainBranch);
     return ret;
 }
-bool BranchCache::DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
+bool BranchCache::DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
     const uint256& branchId = tx->pReportData->reportedBranchId;
     bool bgotdata = FetchDataFromSource(branchId);
@@ -957,7 +957,7 @@ bool BranchCache::DelReportTxData(CellTransactionRef &tx, std::set<uint256> &bro
     bool ret = BranchDataProcesser::DelReportTxData(tx, brokenChainBranch, modifyBranch);
     return ret;
 }
-bool BranchCache::DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
+bool BranchCache::DelProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
     const uint256& branchId = tx->pProveData->branchId;
     bool bgotdata = FetchDataFromSource(branchId);
@@ -978,7 +978,7 @@ void BranchDb::LoadData()
         //LogPrintf("===== 2-branch db load data: %s \n", Params().GetBranchId());  
         return;
     }
-    CellDBIterator* it = db.NewIterator();
+    MCDBIterator* it = db.NewIterator();
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
         uint256 keyHash;
 
@@ -996,7 +996,7 @@ void BranchDb::LoadData()
 
 bool BranchDb::WriteModifyToDB(const std::set<uint256>& modifyBranch)
 {
-    CellDBBatch batch(db);
+    MCDBBatch batch(db);
     for (const uint256& branchHash : modifyBranch)
     {
         BranchData& bData = mapBranchsData[branchHash];

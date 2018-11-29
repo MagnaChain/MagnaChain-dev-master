@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SERIALIZE_H
-#define CELLLINK_SERIALIZE_H
+#ifndef MAGNACHAIN_SERIALIZE_H
+#define MAGNACHAIN_SERIALIZE_H
 
 #include "compat/endian.h"
 
@@ -43,7 +43,7 @@ constexpr deserialize_type deserialize {};
 
 /**
  * Used to bypass the rule against non-const reference to temporary
- * where it makes sense with wrappers such as CellFlatData or CTxDB
+ * where it makes sense with wrappers such as MCFlatData or CTxDB
  */
 template<typename T>
 inline T& REF(const T& val)
@@ -140,7 +140,7 @@ inline float ser_uint32_to_float(uint32_t y)
 // i.e. anything that supports .read(char*, size_t) and .write(char*, size_t)
 //
 
-class CellSizeComputer;
+class MCSizeComputer;
 
 enum
 {
@@ -163,11 +163,11 @@ enum
 #define ADD_SERIALIZE_METHODS                                         \
     template<typename Stream>                                         \
     void Serialize(Stream& s) const {                                 \
-        NCONST_PTR(this)->SerializationOp(s, CellSerActionSerialize());  \
+        NCONST_PTR(this)->SerializationOp(s, MCSerActionSerialize());  \
     }                                                                 \
     template<typename Stream>                                         \
     void Unserialize(Stream& s) {                                     \
-        SerializationOp(s, CellSerActionUnserialize());                  \
+        SerializationOp(s, MCSerActionUnserialize());                  \
     }
 
 template<typename Stream> inline void Serialize(Stream& s, char a    ) { ser_writedata8(s, a); } // TODO Get rid of bare char
@@ -217,7 +217,7 @@ inline unsigned int GetSizeOfCompactSize(uint64_t nSize)
     else                         return sizeof(unsigned char) + sizeof(uint64_t);
 }
 
-inline void WriteCompactSize(CellSizeComputer& os, uint64_t nSize);
+inline void WriteCompactSize(MCSizeComputer& os, uint64_t nSize);
 
 template<typename Stream>
 void WriteCompactSize(Stream& os, uint64_t nSize)
@@ -314,7 +314,7 @@ inline unsigned int GetSizeOfVarInt(I n)
 }
 
 template<typename I>
-inline void WriteVarInt(CellSizeComputer& os, I n);
+inline void WriteVarInt(MCSizeComputer& os, I n);
 
 template<typename Stream, typename I>
 void WriteVarInt(Stream& os, I n)
@@ -354,29 +354,29 @@ I ReadVarInt(Stream& is)
     }
 }
 
-#define FLATDATA(obj) REF(CellFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))
+#define FLATDATA(obj) REF(MCFlatData((char*)&(obj), (char*)&(obj) + sizeof(obj)))
 #define VARINT(obj) REF(WrapVarInt(REF(obj)))
-#define COMPACTSIZE(obj) REF(CellCompactSize(REF(obj)))
+#define COMPACTSIZE(obj) REF(MCCompactSize(REF(obj)))
 #define LIMITED_STRING(obj,n) REF(LimitedString< n >(REF(obj)))
 
 /** 
  * Wrapper for serializing arrays and POD.
  */
-class CellFlatData
+class MCFlatData
 {
 protected:
     char* pbegin;
     char* pend;
 public:
-    CellFlatData(void* pbeginIn, void* pendIn) : pbegin((char*)pbeginIn), pend((char*)pendIn) { }
+    MCFlatData(void* pbeginIn, void* pendIn) : pbegin((char*)pbeginIn), pend((char*)pendIn) { }
     template <class T, class TAl>
-    explicit CellFlatData(std::vector<T,TAl> &v)
+    explicit MCFlatData(std::vector<T,TAl> &v)
     {
         pbegin = (char*)v.data();
         pend = (char*)(v.data() + v.size());
     }
     template <unsigned int N, typename T, typename S, typename D>
-    explicit CellFlatData(prevector<N, T, S, D> &v)
+    explicit MCFlatData(prevector<N, T, S, D> &v)
     {
         pbegin = (char*)v.data();
         pend = (char*)(v.data() + v.size());
@@ -400,12 +400,12 @@ public:
 };
 
 template<typename I>
-class CellVarInt
+class MCVarInt
 {
 protected:
     I &n;
 public:
-    CellVarInt(I& nIn) : n(nIn) { }
+    MCVarInt(I& nIn) : n(nIn) { }
 
     template<typename Stream>
     void Serialize(Stream &s) const {
@@ -418,12 +418,12 @@ public:
     }
 };
 
-class CellCompactSize
+class MCCompactSize
 {
 protected:
     uint64_t &n;
 public:
-    CellCompactSize(uint64_t& nIn) : n(nIn) { }
+    MCCompactSize(uint64_t& nIn) : n(nIn) { }
 
     template<typename Stream>
     void Serialize(Stream &s) const {
@@ -466,7 +466,7 @@ public:
 };
 
 template<typename I>
-CellVarInt<I> WrapVarInt(I& n) { return CellVarInt<I>(n); }
+MCVarInt<I> WrapVarInt(I& n) { return MCVarInt<I>(n); }
 
 /**
  * Forward declarations
@@ -850,23 +850,23 @@ void Unserialize(Stream& is, std::shared_ptr<const T>& p)
 /**
  * Support for ADD_SERIALIZE_METHODS and READWRITE macro
  */
-struct CellSerActionSerialize
+struct MCSerActionSerialize
 {
     constexpr bool ForRead() const { return false; }
 };
-struct CellSerActionUnserialize
+struct MCSerActionUnserialize
 {
     constexpr bool ForRead() const { return true; }
 };
 
 template<typename Stream, typename T>
-inline void SerReadWrite(Stream& s, const T& obj, CellSerActionSerialize ser_action)
+inline void SerReadWrite(Stream& s, const T& obj, MCSerActionSerialize ser_action)
 {
     ::Serialize(s, obj);
 }
 
 template<typename Stream, typename T>
-inline void SerReadWrite(Stream& s, T& obj, CellSerActionUnserialize ser_action)
+inline void SerReadWrite(Stream& s, T& obj, MCSerActionUnserialize ser_action)
 {
     ::Unserialize(s, obj);
 }
@@ -882,15 +882,15 @@ inline void SerReadWrite(Stream& s, T& obj, CellSerActionUnserialize ser_action)
 /* ::GetSerializeSize implementations
  *
  * Computing the serialized size of objects is done through a special stream
- * object of type CellSizeComputer, which only records the number of bytes written
+ * object of type MCSizeComputer, which only records the number of bytes written
  * to it.
  *
  * If your Serialize or SerializationOp method has non-trivial overhead for
  * serialization, it may be worthwhile to implement a specialized version for
- * CellSizeComputer, which uses the s.seek() method to record bytes that would
+ * MCSizeComputer, which uses the s.seek() method to record bytes that would
  * be written instead.
  */
-class CellSizeComputer
+class MCSizeComputer
 {
 protected:
     size_t nSize;
@@ -898,7 +898,7 @@ protected:
     const int nType;
     const int nVersion;
 public:
-    CellSizeComputer(int nTypeIn, int nVersionIn) : nSize(0), nType(nTypeIn), nVersion(nVersionIn) {}
+    MCSizeComputer(int nTypeIn, int nVersionIn) : nSize(0), nType(nTypeIn), nVersion(nVersionIn) {}
 
     void write(const char *psz, size_t _nSize)
     {
@@ -912,7 +912,7 @@ public:
     }
 
     template<typename T>
-    CellSizeComputer& operator<<(const T& obj)
+    MCSizeComputer& operator<<(const T& obj)
     {
         ::Serialize(*this, obj);
         return (*this);
@@ -963,24 +963,24 @@ inline void UnserializeMany(Stream& s, Arg& arg, Args&... args)
 }
 
 template<typename Stream, typename... Args>
-inline void SerReadWriteMany(Stream& s, CellSerActionSerialize ser_action, Args&&... args)
+inline void SerReadWriteMany(Stream& s, MCSerActionSerialize ser_action, Args&&... args)
 {
     ::SerializeMany(s, std::forward<Args>(args)...);
 }
 
 template<typename Stream, typename... Args>
-inline void SerReadWriteMany(Stream& s, CellSerActionUnserialize ser_action, Args&... args)
+inline void SerReadWriteMany(Stream& s, MCSerActionUnserialize ser_action, Args&... args)
 {
     ::UnserializeMany(s, args...);
 }
 
 template<typename I>
-inline void WriteVarInt(CellSizeComputer &s, I n)
+inline void WriteVarInt(MCSizeComputer &s, I n)
 {
     s.seek(GetSizeOfVarInt<I>(n));
 }
 
-inline void WriteCompactSize(CellSizeComputer &s, uint64_t nSize)
+inline void WriteCompactSize(MCSizeComputer &s, uint64_t nSize)
 {
     s.seek(GetSizeOfCompactSize(nSize));
 }
@@ -988,13 +988,13 @@ inline void WriteCompactSize(CellSizeComputer &s, uint64_t nSize)
 template <typename T>
 size_t GetSerializeSize(const T& t, int nType, int nVersion = 0)
 {
-    return (CellSizeComputer(nType, nVersion) << t).size();
+    return (MCSizeComputer(nType, nVersion) << t).size();
 }
 
 template <typename S, typename T>
 size_t GetSerializeSize(const S& s, const T& t)
 {
-    return (CellSizeComputer(s.GetType(), s.GetVersion()) << t).size();
+    return (MCSizeComputer(s.GetType(), s.GetVersion()) << t).size();
 }
 
-#endif // CELLLINK_SERIALIZE_H
+#endif // MAGNACHAIN_SERIALIZE_H

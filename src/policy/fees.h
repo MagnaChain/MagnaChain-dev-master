@@ -1,10 +1,10 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef CELLLINK_POLICYESTIMATOR_H
-#define CELLLINK_POLICYESTIMATOR_H
+#ifndef MAGNACHAIN_POLICYESTIMATOR_H
+#define MAGNACHAIN_POLICYESTIMATOR_H
 
 #include "misc/amount.h"
 #include "policy/feerate.h"
@@ -16,13 +16,13 @@
 #include <string>
 #include <vector>
 
-class CellAutoFile;
-class CellFeeRate;
-class CellTxMemPoolEntry;
-class CellTxMemPool;
+class MCAutoFile;
+class MCFeeRate;
+class MCTxMemPoolEntry;
+class MCTxMemPool;
 class TxConfirmStats;
 
-/** \class CellBlockPolicyEstimator
+/** \class MCBlockPolicyEstimator
  * The BlockPolicyEstimator is used for estimating the feerate needed
  * for a transaction to be included in a block within a certain number of
  * blocks.
@@ -135,7 +135,7 @@ struct FeeCalculation
  * a certain number of blocks.  Every time a block is added to the best chain, this class records
  * stats on the transactions included in that block
  */
-class CellBlockPolicyEstimator
+class MCBlockPolicyEstimator
 {
 private:
     /** Track confirm delays up to 12 blocks for short horizon */
@@ -188,43 +188,43 @@ private:
 
 public:
     /** Create new BlockPolicyEstimator and initialize stats tracking classes with default values */
-    CellBlockPolicyEstimator();
-    ~CellBlockPolicyEstimator();
+    MCBlockPolicyEstimator();
+    ~MCBlockPolicyEstimator();
 
     /** Process all the transactions that have been included in a block */
     void processBlock(unsigned int nBlockHeight,
-                      std::vector<const CellTxMemPoolEntry*>& entries);
+                      std::vector<const MCTxMemPoolEntry*>& entries);
 
     /** Process a transaction accepted to the mempool*/
-    void processTransaction(const CellTxMemPoolEntry& entry, bool validFeeEstimate);
+    void processTransaction(const MCTxMemPoolEntry& entry, bool validFeeEstimate);
 
     /** Remove a transaction from the mempool tracking stats*/
     bool removeTx(uint256 hash, bool inBlock);
 
     /** DEPRECATED. Return a feerate estimate */
-    CellFeeRate estimateFee(int confTarget) const;
+    MCFeeRate estimateFee(int confTarget) const;
 
     /** Estimate feerate needed to get be included in a block within confTarget
      *  blocks. If no answer can be given at confTarget, return an estimate at
      *  the closest target where one can be given.  'conservative' estimates are
      *  valid over longer time horizons also.
      */
-    CellFeeRate estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const;
+    MCFeeRate estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const;
 
     /** Return a specific fee estimate calculation with a given success
      * threshold and time horizon, and optionally return detailed data about
      * calculation
      */
-    CellFeeRate estimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult *result = nullptr) const;
+    MCFeeRate estimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult *result = nullptr) const;
 
     /** Write estimation data to a file */
-    bool Write(CellAutoFile& fileout) const;
+    bool Write(MCAutoFile& fileout) const;
 
     /** Read estimation data from a file */
-    bool Read(CellAutoFile& filein);
+    bool Read(MCAutoFile& filein);
 
     /** Empty mempool transactions on shutdown to record failure to confirm for txs still in mempool */
-    void FlushUnconfirmed(CellTxMemPool& pool);
+    void FlushUnconfirmed(MCTxMemPool& pool);
 
     /** Calculation of highest target that estimates are tracked for */
     unsigned int HighestTargetTracked(FeeEstimateHorizon horizon) const;
@@ -256,10 +256,10 @@ private:
     std::vector<double> buckets;              // The upper-bound of the range for the bucket (inclusive)
     std::map<double, unsigned int> bucketMap; // Map of bucket upper-bound to index into all vectors by bucket
 
-    mutable CellCriticalSection cs_feeEstimator;
+    mutable MCCriticalSection cs_feeEstimator;
 
     /** Process a transaction confirmed in a block*/
-    bool processBlockTx(unsigned int nBlockHeight, const CellTxMemPoolEntry* entry);
+    bool processBlockTx(unsigned int nBlockHeight, const MCTxMemPoolEntry* entry);
 
     /** Helper for estimateSmartFee */
     double estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const;
@@ -285,14 +285,14 @@ private:
 
 public:
     /** Create new FeeFilterRounder */
-    FeeFilterRounder(const CellFeeRate& minIncrementalFee);
+    FeeFilterRounder(const MCFeeRate& minIncrementalFee);
 
     /** Quantize a minimum fee for privacy purpose before broadcast **/
-    CellAmount round(CellAmount currentMinFee);
+    MCAmount round(MCAmount currentMinFee);
 
 private:
     std::set<double> feeset;
     FastRandomContext insecure_rand;
 };
 
-#endif /*CELLLINK_POLICYESTIMATOR_H */
+#endif /*MAGNACHAIN_POLICYESTIMATOR_H */

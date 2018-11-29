@@ -1,4 +1,4 @@
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -69,7 +69,7 @@ std::string DecodeDumpString(const std::string &str) {
 
 UniValue importprivkey(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -114,17 +114,17 @@ UniValue importprivkey(const JSONRPCRequest& request)
     if (fRescan && fPruneMode)
         throw JSONRPCError(RPC_WALLET_ERROR, "Rescan is disabled in pruned mode");
 
-    CellLinkSecret vchSecret;
+    MagnaChainSecret vchSecret;
     bool fGood = vchSecret.SetString(strSecret);
 
     if (!fGood) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
 
-    CellKey key = vchSecret.GetKey();
+    MCKey key = vchSecret.GetKey();
     if (!key.IsValid()) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
 
-    CellPubKey pubkey = key.GetPubKey();
+    MCPubKey pubkey = key.GetPubKey();
     assert(key.VerifyPubKey(pubkey));
-    CellKeyID vchAddress = pubkey.GetID();
+    MCKeyID vchAddress = pubkey.GetID();
     {
         pwallet->MarkDirty();
         pwallet->SetAddressBook(vchAddress, strLabel, "receive");
@@ -153,7 +153,7 @@ UniValue importprivkey(const JSONRPCRequest& request)
 
 UniValue abortrescan(const JSONRPCRequest& request)
 {
-    CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -176,8 +176,8 @@ UniValue abortrescan(const JSONRPCRequest& request)
     return true;
 }
 
-void ImportAddress(CellWallet*, const CellLinkAddress& address, const std::string& strLabel);
-void ImportScript(CellWallet* const pwallet, const CellScript& script, const std::string& strLabel, bool isRedeemScript)
+void ImportAddress(MCWallet*, const MagnaChainAddress& address, const std::string& strLabel);
+void ImportScript(MCWallet* const pwallet, const MCScript& script, const std::string& strLabel, bool isRedeemScript)
 {
     if (!isRedeemScript && ::IsMine(*pwallet, script) == ISMINE_SPENDABLE) {
         throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
@@ -193,18 +193,18 @@ void ImportScript(CellWallet* const pwallet, const CellScript& script, const std
         if (!pwallet->HaveCScript(script) && !pwallet->AddCScript(script)) {
             throw JSONRPCError(RPC_WALLET_ERROR, "Error adding p2sh redeemScript to wallet");
         }
-        ImportAddress(pwallet, CellLinkAddress(CellScriptID(script)), strLabel);
+        ImportAddress(pwallet, MagnaChainAddress(MCScriptID(script)), strLabel);
     } else {
-        CellTxDestination destination;
+        MCTxDestination destination;
         if (ExtractDestination(script, destination)) {
             pwallet->SetAddressBook(destination, strLabel, "receive");
         }
     }
 }
 
-void ImportAddress(CellWallet* const pwallet, const CellLinkAddress& address, const std::string& strLabel)
+void ImportAddress(MCWallet* const pwallet, const MagnaChainAddress& address, const std::string& strLabel)
 {
-    CellScript script = GetScriptForDestination(address.Get());
+    MCScript script = GetScriptForDestination(address.Get());
     ImportScript(pwallet, script, strLabel, false);
     // add to address book or update label
     if (address.IsValid())
@@ -213,7 +213,7 @@ void ImportAddress(CellWallet* const pwallet, const CellLinkAddress& address, co
 
 UniValue importaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -260,14 +260,14 @@ UniValue importaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (address.IsValid()) {
         if (fP2SH)
             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Cannot use the p2sh flag with an address - use a script instead");
         ImportAddress(pwallet, address, strLabel);
     } else if (IsHex(request.params[0].get_str())) {
         std::vector<unsigned char> data(ParseHex(request.params[0].get_str()));
-        ImportScript(pwallet, CellScript(data.begin(), data.end()), strLabel, fP2SH);
+        ImportScript(pwallet, MCScript(data.begin(), data.end()), strLabel, fP2SH);
     } else {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address or script");
     }
@@ -283,7 +283,7 @@ UniValue importaddress(const JSONRPCRequest& request)
 
 UniValue importprunedfunds(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -297,14 +297,14 @@ UniValue importprunedfunds(const JSONRPCRequest& request)
             "2. \"txoutproof\"     (string, required) The hex output from gettxoutproof that contains the transaction\n"
         );
 
-    CellMutableTransaction tx;
+    MCMutableTransaction tx;
     if (!DecodeHexTx(tx, request.params[0].get_str()))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
     uint256 hashTx = tx.GetHash();
-    CellWalletTx wtx(pwallet, MakeTransactionRef(std::move(tx)));
+    MCWalletTx wtx(pwallet, MakeTransactionRef(std::move(tx)));
 
-    CellDataStream ssMB(ParseHexV(request.params[1], "proof"), SER_NETWORK, PROTOCOL_VERSION);
-    CellMerkleBlock merkleBlock;
+    MCDataStream ssMB(ParseHexV(request.params[1], "proof"), SER_NETWORK, PROTOCOL_VERSION);
+    MCMerkleBlock merkleBlock;
     ssMB >> merkleBlock;
 
     //Search partial merkle tree in proof for our transaction and index in valid block
@@ -344,7 +344,7 @@ UniValue importprunedfunds(const JSONRPCRequest& request)
 
 UniValue removeprunedfunds(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -382,7 +382,7 @@ UniValue removeprunedfunds(const JSONRPCRequest& request)
 
 UniValue importpubkey(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -421,13 +421,13 @@ UniValue importpubkey(const JSONRPCRequest& request)
     if (!IsHex(request.params[0].get_str()))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Pubkey must be a hex string");
     std::vector<unsigned char> data(ParseHex(request.params[0].get_str()));
-    CellPubKey pubKey(data.begin(), data.end());
+    MCPubKey pubKey(data.begin(), data.end());
     if (!pubKey.IsFullyValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Pubkey is not a valid public key");
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    ImportAddress(pwallet, CellLinkAddress(pubKey.GetID()), strLabel);
+    ImportAddress(pwallet, MagnaChainAddress(pubKey.GetID()), strLabel);
     ImportScript(pwallet, GetScriptForRawPubKey(pubKey), strLabel, false);
 
     if (fRescan)
@@ -442,7 +442,7 @@ UniValue importpubkey(const JSONRPCRequest& request)
 
 UniValue importwallet(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -493,15 +493,15 @@ UniValue importwallet(const JSONRPCRequest& request)
         boost::split(vstr, line, boost::is_any_of(" "));
         if (vstr.size() < 2)
             continue;
-        CellLinkSecret vchSecret;
+        MagnaChainSecret vchSecret;
         if (!vchSecret.SetString(vstr[0]))
             continue;
-        CellKey key = vchSecret.GetKey();
-        CellPubKey pubkey = key.GetPubKey();
+        MCKey key = vchSecret.GetKey();
+        MCPubKey pubkey = key.GetPubKey();
         assert(key.VerifyPubKey(pubkey));
-        CellKeyID keyid = pubkey.GetID();
+        MCKeyID keyid = pubkey.GetID();
         if (pwallet->HaveKey(keyid)) {
-            LogPrintf("Skipping import of %s (key already present)\n", CellLinkAddress(keyid).ToString());
+            LogPrintf("Skipping import of %s (key already present)\n", MagnaChainAddress(keyid).ToString());
             continue;
         }
         int64_t nTime = DecodeDumpTime(vstr[1]);
@@ -519,7 +519,7 @@ UniValue importwallet(const JSONRPCRequest& request)
                 fLabel = true;
             }
         }
-        LogPrintf("Importing %s...\n", CellLinkAddress(keyid).ToString());
+        LogPrintf("Importing %s...\n", MagnaChainAddress(keyid).ToString());
         if (!pwallet->AddKeyPubKey(key, pubkey)) {
             fGood = false;
             continue;
@@ -543,7 +543,7 @@ UniValue importwallet(const JSONRPCRequest& request)
 
 UniValue dumpprivkey(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -568,22 +568,22 @@ UniValue dumpprivkey(const JSONRPCRequest& request)
     EnsureWalletIsUnlocked(pwallet);
 
     std::string strAddress = request.params[0].get_str();
-    CellLinkAddress address;
+    MagnaChainAddress address;
     if (!address.SetString(strAddress))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
-    CellKeyID keyID;
+    MCKeyID keyID;
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
-    CellKey vchSecret;
+    MCKey vchSecret;
     if (!pwallet->GetKey(keyID, vchSecret)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
     }
-    return CellLinkSecret(vchSecret).ToString();
+    return MagnaChainSecret(vchSecret).ToString();
 }
 
 UniValue dumppubkey(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
 	}
@@ -608,13 +608,13 @@ UniValue dumppubkey(const JSONRPCRequest& request)
 	EnsureWalletIsUnlocked(pwallet);
 
 	std::string strAddress = request.params[0].get_str();
-	CellLinkAddress address;
+	MagnaChainAddress address;
 	if (!address.SetString(strAddress))
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
-	CellKeyID keyID;
+	MCKeyID keyID;
 	if (!address.GetKeyID(keyID))
 		throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
-	CellPubKey pubkey;
+	MCPubKey pubkey;
 	if (!pwallet->GetPubKey(keyID, pubkey)) {
 		throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
 	}
@@ -623,7 +623,7 @@ UniValue dumppubkey(const JSONRPCRequest& request)
 
 UniValue dumpwallet(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -652,7 +652,7 @@ UniValue dumpwallet(const JSONRPCRequest& request)
 
     /* Prevent arbitrary files from being overwritten. There have been reports
      * that users have overwritten wallet files this way:
-     * https://github.com/bitcoin/bitcoin/issues/9934
+     * https://github.com/magnachain/magnachain/issues/9934
      * It may also avoid other security issues.
      */
     if (boost::filesystem::exists(filepath)) {
@@ -664,14 +664,14 @@ UniValue dumpwallet(const JSONRPCRequest& request)
     if (!file.is_open())
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Cannot open wallet dump file");
 
-    std::map<CellTxDestination, int64_t> mapKeyBirth;
-    const std::map<CellKeyID, int64_t>& mapKeyPool = pwallet->GetAllReserveKeys();
+    std::map<MCTxDestination, int64_t> mapKeyBirth;
+    const std::map<MCKeyID, int64_t>& mapKeyPool = pwallet->GetAllReserveKeys();
     pwallet->GetKeyBirthTimes(mapKeyBirth);
 
     // sort time/key pairs
-    std::vector<std::pair<int64_t, CellKeyID> > vKeyBirth;
+    std::vector<std::pair<int64_t, MCKeyID> > vKeyBirth;
     for (const auto& entry : mapKeyBirth) {
-        if (const CellKeyID* keyID = boost::get<CellKeyID>(&entry.first)) { // set and test
+        if (const MCKeyID* keyID = boost::get<MCKeyID>(&entry.first)) { // set and test
             vKeyBirth.push_back(std::make_pair(entry.second, *keyID));
         }
     }
@@ -686,27 +686,27 @@ UniValue dumpwallet(const JSONRPCRequest& request)
     file << "\n";
 
     // add the base58check encoded extended master if the wallet uses HD 
-    CellKeyID masterKeyID = pwallet->GetHDChain().masterKeyID;
+    MCKeyID masterKeyID = pwallet->GetHDChain().masterKeyID;
     if (!masterKeyID.IsNull())
     {
-        CellKey key;
+        MCKey key;
         if (pwallet->GetKey(masterKeyID, key)) {
-            CellExtKey masterKey;
+            MCExtKey masterKey;
             masterKey.SetMaster(key.begin(), key.size());
 
-            CellLinkExtKey b58extkey;
+            MagnaChainExtKey b58extkey;
             b58extkey.SetKey(masterKey);
 
             file << "# extended private masterkey: " << b58extkey.ToString() << "\n\n";
         }
     }
-    for (std::vector<std::pair<int64_t, CellKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
-        const CellKeyID &keyid = it->second;
+    for (std::vector<std::pair<int64_t, MCKeyID> >::const_iterator it = vKeyBirth.begin(); it != vKeyBirth.end(); it++) {
+        const MCKeyID &keyid = it->second;
         std::string strTime = EncodeDumpTime(it->first);
-        std::string strAddr = CellLinkAddress(keyid).ToString();
-        CellKey key;
+        std::string strAddr = MagnaChainAddress(keyid).ToString();
+        MCKey key;
         if (pwallet->GetKey(keyid, key)) {
-            file << strprintf("%s %s ", CellLinkSecret(key).ToString(), strTime);
+            file << strprintf("%s %s ", MagnaChainSecret(key).ToString(), strTime);
             if (pwallet->mapAddressBook.count(keyid)) {
                 file << strprintf("label=%s", EncodeDumpString(pwallet->mapAddressBook[keyid].name));
             } else if (keyid == masterKeyID) {
@@ -732,7 +732,7 @@ UniValue dumpwallet(const JSONRPCRequest& request)
 }
 
 
-UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const int64_t timestamp)
+UniValue ProcessImport(MCWallet * const pwallet, const UniValue& data, const int64_t timestamp)
 {
     try {
         bool success = false;
@@ -758,11 +758,11 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
         const std::string& output = isScript ? scriptPubKey.get_str() : scriptPubKey["address"].get_str();
 
         // Parse the output.
-        CellScript script;
-        CellLinkAddress address;
+        MCScript script;
+        MagnaChainAddress address;
 
         if (!isScript) {
-            address = CellLinkAddress(output);
+            address = MagnaChainAddress(output);
             if (!address.IsValid()) {
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
             }
@@ -773,7 +773,7 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
             }
 
             std::vector<unsigned char> vData(ParseHex(output));
-            script = CellScript(vData.begin(), vData.end());
+            script = MCScript(vData.begin(), vData.end());
         }
 
         // Watchonly and private keys
@@ -807,7 +807,7 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
         if (isP2SH) {
             // Import redeem script.
             std::vector<unsigned char> vData(ParseHex(strRedeemScript));
-            CellScript redeemScript = CellScript(vData.begin(), vData.end());
+            MCScript redeemScript = MCScript(vData.begin(), vData.end());
 
             // Invalid P2SH address
             if (!script.IsPayToScriptHash()) {
@@ -824,8 +824,8 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
                 throw JSONRPCError(RPC_WALLET_ERROR, "Error adding p2sh redeemScript to wallet");
             }
 
-            CellLinkAddress redeemAddress = CellLinkAddress(CellScriptID(redeemScript));
-            CellScript redeemDestination = GetScriptForDestination(redeemAddress.Get());
+            MagnaChainAddress redeemAddress = MagnaChainAddress(MCScriptID(redeemScript));
+            MCScript redeemDestination = GetScriptForDestination(redeemAddress.Get());
 
             if (::IsMine(*pwallet, redeemDestination) == ISMINE_SPENDABLE) {
                 throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
@@ -847,23 +847,23 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
                 for (size_t i = 0; i < keys.size(); i++) {
                     const std::string& privkey = keys[i].get_str();
 
-                    CellLinkSecret vchSecret;
+                    MagnaChainSecret vchSecret;
                     bool fGood = vchSecret.SetString(privkey);
 
                     if (!fGood) {
                         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
                     }
 
-                    CellKey key = vchSecret.GetKey();
+                    MCKey key = vchSecret.GetKey();
 
                     if (!key.IsValid()) {
                         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
                     }
 
-                    CellPubKey pubkey = key.GetPubKey();
+                    MCPubKey pubkey = key.GetPubKey();
                     assert(key.VerifyPubKey(pubkey));
 
-                    CellKeyID vchAddress = pubkey.GetID();
+                    MCKeyID vchAddress = pubkey.GetID();
                     pwallet->MarkDirty();
                     pwallet->SetAddressBook(vchAddress, label, "receive");
 
@@ -892,13 +892,13 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
                 }
 
                 std::vector<unsigned char> vData(ParseHex(strPubKey));
-                CellPubKey pubKey(vData.begin(), vData.end());
+                MCPubKey pubKey(vData.begin(), vData.end());
 
                 if (!pubKey.IsFullyValid()) {
                     throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Pubkey is not a valid public key");
                 }
 
-                CellLinkAddress pubKeyAddress = CellLinkAddress(pubKey.GetID());
+                MagnaChainAddress pubKeyAddress = MagnaChainAddress(pubKey.GetID());
 
                 // Consistency check.
                 if (!isScript && !(pubKeyAddress.Get() == address.Get())) {
@@ -907,18 +907,18 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
 
                 // Consistency check.
                 if (isScript) {
-                    CellLinkAddress scriptAddress;
-                    CellTxDestination destination;
+                    MagnaChainAddress scriptAddress;
+                    MCTxDestination destination;
 
                     if (ExtractDestination(script, destination)) {
-                        scriptAddress = CellLinkAddress(destination);
+                        scriptAddress = MagnaChainAddress(destination);
                         if (!(scriptAddress.Get() == pubKeyAddress.Get())) {
                             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Consistency check failed");
                         }
                     }
                 }
 
-                CellScript pubKeyScript = GetScriptForDestination(pubKeyAddress.Get());
+                MCScript pubKeyScript = GetScriptForDestination(pubKeyAddress.Get());
 
                 if (::IsMine(*pwallet, pubKeyScript) == ISMINE_SPENDABLE) {
                     throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
@@ -936,7 +936,7 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
                 }
 
                 // TODO Is this necessary?
-                CellScript scriptRawPubKey = GetScriptForRawPubKey(pubKey);
+                MCScript scriptRawPubKey = GetScriptForRawPubKey(pubKey);
 
                 if (::IsMine(*pwallet, scriptRawPubKey) == ISMINE_SPENDABLE) {
                     throw JSONRPCError(RPC_WALLET_ERROR, "The wallet already contains the private key for this address or script");
@@ -956,22 +956,22 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
                 const std::string& strPrivkey = keys[0].get_str();
 
                 // Checks.
-                CellLinkSecret vchSecret;
+                MagnaChainSecret vchSecret;
                 bool fGood = vchSecret.SetString(strPrivkey);
 
                 if (!fGood) {
                     throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid private key encoding");
                 }
 
-                CellKey key = vchSecret.GetKey();
+                MCKey key = vchSecret.GetKey();
                 if (!key.IsValid()) {
                     throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Private key outside allowed range");
                 }
 
-                CellPubKey pubKey = key.GetPubKey();
+                MCPubKey pubKey = key.GetPubKey();
                 assert(key.VerifyPubKey(pubKey));
 
-                CellLinkAddress pubKeyAddress = CellLinkAddress(pubKey.GetID());
+                MagnaChainAddress pubKeyAddress = MagnaChainAddress(pubKey.GetID());
 
                 // Consistency check.
                 if (!isScript && !(pubKeyAddress.Get() == address.Get())) {
@@ -980,18 +980,18 @@ UniValue ProcessImport(CellWallet * const pwallet, const UniValue& data, const i
 
                 // Consistency check.
                 if (isScript) {
-                    CellLinkAddress scriptAddress;
-                    CellTxDestination destination;
+                    MagnaChainAddress scriptAddress;
+                    MCTxDestination destination;
 
                     if (ExtractDestination(script, destination)) {
-                        scriptAddress = CellLinkAddress(destination);
+                        scriptAddress = MagnaChainAddress(destination);
                         if (!(scriptAddress.Get() == pubKeyAddress.Get())) {
                             throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Consistency check failed");
                         }
                     }
                 }
 
-                CellKeyID vchAddress = pubKey.GetID();
+                MCKeyID vchAddress = pubKey.GetID();
                 pwallet->MarkDirty();
                 pwallet->SetAddressBook(vchAddress, label, "receive");
 
@@ -1065,7 +1065,7 @@ int64_t GetImportTimestamp(const UniValue& data, int64_t now)
 
 UniValue importmulti(const JSONRPCRequest& mainRequest)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(mainRequest);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(mainRequest);
     if (!EnsureWalletIsAvailable(pwallet, mainRequest.fHelp)) {
         return NullUniValue;
     }

@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2015 The Bitcoin Core developers
+// Copyright (c) 2011-2015 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -25,7 +25,7 @@ class AmountSpinBox: public QAbstractSpinBox
 public:
     explicit AmountSpinBox(QWidget *parent):
         QAbstractSpinBox(parent),
-        currentUnit(CellLinkUnits::BTC),
+        currentUnit(MagnaChainUnits::BTC),
         singleStep(100000) // satoshis
     {
         setAlignment(Qt::AlignRight);
@@ -46,38 +46,38 @@ public:
     void fixup(QString &input) const
     {
         bool valid = false;
-        CellAmount val = parse(input, &valid);
+        MCAmount val = parse(input, &valid);
         if(valid)
         {
-            input = CellLinkUnits::format(currentUnit, val, false, CellLinkUnits::separatorAlways);
+            input = MagnaChainUnits::format(currentUnit, val, false, MagnaChainUnits::separatorAlways);
             lineEdit()->setText(input);
         }
     }
 
-    CellAmount value(bool *valid_out=0) const
+    MCAmount value(bool *valid_out=0) const
     {
         return parse(text(), valid_out);
     }
 
-    void setValue(const CellAmount& value)
+    void setValue(const MCAmount& value)
     {
-        lineEdit()->setText(CellLinkUnits::format(currentUnit, value, false, CellLinkUnits::separatorAlways));
+        lineEdit()->setText(MagnaChainUnits::format(currentUnit, value, false, MagnaChainUnits::separatorAlways));
         Q_EMIT valueChanged();
     }
 
     void stepBy(int steps)
     {
         bool valid = false;
-        CellAmount val = value(&valid);
+        MCAmount val = value(&valid);
         val = val + steps * singleStep;
-        val = qMin(qMax(val, CellAmount(0)), CellLinkUnits::maxMoney());
+        val = qMin(qMax(val, MCAmount(0)), MagnaChainUnits::maxMoney());
         setValue(val);
     }
 
     void setDisplayUnit(int unit)
     {
         bool valid = false;
-        CellAmount val = value(&valid);
+        MCAmount val = value(&valid);
 
         currentUnit = unit;
 
@@ -87,7 +87,7 @@ public:
             clear();
     }
 
-    void setSingleStep(const CellAmount& step)
+    void setSingleStep(const MCAmount& step)
     {
         singleStep = step;
     }
@@ -100,7 +100,7 @@ public:
 
             const QFontMetrics fm(fontMetrics());
             int h = lineEdit()->minimumSizeHint().height();
-            int w = fm.width(CellLinkUnits::format(CellLinkUnits::BTC, CellLinkUnits::maxMoney(), false, CellLinkUnits::separatorAlways));
+            int w = fm.width(MagnaChainUnits::format(MagnaChainUnits::BTC, MagnaChainUnits::maxMoney(), false, MagnaChainUnits::separatorAlways));
             w += 2; // cursor blinking space
 
             QStyleOptionSpinBox opt;
@@ -127,7 +127,7 @@ public:
 
 private:
     int currentUnit;
-    CellAmount singleStep;
+    MCAmount singleStep;
     mutable QSize cachedMinimumSizeHint;
 
     /**
@@ -135,13 +135,13 @@ private:
      * return validity.
      * @note Must return 0 if !valid.
      */
-    CellAmount parse(const QString &text, bool *valid_out=0) const
+    MCAmount parse(const QString &text, bool *valid_out=0) const
     {
-        CellAmount val = 0;
-        bool valid = CellLinkUnits::parse(currentUnit, text, &val);
+        MCAmount val = 0;
+        bool valid = MagnaChainUnits::parse(currentUnit, text, &val);
         if(valid)
         {
-            if(val < 0 || val > CellLinkUnits::maxMoney())
+            if(val < 0 || val > MagnaChainUnits::maxMoney())
                 valid = false;
         }
         if(valid_out)
@@ -174,12 +174,12 @@ protected:
 
         StepEnabled rv = 0;
         bool valid = false;
-        CellAmount val = value(&valid);
+        MCAmount val = value(&valid);
         if(valid)
         {
             if(val > 0)
                 rv |= StepDownEnabled;
-            if(val < CellLinkUnits::maxMoney())
+            if(val < MagnaChainUnits::maxMoney())
                 rv |= StepUpEnabled;
         }
         return rv;
@@ -191,7 +191,7 @@ Q_SIGNALS:
 
 #include "magnachainamountfield.moc"
 
-CellLinkAmountField::CellLinkAmountField(QWidget *parent) :
+MagnaChainAmountField::MagnaChainAmountField(QWidget *parent) :
     QWidget(parent),
     amount(0)
 {
@@ -203,7 +203,7 @@ CellLinkAmountField::CellLinkAmountField(QWidget *parent) :
     QHBoxLayout *layout = new QHBoxLayout(this);
     layout->addWidget(amount);
     unit = new QValueComboBox(this);
-    unit->setModel(new CellLinkUnits(this));
+    unit->setModel(new MagnaChainUnits(this));
     layout->addWidget(unit);
     layout->addStretch(1);
     layout->setContentsMargins(0,0,0,0);
@@ -221,19 +221,19 @@ CellLinkAmountField::CellLinkAmountField(QWidget *parent) :
     unitChanged(unit->currentIndex());
 }
 
-void CellLinkAmountField::clear()
+void MagnaChainAmountField::clear()
 {
     amount->clear();
     unit->setCurrentIndex(0);
 }
 
-void CellLinkAmountField::setEnabled(bool fEnabled)
+void MagnaChainAmountField::setEnabled(bool fEnabled)
 {
     amount->setEnabled(fEnabled);
     unit->setEnabled(fEnabled);
 }
 
-bool CellLinkAmountField::validate()
+bool MagnaChainAmountField::validate()
 {
     bool valid = false;
     value(&valid);
@@ -241,7 +241,7 @@ bool CellLinkAmountField::validate()
     return valid;
 }
 
-void CellLinkAmountField::setValid(bool valid)
+void MagnaChainAmountField::setValid(bool valid)
 {
     if (valid)
         amount->setStyleSheet("");
@@ -249,7 +249,7 @@ void CellLinkAmountField::setValid(bool valid)
         amount->setStyleSheet(STYLE_INVALID);
 }
 
-bool CellLinkAmountField::eventFilter(QObject *object, QEvent *event)
+bool MagnaChainAmountField::eventFilter(QObject *object, QEvent *event)
 {
     if (event->type() == QEvent::FocusIn)
     {
@@ -259,45 +259,45 @@ bool CellLinkAmountField::eventFilter(QObject *object, QEvent *event)
     return QWidget::eventFilter(object, event);
 }
 
-QWidget *CellLinkAmountField::setupTabChain(QWidget *prev)
+QWidget *MagnaChainAmountField::setupTabChain(QWidget *prev)
 {
     QWidget::setTabOrder(prev, amount);
     QWidget::setTabOrder(amount, unit);
     return unit;
 }
 
-CellAmount CellLinkAmountField::value(bool *valid_out) const
+MCAmount MagnaChainAmountField::value(bool *valid_out) const
 {
     return amount->value(valid_out);
 }
 
-void CellLinkAmountField::setValue(const CellAmount& value)
+void MagnaChainAmountField::setValue(const MCAmount& value)
 {
     amount->setValue(value);
 }
 
-void CellLinkAmountField::setReadOnly(bool fReadOnly)
+void MagnaChainAmountField::setReadOnly(bool fReadOnly)
 {
     amount->setReadOnly(fReadOnly);
 }
 
-void CellLinkAmountField::unitChanged(int idx)
+void MagnaChainAmountField::unitChanged(int idx)
 {
     // Use description tooltip for current unit for the combobox
     unit->setToolTip(unit->itemData(idx, Qt::ToolTipRole).toString());
 
     // Determine new unit ID
-    int newUnit = unit->itemData(idx, CellLinkUnits::UnitRole).toInt();
+    int newUnit = unit->itemData(idx, MagnaChainUnits::UnitRole).toInt();
 
     amount->setDisplayUnit(newUnit);
 }
 
-void CellLinkAmountField::setDisplayUnit(int newUnit)
+void MagnaChainAmountField::setDisplayUnit(int newUnit)
 {
     unit->setValue(newUnit);
 }
 
-void CellLinkAmountField::setSingleStep(const CellAmount& step)
+void MagnaChainAmountField::setSingleStep(const MCAmount& step)
 {
     amount->setSingleStep(step);
 }

@@ -1,11 +1,11 @@
 ﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_PRIMITIVES_BLOCK_H
-#define CELLLINK_PRIMITIVES_BLOCK_H
+#ifndef MAGNACHAIN_PRIMITIVES_BLOCK_H
+#define MAGNACHAIN_PRIMITIVES_BLOCK_H
 
 #include "primitives/transaction.h"
 #include "io/serialize.h"
@@ -18,7 +18,7 @@
  * in the block is a special one that creates a new coin owned by the creator
  * of the block.
  */
-class CellBlockHeader
+class MCBlockHeader
 {
 public:
     // header
@@ -31,10 +31,10 @@ public:
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
 
-	CellOutPoint prevoutStake;
-	CellScript vchBlockSig;
+	MCOutPoint prevoutStake;
+	MCScript vchBlockSig;
 
-    CellBlockHeader()
+    MCBlockHeader()
     {
         SetNull();
     }
@@ -85,33 +85,33 @@ public:
     }
 };
 
-class CellBlock : public CellBlockHeader
+class MCBlock : public MCBlockHeader
 {
 public:
     // network and disk
-    std::vector<CellTransactionRef> vtx;
+    std::vector<MCTransactionRef> vtx;
     std::vector<uint16_t> groupSize;
     std::vector<ContractPrevData> prevContractData;
 
     // memory only
     mutable bool fChecked;
 
-    CellBlock()
+    MCBlock()
     {
         SetNull();
     }
 
-    CellBlock(const CellBlockHeader &header)
+    MCBlock(const MCBlockHeader &header)
     {
         SetNull();
-        *((CellBlockHeader*)this) = header;
+        *((MCBlockHeader*)this) = header;
     }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*(CellBlockHeader*)this);
+        READWRITE(*(MCBlockHeader*)this);
         READWRITE(vtx);
         READWRITE(groupSize);
         READWRITE(prevContractData);
@@ -119,16 +119,16 @@ public:
 
     void SetNull()
     {
-        CellBlockHeader::SetNull();
+        MCBlockHeader::SetNull();
         vtx.clear();
         groupSize.clear();
         prevContractData.clear();
         fChecked = false;
     }
 
-    CellBlockHeader GetBlockHeader() const
+    MCBlockHeader GetBlockHeader() const
     {
-        CellBlockHeader block;
+        MCBlockHeader block;
         block.nVersion = nVersion;
         block.hashPrevBlock = hashPrevBlock;
         block.hashMerkleRoot = hashMerkleRoot;
@@ -145,13 +145,13 @@ public:
  * other node doesn't have the same branch, it can find a recent common trunk.
  * The further back it is, the further before the fork it may be.
  */
-struct CellBlockLocator
+struct MCBlockLocator
 {
     std::vector<uint256> vHave;
 
-    CellBlockLocator() {}
+    MCBlockLocator() {}
 
-    CellBlockLocator(const std::vector<uint256>& vHaveIn) : vHave(vHaveIn) {}
+    MCBlockLocator(const std::vector<uint256>& vHaveIn) : vHave(vHaveIn) {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -174,4 +174,4 @@ struct CellBlockLocator
     }
 };
 
-#endif // CELLLINK_PRIMITIVES_BLOCK_H
+#endif // MAGNACHAIN_PRIMITIVES_BLOCK_H

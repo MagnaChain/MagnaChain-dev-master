@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,7 +14,7 @@ WalletModelTransaction::WalletModelTransaction(const QList<SendCoinsRecipient> &
     keyChange(0),
     fee(0)
 {
-    walletTransaction = new CellWalletTx();
+    walletTransaction = new MCWalletTx();
 }
 
 WalletModelTransaction::~WalletModelTransaction()
@@ -28,7 +28,7 @@ QList<SendCoinsRecipient> WalletModelTransaction::getRecipients()
     return recipients;
 }
 
-CellWalletTx *WalletModelTransaction::getTransaction()
+MCWalletTx *WalletModelTransaction::getTransaction()
 {
     return walletTransaction;
 }
@@ -38,12 +38,12 @@ unsigned int WalletModelTransaction::getTransactionSize()
     return (!walletTransaction ? 0 : ::GetVirtualTransactionSize(*walletTransaction));
 }
 
-CellAmount WalletModelTransaction::getTransactionFee()
+MCAmount WalletModelTransaction::getTransactionFee()
 {
     return fee;
 }
 
-void WalletModelTransaction::setTransactionFee(const CellAmount& newFee)
+void WalletModelTransaction::setTransactionFee(const MCAmount& newFee)
 {
     fee = newFee;
 }
@@ -57,7 +57,7 @@ void WalletModelTransaction::reassignAmounts(int nChangePosRet)
 
         if (rcp.paymentRequest.IsInitialized())
         {
-            CellAmount subtotal = 0;
+            MCAmount subtotal = 0;
             const payments::PaymentDetails& details = rcp.paymentRequest.getDetails();
             for (int j = 0; j < details.outputs_size(); j++)
             {
@@ -80,9 +80,9 @@ void WalletModelTransaction::reassignAmounts(int nChangePosRet)
     }
 }
 
-CellAmount WalletModelTransaction::getTotalTransactionAmount()
+MCAmount WalletModelTransaction::getTotalTransactionAmount()
 {
-    CellAmount totalTransactionAmount = 0;
+    MCAmount totalTransactionAmount = 0;
     for (const SendCoinsRecipient &rcp : recipients)
     {
         totalTransactionAmount += rcp.amount;
@@ -90,12 +90,12 @@ CellAmount WalletModelTransaction::getTotalTransactionAmount()
     return totalTransactionAmount;
 }
 
-void WalletModelTransaction::newPossibleKeyChange(CellWallet *wallet)
+void WalletModelTransaction::newPossibleKeyChange(MCWallet *wallet)
 {
-    keyChange = new CellReserveKey(wallet);
+    keyChange = new MCReserveKey(wallet);
 }
 
-CellReserveKey *WalletModelTransaction::getPossibleKeyChange()
+MCReserveKey *WalletModelTransaction::getPossibleKeyChange()
 {
     return keyChange;
 }

@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,8 +31,8 @@
  *
  * \section intro_sec Introduction
  *
- * This is the developer documentation of the reference client for an experimental new digital currency called CellLink (https://www.magnachain.io/),
- * which enables instant payments to anyone, anywhere in the world. CellLink uses peer-to-peer technology to operate
+ * This is the developer documentation of the reference client for an experimental new digital currency called MagnaChain (https://www.magnachain.io/),
+ * which enables instant payments to anyone, anywhere in the world. MagnaChain uses peer-to-peer technology to operate
  * with no central authority: managing transactions and issuing money are carried out collectively by the network.
  *
  * The software is a community-driven open source project, released under the MIT license.
@@ -67,7 +67,7 @@ bool AppInit(int argc, char* argv[])
 
 
     boost::thread_group threadGroup;
-    CellScheduler scheduler;
+    MCScheduler scheduler;
 
     bool fRet = false;
 
@@ -91,7 +91,7 @@ bool AppInit(int argc, char* argv[])
             strUsage += "\n" + _("Usage:") + "\n" +
                   "  magnachain [options]                     " + strprintf(_("Start %s Daemon"), _(PACKAGE_NAME)) + "\n";
 
-            strUsage += "\n" + HelpMessage(HMM_CELLLINKD);
+            strUsage += "\n" + HelpMessage(HMM_MAGNACHAIND);
         }
 
         fprintf(stdout, "%s", strUsage.c_str());
@@ -107,7 +107,7 @@ bool AppInit(int argc, char* argv[])
         }
         try
         {
-            gArgs.ReadConfigFile(gArgs.GetArg("-conf", CELLLINK_CONF_FILENAME));
+            gArgs.ReadConfigFile(gArgs.GetArg("-conf", MAGNACHAIN_CONF_FILENAME));
         } catch (const std::exception& e) {
             fprintf(stderr,"Error reading configuration file: %s\n", e.what());
             return false;

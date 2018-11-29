@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2016 The Bitcoin Core developers
+# Copyright (c) 2013-2016 The MagnaChain Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -177,7 +177,7 @@ QT_MOC_CPP = \
   qt/moc_walletmodel.cpp \
   qt/moc_walletview.cpp
 
-CELLLINK_MM = \
+MAGNACHAIN_MM = \
   qt/macdockiconhandler.mm \
   qt/macnotificationhandler.mm
 
@@ -198,7 +198,7 @@ PROTOBUF_CC = qt/paymentrequest.pb.cc
 PROTOBUF_H = qt/paymentrequest.pb.h
 PROTOBUF_PROTO = qt/paymentrequest.proto
 
-CELLLINK_QT_H = \
+MAGNACHAIN_QT_H = \
   qt/addressbookpage.h \
   qt/addresstablemodel.h \
   qt/askpassphrasedialog.h \
@@ -310,7 +310,7 @@ RES_ICONS = \
   qt/res/icons/warning.png \
   qt/res/icons/verify.png
 
-CELLLINK_QT_BASE_CPP = \
+MAGNACHAIN_QT_BASE_CPP = \
   qt/bantablemodel.cpp \
   qt/magnachainaddressvalidator.cpp \
   qt/magnachainamountfield.cpp \
@@ -334,9 +334,9 @@ CELLLINK_QT_BASE_CPP = \
   qt/trafficgraphwidget.cpp \
   qt/utilitydialog.cpp
 
-CELLLINK_QT_WINDOWS_CPP = qt/winshutdownmonitor.cpp
+MAGNACHAIN_QT_WINDOWS_CPP = qt/winshutdownmonitor.cpp
 
-CELLLINK_QT_WALLET_CPP = \
+MAGNACHAIN_QT_WALLET_CPP = \
   qt/addressbookpage.cpp \
   qt/addresstablemodel.cpp \
   qt/askpassphrasedialog.cpp \
@@ -364,28 +364,28 @@ CELLLINK_QT_WALLET_CPP = \
   qt/walletmodeltransaction.cpp \
   qt/walletview.cpp
 
-CELLLINK_QT_CPP = $(CELLLINK_QT_BASE_CPP)
+MAGNACHAIN_QT_CPP = $(MAGNACHAIN_QT_BASE_CPP)
 if TARGET_WINDOWS
-CELLLINK_QT_CPP += $(CELLLINK_QT_WINDOWS_CPP)
+MAGNACHAIN_QT_CPP += $(MAGNACHAIN_QT_WINDOWS_CPP)
 endif
 if ENABLE_WALLET
-CELLLINK_QT_CPP += $(CELLLINK_QT_WALLET_CPP)
+MAGNACHAIN_QT_CPP += $(MAGNACHAIN_QT_WALLET_CPP)
 endif
 
 RES_IMAGES = 
 
 RES_MOVIES = $(wildcard $(srcdir)/qt/res/movies/spinner-*.png)
 
-CELLLINK_RC = qt/res/magnachain-qt-res.rc
+MAGNACHAIN_RC = qt/res/magnachain-qt-res.rc
 
-CELLLINK_QT_INCLUDES = -I$(builddir)/qt -I$(srcdir)/qt -I$(srcdir)/qt/forms \
+MAGNACHAIN_QT_INCLUDES = -I$(builddir)/qt -I$(srcdir)/qt -I$(srcdir)/qt/forms \
   -I$(builddir)/qt/forms -DQT_NO_KEYWORDS
 
-qt_libmagnachainqt_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(CELLLINK_QT_INCLUDES) \
+qt_libmagnachainqt_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_QT_INCLUDES) \
   $(QT_INCLUDES) $(QT_DBUS_INCLUDES) $(PROTOBUF_CFLAGS) $(QR_CFLAGS)
 qt_libmagnachainqt_a_CXXFLAGS = $(AM_CXXFLAGS) $(QT_PIE_FLAGS)
 
-qt_libmagnachainqt_a_SOURCES = $(CELLLINK_QT_CPP) $(CELLLINK_QT_H) $(QT_FORMS_UI) \
+qt_libmagnachainqt_a_SOURCES = $(MAGNACHAIN_QT_CPP) $(MAGNACHAIN_QT_H) $(QT_FORMS_UI) \
   $(QT_QRC) $(QT_QRC_LOCALE) $(QT_TS) $(PROTOBUF_PROTO) $(RES_ICONS) $(RES_IMAGES) $(RES_MOVIES)
 
 nodist_qt_libmagnachainqt_a_SOURCES = $(QT_MOC_CPP) $(QT_MOC) $(PROTOBUF_CC) \
@@ -405,25 +405,25 @@ $(QT_MOC): $(PROTOBUF_H)
 $(QT_MOC_CPP): $(PROTOBUF_H)
 
 # magnachain-qt binary #
-qt_magnachain_qt_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(CELLLINK_QT_INCLUDES) \
+qt_magnachain_qt_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_QT_INCLUDES) \
   $(QT_INCLUDES) $(PROTOBUF_CFLAGS) $(QR_CFLAGS)
 qt_magnachain_qt_CXXFLAGS = $(AM_CXXFLAGS) $(QT_PIE_FLAGS)
 
 qt_magnachain_qt_SOURCES = qt/magnachain.cpp
 if TARGET_DARWIN
-  qt_magnachain_qt_SOURCES += $(CELLLINK_MM)
+  qt_magnachain_qt_SOURCES += $(MAGNACHAIN_MM)
 endif
 if TARGET_WINDOWS
-  qt_magnachain_qt_SOURCES += $(CELLLINK_RC)
+  qt_magnachain_qt_SOURCES += $(MAGNACHAIN_RC)
 endif
-qt_magnachain_qt_LDADD = qt/libmagnachainqt.a $(LIBCELLLINK_SERVER)
+qt_magnachain_qt_LDADD = qt/libmagnachainqt.a $(LIBMAGNACHAIN_SERVER)
 if ENABLE_WALLET
-qt_magnachain_qt_LDADD += $(LIBCELLLINK_WALLET)
+qt_magnachain_qt_LDADD += $(LIBMAGNACHAIN_WALLET)
 endif
 if ENABLE_ZMQ
-qt_magnachain_qt_LDADD += $(LIBCELLLINK_ZMQ) $(ZMQ_LIBS)
+qt_magnachain_qt_LDADD += $(LIBMAGNACHAIN_ZMQ) $(ZMQ_LIBS)
 endif
-qt_magnachain_qt_LDADD += $(LIBCELLLINK_CLI) $(LIBCELLLINK_COMMON) $(LIBCELLLINK_UTIL) $(LIBCELLLINK_CONSENSUS) $(LIBCELLLINK_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBLEVELDB_SSE42) $(LIBMEMENV) \
+qt_magnachain_qt_LDADD += $(LIBMAGNACHAIN_CLI) $(LIBMAGNACHAIN_COMMON) $(LIBMAGNACHAIN_UTIL) $(LIBMAGNACHAIN_CONSENSUS) $(LIBMAGNACHAIN_CRYPTO) $(LIBUNIVALUE) $(LIBLEVELDB) $(LIBLEVELDB_SSE42) $(LIBMEMENV) \
   $(BOOST_LIBS) $(QT_LIBS) $(QT_DBUS_LIBS) $(QR_LIBS) $(PROTOBUF_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(LIBSECP256K1) \
   $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS)
 qt_magnachain_qt_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(QT_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
@@ -438,7 +438,7 @@ $(srcdir)/qt/magnachainstrings.cpp: $(libmagnachain_server_a_SOURCES) $(libmagna
 	@test -n $(XGETTEXT) || echo "xgettext is required for updating translations"
 	$(AM_V_GEN) cd $(srcdir); XGETTEXT=$(XGETTEXT) PACKAGE_NAME="$(PACKAGE_NAME)" COPYRIGHT_HOLDERS="$(COPYRIGHT_HOLDERS)" COPYRIGHT_HOLDERS_SUBSTITUTION="$(COPYRIGHT_HOLDERS_SUBSTITUTION)" $(PYTHON) ../share/qt/extract_strings_qt.py $^
 
-translate: $(srcdir)/qt/magnachainstrings.cpp $(QT_FORMS_UI) $(QT_FORMS_UI) $(CELLLINK_QT_BASE_CPP) qt/magnachain.cpp $(CELLLINK_QT_WINDOWS_CPP) $(CELLLINK_QT_WALLET_CPP) $(CELLLINK_QT_H) $(CELLLINK_MM)
+translate: $(srcdir)/qt/magnachainstrings.cpp $(QT_FORMS_UI) $(QT_FORMS_UI) $(MAGNACHAIN_QT_BASE_CPP) qt/magnachain.cpp $(MAGNACHAIN_QT_WINDOWS_CPP) $(MAGNACHAIN_QT_WALLET_CPP) $(MAGNACHAIN_QT_H) $(MAGNACHAIN_MM)
 	@test -n $(LUPDATE) || echo "lupdate is required for updating translations"
 	$(AM_V_GEN) QT_SELECT=$(QT_SELECT) $(LUPDATE) $^ -locations relative -no-obsolete -ts $(srcdir)/qt/locale/magnachain_en.ts
 
@@ -459,7 +459,7 @@ CLEAN_QT = $(nodist_qt_libmagnachainqt_a_SOURCES) $(QT_QM) $(QT_FORMS_H) qt/*.gc
 CLEANFILES += $(CLEAN_QT)
 
 magnachain_qt_clean: FORCE
-	rm -f $(CLEAN_QT) $(qt_libmagnachainqt_a_OBJECTS) $(qt_magnachain_qt_OBJECTS) qt/magnachain-qt$(EXEEXT) $(LIBCELLLINKQT)
+	rm -f $(CLEAN_QT) $(qt_libmagnachainqt_a_OBJECTS) $(qt_magnachain_qt_OBJECTS) qt/magnachain-qt$(EXEEXT) $(LIBMAGNACHAINQT)
 
 magnachain_qt : qt/magnachain-qt$(EXEEXT)
 

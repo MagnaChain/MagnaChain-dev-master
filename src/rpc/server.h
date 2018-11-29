@@ -1,11 +1,11 @@
 // Copyright (c) 2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPCSERVER_H
-#define CELLLINK_RPCSERVER_H
+#ifndef MAGNACHAIN_RPCSERVER_H
+#define MAGNACHAIN_RPCSERVER_H
 
 #include "misc/amount.h"
 #include "rpc/protocol.h"
@@ -140,7 +140,7 @@ public:
 };
 
 /**
- * CellLink RPC command dispatcher.
+ * MagnaChain RPC command dispatcher.
  */
 class CRPCTable
 {
@@ -186,7 +186,7 @@ extern uint256 ParseHashO(const UniValue& o, std::string strKey);
 extern std::vector<unsigned char> ParseHexV(const UniValue& v, std::string strName);
 extern std::vector<unsigned char> ParseHexO(const UniValue& o, std::string strKey);
 
-extern CellAmount AmountFromValue(const UniValue& value);
+extern MCAmount AmountFromValue(const UniValue& value);
 extern std::string HelpExampleCli(const std::string& methodname, const std::string& args);
 extern std::string HelpExampleRpc(const std::string& methodname, const std::string& args);
 
@@ -198,4 +198,4 @@ std::string JSONRPCExecBatch(const UniValue& vReq);
 // Retrieves any serialization flags requested in command line argument
 int RPCSerializationFlags();
 
-#endif // CELLLINK_RPCSERVER_H
+#endif // MAGNACHAIN_RPCSERVER_H

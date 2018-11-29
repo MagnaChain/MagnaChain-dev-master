@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -10,13 +10,13 @@
 #include "key/pubkey.h"
 #include "utils/util.h"
 
-bool CellKeyStore::AddKey(const CellKey &key) {
+bool MCKeyStore::AddKey(const MCKey &key) {
     return AddKeyPubKey(key, key.GetPubKey());
 }
 
-bool CellBasicKeyStore::GetPubKey(const CellKeyID &address, CellPubKey &vchPubKeyOut) const
+bool MCBasicKeyStore::GetPubKey(const MCKeyID &address, MCPubKey &vchPubKeyOut) const
 {
-    CellKey key;
+    MCKey key;
     if (!GetKey(address, key)) {
         LOCK(cs_KeyStore);
         WatchKeyMap::const_iterator it = mapWatchKeys.find(address);
@@ -30,30 +30,30 @@ bool CellBasicKeyStore::GetPubKey(const CellKeyID &address, CellPubKey &vchPubKe
     return true;
 }
 
-bool CellBasicKeyStore::AddKeyPubKey(const CellKey& key, const CellPubKey &pubkey)
+bool MCBasicKeyStore::AddKeyPubKey(const MCKey& key, const MCPubKey &pubkey)
 {
     LOCK(cs_KeyStore);
     mapKeys[pubkey.GetID()] = key;
     return true;
 }
 
-bool CellBasicKeyStore::AddCScript(const CellScript& redeemScript)
+bool MCBasicKeyStore::AddCScript(const MCScript& redeemScript)
 {
     if (redeemScript.size() > MAX_SCRIPT_ELEMENT_SIZE)
-        return error("CellBasicKeyStore::AddCScript(): redeemScripts > %i bytes are invalid", MAX_SCRIPT_ELEMENT_SIZE);
+        return error("MCBasicKeyStore::AddCScript(): redeemScripts > %i bytes are invalid", MAX_SCRIPT_ELEMENT_SIZE);
 
     LOCK(cs_KeyStore);
-    mapScripts[CellScriptID(redeemScript)] = redeemScript;
+    mapScripts[MCScriptID(redeemScript)] = redeemScript;
     return true;
 }
 
-bool CellBasicKeyStore::HaveCScript(const CellScriptID& hash) const
+bool MCBasicKeyStore::HaveCScript(const MCScriptID& hash) const
 {
     LOCK(cs_KeyStore);
     return mapScripts.count(hash) > 0;
 }
 
-bool CellBasicKeyStore::GetCScript(const CellScriptID &hash, CellScript& redeemScriptOut) const
+bool MCBasicKeyStore::GetCScript(const MCScriptID &hash, MCScript& redeemScriptOut) const
 {
     LOCK(cs_KeyStore);
     ScriptMap::const_iterator mi = mapScripts.find(hash);
@@ -65,15 +65,15 @@ bool CellBasicKeyStore::GetCScript(const CellScriptID &hash, CellScript& redeemS
     return false;
 }
 
-static bool ExtractPubKey(const CellScript &dest, CellPubKey& pubKeyOut)
+static bool ExtractPubKey(const MCScript &dest, MCPubKey& pubKeyOut)
 {
     //TODO: Use Solver to extract this?
-    CellScript::const_iterator pc = dest.begin();
+    MCScript::const_iterator pc = dest.begin();
     opcodetype opcode;
     std::vector<unsigned char> vch;
     if (!dest.GetOp(pc, opcode, vch) || vch.size() < 33 || vch.size() > 65)
         return false;
-    pubKeyOut = CellPubKey(vch);
+    pubKeyOut = MCPubKey(vch);
     if (!pubKeyOut.IsFullyValid())
         return false;
     if (!dest.GetOp(pc, opcode, vch) || opcode != OP_CHECKSIG || dest.GetOp(pc, opcode, vch))
@@ -81,33 +81,33 @@ static bool ExtractPubKey(const CellScript &dest, CellPubKey& pubKeyOut)
     return true;
 }
 
-bool CellBasicKeyStore::AddWatchOnly(const CellScript &dest)
+bool MCBasicKeyStore::AddWatchOnly(const MCScript &dest)
 {
     LOCK(cs_KeyStore);
     setWatchOnly.insert(dest);
-    CellPubKey pubKey;
+    MCPubKey pubKey;
     if (ExtractPubKey(dest, pubKey))
         mapWatchKeys[pubKey.GetID()] = pubKey;
     return true;
 }
 
-bool CellBasicKeyStore::RemoveWatchOnly(const CellScript &dest)
+bool MCBasicKeyStore::RemoveWatchOnly(const MCScript &dest)
 {
     LOCK(cs_KeyStore);
     setWatchOnly.erase(dest);
-    CellPubKey pubKey;
+    MCPubKey pubKey;
     if (ExtractPubKey(dest, pubKey))
         mapWatchKeys.erase(pubKey.GetID());
     return true;
 }
 
-bool CellBasicKeyStore::HaveWatchOnly(const CellScript &dest) const
+bool MCBasicKeyStore::HaveWatchOnly(const MCScript &dest) const
 {
     LOCK(cs_KeyStore);
     return setWatchOnly.count(dest) > 0;
 }
 
-bool CellBasicKeyStore::HaveWatchOnly() const
+bool MCBasicKeyStore::HaveWatchOnly() const
 {
     LOCK(cs_KeyStore);
     return (!setWatchOnly.empty());

@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_OPTIONSMODEL_H
-#define CELLLINK_QT_OPTIONSMODEL_H
+#ifndef MAGNACHAIN_QT_OPTIONSMODEL_H
+#define MAGNACHAIN_QT_OPTIONSMODEL_H
 
 #include "misc/amount.h"
 
@@ -14,7 +14,7 @@ QT_BEGIN_NAMESPACE
 class QNetworkProxy;
 QT_END_NAMESPACE
 
-/** Interface from Qt to configuration data structure for CellLink client.
+/** Interface from Qt to configuration data structure for MagnaChain client.
    To Qt, the options are presented as a list with the different options
    laid out vertically.
    This can be changed to a tree once the settings become sufficiently
@@ -39,7 +39,7 @@ public:
         ProxyUseTor,            // bool
         ProxyIPTor,             // QString
         ProxyPortTor,           // int
-        DisplayUnit,            // CellLinkUnits::Unit
+        DisplayUnit,            // MagnaChainUnits::Unit
         ThirdPartyTxUrls,       // QString
         Language,               // QString
         CoinControlFeatures,    // bool
@@ -96,4 +96,4 @@ Q_SIGNALS:
     void hideTrayIconChanged(bool);
 };
 
-#endif // CELLLINK_QT_OPTIONSMODEL_H
+#endif // MAGNACHAIN_QT_OPTIONSMODEL_H

@@ -170,7 +170,7 @@ __db_master_update(mdbp, sdbp, ip, txn, subdb, type, action, newname, flags)
 	p = NULL;
 
 	/*
-	 * Open up a cursor.  If this is CellDB and we're creating the database,
+	 * Open up a cursor.  If this is MCDB and we're creating the database,
 	 * make it an update cursor.
 	 *
 	 * Might we modify the master database?  If so, we'll need to lock.

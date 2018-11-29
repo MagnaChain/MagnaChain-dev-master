@@ -7,7 +7,7 @@ architectures:
 packages:
 - "faketime"
 remotes:
-- "url": "https://github.com/bitcoin-core/magnachain-detached-sigs.git"
+- "url": "https://github.com/magnachain-core/magnachain-detached-sigs.git"
   "dir": "signature"
 files:
 - "magnachain-osx-unsigned.tar.gz"

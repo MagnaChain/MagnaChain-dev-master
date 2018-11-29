@@ -3,7 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-_bitcoind() {
+_magnachaind() {
     local cur prev words=() cword
     local magnachaind
 
@@ -45,7 +45,7 @@ _bitcoind() {
             ;;
     esac
 } &&
-complete -F _bitcoind magnachaind magnachain-qt
+complete -F _magnachaind magnachaind magnachain-qt
 
 # Local variables:
 # mode: shell-script

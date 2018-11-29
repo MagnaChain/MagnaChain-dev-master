@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016 The Bitcoin Core developers
+// Copyright (c) 2015-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
@@ -404,7 +404,7 @@ static bool WriteBinaryFile(const fs::path &filename, const std::string &data)
     return true;
 }
 
-/****** CellLink specific TorController implementation ********/
+/****** MagnaChain specific TorController implementation ********/
 
 /** Controller that connects to Tor control socket, authenticate, then create
  * and maintain an ephemeral hidden service.
@@ -429,7 +429,7 @@ private:
     bool reconnect;
     struct event *reconnect_ev;
     float reconnect_timeout;
-    CellService service;
+    MCService service;
     /** Cookie for SAFECOOKIE auth */
     std::vector<uint8_t> cookie;
     /** ClientNonce for SAFECOOKIE auth */
@@ -527,7 +527,7 @@ void TorController::auth_cb(TorControlConnection& _conn, const TorControlReply& 
         // Now that we know Tor is running setup the proxy for onion addresses
         // if -onion isn't set to something else.
         if (gArgs.GetArg("-onion", "") == "") {
-            CellService resolved(LookupNumeric("127.0.0.1", 9050));
+            MCService resolved(LookupNumeric("127.0.0.1", 9050));
             proxyType addrOnion = proxyType(resolved, true);
             SetProxy(NET_TOR, addrOnion);
             SetLimited(NET_TOR, false);
@@ -695,7 +695,7 @@ void TorController::disconnected_cb(TorControlConnection& _conn)
     // Stop advertising service when disconnected
     if (service.IsValid())
         RemoveLocal(service);
-    service = CellService();
+    service = MCService();
     if (!reconnect)
         return;
 
@@ -741,7 +741,7 @@ static void TorControlThread()
     event_base_dispatch(gBase);
 }
 
-void StartTorControl(boost::thread_group& threadGroup, CellScheduler& scheduler)
+void StartTorControl(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
     assert(!gBase);
 #ifdef _WIN32

@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_VALIDATION_H
-#define CELLLINK_VALIDATION_H
+#ifndef MAGNACHAIN_VALIDATION_H
+#define MAGNACHAIN_VALIDATION_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -16,7 +16,7 @@
 #include "transaction/coins.h"
 #include "io/fs.h"
 #include "policy/feerate.h"
-#include "net/protocol.h" // For CellMessageHeader::MessageStartChars
+#include "net/protocol.h" // For MCMessageHeader::MessageStartChars
 #include "script/script_error.h"
 #include "thread/sync.h"
 #include "transaction/txdb.h"
@@ -34,16 +34,16 @@
 
 #include <atomic>
 
-class CellBlockIndex;
-class CellBlockTreeDB;
-class CellChainParams;
-class CellCoinsViewDB;
-class CellInv;
-class CellConnman;
+class MCBlockIndex;
+class MCBlockTreeDB;
+class MCChainParams;
+class MCCoinsViewDB;
+class MCInv;
+class MCConnman;
 class CScriptCheck;
-class CellBlockPolicyEstimator;
-class CellTxMemPool;
-class CellValidationState;
+class MCBlockPolicyEstimator;
+class MCTxMemPool;
+class MCValidationState;
 class SmartLuaState;
 struct ChainTxData;
 class BranchCache;
@@ -59,11 +59,11 @@ static const bool DEFAULT_WHITELISTFORCERELAY = true;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
 static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 1000;
 //! -maxtxfee default
-static const CellAmount DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
+static const MCAmount DEFAULT_TRANSACTION_MAXFEE = 0.1 * COIN;
 //! Discourage users to set fees higher than this amount (in satoshis) per kB
-static const CellAmount HIGH_TX_FEE_PER_KB = 0.01 * COIN;
+static const MCAmount HIGH_TX_FEE_PER_KB = 0.01 * COIN;
 //! -maxtxfee will warn if called with a higher fee than this amount (in satoshis)
-static const CellAmount HIGH_MAX_TX_FEE = 100 * HIGH_TX_FEE_PER_KB;
+static const MCAmount HIGH_MAX_TX_FEE = 100 * HIGH_TX_FEE_PER_KB;
 /** Default for -limitancestorcount, max number of in-mempool ancestors */
 static const unsigned int DEFAULT_ANCESTOR_LIMIT = 50;
 /** Default for -limitancestorsize, maximum kilobytes of tx + all in-mempool ancestors */
@@ -161,17 +161,17 @@ struct BlockHasher {
 };
 
 
-extern CellScript COINBASE_FLAGS;
-extern CellCriticalSection cs_main;
-extern CellBlockPolicyEstimator feeEstimator;
-extern CellTxMemPool mempool;
-typedef std::unordered_map<uint256, CellBlockIndex*, BlockHasher> BlockMap;
+extern MCScript COINBASE_FLAGS;
+extern MCCriticalSection cs_main;
+extern MCBlockPolicyEstimator feeEstimator;
+extern MCTxMemPool mempool;
+typedef std::unordered_map<uint256, MCBlockIndex*, BlockHasher> BlockMap;
 extern BlockMap mapBlockIndex;
 extern uint64_t nLastBlockTx;
 extern uint64_t nLastBlockWeight;
 extern const std::string strMessageMagic;
 extern CWaitableCriticalSection csBestBlock;
-extern CellConditionVariable cvBlockChange;
+extern MCConditionVariable cvBlockChange;
 extern std::atomic_bool fImporting;
 extern bool fReindex;
 extern int nScriptCheckThreads;
@@ -182,9 +182,9 @@ extern bool fCheckBlockIndex;
 extern bool fCheckpointsEnabled;
 extern size_t nCoinCacheUsage;
 /** A fee rate smaller than this is considered zero fee (for relaying, mining and transaction creation) */
-extern CellFeeRate minRelayTxFee;
+extern MCFeeRate minRelayTxFee;
 /** Absolute maximum transaction fee (in satoshis) used by wallet and mempool (rejects high fee in sendrawtransaction) */
-extern CellAmount maxTxFee;
+extern MCAmount maxTxFee;
 /** If the tip is older than this (in seconds), the node is considered to be in initial block download. */
 extern int64_t nMaxTipAge;
 extern bool fEnableReplacement;
@@ -196,7 +196,7 @@ extern uint256 hashAssumeValid;
 extern arith_uint256 nMinimumChainWork;
 
 /** Best header we've seen so far (used for getheaders queries' starting points). */
-extern CellBlockIndex* pindexBestHeader;
+extern MCBlockIndex* pindexBestHeader;
 
 /** Minimum disk space required - used in CheckDiskSpace() */
 static const uint64_t nMinDiskSpace = 52428800;
@@ -224,17 +224,17 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 // Setting the target to > than 550MB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
-bool IsCoinCreateBranchScript(const CellScript& script);
-bool IsCoinBranchTranScript(const CellScript& script);
+bool IsCoinCreateBranchScript(const MCScript& script);
+bool IsCoinBranchTranScript(const MCScript& script);
 
-bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey);
+bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
 /** 
  * Process an incoming block. This only returns after the best known valid
  * block is made active. Note that it does not, however, guarantee that the
  * specific block passed to it has been checked for validity!
  *
  * If you want to *possibly* get feedback on whether pblock is valid, you must
- * install a CellValidationInterface (see validationinterface.h) - this will have
+ * install a MCValidationInterface (see validationinterface.h) - this will have
  * its BlockChecked method called whenever *any* block completes validation.
  *
  * Note that we guarantee that either the proof-of-work is valid on pblock, or
@@ -247,7 +247,7 @@ bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey);
  * @param[out]  fNewBlock A boolean which is set to indicate if the block was first received via this call
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(const CellChainParams& chainparams, std::shared_ptr<CellBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool executeContract);
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool executeContract);
 
 /**
  * Process incoming block headers.
@@ -260,23 +260,23 @@ bool ProcessNewBlock(const CellChainParams& chainparams, std::shared_ptr<CellBlo
  * @param[out] ppindex If set, the pointer will be set to point to the last new block index object for the given headers
  * @param[out] first_invalid First header that fails validation, if one exists
  */
-bool ProcessNewBlockHeaders(const std::vector<CellBlockHeader>& block, CellValidationState& state, const CellChainParams& chainparams, const CellBlockIndex** ppindex = nullptr, CellBlockHeader* first_invalid = nullptr);
+bool ProcessNewBlockHeaders(const std::vector<MCBlockHeader>& block, MCValidationState& state, const MCChainParams& chainparams, const MCBlockIndex** ppindex = nullptr, MCBlockHeader* first_invalid = nullptr);
 
 /** Check whether enough disk space is available for an incoming block */
 bool CheckDiskSpace(uint64_t nAdditionalBytes = 0);
 /** Open a block file (blk?????.dat) */
-FILE* OpenBlockFile(const CellDiskBlockPos& pos, bool fReadOnly = false);
+FILE* OpenBlockFile(const MCDiskBlockPos& pos, bool fReadOnly = false);
 /** Translation to a filesystem path */
-fs::path GetBlockPosFilename(const CellDiskBlockPos& pos, const char* prefix);
+fs::path GetBlockPosFilename(const MCDiskBlockPos& pos, const char* prefix);
 /** Import blocks from an external file */
-bool LoadExternalBlockFile(const CellChainParams& chainparams, FILE* fileIn, CellDiskBlockPos* dbp = nullptr);
+bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDiskBlockPos* dbp = nullptr);
 /** Ensures we have a genesis block in the block tree, possibly writing one to disk. */
-bool LoadGenesisBlock(const CellChainParams& chainparams);
+bool LoadGenesisBlock(const MCChainParams& chainparams);
 /** Load the block tree and coins database from disk,
  * initializing state if we're running with -reindex. */
-bool LoadBlockIndex(const CellChainParams& chainparams);
+bool LoadBlockIndex(const MCChainParams& chainparams);
 /** Update the chain tip based on database information. */
-bool LoadChainTip(const CellChainParams& chainparams);
+bool LoadChainTip(const MCChainParams& chainparams);
 /** Unload database information */
 void UnloadBlockIndex();
 /** Run an instance of the script checking thread */
@@ -284,18 +284,18 @@ void ThreadScriptCheck();
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
 bool IsInitialBlockDownload();
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
-bool GetTransaction(const uint256& hash, CellTransactionRef& tx, const Consensus::Params& params, uint256& hashBlock, bool fAllowSlow = false);
-class CellOutPoint;
+bool GetTransaction(const uint256& hash, MCTransactionRef& tx, const Consensus::Params& params, uint256& hashBlock, bool fAllowSlow = false);
+class MCOutPoint;
 class Coin;
-bool GetTransactionWithCoin(const CellOutPoint& outpoint, const Coin& coin, CellTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock);
-bool GetTransactionWithOutpoint(const CellOutPoint& outpoint, CellTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock);
+bool GetTransactionWithCoin(const MCOutPoint& outpoint, const Coin& coin, MCTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock);
+bool GetTransactionWithOutpoint(const MCOutPoint& outpoint, MCTransactionRef& txOut, const Consensus::Params& consensusParams, uint256& hashBlock);
 
 /** Find the best known block, and make it the tip of the block chain */
-bool ActivateBestChain(CellValidationState& state, const CellChainParams& chainparams, std::shared_ptr<const CellBlock> pblock = std::shared_ptr<const CellBlock>());
-CellAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
+bool ActivateBestChain(MCValidationState& state, const MCChainParams& chainparams, std::shared_ptr<const MCBlock> pblock = std::shared_ptr<const MCBlock>());
+MCAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams);
 
 /** Guess verification progress (as a fraction between 0.0=genesis and 1.0=current tip). */
-double GuessVerificationProgress(const ChainTxData& data, CellBlockIndex* pindex);
+double GuessVerificationProgress(const ChainTxData& data, MCBlockIndex* pindex);
 
 /**
  *  Mark one block file as pruned.
@@ -308,7 +308,7 @@ void PruneOneBlockFile(const int fileNumber);
 void UnlinkPrunedFiles(const std::set<int>& setFilesToPrune);
 
 /** Create a new block index entry for a given block hash */
-CellBlockIndex* InsertBlockIndex(uint256 hash);
+MCBlockIndex* InsertBlockIndex(uint256 hash);
 /** Flush all state, indexes and buffers to disk. */
 void FlushStateToDisk();
 /** Prune block files and flush state to disk. */
@@ -318,12 +318,12 @@ void PruneBlockFilesManual(int nManualPruneHeight);
 
 /** (try to) add transaction to memory pool
  * plTxnReplaced will be appended to with all transactions replaced from mempool **/
-bool AcceptToMemoryPool(CellTxMemPool& pool, CellValidationState& state, const CellTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, std::list<CellTransactionRef>* plTxnReplaced = nullptr, bool fOverrideMempoolLimit = false, const CellAmount nAbsurdFee = 0, bool executeSmartContract = true);
+bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, std::list<MCTransactionRef>* plTxnReplaced = nullptr, bool fOverrideMempoolLimit = false, const MCAmount nAbsurdFee = 0, bool executeSmartContract = true);
 
-bool AcceptChainTransStep2ToMemoryPool(const CellChainParams& chainparams, CellTxMemPool& pool, CellValidationState& state, const CellTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, int64_t nAcceptTime, std::list<CellTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const CellAmount nAbsurdFee);
+bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee);
 
-/** Convert CellValidationState to a human-readable message for logging */
-std::string FormatStateMessage(const CellValidationState& state);
+/** Convert MCValidationState to a human-readable message for logging */
+std::string FormatStateMessage(const MCValidationState& state);
 
 /** Get the BIP9 state for a given deployment at the current tip. */
 ThresholdState VersionBitsTipState(const Consensus::Params& params, Consensus::DeploymentPos pos);
@@ -336,7 +336,7 @@ int VersionBitsTipStateSinceHeight(const Consensus::Params& params, Consensus::D
 
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, int nHeight);
+void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, int nHeight);
 
 /** Transaction validation functions */
 
@@ -347,9 +347,9 @@ void UpdateCoins(const CellTransaction& tx, CellCoinsViewCache& inputs, int nHei
  *
  * See consensus/consensus.h for flag definitions.
  */
-bool CheckFinalTx(const CellTransaction& tx, int flags = -1);
+bool CheckFinalTx(const MCTransaction& tx, int flags = -1);
 
-bool CheckCoinbaseTx(const CellBlock& block, CellBlockIndex* pindex, CellAmount nFees, const CellChainParams& chainparams);
+bool CheckCoinbaseTx(const MCBlock& block, MCBlockIndex* pindex, MCAmount nFees, const MCChainParams& chainparams);
 
 
 /**
@@ -368,9 +368,9 @@ bool TestLockPointValidity(const LockPoints* lp);
  *
  * See consensus/consensus.h for flag definitions.
  */
-bool CheckSequenceLocks(const CellTransaction& tx, int flags, LockPoints* lp = nullptr, bool useExistingLockPoints = false);
+bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp = nullptr, bool useExistingLockPoints = false);
 
-bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls);
+bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls);
 
 /**
  * Closure representing one script verification
@@ -379,9 +379,9 @@ bool CheckContractVinVout(const CellTransaction& tx, SmartLuaState* sls);
 class CScriptCheck
 {
 private:
-    CellScript scriptPubKey;
-    CellAmount amount;
-    const CellTransaction* ptxTo;
+    MCScript scriptPubKey;
+    MCAmount amount;
+    const MCTransaction* ptxTo;
     unsigned int nIn;
     unsigned int nFlags;
     bool cacheStore;
@@ -390,7 +390,7 @@ private:
 
 public:
     CScriptCheck() : amount(0), ptxTo(0), nIn(0), nFlags(0), cacheStore(false), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(nullptr) {}
-    CScriptCheck(const CellScript& scriptPubKeyIn, const CellAmount amountIn, const CellTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) : scriptPubKey(scriptPubKeyIn), amount(amountIn),
+    CScriptCheck(const MCScript& scriptPubKeyIn, const MCAmount amountIn, const MCTransaction& txToIn, unsigned int nInIn, unsigned int nFlagsIn, bool cacheIn, PrecomputedTransactionData* txdataIn) : scriptPubKey(scriptPubKeyIn), amount(amountIn),
                                                                                                                                                                                                      ptxTo(&txToIn), nIn(nInIn), nFlags(nFlagsIn), cacheStore(cacheIn), error(SCRIPT_ERR_UNKNOWN_ERROR), txdata(txdataIn) {}
 
     bool operator()();
@@ -415,29 +415,29 @@ void InitScriptExecutionCache();
 
 
 /** Functions for disk access for blocks */
-bool ReadBlockFromDisk(CellBlock& block, const CellDiskBlockPos& pos, const Consensus::Params& consensusParams);
-bool ReadBlockFromDisk(CellBlock& block, const CellBlockIndex* pindex, const Consensus::Params& consensusParams);
+bool ReadBlockFromDisk(MCBlock& block, const MCDiskBlockPos& pos, const Consensus::Params& consensusParams);
+bool ReadBlockFromDisk(MCBlock& block, const MCBlockIndex* pindex, const Consensus::Params& consensusParams);
 
 /** Functions for validating blocks and updating the block tree */
 
 /** Context-independent validity checks */
-bool CheckBlock(const CellBlock& block, CellValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, bool fCheckPOW = true, bool fCheckMerkleRoot = true, bool fVerifingDB = false);
-bool CheckBlockWork(const CellBlock& block, CellValidationState& state, const Consensus::Params& consensusParams);
+bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, bool fCheckPOW = true, bool fCheckMerkleRoot = true, bool fVerifingDB = false);
+bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams);
 
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with cs_main held) */
-bool TestBlockValidity(CellValidationState& state, const CellChainParams& chainparams, const CellBlock& block, CellBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
+bool TestBlockValidity(MCValidationState& state, const MCChainParams& chainparams, const MCBlock& block, MCBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** Check whether witness commitments are required for block. */
-bool IsWitnessEnabled(const CellBlockIndex* pindexPrev, const Consensus::Params& params);
+bool IsWitnessEnabled(const MCBlockIndex* pindexPrev, const Consensus::Params& params);
 
 /** When there are blocks in the active chain with missing data, rewind the chainstate and remove them from the block index */
-bool RewindBlockIndex(const CellChainParams& params);
+bool RewindBlockIndex(const MCChainParams& params);
 
 /** Update uncommitted block structures (currently: only the witness nonce). This is safe for submitted blocks. */
-void UpdateUncommittedBlockStructures(CellBlock& block, const CellBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
+void UpdateUncommittedBlockStructures(MCBlock& block, const MCBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
 
 /** Produce the necessary coinbase commitment for a block (modifies the hash, don't call for mined blocks). */
-std::vector<unsigned char> GenerateCoinbaseCommitment(CellBlock& block, const CellBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
+std::vector<unsigned char> GenerateCoinbaseCommitment(MCBlock& block, const MCBlockIndex* pindexPrev, const Consensus::Params& consensusParams);
 
 /** RAII wrapper for VerifyDB: Verify consistency of the block and coin databases */
 class CVerifyDB
@@ -445,35 +445,35 @@ class CVerifyDB
 public:
     CVerifyDB();
     ~CVerifyDB();
-    bool VerifyDB(const CellChainParams& chainparams, CellCoinsView* coinsview, int nCheckLevel, int nCheckDepth);
+    bool VerifyDB(const MCChainParams& chainparams, MCCoinsView* coinsview, int nCheckLevel, int nCheckDepth);
 };
 
 /** Replay blocks that aren't fully applied to the database. */
-bool ReplayBlocks(const CellChainParams& params, CellCoinsView* view);
+bool ReplayBlocks(const MCChainParams& params, MCCoinsView* view);
 
 /** Find the last common block between the parameter chain and a locator. */
-CellBlockIndex* FindForkInGlobalIndex(const CellChain& chain, const CellBlockLocator& locator);
+MCBlockIndex* FindForkInGlobalIndex(const MCChain& chain, const MCBlockLocator& locator);
 
 /** Mark a block as precious and reorganize. */
-bool PreciousBlock(CellValidationState& state, const CellChainParams& params, CellBlockIndex* pindex);
+bool PreciousBlock(MCValidationState& state, const MCChainParams& params, MCBlockIndex* pindex);
 
 /** Mark a block as invalid. */
-bool InvalidateBlock(CellValidationState& state, const CellChainParams& chainparams, CellBlockIndex* pindex);
+bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams, MCBlockIndex* pindex);
 
 /** Remove invalidity status from a block and its descendants. */
-bool ResetBlockFailureFlags(CellBlockIndex* pindex);
+bool ResetBlockFailureFlags(MCBlockIndex* pindex);
 
 /** The currently-connected chain of blocks (protected by cs_main). */
-extern CellChain chainActive;
+extern MCChain chainActive;
 
 /** Global variable that points to the coins database (protected by cs_main) */
-extern CellCoinsViewDB* pcoinsdbview;
+extern MCCoinsViewDB* pcoinsdbview;
 
-/** Global variable that points to the active CellCoinsView (protected by cs_main) */
-extern CellCoinsViewCache* pcoinsTip;
+/** Global variable that points to the active MCCoinsView (protected by cs_main) */
+extern MCCoinsViewCache* pcoinsTip;
 
 /** Global variable that points to the active block tree (protected by cs_main) */
-extern CellBlockTreeDB* pblocktree;
+extern MCBlockTreeDB* pblocktree;
 
 extern CoinListDB* pcoinListDb;
 
@@ -486,14 +486,14 @@ extern CoinAmountCache* pCoinAmountCache;
  * While checking, GetBestBlock() refers to the parent block. (protected by cs_main)
  * This is also true for mempool checks.
  */
-int GetSpendHeight(const CellCoinsViewCache& inputs);
+int GetSpendHeight(const MCCoinsViewCache& inputs);
 
 extern VersionBitsCache versionbitscache;
 
 /**
  * Determine what nVersion a new block should use.
  */
-int32_t ComputeBlockVersion(const CellBlockIndex* pindexPrev, const Consensus::Params& params);
+int32_t ComputeBlockVersion(const MCBlockIndex* pindexPrev, const Consensus::Params& params);
 
 /** Reject codes greater or equal to this can be returned by AcceptToMemPool
  * for transactions, to signal internal conditions. They cannot and should not
@@ -504,7 +504,7 @@ static const unsigned int REJECT_INTERNAL = 0x100;
 static const unsigned int REJECT_HIGHFEE = 0x100;
 
 /** Get block file info entry for one block file */
-CellBlockFileInfo* GetBlockFileInfo(size_t n);
+MCBlockFileInfo* GetBlockFileInfo(size_t n);
 
 /** Dump the mempool to disk. */
 void DumpMempool();
@@ -512,13 +512,13 @@ void DumpMempool();
 /** Load the mempool from disk. */
 bool LoadMempool();
 
-bool ReadTxDataByTxIndex(const uint256& hash, CellTransactionRef& txOut, uint256& hashBlock, bool& retflag);
+bool ReadTxDataByTxIndex(const uint256& hash, MCTransactionRef& txOut, uint256& hashBlock, bool& retflag);
 
-std::string GetBranchTxProof(const CellBlock& block,  const std::set<uint256>& setTxids);
-//bool VerifyBranchTxProof(const uint256& branchHash, const CellBlock& block, const std::string& txProof);
+std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& setTxids);
+//bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof);
 
-bool GetProveInfo(const CellBlock& block, int blockHeight, CellBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
-bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, CellBlock& block);
-#endif // CELLLINK_VALIDATION_H
+bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
+bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
+#endif // MAGNACHAIN_VALIDATION_H
 
 

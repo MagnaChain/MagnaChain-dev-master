@@ -4,23 +4,23 @@ TOPDIR=${TOPDIR:-$(git rev-parse --show-toplevel)}
 SRCDIR=${SRCDIR:-$TOPDIR/src}
 MANDIR=${MANDIR:-$TOPDIR/doc/man}
 
-BITCOIND=${BITCOIND:-$SRCDIR/bitcoind}
-BITCOINCLI=${BITCOINCLI:-$SRCDIR/magnachain-cli}
-BITCOINTX=${BITCOINTX:-$SRCDIR/magnachain-tx}
-BITCOINQT=${BITCOINQT:-$SRCDIR/qt/magnachain-qt}
+MAGNACHAIND=${MAGNACHAIND:-$SRCDIR/magnachaind}
+MAGNACHAINCLI=${MAGNACHAINCLI:-$SRCDIR/magnachain-cli}
+MAGNACHAINTX=${MAGNACHAINTX:-$SRCDIR/magnachain-tx}
+MAGNACHAINQT=${MAGNACHAINQT:-$SRCDIR/qt/magnachain-qt}
 
-[ ! -x $BITCOIND ] && echo "$BITCOIND not found or not executable." && exit 1
+[ ! -x $MAGNACHAIND ] && echo "$MAGNACHAIND not found or not executable." && exit 1
 
 # The autodetected version git tag can screw up manpage output a little bit
-BTCVER=($($BITCOINCLI --version | head -n1 | awk -F'[ -]' '{ print $6, $7 }'))
+BTCVER=($($MAGNACHAINCLI --version | head -n1 | awk -F'[ -]' '{ print $6, $7 }'))
 
 # Create a footer file with copyright content.
-# This gets autodetected fine for bitcoind if --version-string is not set,
+# This gets autodetected fine for magnachaind if --version-string is not set,
 # but has different outcomes for magnachain-qt and magnachain-cli.
 echo "[COPYRIGHT]" > footer.h2m
-$BITCOIND --version | sed -n '1!p' >> footer.h2m
+$MAGNACHAIND --version | sed -n '1!p' >> footer.h2m
 
-for cmd in $BITCOIND $BITCOINCLI $BITCOINTX $BITCOINQT; do
+for cmd in $MAGNACHAIND $MAGNACHAINCLI $MAGNACHAINTX $MAGNACHAINQT; do
   cmdname="${cmd##*/}"
   help2man -N --version-string=${BTCVER[0]} --include=footer.h2m -o ${MANDIR}/${cmdname}.1 ${cmd}
   sed -i "s/\\\-${BTCVER[1]}//g" ${MANDIR}/${cmdname}.1

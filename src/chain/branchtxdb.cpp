@@ -30,7 +30,7 @@ namespace {
 
 BranchChainTxRecordsDb* pBranchChainTxRecordsDb = nullptr;
 
-void BranchChainTxRecordsCache::AddBranchChainTxRecord(const CellTransactionRef& tx, const uint256& blockhash, uint32_t txindex)
+void BranchChainTxRecordsCache::AddBranchChainTxRecord(const MCTransactionRef& tx, const uint256& blockhash, uint32_t txindex)
 {
     if (!tx->IsPregnantTx() && !tx->IsBranchCreate())
         return;
@@ -49,7 +49,7 @@ void BranchChainTxRecordsCache::AddBranchChainTxRecord(const CellTransactionRef&
     sendinfo.flags = DbDataFlag::eADD;
 }
 
-void BranchChainTxRecordsCache::DelBranchChainTxRecord(const CellTransactionRef& tx)
+void BranchChainTxRecordsCache::DelBranchChainTxRecord(const MCTransactionRef& tx)
 {
     if (!tx->IsPregnantTx() && !tx->IsBranchCreate())
         return;
@@ -64,7 +64,7 @@ void BranchChainTxRecordsCache::DelBranchChainTxRecord(const CellTransactionRef&
     sendinfo.flags = DbDataFlag::eDELETE;
 }
 
-void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const CellTransactionRef& tx, const uint256& blockhash)
+void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const MCTransactionRef& tx, const uint256& blockhash)
 {
     if (tx->IsBranchChainTransStep2() == false)
         return;
@@ -76,7 +76,7 @@ void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const CellTransaction
     data.flags = DbDataFlag::eADD;
 }
 
-void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const CellTransactionRef& tx)
+void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRef& tx)
 {
     if (tx->IsBranchChainTransStep2() == false)
         return;
@@ -87,7 +87,7 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const CellTransaction
     data.flags = DbDataFlag::eDELETE;
 }
 
-void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx, bool fBlockConnect)
+void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect)
 {
     if (fBlockConnect){
         if (ptx->IsLockMortgageMineCoin()) { // 锁定
@@ -159,7 +159,7 @@ BranchChainTxInfo BranchChainTxRecordsDb::GetBranchChainTxInfo(const uint256& tx
 
 //param tx
 //param pBlock which block contain tx
-bool BranchChainTxRecordsDb::IsTxRecvRepeat(const CellTransaction& tx, const CellBlock* pBlock /*=nullptr*/)
+bool BranchChainTxRecordsDb::IsTxRecvRepeat(const MCTransaction& tx, const MCBlock* pBlock /*=nullptr*/)
 {
     if (tx.IsBranchChainTransStep2() == false)
         return false;
@@ -180,7 +180,7 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const CellTransaction& tx, const Cel
 void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
 {
     LogPrint(BCLog::COINDB, "flush branch chain tx data to db");
-    CellDBBatch batch(m_db);
+    MCDBBatch batch(m_db);
     size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
     bool bCreatedChainTxChanged = false;
     for (auto mit = cache.m_mapChainTxInfos.begin(); mit != cache.m_mapChainTxInfos.end(); mit++) {
@@ -197,7 +197,7 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             batch.Clear();
         }
         //update create branch chain vector
-        if (txinfo.txnVersion == CellTransaction::CREATE_BRANCH_VERSION) {
+        if (txinfo.txnVersion == MCTransaction::CREATE_BRANCH_VERSION) {
             if (txinfo.flags == DbDataFlag::eADD) {
                 // add before then (del and add) in same case
                 if (std::find(m_vCreatedBranchTxs.begin(), m_vCreatedBranchTxs.end(), txinfo.createchaininfo) == m_vCreatedBranchTxs.end()) {

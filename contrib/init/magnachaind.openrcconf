@@ -1,33 +1,33 @@
-# /etc/conf.d/bitcoind: config file for /etc/init.d/bitcoind
+# /etc/conf.d/magnachaind: config file for /etc/init.d/magnachaind
 
 # Config file location
-#BITCOIND_CONFIGFILE="/etc/magnachain/magnachain.conf"
+#MAGNACHAIND_CONFIGFILE="/etc/magnachain/magnachain.conf"
 
-# What directory to write pidfile to?  (created and owned by $BITCOIND_USER)
-#BITCOIND_PIDDIR="/var/run/bitcoind"
+# What directory to write pidfile to?  (created and owned by $MAGNACHAIND_USER)
+#MAGNACHAIND_PIDDIR="/var/run/magnachaind"
 
 # What filename to give the pidfile
-#BITCOIND_PIDFILE="${BITCOIND_PIDDIR}/bitcoind.pid"
+#MAGNACHAIND_PIDFILE="${MAGNACHAIND_PIDDIR}/magnachaind.pid"
 
-# Where to write bitcoind data (be mindful that the blockchain is large)
-#BITCOIND_DATADIR="/var/lib/bitcoind"
+# Where to write magnachaind data (be mindful that the blockchain is large)
+#MAGNACHAIND_DATADIR="/var/lib/magnachaind"
 
-# User and group to own bitcoind process
-#BITCOIND_USER="magnachain"
-#BITCOIND_GROUP="magnachain"
+# User and group to own magnachaind process
+#MAGNACHAIND_USER="magnachain"
+#MAGNACHAIND_GROUP="magnachain"
 
-# Path to bitcoind executable
-#BITCOIND_BIN="/usr/bin/bitcoind"
+# Path to magnachaind executable
+#MAGNACHAIND_BIN="/usr/bin/magnachaind"
 
-# Nice value to run bitcoind under
-#BITCOIND_NICE=0
+# Nice value to run magnachaind under
+#MAGNACHAIND_NICE=0
 
 # Additional options (avoid -conf and -datadir, use flags above)
-#BITCOIND_OPTS=""
+#MAGNACHAIND_OPTS=""
 
-# The timeout in seconds OpenRC will wait for bitcoind to terminate
+# The timeout in seconds OpenRC will wait for magnachaind to terminate
 # after a SIGTERM has been raised.
 # Note that this will be mapped as argument to start-stop-daemon's
 # '--retry' option, which means you can specify a retry schedule
 # here. For more information see man 8 start-stop-daemon.
-BITCOIND_SIGTERM_TIMEOUT=60
+MAGNACHAIND_SIGTERM_TIMEOUT=60

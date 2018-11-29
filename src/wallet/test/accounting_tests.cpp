@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -11,19 +11,19 @@
 
 #include <boost/test/unit_test.hpp>
 
-extern CellWallet* pwalletMain;
+extern MCWallet* pwalletMain;
 
 BOOST_FIXTURE_TEST_SUITE(accounting_tests, WalletTestingSetup)
 
 static void
-GetResults(std::map<CellAmount, CellAccountingEntry>& results)
+GetResults(std::map<MCAmount, MCAccountingEntry>& results)
 {
-    std::list<CellAccountingEntry> aes;
+    std::list<MCAccountingEntry> aes;
 
     results.clear();
     BOOST_CHECK(pwalletMain->ReorderTransactions() == DB_LOAD_OK);
     pwalletMain->ListAccountCreditDebit("", aes);
-    for (CellAccountingEntry& ae : aes)
+    for (MCAccountingEntry& ae : aes)
     {
         results[ae.nOrderPos] = ae;
     }
@@ -31,10 +31,10 @@ GetResults(std::map<CellAmount, CellAccountingEntry>& results)
 
 BOOST_AUTO_TEST_CASE(acc_orderupgrade)
 {
-    std::vector<CellWalletTx*> vpwtx;
-    CellWalletTx wtx;
-    CellAccountingEntry ae;
-    std::map<CellAmount, CellAccountingEntry> results;
+    std::vector<MCWalletTx*> vpwtx;
+    MCWalletTx wtx;
+    MCAccountingEntry ae;
+    std::map<MCAmount, MCAccountingEntry> results;
 
     LOCK(pwalletMain->cs_wallet);
 
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(acc_orderupgrade)
 
     wtx.mapValue["comment"] = "y";
     {
-        CellMutableTransaction tx(wtx);
+        MCMutableTransaction tx(wtx);
         --tx.nLockTime;  // Just to change the hash :)
         wtx.SetTx(MakeTransactionRef(std::move(tx)));
     }
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(acc_orderupgrade)
 
     wtx.mapValue["comment"] = "x";
     {
-        CellMutableTransaction tx(wtx);
+        MCMutableTransaction tx(wtx);
         --tx.nLockTime;  // Just to change the hash :)
         wtx.SetTx(MakeTransactionRef(std::move(tx)));
     }

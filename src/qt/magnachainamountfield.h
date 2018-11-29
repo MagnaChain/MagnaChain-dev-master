@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2015 The Bitcoin Core developers
+// Copyright (c) 2011-2015 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CELLLINKAMOUNTFIELD_H
-#define CELLLINK_QT_CELLLINKAMOUNTFIELD_H
+#ifndef MAGNACHAIN_QT_MAGNACHAINAMOUNTFIELD_H
+#define MAGNACHAIN_QT_MAGNACHAINAMOUNTFIELD_H
 
 #include "misc/amount.h"
 
@@ -18,22 +18,22 @@ QT_END_NAMESPACE
 
 /** Widget for entering magnachain amounts.
   */
-class CellLinkAmountField: public QWidget
+class MagnaChainAmountField: public QWidget
 {
     Q_OBJECT
 
-    // ugly hack: for some unknown reason CellAmount (instead of qint64) does not work here as expected
+    // ugly hack: for some unknown reason MCAmount (instead of qint64) does not work here as expected
     // discussion: https://github.com/magnachain/magnachain/pull/5117
     Q_PROPERTY(qint64 value READ value WRITE setValue NOTIFY valueChanged USER true)
 
 public:
-    explicit CellLinkAmountField(QWidget *parent = 0);
+    explicit MagnaChainAmountField(QWidget *parent = 0);
 
-    CellAmount value(bool *value=0) const;
-    void setValue(const CellAmount& value);
+    MCAmount value(bool *value=0) const;
+    void setValue(const MCAmount& value);
 
     /** Set single step in satoshis **/
-    void setSingleStep(const CellAmount& step);
+    void setSingleStep(const MCAmount& step);
 
     /** Make read-only **/
     void setReadOnly(bool fReadOnly);
@@ -73,4 +73,4 @@ private Q_SLOTS:
 
 };
 
-#endif // CELLLINK_QT_CELLLINKAMOUNTFIELD_H
+#endif // MAGNACHAIN_QT_MAGNACHAINAMOUNTFIELD_H

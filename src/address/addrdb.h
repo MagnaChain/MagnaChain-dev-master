@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_ADDRDB_H
-#define CELLLINK_ADDRDB_H
+#ifndef MAGNACHAIN_ADDRDB_H
+#define MAGNACHAIN_ADDRDB_H
 
 #include "io/fs.h"
 #include "io/serialize.h"
@@ -14,8 +14,8 @@
 #include <map>
 
 class CSubNet;
-class CellAddrMan;
-class CellDataStream;
+class MCAddrMan;
+class MCDataStream;
 
 typedef enum BanReason
 {
@@ -24,7 +24,7 @@ typedef enum BanReason
     BanReasonManuallyAdded    = 2
 } BanReason;
 
-class CellBanEntry
+class MCBanEntry
 {
 public:
     static const int CURRENT_VERSION=1;
@@ -33,12 +33,12 @@ public:
     int64_t nBanUntil;
     uint8_t banReason;
 
-    CellBanEntry()
+    MCBanEntry()
     {
         SetNull();
     }
 
-    CellBanEntry(int64_t nCreateTimeIn)
+    MCBanEntry(int64_t nCreateTimeIn)
     {
         SetNull();
         nCreateTime = nCreateTimeIn;
@@ -56,7 +56,7 @@ public:
 
     void SetNull()
     {
-        nVersion = CellBanEntry::CURRENT_VERSION;
+        nVersion = MCBanEntry::CURRENT_VERSION;
         nCreateTime = 0;
         nBanUntil = 0;
         banReason = BanReasonUnknown;
@@ -75,29 +75,29 @@ public:
     }
 };
 
-typedef std::map<CSubNet, CellBanEntry> banmap_t;
+typedef std::map<CSubNet, MCBanEntry> banmap_t;
 
 /** Access to the (IP) address database (peers.dat) */
-class CellAddrDB
+class MCAddrDB
 {
 private:
     fs::path pathAddr;
 public:
-    CellAddrDB();
-    bool Write(const CellAddrMan& addr);
-    bool Read(CellAddrMan& addr);
-    static bool Read(CellAddrMan& addr, CellDataStream& ssPeers);
+    MCAddrDB();
+    bool Write(const MCAddrMan& addr);
+    bool Read(MCAddrMan& addr);
+    static bool Read(MCAddrMan& addr, MCDataStream& ssPeers);
 };
 
 /** Access to the banlist database (banlist.dat) */
-class CellBanDB
+class MCBanDB
 {
 private:
     fs::path pathBanlist;
 public:
-    CellBanDB();
+    MCBanDB();
     bool Write(const banmap_t& banSet);
     bool Read(banmap_t& banSet);
 };
 
-#endif // CELLLINK_ADDRDB_H
+#endif // MAGNACHAIN_ADDRDB_H

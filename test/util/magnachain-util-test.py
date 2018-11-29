@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Copyright (c) 2014 BitPay Inc.
-# Copyright (c) 2016-2017 The Bitcoin Core developers
+# Copyright (c) 2016-2017 The MagnaChain Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.

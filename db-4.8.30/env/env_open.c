@@ -913,7 +913,7 @@ __env_attach_regions(dbenv, flags, orig_flags, retry_ok)
 	    (ret = __env_set_flags(dbenv, DB_CDB_ALLDB, 1)) != 0)
 		goto err;
 
-	/* Initialize for CellDB product. */
+	/* Initialize for MCDB product. */
 	if (LF_ISSET(DB_INIT_CDB)) {
 		LF_SET(DB_INIT_LOCK);
 		F_SET(env, ENV_CDB);

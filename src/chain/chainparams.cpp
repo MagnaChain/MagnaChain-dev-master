@@ -1,5 +1,5 @@
 // Copyright (c) 2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,13 +20,13 @@
 SignatureCoinbaseTransactionPf SignatureCoinbaseTransactionPF = nullptr;
 
 
-static CellBlock CreateGenesisBlock(const char* pszTimestamp, const CellScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CellAmount& genesisReward)
+static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward)
 {
-    CellMutableTransaction txNew;
+    MCMutableTransaction txNew;
     txNew.nVersion = 1;
     txNew.vin.resize(1);
     txNew.vout.resize(1);
-    txNew.vin[0].scriptSig = CellScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+    txNew.vin[0].scriptSig = MCScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
     txNew.vout[0].nValue = genesisReward;
     txNew.vout[0].scriptPubKey = genesisOutputScript;
 
@@ -43,24 +43,24 @@ static CellBlock CreateGenesisBlock(const char* pszTimestamp, const CellScript& 
 			code[i] = (unsigned char)pszTimestamp[i%iCodeSize];
 		}
 
-		CellExtKey kExtKey;
+		MCExtKey kExtKey;
 		kExtKey.Decode(code);
 
-		CellBasicKeyStore kKeyStore;
+		MCBasicKeyStore kKeyStore;
 		kKeyStore.AddKeyPubKey(kExtKey.key, kExtKey.key.GetPubKey());
 
-		CellTxDestination kDest(kExtKey.key.GetPubKey().GetID());
-		CellScript kScript = GetScriptForDestination(kDest);
+		MCTxDestination kDest(kExtKey.key.GetPubKey().GetID());
+		MCScript kScript = GetScriptForDestination(kDest);
 		txNew.vout[0].scriptPubKey = kScript;
 
 		(*SignatureCoinbaseTransactionPF)( 0, &kKeyStore, txNew, genesisReward, kScript);
-		//assert(CheckCoinbaseSignature( 0, CellTransaction(txNew)));
+		//assert(CheckCoinbaseSignature( 0, MCTransaction(txNew)));
         if (!hasstartecc)
     		ECC_Stop();
 	}
 
 
-    CellBlock genesis;
+    MCBlock genesis;
     genesis.nTime    = nTime;
     genesis.nBits    = nBits;
     genesis.nNonce   = nNonce;
@@ -77,26 +77,26 @@ const std::string DEFAULT_TIMESTAMP = "The Times 03/Jan/2009 Chancellor on brink
  * transaction cannot be spent since it did not originally exist in the
  * database.
  *
- * CellBlock(hash=000000000019d6, ver=1, hashPrevBlock=00000000000000, hashMerkleRoot=4a5e1e, nTime=1231006505, nBits=1d00ffff, nNonce=2083236893, vtx=1)
- *   CellTransaction(hash=4a5e1e, ver=1, vin.size=1, vout.size=1, nLockTime=0)
- *     CellTxIn(CellOutPoint(000000, -1), coinbase 04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73)
- *     CellTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
+ * MCBlock(hash=000000000019d6, ver=1, hashPrevBlock=00000000000000, hashMerkleRoot=4a5e1e, nTime=1231006505, nBits=1d00ffff, nNonce=2083236893, vtx=1)
+ *   MCTransaction(hash=4a5e1e, ver=1, vin.size=1, vout.size=1, nLockTime=0)
+ *     MCTxIn(MCOutPoint(000000, -1), coinbase 04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73)
+ *     MCTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static CellBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CellAmount& genesisReward)
+static MCBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward)
 {
-    const CellScript genesisOutputScript = CellScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
+    const MCScript genesisOutputScript = MCScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
     return CreateGenesisBlock(pszTimestamp.c_str(), genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
 
-void CellChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
+void MCChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
 {
     consensus.vDeployments[d].nStartTime = nStartTime;
     consensus.vDeployments[d].nTimeout = nTimeout;
 }
 
 // key base 58 prefixes
-void CellChainParams::InitMainBase58Prefixes()
+void MCChainParams::InitMainBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 75); //X
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 62); //S
@@ -106,7 +106,7 @@ void CellChainParams::InitMainBase58Prefixes()
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x88, 0xAD, 0xE4 };
 }
 
-void CellChainParams::InitTestnetBase58Prefixes()
+void MCChainParams::InitTestnetBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 110);
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 195);
@@ -116,7 +116,7 @@ void CellChainParams::InitTestnetBase58Prefixes()
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
 }
 
-void CellChainParams::InitRegtestBase58Prefixes()
+void MCChainParams::InitRegtestBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 110);
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 195);
@@ -137,7 +137,7 @@ void CellChainParams::InitRegtestBase58Prefixes()
  * + Contains no strange transactions
  */
 
-class CMainParams : public CellChainParams {
+class CMainParams : public MCChainParams {
 public:
     CMainParams() {
         strNetworkID = "main";
@@ -204,7 +204,7 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
 
-        //checkpointData = (CellCheckpointData) {
+        //checkpointData = (MCCheckpointData) {
         //    {
         //        // { 11111, uint256S("0x0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d")},
         //        // { 33333, uint256S("0x000000002dd5588a74784eaa7ab0507a18ad16a236e7b1ce69f00d7ddfb5d0a6")},
@@ -235,7 +235,7 @@ public:
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CellChainParams {
+class CTestNetParams : public MCChainParams {
 public:
     CTestNetParams() {
         strNetworkID = "test";
@@ -301,7 +301,7 @@ public:
         fMineBlocksOnDemand = false;
 
 
-        //checkpointData = (CellCheckpointData) {
+        //checkpointData = (MCCheckpointData) {
         //    {
         //        {546, uint256S("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70")},
         //    }
@@ -320,7 +320,7 @@ public:
 /**
  * Regression test
  */
-class CRegTestParams : public CellChainParams {
+class CRegTestParams : public MCChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
@@ -373,7 +373,7 @@ public:
         fRequireStandard = false;
         fMineBlocksOnDemand = true;
 
-        //checkpointData = (CellCheckpointData) {
+        //checkpointData = (MCCheckpointData) {
         //    {
         //        {0, uint256S("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")},
         //    }
@@ -389,9 +389,9 @@ public:
     }
 };
 
-class CellBranchParams : public CellChainParams {
+class MCBranchParams : public MCChainParams {
 public:
-	CellBranchParams(const std::string& strBranchIdParams = "") {
+	MCBranchParams(const std::string& strBranchIdParams = "") {
 		strNetworkID = "branch";
 		consensus.BigBoomHeight = 0;
 		consensus.BigBoomValue = 0 * COIN;
@@ -437,7 +437,7 @@ public:
 
 		//change branch dir
         strBranchId = !strBranchIdParams.empty() ? strBranchIdParams : gArgs.GetArg("-branchid", "");
-		if (strBranchId == CellBaseChainParams::MAIN)
+		if (strBranchId == MCBaseChainParams::MAIN)
 			throw std::runtime_error("main chain no need this option -branchid");
 		if (strBranchId.length() != 64 || !IsHex(strBranchId))
 			throw std::runtime_error(strprintf("%s: Invalid branch id %s, it must a txid", __func__, strBranchId.c_str()));
@@ -478,37 +478,37 @@ public:
 	}
 };
 
-static std::unique_ptr<CellChainParams> globalChainParams;
-static std::map<uint256, std::unique_ptr<CellChainParams>> g_mapBranchParams;
+static std::unique_ptr<MCChainParams> globalChainParams;
+static std::map<uint256, std::unique_ptr<MCChainParams>> g_mapBranchParams;
 
-const CellChainParams &Params() {
+const MCChainParams &Params() {
     assert(globalChainParams);
     return *globalChainParams;
 }
 
-const CellChainParams& BranchParams(const uint256& branchHash)
+const MCChainParams& BranchParams(const uint256& branchHash)
 {
     if (!g_mapBranchParams.count(branchHash))
     {
-        g_mapBranchParams[branchHash] = std::unique_ptr<CellChainParams>(new CellBranchParams(branchHash.GetHex()));
+        g_mapBranchParams[branchHash] = std::unique_ptr<MCChainParams>(new MCBranchParams(branchHash.GetHex()));
     }
     return *g_mapBranchParams[branchHash];
 }
 
-std::unique_ptr<CellChainParams> CreateChainParams(const std::string& chain)
+std::unique_ptr<MCChainParams> CreateChainParams(const std::string& chain)
 {
-    if (chain == CellBaseChainParams::MAIN)
-        return std::unique_ptr<CellChainParams>(new CMainParams());
-    else if (chain == CellBaseChainParams::TESTNET)
-        return std::unique_ptr<CellChainParams>(new CTestNetParams());
-    else if (chain == CellBaseChainParams::REGTEST)
-        return std::unique_ptr<CellChainParams>(new CRegTestParams());
-	else if (chain == CellBaseChainParams::BRANCH)
-		return std::unique_ptr<CellChainParams>(new CellBranchParams());
+    if (chain == MCBaseChainParams::MAIN)
+        return std::unique_ptr<MCChainParams>(new CMainParams());
+    else if (chain == MCBaseChainParams::TESTNET)
+        return std::unique_ptr<MCChainParams>(new CTestNetParams());
+    else if (chain == MCBaseChainParams::REGTEST)
+        return std::unique_ptr<MCChainParams>(new CRegTestParams());
+	else if (chain == MCBaseChainParams::BRANCH)
+		return std::unique_ptr<MCChainParams>(new MCBranchParams());
     throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
 
-static std::vector< std::shared_ptr<CellChainParams> > vecParams;
+static std::vector< std::shared_ptr<MCChainParams> > vecParams;
 
 void SelectParams(const std::string& network)
 {

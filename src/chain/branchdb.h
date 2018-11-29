@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef BITCOIN_BRANCHDB_H
-#define BITCOIN_BRANCHDB_H
+#ifndef MAGNACHAIN_BRANCHDB_H
+#define MAGNACHAIN_BRANCHDB_H
 
 #include "chain.h"
 #include "io/dbwrapper.h"
@@ -31,9 +31,9 @@ public:
         eDeadInherit = 1<<1,
     };
 
-    CellBlockHeader header; // 侧链spv
+    MCBlockHeader header; // 侧链spv
     int32_t nHeight;     // 侧链块高度
-    CellTransactionRef pStakeTx;
+    MCTransactionRef pStakeTx;
 
     // mBlockHash 和 txIndex 为了查找到原来交易
     uint256 mBlockHash; // 主链打包块的hash
@@ -47,7 +47,7 @@ public:
                                   // 而且放这里比mReortTxFlag更有优势吧，数据分散到每个block，而不是集中起来。
     bool IsDead();//是否在被举报状态
 
-    void InitDataFromTx(const CellTransaction& tx);
+    void InitDataFromTx(const MCTransaction& tx);
 
     ADD_SERIALIZE_METHODS;
 
@@ -135,7 +135,7 @@ private:
 
 typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;
 
-//参考 CellCoinsView CellCoinsViewBacked CellCoinsViewCache CellCoinsViewDB 的机构来重写这里的cache
+//参考 MCCoinsView MCCoinsViewBacked MCCoinsViewCache MCCoinsViewDB 的机构来重写这里的cache
 // Interface
 class BrandchDataView
 {
@@ -165,17 +165,17 @@ public:
     uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
     //override>
     // flush data in connectblock and disconnnectblock, add or remove data.
-    void Flush(const std::shared_ptr<const CellBlock>& pblock, bool fConnect);
+    void Flush(const std::shared_ptr<const MCBlock>& pblock, bool fConnect);
 protected:
-    void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
-    void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
+    void OnConnectBlock(const std::shared_ptr<const MCBlock>& pblock);
+    void OnDisconnectBlock(const std::shared_ptr<const MCBlock>& pblock);
 
-    virtual void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    virtual void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    virtual bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    virtual bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    virtual bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
-    virtual bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    virtual void AddBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    virtual void DelBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    virtual bool AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    virtual bool AddProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    virtual bool DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    virtual bool DelProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
 
     virtual bool WriteModifyToDB(const std::set<uint256>& modifyBranch);
 protected:
@@ -197,13 +197,13 @@ public:
 
     std::map<uint256, uint16_t> mReortTxFlagCache;
 
-    bool HasInCache(const CellTransaction& tx);
-    void AddToCache(const CellTransaction& tx);
+    bool HasInCache(const MCTransaction& tx);
+    void AddToCache(const MCTransaction& tx);
     
-    void RemoveFromBlock(const std::vector<CellTransactionRef>& vtx);
+    void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
 
     //获取cache中的block的祖先
-    std::vector<uint256> GetAncestorsBlocksHash(const CellTransaction& tx);
+    std::vector<uint256> GetAncestorsBlocksHash(const MCTransaction& tx);
 
     const BranchBlockData* GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash);
 
@@ -218,17 +218,17 @@ public:
     uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
     //override>
     // overwrite, before do modify to data, load data from readonly_db if data not exist in local db.
-    void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch) override;
-    void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch) override;
-    bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch) override;
-    bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch) override;
-    bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch) override;
-    bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch) override;
+    void AddBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch) override;
+    void DelBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch) override;
+    bool AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch) override;
+    bool AddProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch) override;
+    bool DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch) override;
+    bool DelProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch) override;
     //
 private:
     bool FetchDataFromSource(const uint256& branchId);
 private:
-    void RemoveFromCache(const CellTransaction& tx);
+    void RemoveFromCache(const MCTransaction& tx);
 };
 
 /*
@@ -256,19 +256,19 @@ public:
     //uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash) override;
 //override>
 protected:
-    //void OnConnectBlock(const std::shared_ptr<const CellBlock>& pblock);
-    //void OnDisconnectBlock(const std::shared_ptr<const CellBlock>& pblock);
+    //void OnConnectBlock(const std::shared_ptr<const MCBlock>& pblock);
+    //void OnDisconnectBlock(const std::shared_ptr<const MCBlock>& pblock);
 
-    //void AddBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    //void DelBlockInfoTxData(CellTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
-    //bool AddReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    //bool AddProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch);
-    //bool DelReportTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
-    //bool DelProveTxData(CellTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    //void AddBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    //void DelBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch);
+    //bool AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    //bool AddProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch);
+    //bool DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
+    //bool DelProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch);
 
     bool WriteModifyToDB(const std::set<uint256>& modifyBranch) override;
 protected:
-    CellDBWrapper db;
+    MCDBWrapper db;
 };
 
 extern BranchDb* g_pBranchDb;
@@ -276,4 +276,4 @@ extern BranchDb* g_pBranchDb;
 //branch mempool tx cache data
 extern BranchCache* g_pBranchDataMemCache;
 
-#endif // BITCOIN_BRANCHDB_H
+#endif // MAGNACHAIN_BRANCHDB_H

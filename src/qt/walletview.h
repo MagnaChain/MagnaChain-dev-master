@@ -1,16 +1,16 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_WALLETVIEW_H
-#define CELLLINK_QT_WALLETVIEW_H
+#ifndef MAGNACHAIN_QT_WALLETVIEW_H
+#define MAGNACHAIN_QT_WALLETVIEW_H
 
 #include "misc/amount.h"
 
 #include <QStackedWidget>
 
-class CellLinkGUI;
+class MagnaChainGUI;
 class ClientModel;
 class OverviewPage;
 class PlatformStyle;
@@ -40,7 +40,7 @@ public:
     explicit WalletView(const PlatformStyle *platformStyle, QWidget *parent);
     ~WalletView();
 
-    void setCellLinkGUI(CellLinkGUI *gui);
+    void setMagnaChainGUI(MagnaChainGUI *gui);
     /** Set the client model.
         The client model represents the part of the core that communicates with the P2P network, and is wallet-agnostic.
     */
@@ -124,9 +124,9 @@ Q_SIGNALS:
     /** HD-Enabled status of wallet changed (only possible during startup) */
     void hdEnabledStatusChanged(int hdEnabled);
     /** Notify that a new transaction appeared */
-    void incomingTransaction(const QString& date, int unit, const CellAmount& amount, const QString& type, const QString& address, const QString& label);
+    void incomingTransaction(const QString& date, int unit, const MCAmount& amount, const QString& type, const QString& address, const QString& label);
     /** Notify that the out of sync warning icon has been pressed */
     void outOfSyncWarningClicked();
 };
 
-#endif // CELLLINK_QT_WALLETVIEW_H
+#endif // MAGNACHAIN_QT_WALLETVIEW_H

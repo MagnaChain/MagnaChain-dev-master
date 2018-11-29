@@ -1,4 +1,4 @@
-Source: celllink
+Source: magnachain
 Section: utils
 Priority: optional
 Maintainer: Matt Corallo <matt@mattcorallo.com>
@@ -26,45 +26,45 @@ Build-Depends: debhelper,
  python,
  libzmq3-dev
 Standards-Version: 3.9.2
-Homepage: https://bitcoincore.org/
-Vcs-Git: git://github.com/bitcoin/bitcoin.git
-Vcs-Browser: https://github.com/bitcoin/bitcoin
+Homepage: https://magnachaincore.org/
+Vcs-Git: git://github.com/magnachain/magnachain.git
+Vcs-Browser: https://github.com/magnachain/magnachain
 
-Package: celllinkd
+Package: magnachaind
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: peer-to-peer network based digital currency - daemon
- CellLink is a free open source peer-to-peer electronic cash system that
+ MagnaChain is a free open source peer-to-peer electronic cash system that
  is completely decentralized, without the need for a central server or
  trusted parties.  Users hold the crypto keys to their own money and
  transact directly with each other, with the help of a P2P network to
  check for double-spending.
  .
- This package provides the daemon, celllinkd, and the CLI tool
- celllink-cli to interact with the daemon.
+ This package provides the daemon, magnachaind, and the CLI tool
+ magnachain-cli to interact with the daemon.
 
-Package: celllink-qt
+Package: magnachain-qt
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: peer-to-peer network based digital currency - Qt GUI
- CellLink is a free open source peer-to-peer electronic cash system that
+ MagnaChain is a free open source peer-to-peer electronic cash system that
  is completely decentralized, without the need for a central server or
  trusted parties.  Users hold the crypto keys to their own money and
  transact directly with each other, with the help of a P2P network to
  check for double-spending.
  .
- This package provides CellLink-Qt, a GUI for CellLink based on Qt.
+ This package provides MagnaChain-Qt, a GUI for MagnaChain based on Qt.
 
-Package: celllink-tx
+Package: magnachain-tx
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: peer-to-peer digital currency - standalone transaction tool
- CellLink is a free open source peer-to-peer electronic cash system that
+ MagnaChain is a free open source peer-to-peer electronic cash system that
  is completely decentralized, without the need for a central server or
  trusted parties.  Users hold the crypto keys to their own money and
  transact directly with each other, with the help of a P2P network to
  check for double-spending.
  .
- This package provides celllink-tx, a command-line transaction creation
- tool which can be used without a celllink daemon.  Some means of
+ This package provides magnachain-tx, a command-line transaction creation
+ tool which can be used without a magnachain daemon.  Some means of
  exchanging minimal transaction data with peers is still required.

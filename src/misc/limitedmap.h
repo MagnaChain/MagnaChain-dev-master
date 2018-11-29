@@ -1,10 +1,10 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_LIMITEDMAP_H
-#define CELLLINK_LIMITEDMAP_H
+#ifndef MAGNACHAIN_LIMITEDMAP_H
+#define MAGNACHAIN_LIMITEDMAP_H
 
 #include <assert.h>
 #include <map>
@@ -98,4 +98,4 @@ public:
     }
 };
 
-#endif // CELLLINK_LIMITEDMAP_H
+#endif // MAGNACHAIN_LIMITEDMAP_H

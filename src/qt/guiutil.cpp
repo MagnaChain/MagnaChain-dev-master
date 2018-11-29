@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -107,13 +107,13 @@ QFont fixedPitchFont()
 static const uint8_t dummydata[] = {0xeb,0x15,0x23,0x1d,0xfc,0xeb,0x60,0x92,0x58,0x86,0xb6,0x7d,0x06,0x52,0x99,0x92,0x59,0x15,0xae,0xb1,0x72,0xc0,0x66,0x47};
 
 // Generate a dummy address with invalid CRC, starting with the network prefix.
-static std::string DummyAddress(const CellChainParams &params)
+static std::string DummyAddress(const MCChainParams &params)
 {
-    std::vector<unsigned char> sourcedata = params.Base58Prefix(CellChainParams::PUBKEY_ADDRESS);
+    std::vector<unsigned char> sourcedata = params.Base58Prefix(MCChainParams::PUBKEY_ADDRESS);
     sourcedata.insert(sourcedata.end(), dummydata, dummydata + sizeof(dummydata));
     for(int i=0; i<256; ++i) { // Try every trailing byte
         std::string s = EncodeBase58(sourcedata.data(), sourcedata.data() + sourcedata.size());
-        if (!CellLinkAddress(s).IsValid())
+        if (!MagnaChainAddress(s).IsValid())
             return s;
         sourcedata[sourcedata.size()-1] += 1;
     }
@@ -128,11 +128,11 @@ void setupAddressWidget(QValidatedLineEdit *widget, QWidget *parent)
 #if QT_VERSION >= 0x040700
     // We don't want translators to use own addresses in translations
     // and this is the only place, where this address is supplied.
-    widget->setPlaceholderText(QObject::tr("Enter a CellLink address (e.g. %1)").arg(
+    widget->setPlaceholderText(QObject::tr("Enter a MagnaChain address (e.g. %1)").arg(
         QString::fromStdString(DummyAddress(Params()))));
 #endif
-    widget->setValidator(new CellLinkAddressEntryValidator(parent));
-    widget->setCheckValidator(new CellLinkAddressCheckValidator(parent));
+    widget->setValidator(new MagnaChainAddressEntryValidator(parent));
+    widget->setCheckValidator(new MagnaChainAddressCheckValidator(parent));
 }
 
 void setupAmountWidget(QLineEdit *widget, QWidget *parent)
@@ -144,7 +144,7 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
     widget->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
 }
 
-bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
+bool parseMagnaChainURI(const QUrl &uri, SendCoinsRecipient *out)
 {
     // return if URI is not valid or is no magnachain: URI
     if(!uri.isValid() || uri.scheme() != QString("magnachain"))
@@ -187,7 +187,7 @@ bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
         {
             if(!i->second.isEmpty())
             {
-                if(!CellLinkUnits::parse(CellLinkUnits::BTC, i->second, &rv.amount))
+                if(!MagnaChainUnits::parse(MagnaChainUnits::BTC, i->second, &rv.amount))
                 {
                     return false;
                 }
@@ -205,7 +205,7 @@ bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out)
     return true;
 }
 
-bool parseCellLinkURI(QString uri, SendCoinsRecipient *out)
+bool parseMagnaChainURI(QString uri, SendCoinsRecipient *out)
 {
     // Convert magnachain:// to magnachain:
     //
@@ -216,17 +216,17 @@ bool parseCellLinkURI(QString uri, SendCoinsRecipient *out)
         uri.replace(0, 10, "magnachain:");
     }
     QUrl uriInstance(uri);
-    return parseCellLinkURI(uriInstance, out);
+    return parseMagnaChainURI(uriInstance, out);
 }
 
-QString formatCellLinkURI(const SendCoinsRecipient &info)
+QString formatMagnaChainURI(const SendCoinsRecipient &info)
 {
     QString ret = QString("magnachain:%1").arg(info.address);
     int paramCount = 0;
 
     if (info.amount)
     {
-        ret += QString("?amount=%1").arg(CellLinkUnits::format(CellLinkUnits::BTC, info.amount, false, CellLinkUnits::separatorNever));
+        ret += QString("?amount=%1").arg(MagnaChainUnits::format(MagnaChainUnits::BTC, info.amount, false, MagnaChainUnits::separatorNever));
         paramCount++;
     }
 
@@ -247,11 +247,11 @@ QString formatCellLinkURI(const SendCoinsRecipient &info)
     return ret;
 }
 
-bool isDust(const QString& address, const CellAmount& amount)
+bool isDust(const QString& address, const MCAmount& amount)
 {
-    CellTxDestination dest = CellLinkAddress(address.toStdString()).Get();
-    CellScript script = GetScriptForDestination(dest);
-    CellTxOut txOut(amount, script);
+    MCTxDestination dest = MagnaChainAddress(address.toStdString()).Get();
+    MCScript script = GetScriptForDestination(dest);
+    MCTxOut txOut(amount, script);
     return IsDust(txOut, ::dustRelayFee);
 }
 
@@ -416,9 +416,9 @@ void openDebugLogfile()
         QDesktopServices::openUrl(QUrl::fromLocalFile(boostPathToQString(pathDebug)));
 }
 
-bool openCellLinkConf()
+bool openMagnaChainConf()
 {
-    boost::filesystem::path pathConfig = GetConfigFile(CELLLINK_CONF_FILENAME);
+    boost::filesystem::path pathConfig = GetConfigFile(MAGNACHAIN_CONF_FILENAME);
 
     /* Create the file */
     boost::filesystem::ofstream configFile(pathConfig, std::ios_base::app);
@@ -615,16 +615,16 @@ TableViewLastColumnResizingFixer::TableViewLastColumnResizingFixer(QTableView* t
 fs::path static StartupShortcutPath()
 {
     std::string chain = ChainNameFromCommandLine();
-    if (chain == CellBaseChainParams::MAIN)
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "CellLink.lnk";
-    if (chain == CellBaseChainParams::TESTNET) // Remove this special case when CellBaseChainParams::TESTNET = "testnet4"
-        return GetSpecialFolderPath(CSIDL_STARTUP) / "CellLink (testnet).lnk";
-    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("CellLink (%s).lnk", chain);
+    if (chain == MCBaseChainParams::MAIN)
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "MagnaChain.lnk";
+    if (chain == MCBaseChainParams::TESTNET) // Remove this special case when MCBaseChainParams::TESTNET = "testnet4"
+        return GetSpecialFolderPath(CSIDL_STARTUP) / "MagnaChain (testnet).lnk";
+    return GetSpecialFolderPath(CSIDL_STARTUP) / strprintf("MagnaChain (%s).lnk", chain);
 }
 
 bool GetStartOnSystemStartup()
 {
-    // check for CellLink*.lnk
+    // check for MagnaChain*.lnk
     return fs::exists(StartupShortcutPath());
 }
 
@@ -713,7 +713,7 @@ fs::path static GetAutostartDir()
 fs::path static GetAutostartFilePath()
 {
     std::string chain = ChainNameFromCommandLine();
-    if (chain == CellBaseChainParams::MAIN)
+    if (chain == MCBaseChainParams::MAIN)
         return GetAutostartDir() / "magnachain.desktop";
     return GetAutostartDir() / strprintf("magnachain-%s.lnk", chain);
 }
@@ -757,10 +757,10 @@ bool SetStartOnSystemStartup(bool fAutoStart)
         // Write a magnachain.desktop file to the autostart directory:
         optionFile << "[Desktop Entry]\n";
         optionFile << "Type=Application\n";
-        if (chain == CellBaseChainParams::MAIN)
-            optionFile << "Name=CellLink\n";
+        if (chain == MCBaseChainParams::MAIN)
+            optionFile << "Name=MagnaChain\n";
         else
-            optionFile << strprintf("Name=CellLink (%s)\n", chain);
+            optionFile << strprintf("Name=MagnaChain (%s)\n", chain);
         optionFile << "Exec=" << pszExePath << strprintf(" -min -testnet=%d -regtest=%d\n", gArgs.GetBoolArg("-testnet", false), gArgs.GetBoolArg("-regtest", false));
         optionFile << "Terminal=false\n";
         optionFile << "Hidden=false\n";

@@ -1,10 +1,10 @@
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CLIENTVERSION_H
-#define CELLLINK_CLIENTVERSION_H
+#ifndef MAGNACHAIN_CLIENTVERSION_H
+#define MAGNACHAIN_CLIENTVERSION_H
 
 #if defined(HAVE_CONFIG_H)
 #include "config/magnachain-config.h"
@@ -12,7 +12,7 @@
 
 // Check that required client information is defined
 #if !defined(CLIENT_VERSION_MAJOR) || !defined(CLIENT_VERSION_MINOR) || !defined(CLIENT_VERSION_REVISION) || !defined(CLIENT_VERSION_BUILD) || !defined(CLIENT_VERSION_IS_RELEASE) || !defined(COPYRIGHT_YEAR)
-#error Client version information missing: version is not defined by CellTxOutCompressor or in any other way
+#error Client version information missing: version is not defined by MCTxOutCompressor or in any other way
 #endif
 
 /**
@@ -51,4 +51,4 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
 
 #endif // WINDRES_PREPROC
 
-#endif // CELLLINK_CLIENTVERSION_H
+#endif // MAGNACHAIN_CLIENTVERSION_H

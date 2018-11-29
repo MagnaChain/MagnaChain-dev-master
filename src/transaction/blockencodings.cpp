@@ -1,4 +1,4 @@
-// Copyright (c) 2016 The Bitcoin Core developers
+// Copyright (c) 2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,20 +17,20 @@
 #include "chain/branchdb.h"
 #include <unordered_map>
 
-CellBlockHeaderAndShortTxIDs::CellBlockHeaderAndShortTxIDs(const CellBlock& block, bool fUseWTXID) :
+MCBlockHeaderAndShortTxIDs::MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID) :
         nonce(GetRand(std::numeric_limits<uint64_t>::max())),
         shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block) {
     FillShortTxIDSelector();
     //TODO: Use our mempool prior to block acceptance to predictively fill more than just the coinbase
     prefilledtxn[0] = {0, block.vtx[0]};
     for (size_t i = 1; i < block.vtx.size(); i++) {
-        const CellTransaction& tx = *block.vtx[i];
+        const MCTransaction& tx = *block.vtx[i];
         shorttxids[i - 1] = GetShortID(fUseWTXID ? tx.GetWitnessHash() : tx.GetHash());
     }
 }
 
-void CellBlockHeaderAndShortTxIDs::FillShortTxIDSelector() const {
-    CellDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+void MCBlockHeaderAndShortTxIDs::FillShortTxIDSelector() const {
+    MCDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
     stream << header << nonce;
     CSHA256 hasher;
     hasher.Write((unsigned char*)&(*stream.begin()), stream.end() - stream.begin());
@@ -40,14 +40,14 @@ void CellBlockHeaderAndShortTxIDs::FillShortTxIDSelector() const {
     shorttxidk1 = shorttxidhash.GetUint64(1);
 }
 
-uint64_t CellBlockHeaderAndShortTxIDs::GetShortID(const uint256& txhash) const {
+uint64_t MCBlockHeaderAndShortTxIDs::GetShortID(const uint256& txhash) const {
     static_assert(SHORTTXIDS_LENGTH == 6, "shorttxids calculation assumes 6-byte shorttxids");
     return SipHashUint256(shorttxidk0, shorttxidk1, txhash) & 0xffffffffffffL;
 }
 
 
 
-ReadStatus PartiallyDownloadedBlock::InitData(const CellBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, CellTransactionRef>>& extra_txn) {
+ReadStatus PartiallyDownloadedBlock::InitData(const MCBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, MCTransactionRef>>& extra_txn) {
     if (cmpctblock.header.IsNull() || (cmpctblock.shorttxids.empty() && cmpctblock.prefilledtxn.empty()))
         return READ_STATUS_INVALID;
     if (cmpctblock.shorttxids.size() + cmpctblock.prefilledtxn.size() > MAX_BLOCK_WEIGHT / MIN_SERIALIZABLE_TRANSACTION_WEIGHT)
@@ -106,7 +106,7 @@ ReadStatus PartiallyDownloadedBlock::InitData(const CellBlockHeaderAndShortTxIDs
     std::vector<bool> have_txn(txn_available.size());
     {
     LOCK(pool->cs);
-    const std::vector<std::pair<uint256, CellTxMemPool::txiter> >& vTxHashes = pool->vTxHashes;
+    const std::vector<std::pair<uint256, MCTxMemPool::txiter> >& vTxHashes = pool->vTxHashes;
     for (size_t i = 0; i < vTxHashes.size(); i++) {
         uint64_t shortid = cmpctblock.GetShortID(vTxHashes[i].first);
         std::unordered_map<uint64_t, uint16_t>::iterator idit = shorttxids.find(shortid);
@@ -175,7 +175,7 @@ bool PartiallyDownloadedBlock::IsTxAvailable(size_t index) const {
     return txn_available[index] != nullptr;
 }
 
-ReadStatus PartiallyDownloadedBlock::FillBlock(CellBlock& block, const std::vector<CellTransactionRef>& vtx_missing) {
+ReadStatus PartiallyDownloadedBlock::FillBlock(MCBlock& block, const std::vector<MCTransactionRef>& vtx_missing) {
     assert(!header.IsNull());
     uint256 hash = header.GetHash();
     block = header;
@@ -199,11 +199,11 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(CellBlock& block, const std::vect
         return READ_STATUS_INVALID;
 
     BranchCache branchcache(g_pBranchDb);
-    CellValidationState state;
+    MCValidationState state;
     if (!CheckBlock(block, state, Params().GetConsensus(), &branchcache)) {
         // TODO: We really want to just check merkle tree manually here,
         // but that is expensive, and CheckBlock caches a block's
-        // "checked-status" (in the CellBlock?). CellBlock should be able to
+        // "checked-status" (in the MCBlock?). MCBlock should be able to
         // check its own merkle root and cache that check.
         if (state.CorruptionPossible())
             return READ_STATUS_FAILED; // Possible Short ID collision

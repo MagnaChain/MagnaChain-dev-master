@@ -1,11 +1,11 @@
 Sample configuration files for:
 ```
-SystemD: bitcoind.service
-Upstart: bitcoind.conf
-OpenRC:  bitcoind.openrc
-         bitcoind.openrcconf
-CentOS:  bitcoind.init
-OS X:    org.magnachain.bitcoind.plist
+SystemD: magnachaind.service
+Upstart: magnachaind.conf
+OpenRC:  magnachaind.openrc
+         magnachaind.openrcconf
+CentOS:  magnachaind.init
+OS X:    org.magnachain.magnachaind.plist
 ```
 have been made available to assist packagers in creating node packages here.
 

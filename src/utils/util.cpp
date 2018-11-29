@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -95,8 +95,8 @@
 // Application startup time (used for uptime calculation)
 const int64_t nStartupTime = GetTime();
 
-const char * const CELLLINK_CONF_FILENAME = "magnachain.conf";
-const char * const CELLLINK_PID_FILENAME = "magnachain.pid";
+const char * const MAGNACHAIN_CONF_FILENAME = "magnachain.conf";
+const char * const MAGNACHAIN_PID_FILENAME = "magnachain.pid";
 
 ArgsManager gArgs;
 bool fPrintToConsole = false;
@@ -112,7 +112,7 @@ CTranslationInterface translationInterface;
 std::atomic<uint32_t> logCategories(0);
 
 /** Init OpenSSL library multithreading support */
-static std::unique_ptr<CellCriticalSection[]> ppmutexOpenSSL;
+static std::unique_ptr<MCCriticalSection[]> ppmutexOpenSSL;
 void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAFETY_ANALYSIS
 {
     if (mode & CRYPTO_LOCK) {
@@ -129,7 +129,7 @@ public:
     CInit()
     {
         // Init OpenSSL library multithreading support
-        ppmutexOpenSSL.reset(new CellCriticalSection[CRYPTO_num_locks()]);
+        ppmutexOpenSSL.reset(new MCCriticalSection[CRYPTO_num_locks()]);
         CRYPTO_set_locking_callback(locking_callback);
 
         // OpenSSL can optionally load a config file which lists optional loadable modules and engines.
@@ -559,7 +559,7 @@ fs::path GetDefaultDataDir()
 
 static fs::path pathCached;
 static fs::path pathCachedNetSpecific;
-static CellCriticalSection csPathCached;
+static MCCriticalSection csPathCached;
 
 const fs::path &GetDataDir(bool fNetSpecific)
 {
@@ -636,7 +636,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 #ifndef WIN32
 fs::path GetPidFile()
 {
-    fs::path pathPidFile(gArgs.GetArg("-pid", CELLLINK_PID_FILENAME));
+    fs::path pathPidFile(gArgs.GetArg("-pid", MAGNACHAIN_PID_FILENAME));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
@@ -897,7 +897,7 @@ std::string CopyrightHolders(const std::string& strPrefix)
     std::string strCopyrightHolders = strPrefix + strprintf(_(COPYRIGHT_HOLDERS), _(COPYRIGHT_HOLDERS_SUBSTITUTION));
 
     // Check for untranslated substitution to make sure MagnaChain Core copyright is not removed by accident
-    if (strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION).find("CellLink") == std::string::npos) {
+    if (strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION).find("MagnaChain") == std::string::npos) {
         strCopyrightHolders += "\n" + strPrefix + "The MagnaChain Core developers";
     }
     return strCopyrightHolders;

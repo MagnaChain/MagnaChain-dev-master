@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,14 +31,14 @@ namespace {
 //! (https://docs.oracle.com/cd/E17275_01/html/programmer_reference/program_copy.html),
 //! so magnachain should never create different databases with the same fileid, but
 //! this error can be triggered if users manually copy database files.
-void CheckUniqueFileid(const CellDBEnv& env, const std::string& filename, Db& db)
+void CheckUniqueFileid(const MCDBEnv& env, const std::string& filename, Db& db)
 {
     if (env.IsMock()) return;
 
     u_int8_t fileid[DB_FILE_ID_LEN];
     int ret = db.get_mpf()->get_fileid(fileid);
     if (ret != 0) {
-        throw std::runtime_error(strprintf("CellDB: Can't open database %s (get_fileid failed with %d)", filename, ret));
+        throw std::runtime_error(strprintf("MCDB: Can't open database %s (get_fileid failed with %d)", filename, ret));
     }
 
     for (const auto& item : env.mapDb) {
@@ -47,7 +47,7 @@ void CheckUniqueFileid(const CellDBEnv& env, const std::string& filename, Db& db
             memcmp(fileid, item_fileid, sizeof(fileid)) == 0) {
             const char* item_filename = nullptr;
             item.second->get_dbname(&item_filename, nullptr);
-            throw std::runtime_error(strprintf("CellDB: Can't open database %s (duplicates fileid %s from %s)", filename,
+            throw std::runtime_error(strprintf("MCDB: Can't open database %s (duplicates fileid %s from %s)", filename,
                 HexStr(std::begin(item_fileid), std::end(item_fileid)),
                 item_filename ? item_filename : "(unknown database)"));
         }
@@ -56,12 +56,12 @@ void CheckUniqueFileid(const CellDBEnv& env, const std::string& filename, Db& db
 } // namespace
 
 //
-// CellDB
+// MCDB
 //
 
-CellDBEnv bitdb;
+MCDBEnv bitdb;
 
-void CellDBEnv::EnvShutdown()
+void MCDBEnv::EnvShutdown()
 {
     if (!fDbEnvInit)
         return;
@@ -69,12 +69,12 @@ void CellDBEnv::EnvShutdown()
     fDbEnvInit = false;
     int ret = dbenv->close(0);
     if (ret != 0)
-        LogPrintf("CellDBEnv::EnvShutdown: Error %d shutting down database environment: %s\n", ret, DbEnv::strerror(ret));
+        LogPrintf("MCDBEnv::EnvShutdown: Error %d shutting down database environment: %s\n", ret, DbEnv::strerror(ret));
     if (!fMockDb)
         DbEnv((u_int32_t)0).remove(strPath.c_str(), 0);
 }
 
-void CellDBEnv::Reset()
+void MCDBEnv::Reset()
 {
     delete dbenv;
     dbenv = new DbEnv(DB_CXX_NO_EXCEPTIONS);
@@ -82,24 +82,24 @@ void CellDBEnv::Reset()
     fMockDb = false;
 }
 
-CellDBEnv::CellDBEnv() : dbenv(nullptr)
+MCDBEnv::MCDBEnv() : dbenv(nullptr)
 {
     Reset();
 }
 
-CellDBEnv::~CellDBEnv()
+MCDBEnv::~MCDBEnv()
 {
     EnvShutdown();
     delete dbenv;
     dbenv = nullptr;
 }
 
-void CellDBEnv::Close()
+void MCDBEnv::Close()
 {
     EnvShutdown();
 }
 
-bool CellDBEnv::Open(const fs::path& pathIn)
+bool MCDBEnv::Open(const fs::path& pathIn)
 {
     if (fDbEnvInit)
         return true;
@@ -110,7 +110,7 @@ bool CellDBEnv::Open(const fs::path& pathIn)
     fs::path pathLogDir = pathIn / "database";
     TryCreateDirectories(pathLogDir);
     fs::path pathErrorFile = pathIn / "db.log";
-    LogPrintf("CellDBEnv::Open: LogDir=%s ErrorFile=%s\n", pathLogDir.string(), pathErrorFile.string());
+    LogPrintf("MCDBEnv::Open: LogDir=%s ErrorFile=%s\n", pathLogDir.string(), pathErrorFile.string());
 
     unsigned int nEnvFlags = 0;
     if (gArgs.GetBoolArg("-privdb", DEFAULT_WALLET_PRIVDB))
@@ -138,7 +138,7 @@ bool CellDBEnv::Open(const fs::path& pathIn)
                          S_IRUSR | S_IWUSR);
     if (ret != 0) {
         dbenv->close(0);
-        return error("CellDBEnv::Open: Error %d opening database environment: %s\n", ret, DbEnv::strerror(ret));
+        return error("MCDBEnv::Open: Error %d opening database environment: %s\n", ret, DbEnv::strerror(ret));
     }
 
     fDbEnvInit = true;
@@ -146,14 +146,14 @@ bool CellDBEnv::Open(const fs::path& pathIn)
     return true;
 }
 
-void CellDBEnv::MakeMock()
+void MCDBEnv::MakeMock()
 {
     if (fDbEnvInit)
-        throw std::runtime_error("CellDBEnv::MakeMock: Already initialized");
+        throw std::runtime_error("MCDBEnv::MakeMock: Already initialized");
 
     boost::this_thread::interruption_point();
 
-    LogPrint(BCLog::DB, "CellDBEnv::MakeMock\n");
+    LogPrint(BCLog::DB, "MCDBEnv::MakeMock\n");
 
     dbenv->set_cachesize(1, 0, 1);
     dbenv->set_lg_bsize(10485760 * 4);
@@ -172,13 +172,13 @@ void CellDBEnv::MakeMock()
                              DB_PRIVATE,
                          S_IRUSR | S_IWUSR);
     if (ret > 0)
-        throw std::runtime_error(strprintf("CellDBEnv::MakeMock: Error %d opening database environment.", ret));
+        throw std::runtime_error(strprintf("MCDBEnv::MakeMock: Error %d opening database environment.", ret));
 
     fDbEnvInit = true;
     fMockDb = true;
 }
 
-CellDBEnv::VerifyResult CellDBEnv::Verify(const std::string& strFile, recoverFunc_type recoverFunc, std::string& out_backup_filename)
+MCDBEnv::VerifyResult MCDBEnv::Verify(const std::string& strFile, recoverFunc_type recoverFunc, std::string& out_backup_filename)
 {
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
@@ -195,7 +195,7 @@ CellDBEnv::VerifyResult CellDBEnv::Verify(const std::string& strFile, recoverFun
     return (fRecovered ? RECOVER_OK : RECOVER_FAIL);
 }
 
-bool CellDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CellDataStream ssKey, CellDataStream ssValue), std::string& newFilename)
+bool MCDB::Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, MCDataStream ssKey, MCDataStream ssValue), std::string& newFilename)
 {
     // Recovery procedure:
     // move wallet file to walletfilename.timestamp.bak
@@ -217,7 +217,7 @@ bool CellDB::Recover(const std::string& filename, void *callbackDataIn, bool (*r
         return false;
     }
 
-    std::vector<CellDBEnv::KeyValPair> salvagedData;
+    std::vector<MCDBEnv::KeyValPair> salvagedData;
     bool fSuccess = bitdb.Salvage(newFilename, true, salvagedData);
     if (salvagedData.empty())
     {
@@ -240,12 +240,12 @@ bool CellDB::Recover(const std::string& filename, void *callbackDataIn, bool (*r
     }
 
     DbTxn* ptxn = bitdb.TxnBegin();
-    for (CellDBEnv::KeyValPair& row : salvagedData)
+    for (MCDBEnv::KeyValPair& row : salvagedData)
     {
         if (recoverKVcallback)
         {
-            CellDataStream ssKey(row.first, SER_DISK, CLIENT_VERSION);
-            CellDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
+            MCDataStream ssKey(row.first, SER_DISK, CLIENT_VERSION);
+            MCDataStream ssValue(row.second, SER_DISK, CLIENT_VERSION);
             if (!(*recoverKVcallback)(callbackDataIn, ssKey, ssValue))
                 continue;
         }
@@ -261,7 +261,7 @@ bool CellDB::Recover(const std::string& filename, void *callbackDataIn, bool (*r
     return fSuccess;
 }
 
-bool CellDB::VerifyEnvironment(const std::string& walletFile, const fs::path& dataDir, std::string& errorStr)
+bool MCDB::VerifyEnvironment(const std::string& walletFile, const fs::path& dataDir, std::string& errorStr)
 {
     LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
     LogPrintf("Using wallet %s\n", walletFile);
@@ -295,13 +295,13 @@ bool CellDB::VerifyEnvironment(const std::string& walletFile, const fs::path& da
     return true;
 }
 
-bool CellDB::VerifyDatabaseFile(const std::string& walletFile, const fs::path& dataDir, std::string& warningStr, std::string& errorStr, CellDBEnv::recoverFunc_type recoverFunc)
+bool MCDB::VerifyDatabaseFile(const std::string& walletFile, const fs::path& dataDir, std::string& warningStr, std::string& errorStr, MCDBEnv::recoverFunc_type recoverFunc)
 {
     if (fs::exists(dataDir / walletFile))
     {
         std::string backup_filename;
-        CellDBEnv::VerifyResult r = bitdb.Verify(walletFile, recoverFunc, backup_filename);
-        if (r == CellDBEnv::RECOVER_OK)
+        MCDBEnv::VerifyResult r = bitdb.Verify(walletFile, recoverFunc, backup_filename);
+        if (r == MCDBEnv::RECOVER_OK)
         {
             warningStr = strprintf(_("Warning: Wallet file corrupt, data salvaged!"
                                      " Original %s saved as %s in %s; if"
@@ -309,7 +309,7 @@ bool CellDB::VerifyDatabaseFile(const std::string& walletFile, const fs::path& d
                                      " restore from a backup."),
                                    walletFile, backup_filename, dataDir);
         }
-        if (r == CellDBEnv::RECOVER_FAIL)
+        if (r == MCDBEnv::RECOVER_FAIL)
         {
             errorStr = strprintf(_("%s corrupt, salvage failed"), walletFile);
             return false;
@@ -324,7 +324,7 @@ static const char *HEADER_END = "HEADER=END";
 /* End of key/value data */
 static const char *DATA_END = "DATA=END";
 
-bool CellDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vector<CellDBEnv::KeyValPair>& vResult)
+bool MCDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vector<MCDBEnv::KeyValPair>& vResult)
 {
     LOCK(cs_db);
     assert(mapFileUseCount.count(strFile) == 0);
@@ -338,14 +338,14 @@ bool CellDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vecto
     Db db(dbenv, 0);
     int result = db.verify(strFile.c_str(), nullptr, &strDump, flags);
     if (result == DB_VERIFY_BAD) {
-        LogPrintf("CellDBEnv::Salvage: Database salvage found errors, all data may not be recoverable.\n");
+        LogPrintf("MCDBEnv::Salvage: Database salvage found errors, all data may not be recoverable.\n");
         if (!fAggressive) {
-            LogPrintf("CellDBEnv::Salvage: Rerun with aggressive mode to ignore errors and continue.\n");
+            LogPrintf("MCDBEnv::Salvage: Rerun with aggressive mode to ignore errors and continue.\n");
             return false;
         }
     }
     if (result != 0 && result != DB_VERIFY_BAD) {
-        LogPrintf("CellDBEnv::Salvage: Database salvage failed with result %d.\n", result);
+        LogPrintf("MCDBEnv::Salvage: Database salvage failed with result %d.\n", result);
         return false;
     }
 
@@ -369,7 +369,7 @@ bool CellDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vecto
                 break;
             std::getline(strDump, valueHex);
             if (valueHex == DATA_END) {
-                LogPrintf("CellDBEnv::Salvage: WARNING: Number of keys in data does not match number of values.\n");
+                LogPrintf("MCDBEnv::Salvage: WARNING: Number of keys in data does not match number of values.\n");
                 break;
             }
             vResult.push_back(make_pair(ParseHex(keyHex), ParseHex(valueHex)));
@@ -377,7 +377,7 @@ bool CellDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vecto
     }
 
     if (keyHex != DATA_END) {
-        LogPrintf("CellDBEnv::Salvage: WARNING: Unexpected end of file while reading salvage output.\n");
+        LogPrintf("MCDBEnv::Salvage: WARNING: Unexpected end of file while reading salvage output.\n");
         return false;
     }
 
@@ -385,7 +385,7 @@ bool CellDBEnv::Salvage(const std::string& strFile, bool fAggressive, std::vecto
 }
 
 
-void CellDBEnv::CheckpointLSN(const std::string& strFile)
+void MCDBEnv::CheckpointLSN(const std::string& strFile)
 {
     dbenv->txn_checkpoint(0, 0, 0);
     if (fMockDb)
@@ -394,7 +394,7 @@ void CellDBEnv::CheckpointLSN(const std::string& strFile)
 }
 
 
-CellDB::CellDB(CellWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnCloseIn) : pdb(nullptr), activeTxn(nullptr)
+MCDB::MCDB(MCWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnCloseIn) : pdb(nullptr), activeTxn(nullptr)
 {
     fReadOnly = (!strchr(pszMode, '+') && !strchr(pszMode, 'w'));
     fFlushOnClose = fFlushOnCloseIn;
@@ -412,7 +412,7 @@ CellDB::CellDB(CellWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnClose
     {
         LOCK(env->cs_db);
         if (!env->Open(GetDataDir()))
-            throw std::runtime_error("CellDB: Failed to open database environment.");
+            throw std::runtime_error("MCDB: Failed to open database environment.");
 
         pdb = env->mapDb[strFilename];
         if (pdb == nullptr) {
@@ -424,7 +424,7 @@ CellDB::CellDB(CellWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnClose
                 DbMpoolFile* mpf = pdb_temp->get_mpf();
                 ret = mpf->set_flags(DB_MPOOL_NOFILE, 1);
                 if (ret != 0) {
-                    throw std::runtime_error(strprintf("CellDB: Failed to configure for no temp file backing for database %s", strFilename));
+                    throw std::runtime_error(strprintf("MCDB: Failed to configure for no temp file backing for database %s", strFilename));
                 }
             }
 
@@ -436,7 +436,7 @@ CellDB::CellDB(CellWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnClose
                             0);
 
             if (ret != 0) {
-                throw std::runtime_error(strprintf("CellDB: Error %d, can't open database %s", ret, strFilename));
+                throw std::runtime_error(strprintf("MCDB: Error %d, can't open database %s", ret, strFilename));
             }
             CheckUniqueFileid(*env, strFilename, *pdb_temp);
 
@@ -455,7 +455,7 @@ CellDB::CellDB(CellWalletDBWrapper& dbw, const char* pszMode, bool fFlushOnClose
     }
 }
 
-void CellDB::Flush()
+void MCDB::Flush()
 {
     if (activeTxn)
         return;
@@ -468,12 +468,12 @@ void CellDB::Flush()
     env->dbenv->txn_checkpoint(nMinutes ? gArgs.GetArg("-dblogsize", DEFAULT_WALLET_DBLOGSIZE) * 1024 : 0, nMinutes, 0);
 }
 
-void CellWalletDBWrapper::IncrementUpdateCounter()
+void MCWalletDBWrapper::IncrementUpdateCounter()
 {
     ++nUpdateCounter;
 }
 
-void CellDB::Close()
+void MCDB::Close()
 {
     if (!pdb)
         return;
@@ -491,7 +491,7 @@ void CellDB::Close()
     }
 }
 
-void CellDBEnv::CloseDb(const std::string& strFile)
+void MCDBEnv::CloseDb(const std::string& strFile)
 {
     {
         LOCK(cs_db);
@@ -505,12 +505,12 @@ void CellDBEnv::CloseDb(const std::string& strFile)
     }
 }
 
-bool CellDB::Rewrite(CellWalletDBWrapper& dbw, const char* pszSkip)
+bool MCDB::Rewrite(MCWalletDBWrapper& dbw, const char* pszSkip)
 {
     if (dbw.IsDummy()) {
         return true;
     }
-    CellDBEnv *env = dbw.env;
+    MCDBEnv *env = dbw.env;
     const std::string& strFile = dbw.strFile;
     while (true) {
         {
@@ -522,10 +522,10 @@ bool CellDB::Rewrite(CellWalletDBWrapper& dbw, const char* pszSkip)
                 env->mapFileUseCount.erase(strFile);
 
                 bool fSuccess = true;
-                LogPrintf("CellDB::Rewrite: Rewriting %s...\n", strFile);
+                LogPrintf("MCDB::Rewrite: Rewriting %s...\n", strFile);
                 std::string strFileRes = strFile + ".rewrite";
                 { // surround usage of db with extra {}
-                    CellDB db(dbw, "r");
+                    MCDB db(dbw, "r");
                     Db* pdbCopy = new Db(env->dbenv, 0);
 
                     int ret = pdbCopy->open(nullptr,               // Txn pointer
@@ -535,15 +535,15 @@ bool CellDB::Rewrite(CellWalletDBWrapper& dbw, const char* pszSkip)
                                             DB_CREATE,          // Flags
                                             0);
                     if (ret > 0) {
-                        LogPrintf("CellDB::Rewrite: Can't create database file %s\n", strFileRes);
+                        LogPrintf("MCDB::Rewrite: Can't create database file %s\n", strFileRes);
                         fSuccess = false;
                     }
 
                     Dbc* pcursor = db.GetCursor();
                     if (pcursor)
                         while (fSuccess) {
-                            CellDataStream ssKey(SER_DISK, CLIENT_VERSION);
-                            CellDataStream ssValue(SER_DISK, CLIENT_VERSION);
+                            MCDataStream ssKey(SER_DISK, CLIENT_VERSION);
+                            MCDataStream ssValue(SER_DISK, CLIENT_VERSION);
                             int ret1 = db.ReadAtCursor(pcursor, ssKey, ssValue);
                             if (ret1 == DB_NOTFOUND) {
                                 pcursor->close();
@@ -586,7 +586,7 @@ bool CellDB::Rewrite(CellWalletDBWrapper& dbw, const char* pszSkip)
                         fSuccess = false;
                 }
                 if (!fSuccess)
-                    LogPrintf("CellDB::Rewrite: Failed to rewrite database file %s\n", strFileRes);
+                    LogPrintf("MCDB::Rewrite: Failed to rewrite database file %s\n", strFileRes);
                 return fSuccess;
             }
         }
@@ -596,11 +596,11 @@ bool CellDB::Rewrite(CellWalletDBWrapper& dbw, const char* pszSkip)
 }
 
 
-void CellDBEnv::Flush(bool fShutdown)
+void MCDBEnv::Flush(bool fShutdown)
 {
     int64_t nStart = GetTimeMillis();
     // Flush log data to the actual data file on all files that are not in use
-    LogPrint(BCLog::DB, "CellDBEnv::Flush: Flush(%s)%s\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started");
+    LogPrint(BCLog::DB, "MCDBEnv::Flush: Flush(%s)%s\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started");
     if (!fDbEnvInit)
         return;
     {
@@ -609,21 +609,21 @@ void CellDBEnv::Flush(bool fShutdown)
         while (mi != mapFileUseCount.end()) {
             std::string strFile = (*mi).first;
             int nRefCount = (*mi).second;
-            LogPrint(BCLog::DB, "CellDBEnv::Flush: Flushing %s (refcount = %d)...\n", strFile, nRefCount);
+            LogPrint(BCLog::DB, "MCDBEnv::Flush: Flushing %s (refcount = %d)...\n", strFile, nRefCount);
             if (nRefCount == 0) {
                 // Move log data to the dat file
                 CloseDb(strFile);
-                LogPrint(BCLog::DB, "CellDBEnv::Flush: %s checkpoint\n", strFile);
+                LogPrint(BCLog::DB, "MCDBEnv::Flush: %s checkpoint\n", strFile);
                 dbenv->txn_checkpoint(0, 0, 0);
-                LogPrint(BCLog::DB, "CellDBEnv::Flush: %s detach\n", strFile);
+                LogPrint(BCLog::DB, "MCDBEnv::Flush: %s detach\n", strFile);
                 if (!fMockDb)
                     dbenv->lsn_reset(strFile.c_str(), 0);
-                LogPrint(BCLog::DB, "CellDBEnv::Flush: %s closed\n", strFile);
+                LogPrint(BCLog::DB, "MCDBEnv::Flush: %s closed\n", strFile);
                 mapFileUseCount.erase(mi++);
             } else
                 mi++;
         }
-        LogPrint(BCLog::DB, "CellDBEnv::Flush: Flush(%s)%s took %15dms\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started", GetTimeMillis() - nStart);
+        LogPrint(BCLog::DB, "MCDBEnv::Flush: Flush(%s)%s took %15dms\n", fShutdown ? "true" : "false", fDbEnvInit ? "" : " database not started", GetTimeMillis() - nStart);
         if (fShutdown) {
             char** listp;
             if (mapFileUseCount.empty()) {
@@ -636,13 +636,13 @@ void CellDBEnv::Flush(bool fShutdown)
     }
 }
 
-bool CellDB::PeriodicFlush(CellWalletDBWrapper& dbw)
+bool MCDB::PeriodicFlush(MCWalletDBWrapper& dbw)
 {
     if (dbw.IsDummy()) {
         return true;
     }
     bool ret = false;
-    CellDBEnv *env = dbw.env;
+    MCDBEnv *env = dbw.env;
     const std::string& strFile = dbw.strFile;
     TRY_LOCK(bitdb.cs_db,lockDb);
     if (lockDb)
@@ -679,12 +679,12 @@ bool CellDB::PeriodicFlush(CellWalletDBWrapper& dbw)
     return ret;
 }
 
-bool CellWalletDBWrapper::Rewrite(const char* pszSkip)
+bool MCWalletDBWrapper::Rewrite(const char* pszSkip)
 {
-    return CellDB::Rewrite(*this, pszSkip);
+    return MCDB::Rewrite(*this, pszSkip);
 }
 
-bool CellWalletDBWrapper::Backup(const std::string& strDest)
+bool MCWalletDBWrapper::Backup(const std::string& strDest)
 {
     if (IsDummy()) {
         return false;
@@ -726,7 +726,7 @@ bool CellWalletDBWrapper::Backup(const std::string& strDest)
     return false;
 }
 
-void CellWalletDBWrapper::Flush(bool shutdown)
+void MCWalletDBWrapper::Flush(bool shutdown)
 {
     if (!IsDummy()) {
         env->Flush(shutdown);

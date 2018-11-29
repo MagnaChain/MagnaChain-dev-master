@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_SENDCOINSDIALOG_H
-#define CELLLINK_QT_SENDCOINSDIALOG_H
+#ifndef MAGNACHAIN_QT_SENDCOINSDIALOG_H
+#define MAGNACHAIN_QT_SENDCOINSDIALOG_H
 
 #include "walletmodel.h"
 
@@ -52,8 +52,8 @@ public Q_SLOTS:
     void accept();
     SendCoinsEntry *addEntry();
     void updateTabsAndLabels();
-    void setBalance(const CellAmount& balance, const CellAmount& unconfirmedBalance, const CellAmount& immatureBalance,
-                    const CellAmount& watchOnlyBalance, const CellAmount& watchUnconfBalance, const CellAmount& watchImmatureBalance);
+    void setBalance(const MCAmount& balance, const MCAmount& unconfirmedBalance, const MCAmount& immatureBalance,
+                    const MCAmount& watchOnlyBalance, const MCAmount& watchUnconfBalance, const MCAmount& watchImmatureBalance);
 
 private:
     Ui::SendCoinsDialog *ui;
@@ -69,8 +69,8 @@ private:
     void processSendCoinsReturn(const WalletModel::SendCoinsReturn &sendCoinsReturn, const QString &msgArg = QString());
     void minimizeFeeSection(bool fMinimize);
     void updateFeeMinimizedLabel();
-    // Update the passed in CellCoinControl with state from the GUI
-    void updateCoinControlState(CellCoinControl& ctrl);
+    // Update the passed in MCCoinControl with state from the GUI
+    void updateCoinControlState(MCCoinControl& ctrl);
 
 private Q_SLOTS:
     void on_sendButton_clicked();
@@ -121,4 +121,4 @@ private:
     int secDelay;
 };
 
-#endif // CELLLINK_QT_SENDCOINSDIALOG_H
+#endif // MAGNACHAIN_QT_SENDCOINSDIALOG_H

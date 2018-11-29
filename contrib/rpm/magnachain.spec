@@ -27,17 +27,17 @@ Source1:	http://download.oracle.com/berkeley-db/db-%{bdbv}.NC.tar.gz
 Source10:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/contrib/debian/examples/magnachain.conf
 
 #man pages
-Source20:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/doc/man/bitcoind.1
+Source20:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/doc/man/magnachaind.1
 Source21:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/doc/man/magnachain-cli.1
 Source22:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/doc/man/magnachain-qt.1
 
 #selinux
 Source30:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/contrib/rpm/magnachain.te
-# Source31 - what about magnachain-tx and bench_bitcoin ???
+# Source31 - what about magnachain-tx and bench_magnachain ???
 Source31:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/contrib/rpm/magnachain.fc
 Source32:	https://raw.githubusercontent.com/magnachain/magnachain/v%{version}/contrib/rpm/magnachain.if
 
-Source100:	https://upload.wikimedia.org/wikipedia/commons/4/46/CellLink.svg
+Source100:	https://upload.wikimedia.org/wikipedia/commons/4/46/MagnaChain.svg
 
 %if 0%{?_use_libressl:1}
 BuildRequires:	libressl-devel
@@ -54,9 +54,9 @@ Patch0:		magnachain-0.12.0-libressl.patch
 
 
 %description
-CellLink is a digital cryptographic currency that uses peer-to-peer technology to
+MagnaChain is a digital cryptographic currency that uses peer-to-peer technology to
 operate with no central authority or banks; managing transactions and the
-issuing of bitcoins is carried out collectively by the network.
+issuing of magnachains is carried out collectively by the network.
 
 %if %{_buildqt}
 %package core
@@ -79,21 +79,21 @@ BuildRequires:	%{_bindir}/inkscape
 BuildRequires:	%{_bindir}/convert
 
 %description core
-CellLink is a digital cryptographic currency that uses peer-to-peer technology to
+MagnaChain is a digital cryptographic currency that uses peer-to-peer technology to
 operate with no central authority or banks; managing transactions and the
-issuing of bitcoins is carried out collectively by the network.
+issuing of magnachains is carried out collectively by the network.
 
 This package contains the Qt based graphical client and node. If you are looking
-to run a CellLink wallet, this is probably the package you want.
+to run a MagnaChain wallet, this is probably the package you want.
 %endif
 
 
 %package libs
-Summary:	CellLink shared libraries
+Summary:	MagnaChain shared libraries
 Group:		System Environment/Libraries
 
 %description libs
-This package provides the bitcoinconsensus shared libraries. These libraries
+This package provides the magnachainconsensus shared libraries. These libraries
 may be used by third party software to provide consensus verification
 functionality.
 
@@ -106,7 +106,7 @@ Requires:	%{name}-libs = %{version}-%{release}
 
 %description devel
 This package contains the header files and static library for the
-bitcoinconsensus shared library. If you are developing or compiling software
+magnachainconsensus shared library. If you are developing or compiling software
 that wants to link against that library, then you need this package installed.
 
 Most people do not need this package installed.
@@ -134,7 +134,7 @@ If you use the graphical magnachain-core client then you almost certainly do not
 need this package.
 
 %package utils
-Summary:	CellLink utilities
+Summary:	MagnaChain utilities
 Group:		Applications/System
 
 %description utils
@@ -143,7 +143,7 @@ magnachain-core daemon.
 
 The magnachain-cli utility allows you to communicate and control a magnachain daemon
 over RPC, the magnachain-tx utility allows you to create a custom transaction, and
-the bench_bitcoin utility can be used to perform some benchmarks.
+the bench_magnachain utility can be used to perform some benchmarks.
 
 This package contains utilities needed by the magnachain-server package.
 
@@ -182,12 +182,12 @@ popd
 make install DESTDIR=%{buildroot}
 
 mkdir -p -m755 %{buildroot}%{_sbindir}
-mv %{buildroot}%{_bindir}/bitcoind %{buildroot}%{_sbindir}/bitcoind
+mv %{buildroot}%{_bindir}/magnachaind %{buildroot}%{_sbindir}/magnachaind
 
 # systemd stuff
 mkdir -p %{buildroot}%{_tmpfilesdir}
 cat <<EOF > %{buildroot}%{_tmpfilesdir}/magnachain.conf
-d /run/bitcoind 0750 magnachain magnachain -
+d /run/magnachaind 0750 magnachain magnachain -
 EOF
 touch -a -m -t 201504280000 %{buildroot}%{_tmpfilesdir}/magnachain.conf
 
@@ -202,19 +202,19 @@ OPTIONS=""
 # Don't change these unless you know what you're doing.
 CONFIG_FILE="%{_sysconfdir}/magnachain/magnachain.conf"
 DATA_DIR="%{_localstatedir}/lib/magnachain"
-PID_FILE="/run/bitcoind/bitcoind.pid"
+PID_FILE="/run/magnachaind/magnachaind.pid"
 EOF
 touch -a -m -t 201504280000 %{buildroot}%{_sysconfdir}/sysconfig/magnachain
 
 mkdir -p %{buildroot}%{_unitdir}
 cat <<EOF > %{buildroot}%{_unitdir}/magnachain.service
 [Unit]
-Description=CellLink daemon
+Description=MagnaChain daemon
 After=syslog.target network.target
 
 [Service]
 Type=forking
-ExecStart=%{_sbindir}/bitcoind -daemon -conf=\${CONFIG_FILE} -datadir=\${DATA_DIR} -pid=\${PID_FILE} \$OPTIONS
+ExecStart=%{_sbindir}/magnachaind -daemon -conf=\${CONFIG_FILE} -datadir=\${DATA_DIR} -pid=\${PID_FILE} \$OPTIONS
 EnvironmentFile=%{_sysconfdir}/sysconfig/magnachain
 User=magnachain
 Group=magnachain
@@ -247,16 +247,16 @@ install -D -p share/pixmaps/magnachain.ico %{buildroot}%{_datadir}/pixmaps/magna
 install -p share/pixmaps/nsis-header.bmp %{buildroot}%{_datadir}/pixmaps/
 install -p share/pixmaps/nsis-wizard.bmp %{buildroot}%{_datadir}/pixmaps/
 install -p %{SOURCE100} %{buildroot}%{_datadir}/pixmaps/magnachain.svg
-%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/bitcoin16.png -w16 -h16
-%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/bitcoin32.png -w32 -h32
-%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/bitcoin64.png -w64 -h64
-%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/bitcoin128.png -w128 -h128
-%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/bitcoin256.png -w256 -h256
-%{_bindir}/convert -resize 16x16 %{buildroot}%{_datadir}/pixmaps/bitcoin256.png %{buildroot}%{_datadir}/pixmaps/bitcoin16.xpm
-%{_bindir}/convert -resize 32x32 %{buildroot}%{_datadir}/pixmaps/bitcoin256.png %{buildroot}%{_datadir}/pixmaps/bitcoin32.xpm
-%{_bindir}/convert -resize 64x64 %{buildroot}%{_datadir}/pixmaps/bitcoin256.png %{buildroot}%{_datadir}/pixmaps/bitcoin64.xpm
-%{_bindir}/convert -resize 128x128 %{buildroot}%{_datadir}/pixmaps/bitcoin256.png %{buildroot}%{_datadir}/pixmaps/bitcoin128.xpm
-%{_bindir}/convert %{buildroot}%{_datadir}/pixmaps/bitcoin256.png %{buildroot}%{_datadir}/pixmaps/bitcoin256.xpm
+%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/magnachain16.png -w16 -h16
+%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/magnachain32.png -w32 -h32
+%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/magnachain64.png -w64 -h64
+%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/magnachain128.png -w128 -h128
+%{_bindir}/inkscape %{SOURCE100} --export-png=%{buildroot}%{_datadir}/pixmaps/magnachain256.png -w256 -h256
+%{_bindir}/convert -resize 16x16 %{buildroot}%{_datadir}/pixmaps/magnachain256.png %{buildroot}%{_datadir}/pixmaps/magnachain16.xpm
+%{_bindir}/convert -resize 32x32 %{buildroot}%{_datadir}/pixmaps/magnachain256.png %{buildroot}%{_datadir}/pixmaps/magnachain32.xpm
+%{_bindir}/convert -resize 64x64 %{buildroot}%{_datadir}/pixmaps/magnachain256.png %{buildroot}%{_datadir}/pixmaps/magnachain64.xpm
+%{_bindir}/convert -resize 128x128 %{buildroot}%{_datadir}/pixmaps/magnachain256.png %{buildroot}%{_datadir}/pixmaps/magnachain128.xpm
+%{_bindir}/convert %{buildroot}%{_datadir}/pixmaps/magnachain256.png %{buildroot}%{_datadir}/pixmaps/magnachain256.xpm
 touch %{buildroot}%{_datadir}/pixmaps/*.png -r %{SOURCE100}
 touch %{buildroot}%{_datadir}/pixmaps/*.xpm -r %{SOURCE100}
 
@@ -265,14 +265,14 @@ mkdir -p %{buildroot}%{_datadir}/applications
 cat <<EOF > %{buildroot}%{_datadir}/applications/magnachain-core.desktop
 [Desktop Entry]
 Encoding=UTF-8
-Name=CellLink
-Comment=CellLink P2P Cryptocurrency
-Comment[fr]=CellLink, monnaie virtuelle cryptographique pair à pair
-Comment[tr]=CellLink, eşten eşe kriptografik sanal para birimi
+Name=MagnaChain
+Comment=MagnaChain P2P Cryptocurrency
+Comment[fr]=MagnaChain, monnaie virtuelle cryptographique pair à pair
+Comment[tr]=MagnaChain, eşten eşe kriptografik sanal para birimi
 Exec=magnachain-qt %u
 Terminal=false
 Type=Application
-Icon=bitcoin128
+Icon=magnachain128
 MimeType=x-scheme-handler/magnachain;
 Categories=Office;Finance;
 EOF
@@ -300,7 +300,7 @@ touch -a -m -t 201511100546 %{buildroot}%{_datadir}/kde4/services/magnachain-cor
 %endif
 
 # man pages
-install -D -p %{SOURCE20} %{buildroot}%{_mandir}/man1/bitcoind.1
+install -D -p %{SOURCE20} %{buildroot}%{_mandir}/man1/magnachaind.1
 install -p %{SOURCE21} %{buildroot}%{_mandir}/man1/magnachain-cli.1
 %if %{_buildqt}
 install -p %{SOURCE22} %{buildroot}%{_mandir}/man1/magnachain-qt.1
@@ -322,7 +322,7 @@ test/functional/test_runner.py --extended
 getent group magnachain >/dev/null || groupadd -r magnachain
 getent passwd magnachain >/dev/null ||
 	useradd -r -g magnachain -d /var/lib/magnachain -s /sbin/nologin \
-	-c "CellLink wallet server" magnachain
+	-c "MagnaChain wallet server" magnachain
 exit 0
 
 %post server
@@ -332,10 +332,10 @@ if [ `%{_sbindir}/sestatus |grep -c "disabled"` -eq 0 ]; then
 for selinuxvariant in %{selinux_variants}; do
 	%{_sbindir}/semodule -s ${selinuxvariant} -i %{_datadir}/selinux/${selinuxvariant}/magnachain.pp &> /dev/null || :
 done
-%{_sbindir}/semanage port -a -t bitcoin_port_t -p tcp 8332
-%{_sbindir}/semanage port -a -t bitcoin_port_t -p tcp 8333
-%{_sbindir}/semanage port -a -t bitcoin_port_t -p tcp 18332
-%{_sbindir}/semanage port -a -t bitcoin_port_t -p tcp 18333
+%{_sbindir}/semanage port -a -t magnachain_port_t -p tcp 8332
+%{_sbindir}/semanage port -a -t magnachain_port_t -p tcp 8333
+%{_sbindir}/semanage port -a -t magnachain_port_t -p tcp 18332
+%{_sbindir}/semanage port -a -t magnachain_port_t -p tcp 18333
 %{_sbindir}/fixfiles -R magnachain-server restore &> /dev/null || :
 %{_sbindir}/restorecon -R %{_localstatedir}/lib/magnachain || :
 fi
@@ -403,14 +403,14 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 %license COPYING db-%{bdbv}.NC-LICENSE
 %doc COPYING magnachain.conf.example doc/README.md doc/REST-interface.md doc/bips.md doc/dnsseed-policy.md doc/files.md doc/reduce-traffic.md doc/release-notes.md doc/tor.md
-%attr(0755,root,root) %{_sbindir}/bitcoind
+%attr(0755,root,root) %{_sbindir}/magnachaind
 %attr(0644,root,root) %{_tmpfilesdir}/magnachain.conf
 %attr(0644,root,root) %{_unitdir}/magnachain.service
 %dir %attr(0750,magnachain,magnachain) %{_sysconfdir}/magnachain
 %dir %attr(0750,magnachain,magnachain) %{_localstatedir}/lib/magnachain
 %config(noreplace) %attr(0600,root,root) %{_sysconfdir}/sysconfig/magnachain
 %attr(0644,root,root) %{_datadir}/selinux/*/*.pp
-%attr(0644,root,root) %{_mandir}/man1/bitcoind.1*
+%attr(0644,root,root) %{_mandir}/man1/magnachaind.1*
 
 %files utils
 %defattr(-,root,root,-)
@@ -418,7 +418,7 @@ rm -rf %{buildroot}
 %doc COPYING magnachain.conf.example doc/README.md
 %attr(0755,root,root) %{_bindir}/magnachain-cli
 %attr(0755,root,root) %{_bindir}/magnachain-tx
-%attr(0755,root,root) %{_bindir}/bench_bitcoin
+%attr(0755,root,root) %{_bindir}/bench_magnachain
 %attr(0644,root,root) %{_mandir}/man1/magnachain-cli.1*
 
 

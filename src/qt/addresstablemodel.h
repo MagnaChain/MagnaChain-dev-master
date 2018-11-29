@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2015 The Bitcoin Core developers
+// Copyright (c) 2011-2015 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_ADDRESSTABLEMODEL_H
-#define CELLLINK_QT_ADDRESSTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_ADDRESSTABLEMODEL_H
+#define MAGNACHAIN_QT_ADDRESSTABLEMODEL_H
 
 #include <QAbstractTableModel>
 #include <QStringList>
@@ -12,7 +12,7 @@
 class AddressTablePriv;
 class WalletModel;
 
-class CellWallet;
+class MCWallet;
 
 /**
    Qt model of the address book in the core. This allows views to access and modify the address book.
@@ -22,12 +22,12 @@ class AddressTableModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    explicit AddressTableModel(CellWallet *wallet, WalletModel *parent = 0);
+    explicit AddressTableModel(MCWallet *wallet, WalletModel *parent = 0);
     ~AddressTableModel();
 
     enum ColumnIndex {
         Label = 0,   /**< User specified label */
-        Address = 1  /**< CellLink address */
+        Address = 1  /**< MagnaChain address */
     };
 
     enum RoleIndex {
@@ -77,7 +77,7 @@ public:
 
 private:
     WalletModel *walletModel;
-    CellWallet *wallet;
+    MCWallet *wallet;
     AddressTablePriv *priv;
     QStringList columns;
     EditStatus editStatus;
@@ -93,4 +93,4 @@ public Q_SLOTS:
     friend class AddressTablePriv;
 };
 
-#endif // CELLLINK_QT_ADDRESSTABLEMODEL_H
+#endif // MAGNACHAIN_QT_ADDRESSTABLEMODEL_H

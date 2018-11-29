@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_NETMESSAGEMAKER_H
-#define CELLLINK_NETMESSAGEMAKER_H
+#ifndef MAGNACHAIN_NETMESSAGEMAKER_H
+#define MAGNACHAIN_NETMESSAGEMAKER_H
 
 #include "net/net.h"
 #include "io/serialize.h"
@@ -20,7 +20,7 @@ public:
     {
         CSerializedNetMsg msg;
         msg.command = std::move(sCommand);
-        CellVectorWriter{ SER_NETWORK, nFlags | nVersion, msg.data, 0, std::forward<Args>(args)... };
+        MCVectorWriter{ SER_NETWORK, nFlags | nVersion, msg.data, 0, std::forward<Args>(args)... };
         return msg;
     }
 
@@ -34,4 +34,4 @@ private:
     const int nVersion;
 };
 
-#endif // CELLLINK_NETMESSAGEMAKER_H
+#endif // MAGNACHAIN_NETMESSAGEMAKER_H

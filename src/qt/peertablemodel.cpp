@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,8 +18,8 @@
 
 bool NodeLessThan::operator()(const CNodeCombinedStats &left, const CNodeCombinedStats &right) const
 {
-    const CellNodeStats *pLeft = &(left.nodeStats);
-    const CellNodeStats *pRight = &(right.nodeStats);
+    const MCNodeStats *pLeft = &(left.nodeStats);
+    const MCNodeStats *pRight = &(right.nodeStats);
 
     if (order == Qt::DescendingOrder)
         std::swap(pLeft, pRight);
@@ -57,13 +57,13 @@ public:
     {
         {
             cachedNodeStats.clear();
-            std::vector<CellNodeStats> vstats;
+            std::vector<MCNodeStats> vstats;
             if(g_connman)
                 g_connman->GetNodeStats(vstats);
 #if QT_VERSION >= 0x040700
             cachedNodeStats.reserve(vstats.size());
 #endif
-            for (const CellNodeStats& nodestats : vstats)
+            for (const MCNodeStats& nodestats : vstats)
             {
                 CNodeCombinedStats stats;
                 stats.nodeStateStats.nMisbehavior = 0;

@@ -1,4 +1,4 @@
-// Copyright (c) 2012-2016 The Bitcoin Core developers
+// Copyright (c) 2012-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,7 +20,7 @@
 
 #include <boost/test/unit_test.hpp>
 
-extern CellWallet* pwalletMain;
+extern MCWallet* pwalletMain;
 
 extern UniValue importmulti(const JSONRPCRequest& request);
 extern UniValue dumpwallet(const JSONRPCRequest& request);
@@ -33,19 +33,19 @@ extern UniValue importwallet(const JSONRPCRequest& request);
 // we repeat those tests this many times and only complain if all iterations of the test fail
 #define RANDOM_REPEATS 5
 
-std::vector<std::unique_ptr<CellWalletTx>> wtxn;
+std::vector<std::unique_ptr<MCWalletTx>> wtxn;
 
-typedef std::set<CellInputCoin> CoinSet;
+typedef std::set<MCInputCoin> CoinSet;
 
 BOOST_FIXTURE_TEST_SUITE(wallet_tests, WalletTestingSetup)
 
-static const CellWallet testWallet;
-static std::vector<CellOutput> vCoins;
+static const MCWallet testWallet;
+static std::vector<MCOutput> vCoins;
 
-static void add_coin(const CellAmount& nValue, int nAge = 6*24, bool fIsFromMe = false, int nInput=0)
+static void add_coin(const MCAmount& nValue, int nAge = 6*24, bool fIsFromMe = false, int nInput=0)
 {
     static int nextLockTime = 0;
-    CellMutableTransaction tx;
+    MCMutableTransaction tx;
     tx.nLockTime = nextLockTime++;        // so all transactions get different hashes
     tx.vout.resize(nInput+1);
     tx.vout[nInput].nValue = nValue;
@@ -54,13 +54,13 @@ static void add_coin(const CellAmount& nValue, int nAge = 6*24, bool fIsFromMe =
         // so stop vin being empty, and cache a non-zero Debit to fake out IsFromMe()
         tx.vin.resize(1);
     }
-    std::unique_ptr<CellWalletTx> wtx(new CellWalletTx(&testWallet, MakeTransactionRef(std::move(tx))));
+    std::unique_ptr<MCWalletTx> wtx(new MCWalletTx(&testWallet, MakeTransactionRef(std::move(tx))));
     if (fIsFromMe)
     {
         wtx->fDebitCached = true;
         wtx->nDebitCached = 1;
     }
-    CellOutput output(wtx.get(), nInput, nAge, true /* spendable */, true /* solvable */, true /* safe */);
+    MCOutput output(wtx.get(), nInput, nAge, true /* spendable */, true /* solvable */, true /* safe */);
     vCoins.push_back(output);
     wtxn.emplace_back(std::move(wtx));
 }
@@ -80,7 +80,7 @@ static bool equal_sets(CoinSet a, CoinSet b)
 BOOST_AUTO_TEST_CASE(coin_selection_tests)
 {
     CoinSet setCoinsRet, setCoinsRet2;
-    CellAmount nValueRet;
+    MCAmount nValueRet;
 
     LOCK(testWallet.cs_wallet);
 
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
         BOOST_CHECK_EQUAL(setCoinsRet.size(), 2U);
 
         // test with many inputs
-        for (CellAmount amt=1500; amt < COIN; amt*=10) {
+        for (MCAmount amt=1500; amt < COIN; amt*=10) {
              empty_wallet();
              // Create 676 inputs (=  (old MAX_STANDARD_TX_SIZE == 100000)  / 148 bytes per input)
              for (uint16_t j = 0; j < 676; j++)
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
              if (amt - 2000 < MIN_CHANGE) {
                  // needs more than one input:
                  uint16_t returnSize = std::ceil((2000.0 + MIN_CHANGE)/amt);
-                 CellAmount returnValue = amt * returnSize;
+                 MCAmount returnValue = amt * returnSize;
                  BOOST_CHECK_EQUAL(nValueRet, returnValue);
                  BOOST_CHECK_EQUAL(setCoinsRet.size(), returnSize);
              } else {
@@ -347,7 +347,7 @@ BOOST_AUTO_TEST_CASE(coin_selection_tests)
 BOOST_AUTO_TEST_CASE(ApproximateBestSubset)
 {
     CoinSet setCoinsRet;
-    CellAmount nValueRet;
+    MCAmount nValueRet;
 
     LOCK(testWallet.cs_wallet);
 
@@ -365,7 +365,7 @@ BOOST_AUTO_TEST_CASE(ApproximateBestSubset)
     empty_wallet();
 }
 
-static void AddKey(CellWallet& wallet, const CellKey& key)
+static void AddKey(MCWallet& wallet, const MCKey& key)
 {
     LOCK(wallet.cs_wallet);
     wallet.AddKeyPubKey(key, key.GetPubKey());
@@ -376,16 +376,16 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
     LOCK(cs_main);
 
     // Cap last block file size, and mine new block in a new block file.
-    CellBlockIndex* const nullBlock = nullptr;
-    CellBlockIndex* oldTip = chainActive.Tip();
+    MCBlockIndex* const nullBlock = nullptr;
+    MCBlockIndex* oldTip = chainActive.Tip();
     GetBlockFileInfo(oldTip->GetBlockPos().nFile)->nSize = MAX_BLOCKFILE_SIZE;
     CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
-    CellBlockIndex* newTip = chainActive.Tip();
+    MCBlockIndex* newTip = chainActive.Tip();
 
     // Verify ScanForWalletTransactions picks up transactions in both the old
     // and new block files.
     {
-        CellWallet wallet;
+        MCWallet wallet;
         AddKey(wallet, coinbaseKey);
         BOOST_CHECK_EQUAL(nullBlock, wallet.ScanForWalletTransactions(oldTip));
         BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), 100 * COIN);
@@ -398,7 +398,7 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
     // Verify ScanForWalletTransactions only picks transactions in the new block
     // file.
     {
-        CellWallet wallet;
+        MCWallet wallet;
         AddKey(wallet, coinbaseKey);
         BOOST_CHECK_EQUAL(oldTip, wallet.ScanForWalletTransactions(oldTip));
         BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), 50 * COIN);
@@ -408,7 +408,7 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
     // before the missing block, and success for a key whose creation time is
     // after.
     {
-        CellWallet wallet;
+        MCWallet wallet;
         vpwallets.insert(vpwallets.begin(), &wallet);
         UniValue keys;
         keys.setArray();
@@ -420,7 +420,7 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
         keys.push_back(key);
         key.clear();
         key.setObject();
-        CellKey futureKey;
+        MCKey futureKey;
         futureKey.MakeNewKey(true);
         key.pushKV("scriptPubKey", HexStr(GetScriptForRawPubKey(futureKey.GetPubKey())));
         key.pushKV("timestamp", newTip->GetBlockTimeMax() + TIMESTAMP_WINDOW + 1);
@@ -467,7 +467,7 @@ BOOST_FIXTURE_TEST_CASE(importwallet_rescan, TestChain100Setup)
 
     // Import key into wallet and call dumpwallet to create backup file.
     {
-        CellWallet wallet;
+        MCWallet wallet;
         LOCK(wallet.cs_wallet);
         wallet.mapKeyMetadata[coinbaseKey.GetPubKey().GetID()].nCreateTime = KEY_TIME;
         wallet.AddKeyPubKey(coinbaseKey, coinbaseKey.GetPubKey());
@@ -482,7 +482,7 @@ BOOST_FIXTURE_TEST_CASE(importwallet_rescan, TestChain100Setup)
     // Call importwallet RPC and verify all blocks with timestamps >= BLOCK_TIME
     // were scanned, and no prior blocks were scanned.
     {
-        CellWallet wallet;
+        MCWallet wallet;
 
         JSONRPCRequest request;
         request.params.setArray();
@@ -511,8 +511,8 @@ BOOST_FIXTURE_TEST_CASE(importwallet_rescan, TestChain100Setup)
 // debit functions.
 BOOST_FIXTURE_TEST_CASE(coin_mark_dirty_immature_credit, TestChain100Setup)
 {
-    CellWallet wallet;
-    CellWalletTx wtx(&wallet, MakeTransactionRef(coinbaseTxns.back()));
+    MCWallet wallet;
+    MCWalletTx wtx(&wallet, MakeTransactionRef(coinbaseTxns.back()));
     LOCK2(cs_main, wallet.cs_wallet);
     wtx.hashBlock = chainActive.Tip()->GetBlockHash();
     wtx.nIndex = 0;
@@ -528,14 +528,14 @@ BOOST_FIXTURE_TEST_CASE(coin_mark_dirty_immature_credit, TestChain100Setup)
     BOOST_CHECK_EQUAL(wtx.GetImmatureCredit(), 50*COIN);
 }
 
-static int64_t AddTx(CellWallet& wallet, uint32_t lockTime, int64_t mockTime, int64_t blockTime)
+static int64_t AddTx(MCWallet& wallet, uint32_t lockTime, int64_t mockTime, int64_t blockTime)
 {
-    CellMutableTransaction tx;
+    MCMutableTransaction tx;
     tx.nLockTime = lockTime;
     SetMockTime(mockTime);
-    CellBlockIndex* block = nullptr;
+    MCBlockIndex* block = nullptr;
     if (blockTime > 0) {
-        auto inserted = mapBlockIndex.emplace(GetRandHash(), new CellBlockIndex);
+        auto inserted = mapBlockIndex.emplace(GetRandHash(), new MCBlockIndex);
         assert(inserted.second);
         const uint256& hash = inserted.first->first;
         block = inserted.first->second;
@@ -543,7 +543,7 @@ static int64_t AddTx(CellWallet& wallet, uint32_t lockTime, int64_t mockTime, in
         block->phashBlock = &hash;
     }
 
-    CellWalletTx wtx(&wallet, MakeTransactionRef(tx));
+    MCWalletTx wtx(&wallet, MakeTransactionRef(tx));
     if (block) {
         wtx.SetMerkleBranch(block, 0);
     }
@@ -555,7 +555,7 @@ static int64_t AddTx(CellWallet& wallet, uint32_t lockTime, int64_t mockTime, in
 // expanded to cover more corner cases of smart time logic.
 BOOST_AUTO_TEST_CASE(ComputeTimeSmart)
 {
-    CellWallet wallet;
+    MCWallet wallet;
 
     // New transaction should use clock time if lower than block time.
     BOOST_CHECK_EQUAL(AddTx(wallet, 1, 100, 120), 100);
@@ -583,7 +583,7 @@ BOOST_AUTO_TEST_CASE(ComputeTimeSmart)
 
 BOOST_AUTO_TEST_CASE(LoadReceiveRequests)
 {
-    CellTxDestination dest = CellKeyID();
+    MCTxDestination dest = MCKeyID();
     pwalletMain->AddDestData(dest, "misc", "val_misc");
     pwalletMain->AddDestData(dest, "rr0", "val_rr0");
     pwalletMain->AddDestData(dest, "rr1", "val_rr1");
@@ -601,7 +601,7 @@ public:
     {
         CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
         ::bitdb.MakeMock();
-        wallet.reset(new CellWallet(std::unique_ptr<CellWalletDBWrapper>(new CellWalletDBWrapper(&bitdb, "wallet_test.dat"))));
+        wallet.reset(new MCWallet(std::unique_ptr<MCWalletDBWrapper>(new MCWalletDBWrapper(&bitdb, "wallet_test.dat"))));
         bool firstRun;
         wallet->LoadWallet(firstRun);
         AddKey(*wallet, coinbaseKey);
@@ -615,25 +615,25 @@ public:
         ::bitdb.Reset();
     }
 
-    CellWalletTx& AddTx(CellRecipient recipient)
+    MCWalletTx& AddTx(MCRecipient recipient)
     {
-        CellWalletTx wtx;
-        CellReserveKey reservekey(wallet.get());
-        CellAmount fee;
+        MCWalletTx wtx;
+        MCReserveKey reservekey(wallet.get());
+        MCAmount fee;
         int changePos = -1;
         std::string error;
-        CellCoinControl dummy;
+        MCCoinControl dummy;
         BOOST_CHECK(wallet->CreateTransaction({recipient}, wtx, reservekey, fee, changePos, error, dummy));
-        CellValidationState state;
+        MCValidationState state;
         BOOST_CHECK(wallet->CommitTransaction(wtx, reservekey, nullptr, state));
         auto it = wallet->mapWallet.find(wtx.GetHash());
         BOOST_CHECK(it != wallet->mapWallet.end());
-        CreateAndProcessBlock({CellMutableTransaction(*it->second.tx)}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
+        CreateAndProcessBlock({MCMutableTransaction(*it->second.tx)}, GetScriptForRawPubKey(coinbaseKey.GetPubKey()));
         it->second.SetMerkleBranch(chainActive.Tip(), 1);
         return it->second;
     }
 
-    std::unique_ptr<CellWallet> wallet;
+    std::unique_ptr<MCWallet> wallet;
 };
 
 BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
@@ -645,7 +645,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     // address.
     auto list = wallet->ListCoins();
     BOOST_CHECK_EQUAL(list.size(), 1);
-    BOOST_CHECK_EQUAL(boost::get<CellKeyID>(list.begin()->first).ToString(), coinbaseAddress);
+    BOOST_CHECK_EQUAL(boost::get<MCKeyID>(list.begin()->first).ToString(), coinbaseAddress);
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 1);
 
     // Check initial balance from one mature coinbase transaction.
@@ -655,19 +655,19 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     // returns the coin associated with the change address underneath the
     // coinbaseKey pubkey, even though the change address has a different
     // pubkey.
-    AddTx(CellRecipient{GetScriptForRawPubKey({}), 1 * COIN, false /* subtract fee */});
+    AddTx(MCRecipient{GetScriptForRawPubKey({}), 1 * COIN, false /* subtract fee */});
     list = wallet->ListCoins();
     BOOST_CHECK_EQUAL(list.size(), 1);
-    BOOST_CHECK_EQUAL(boost::get<CellKeyID>(list.begin()->first).ToString(), coinbaseAddress);
+    BOOST_CHECK_EQUAL(boost::get<MCKeyID>(list.begin()->first).ToString(), coinbaseAddress);
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 2);
 
     // Lock both coins. Confirm number of available coins drops to 0.
-    std::vector<CellOutput> available;
+    std::vector<MCOutput> available;
     wallet->AvailableCoins(available);
     BOOST_CHECK_EQUAL(available.size(), 2);
     for (const auto& group : list) {
         for (const auto& coin : group.second) {
-            wallet->LockCoin(CellOutPoint(coin.tx->GetHash(), coin.i));
+            wallet->LockCoin(MCOutPoint(coin.tx->GetHash(), coin.i));
         }
     }
     wallet->AvailableCoins(available);
@@ -677,7 +677,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     // being locked.
     list = wallet->ListCoins();
     BOOST_CHECK_EQUAL(list.size(), 1);
-    BOOST_CHECK_EQUAL(boost::get<CellKeyID>(list.begin()->first).ToString(), coinbaseAddress);
+    BOOST_CHECK_EQUAL(boost::get<MCKeyID>(list.begin()->first).ToString(), coinbaseAddress);
     BOOST_CHECK_EQUAL(list.begin()->second.size(), 2);
 }
 

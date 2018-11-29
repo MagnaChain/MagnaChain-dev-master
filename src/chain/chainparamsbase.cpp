@@ -1,5 +1,5 @@
 // Copyright (c) 2010 Satoshi Nakamoto
-// Copyright (c) 2009-2015 The Bitcoin Core developers
+// Copyright (c) 2009-2015 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -11,10 +11,10 @@
 
 #include <assert.h>
 
-const std::string CellBaseChainParams::MAIN = "main";
-const std::string CellBaseChainParams::TESTNET = "test";
-const std::string CellBaseChainParams::REGTEST = "regtest";
-const std::string CellBaseChainParams::BRANCH = "branch";
+const std::string MCBaseChainParams::MAIN = "main";
+const std::string MCBaseChainParams::TESTNET = "test";
+const std::string MCBaseChainParams::REGTEST = "regtest";
+const std::string MCBaseChainParams::BRANCH = "branch";
 
 void AppendParamsHelpMessages(std::string& strUsage, bool debugHelp)
 {
@@ -29,10 +29,10 @@ void AppendParamsHelpMessages(std::string& strUsage, bool debugHelp)
 /**
  * Main network
  */
-class CellBaseMainParams : public CellBaseChainParams
+class MCBaseMainParams : public MCBaseChainParams
 {
 public:
-    CellBaseMainParams()
+    MCBaseMainParams()
     {
         nRPCPort = 8332;
     }
@@ -41,10 +41,10 @@ public:
 /**
  * Testnet (v3)
  */
-class CellBaseTestNetParams : public CellBaseChainParams
+class MCBaseTestNetParams : public MCBaseChainParams
 {
 public:
-    CellBaseTestNetParams()
+    MCBaseTestNetParams()
     {
         nRPCPort = 18332;
         strDataDir = "testnet3";
@@ -54,44 +54,44 @@ public:
 /*
  * Regression test
  */
-class CellBaseRegTestParams : public CellBaseChainParams
+class MCBaseRegTestParams : public MCBaseChainParams
 {
 public:
-    CellBaseRegTestParams()
+    MCBaseRegTestParams()
     {
         nRPCPort = 18332;
         strDataDir = "regtest";
     }
 };
 
-class CellBaseBranchParams : public CellBaseChainParams
+class MCBaseBranchParams : public MCBaseChainParams
 {
 public:
-	CellBaseBranchParams()
+	MCBaseBranchParams()
 	{
 		nRPCPort = 8332;
 	//	strDataDir = "branch";
 	}
 };
 
-static std::unique_ptr<CellBaseChainParams> globalChainBaseParams;
+static std::unique_ptr<MCBaseChainParams> globalChainBaseParams;
 
-const CellBaseChainParams& BaseParams()
+const MCBaseChainParams& BaseParams()
 {
     assert(globalChainBaseParams);
     return *globalChainBaseParams;
 }
 
-std::unique_ptr<CellBaseChainParams> CreateBaseChainParams(const std::string& chain)
+std::unique_ptr<MCBaseChainParams> CreateBaseChainParams(const std::string& chain)
 {
-    if (chain == CellBaseChainParams::MAIN)
-        return std::unique_ptr<CellBaseChainParams>(new CellBaseMainParams());
-    else if (chain == CellBaseChainParams::TESTNET)
-        return std::unique_ptr<CellBaseChainParams>(new CellBaseTestNetParams());
-    else if (chain == CellBaseChainParams::REGTEST)
-        return std::unique_ptr<CellBaseChainParams>(new CellBaseRegTestParams());
-	else if (chain == CellBaseChainParams::BRANCH)
-		return std::unique_ptr<CellBaseChainParams>(new CellBaseBranchParams());
+    if (chain == MCBaseChainParams::MAIN)
+        return std::unique_ptr<MCBaseChainParams>(new MCBaseMainParams());
+    else if (chain == MCBaseChainParams::TESTNET)
+        return std::unique_ptr<MCBaseChainParams>(new MCBaseTestNetParams());
+    else if (chain == MCBaseChainParams::REGTEST)
+        return std::unique_ptr<MCBaseChainParams>(new MCBaseRegTestParams());
+	else if (chain == MCBaseChainParams::BRANCH)
+		return std::unique_ptr<MCBaseChainParams>(new MCBaseBranchParams());
     else
         throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
@@ -104,7 +104,7 @@ void SelectBaseParams(const std::string& chain)
 std::string ChainNameFromCommandLine()
 {
     if (gArgs.GetArg("-branchid", "") != "")
-        return CellBaseChainParams::BRANCH;
+        return MCBaseChainParams::BRANCH;
 
     bool fRegTest = gArgs.GetBoolArg("-regtest", false);
     bool fTestNet = gArgs.GetBoolArg("-testnet", false);
@@ -112,9 +112,9 @@ std::string ChainNameFromCommandLine()
     if (fTestNet && fRegTest)
         throw std::runtime_error("Invalid combination of -regtest and -testnet.");
     if (fRegTest)
-        return CellBaseChainParams::REGTEST;
+        return MCBaseChainParams::REGTEST;
     if (fTestNet)
-        return CellBaseChainParams::TESTNET;
+        return MCBaseChainParams::TESTNET;
 
-    return CellBaseChainParams::MAIN;
+    return MCBaseChainParams::MAIN;
 }

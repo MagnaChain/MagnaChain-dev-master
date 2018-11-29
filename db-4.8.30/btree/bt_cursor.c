@@ -466,7 +466,7 @@ __bamc_close(dbc, root_pgno, rmroot)
 lock:	cp_c = (BTREE_CURSOR *)dbc_c->internal;
 
 	/*
-	 * If this is CellDB, upgrade the lock if necessary.  While we acquired
+	 * If this is MCDB, upgrade the lock if necessary.  While we acquired
 	 * the write lock to logically delete the record, we released it when
 	 * we returned from that call, and so may not be holding a write lock
 	 * at the moment.
@@ -611,7 +611,7 @@ done:	/*
 		DISCARD_CUR(dbc_opd, ret);
 	DISCARD_CUR(dbc, ret);
 
-	/* Downgrade any CellDB lock we acquired. */
+	/* Downgrade any MCDB lock we acquired. */
 	if (cdb_lock)
 		(void)__lock_downgrade(env, &dbc->mylock, DB_LOCK_IWRITE, 0);
 

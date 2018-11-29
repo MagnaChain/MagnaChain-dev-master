@@ -136,7 +136,7 @@
     </message>
 </context>
 <context>
-    <name>CellLinkGUI</name>
+    <name>MagnaChainGUI</name>
     <message>
         <source>Sign &amp;message...</source>
         <translation>Sign &amp;message...</translation>
@@ -226,8 +226,8 @@
         <translation>Reindexing blocks on disk...</translation>
     </message>
     <message>
-        <source>Send coins to a CellLink address</source>
-        <translation>Send coins to a CellLink address</translation>
+        <source>Send coins to a MagnaChain address</source>
+        <translation>Send coins to a MagnaChain address</translation>
     </message>
     <message>
         <source>Backup wallet to another location</source>
@@ -250,8 +250,8 @@
         <translation>&amp;Verify message...</translation>
     </message>
     <message>
-        <source>CellLink</source>
-        <translation>CellLink</translation>
+        <source>MagnaChain</source>
+        <translation>MagnaChain</translation>
     </message>
     <message>
         <source>Wallet</source>
@@ -278,12 +278,12 @@
         <translation>Encrypt the private keys that belong to your wallet</translation>
     </message>
     <message>
-        <source>Sign messages with your CellLink addresses to prove you own them</source>
-        <translation>Sign messages with your CellLink addresses to prove you own them</translation>
+        <source>Sign messages with your MagnaChain addresses to prove you own them</source>
+        <translation>Sign messages with your MagnaChain addresses to prove you own them</translation>
     </message>
     <message>
-        <source>Verify messages to ensure they were signed with specified CellLink addresses</source>
-        <translation>Verify messages to ensure they were signed with specified CellLink addresses</translation>
+        <source>Verify messages to ensure they were signed with specified MagnaChain addresses</source>
+        <translation>Verify messages to ensure they were signed with specified MagnaChain addresses</translation>
     </message>
     <message>
         <source>&amp;File</source>
@@ -322,8 +322,8 @@
         <translation>&amp;Command-line options</translation>
     </message>
     <message numerus="yes">
-        <source>%n active connection(s) to CellLink network</source>
-        <translation><numerusform>%n active connection to CellLink network</numerusform><numerusform>%n active connections to CellLink network</numerusform></translation>
+        <source>%n active connection(s) to MagnaChain network</source>
+        <translation><numerusform>%n active connection to MagnaChain network</numerusform><numerusform>%n active connections to MagnaChain network</numerusform></translation>
     </message>
     <message>
         <source>Indexing blocks on disk...</source>
@@ -366,8 +366,8 @@
         <translation>Up to date</translation>
     </message>
     <message>
-        <source>Show the %1 help message to get a list with possible CellLink command-line options</source>
-        <translation>Show the %1 help message to get a list with possible CellLink command-line options</translation>
+        <source>Show the %1 help message to get a list with possible MagnaChain command-line options</source>
+        <translation>Show the %1 help message to get a list with possible MagnaChain command-line options</translation>
     </message>
     <message>
         <source>%1 client</source>
@@ -615,8 +615,8 @@
         <translation>As this is the first time the program is launched, you can choose where %1 will store its data.</translation>
     </message>
     <message>
-        <source>%1 will download and store a copy of the CellLink block chain. At least %2GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</source>
-        <translation>%1 will download and store a copy of the CellLink block chain. At least %2GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</translation>
+        <source>%1 will download and store a copy of the MagnaChain block chain. At least %2GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</source>
+        <translation>%1 will download and store a copy of the MagnaChain block chain. At least %2GB of data will be stored in this directory, and it will grow over time. The wallet will also be stored in this directory.</translation>
     </message>
     <message>
         <source>Use the default data directory</source>
@@ -772,16 +772,16 @@
         <translation>&amp;Spend unconfirmed change</translation>
     </message>
     <message>
-        <source>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Automatically open the CellLink client port on the router. This only works when your router supports UPnP and it is enabled.</translation>
+        <source>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Automatically open the MagnaChain client port on the router. This only works when your router supports UPnP and it is enabled.</translation>
     </message>
     <message>
         <source>Map port using &amp;UPnP</source>
         <translation>Map port using &amp;UPnP</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a SOCKS5 proxy.</source>
-        <translation>Connect to the CellLink network through a SOCKS5 proxy.</translation>
+        <source>Connect to the MagnaChain network through a SOCKS5 proxy.</source>
+        <translation>Connect to the MagnaChain network through a SOCKS5 proxy.</translation>
     </message>
     <message>
         <source>&amp;Connect through SOCKS5 proxy (default proxy):</source>
@@ -820,8 +820,8 @@
         <translation>Tor</translation>
     </message>
     <message>
-        <source>Connect to the CellLink network through a separate SOCKS5 proxy for Tor hidden services.</source>
-        <translation>Connect to the CellLink network through a separate SOCKS5 proxy for Tor hidden services.</translation>
+        <source>Connect to the MagnaChain network through a separate SOCKS5 proxy for Tor hidden services.</source>
+        <translation>Connect to the MagnaChain network through a separate SOCKS5 proxy for Tor hidden services.</translation>
     </message>
     <message>
         <source>Use separate SOCKS5 proxy to reach peers via Tor hidden services:</source>
@@ -919,8 +919,8 @@
         <translation>Form</translation>
     </message>
     <message>
-        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the CellLink network after a connection is established, but this process has not completed yet.</source>
-        <translation>The displayed information may be out of date. Your Wallet automatically synchronises with the CellLink Network after a connection is established, but this process has not been completed yet.</translation>
+        <source>The displayed information may be out of date. Your wallet automatically synchronizes with the MagnaChain network after a connection is established, but this process has not completed yet.</source>
+        <translation>The displayed information may be out of date. Your Wallet automatically synchronises with the MagnaChain Network after a connection is established, but this process has not been completed yet.</translation>
     </message>
     <message>
         <source>Watch-only:</source>
@@ -1008,8 +1008,8 @@
         <translation>Amount</translation>
     </message>
     <message>
-        <source>Enter a CellLink address (e.g. %1)</source>
-        <translation>Enter a CellLink address (e.g. %1)</translation>
+        <source>Enter a MagnaChain address (e.g. %1)</source>
+        <translation>Enter a MagnaChain address (e.g. %1)</translation>
     </message>
     <message>
         <source>%1 d</source>
@@ -1352,8 +1352,8 @@
         <translation>R&amp;euse an existing receiving address (not recommended)</translation>
     </message>
     <message>
-        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</source>
-        <translation>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the CellLink network.</translation>
+        <source>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</source>
+        <translation>An optional message to attach to the payment request, which will be displayed when the request is opened. Note: The message will not be sent with the payment over the MagnaChain network.</translation>
     </message>
     <message>
         <source>An optional label to associate with the new receiving address.</source>
@@ -1608,8 +1608,8 @@
         <translation>This is a normal payment.</translation>
     </message>
     <message>
-        <source>The CellLink address to send the payment to</source>
-        <translation>The CellLink address to send the payment to</translation>
+        <source>The MagnaChain address to send the payment to</source>
+        <translation>The MagnaChain address to send the payment to</translation>
     </message>
     <message>
         <source>Alt+A</source>
@@ -1652,8 +1652,8 @@
         <translation>Enter a label for this address to add it to the list of used addresses</translation>
     </message>
     <message>
-        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</source>
-        <translation>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the CellLink network.</translation>
+        <source>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</source>
+        <translation>A message that was attached to the magnachain: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the MagnaChain network.</translation>
     </message>
     <message>
         <source>Pay To:</source>
@@ -1693,8 +1693,8 @@
         <translation>You can sign messages/agreements with your addresses to prove you can receive magnachains sent to them. Be careful not to sign anything vague or random, as phishing attacks may try to trick you into signing your identity over to them. Only sign fully-detailed statements you agree to.</translation>
     </message>
     <message>
-        <source>The CellLink address to sign the message with</source>
-        <translation>The CellLink address to sign the message with</translation>
+        <source>The MagnaChain address to sign the message with</source>
+        <translation>The MagnaChain address to sign the message with</translation>
     </message>
     <message>
         <source>Choose previously used address</source>
@@ -1725,8 +1725,8 @@
         <translation>Copy the current signature to the system clipboard</translation>
     </message>
     <message>
-        <source>Sign the message to prove you own this CellLink address</source>
-        <translation>Sign the message to prove you own this CellLink address</translation>
+        <source>Sign the message to prove you own this MagnaChain address</source>
+        <translation>Sign the message to prove you own this MagnaChain address</translation>
     </message>
     <message>
         <source>Sign &amp;Message</source>
@@ -1749,12 +1749,12 @@
         <translation>Enter the receiver's address, message (ensure you copy line breaks, spaces, tabs, etc. exactly) and signature below to verify the message. Be careful not to read more into the signature than what is in the signed message itself, to avoid being tricked by a man-in-the-middle attack. Note that this only proves the signing party receives with the address, it cannot prove sendership of any transaction!</translation>
     </message>
     <message>
-        <source>The CellLink address the message was signed with</source>
-        <translation>The CellLink address the message was signed with</translation>
+        <source>The MagnaChain address the message was signed with</source>
+        <translation>The MagnaChain address the message was signed with</translation>
     </message>
     <message>
-        <source>Verify the message to ensure it was signed with the specified CellLink address</source>
-        <translation>Verify the message to ensure it was signed with the specified CellLink address</translation>
+        <source>Verify the message to ensure it was signed with the specified MagnaChain address</source>
+        <translation>Verify the message to ensure it was signed with the specified MagnaChain address</translation>
     </message>
     <message>
         <source>Verify &amp;Message</source>

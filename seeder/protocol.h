@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2011 The Bitcoin developers
+// Copyright (c) 2011 The MagnaChain developers
 // Copyright (c) 2016-2018 The MagnaChain developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file license.txt or http://www.opensource.org/licenses/mit-license.php.
@@ -37,11 +37,11 @@ static inline unsigned short GetDefaultPort(const bool testnet = fTestNet)
 
 extern unsigned char pchMessageStart[4];
 
-class CellMessageHeader
+class MCMessageHeader
 {
     public:
-        CellMessageHeader();
-        CellMessageHeader(const char* pszCommand, unsigned int nMessageSizeIn);
+        MCMessageHeader();
+        MCMessageHeader(const char* pszCommand, unsigned int nMessageSizeIn);
 
         std::string GetCommand() const;
         bool IsValid() const;
@@ -69,18 +69,18 @@ enum
     NODE_NETWORK = (1 << 0),
 };
 
-class CellAddress : public CellService
+class MCAddress : public MCService
 {
     public:
-        CellAddress();
-        CellAddress(CellService ipIn, uint64 nServicesIn=NODE_NETWORK);
+        MCAddress();
+        MCAddress(MCService ipIn, uint64 nServicesIn=NODE_NETWORK);
 
         void Init();
 
         IMPLEMENT_SERIALIZE
             (
-             CellAddress* pthis = const_cast<CellAddress*>(this);
-             CellService* pip = (CellService*)pthis;
+             MCAddress* pthis = const_cast<MCAddress*>(this);
+             MCService* pip = (MCService*)pthis;
              if (fRead)
                  pthis->Init();
              if (nType & SER_DISK)
@@ -101,12 +101,12 @@ class CellAddress : public CellService
         unsigned int nTime;
 };
 
-class CellInv
+class MCInv
 {
     public:
-        CellInv();
-        CellInv(int typeIn, const uint256& hashIn);
-        CellInv(const std::string& strType, const uint256& hashIn);
+        MCInv();
+        MCInv(int typeIn, const uint256& hashIn);
+        MCInv(const std::string& strType, const uint256& hashIn);
 
         IMPLEMENT_SERIALIZE
         (
@@ -114,7 +114,7 @@ class CellInv
             READWRITE(hash);
         )
 
-        friend bool operator<(const CellInv& a, const CellInv& b);
+        friend bool operator<(const MCInv& a, const MCInv& b);
 
         bool IsKnownType() const;
         const char* GetCommand() const;

@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_COINCONTROL_H
-#define CELLLINK_WALLET_COINCONTROL_H
+#ifndef MAGNACHAIN_WALLET_COINCONTROL_H
+#define MAGNACHAIN_WALLET_COINCONTROL_H
 
 #include "policy/feerate.h"
 #include "policy/fees.h"
@@ -14,10 +14,10 @@
 #include <boost/optional.hpp>
 
 /** Coin Control Features. */
-class CellCoinControl
+class MCCoinControl
 {
 public:
-    CellTxDestination destChange;
+    MCTxDestination destChange;
     //! If false, allows unselected inputs, but requires all selected inputs be used
     bool fAllowOtherInputs;
     //! Includes watch only addresses which match the ISMINE_WATCH_SOLVABLE criteria
@@ -25,7 +25,7 @@ public:
     //! Override automatic min/max checks on fee, m_feerate must be set if true
     bool fOverrideFeeRate;
     //! Override the default payTxFee if set
-    boost::optional<CellFeeRate> m_feerate;
+    boost::optional<MCFeeRate> m_feerate;
     //! Override the default confirmation target if set
     boost::optional<unsigned int> m_confirm_target;
     //! Signal BIP-125 replace by fee.
@@ -33,14 +33,14 @@ public:
     //! Fee estimation mode to control arguments to estimateSmartFee
     FeeEstimateMode m_fee_mode;
 
-    CellCoinControl()
+    MCCoinControl()
     {
         SetNull();
     }
 
     void SetNull()
     {
-        destChange = CellNoDestination();
+        destChange = MCNoDestination();
         fAllowOtherInputs = false;
         fAllowWatchOnly = false;
         setSelected.clear();
@@ -56,17 +56,17 @@ public:
         return (setSelected.size() > 0);
     }
 
-    bool IsSelected(const CellOutPoint& output) const
+    bool IsSelected(const MCOutPoint& output) const
     {
         return (setSelected.count(output) > 0);
     }
 
-    void Select(const CellOutPoint& output)
+    void Select(const MCOutPoint& output)
     {
         setSelected.insert(output);
     }
 
-    void UnSelect(const CellOutPoint& output)
+    void UnSelect(const MCOutPoint& output)
     {
         setSelected.erase(output);
     }
@@ -76,13 +76,13 @@ public:
         setSelected.clear();
     }
 
-    void ListSelected(std::vector<CellOutPoint>& vOutpoints) const
+    void ListSelected(std::vector<MCOutPoint>& vOutpoints) const
     {
         vOutpoints.assign(setSelected.begin(), setSelected.end());
     }
 
 private:
-    std::set<CellOutPoint> setSelected;
+    std::set<MCOutPoint> setSelected;
 };
 
-#endif // CELLLINK_WALLET_COINCONTROL_H
+#endif // MAGNACHAIN_WALLET_COINCONTROL_H

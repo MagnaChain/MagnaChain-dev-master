@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -10,7 +10,7 @@
 #include "consensus/consensus.h"
 #include "utils/utilstrencodings.h"
 
-CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter, const std::set<uint256>* txids)
+MCMerkleBlock::MCMerkleBlock(const MCBlock& block, MCBloomFilter* filter, const std::set<uint256>* txids)
 {
     header = block.GetBlockHeader();
 
@@ -36,5 +36,5 @@ CellMerkleBlock::CellMerkleBlock(const CellBlock& block, CellBloomFilter* filter
         vHashes.push_back(hash);
     }
 
-    txn = CellPartialMerkleTree(vHashes, vMatch);
+    txn = MCPartialMerkleTree(vHashes, vMatch);
 }

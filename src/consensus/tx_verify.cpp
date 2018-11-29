@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2017 The Bitcoin Core developers
+// Copyright (c) 2017-2017 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -28,22 +28,22 @@
 
 #include "chain/branchdb.h"
 
-extern bool IsCoinBranchTranScript(const CellScript& script);
+extern bool IsCoinBranchTranScript(const MCScript& script);
 
-bool IsFinalTx(const CellTransaction &tx, int nBlockHeight, int64_t nBlockTime)
+bool IsFinalTx(const MCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
     if (tx.nLockTime == 0)
         return true;
     if ((int64_t)tx.nLockTime < ((int64_t)tx.nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
         return true;
     for (const auto& txin : tx.vin) {
-        if (!(txin.nSequence == CellTxIn::SEQUENCE_FINAL))
+        if (!(txin.nSequence == MCTxIn::SEQUENCE_FINAL))
             return false;
     }
     return true;
 }
 
-std::pair<int, int64_t> CalculateSequenceLocks(const CellTransaction &tx, int flags, std::vector<int>* prevHeights, const CellBlockIndex& block)
+std::pair<int, int64_t> CalculateSequenceLocks(const MCTransaction &tx, int flags, std::vector<int>* prevHeights, const MCBlockIndex& block)
 {
     assert(prevHeights->size() == tx.vin.size());
 
@@ -68,12 +68,12 @@ std::pair<int, int64_t> CalculateSequenceLocks(const CellTransaction &tx, int fl
     }
 
     for (size_t txinIndex = 0; txinIndex < tx.vin.size(); txinIndex++) {
-        const CellTxIn& txin = tx.vin[txinIndex];
+        const MCTxIn& txin = tx.vin[txinIndex];
 
         // Sequence numbers with the most significant bit set are not
         // treated as relative lock-times, nor are they given any
         // consensus-enforced meaning at this point.
-        if (txin.nSequence & CellTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG) {
+        if (txin.nSequence & MCTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG) {
             // The height of this input is not relevant for sequence locks
             (*prevHeights)[txinIndex] = 0;
             continue;
@@ -81,7 +81,7 @@ std::pair<int, int64_t> CalculateSequenceLocks(const CellTransaction &tx, int fl
 
         int nCoinHeight = (*prevHeights)[txinIndex];
 
-        if (txin.nSequence & CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG) {
+        if (txin.nSequence & MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG) {
             int64_t nCoinTime = block.GetAncestor(std::max(nCoinHeight-1, 0))->GetMedianTimePast();
             // NOTE: Subtract 1 to maintain nLockTime semantics
             // BIP 68 relative lock times have the semantics of calculating
@@ -96,16 +96,16 @@ std::pair<int, int64_t> CalculateSequenceLocks(const CellTransaction &tx, int fl
             // smallest allowed timestamp of the block containing the
             // txout being spent, which is the median time past of the
             // block prior.
-            nMinTime = std::max(nMinTime, nCoinTime + (int64_t)((txin.nSequence & CellTxIn::SEQUENCE_LOCKTIME_MASK) << CellTxIn::SEQUENCE_LOCKTIME_GRANULARITY) - 1);
+            nMinTime = std::max(nMinTime, nCoinTime + (int64_t)((txin.nSequence & MCTxIn::SEQUENCE_LOCKTIME_MASK) << MCTxIn::SEQUENCE_LOCKTIME_GRANULARITY) - 1);
         } else {
-            nMinHeight = std::max(nMinHeight, nCoinHeight + (int)(txin.nSequence & CellTxIn::SEQUENCE_LOCKTIME_MASK) - 1);
+            nMinHeight = std::max(nMinHeight, nCoinHeight + (int)(txin.nSequence & MCTxIn::SEQUENCE_LOCKTIME_MASK) - 1);
         }
     }
 
     return std::make_pair(nMinHeight, nMinTime);
 }
 
-bool EvaluateSequenceLocks(const CellBlockIndex& block, std::pair<int, int64_t> lockPair)
+bool EvaluateSequenceLocks(const MCBlockIndex& block, std::pair<int, int64_t> lockPair)
 {
     assert(block.pprev);
     int64_t nBlockTime = block.pprev->GetMedianTimePast();
@@ -115,12 +115,12 @@ bool EvaluateSequenceLocks(const CellBlockIndex& block, std::pair<int, int64_t> 
     return true;
 }
 
-bool SequenceLocks(const CellTransaction &tx, int flags, std::vector<int>* prevHeights, const CellBlockIndex& block)
+bool SequenceLocks(const MCTransaction &tx, int flags, std::vector<int>* prevHeights, const MCBlockIndex& block)
 {
     return EvaluateSequenceLocks(block, CalculateSequenceLocks(tx, flags, prevHeights, block));
 }
 
-unsigned int GetLegacySigOpCount(const CellTransaction& tx)
+unsigned int GetLegacySigOpCount(const MCTransaction& tx)
 {
     unsigned int nSigOps = 0;
     for (const auto& txin : tx.vin)
@@ -134,7 +134,7 @@ unsigned int GetLegacySigOpCount(const CellTransaction& tx)
     return nSigOps;
 }
 
-unsigned int GetP2SHSigOpCount(const CellTransaction& tx, const CellCoinsViewCache& inputs)
+unsigned int GetP2SHSigOpCount(const MCTransaction& tx, const MCCoinsViewCache& inputs)
 {
     if (tx.IsCoinBase())
         return 0;
@@ -144,14 +144,14 @@ unsigned int GetP2SHSigOpCount(const CellTransaction& tx, const CellCoinsViewCac
     {
         const Coin& coin = inputs.AccessCoin(tx.vin[i].prevout);
         assert(!coin.IsSpent());
-        const CellTxOut &prevout = coin.out;
+        const MCTxOut &prevout = coin.out;
         if (prevout.scriptPubKey.IsPayToScriptHash())
             nSigOps += prevout.scriptPubKey.GetSigOpCount(tx.vin[i].scriptSig);
     }
     return nSigOps;
 }
 
-int64_t GetTransactionSigOpCost(const CellTransaction& tx, const CellCoinsViewCache& inputs, int flags)
+int64_t GetTransactionSigOpCost(const MCTransaction& tx, const MCCoinsViewCache& inputs, int flags)
 {
     int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
 
@@ -168,14 +168,14 @@ int64_t GetTransactionSigOpCost(const CellTransaction& tx, const CellCoinsViewCa
     {
         const Coin& coin = inputs.AccessCoin(tx.vin[i].prevout);
         assert(!coin.IsSpent());
-        const CellTxOut &prevout = coin.out;
+        const MCTxOut &prevout = coin.out;
         nSigOps += CountWitnessSigOps(tx.vin[i].scriptSig, prevout.scriptPubKey, &tx.vin[i].scriptWitness, flags);
     }
     return nSigOps;
 }
 
-bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, bool fCheckDuplicateInputs, const CellBlock* pBlock, 
-    const CellBlockIndex* pBlockIndex, const bool fVerifingDB, BranchCache *pBranchCache)
+bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fCheckDuplicateInputs, const MCBlock* pBlock, 
+    const MCBlockIndex* pBlockIndex, const bool fVerifingDB, BranchCache *pBranchCache)
 {
     if (tx.IsSyncBranchInfo())
     {
@@ -194,7 +194,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-oversize");
 
     // Check for negative or overflow output values
-    CellAmount nValueOut = 0;
+    MCAmount nValueOut = 0;
     for (const auto& txout : tx.vout)
     {
         if (txout.nValue < 0)
@@ -208,14 +208,14 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 
     // Check for duplicate inputs - note that this check is slow so we skip it in CheckBlock
     if (fCheckDuplicateInputs) {
-        std::set<CellOutPoint> vInOutPoints;
+        std::set<MCOutPoint> vInOutPoints;
         for (const auto& txin : tx.vin)
         {
             if (!vInOutPoints.insert(txin.prevout).second)
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputs-duplicate");
         }
     }
-	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)
+	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
     {
 		if (GenerateContractAddressByTx(tx) != tx.pContractData->address)
 		{
@@ -237,8 +237,8 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     }
     if (tx.IsPregnantTx()) //对输入输出的数量进行判断
     {
-        CellAmount nTransChainOut = GetBranchChainOut(tx);
-		CellMutableTransaction mtxTrans2;
+        MCAmount nTransChainOut = GetBranchChainOut(tx);
+		MCMutableTransaction mtxTrans2;
 		if (!DecodeHexTx(mtxTrans2, tx.sendToTxHexData))
 		{
 			return state.DoS(100, false, REJECT_INVALID, "bad-chain-transaction-step1");
@@ -247,7 +247,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
 		{
 			return state.DoS(100, false, REJECT_INVALID, "bad-transaction-step2-data");
 		}
-		CellAmount nAmountOut2 = 0;
+		MCAmount nAmountOut2 = 0;
 		for (const auto& txout : mtxTrans2.vout)
 		{
 			if (!MoneyRange(txout.nValue))
@@ -271,7 +271,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage mine coin vout size invalid.");
             }
             uint256 branchHash;
-            CellKeyID keyid;
+            MCKeyID keyid;
             int64_t coinheight;
             if (GetMortgageMineData(tx.vout[0].scriptPubKey, &branchHash, &keyid, &coinheight) == false){
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage mine coin vout script invalid.");
@@ -298,19 +298,19 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (!Params().IsMainChain())
             return state.DoS(100, false, REJECT_INVALID, "Redeem mortgage tx only in main chain.");
     }
-    CellTransactionRef pFromTx;
+    MCTransactionRef pFromTx;
     if (tx.IsBranchChainTransStep2() || tx.IsRedeemMortgage())
     {
-        CellDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pFromTx);
-        if (tx.fromBranchId != CellBaseChainParams::MAIN) {
+        if (tx.fromBranchId != MCBaseChainParams::MAIN) {
             //spv check
             uint256 frombranchid = uint256S(tx.fromBranchId);
             if (!pBranchCache->HasBranchData(frombranchid))
                 return state.DoS(0, false, REJECT_INVALID, strprintf("CheckTransaction branchid error. %s", tx.fromBranchId));
             BranchData branchdata = pBranchCache->GetBranchData(frombranchid);
 
-            CellSpvProof spvProof(*tx.pPMT);
+            MCSpvProof spvProof(*tx.pPMT);
             BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
             if (pBlockData == nullptr)
                 return false;
@@ -327,8 +327,8 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     }
     if (tx.IsBranchChainTransStep2())
     {
-        CellAmount nOrginalOut = nValueOut;
-        if (tx.fromBranchId != CellBaseChainParams::MAIN){
+        MCAmount nOrginalOut = nValueOut;
+        if (tx.fromBranchId != MCBaseChainParams::MAIN){
             nOrginalOut = 0;// recalc exclude branch tran recharge
             for (const auto& txout : tx.vout){
                 if (!IsCoinBranchTranScript(txout.scriptPubKey)){
@@ -344,7 +344,7 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
         if (!Params().IsMainChain() && QuickGetBranchScriptType(tx.vout[0].scriptPubKey) == BST_MORTGAGE_COIN)
         {
             uint256 coinfromtxid;
-            CellKeyID coinkeyid;
+            MCKeyID coinkeyid;
             if (GetMortgageCoinData(tx.vout[0].scriptPubKey, &coinfromtxid, &coinkeyid) == false)
             {
                 return state.DoS(100, false, REJECT_INVALID, "Invalid mortgage coin out");
@@ -405,29 +405,29 @@ bool CheckTransaction(const CellTransaction& tx, CellValidationState &state, boo
     return true;
 }
 
-extern bool CheckTranBranchScript(uint256 branchid, const CellScript& scriptPubKey);
+extern bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
 
-bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& state, const CellCoinsViewCache& inputs, int nSpendHeight)
+bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state, const MCCoinsViewCache& inputs, int nSpendHeight)
 {
         // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
         // for an attacker to attempt to split the network.
         if (!inputs.HaveInputs(tx))
             return state.Invalid(false, 0, "", "Inputs unavailable");
 
-        CellAmount nMortgageCoin = 0;
+        MCAmount nMortgageCoin = 0;
         int nCountMortgageCoin = 0;
         uint256 mortgageFromTxid;
 
-        CellAmount nValueIn = 0;
-        CellAmount nFees = 0;
-        CellAmount nContractAmountIn = 0;
-        CellScript contractScript;
-        if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
+        MCAmount nValueIn = 0;
+        MCAmount nFees = 0;
+        MCAmount nContractAmountIn = 0;
+        MCScript contractScript;
+        if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
             contractScript = GetScriptForDestination(tx.pContractData->address);
 
         for (unsigned int i = 0; i < tx.vin.size(); i++)
         {
-            const CellOutPoint &prevout = tx.vin[i].prevout;
+            const MCOutPoint &prevout = tx.vin[i].prevout;
             const Coin& coin = inputs.AccessCoin(prevout);
             assert(!coin.IsSpent());
 
@@ -479,22 +479,22 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             }
         }
 
-        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.pContractData->amountOut > 0) {
+        if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.pContractData->amountOut > 0) {
             nValueIn += tx.pContractData->amountOut;
             if (!MoneyRange(tx.pContractData->amountOut) || !MoneyRange(nValueIn))
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
             nContractAmountIn += tx.pContractData->amountOut;
         }
 
-        CellAmount nValueOut = 0;
-        CellAmount nContractAmountChange = 0;
+        MCAmount nValueOut = 0;
+        MCAmount nContractAmountChange = 0;
         for (const auto& tx_out : tx.vout) {
             nValueOut += tx_out.nValue;
             if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
             if (tx_out.scriptPubKey.IsContract()) {
-                CellContractID contractId;
+                MCContractID contractId;
                 if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
                     return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
                 if (tx_out.scriptPubKey.IsContractChange()) {
@@ -510,19 +510,19 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
                 strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
 
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId != CellBaseChainParams::MAIN)
+        if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN)
         {
-            CellAmount nInValueBranch = 0;
+            MCAmount nInValueBranch = 0;
             for (unsigned int i = 0; i < tx.vin.size(); i++)
             {
-                const CellOutPoint &prevout = tx.vin[i].prevout;
+                const MCOutPoint &prevout = tx.vin[i].prevout;
                 const Coin& coin = inputs.AccessCoin(prevout);// coin type has check in 
                 nInValueBranch += coin.out.nValue;
             }
             uint256 frombranchid;
             frombranchid.SetHex(tx.fromBranchId);
-            CellAmount nOrginalOut = 0;
-            CellAmount nBranchRecharge = 0;
+            MCAmount nOrginalOut = 0;
+            MCAmount nBranchRecharge = 0;
             for (const auto& txout : tx.vout) {
                 if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
                     nOrginalOut += txout.nValue;
@@ -539,14 +539,14 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
             }
         }
 
-        if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION && tx.pContractData->amountOut > 0) {
+        if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->amountOut > 0) {
             if (nContractAmountIn - nContractAmountChange != tx.pContractData->amountOut)
                 return state.DoS(100, false, REJECT_INVALID, "contract amount not match");
         }
 
         //check vout
         if (tx.IsRedeemMortgageStatement()){
-            CellAmount nMortgageCoinOut = 0;
+            MCAmount nMortgageCoinOut = 0;
             int nCountMortgageCoinOut = 0;
             for (const auto& tx_out : tx.vout) {
                 uint256 fromtxid;
@@ -577,7 +577,7 @@ bool Consensus::CheckTxInputs(const CellTransaction& tx, CellValidationState& st
         }
 
         // Tally transaction fees
-        CellAmount nTxFee = nValueIn - tx.GetValueOut();
+        MCAmount nTxFee = nValueIn - tx.GetValueOut();
         if (nTxFee < 0)
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
         nFees += nTxFee;

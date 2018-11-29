@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>org.magnachain.bitcoind</string>
+	<string>org.magnachain.magnachaind</string>
 	<key>ProgramArguments</key>
 	<array>
-		<string>/usr/local/bin/bitcoind</string>
+		<string>/usr/local/bin/magnachaind</string>
 		<string>-daemon</string>
 	</array>
 	<key>RunAtLoad</key>

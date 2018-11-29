@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2016 The Bitcoin Core developers
+// Copyright (c) 2009-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_MINER_H
-#define CELLLINK_MINER_H
+#ifndef MAGNACHAIN_MINER_H
+#define MAGNACHAIN_MINER_H
 
 #include "primitives/block.h"
 #include "transaction/txmempool.h"
@@ -15,27 +15,27 @@
 #include "boost/multi_index_container.hpp"
 #include "boost/multi_index/ordered_index.hpp"
 
-class CellBlockIndex;
-class CellChainParams;
-class CellScript;
-class CellKeyStore;
+class MCBlockIndex;
+class MCChainParams;
+class MCScript;
+class MCKeyStore;
 
 namespace Consensus { struct Params; };
 
 static const bool DEFAULT_PRINTPRIORITY = false;
 
-struct CellBlockTemplate
+struct MCBlockTemplate
 {
-    CellBlock block;
-    std::vector<CellAmount> vTxFees;
+    MCBlock block;
+    std::vector<MCAmount> vTxFees;
     std::vector<int64_t> vTxSigOpsCost;
     std::vector<unsigned char> vchCoinbaseCommitment;
 };
 
 // Container for tracking updates to ancestor feerate as we include (parent)
 // transactions in a block
-struct CellTxMemPoolModifiedEntry {
-    CellTxMemPoolModifiedEntry(CellTxMemPool::txiter entry)
+struct MCTxMemPoolModifiedEntry {
+    MCTxMemPoolModifiedEntry(MCTxMemPool::txiter entry)
     {
         iter = entry;
         nSizeWithAncestors = entry->GetSizeWithAncestors();
@@ -43,42 +43,42 @@ struct CellTxMemPoolModifiedEntry {
         nSigOpCostWithAncestors = entry->GetSigOpCostWithAncestors();
     }
 
-    CellTxMemPool::txiter iter;
+    MCTxMemPool::txiter iter;
     uint64_t nSizeWithAncestors;
-    CellAmount nModFeesWithAncestors;
+    MCAmount nModFeesWithAncestors;
     int64_t nSigOpCostWithAncestors;
 };
 
-/** Comparator for CellTxMemPool::txiter objects.
- *  It simply compares the internal memory address of the CellTxMemPoolEntry object
+/** Comparator for MCTxMemPool::txiter objects.
+ *  It simply compares the internal memory address of the MCTxMemPoolEntry object
  *  pointed to. This means it has no meaning, and is only useful for using them
  *  as key in other indexes.
  */
 struct CompareCTxMemPoolIter {
-    bool operator()(const CellTxMemPool::txiter& a, const CellTxMemPool::txiter& b) const
+    bool operator()(const MCTxMemPool::txiter& a, const MCTxMemPool::txiter& b) const
     {
         return &(*a) < &(*b);
     }
 };
 
 struct modifiedentry_iter {
-    typedef CellTxMemPool::txiter result_type;
-    result_type operator() (const CellTxMemPoolModifiedEntry &entry) const
+    typedef MCTxMemPool::txiter result_type;
+    result_type operator() (const MCTxMemPoolModifiedEntry &entry) const
     {
         return entry.iter;
     }
 };
 
 // This matches the calculation in CompareTxMemPoolEntryByAncestorFee,
-// except operating on CellTxMemPoolModifiedEntry.
+// except operating on MCTxMemPoolModifiedEntry.
 // TODO: refactor to avoid duplication of this logic.
 struct CompareModifiedEntry {
-    bool operator()(const CellTxMemPoolModifiedEntry &a, const CellTxMemPoolModifiedEntry &b) const
+    bool operator()(const MCTxMemPoolModifiedEntry &a, const MCTxMemPoolModifiedEntry &b) const
     {
         double f1 = (double)a.nModFeesWithAncestors * b.nSizeWithAncestors;
         double f2 = (double)b.nModFeesWithAncestors * a.nSizeWithAncestors;
         if (f1 == f2) {
-            return CellTxMemPool::CompareIteratorByHash()(a.iter, b.iter);
+            return MCTxMemPool::CompareIteratorByHash()(a.iter, b.iter);
         }
         return f1 > f2;
     }
@@ -88,16 +88,16 @@ struct CompareModifiedEntry {
 // This is sufficient to sort an ancestor package in an order that is valid
 // to appear in a block.
 struct CompareTxIterByAncestorCount {
-    bool operator()(const CellTxMemPool::txiter &a, const CellTxMemPool::txiter &b)
+    bool operator()(const MCTxMemPool::txiter &a, const MCTxMemPool::txiter &b)
     {
         if (a->GetCountWithAncestors() != b->GetCountWithAncestors())
             return a->GetCountWithAncestors() < b->GetCountWithAncestors();
-        return CellTxMemPool::CompareIteratorByHash()(a, b);
+        return MCTxMemPool::CompareIteratorByHash()(a, b);
     }
 };
 
 typedef boost::multi_index_container<
-    CellTxMemPoolModifiedEntry,
+    MCTxMemPoolModifiedEntry,
     boost::multi_index::indexed_by<
         boost::multi_index::ordered_unique<
             modifiedentry_iter,
@@ -105,9 +105,9 @@ typedef boost::multi_index_container<
         >,
         // sorted by modified ancestor fee rate
         boost::multi_index::ordered_non_unique<
-            // Reuse same tag from CellTxMemPool's similar index
+            // Reuse same tag from MCTxMemPool's similar index
             boost::multi_index::tag<ancestor_score>,
-            boost::multi_index::identity<CellTxMemPoolModifiedEntry>,
+            boost::multi_index::identity<MCTxMemPoolModifiedEntry>,
             CompareModifiedEntry
         >
     >
@@ -118,22 +118,22 @@ typedef indexed_modified_transaction_set::index<ancestor_score>::type::iterator 
 
 struct update_for_parent_inclusion
 {
-    update_for_parent_inclusion(CellTxMemPool::txiter it) : iter(it) {}
+    update_for_parent_inclusion(MCTxMemPool::txiter it) : iter(it) {}
 
-    void operator() (CellTxMemPoolModifiedEntry &e) const
+    void operator() (MCTxMemPoolModifiedEntry &e) const
     {
         e.nModFeesWithAncestors -= iter->GetFee();
         e.nSizeWithAncestors -= iter->GetTxSize();
         e.nSigOpCostWithAncestors -= iter->GetSigOpCost();
     }
 
-    CellTxMemPool::txiter iter;
+    MCTxMemPool::txiter iter;
 };
 
 class BranchUTXOCache
 {
 public:
-    typedef std::map<CellOutPoint, CellTxOut> MAP_CACHE_COIN;
+    typedef std::map<MCOutPoint, MCTxOut> MAP_CACHE_COIN;
 
     CoinList coinlist;
     MAP_CACHE_COIN mapCacheCoin;
@@ -143,10 +143,10 @@ class MakeBranchTxUTXO
 {
 public:
     typedef std::map<uint160, BranchUTXOCache> MAP_BRANCH_COINS;
-    typedef std::map<uint256, CellTransactionRef> MAP_MAKE_CACHE;
+    typedef std::map<uint256, MCTransactionRef> MAP_MAKE_CACHE;
     
-    CellAmount UseUTXO(uint160& key, CellAmount nAmount, std::vector<CellOutPoint>& vInOutPoints);
-    bool MakeTxUTXO(CellMutableTransaction& tx, uint160& key, CellAmount nAmount, CellScript& scriptSig, CellScript& changeScriptPubKey);
+    MCAmount UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints);
+    bool MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey);
 
     MAP_MAKE_CACHE mapCache;
     MAP_BRANCH_COINS mapBranchCoins;
@@ -157,52 +157,52 @@ class BlockAssembler
 {
 private:
     // The constructed block template
-    std::unique_ptr<CellBlockTemplate> pblocktemplate;
-    // A convenience pointer that always refers to the CellBlock in pblocktemplate
-    CellBlock* pblock;
+    std::unique_ptr<MCBlockTemplate> pblocktemplate;
+    // A convenience pointer that always refers to the MCBlock in pblocktemplate
+    MCBlock* pblock;
 
     // Configuration parameters for the block size
     bool fIncludeWitness;
     unsigned int nBlockMaxWeight;
-    CellFeeRate blockMinFeeRate;
+    MCFeeRate blockMinFeeRate;
 
     // Information on the current status of the block
     uint64_t nBlockWeight;
     uint64_t nBlockTx;
     uint64_t nBlockSigOpsCost;
-    CellAmount nFees;
-    CellTxMemPool::setEntries inBlock;
+    MCAmount nFees;
+    MCTxMemPool::setEntries inBlock;
 
     // Chain context for the block
     int nHeight;
     int64_t nLockTimeCutoff;
-    const CellChainParams& chainparams;
-	CellOutPoint outpoint;
+    const MCChainParams& chainparams;
+	MCOutPoint outpoint;
 
 public:
     struct Options {
         Options();
         size_t nBlockMaxWeight;
         size_t nBlockMaxSize;
-        CellFeeRate blockMinFeeRate;
-		CellOutPoint outpoint;
+        MCFeeRate blockMinFeeRate;
+		MCOutPoint outpoint;
     };
-	static Options DefaultOptions(const CellChainParams& params );
+	static Options DefaultOptions(const MCChainParams& params );
 
-    BlockAssembler(const CellChainParams& params);
-    BlockAssembler(const CellChainParams& params, const Options& options);
+    BlockAssembler(const MCChainParams& params);
+    BlockAssembler(const MCChainParams& params, const Options& options);
 
     /** Construct a new block template with coinbase to scriptPubKeyIn */
-    std::unique_ptr<CellBlockTemplate> CreateNewBlock(const CellScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx=true, const CellKeyStore* keystoreIn = nullptr, CellCoinsViewCache *pcoinsCache = nullptr);
+    std::unique_ptr<MCBlockTemplate> CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx=true, const MCKeyStore* keystoreIn = nullptr, MCCoinsViewCache *pcoinsCache = nullptr);
 
 private:
     // utility functions
     /** Clear the block's state and prepare for assembling a new block */
     void resetBlock();
     /** Add a tx to the block */
-    void AddToBlock(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
+    void AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 
-    void GroupingTransaction(int offset, std::vector<const CellTxMemPoolEntry*>& blockTxEntries);
+    void GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries);
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on feerate including unconfirmed ancestors
@@ -212,32 +212,32 @@ private:
 
     // helper functions for addPackageTxs()
     /** Remove confirmed (inBlock) entries from given set */
-    void onlyUnconfirmed(CellTxMemPool::setEntries& testSet);
+    void onlyUnconfirmed(MCTxMemPool::setEntries& testSet);
     /** Test if a new package would "fit" in the block */
     bool TestPackage(uint64_t packageSize, int64_t packageSigOpsCost);
     /** Perform checks on each transaction in a package:
       * locktime, premature-witness, serialized size (if necessary)
       * These checks should always succeed, and they're here
       * only as an extra check in case of suboptimal node configuration */
-    bool TestPackageTransactions(const CellTxMemPool::setEntries& package);
+    bool TestPackageTransactions(const MCTxMemPool::setEntries& package);
     /** Return true if given transaction from mapTx has already been evaluated,
       * or if the transaction's cached data in mapTx is incorrect. */
-    bool SkipMapTxEntry(CellTxMemPool::txiter it, indexed_modified_transaction_set &mapModifiedTx, CellTxMemPool::setEntries &failedTx);
+    bool SkipMapTxEntry(MCTxMemPool::txiter it, indexed_modified_transaction_set &mapModifiedTx, MCTxMemPool::setEntries &failedTx);
     /** Sort the package in an order that is valid to appear in a block */
-    void SortForBlock(const CellTxMemPool::setEntries& package, CellTxMemPool::txiter entry, std::vector<CellTxMemPool::txiter>& sortedEntries);
+    void SortForBlock(const MCTxMemPool::setEntries& package, MCTxMemPool::txiter entry, std::vector<MCTxMemPool::txiter>& sortedEntries);
     /** Add descendants of given transactions to mapModifiedTx with ancestor
       * state updated assuming given transactions are inBlock. Returns number
       * of updated descendants. */
-    int UpdatePackagesForAdded(const CellTxMemPool::setEntries& alreadyAdded, indexed_modified_transaction_set &mapModifiedTx);
+    int UpdatePackagesForAdded(const MCTxMemPool::setEntries& alreadyAdded, indexed_modified_transaction_set &mapModifiedTx);
 
     //
-    void addReportProofTx(const CellTransactionRef &ptxReport, const CellScript &minerpkey, const CellCoinsViewCache* pCoinsCache);
-    void addReportProofTxs(const CellScript& scriptPubKeyIn, CellCoinsViewCache *pcoinsCache);
-    bool UpdateBranchTx(CellTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
+    void addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache);
+    void addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache);
+    bool UpdateBranchTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 };
 
 /** Modify the extranonce in a block */
-void IncrementExtraNonce(CellBlock* pblock, const CellBlockIndex* pindexPrev, unsigned int& nExtraNonce);
-int64_t UpdateTime(CellBlockHeader* pblock, const Consensus::Params& consensusParams, const CellBlockIndex* pindexPrev);
+void IncrementExtraNonce(MCBlock* pblock, const MCBlockIndex* pindexPrev, unsigned int& nExtraNonce);
+int64_t UpdateTime(MCBlockHeader* pblock, const Consensus::Params& consensusParams, const MCBlockIndex* pindexPrev);
 
-#endif // CELLLINK_MINER_H
+#endif // MAGNACHAIN_MINER_H

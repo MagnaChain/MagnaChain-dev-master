@@ -1,4 +1,4 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,14 +19,14 @@
 
 BOOST_FIXTURE_TEST_SUITE(multisig_tests, BasicTestingSetup)
 
-CellScript
-sign_multisig(CellScript scriptPubKey, std::vector<CellKey> keys, CellTransaction transaction, int whichIn)
+MCScript
+sign_multisig(MCScript scriptPubKey, std::vector<MCKey> keys, MCTransaction transaction, int whichIn)
 {
     uint256 hash = SignatureHash(scriptPubKey, transaction, whichIn, SIGHASH_ALL, 0, SIGVERSION_BASE);
 
-    CellScript result;
+    MCScript result;
     result << OP_0; // CHECKMULTISIG bug workaround
-    for (const CellKey &key : keys)
+    for (const MCKey &key : keys)
     {
         std::vector<unsigned char> vchSig;
         BOOST_CHECK(key.Sign(hash, vchSig));
@@ -41,27 +41,27 @@ BOOST_AUTO_TEST_CASE(multisig_verify)
     unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC;
 
     ScriptError err;
-    CellKey key[4];
-    CellAmount amount = 0;
+    MCKey key[4];
+    MCAmount amount = 0;
     for (int i = 0; i < 4; i++)
         key[i].MakeNewKey(true);
 
-    CellScript a_and_b;
+    MCScript a_and_b;
     a_and_b << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
 
-    CellScript a_or_b;
+    MCScript a_or_b;
     a_or_b << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
 
-    CellScript escrow;
+    MCScript escrow;
     escrow << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey()) << OP_3 << OP_CHECKMULTISIG;
 
-    CellMutableTransaction txFrom;  // Funding transaction
+    MCMutableTransaction txFrom;  // Funding transaction
     txFrom.vout.resize(3);
     txFrom.vout[0].scriptPubKey = a_and_b;
     txFrom.vout[1].scriptPubKey = a_or_b;
     txFrom.vout[2].scriptPubKey = escrow;
 
-    CellMutableTransaction txTo[3]; // Spending transaction
+    MCMutableTransaction txTo[3]; // Spending transaction
     for (int i = 0; i < 3; i++)
     {
         txTo[i].vin.resize(1);
@@ -71,8 +71,8 @@ BOOST_AUTO_TEST_CASE(multisig_verify)
         txTo[i].vout[0].nValue = 1;
     }
 
-    std::vector<CellKey> keys;
-    CellScript s;
+    std::vector<MCKey> keys;
+    MCScript s;
 
     // Test a AND b:
     keys.assign(1,key[0]);
@@ -138,29 +138,29 @@ BOOST_AUTO_TEST_CASE(multisig_verify)
 
 BOOST_AUTO_TEST_CASE(multisig_IsStandard)
 {
-    CellKey key[4];
+    MCKey key[4];
     for (int i = 0; i < 4; i++)
         key[i].MakeNewKey(true);
 
     txnouttype whichType;
 
-    CellScript a_and_b;
+    MCScript a_and_b;
     a_and_b << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
     BOOST_CHECK(::IsStandard(a_and_b, whichType));
 
-    CellScript a_or_b;
+    MCScript a_or_b;
     a_or_b  << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
     BOOST_CHECK(::IsStandard(a_or_b, whichType));
 
-    CellScript escrow;
+    MCScript escrow;
     escrow << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey()) << OP_3 << OP_CHECKMULTISIG;
     BOOST_CHECK(::IsStandard(escrow, whichType));
 
-    CellScript one_of_four;
+    MCScript one_of_four;
     one_of_four << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey()) << ToByteVector(key[3].GetPubKey()) << OP_4 << OP_CHECKMULTISIG;
     BOOST_CHECK(!::IsStandard(one_of_four, whichType));
 
-    CellScript malformed[6];
+    MCScript malformed[6];
     malformed[0] << OP_3 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
     malformed[1] << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_3 << OP_CHECKMULTISIG;
     malformed[2] << OP_0 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
@@ -175,30 +175,30 @@ BOOST_AUTO_TEST_CASE(multisig_IsStandard)
 BOOST_AUTO_TEST_CASE(multisig_Sign)
 {
     // Test SignSignature() (and therefore the version of Solver() that signs transactions)
-    CellBasicKeyStore keystore;
-    CellKey key[4];
+    MCBasicKeyStore keystore;
+    MCKey key[4];
     for (int i = 0; i < 4; i++)
     {
         key[i].MakeNewKey(true);
         keystore.AddKey(key[i]);
     }
 
-    CellScript a_and_b;
+    MCScript a_and_b;
     a_and_b << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
 
-    CellScript a_or_b;
+    MCScript a_or_b;
     a_or_b  << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << OP_2 << OP_CHECKMULTISIG;
 
-    CellScript escrow;
+    MCScript escrow;
     escrow << OP_2 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey()) << OP_3 << OP_CHECKMULTISIG;
 
-    CellMutableTransaction txFrom;  // Funding transaction
+    MCMutableTransaction txFrom;  // Funding transaction
     txFrom.vout.resize(3);
     txFrom.vout[0].scriptPubKey = a_and_b;
     txFrom.vout[1].scriptPubKey = a_or_b;
     txFrom.vout[2].scriptPubKey = escrow;
 
-    CellMutableTransaction txTo[3]; // Spending transaction
+    MCMutableTransaction txTo[3]; // Spending transaction
     for (int i = 0; i < 3; i++)
     {
         txTo[i].vin.resize(1);

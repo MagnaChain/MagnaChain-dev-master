@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{5ABF25E3-3352-4342-B3D5-C4344CB36886}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>bitcoinmsvc</RootNamespace>
+    <RootNamespace>magnachainmsvc</RootNamespace>
     <ProjectName>magnachain-common</ProjectName>
     <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
   </PropertyGroup>

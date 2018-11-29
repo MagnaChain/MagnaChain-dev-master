@@ -1,10 +1,10 @@
-// Copyright (c) 2011-2016 The Bitcoin Core developers
+// Copyright (c) 2011-2016 The MagnaChain Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_RECENTREQUESTSTABLEMODEL_H
-#define CELLLINK_QT_RECENTREQUESTSTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_RECENTREQUESTSTABLEMODEL_H
+#define MAGNACHAIN_QT_RECENTREQUESTSTABLEMODEL_H
 
 #include "walletmodel.h"
 
@@ -12,7 +12,7 @@
 #include <QStringList>
 #include <QDateTime>
 
-class CellWallet;
+class MCWallet;
 
 class RecentRequestEntry
 {
@@ -61,7 +61,7 @@ class RecentRequestsTableModel: public QAbstractTableModel
     Q_OBJECT
 
 public:
-    explicit RecentRequestsTableModel(CellWallet *wallet, WalletModel *parent);
+    explicit RecentRequestsTableModel(MCWallet *wallet, WalletModel *parent);
     ~RecentRequestsTableModel();
 
     enum ColumnIndex {
@@ -105,4 +105,4 @@ private:
     QString getAmountTitle();
 };
 
-#endif // CELLLINK_QT_RECENTREQUESTSTABLEMODEL_H
+#endif // MAGNACHAIN_QT_RECENTREQUESTSTABLEMODEL_H
