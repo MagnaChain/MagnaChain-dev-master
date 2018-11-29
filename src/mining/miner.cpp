@@ -1649,7 +1649,7 @@ bool BranchContextualCheckBlockHeader(const CellBlockHeader& block, CellValidati
 {
     const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
     if (pindexPrev == nullptr)
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");
 
     // Check proof of work
     arith_uint256 nBlockWork;
@@ -1657,15 +1657,15 @@ bool BranchContextualCheckBlockHeader(const CellBlockHeader& block, CellValidati
     bool fOverflow;
     nBlockWork.SetCompact(block.nBits, &fNegative, &fOverflow);
     if (fNegative || fOverflow || nBlockWork == 0)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work", false, "incorrect proof of work");
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, nBlockWork error!");
 
     arith_uint256 nWorkdRequired;
     nWorkdRequired.SetCompact(GetBranchNextWorkRequired(pindexPrev, &block, params, branchdata, pBranchCache), &fNegative, &fOverflow);
     if (fNegative || fOverflow || nWorkdRequired == 0)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of required work", false, "incorrect proof of work");
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of required work, nWorkedRequired error!");
 
     if (nBlockWork > nWorkdRequired) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits, incorrect proof of work");
     }
 
     // Check against checkpoints

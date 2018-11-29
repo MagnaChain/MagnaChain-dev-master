@@ -1035,7 +1035,7 @@ bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& stat
     //ContextualCheckBlockHeader
     const CellChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
     if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache))
-        return state.DoS(100, false, REJECT_INVALID, "branch-contextual-check-block-header-fail");
+        return false;
 
     //检查工作量
     if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache))
