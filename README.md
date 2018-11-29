@@ -66,7 +66,7 @@ The command returns something like the following:
 
 This indicates that your contract has been successfully released, and "UpcuLWL6HcSSH5Rc5xQy6e6yEMPQZ9xvWs" is the contract address.
 
-## Calling the contract
+## Call the contract
 
 After our game contract is released, we can play this game by calling this contract.
 
