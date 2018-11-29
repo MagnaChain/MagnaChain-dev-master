@@ -819,6 +819,8 @@ void BranchCache::RemoveFromCache(const MCTransaction& tx)
         uint256 blockHash = blockData.header.GetHash();
         uint256 branchHash = tx.pBranchBlockData->branchID;
 
+        bool bgotdata = FetchDataFromSource(branchHash);
+
         BranchData& bData = mapBranchsData[branchHash];
         if (bData.mapHeads.count(blockHash))//update map data
             bData.mapHeads[blockHash].flags = BranchBlockData::eDELETE;
@@ -857,11 +859,23 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const MCTransaction& tx
     //uint256 blockHash = blockData.header.GetHash();
     const uint256& branchHash = tx.pBranchBlockData->branchID;
 
+    bool bgotdata = FetchDataFromSource(branchHash);
+    
     if (mapBranchsData.count(branchHash))
     {
+        std::shared_ptr<BranchData> pReadOnlyDbData = nullptr;
+        if (readonly_db && readonly_db->HasBranchData(branchHash))
+        {
+            pReadOnlyDbData = std::make_shared<BranchData>(readonly_db->GetBranchData(branchHash));
+        }
+
         BranchData& branchdata = mapBranchsData[branchHash];
         uint256& preblockhash = blockData.header.hashPrevBlock;
         while (branchdata.mapHeads.count(preblockhash)){
+            if (pReadOnlyDbData && pReadOnlyDbData->mapHeads.count(preblockhash))
+            {
+                break;// Already in db
+            }
             BranchBlockData& preblockdata = branchdata.mapHeads[preblockhash];
             vecRet.push_back(preblockdata.txHash);
             preblockhash = preblockdata.header.hashPrevBlock;
@@ -873,6 +887,7 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const MCTransaction& tx
 
 const BranchBlockData* BranchCache::GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash)
 {
+    bool bgotdata = FetchDataFromSource(branchhash);
     if (mapBranchsData.count(branchhash)){
         if (mapBranchsData[branchhash].mapHeads.count(blockhash)){
             if (mapBranchsData[branchhash].mapHeads[blockhash].flags == BranchBlockData::eADD)
