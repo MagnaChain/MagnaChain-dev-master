@@ -31,19 +31,20 @@ The nodeIp, user, pwd, port and other parameters in the command need to fill in 
 In the current directory, create a new file, name it game.lua, and edit:
 
 ```lua
-Function init()
-PersistentData = {}
-PersistentData.killNumTbl = {}
-End
+function init()
+	PersistentData = {}
+	PersistentData.killNumTbl = {}
+end
 
-Function killMonster()
+function killMonster()
     --print("GJ!One monster killed by you!")
     PersistentData.killNumTbl[msg.sender] = (PersistentData.killNumTbl[msg.sender] or 0) + 1
-    Return true
+    return true
+end
 
-Function showNum()
-    Return PersistentData.killNumTbl[msg.sender]
-End
+function showNum()
+    return PersistentData.killNumTbl[msg.sender]
+end
     
 ```
 
