@@ -1,0 +1,72 @@
+body
+{
+	 padding: 1px 3px 0 3px;
+}
+
+span.prevnext a:link {font-size:500%}
+span.prevnext a:visited {font-size:500%}
+span.prevnext a:hover {font-size:500%}
+span.prevnext a:active {font-size:500%}
+
+#smfheader
+{
+	 display:none
+}
+
+.titlebg, tr.titlebg th, tr.titlebg td, .titlebg2, tr.titlebg2 th, tr.titlebg2 td
+{
+	color: black;
+	font-style: normal;
+	background: inherit;
+	background-color: #C3D1DC;
+	border-bottom: none;
+	border-top: none;
+	padding-left: 0;
+	padding-right: 0;
+}
+
+#hellomember
+{
+	 font-size:small !important; 
+}
+
+.maintab_back, .maintab_active_back
+{
+	padding: 2px 2px 2px 2px;
+}
+
+.maintab_first
+{
+	background: inherit;
+	background-color:#7392B0;
+}
+.maintab_back
+{
+	background: inherit;
+	background-color:#7392B0;
+}
+.maintab_last
+{
+	background: inherit;
+	background-color:#7392B0;
+}
+.maintab_active_first
+{
+	background: inherit;
+	background-color:#7392B0;
+}
+.maintab_active_back
+{
+	background: inherit;
+	background-color:#7392B0;
+}
+.maintab_active_last
+{
+	background: inherit;
+	background-color:#7392B0;
+}
+
+#toppages{display:none}
+.newtxt:after{content:"[new]"}
+.newtxt{color:#000099;font-weight:bold;font-size:larger}
+.newimg{display:none}

@@ -1,0 +1,92 @@
+#!/sbin/runscript
+
+# backward compatibility for existing gentoo layout 
+#
+if [ -d "/var/lib/magnachain/.magnachain" ]; then
+	MAGNACHAIND_DEFAULT_DATADIR="/var/lib/magnachain/.magnachain"
+else
+	MAGNACHAIND_DEFAULT_DATADIR="/var/lib/magnachaind"
+fi
+
+MAGNACHAIND_CONFIGFILE=${MAGNACHAIND_CONFIGFILE:-/etc/magnachain/magnachain.conf}
+MAGNACHAIND_PIDDIR=${MAGNACHAIND_PIDDIR:-/var/run/magnachaind}
+MAGNACHAIND_PIDFILE=${MAGNACHAIND_PIDFILE:-${MAGNACHAIND_PIDDIR}/magnachaind.pid}
+MAGNACHAIND_DATADIR=${MAGNACHAIND_DATADIR:-${MAGNACHAIND_DEFAULT_DATADIR}}
+MAGNACHAIND_USER=${MAGNACHAIND_USER:-${MAGNACHAIN_USER:-magnachain}}
+MAGNACHAIND_GROUP=${MAGNACHAIND_GROUP:-magnachain}
+MAGNACHAIND_BIN=${MAGNACHAIND_BIN:-/usr/bin/magnachaind}
+MAGNACHAIND_NICE=${MAGNACHAIND_NICE:-${NICELEVEL:-0}}
+MAGNACHAIND_OPTS="${MAGNACHAIND_OPTS:-${MAGNACHAIN_OPTS}}"
+
+name="MagnaChain Core Daemon"
+description="MagnaChain cryptocurrency P2P network daemon"
+
+command="/usr/bin/magnachaind"
+command_args="-pid=\"${MAGNACHAIND_PIDFILE}\" \
+		-conf=\"${MAGNACHAIND_CONFIGFILE}\" \
+		-datadir=\"${MAGNACHAIND_DATADIR}\" \
+		-daemon \
+		${MAGNACHAIND_OPTS}"
+
+required_files="${MAGNACHAIND_CONFIGFILE}"
+start_stop_daemon_args="-u ${MAGNACHAIND_USER} \
+			-N ${MAGNACHAIND_NICE} -w 2000"
+pidfile="${MAGNACHAIND_PIDFILE}"
+
+# The retry schedule to use when stopping the daemon. Could be either
+# a timeout in seconds or multiple signal/timeout pairs (like
+# "SIGKILL/180 SIGTERM/300")
+retry="${MAGNACHAIND_SIGTERM_TIMEOUT}"
+
+depend() {
+	need localmount net
+}
+
+# verify
+# 1) that the datadir exists and is writable (or create it)
+# 2) that a directory for the pid exists and is writable
+# 3) ownership and permissions on the config file
+start_pre() {
+	checkpath \
+	-d \
+	--mode 0750 \
+	--owner "${MAGNACHAIND_USER}:${MAGNACHAIND_GROUP}" \
+	"${MAGNACHAIND_DATADIR}"
+
+	checkpath \
+	-d \
+	--mode 0755 \
+	--owner "${MAGNACHAIND_USER}:${MAGNACHAIND_GROUP}" \
+	"${MAGNACHAIND_PIDDIR}"
+
+	checkpath -f \
+	-o ${MAGNACHAIND_USER}:${MAGNACHAIND_GROUP} \
+	-m 0660 \
+	${MAGNACHAIND_CONFIGFILE}
+
+	checkconfig || return 1
+}
+
+checkconfig()
+{
+	if ! grep -qs '^rpcpassword=' "${MAGNACHAIND_CONFIGFILE}" ; then
+		eerror ""
+		eerror "ERROR: You must set a secure rpcpassword to run magnachaind."
+		eerror "The setting must appear in ${MAGNACHAIND_CONFIGFILE}"
+		eerror ""
+		eerror "This password is security critical to securing wallets "
+		eerror "and must not be the same as the rpcuser setting."
+		eerror "You can generate a suitable random password using the following"
+		eerror "command from the shell:"
+		eerror ""
+		eerror "bash -c 'tr -dc a-zA-Z0-9 < /dev/urandom | head -c32 && echo'"
+		eerror ""
+		eerror "It is also recommended that you also set alertnotify so you are "
+		eerror "notified of problems:"
+		eerror ""
+		eerror "ie: alertnotify=echo %%s | mail -s \"MagnaChain Alert\"" \
+			"admin@foo.com"
+		eerror ""
+		return 1
+	fi
+}

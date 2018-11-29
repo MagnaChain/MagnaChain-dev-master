@@ -1,0 +1,15 @@
+*.csproj
+*.suo
+*.obj
+*.user
+/.vs/
+/Debug/
+/Release/
+/magnachain-cli/
+/magnachain-common/
+/magnachaind/
+/magnachain-test/
+/magnachain-tx/
+/packages/
+/test/jmeter/temp.txt
+/build-msvc/.vs
