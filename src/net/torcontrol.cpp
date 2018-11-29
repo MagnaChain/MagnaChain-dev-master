@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2016 The MagnaChain Core developers
+// Copyright (c) 2015-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Copyright (c) 2017 The Zcash developers
 // Distributed under the MIT software license, see the accompanying
