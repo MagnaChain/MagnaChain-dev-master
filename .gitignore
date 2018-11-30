@@ -1,14 +1,37 @@
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# VisualStudio Project files
 *.csproj
 *.suo
-*.obj
 *.user
-/.vs/
-/Debug/
-/Release/
-/build-msvc/magnachain-cli/
-/build-msvc/magnachain-common/
-/build-msvc/magnachaind/
-/build-msvc/magnachain-test/
-/build-msvc/magnachain-tx/
-/packages/
-/build-msvc/.vs
+.vs/
+
+# Log
+*.log
+*.tlog
+
+# Others
+Debug/
+Release/
+x64/
+
+# Nuget
+/build-msvc/packages/
