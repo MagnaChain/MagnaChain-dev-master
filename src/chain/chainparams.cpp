@@ -143,7 +143,7 @@ public:
         strNetworkID = "main";
 		consensus.BigBoomHeight = 1000;
 		consensus.BigBoomValue = 1500000 * COIN;
-        consensus.nSubsidyHalvingInterval = 210000 * 20;
+        consensus.nSubsidyHalvingInterval = 210000 * 40;
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();
         consensus.BIP65Height = 0; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0

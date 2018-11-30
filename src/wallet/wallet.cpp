@@ -3396,26 +3396,6 @@ MCAmount MCWallet::GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coi
         fee_needed = maxTxFee;
         if (feeCalc) feeCalc->reason = FeeReason::MAXTXFEE;
     }
-    /*下面方法废弃的了，直接把fee_needed乘个倍数的话，weight不变，会把手续费直接拉高
-      改到GetTransactionWeight
-	if (tx != nullptr)
-	{
-		// fee of branch chain transaction 
-        if (tx->IsPregnantTx() || tx->IsBranchCreate() || tx->IsProve() || tx->IsReport()){
-            fee_needed *= 10;
-        }
-        if (tx->IsBranchChainTransStep2()){
-            fee_needed *= 20;
-        }
-
-		// 根据执行的指令数、代码大小以及存盘数据变化量计算交易费用
-		// 相关常量待定，使其与nTxBytes有关
-		if (tx->IsSmartContract() && sls != nullptr)
-		{
-			fee_needed += sls->runningTimes * 0.1 + sls->codeLen * 0.1 + sls->deltaDataLen * 0.1;
-		}
-	}
-    */
     return fee_needed;
 }
 
