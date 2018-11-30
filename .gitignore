@@ -5,11 +5,10 @@
 /.vs/
 /Debug/
 /Release/
-/magnachain-cli/
-/magnachain-common/
-/magnachaind/
-/magnachain-test/
-/magnachain-tx/
+/build-msvc/magnachain-cli/
+/build-msvc/magnachain-common/
+/build-msvc/magnachaind/
+/build-msvc/magnachain-test/
+/build-msvc/magnachain-tx/
 /packages/
-/test/jmeter/temp.txt
 /build-msvc/.vs
