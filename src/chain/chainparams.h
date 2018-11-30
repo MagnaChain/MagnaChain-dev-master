@@ -15,7 +15,7 @@
 #include <memory>
 #include <vector>
 
-static const int MAIN_CHAIN_POW_TARGET_SPACING = 10;
+static const int MAIN_CHAIN_POW_TARGET_SPACING = 15;
 static const int BRANCH_CHAIN_POW_TARGET_SPACING = 8;
 static const int TEST_CHAIN_POW_TARGET_SPACING = 5;
 
