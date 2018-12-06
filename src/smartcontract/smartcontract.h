@@ -75,6 +75,7 @@ public:
 extern bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
 extern MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
 
+//temp contract address for publish
 template<typename TxType>
 MCContractID GenerateContractAddressByTx(TxType& tx)
 {

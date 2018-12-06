@@ -217,14 +217,23 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
 
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
 	{
-		entry.pushKV("contractaddress", tx.pContractData->address.ToString());
-		entry.pushKV("senderpubkey", HexStr(tx.pContractData->sender.begin(), tx.pContractData->sender.end()));
+        UniValue contractdata(UniValue::VOBJ);
+        contractdata.pushKV("contractaddress", tx.pContractData->address.ToString());
+        contractdata.pushKV("senderpubkey", tx.pContractData->sender.GetID().ToString());//HexStr(tx.pContractData->sender.begin(), tx.pContractData->sender.end())
+
+        if(tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
+            contractdata.pushKV("codeOrFunc", HexStr(tx.pContractData->codeOrFunc.begin(), tx.pContractData->codeOrFunc.end()));
+        else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
+            contractdata.pushKV("codeOrFunc", tx.pContractData->codeOrFunc);
+        contractdata.pushKV("args", tx.pContractData->args);
+        contractdata.pushKV("amountout", tx.pContractData->amountOut);
+
         UniValue o(UniValue::VOBJ);
         o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));
         o.pushKV("hex", HexStr(tx.pContractData->signature.begin(), tx.pContractData->signature.end()));
-        entry.pushKV("scontractScriptSig", o);
-        entry.pushKV("callfun", tx.pContractData->codeOrFunc);
-        entry.pushKV("params", tx.pContractData->args);
+        contractdata.pushKV("signature", o);
+
+        entry.pushKV("contractdata", contractdata);
 	}
 	if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
 	{
