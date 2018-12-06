@@ -218,7 +218,7 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
 	{
         UniValue contractdata(UniValue::VOBJ);
-        contractdata.pushKV("contractaddress", tx.pContractData->address.ToString());
+        contractdata.pushKV("contractaddress", MagnaChainAddress(tx.pContractData->address).ToString());
         contractdata.pushKV("senderpubkey", tx.pContractData->sender.GetID().ToString());//HexStr(tx.pContractData->sender.begin(), tx.pContractData->sender.end())
 
         if(tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)

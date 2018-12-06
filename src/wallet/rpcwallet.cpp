@@ -763,7 +763,7 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::string strSenderAddr = request.params[3].get_str();
     MagnaChainAddress senderAddr;
     if (!GetSenderAddr(pwallet, strSenderAddr, senderAddr))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address, which is not in this wallet.");
 
     MCKeyID senderKey;
     MCPubKey senderPubKey;
@@ -868,7 +868,11 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     MagnaChainAddress contractAddr(request.params[0].get_str());
 	if (!contractAddr.IsValid())
-		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address for send");
+		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address to call");
+
+    MCContractID contractID;
+    if (!contractAddr.GetContractID(contractID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address");
 
 	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
@@ -916,19 +920,19 @@ UniValue precallcontract(const JSONRPCRequest& request)
     ret.push_back(Pair("return", callRet));
     if (success) {
         if (bSendCall) {
-            MCKeyID contractId;
-            contractAddr.GetKeyID(contractId);
+            //MCKeyID contractId;
+            //contractAddr.GetKeyID(contractId);
 
             MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            RPCSLS.contractIds.erase(contractId);
+            RPCSLS.contractIds.erase(contractID);
             MCWalletTx wtx;
             wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
             wtx.pContractData.reset(new ContractData);
             wtx.pContractData->sender = senderPubKey;
             wtx.pContractData->codeOrFunc = strFuncName;
             wtx.pContractData->args = args.write();
-            wtx.pContractData->address = contractId;
+            wtx.pContractData->address = contractID;
             wtx.pContractData->amountOut = RPCSLS.contractOut;
             SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
