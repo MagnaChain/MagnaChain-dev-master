@@ -1,0 +1,8 @@
+version: '2.1'
+
+services:
+  src:
+    image: src
+    build: .
+    ports:
+      - 8332:8332

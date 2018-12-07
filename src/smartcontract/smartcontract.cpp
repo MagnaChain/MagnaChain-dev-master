@@ -442,7 +442,9 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
 bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
     MCContractID contractID;
-    contractAddr.GetContractID(contractID);
+    if (!contractAddr.GetContractID(contractID))
+        return false;
+
     sls->pCoinAmountCache->TakeSnapshot(contractID);
     bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
     sls->pCoinAmountCache->RemoveSnapshot(contractID, !success);

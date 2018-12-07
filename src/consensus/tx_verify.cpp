@@ -217,7 +217,8 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
     }
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
     {
-		if (GenerateContractAddressByTx(tx) != tx.pContractData->address)
+        MCContractID contractAddr = GenerateContractAddressByTx(tx);
+		if (contractAddr != tx.pContractData->address)
 		{
 			return state.DoS(100, false, REJECT_INVALID, "bad-contract-address");
 		}

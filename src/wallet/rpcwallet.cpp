@@ -639,7 +639,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain sender address");
 
 	MCAmount amount = AmountFromValue(request.params[3]);
-	if (amount <= 0)
+	if (amount < 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
 	MagnaChainAddress changeAddr;
@@ -652,16 +652,17 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	else
         changeAddr = fundAddr;
 
-	MCKeyID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
+    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
 	MagnaChainAddress contractAddr(contractId);
 
     UniValue ret(UniValue::VARR);
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     if (!PublishContract(&RPCSLS, contractAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
+    RPCSLS.contractIds.erase(contractId);
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.pContractData.reset(new ContractData);
@@ -673,6 +674,37 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     ret.setObject();
     ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
+    
+    //for debug
+    //UniValue objTx(UniValue::VOBJ);
+    //uint256 blocktemp;
+    //TxToUniv(*wtx.tx, blocktemp, objTx);
+    //ret.push_back(Pair("txobj", objTx));
+
+    //check
+    //const MCTransaction& tx = *wtx.tx;
+    //MCContractID contractAddrtt = GenerateContractAddressByTx(tx);
+    //if (contractAddrtt != tx.pContractData->address)
+    //    throw JSONRPCError(RPC_CONTRACT_ERROR,"contract address error");
+    //MCAmount nValueOut = 0;
+    //MCAmount nContractAmountChange = 0;
+    //for (const auto& tx_out : tx.vout) {
+    //    nValueOut += tx_out.nValue;
+    //    if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
+    //        throw JSONRPCError(RPC_CONTRACT_ERROR, "outvalue error");
+
+    //    if (tx_out.scriptPubKey.IsContract()) {
+    //        MCContractID contractId;
+    //        if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
+    //            throw JSONRPCError(RPC_CONTRACT_ERROR, "out contract id error");
+    //        if (tx_out.scriptPubKey.IsContractChange()) {
+    //            if (nContractAmountChange > 0)
+    //                throw JSONRPCError(RPC_CONTRACT_ERROR, "multi contract recharge error");
+    //            nContractAmountChange += tx_out.nValue;
+    //        }
+    //    }
+    //}
+
     UniValue uvalCoins(UniValue::VARR);
     for (MCTxIn txin : wtx.tx->vin)
     {
@@ -731,7 +763,7 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::string strSenderAddr = request.params[3].get_str();
     MagnaChainAddress senderAddr;
     if (!GetSenderAddr(pwallet, strSenderAddr, senderAddr))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address, which is not in this wallet.");
 
     MCKeyID senderKey;
     MCPubKey senderPubKey;
@@ -836,7 +868,11 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     MagnaChainAddress contractAddr(request.params[0].get_str());
 	if (!contractAddr.IsValid())
-		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address for send");
+		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address to call");
+
+    MCContractID contractID;
+    if (!contractAddr.GetContractID(contractID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address");
 
 	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
@@ -884,19 +920,19 @@ UniValue precallcontract(const JSONRPCRequest& request)
     ret.push_back(Pair("return", callRet));
     if (success) {
         if (bSendCall) {
-            MCKeyID contractId;
-            contractAddr.GetKeyID(contractId);
+            //MCKeyID contractId;
+            //contractAddr.GetKeyID(contractId);
 
             MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            RPCSLS.contractIds.erase(contractId);
+            RPCSLS.contractIds.erase(contractID);
             MCWalletTx wtx;
             wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
             wtx.pContractData.reset(new ContractData);
             wtx.pContractData->sender = senderPubKey;
             wtx.pContractData->codeOrFunc = strFuncName;
             wtx.pContractData->args = args.write();
-            wtx.pContractData->address = contractId;
+            wtx.pContractData->address = contractID;
             wtx.pContractData->amountOut = RPCSLS.contractOut;
             SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
 
@@ -3641,7 +3677,10 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
     bool fwithscript = false;
     if (request.params.size() >= 2)
     {
-        fwithscript = request.params[1].get_bool();
+        if (request.params[1].isBool())
+            fwithscript = request.params[1].get_bool();
+        else if (request.params[1].isStr() && (request.params[1].get_str() == "true" || request.params[1].get_str() == "1"))
+            fwithscript = true;
     }
 
 	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
