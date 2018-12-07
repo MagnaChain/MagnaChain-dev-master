@@ -3798,9 +3798,13 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
 
 	MCAmount curBalance = nValue;
 	bool fSubtractFeeFromAmount = false;
-	MCRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
+	
 	std::vector<MCRecipient> vecSend;
-	vecSend.push_back(recip);
+    if (nAmount > 0)
+    {
+        MCRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
+        vecSend.push_back(recip);
+    }
 
 	MCFakeWallet fakeWallet;
 	fakeWallet.m_ownKeys.insert(kFromKeyId);
@@ -3810,7 +3814,7 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
 	coin_control.fAllowOtherInputs = false;
 	for (MCOutPoint outpoint : setInOutPoints)
 	{
-		coin_control.Select(outpoint);//select by MCWallet later ,AvailableCoins 有问题 
+		//coin_control.Select(outpoint);//select by MCWallet later ,AvailableCoins 有问题 
 		MCWalletTx wtxIn;
 		MCTransactionRef txOutpoint;
 		uint256 hash = outpoint.hash;
