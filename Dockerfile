@@ -47,8 +47,8 @@ RUN pwd \
 FROM ubuntu:18.04 as result
 #定义区块数据挂载点和环境变量
 WORKDIR /root
-ENV CHAIN_DATA=/root/blocks
 ENV APP=/root/app
+ENV CHAIN_DATA=${APP}/blocks
 ENV PATH ${APP}:$PATH
 #暴露节点端口
 EXPOSE 8332
@@ -69,7 +69,7 @@ RUN cd ${APP} \
 # HEALTHCHECK    
 #启动节点
 ENTRYPOINT [ "docker-entrypoint.sh","magnachaind"]
-CMD [ "-printtoconsole", "-datadir=/root/blocks/main" ]
+CMD [ "-printtoconsole", "-datadir=/root/app/blocks/main" ]
 
 
 
