@@ -2705,6 +2705,19 @@ bool MCWallet::SignTransaction(MCMutableTransaction &tx)
         UpdateTransaction(tx, nIn, sigdata);
         nIn++;
     }
+    // sign with contractSender addr's private key.
+    if (tx.IsSmartContract())
+    {
+        MCTransaction txNewConst(tx);
+        MCScript constractSig;
+        if (!SignContract(this, &txNewConst, constractSig))
+        {
+            return false;
+        }
+        else {
+            tx.pContractData->signature = constractSig;
+        }
+    }
     return true;
 }
 

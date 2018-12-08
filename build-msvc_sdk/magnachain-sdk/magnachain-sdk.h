@@ -11,6 +11,7 @@
 struct MCExtKey;
 class MCKey;
 class MCPubKey;
+class ECCVerifyHandle;
 
 enum NETWORK_TYPE
 {
@@ -33,6 +34,7 @@ private:
 
 	const char* m_arrRpcArg[20];
 
+    ECCVerifyHandle *m_pVerifyHandle;
 public:
 	IxCellLinkBridge();
 	~IxCellLinkBridge();
@@ -65,5 +67,5 @@ public:
 	
 	float GetBalance(const char* pAddress);
 
-	bool Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr);
+	bool Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr, const std::string& strPrivKey);
 };

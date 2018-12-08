@@ -39,8 +39,11 @@ int main()
 
     pCB->InitializeRPCInfo("127.0.0.1", "8201", "user", "pwd");
 
-    pCB->GetBalance("XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw");
+    float balance = pCB->GetBalance("XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw");
 
+    //XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw
+    std::string strPrivKey = "L2bv5m5hTGy8ZaknHLpzpSfhFZFKBSP4seHJR37PgJedY4XBHfZV";// private key for from address
+    pCB->Transfer("XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw", "XDfHyd7xaZvMQdv4MnoEL3qRPbrxQ6D6MC", 1, "XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw", strPrivKey);
 
     return 0;
 }

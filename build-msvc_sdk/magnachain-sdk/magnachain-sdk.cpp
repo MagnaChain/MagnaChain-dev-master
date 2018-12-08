@@ -13,10 +13,17 @@
 #include "script/script.h"
 #include "chain/chainparams.h"
 #include "utils/util.h"
+#include "io/core_io.h"
+#include "wallet/wallet.h"
+#include "script/sign.h"
+#include "rpc/server.h"
+
+typedef std::map<MCOutPoint, MCTxOut> MAP_OUTPUT_COINS;
 
 IxCellLinkBridge::IxCellLinkBridge()
 {
 	m_pRootKey = NULL;
+    m_pVerifyHandle = new ECCVerifyHandle();
 }
 
 IxCellLinkBridge::~IxCellLinkBridge()
@@ -26,6 +33,9 @@ IxCellLinkBridge::~IxCellLinkBridge()
 		delete m_pRootKey;
 		m_pRootKey = NULL;
 	}
+    if (m_pVerifyHandle)
+        delete m_pVerifyHandle;
+    m_pVerifyHandle = nullptr;
 }
 
 extern bool SignatureCoinbaseTransaction(int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& txNew, MCAmount nValue, const MCScript& scriptPubKey);
@@ -264,6 +274,10 @@ float IxCellLinkBridge::GetBalance(const char* pAddress)
 	}
     const UniValue& result = find_value(kRet, "result");
     const UniValue& error = find_value(kRet, "error");
+    if (!error.isNull())
+    {
+        return -1.0f;
+    }
     if (result.isNum())
     {
         return result.get_real();
@@ -271,9 +285,161 @@ float IxCellLinkBridge::GetBalance(const char* pAddress)
 	return -1.0f;
 }
 
-bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr)
+MAP_OUTPUT_COINS TransUvcoinsArrToMap(const UniValue& uvcoins)
 {
-	return false;
+    MAP_OUTPUT_COINS mapCoins;
+    for (int i = 0; i < uvcoins.size(); i++)
+    {
+        const UniValue& uvcoin = uvcoins[i];
+        const UniValue& uvtxhash = find_value(uvcoin, "txhash");
+        const UniValue& uvoutn = find_value(uvcoin, "outn");
+
+        const UniValue& uvAmount = find_value(uvcoin, "value");
+        const UniValue& uvscript = find_value(uvcoin, "script");
+
+        uint256 txhash = uint256S(uvtxhash.get_str());
+        uint32_t n = uvoutn.get_int();
+
+        MCOutPoint output(txhash, n);
+
+        std::vector<unsigned char> vecScript = ParseHex(uvscript.get_str());
+        MCScript script(vecScript.begin(), vecScript.end());
+
+        MCTxOut txout;
+        txout.nValue = AmountFromValue(uvAmount);
+        txout.scriptPubKey = script;
+
+        mapCoins.insert(std::make_pair(output, txout));
+    }
+    return mapCoins;
+}
+
+bool SignTransaction(MCMutableTransaction &mtx, MAP_OUTPUT_COINS &mapCoins, MCBasicKeyStore& keystore)
+{
+    MCTransaction txNewConst(mtx);
+    int nIn = 0;
+    for (const auto& input : mtx.vin) {
+        MAP_OUTPUT_COINS::iterator mit = mapCoins.find(input.prevout);
+        if (mit == mapCoins.end())
+        {
+            return false;
+        }
+
+        const MCScript& scriptPubKey = mit->second.scriptPubKey;
+        const MCAmount& amount = mit->second.nValue;
+
+        SignatureData sigdata;
+        if (!ProduceSignature(TransactionSignatureCreator(&keystore, &txNewConst, nIn, amount, SIGHASH_ALL), scriptPubKey, sigdata)) {
+            return false;
+        }
+        UpdateTransaction(mtx, nIn, sigdata);
+        nIn++;
+    }
+    // sign with contractSender addr's private key.
+    if (mtx.IsSmartContract())
+    {
+        MCTransaction txNewConst(mtx);
+        MCScript constractSig;
+        if (!SignContract(&keystore, &txNewConst, constractSig))
+        {
+            return false;
+        }
+        else {
+            mtx.pContractData->signature = constractSig;
+        }
+    }
+}
+
+bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr, const std::string& strPrivKey)
+{
+    ResetArgs();
+
+    // avoid to use pointer which may be deleted by other user.
+    int argc = 5;
+    m_arrRpcArg[argc++] = "premaketransaction";
+    m_arrRpcArg[argc++] = pFromKeyWif;
+    m_arrRpcArg[argc++] = pDestAddr;
+    m_arrRpcArg[argc++] = pChangeAddr;
+    std::string strAmount = strprintf("%f", fAmount);
+    m_arrRpcArg[argc++] = strAmount.c_str();
+
+    UniValue kRet;
+    gArgs.ParseParameters(argc, (char**)m_arrRpcArg);
+    int iF = CommandLineRPC(argc, (char**)m_arrRpcArg, kRet);
+    if (iF == EXIT_FAILURE)
+    {
+        return false;
+    }
+
+    const UniValue& result = find_value(kRet, "result");
+    const UniValue& error = find_value(kRet, "error");
+    if (!error.isNull())
+    {
+        return false;
+    }
+
+    const UniValue& uvtxhex = find_value(result, "txhex");
+    const UniValue& uvcoins = find_value(result, "coins");
+    if (uvtxhex.isNull() || !uvtxhex.isStr() || uvcoins.isNull() || !uvcoins.isArray())
+    {
+        return false;
+    }
+
+    //反序列化出交易结构
+    MCMutableTransaction mtx;
+    if (!DecodeHexTx(mtx, uvtxhex.get_str()))
+    {
+        return false;
+    }
+
+    MAP_OUTPUT_COINS mapCoins = TransUvcoinsArrToMap(uvcoins);
+    
+    //把私钥添加进 keystore
+    MagnaChainSecret vchSecret;
+    if (!vchSecret.SetString(strPrivKey)) return false;
+
+    MCKey key = vchSecret.GetKey();
+    if (!key.IsValid()) return false;
+
+    MCBasicKeyStore keystore;
+    keystore.AddKey(key);
+
+    //签名
+    if (!SignTransaction(mtx, mapCoins, keystore))
+    {
+        return false;
+    }
+
+    //send to node
+    MCTransaction tx(mtx);
+    std::string strTxHex = EncodeHexTx(tx, RPCSerializationFlags());
+    //----------------------------------------------
+    // next rpc
+    {
+        ResetArgs();
+
+        // avoid to use pointer which may be deleted by other user.
+        int argc = 5;
+        m_arrRpcArg[argc++] = "sendrawtransaction";
+        m_arrRpcArg[argc++] = strTxHex.c_str();
+
+        UniValue kRet;
+        gArgs.ParseParameters(argc, (char**)m_arrRpcArg);
+        int iF = CommandLineRPC(argc, (char**)m_arrRpcArg, kRet);
+        if (iF == EXIT_FAILURE)
+        {
+            return false;
+        }
+
+        const UniValue& result = find_value(kRet, "result");
+        const UniValue& error = find_value(kRet, "error");
+        if (!error.isNull())
+        {
+            return false;
+        }
+    }
+    
+	return true;
 }
 
 
