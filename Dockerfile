@@ -47,7 +47,7 @@ RUN pwd \
 FROM ubuntu:18.04 as result
 #定义区块数据挂载点和环境变量
 WORKDIR /root
-ENV CHAIN_DATA=/root/blocks/
+ENV CHAIN_DATA=/root/blocks
 ENV APP=/root/app
 ENV PATH ${APP}:$PATH
 #暴露节点端口
