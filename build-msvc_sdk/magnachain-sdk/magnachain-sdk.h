@@ -61,6 +61,7 @@ public:
     MCExtKey* GetRootExtKey();
 
 	void InitializeRPCInfo(const char* pHost, const char* pPort, const char* pUser, const char* pPwd);
+    void ResetArgs();
 	
 	float GetBalance(const char* pAddress);
 

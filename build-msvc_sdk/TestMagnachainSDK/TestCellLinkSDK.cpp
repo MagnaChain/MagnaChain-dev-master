@@ -37,6 +37,11 @@ int main()
 	sprintf(chInput, "Address: %s\r\n", mbzTmp);
 	OutputDebugStringA(chInput);
 
+    pCB->InitializeRPCInfo("127.0.0.1", "8201", "user", "pwd");
+
+    pCB->GetBalance("XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw");
+
+
     return 0;
 }
 

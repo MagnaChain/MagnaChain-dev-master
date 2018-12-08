@@ -12,6 +12,7 @@
 #include "misc/amount.h"
 #include "script/script.h"
 #include "chain/chainparams.h"
+#include "utils/util.h"
 
 IxCellLinkBridge::IxCellLinkBridge()
 {
@@ -38,6 +39,11 @@ void IxCellLinkBridge::Initialize(NETWORK_TYPE eNetworkType)
 	{
 		ECC_Start();
 	}		
+
+    if (!SetupNetworking()) {
+        fprintf(stderr, "Error: Initializing networking failed\n");
+        //throw std::exception("setup network fail");
+    }
 
 	std::string strNetwork;
 
@@ -210,25 +216,29 @@ void IxCellLinkBridge::InitializeRPCInfo(const char* pHost, const char* pPort, c
 	m_strUser = pUser;
 	m_strPwd = pPwd;
 
-	std::string strK;
-	std::string strSeg;
+    m_arrRpcArg[0] = "application_name";
 
-	strK = "-rpcconnect=";
-	strSeg = strK + m_strHost;
-	m_arrRpcArg[0] = strSeg.c_str();
+	static std::string strConnect = "-rpcconnect=" + m_strHost;
+	m_arrRpcArg[1] = strConnect.c_str();
 
-	strK = "-rpcport=";
-	strSeg = strK + m_strPort;
-	m_arrRpcArg[1] = strSeg.c_str();
+	static std::string strPort = "-rpcport=" + m_strPort;
+	m_arrRpcArg[2] = strPort.c_str();
 
-	strK = "-rpcuser=";
-	strSeg = strK + m_strUser;
-	m_arrRpcArg[2] = strSeg.c_str();
+	static std::string strUser = "-rpcuser=" + m_strUser;
+	m_arrRpcArg[3] = strUser.c_str();
 
-	strK = "-rpcpassword=";
-	strSeg = strK + m_strPwd;
-	m_arrRpcArg[3] = strSeg.c_str();
+	static std::string strPwd = "-rpcpassword=" + m_strPwd;
+	m_arrRpcArg[4] = strPwd.c_str();
 }
+
+void IxCellLinkBridge::ResetArgs()
+{
+    for (int i=5; i < sizeof(m_arrRpcArg)/sizeof(m_arrRpcArg[0]); i++)
+    {
+        m_arrRpcArg[i] = "";
+    }
+}
+
 int CommandLineRPC(int argc, char *argv[], UniValue& kRet);
 
 float IxCellLinkBridge::GetBalance(const char* pAddress)
@@ -240,15 +250,25 @@ float IxCellLinkBridge::GetBalance(const char* pAddress)
 
 	UniValue kRet;
 
-	m_arrRpcArg[4] = "getbalanceof";
-	m_arrRpcArg[5] = pAddress;
+    ResetArgs();
 
-	int iF = CommandLineRPC(6, (char**)m_arrRpcArg, kRet);
+	m_arrRpcArg[5] = "getbalanceof";
+	m_arrRpcArg[6] = pAddress;
+
+    int argc = 7;
+    gArgs.ParseParameters(argc, (char**)m_arrRpcArg);
+	int iF = CommandLineRPC(argc, (char**)m_arrRpcArg, kRet);
 	if (iF == EXIT_FAILURE)
 	{
 		return -1.0f;
 	}
-	return kRet.get_int();
+    const UniValue& result = find_value(kRet, "result");
+    const UniValue& error = find_value(kRet, "error");
+    if (result.isNum())
+    {
+        return result.get_real();
+    }
+	return -1.0f;
 }
 
 bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr)
