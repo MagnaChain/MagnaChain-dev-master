@@ -226,19 +226,20 @@ void IxCellLinkBridge::InitializeRPCInfo(const char* pHost, const char* pPort, c
 	m_strUser = pUser;
 	m_strPwd = pPwd;
 
-    m_arrRpcArg[0] = "application_name";
+    initArgN = 0;
+    m_arrRpcArg[initArgN++] = "application_name";
 
 	static std::string strConnect = "-rpcconnect=" + m_strHost;
-	m_arrRpcArg[1] = strConnect.c_str();
+	m_arrRpcArg[initArgN++] = strConnect.c_str();
 
 	static std::string strPort = "-rpcport=" + m_strPort;
-	m_arrRpcArg[2] = strPort.c_str();
+	m_arrRpcArg[initArgN++] = strPort.c_str();
 
 	static std::string strUser = "-rpcuser=" + m_strUser;
-	m_arrRpcArg[3] = strUser.c_str();
+	m_arrRpcArg[initArgN++] = strUser.c_str();
 
 	static std::string strPwd = "-rpcpassword=" + m_strPwd;
-	m_arrRpcArg[4] = strPwd.c_str();
+	m_arrRpcArg[initArgN++] = strPwd.c_str();
 }
 
 void IxCellLinkBridge::ResetArgs()
@@ -262,10 +263,10 @@ float IxCellLinkBridge::GetBalance(const char* pAddress)
 
     ResetArgs();
 
-	m_arrRpcArg[5] = "getbalanceof";
-	m_arrRpcArg[6] = pAddress;
+    int argc = initArgN;
+	m_arrRpcArg[argc++] = "getbalanceof";
+	m_arrRpcArg[argc++] = pAddress;
 
-    int argc = 7;
     gArgs.ParseParameters(argc, (char**)m_arrRpcArg);
 	int iF = CommandLineRPC(argc, (char**)m_arrRpcArg, kRet);
 	if (iF == EXIT_FAILURE)
@@ -355,7 +356,7 @@ bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, 
     ResetArgs();
 
     // avoid to use pointer which may be deleted by other user.
-    int argc = 5;
+    int argc = initArgN;
     m_arrRpcArg[argc++] = "premaketransaction";
     m_arrRpcArg[argc++] = pFromKeyWif;
     m_arrRpcArg[argc++] = pDestAddr;
@@ -419,7 +420,7 @@ bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, 
         ResetArgs();
 
         // avoid to use pointer which may be deleted by other user.
-        int argc = 5;
+        int argc = initArgN;
         m_arrRpcArg[argc++] = "sendrawtransaction";
         m_arrRpcArg[argc++] = strTxHex.c_str();
 

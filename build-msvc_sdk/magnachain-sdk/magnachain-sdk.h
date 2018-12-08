@@ -35,6 +35,7 @@ private:
 	const char* m_arrRpcArg[20];
 
     ECCVerifyHandle *m_pVerifyHandle;
+    int initArgN;
 public:
 	IxCellLinkBridge();
 	~IxCellLinkBridge();
