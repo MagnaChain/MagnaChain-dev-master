@@ -16,8 +16,6 @@
 # include <arpa/inet.h>
 #endif
 
-std::string gBranchId;
-
 static const char* ppszTypeName[] =
 {
     "ERROR",

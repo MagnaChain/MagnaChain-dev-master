@@ -12,196 +12,180 @@
 #include "magnachain.h"
 #include "db.h"
 
-using namespace std;
-
-bool fTestNet = false;
-
-class MCDnsSeedOpts {
-public:
-  int nThreads;
-  int nPort;
-  int nDnsThreads;
-  int fUseTestNet;
-  int fWipeBan;
-  int fWipeIgnore;
-  const char *mbox;
-  const char *ns;
-  const char *host;
-  const char *tor;
-  const char *ipv4_proxy;
-  const char *ipv6_proxy;
-  std::set<uint64_t> filter_whitelist;
-  std::vector<string> seeds;
-
-  MCDnsSeedOpts() : nThreads(96), nDnsThreads(4), nPort(53), mbox(NULL), ns(NULL), host(NULL), tor(NULL), fUseTestNet(false), fWipeBan(false), fWipeIgnore(false), ipv4_proxy(NULL), ipv6_proxy(NULL) {}
-
-  void ParseCommandLine(int argc, char **argv) {
-    static const char *help = "MagnaChain-seeder\n"
-                              "Usage: %s -h <host> -n <ns> [-m <mbox>] [-t <threads>] [-p <port>]\n"
-                              "\n"
-                              "Options:\n"
-                              "-h <host>       Hostname of the DNS seed\n"
-                              "-n <ns>         Hostname of the nameserver\n"
-                              "-m <mbox>       E-Mail address reported in SOA records\n"
-                              "-t <threads>    Number of crawlers to run in parallel (default 96)\n"
-                              "-d <threads>    Number of DNS server threads (default 4)\n"
-                              "-p <port>       UDP port to listen on (default 53)\n"
-                              "-o <ip:port>    Tor proxy IP/Port\n"
-                              "-i <ip:port>    IPV4 SOCKS5 proxy IP/Port\n"
-                              "-k <ip:port>    IPV6 SOCKS5 proxy IP/Port\n"
-                              "-w f1,f2,...    Allow these flag combinations as filters\n"
-							  "-b <branchid>   The branch id\n"
-							  "-s <seeds>	   The seeds of the chain\n"
-                              "--testnet       Use testnet\n"
-                              "--wipeban       Wipe list of banned nodes\n"
-                              "--wipeignore    Wipe list of ignored nodes\n"
-                              "-?, --help      Show this text\n"
-                              "\n";
-    bool showHelp = false;
-
-    while(1) {
-      static struct option long_options[] = {
-        {"host", required_argument, 0, 'h'},
-        {"ns",   required_argument, 0, 'n'},
-        {"mbox", required_argument, 0, 'm'},
-        {"threads", required_argument, 0, 't'},
-        {"dnsthreads", required_argument, 0, 'd'},
-        {"port", required_argument, 0, 'p'},
-        {"onion", required_argument, 0, 'o'},
-        {"proxyipv4", required_argument, 0, 'i'},
-        {"proxyipv6", required_argument, 0, 'k'},
-        {"filter", required_argument, 0, 'w'},
-		{"branchid", required_argument, 0, 'b'},
-		{"seeds", required_argument, 0, 's'},
-        {"testnet", no_argument, &fUseTestNet, 1},
-        {"wipeban", no_argument, &fWipeBan, 1},
-        {"wipeignore", no_argument, &fWipeBan, 1},
-        {"help", no_argument, 0, 'h'},
-        {0, 0, 0, 0}
-      };
-      int option_index = 0;
-      int c = getopt_long(argc, argv, "h:n:m:t:p:d:o:i:k:w:b:s:", long_options, &option_index);
-      if (c == -1) break;
-      switch (c) {
-        case 'h': {
-          host = optarg;
-          break;
-        }
-        
-        case 'm': {
-          mbox = optarg;
-          break;
-        }
-        
-        case 'n': {
-          ns = optarg;
-          break;
-        }
-        
-        case 't': {
-          int n = strtol(optarg, NULL, 10);
-          if (n > 0 && n < 1000) nThreads = n;
-          break;
-        }
-
-        case 'd': {
-          int n = strtol(optarg, NULL, 10);
-          if (n > 0 && n < 1000) nDnsThreads = n;
-          break;
-        }
-
-        case 'p': {
-          int p = strtol(optarg, NULL, 10);
-          if (p > 0 && p < 65536) nPort = p;
-          break;
-        }
-
-        case 'o': {
-          tor = optarg;
-          break;
-        }
-
-        case 'i': {
-          ipv4_proxy = optarg;
-          break;
-        }
-
-        case 'k': {
-          ipv6_proxy = optarg;
-          break;
-        }
-
-        case 'w': {
-          char* ptr = optarg;
-          while (*ptr != 0) {
-            unsigned long l = strtoul(ptr, &ptr, 0);
-            if (*ptr == ',') {
-                ptr++;
-            } else if (*ptr != 0) {
-                break;
-            }
-            filter_whitelist.insert(l);
-          }
-          break;
-        }
-
-		case 'b': {
-		  gBranchId = optarg;
-		  break;
-		}
-
-		case 's': {
-			char* p = nullptr;
-			char* ptr = optarg;
-#ifdef _WIN32
-			char* seed = strtok_s(ptr, ",", &p);
-#else
-			char* seed = strtok_r(ptr, ",", &p);
-#endif
-			while (seed != nullptr) {
-				seeds.emplace_back(seed);
-#ifdef _WIN32
-				seed = strtok_s(nullptr, ",", &p);
-#else
-				seed = strtok_r(nullptr, ",", &p);
-#endif
-			}
-			break;
-		}
-
-        case '?': {
-          showHelp = true;
-          break;
-        }
-      }
-    }
-    if (filter_whitelist.empty()) {
-        filter_whitelist.insert(1);
-        filter_whitelist.insert(5);
-        filter_whitelist.insert(9);
-        filter_whitelist.insert(13);
-    }
-    if (host != NULL && ns == NULL) showHelp = true;
-    if (showHelp) fprintf(stderr, help, argv[0]);
-  }
-};
-
 extern "C" {
 #include "dns.h"
 }
 
-MCAddrDB db;
+#include "mcdnsseedopts.h"
+
+using namespace std;
+
+bool fTestNet = false;
+
+void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
+
+    static const char *help = "MagnaChain-seeder\n"
+        "Usage: %s -h <host> -n <ns> [-m <mbox>] [-t <threads>] [-p <port>]\n"
+        "\n"
+        "Options:\n"
+        "-h <host>       Hostname of the DNS seed\n"
+        "-n <ns>         Hostname of the nameserver\n"
+        "-m <mbox>       E-Mail address reported in SOA records\n"
+        "-t <threads>    Number of crawlers to run in parallel (default 96)\n"
+        "-d <threads>    Number of DNS server threads (default 4)\n"
+        "-p <port>       UDP port to listen on (default 53)\n"
+        "-o <ip:port>    Tor proxy IP/Port\n"
+        "-i <ip:port>    IPV4 SOCKS5 proxy IP/Port\n"
+        "-k <ip:port>    IPV6 SOCKS5 proxy IP/Port\n"
+        "-w f1,f2,...    Allow these flag combinations as filters\n"
+        "-b <branchid>   The branch id\n"
+        "-s <seeds>	   The seeds of the chain\n"
+        "--testnet       Use testnet\n"
+        "--wipeban       Wipe list of banned nodes\n"
+        "--wipeignore    Wipe list of ignored nodes\n"
+        "-?, --help      Show this text\n"
+        "\n";
+    bool showHelp = false;
+    MCDnsSeedOpts* thisopt = opts;
+    while (1) {
+        static struct option long_options[] = {
+        { "host", required_argument, 0, 'h' },
+        { "ns",   required_argument, 0, 'n' },
+        { "mbox", required_argument, 0, 'm' },
+        { "threads", required_argument, 0, 't' },
+        { "dnsthreads", required_argument, 0, 'd' },
+        { "port", required_argument, 0, 'p' },
+        { "onion", required_argument, 0, 'o' },
+        { "proxyipv4", required_argument, 0, 'i' },
+        { "proxyipv6", required_argument, 0, 'k' },
+        { "filter", required_argument, 0, 'w' },
+        { "branchid", required_argument, 0, 'b' },
+        { "seeds", required_argument, 0, 's' },
+        { "testnet", no_argument, &(thisopt->fUseTestNet), 1 },
+        { "wipeban", no_argument, &(thisopt->fWipeBan), 1 },
+        { "wipeignore", no_argument, &(thisopt->fWipeBan), 1 },
+        { "help", no_argument, 0, 'h' },
+        { 0, 0, 0, 0 }
+        };
+        int option_index = 0;
+        int c = getopt_long(argc, argv, "h:n:m:t:p:d:o:i:k:w:b:s:", long_options, &option_index);
+        if (c == -1) break;
+        switch (c) {
+        case 'h': {
+            thisopt->host = optarg;
+            break;
+        }
+
+        case 'm': {
+            thisopt->mbox = optarg;
+            break;
+        }
+
+        case 'n': {
+            thisopt->ns = optarg;
+            break;
+        }
+
+        case 't': {
+            int n = strtol(optarg, NULL, 10);
+            if (n > 0 && n < 1000) thisopt->nThreads = n;
+            break;
+        }
+
+        case 'd': {
+            int n = strtol(optarg, NULL, 10);
+            if (n > 0 && n < 1000) thisopt->nDnsThreads = n;
+            break;
+        }
+
+        case 'p': {
+            int p = strtol(optarg, NULL, 10);
+            if (p > 0 && p < 65536) thisopt->nPort = p;
+            break;
+        }
+
+        case 'o': {
+            thisopt->tor = optarg;
+            break;
+        }
+
+        case 'i': {
+            thisopt->ipv4_proxy = optarg;
+            break;
+        }
+
+        case 'k': {
+            thisopt->ipv6_proxy = optarg;
+            break;
+        }
+
+        case 'w': {
+            char* ptr = optarg;
+            while (*ptr != 0) {
+                unsigned long l = strtoul(ptr, &ptr, 0);
+                if (*ptr == ',') {
+                    ptr++;
+                }
+                else if (*ptr != 0) {
+                    break;
+                }
+                thisopt->filter_whitelist.insert(l);
+            }
+            break;
+        }
+
+        case 'b': {
+            thisopt->branchid = optarg;
+            break;
+        }
+
+        case 's': {
+            char* p = nullptr;
+            char* ptr = optarg;
+#ifdef _WIN32
+            char* seed = strtok_s(ptr, ",", &p);
+#else
+            char* seed = strtok_r(ptr, ",", &p);
+#endif
+            while (seed != nullptr) {
+                thisopt->seeds.emplace_back(seed);
+#ifdef _WIN32
+                seed = strtok_s(nullptr, ",", &p);
+#else
+                seed = strtok_r(nullptr, ",", &p);
+#endif
+            }
+            break;
+        }
+
+        case '?': {
+            showHelp = true;
+            break;
+        }
+        }
+    }
+    if (thisopt->filter_whitelist.empty()) {
+        thisopt->filter_whitelist.insert(1);
+        thisopt->filter_whitelist.insert(5);
+        thisopt->filter_whitelist.insert(9);
+        thisopt->filter_whitelist.insert(13);
+    }
+    if (thisopt->host != NULL && thisopt->ns == NULL) showHelp = true;
+    if (showHelp) fprintf(stderr, help, argv[0]);
+}
 
 extern "C" void* ThreadCrawler(void* data) {
-  int *nThreads=(int*)data;
+  MCAddrDB* pDB = (MCAddrDB*)data;
+  MCDnsSeedOpts* pOpts = pDB->pOpts;
+  int nThreads = pOpts->nThreads;
   do {
     std::vector<MCServiceResult> ips;
     int wait = 5;
-    db.GetMany(ips, 16, wait);
+    pDB->GetMany(ips, 16, wait);
     int64 now = time(NULL);
     if (ips.empty()) {
       wait *= 1000;
-      wait += rand() % (500 * *nThreads);
+      wait += rand() % (500 * nThreads);
       Sleep(wait);
       continue;
     }
@@ -213,10 +197,10 @@ extern "C" void* ThreadCrawler(void* data) {
       res.nHeight = 0;
       res.strClientV = "";
       bool getaddr = res.ourLastSuccess + 86400 < now;
-      res.fGood = TestNode(res.service,res.nBanTime,res.nClientV,res.strClientV,res.nHeight,getaddr ? &addr : NULL);
+      res.fGood = TestNode(res.service, res.nBanTime, res.nClientV, res.strClientV, res.nHeight, getaddr ? &addr : NULL, pOpts->branchid);
     }
-    db.ResultMany(ips);
-    db.Add(addr);
+    pDB->ResultMany(ips);
+    pDB->Add(addr);
   } while(1);
   return nullptr;
 }
@@ -239,6 +223,8 @@ public:
   std::atomic<uint64_t> dbQueries;
   std::set<uint64_t> filterWhitelist;
 
+  MCAddrDB* pDB;
+
   void cacheHit(uint64_t requestedFlags, bool force = false) {
     static bool nets[NET_MAX] = {};
     if (!nets[NET_IPV4]) {
@@ -250,7 +236,7 @@ public:
     thisflag.cacheHits++;
     if (force || thisflag.cacheHits * 400 > (thisflag.cache.size()*thisflag.cache.size()) || (thisflag.cacheHits*thisflag.cacheHits * 20 > thisflag.cache.size() && (now - thisflag.cacheTime > 5))) {
       set<MCNetAddr> ips;
-      db.GetIPs(ips, requestedFlags, 1000, nets);
+      pDB->GetIPs(ips, requestedFlags, 1000, nets);
       dbQueries++;
       thisflag.cache.clear();
       thisflag.nIPv4 = 0;
@@ -278,7 +264,9 @@ public:
     }
   }
 
-  MCDnsThread(MCDnsSeedOpts* opts, int idIn) : id(idIn) {
+  MCDnsThread(MCAddrDB* pdb, int idIn) : id(idIn) {
+    pDB = pdb;
+    MCDnsSeedOpts* opts = pdb->pOpts;
     dns_opt.host = opts->host;
     dns_opt.ns = opts->ns;
     dns_opt.mbox = opts->mbox;
@@ -359,20 +347,21 @@ int StatCompare(const MCAddrReport& a, const MCAddrReport& b) {
   }
 }
 
-extern "C" void* ThreadDumper(void*) {
+extern "C" void* ThreadDumper(void*pData) {
+  MCAddrDB* pDB = (MCAddrDB*)pData;
   int count = 0;
   do {
     Sleep(100000 << count); // First 100s, than 200s, 400s, 800s, 1600s, and then 3200s forever
     if (count < 5)
         count++;
     {
-      vector<MCAddrReport> v = db.GetAll();
+      vector<MCAddrReport> v = pDB->GetAll();
       sort(v.begin(), v.end(), StatCompare);
       FILE *f = fopen("dnsseed.dat.new","w+");
       if (f) {
         {
           MCAutoFile cf(f);
-          cf << db;
+          cf << pDB;
         }
         rename("dnsseed.dat.new", "dnsseed.dat");
       }
@@ -397,7 +386,8 @@ extern "C" void* ThreadDumper(void*) {
   return nullptr;
 }
 
-extern "C" void* ThreadStats(void*) {
+extern "C" void* ThreadStats(void*pData) {
+  MCAddrDB* pDB = (MCAddrDB*)pData;
   bool first = true;
   do {
     char c[256];
@@ -405,32 +395,35 @@ extern "C" void* ThreadStats(void*) {
     struct tm *tmp = localtime(&tim);
     strftime(c, 256, "[%y-%m-%d %H:%M:%S]", tmp);
     MCAddrDBStats stats;
-    db.GetStats(stats);
+    pDB->GetStats(stats);
     if (first)
     {
-      first = false;
-      printf("\n\n\n\x1b[3A");
+        first = false;
+        //printf("\n\n\n\x1b[3A");//this is not work in secureCRT, 
+        printf("\n\n\n");
     }
-    else
-      printf("\x1b[2K\x1b[u");
-    printf("\x1b[s");
+    else{
+        //printf("\x1b[2K\x1b[u");
+    }
+    //printf("\x1b[s");
     uint64_t requests = 0;
     uint64_t queries = 0;
     for (unsigned int i=0; i<dnsThread.size(); i++) {
       requests += dnsThread[i]->dns_opt.nRequests;
       queries += dnsThread[i]->dbQueries;
     }
-    printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries", c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, stats.nBanned, (unsigned long long)requests, (unsigned long long)queries);
+    printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries\n", c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, stats.nBanned, (unsigned long long)requests, (unsigned long long)queries);
     Sleep(1000);
   } while(1);
   return nullptr;
 }
 
-static const string mainnet_seeds[] = {"123.207.255.59", ""};
+static const string mainnet_seeds[] = {"120.92.85.97", ""};//domain name or IP
 static const string testnet_seeds[] = {"120.92.85.97", ""};
-static const string *seeds = mainnet_seeds;
+//static const string *seeds = mainnet_seeds;
 
-extern "C" void* ThreadSeeder(void*) {
+extern "C" void* ThreadSeeder(void*pData) {
+  MCAddrDB* pDB = (MCAddrDB*)pData;
   if (!fTestNet){
     //db.Add(MCService("kjy2eqzk4zwi5zd3.onion", 8333), true);
   }
@@ -439,7 +432,7 @@ extern "C" void* ThreadSeeder(void*) {
       vector<MCNetAddr> ips;
       LookupHost(seeds[i].c_str(), ips);
       for (vector<MCNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
-        db.Add(MCService(*it, GetDefaultPort()), true);
+          pDB->Add(MCService(*it, pDB->pOpts->defaultport), true);
       }
     }
     Sleep(1800000);
@@ -451,7 +444,8 @@ int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
   setbuf(stdout, NULL);
   MCDnsSeedOpts opts;
-  opts.ParseCommandLine(argc, argv);
+  MCAddrDB db(&opts);
+  ParseCommandLine(argc, argv, &opts);
   printf("Supporting whitelisted filters: ");
   for (std::set<uint64_t>::const_iterator it = opts.filter_whitelist.begin(); it != opts.filter_whitelist.end(); it++) {
       if (it != opts.filter_whitelist.begin()) {
@@ -492,12 +486,19 @@ int main(int argc, char **argv) {
     }
   }
   bool fDNS = true;
-  if (opts.fUseTestNet) {
+
+  if (!opts.fUseTestNet){
+      opts.pchMessageStart[0] = 0xce;
+      opts.pchMessageStart[1] = 0x11;
+      opts.pchMessageStart[2] = 0x16;
+      opts.pchMessageStart[3] = 0x89;
+  }
+  else{
       printf("Using testnet.\n");
-	  pchMessageStart[0] = 0xce;
-	  pchMessageStart[1] = 0x11;
-	  pchMessageStart[2] = 0x09;
-	  pchMessageStart[3] = 0x07;
+      opts.pchMessageStart[0] = 0xce;
+      opts.pchMessageStart[1] = 0x11;
+      opts.pchMessageStart[2] = 0x09;
+      opts.pchMessageStart[3] = 0x07;
       seeds = testnet_seeds;
       fTestNet = true;
   }
@@ -529,7 +530,7 @@ int main(int argc, char **argv) {
     printf("Starting %i DNS threads for %s on %s (port %i)...", opts.nDnsThreads, opts.host, opts.ns, opts.nPort);
     dnsThread.clear();
     for (int i=0; i<opts.nDnsThreads; i++) {
-      dnsThread.push_back(new MCDnsThread(&opts, i));
+      dnsThread.push_back(new MCDnsThread(&db, i));
       pthread_create(&threadDns, NULL, ThreadDNS, dnsThread[i]);
       printf(".");
       Sleep(20);
@@ -537,7 +538,7 @@ int main(int argc, char **argv) {
     printf("done\n");
   }
   printf("Starting seeder...");
-  pthread_create(&threadSeed, NULL, ThreadSeeder, NULL);
+  pthread_create(&threadSeed, NULL, ThreadSeeder, &db);
   printf("done\n");
   printf("Starting %i crawler threads...", opts.nThreads);
   pthread_attr_t attr_crawler;
@@ -545,12 +546,12 @@ int main(int argc, char **argv) {
   pthread_attr_setstacksize(&attr_crawler, 0x20000);
   for (int i=0; i<opts.nThreads; i++) {
     pthread_t thread;
-    pthread_create(&thread, &attr_crawler, ThreadCrawler, &opts.nThreads);
+    pthread_create(&thread, &attr_crawler, ThreadCrawler, &db);
   }
   pthread_attr_destroy(&attr_crawler);
   printf("done\n");
-  pthread_create(&threadStats, NULL, ThreadStats, NULL);
-  pthread_create(&threadDump, NULL, ThreadDumper, NULL);
+  pthread_create(&threadStats, NULL, ThreadStats, &db);
+  pthread_create(&threadDump, NULL, ThreadDumper, &db);
   void* res;
   pthread_join(threadDump, &res);
   return 0;

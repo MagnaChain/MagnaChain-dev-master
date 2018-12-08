@@ -75,6 +75,7 @@ void MCAddrDB::Good_(const MCService &addr, int clientV, std::string clientSV, i
   unkId.erase(id);
   banned.erase(addr);
   MCAddrInfo &info = idToInfo[id];
+  info.defaultport = pOpts->defaultport;//first set?
   info.clientVersion = clientV;
   info.clientSubVersion = clientSV;
   info.blocks = blocks;
@@ -93,6 +94,7 @@ void MCAddrDB::Bad_(const MCService &addr, int ban)
   if (id == -1) return;
   unkId.erase(id);
   MCAddrInfo &info = idToInfo[id];
+  info.defaultport = pOpts->defaultport;//first set?
   info.Update(false);
   uint32_t now = time(NULL);
   int ter = info.GetBanTime();
@@ -158,6 +160,7 @@ void MCAddrDB::Add_(const MCAddress &addr, bool force) {
   ai.ourLastTry = 0;
   ai.total = 0;
   ai.success = 0;
+  ai.defaultport = pOpts->defaultport;
   int id = nId++;
   idToInfo[id] = ai;
   ipToId[ipp] = id;

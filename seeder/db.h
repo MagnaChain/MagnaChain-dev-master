@@ -10,10 +10,13 @@
 #include "protocol.h"
 #include "util.h"
 
+#include "mcdnsseedopts.h"
+
 #define MIN_RETRY 1000
 
 #define REQUIRE_VERSION 70001
 
+extern bool fTestNet;
 static inline int GetRequireHeight(const bool testnet = fTestNet)
 {
     return testnet ? 500000 : 350000;
@@ -34,7 +37,7 @@ public:
   MCAddrStat() : weight(0), count(0), reliability(0) {}
 
   void Update(bool good, int64 age, double tau) {
-    double f =  exp(-age/tau);
+    double f = exp(-age/tau);
     reliability = reliability * f + (good ? (1.0-f) : 0);
     count = count * f + 1;
     weight = weight * f + (1.0-f);
@@ -80,8 +83,11 @@ private:
   int total;
   int success;
   std::string clientSubVersion;
+
+  unsigned short defaultport;//config default mgc node port(diff chain diff port)
 public:
-  MCAddrInfo() : services(0), lastTry(0), ourLastTry(0), ourLastSuccess(0), ignoreTill(0), clientVersion(0), blocks(0), total(0), success(0) {}
+  MCAddrInfo() : services(0), lastTry(0), ourLastTry(0), ourLastSuccess(0), 
+      ignoreTill(0), clientVersion(0), blocks(0), total(0), success(0), defaultport(0){}
   
   MCAddrReport GetReport() const {
     MCAddrReport ret;
@@ -101,7 +107,7 @@ public:
   }
   
   bool IsGood() const {
-    if (ip.GetPort() != GetDefaultPort()) return false;
+    if (ip.GetPort() != defaultport) return false;
     if (!(services & NODE_NETWORK)) return false;
     if (!ip.IsRoutable()) return false;
     if (clientVersion && clientVersion < REQUIRE_VERSION) return false;
@@ -160,6 +166,7 @@ public:
               *((MCAddrStat*)(&stat1M)) = stat1W;
       READWRITE(total);
       READWRITE(success);
+      //READWRITE(defaultport);//write to db
       READWRITE(clientVersion);
       if (version >= 2)
           READWRITE(clientSubVersion);
@@ -200,6 +207,8 @@ struct MCServiceResult {
 //     (d) good nodes   (c) non-good nodes 
 
 class MCAddrDB {
+public:
+    MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions){}
 private:
   mutable MCCriticalSection cs;
   int nId; // number of address id's
@@ -209,7 +218,8 @@ private:
   std::set<int> unkId; // set of nodes not yet tried (b)
   std::set<int> goodId; // set of good nodes  (d, good e)
   int nDirty;
-  
+public:
+  MCDnsSeedOpts* pOpts;//MCDnsSeedOpts
 protected:
   // internal routines that assume proper locks are acquired
   void Add_(const MCAddress &addr, bool force);   // add an address
@@ -285,6 +295,7 @@ public:
         READWRITE(n);
         for (int i=0; i<n; i++) {
           MCAddrInfo info;
+          info.defaultport = db->pOpts->defaultport;
           READWRITE(info);
           if (!info.GetBanTime()) {
             int id = db->nId++;
