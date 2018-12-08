@@ -9,16 +9,17 @@ WORKDIR /root
 COPY . /root/code
 
 # setup ENV
-RUN pwd \ #mv /etc/apt/sources.list /etc/apt/sources.list.bak \
-#&& echo "deb http://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-proposed main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list \
-#&& echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic-proposed main restricted universe multiverse" >> /etc/apt/sources.list \
+RUN pwd \ 
+# && mv /etc/apt/sources.list /etc/apt/sources.list.bak \
+# && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-proposed main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic-updates main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-backports main restricted universe multiverse" >> /etc/apt/sources.list \
+# && echo "deb-src http://mirrors.aliyun.com/ubuntu/ bionic-proposed main restricted universe multiverse" >> /etc/apt/sources.list \
 && apt-get update \
 && apt-get install build-essential libtool autotools-dev automake pkg-config libssl-dev libevent-dev bsdmainutils -y \
 && apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev -y \
@@ -58,10 +59,12 @@ COPY --from=builder /root/code/docker-entrypoint.sh /usr/local/bin/
 # COPY docker-entrypoint.sh /usr/local/bin/
 #设置可执行权限，并且建立区块数据存放目录，main为主链数据，side为侧链数据
 #添加so库的查找路径
-RUN chmod +x ${APP}/magnachaind ${APP}/magnachain-cli /usr/local/bin/docker-entrypoint.sh \
-    &&  mkdir -p blocks/main blocks/side \
-    && echo ${APP} >> /etc/ld.so.conf.d/app.conf \
-    && ldconfig
+RUN cd ${APP} \
+&& ls -l \
+&& chmod +x ${APP}/magnachaind ${APP}/magnachain-cli /usr/local/bin/docker-entrypoint.sh \
+&&  mkdir -p blocks/main blocks/side \
+&& echo ${APP} >> /etc/ld.so.conf.d/app.conf \
+&& ldconfig
 #TODO HEALTHCHECK健康检查
 # HEALTHCHECK    
 #启动节点

@@ -32,7 +32,7 @@ cp("docker-entrypoint.sh",$tmp);
 
 if (@ARGV >= 2){
 	my $dest = $ARGV[1];
-	for (glob catfile($appDir,"*.*")){
+	for (glob catfile($appDir,"*")){
 		print "$_\n";
 		cp($_,$dest);
 	}
