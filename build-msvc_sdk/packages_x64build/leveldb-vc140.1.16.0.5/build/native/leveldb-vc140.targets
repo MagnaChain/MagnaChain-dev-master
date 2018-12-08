@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- preprocessor -->
+  <ItemDefinitionGroup>
+    <!-- include directory -->
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildThisFileDirectory)include\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+
+    <!-- definitions -->
+    <ClCompile>
+      <PreprocessorDefinitions>LEVELDB_STATIC;LEVELDB_PLATFORM_WINDOWS;LEVELDB_WITH_SNAPPY;CRC32C_STATIC;SNAPPY_STATIC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- static libraries -->
+  <ItemDefinitionGroup>
+    <!-- lib directory -->
+    <Link Condition="$(Configuration.IndexOf('Release')) != -1">
+      <AdditionalLibraryDirectories>$(MSBuildThisFileDirectory)bin\Release\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+    <Link Condition="$(Configuration.IndexOf('Debug')) != -1">
+      <AdditionalLibraryDirectories>$(MSBuildThisFileDirectory)bin\Debug\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+
+    <!-- lib file -->
+    <Link>
+      <AdditionalDependencies>leveldb.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>

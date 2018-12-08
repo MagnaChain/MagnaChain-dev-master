@@ -283,7 +283,7 @@ UniValue CallRPC(const std::string& strMethod, const UniValue& params)
     return reply;
 }
 
-int CommandLineRPC(int argc, char *argv[])
+int CommandLineRPC(int argc, char *argv[], UniValue& kRet)
 {
     std::string strPrint;
     int nRet = 0;
@@ -317,6 +317,7 @@ int CommandLineRPC(int argc, char *argv[])
         do {
             try {
                 const UniValue reply = CallRPC(strMethod, params);
+                kRet = reply;
 
                 // Parse reply
                 const UniValue& result = find_value(reply, "result");
@@ -380,6 +381,7 @@ int CommandLineRPC(int argc, char *argv[])
     return nRet;
 }
 
+#ifndef EXTERNL_USE_CELLLINK_CLI
 int main(int argc, char* argv[])
 {
     SetupEnvironment();
@@ -403,7 +405,8 @@ int main(int argc, char* argv[])
 
     int ret = EXIT_FAILURE;
     try {
-        ret = CommandLineRPC(argc, argv);
+        UniValue kRet;
+        ret = CommandLineRPC(argc, argv, kRet);
     }
     catch (const std::exception& e) {
         PrintExceptionContinue(&e, "CommandLineRPC()");
@@ -412,3 +415,4 @@ int main(int argc, char* argv[])
     }
     return ret;
 }
+#endif
