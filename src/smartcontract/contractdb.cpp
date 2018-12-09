@@ -320,7 +320,7 @@ bool ContractDataDB::WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, Con
         }
 
         for (int i = 0; i < insertPoint->vecBlockHash.size(); ++i) {
-            if (insertPoint->vecBlockHash[i] != ci.second.blockHash) {
+            if (insertPoint->vecBlockHash[i] == ci.second.blockHash) {
                 insertPoint->vecBlockHash.erase(insertPoint->vecBlockHash.begin() + i);
                 insertPoint->vecBlockContractData.erase(insertPoint->vecBlockContractData.begin() + i);
                 break;

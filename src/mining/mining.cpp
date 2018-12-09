@@ -186,7 +186,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         if (nTries != 0 && nTries % 500 == 0)
             boost::this_thread::interruption_point();
 
-        int startTime = GetTimeMillis();
+        int64_t startTime = GetTimeMillis();
         // check script pubkey
         MCOutput& out = vecOutput[nTries % vecOutput.size()];
         std::shared_ptr<MCReserveKey> pReserveKey = nullptr;
@@ -273,7 +273,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
                 pReserveKey->KeepKey();
         }
         ++nTries;
-        LogPrintf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - startTime);
+        LogPrintf("%s use time %I64d\n", __FUNCTION__, GetTimeMillis() - startTime);
 		/*
 		while (nMaxTries > 0 && !CheckBlockWork(*pblock, val_state, Params().GetConsensus())) {
 			--nMaxTries;
