@@ -96,6 +96,7 @@
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)/../src/univalue/include</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

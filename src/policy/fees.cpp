@@ -139,7 +139,7 @@ public:
     unsigned int NewTx(unsigned int nBlockHeight, double val);
 
     /** Remove a transaction from mempool tracking stats*/
-    void removeTx(unsigned int entryHeight, unsigned int nBestSeenHeight,
+    void RemoveTx(unsigned int entryHeight, unsigned int nBestSeenHeight,
                   unsigned int bucketIndex, bool inBlock);
 
     /** Update our estimates by decaying our historical moving average and updating
@@ -475,7 +475,7 @@ unsigned int TxConfirmStats::NewTx(unsigned int nBlockHeight, double val)
     return bucketindex;
 }
 
-void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHeight, unsigned int bucketindex, bool inBlock)
+void TxConfirmStats::RemoveTx(unsigned int entryHeight, unsigned int nBestSeenHeight, unsigned int bucketindex, bool inBlock)
 {
     //nBestSeenHeight is not updated yet for the new block
     int blocksAgo = nBestSeenHeight - entryHeight;
@@ -511,19 +511,19 @@ void TxConfirmStats::removeTx(unsigned int entryHeight, unsigned int nBestSeenHe
     }
 }
 
-// This function is called from MCTxMemPool::removeUnchecked to ensure
+// This function is called from MCTxMemPool::RemoveUnchecked to ensure
 // txs removed from the mempool for any reason are no longer
 // tracked. Txs that were part of a block have already been removed in
 // processBlockTx to ensure they are never double tracked, but it is
 // of no harm to try to remove them again.
-bool MCBlockPolicyEstimator::removeTx(uint256 hash, bool inBlock)
+bool MCBlockPolicyEstimator::RemoveTx(uint256 hash, bool inBlock)
 {
     LOCK(cs_feeEstimator);
     std::map<uint256, TxStatsInfo>::iterator pos = mapMemPoolTxs.find(hash);
     if (pos != mapMemPoolTxs.end()) {
-        feeStats->removeTx(pos->second.blockHeight, nBestSeenHeight, pos->second.bucketIndex, inBlock);
-        shortStats->removeTx(pos->second.blockHeight, nBestSeenHeight, pos->second.bucketIndex, inBlock);
-        longStats->removeTx(pos->second.blockHeight, nBestSeenHeight, pos->second.bucketIndex, inBlock);
+        feeStats->RemoveTx(pos->second.blockHeight, nBestSeenHeight, pos->second.bucketIndex, inBlock);
+        shortStats->RemoveTx(pos->second.blockHeight, nBestSeenHeight, pos->second.bucketIndex, inBlock);
+        longStats->RemoveTx(pos->second.blockHeight, nBestSeenHeight, pos->second.bucketIndex, inBlock);
         mapMemPoolTxs.erase(hash);
         return true;
     } else {
@@ -556,7 +556,7 @@ MCBlockPolicyEstimator::~MCBlockPolicyEstimator()
     delete longStats;
 }
 
-void MCBlockPolicyEstimator::processTransaction(const MCTxMemPoolEntry& entry, bool validFeeEstimate)
+void MCBlockPolicyEstimator::ProcessTransaction(const MCTxMemPoolEntry& entry, bool validFeeEstimate)
 {
     LOCK(cs_feeEstimator);
     unsigned int txHeight = entry.GetHeight();
@@ -564,7 +564,7 @@ void MCBlockPolicyEstimator::processTransaction(const MCTxMemPoolEntry& entry, b
     if (mapMemPoolTxs.count(hash)) {
         LogPrint(BCLog::ESTIMATEFEE, "Blockpolicy error mempool tx %s already being tracked\n",
                  hash.ToString().c_str());
-	return;
+	    return;
     }
 
     if (txHeight != nBestSeenHeight) {
@@ -595,9 +595,9 @@ void MCBlockPolicyEstimator::processTransaction(const MCTxMemPoolEntry& entry, b
     assert(bucketIndex == bucketIndex3);
 }
 
-bool MCBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const MCTxMemPoolEntry* entry)
+bool MCBlockPolicyEstimator::ProcessBlockTx(unsigned int nBlockHeight, const MCTxMemPoolEntry* entry)
 {
-    if (!removeTx(entry->GetTx().GetHash(), true)) {
+    if (!RemoveTx(entry->GetTx().GetHash(), true)) {
         // This transaction wasn't being tracked for fee estimation
         return false;
     }
@@ -622,7 +622,7 @@ bool MCBlockPolicyEstimator::processBlockTx(unsigned int nBlockHeight, const MCT
     return true;
 }
 
-void MCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
+void MCBlockPolicyEstimator::ProcessBlock(unsigned int nBlockHeight,
                                          std::vector<const MCTxMemPoolEntry*>& entries)
 {
     LOCK(cs_feeEstimator);
@@ -653,7 +653,7 @@ void MCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     unsigned int countedTxs = 0;
     // Update averages with data points from current block
     for (const auto& entry : entries) {
-        if (processBlockTx(nBlockHeight, entry))
+        if (ProcessBlockTx(nBlockHeight, entry))
             countedTxs++;
     }
 
@@ -671,16 +671,16 @@ void MCBlockPolicyEstimator::processBlock(unsigned int nBlockHeight,
     untrackedTxs = 0;
 }
 
-MCFeeRate MCBlockPolicyEstimator::estimateFee(int confTarget) const
+MCFeeRate MCBlockPolicyEstimator::EstimateFee(int confTarget) const
 {
     // It's not possible to get reasonable estimates for confTarget of 1
     if (confTarget <= 1)
         return MCFeeRate(0);
 
-    return estimateRawFee(confTarget, DOUBLE_SUCCESS_PCT, FeeEstimateHorizon::MED_HALFLIFE);
+    return EstimateRawFee(confTarget, DOUBLE_SUCCESS_PCT, FeeEstimateHorizon::MED_HALFLIFE);
 }
 
-MCFeeRate MCBlockPolicyEstimator::estimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult* result) const
+MCFeeRate MCBlockPolicyEstimator::EstimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult* result) const
 {
     TxConfirmStats* stats;
     double sufficientTxs = SUFFICIENT_FEETXS;
@@ -764,7 +764,7 @@ unsigned int MCBlockPolicyEstimator::MaxUsableEstimate() const
  * time horizon which tracks confirmations up to the desired target.  If
  * checkShorterHorizon is requested, also allow short time horizon estimates
  * for a lower target to reduce the given answer */
-double MCBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const
+double MCBlockPolicyEstimator::EstimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const
 {
     double estimate = -1;
     if (confTarget >= 1 && confTarget <= longStats->GetMaxConfirms()) {
@@ -803,7 +803,7 @@ double MCBlockPolicyEstimator::estimateCombinedFee(unsigned int confTarget, doub
 /** Ensure that for a conservative estimate, the DOUBLE_SUCCESS_PCT is also met
  * at 2 * target for any longer time horizons.
  */
-double MCBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const
+double MCBlockPolicyEstimator::EstimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const
 {
     double estimate = -1;
     EstimationResult tempResult;
@@ -827,7 +827,7 @@ double MCBlockPolicyEstimator::estimateConservativeFee(unsigned int doubleTarget
  * estimates, however, required the 95% threshold at 2 * target be met for any
  * longer time horizons also.
  */
-MCFeeRate MCBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const
+MCFeeRate MCBlockPolicyEstimator::EstimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const
 {
     LOCK(cs_feeEstimator);
 
@@ -866,13 +866,13 @@ MCFeeRate MCBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculatio
      * the purpose of conservative estimates is not to let short term
      * fluctuations lower our estimates by too much.
      */
-    double halfEst = estimateCombinedFee(confTarget/2, HALF_SUCCESS_PCT, true, &tempResult);
+    double halfEst = EstimateCombinedFee(confTarget/2, HALF_SUCCESS_PCT, true, &tempResult);
     if (feeCalc) {
         feeCalc->est = tempResult;
         feeCalc->reason = FeeReason::HALF_ESTIMATE;
     }
     median = halfEst;
-    double actualEst = estimateCombinedFee(confTarget, SUCCESS_PCT, true, &tempResult);
+    double actualEst = EstimateCombinedFee(confTarget, SUCCESS_PCT, true, &tempResult);
     if (actualEst > median) {
         median = actualEst;
         if (feeCalc) {
@@ -880,7 +880,7 @@ MCFeeRate MCBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculatio
             feeCalc->reason = FeeReason::FULL_ESTIMATE;
         }
     }
-    double doubleEst = estimateCombinedFee(2 * confTarget, DOUBLE_SUCCESS_PCT, !conservative, &tempResult);
+    double doubleEst = EstimateCombinedFee(2 * confTarget, DOUBLE_SUCCESS_PCT, !conservative, &tempResult);
     if (doubleEst > median) {
         median = doubleEst;
         if (feeCalc) {
@@ -890,7 +890,7 @@ MCFeeRate MCBlockPolicyEstimator::estimateSmartFee(int confTarget, FeeCalculatio
     }
 
     if (conservative || median == -1) {
-        double consEst =  estimateConservativeFee(2 * confTarget, &tempResult);
+        double consEst =  EstimateConservativeFee(2 * confTarget, &tempResult);
         if (consEst > median) {
             median = consEst;
             if (feeCalc) {
@@ -1020,10 +1020,10 @@ bool MCBlockPolicyEstimator::Read(MCAutoFile& filein)
 void MCBlockPolicyEstimator::FlushUnconfirmed(MCTxMemPool& pool) {
     int64_t startclear = GetTimeMicros();
     std::vector<uint256> txids;
-    pool.queryHashes(txids);
+    pool.QueryHashes(txids);
     LOCK(cs_feeEstimator);
     for (auto& txid : txids) {
-        removeTx(txid, false);
+        RemoveTx(txid, false);
     }
     int64_t endclear = GetTimeMicros();
     LogPrint(BCLog::ESTIMATEFEE, "Recorded %u unconfirmed txs from mempool in %gs\n",txids.size(), (endclear - startclear)*0.000001);

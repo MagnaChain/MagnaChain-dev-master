@@ -10,6 +10,7 @@
 #include "transaction/txmempool.h"
 #include "validation/validation.h"
 #include "smartcontract/smartcontract.h"
+#include "consensus/consensus.h"
 
 ContractDataDB* mpContractDb = nullptr;
 
@@ -93,7 +94,7 @@ void ContractContext::ClearAll()
 }
 
 ContractDataDB::ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe)
-    : db(path, nCacheSize, fMemory, fWipe, true), threadPool(boost::thread::hardware_concurrency())
+    : db(path, nCacheSize, fMemory, fWipe, true), writeBatch(db), removeBatch(db), threadPool(boost::thread::hardware_concurrency())
 {
     for (int i = 0; i < threadPool.size(); ++i)
         threadPool.schedule(boost::bind(InitializeThread, this));
@@ -158,7 +159,7 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
             UniValue ret(UniValue::VARR);
             if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
                 std::string rawCode = tx->pContractData->codeOrFunc;
-                sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
+                sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
                 if (!PublishContract(sls, contractAddr, rawCode, ret)) {
                     interrupt = true;
                     return;
@@ -203,8 +204,10 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
                 }
             }
 
-            for (auto it : sls->contractDataFrom)
-                pBlock->prevContractData[i].dataFrom[it.first] = std::move(it.second.from);
+            for (auto it : sls->contractDataFrom) {
+                pBlock->prevContractData[i].items[it.first].blockHash = it.second.blockHash;
+                pBlock->prevContractData[i].items[it.first].txIndex = it.second.txIndex;
+            }
             threadData->contractContext.txFinalData.data[i - threadData->offset] = threadData->contractContext.cache;
             threadData->contractContext.Commit();
             sls->contractDataFrom.clear();
@@ -275,146 +278,220 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     return true;
 }
 
-void ContractDataDB::UpdateBlockContractInfo(MCBlockIndex* pBlockIndex, ContractContext* pContractContext)
+bool ContractDataDB::WriteBatch(MCDBBatch& batch) {
+    if (!CheckDiskSpace(batch.SizeEstimate() - nMinDiskSpace))
+        return false;
+    LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+    db.WriteBatch(batch);
+    batch.Clear();
+    return true;
+}
+
+bool ContractDataDB::WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* pContractContext)
 {
-    if (pBlockIndex == nullptr)
-        return;
+    assert(pBlockIndex != nullptr);
+    LOCK(cs_cache);
 
-    int blockHeight = pBlockIndex->nHeight;
-    int confirmBlockHeight = blockHeight - DEFAULT_CHECKBLOCKS;
-
-    if (confirmBlockHeight > 0) {
-        // 遍历缓存的合约数据，清理明确是无效分叉的数据
-        MCBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
-        for (auto ci : contractData) {
-            DBBlockContractInfo& dbBlockContractInfo = ci.second;
-
-            DBContractList::iterator saveIt = dbBlockContractInfo.data.end();
-            for (DBContractList::iterator it = dbBlockContractInfo.data.begin(); it != dbBlockContractInfo.data.end();) {
-                if (it->blockHeight <= confirmBlockHeight) {
-                    BlockMap::iterator bi = mapBlockIndex.find(it->from.blockHash);
-                    // 将小于确认区块以下的不属于该链的区块数据移除掉
-                    if (bi == mapBlockIndex.end() || newConfirmBlock->GetAncestor(it->blockHeight)->GetBlockHash() != it->from.blockHash) {
-                        DBContractList::iterator temp = it++;
-                        dbBlockContractInfo.data.erase(temp);
-                        continue;
-                    }
-                    if (it->blockHeight < confirmBlockHeight) {
-                        // 保留当前确认块以下的最近一笔数据，防止程序退出时区块链保存信息不完整导致加载到错误数据
-                        if (saveIt != dbBlockContractInfo.data.end())
-                            dbBlockContractInfo.data.erase(saveIt);
-                        saveIt = it;
-                    }
-                    ++it;
-                }
-                else
-                    break;
-            }
-        }
-    }
-
-    // 将区块插入对应的结点中
+    MCDBBatch writeBatch(db);
+    size_t maxBatchSize = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
     for (auto ci : pContractContext->data) {
-        DBContractInfo dbContractInfo;
-        dbContractInfo.from.blockHash = pBlockIndex->GetBlockHash();
-        dbContractInfo.blockHeight = pBlockIndex->nHeight;
-        dbContractInfo.from.txIndex = ci.second.from.txIndex;
-        dbContractInfo.data = ci.second.data;
+        DBContractInfo& contractInfo = contractData[ci.first];
+        if (contractInfo.code.empty())
+            contractInfo.code = ci.second.code;
+        ci.second.blockHash = pBlockIndex->GetBlockHash();
 
-        // 按高度寻找插入点
-        DBBlockContractInfo& blockContractInfo = contractData[ci.first];
-        if (blockContractInfo.code.empty())
-            blockContractInfo.code = ci.second.code;
-
-        MCHashWriter ss(SER_GETHASH, 0);
-        ss << blockContractInfo.code << dbContractInfo.data;
-        dbContractInfo.from.dataHash = ss.GetHash();
-
-        DBContractList::iterator insertPoint = blockContractInfo.data.end();
-        for (DBContractList::iterator it = blockContractInfo.data.begin(); it != blockContractInfo.data.end(); ++it) {
-            if (blockHeight < it->blockHeight) {
+        // 将区块插入对应的结点中
+        auto insertPoint = contractInfo.items.end();
+        for (auto it = contractInfo.items.begin(); it != contractInfo.items.end(); ++it) {
+            if (pBlockIndex->nHeight < it->blockHeight) {
+                insertPoint = contractInfo.items.insert(it, DBContractInfoByHeight());
+                insertPoint->blockHeight = pBlockIndex->nHeight;
+                break;
+            }
+            else if (pBlockIndex->nHeight == it->blockHeight) {
                 insertPoint = it;
                 break;
             }
         }
-        blockContractInfo.data.insert(insertPoint, dbContractInfo);
+
+        if (insertPoint == contractInfo.items.end()) {
+            insertPoint = contractInfo.items.insert(insertPoint, DBContractInfoByHeight());
+            insertPoint->blockHeight = pBlockIndex->nHeight;
+        }
+
+        for (int i = 0; i < insertPoint->vecBlockHash.size(); ++i) {
+            if (insertPoint->vecBlockHash[i] == ci.second.blockHash) {
+                insertPoint->vecBlockHash.erase(insertPoint->vecBlockHash.begin() + i);
+                insertPoint->vecBlockContractData.erase(insertPoint->vecBlockContractData.begin() + i);
+                break;
+            }
+        }
+
+        // 待存盘的合约数据
+        insertPoint->dirty = true;
+        insertPoint->vecBlockHash.emplace_back(ci.second.blockHash);
+        insertPoint->vecBlockContractData.emplace_back(ci.second.data);
+
+        // 数据存盘
+        MCHashWriter keyHash(SER_GETHASH, 0);
+        keyHash << ci.first << ci.second.blockHash;
+        writeBatch.Write(keyHash.GetHash(), ci.second.data);
+        if (writeBatch.SizeEstimate() > maxBatchSize) {
+            if (!WriteBatch(writeBatch))
+                return false;
+        }
     }
-    pContractContext->ClearData();
+
+    if (writeBatch.SizeEstimate() > 0) {
+        if (!WriteBatch(writeBatch))
+            return false;
+    }
+
+    return true;
 }
 
-void ContractDataDB::Flush()
+bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
 {
+    assert(pBlockIndex != nullptr);
     LOCK(cs_cache);
-    LogPrint(BCLog::COINDB, "flush contract data to db");
 
-    int confirmBlockHeight = chainActive.Height() - DEFAULT_CHECKBLOCKS;
+    int blockHeight = pBlockIndex->nHeight;
+    int checkDepth = gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS) / Params().GetConsensus().nPowTargetSpacing;
+    int confirmBlockHeight = blockHeight - checkDepth;
+    int removeBlockHeight = confirmBlockHeight - REDEEM_SAFE_HEIGHT - checkDepth;
+    size_t maxBatchSize = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
 
-    std::vector<uint160> removes;
-    MCDBBatch batch(db);
-    size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
+    // 遍历缓存的合约数据，清理明确是无效分叉的数据
+    removes.clear();
+    removeBatch.Clear();
+    MCDBBatch writeBatch(db);
+    MCBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
+    for (auto& ci : contractData) {
+        auto& contractInfo = ci.second;
+        auto saveIt = contractInfo.items.end();
 
-    for (auto it : contractData) {
-        DBBlockContractInfo& dbBlockContractInfo = it.second;
-        if (dbBlockContractInfo.data.size() == 0) {
-            // 该合约没有有效的数据，则判定为分叉后无效的数据，移除之
-            batch.Erase(it.first);
-            removes.emplace_back(it.first);
+        for (auto heightIt = contractInfo.items.begin(); heightIt != contractInfo.items.end();) {
+            // 将小于确认区块以下的不属于该链的区块数据移除掉
+            if (heightIt->blockHeight <= confirmBlockHeight) {
+                for (int i = 0; i < heightIt->vecBlockHash.size(); ++i) {
+                    BlockMap::iterator bi = mapBlockIndex.find(heightIt->vecBlockHash[i]);
+                    if (bi == mapBlockIndex.end() || 
+                        newConfirmBlock->GetAncestor(heightIt->blockHeight)->GetBlockHash() != heightIt->vecBlockHash[i]) {
+                        MCHashWriter keyHash(SER_GETHASH, 0);
+                        keyHash << ci.first << heightIt->vecBlockHash[i];
+                        removeBatch.Erase(keyHash.GetHash());
+
+                        heightIt->dirty = true;
+                        heightIt->vecBlockHash.erase(heightIt->vecBlockHash.begin() + i);
+                        heightIt->vecBlockContractData.erase(heightIt->vecBlockContractData.begin() + i);
+                        continue;
+                    }
+                }
+                assert(heightIt->vecBlockHash.size() == 1 && heightIt->vecBlockContractData.size() == 1);
+            }
+
+            if (heightIt->blockHeight < removeBlockHeight) {
+                // 保留当前即将移除块以下的最近一笔数据，防止程序退出时区块链保存信息不完整导致加载到错误数据
+                if (saveIt != contractInfo.items.end()) {
+                    // 移除存盘数据
+                    assert(saveIt->vecBlockHash.size() == 1);
+                    MCHashWriter keyBlockHash(SER_GETHASH, 0);
+                    keyBlockHash << ci.first << *saveIt->vecBlockHash.begin();
+                    removeBatch.Erase(keyBlockHash.GetHash());
+
+                    MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                    keyHeightHash << ci.first << saveIt->blockHeight;
+                    removeBatch.Erase(keyHeightHash.GetHash());
+                    contractInfo.items.erase(saveIt);
+                }
+                saveIt = heightIt;
+
+                if (contractInfo.items.size() == 1)
+                    removes.emplace_back(ci.first);
+            }
+
+            if (heightIt->dirty) {
+                heightIt->dirty = false;
+                MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                keyHeightHash << ci.first << heightIt->blockHeight;
+                writeBatch.Write(keyHeightHash.GetHash(), heightIt->vecBlockHash);
+                if (writeBatch.SizeEstimate() > maxBatchSize) {
+                    if (!WriteBatch(writeBatch))
+                        return false;
+                }
+            }
+
+            ++heightIt;
         }
-        else
-            batch.Write(it.first, it.second);
 
-        // 该区块已不可逆且只剩下一笔数据，则存盘后从内存移除
-        if (dbBlockContractInfo.data.size() == 1) {
-            BlockMap::iterator mi = mapBlockIndex.find(dbBlockContractInfo.data.begin()->from.blockHash);
-            if (mi != mapBlockIndex.end() && mi->second->nHeight < confirmBlockHeight)
-                removes.emplace_back(it.first);
-        }
-
-        if (batch.SizeEstimate() > batch_size) {
-            LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
-            db.WriteBatch(batch);
-            batch.Clear();
+        writeBatch.Write(ci.first, ci.second);
+        if (writeBatch.SizeEstimate() > maxBatchSize) {
+            if (!WriteBatch(writeBatch))
+                return false;
         }
     }
-    db.WriteBatch(batch);
-    batch.Clear();
+
+    if (writeBatch.SizeEstimate() > 0) {
+        if (!WriteBatch(writeBatch))
+            return false;
+    }
+
+    return true;
+}
+
+void ContractDataDB::PruneContractInfo()
+{
+    LOCK(cs_cache);
+    if (removeBatch.SizeEstimate() > 0)
+        WriteBatch(removeBatch);
 
     for (uint160& contractId : removes)
         contractData.erase(contractId);
+    removes.clear();
 }
 
-int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex)
+int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* prevBlockIndex)
 {
     LOCK(cs_cache);
 
     // 检查是否在缓存中，不存在则尝试加载
-    DBContractMap::iterator di = contractData.find(contractId);
+    auto di = contractData.find(contractId);
     if (di == contractData.end()) {
-        DBBlockContractInfo dbBlockContractInfo;
-        if (!db.Read(contractId, dbBlockContractInfo))
+        DBContractInfo contractInfo;
+        if (!db.Read(contractId, contractInfo))
             return -1;
         else {
-            contractData[contractId] = dbBlockContractInfo;
+            contractData[contractId] = contractInfo;
             di = contractData.find(contractId);
         }
     }
 
     // 遍历获取相应节点的数据
-    MCBlockIndex* prevBlock = (currentPrevBlockIndex ? currentPrevBlockIndex : chainActive.Tip());
-    int blockHeight = prevBlock->nHeight;
+    MCBlockIndex* prevBlock = (prevBlockIndex ? prevBlockIndex : chainActive.Tip());
     // 链表最末尾存储最高的区块
-    for (DBContractList::reverse_iterator it = di->second.data.rbegin(); it != di->second.data.rend(); ++it) {
-        if (it->blockHeight <= blockHeight) {
-            BlockMap::iterator bi = mapBlockIndex.find(it->from.blockHash);
-            assert(bi != mapBlockIndex.end());
-            MCBlockIndex* checkBlockIndex = prevBlock->GetAncestor(it->blockHeight);
-            // 找到同一分叉时
-            if (checkBlockIndex == bi->second) {
-                contractInfo.from.blockHash = it->from.blockHash;
-                contractInfo.from.txIndex = it->from.txIndex;
-                contractInfo.data = it->data;
-                contractInfo.code = di->second.code;
-                return it->blockHeight;
+    for (auto it = di->second.items.rbegin(); it != di->second.items.rend(); ++it) {
+        if (prevBlock->nHeight >= it->blockHeight) {
+            MCBlockIndex* targetBlockIndex = prevBlock->GetAncestor(it->blockHeight);
+            if (it->vecBlockHash.size() == 0) {
+                MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                keyHeightHash << contractId << it->blockHeight;
+                db.Read(keyHeightHash.GetHash(), it->vecBlockHash);
+                it->vecBlockContractData.resize(it->vecBlockHash.size());
+            }
+            for (int i = 0; i < it->vecBlockHash.size(); ++i) {
+                if (it->vecBlockHash[i] == targetBlockIndex->GetBlockHash()) {
+                    if (it->vecBlockContractData[i].empty()) {
+                        MCHashWriter keyHash(SER_GETHASH, 0);
+                        keyHash << contractId << it->vecBlockHash[i];
+                        db.Read(keyHash.GetHash(), it->vecBlockContractData[i]);
+                    }
+
+                    contractInfo.txIndex = 0;
+                    contractInfo.code = di->second.code;
+                    contractInfo.blockHash = it->vecBlockHash[i];
+                    contractInfo.data = it->vecBlockContractData[i];
+                    return it->blockHeight;
+                }
             }
         }
     }

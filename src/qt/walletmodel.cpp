@@ -667,12 +667,12 @@ bool WalletModel::transactionCanBeBumped(uint256 hash) const
 
 bool WalletModel::bumpFee(uint256 hash)
 {
-    std::unique_ptr<CFeeBumper> feeBump;
+    std::unique_ptr<MCFeeBumper> feeBump;
     {
         MCCoinControl coin_control;
         coin_control.signalRbf = true;
         LOCK2(cs_main, wallet->cs_wallet);
-        feeBump.reset(new CFeeBumper(wallet, hash, coin_control, 0));
+        feeBump.reset(new MCFeeBumper(wallet, hash, coin_control, 0));
     }
     if (feeBump->getResult() != BumpFeeResult::OK)
     {

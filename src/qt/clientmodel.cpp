@@ -128,7 +128,7 @@ QDateTime ClientModel::getLastBlockDate() const
 
 long ClientModel::getMempoolSize() const
 {
-    return mempool.size();
+    return mempool.Size();
 }
 
 size_t ClientModel::getMempoolDynamicUsage() const

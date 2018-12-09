@@ -734,7 +734,7 @@ void Unserialize(Stream& is, std::list<T, A>& l)
     {
         T value;
         Unserialize(is, value);
-        it = l.insert(it, value);
+        l.emplace_back(value);
     }
 }
 

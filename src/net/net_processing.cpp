@@ -976,7 +976,7 @@ bool static AlreadyHave(const MCInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
             }
 
             return recentRejects->contains(inv.hash) ||
-                   mempool.exists(inv.hash) ||
+                   mempool.Exists(inv.hash) ||
                    mapOrphanTransactions.count(inv.hash) ||
                    pcoinsTip->HaveCoinInCache(MCOutPoint(inv.hash, 0)) || // Best effort: only try output 0 and 1
                    pcoinsTip->HaveCoinInCache(MCOutPoint(inv.hash, 1));
@@ -1191,7 +1191,7 @@ void static ProcessGetData(MCNode* pfrom, const Consensus::Params& consensusPara
                     connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::TX, *mi->second));
                     push = true;
                 } else if (pfrom->timeLastMempoolReq) {
-                    auto txinfo = mempool.info(inv.hash);
+                    auto txinfo = mempool.Info(inv.hash);
                     // To protect privacy, do not answer getdata using the mempool when
                     // that TX couldn't have been INVed in reply to a MEMPOOL request.
                     if (txinfo.tx && txinfo.nTime <= pfrom->timeLastMempoolReq) {
@@ -2116,7 +2116,7 @@ bool static ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
         std::list<MCTransactionRef> lRemovedTxn;
 
         if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, &lRemovedTxn)) {
-            mempool.check(pcoinsTip);
+            mempool.Check(pcoinsTip);
             RelayTransaction(tx, connman);
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 vWorkQueue.emplace_back(inv.hash, i);
@@ -2127,7 +2127,7 @@ bool static ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
             LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
                 pfrom->GetId(),
                 tx.GetHash().ToString(),
-                mempool.size(), mempool.DynamicMemoryUsage() / 1000);
+                mempool.Size(), mempool.DynamicMemoryUsage() / 1000);
 
             // Recursively process any orphan transactions that depended on this one
             std::set<NodeId> setMisbehaving;
@@ -2183,7 +2183,7 @@ bool static ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
                             recentRejects->insert(orphanHash);
                         }
                     }
-                    mempool.check(pcoinsTip);
+                    mempool.Check(pcoinsTip);
                 }
             }
 
@@ -3426,7 +3426,7 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
 
             // Respond to BIP35 mempool requests
             if (fSendTrickle && pto->fSendMempool) {
-                auto vtxinfo = mempool.infoAll();
+                auto vtxinfo = mempool.InfoAll();
                 pto->fSendMempool = false;
                 MCAmount filterrate = 0;
                 {
@@ -3491,7 +3491,7 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
                         continue;
                     }
                     // Not in the mempool anymore? don't bother sending it.
-                    auto txinfo = mempool.info(hash);
+                    auto txinfo = mempool.Info(hash);
                     if (!txinfo.tx) {
                         continue;
                     }

@@ -397,7 +397,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         if (tx->IsSmartContract()) {
             const MCTxMemPoolEntry* entry = blockTxEntries[i - offset + 1];
             int finalGroupId = groupId;
-            for (auto& contractAddr : entry->contractAddrs) {
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     finalGroupId = std::min(contractGroupId, finalGroupId);
@@ -411,7 +411,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
                 groupId = finalGroupId;
             }
 
-            for (auto& contractAddr : entry->contractAddrs) {
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     if (finalGroupId != contractGroupId) {
@@ -742,8 +742,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
 			++nConsecutiveFailed;
 
-			if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight >
-				nBlockMaxWeight - 4000) {
+			if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight > nBlockMaxWeight - 4000) {
 				// Give up if we're close to full and haven't succeeded in a while
 				break;
 			}

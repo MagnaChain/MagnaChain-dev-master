@@ -6,6 +6,7 @@
 
 extern "C"
 {
+#include "lua/lvm.h"
 #include "lua/lstate.h"
 #include "lua/lualib.h"
 #include "lua/lauxlib.h"
@@ -48,8 +49,8 @@ public:
     int txIndex;
     MCAmount contractOut = 0;
     uint32_t runningTimes = 0;
-    size_t deltaDataLen = 0;
-    size_t codeLen = 0;
+    uint32_t deltaDataLen = 0;
+    uint32_t codeLen = 0;
     int _internalCallNum = 0;
     CoinAmountCache* pCoinAmountCache;
     std::map<MCContractID, ContractInfo> contractDataFrom;

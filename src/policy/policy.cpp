@@ -269,12 +269,35 @@ MCFeeRate incrementalRelayFee = MCFeeRate(DEFAULT_INCREMENTAL_RELAY_FEE);
 MCFeeRate dustRelayFee = MCFeeRate(DUST_RELAY_TX_FEE);
 unsigned int nBytesPerSigOp = DEFAULT_BYTES_PER_SIGOP;
 
-int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost)
+int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost, int32_t runningTimes, int32_t deltaDataLen, int32_t factor)
 {
-    return (std::max(nWeight, nSigOpCost * nBytesPerSigOp) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
+    int64_t weight = (std::max(nWeight, nSigOpCost * nBytesPerSigOp) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
+    weight *= factor;
+
+    double rate = 1;
+    double deltaWeight = 0;
+    int instructions = runningTimes;
+    int step = BASE_INSTRUCTION_NUM;
+    while (instructions > 0) {
+        int minNum = std::min(instructions, step);
+        instructions -= minNum;
+        deltaWeight += minNum * rate;
+        if (instructions > 0) {
+            rate *= 1.2;
+            step = STEP_INSTRUCTION_NUM;
+        }
+    }
+    weight += (int64_t)deltaWeight + deltaDataLen * 12;
+
+    return weight;
 }
 
-int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, SmartLuaState* sls)
+int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, int32_t runningTimes, int32_t deltaDataLen)
 {
-    return GetVirtualTransactionSize(GetTransactionWeight(tx, sls), nSigOpCost);
+    int factor = 1;
+    if (tx.IsPregnantTx() || tx.IsBranchCreate() || tx.IsProve() || tx.IsReport())
+        factor = 10;
+    if (tx.IsBranchChainTransStep2())
+        factor = 20;
+    return GetVirtualTransactionSize(GetTransactionWeight(tx), nSigOpCost, runningTimes, deltaDataLen, factor);
 }

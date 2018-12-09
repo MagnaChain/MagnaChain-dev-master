@@ -28,7 +28,7 @@ RBFTransactionState IsRBFOptIn(const MCTransaction &tx, MCTxMemPool &pool)
 
     // If this transaction is not in our mempool, then we can't be sure
     // we will know about all its inputs.
-    if (!pool.exists(tx.GetHash())) {
+    if (!pool.Exists(tx.GetHash())) {
         return RBF_TRANSACTIONSTATE_UNKNOWN;
     }
 
