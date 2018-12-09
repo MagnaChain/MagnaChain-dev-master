@@ -69,7 +69,9 @@ RUN cd ${APP} \
 # HEALTHCHECK    
 #启动节点
 ENTRYPOINT [ "docker-entrypoint.sh","magnachaind"]
-CMD [ "-printtoconsole", "-datadir=/root/app/blocks/main" ]
+#   printtoconsole just for debug
+# CMD [ "-printtoconsole", "-datadir=/root/app/blocks/main" ]
+CMD [ "-daemon", "-datadir=/root/app/blocks/main" ]
 
 
 
