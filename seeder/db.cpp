@@ -246,6 +246,7 @@ void MCAddrDB::SaveDBData()
     std::string dbfilename = strprintf("dnsseed_%s.dat", pOpts->branchid.c_str());
     std::string dbfilenamenew = strprintf("dnsseed_%s.dat.new", pOpts->branchid.c_str());
     std::string dbfilenamedump = strprintf("dnsseed_%s.dump", pOpts->branchid.c_str());
+    std::string dblogfile = strprintf("dnsstats_%s.log", pOpts->branchid.c_str());
 
     vector<MCAddrReport> v = this->GetAll();
     std::sort(v.begin(), v.end(), StatCompare);
@@ -270,7 +271,7 @@ void MCAddrDB::SaveDBData()
         stat[4] += rep.uptime[4];
     }
     fclose(d);
-    FILE *ff = fopen("dnsstats.log", "a");
+    FILE *ff = fopen(dblogfile.c_str(), "a");
     fprintf(ff, "%llu %g %g %g %g %g\n", (unsigned long long)(time(NULL)), stat[0], stat[1], stat[2], stat[3], stat[4]);
     fclose(ff);
 }

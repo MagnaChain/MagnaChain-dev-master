@@ -500,11 +500,11 @@ void StartSeederThread(MCAddrDB &db, bool fend)
     printf("Starting seeder...");
     pthread_create(&threadSeed, NULL, ThreadSeeder, &db);
     printf("done\n");
-    printf("Starting %i crawler threads...", g_defaultOpts.nThreads);
+    printf("Starting %i crawler threads...", db.pOpts->nThreads);
     pthread_attr_t attr_crawler;
     pthread_attr_init(&attr_crawler);
     pthread_attr_setstacksize(&attr_crawler, 0x20000);
-    for (int i = 0; i < g_defaultOpts.nThreads; i++) {
+    for (int i = 0; i < db.pOpts->nThreads; i++) {
         pthread_t thread;
         pthread_create(&thread, &attr_crawler, ThreadCrawler, &db);
     }
