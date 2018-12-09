@@ -89,6 +89,18 @@ static MCBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTim
     return CreateGenesisBlock(pszTimestamp.c_str(), genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
 }
 
+//
+int MCChainParams::GetDefaultPort() const 
+{
+    if (IsMainChain())
+    {
+        return nDefaultPort;
+    }
+    {
+        return gArgs.GetArg("-defaultport", nDefaultPort);
+    }
+}
+
 void MCChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
 {
     consensus.vDeployments[d].nStartTime = nStartTime;
@@ -124,6 +136,15 @@ void MCChainParams::InitRegtestBase58Prefixes()
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
+}
+
+bool GetBranchInitDefaultPort(bool fTestNet, bool fRegTest)
+{
+    if (fTestNet)
+        return 38833;
+    else if(fRegTest)
+        return 48833;
+    return 28833;//main net
 }
 
 /**
@@ -423,6 +444,9 @@ public:
 		// By default assume that the signatures in ancestors of this block are valid.
 		consensus.defaultAssumeValid = uint256S("0x00"); //477890
 
+        //侧链跟主链的key一致,根据不同网络进行切换
+        bool fRegTest = gArgs.GetBoolArg("-regtest", false);
+        bool fTestNet = gArgs.GetBoolArg("-testnet", false);
 		/**
 		* The message start string is designed to be unlikely to occur in normal data.
 		* The characters are rarely used upper ASCII, not valid as UTF-8, and produce
@@ -432,7 +456,9 @@ public:
 		pchMessageStart[1] = 0x11;
 		pchMessageStart[2] = 0x68;
 		pchMessageStart[3] = 0x99;
-		nDefaultPort = 28833;
+
+		nDefaultPort = GetBranchInitDefaultPort(fTestNet, fRegTest);
+
 		nPruneAfterHeight = 100000;
 
 		//change branch dir
@@ -451,10 +477,6 @@ public:
 
 		//assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
 		//assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
-
-        //侧链跟主链的key一致,根据不同网络进行切换
-        bool fRegTest = gArgs.GetBoolArg("-regtest", false);
-        bool fTestNet = gArgs.GetBoolArg("-testnet", false);
         InitMainBase58Prefixes();
         if (fTestNet)
             InitTestnetBase58Prefixes();

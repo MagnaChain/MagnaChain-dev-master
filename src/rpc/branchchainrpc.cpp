@@ -323,6 +323,10 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
     LOCK(cs_main);
     UniValue arr(UniValue::VARR);
     const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+
+    bool fRegTest = gArgs.GetBoolArg("-regtest", false);
+    bool fTestNet = gArgs.GetBoolArg("-testnet", false);
+    int branchInitDefaultPort = GetBranchInitDefaultPort(fTestNet, fRegTest);
     for (auto v: vCreated)
     {
         UniValue obj(UniValue::VOBJ);
@@ -335,6 +339,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
             confirmations = chainActive.Height() - mapBlockIndex[v.blockhash]->nHeight + 1;
         }
         obj.push_back(Pair("confirmations", confirmations));
+        obj.push_back(Pair("defaultport", branchInitDefaultPort++));
         obj.push_back(Pair("ismaturity", confirmations >= BRANCH_CHAIN_MATURITY));
         arr.push_back(obj);
     }
