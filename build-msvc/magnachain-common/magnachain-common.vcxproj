@@ -98,6 +98,7 @@
       <ObjectFileName>$(IntDir)placeobj\placeobj\%(RelativeDir)</ObjectFileName>
       <ForcedIncludeFiles>stdafx.h</ForcedIncludeFiles>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
