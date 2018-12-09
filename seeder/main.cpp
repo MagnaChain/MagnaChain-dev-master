@@ -404,6 +404,7 @@ extern "C" void* ThreadDumper(void*pData) {
 extern "C" void* ThreadStats(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
   bool first = true;
+  std::string strShortName = pDB->pOpts->branchid.substr(0, 8);
   do {
     char c[256];
     time_t tim = time(NULL);
@@ -427,7 +428,9 @@ extern "C" void* ThreadStats(void*pData) {
       requests += dnsThread[i]->dns_opt.nRequests;//OP: this may be can keep this
       queries += dnsThread[i]->dbQueries;
     }
-    printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries\n", c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, stats.nBanned, (unsigned long long)requests, (unsigned long long)queries);
+    printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries, branchid %s\n", 
+        c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, 
+        stats.nBanned, (unsigned long long)requests, (unsigned long long)queries, strShortName.c_str());
     Sleep(1000);
   } while(1);
   return nullptr;
@@ -572,7 +575,7 @@ int main(int argc, char **argv) {
       pOpts->mbox = "alibuybuy@yandex.com"; // -m
 
       pOpts->seeds.push_back("120.92.85.97");
-      pOpts->seeds.push_back("1.2.3.4");// test data
+      //pOpts->seeds.push_back("1.2.3.4");// test data
 
       pOpts->InitMessageStart();
 
@@ -594,7 +597,7 @@ int main(int argc, char **argv) {
       pOpts->mbox = "alibuybuy@yandex.com"; // -m
 
       pOpts->seeds.push_back("120.92.85.97");
-      pOpts->seeds.push_back("11.22.33.44");// test data
+      //pOpts->seeds.push_back("11.22.33.44");// test data
 
       pOpts->InitMessageStart();
 
