@@ -24,10 +24,10 @@ enum class BumpFeeResult
     MISC_ERROR,
 };
 
-class CFeeBumper
+class MCFeeBumper
 {
 public:
-    CFeeBumper(const MCWallet *pWalletIn, const uint256 txidIn, const MCCoinControl& coin_control, MCAmount totalFee);
+    MCFeeBumper(const MCWallet *pWalletIn, const uint256 txidIn, const MCCoinControl& coin_control, MCAmount totalFee);
     BumpFeeResult getResult() const { return currentResult; }
     const std::vector<std::string>& getErrors() const { return vErrors; }
     MCAmount getOldFee() const { return nOldFee; }

@@ -1764,10 +1764,10 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (!mapBlockIndex.count(blockHash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-    MCBlockIndex*  pblockindex = mapBlockIndex[blockHash];
+    MCBlockIndex*  pBlockIndex = mapBlockIndex[blockHash];
 
     MCBlock block;
-    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))   
+    if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
@@ -1804,13 +1804,13 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get coinbase transaction prove data failed");
     }
     else {
-        if (!GetProveInfo(block, pblockindex->nHeight, pblockindex->pprev, targetTxIndex, mtx.pProveData))
+        if (!GetProveInfo(block, pBlockIndex->nHeight, pBlockIndex->pprev, targetTxIndex, mtx.pProveData))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
     }
 
     if (pProveTx->IsSmartContract()) {
         ContractContext contractContext;
-        if (!ExecuteBlock(&RPCSLS, &block, pblockindex->pprev, 0, targetTxIndex + 1, &contractContext))
+        if (!ExecuteBlock(&RPCSLS, &block, pBlockIndex->pprev, 0, targetTxIndex + 1, &contractContext))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
         // 先证明合约数据来源合法
@@ -1823,7 +1823,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         reportedMatch[targetTxIndex] = true;
         mtx.pProveData->contractData->prevDataSPV = std::move(MCPartialMerkleTree(reportedPrevDataLeaves, reportedMatch));
         
-        if (!ExecuteBlock(&RPCSLS, &block, pblockindex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
+        if (!ExecuteBlock(&RPCSLS, &block, pBlockIndex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
         std::vector<uint256> reportedDataLeaves;
@@ -1846,9 +1846,8 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf(std::string("call rpc error %s"), error.write()));
 
     const UniValue& result = find_value(reply, "result");
-    if (result.isNull()) {
+    if (result.isNull())
         throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
-    }
 
     return result;
 }

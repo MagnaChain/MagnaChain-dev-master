@@ -58,9 +58,30 @@ void MCTxMemPoolEntry::UpdateLockPoints(const LockPoints& lp)
     lockPoints = lp;
 }
 
+void MCTxMemPoolEntry::UpdateContract(SmartLuaState* sls)
+{
+    contractData.reset(new MCTxMemPoolEntryContractData);
+    contractData->contractAddrs.insert(sls->contractIds.begin(), sls->contractIds.end());
+    contractData->runnintTimes = sls->runningTimes;
+    contractData->deltaDataLen = sls->deltaDataLen;
+}
+
 size_t MCTxMemPoolEntry::GetTxSize() const
 {
-    return GetVirtualTransactionSize(nTxWeight, sigOpCost);
+    int factor = 1;
+    if (tx->IsPregnantTx() || tx->IsBranchCreate() || tx->IsProve() || tx->IsReport())
+        factor = 10;
+    if (tx->IsBranchChainTransStep2())
+        factor = 20;
+
+    int32_t runningTimes = 0;
+    int32_t deltaDataLen = 0;
+    if (contractData != nullptr) {
+        runningTimes = contractData->runnintTimes;
+        deltaDataLen = contractData->deltaDataLen;
+    }
+
+    return GetVirtualTransactionSize(nTxWeight, sigOpCost, runningTimes, deltaDataLen, factor);
 }
 
 // Update the given tx for any in-mempool descendants.
@@ -178,15 +199,17 @@ bool MCTxMemPool::CalculateMemPoolAncestors(const MCTxMemPoolEntry &entry, setEn
             }
         }
         // 获取内存池中与合约关联地址的交易
-        for (auto& contractId : entry.contractAddrs) {
-            auto it = contractLinksMap.find(contractId);
-            if (it != contractLinksMap.end()) {
-                txiter piter = mapTx.find(it->second.back());
-                if (piter != mapTx.end()) {
-                    parentHashes.insert(piter);
-                    if (parentHashes.size() + 1 > limitAncestorCount) {
-                        errString = strprintf("too many unconfirmed parents [limit: %u]", limitAncestorCount);
-                        return false;
+        if (entry.contractData != nullptr) {
+            for (auto& contractId : entry.contractData->contractAddrs) {
+                auto it = contractLinksMap.find(contractId);
+                if (it != contractLinksMap.end()) {
+                    txiter piter = mapTx.find(it->second.back());
+                    if (piter != mapTx.end()) {
+                        parentHashes.insert(piter);
+                        if (parentHashes.size() + 1 > limitAncestorCount) {
+                            errString = strprintf("too many unconfirmed parents [limit: %u]", limitAncestorCount);
+                            return false;
+                        }
                     }
                 }
             }
@@ -307,7 +330,7 @@ void MCTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove, 
         // the mempool can be in an inconsistent state.  In this case, the set
         // of ancestors reachable via mapLinks will be the same as the set of 
         // ancestors whose packages include this transaction, because when we
-        // add a new transaction to the mempool in addUnchecked(), we assume it
+        // add a new transaction to the mempool in AddUnchecked(), we assume it
         // has no children, and in the case of a reorg where that assumption is
         // false, the in-mempool children aren't linked to the in-block tx's
         // until UpdateTransactionsFromBlock() is called.
@@ -353,7 +376,7 @@ void MCTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, MCAmount modifyFe
 MCTxMemPool::MCTxMemPool(MCBlockPolicyEstimator* estimator) :
     nTransactionsUpdated(0), minerPolicyEstimator(estimator), nCreateBranchTxCount(0)
 {
-    _clear(); //lock free clear
+    DoClear(); //lock free clear
 
     // Sanity checks off by default for performance, because otherwise
     // accepting transactions becomes O(N^2) where N is the number
@@ -361,7 +384,7 @@ MCTxMemPool::MCTxMemPool(MCBlockPolicyEstimator* estimator) :
     nCheckFrequency = 0;
 }
 
-bool MCTxMemPool::isSpent(const MCOutPoint& outpoint)
+bool MCTxMemPool::IsSpent(const MCOutPoint& outpoint)
 {
     LOCK(cs);
     return mapNextTx.count(outpoint);
@@ -379,7 +402,7 @@ void MCTxMemPool::AddTransactionsUpdated(unsigned int n)
     nTransactionsUpdated += n;
 }
 
-bool MCTxMemPool::addUnchecked(const uint256& hash, const MCTxMemPoolEntry &entry, setEntries &setAncestors, bool validFeeEstimate)
+bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entry, setEntries &setAncestors, bool validFeeEstimate)
 {
     NotifyEntryAdded(entry.GetSharedTx());
     // Add to memory pool without checking anything.
@@ -412,11 +435,13 @@ bool MCTxMemPool::addUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
         setParentTransactions.insert(tx.vin[i].prevout.hash);
     }
     // 设置内存池中与合约关联地址的交易
-    for (auto& contractId : entry.contractAddrs) {
-        auto it = contractLinksMap.find(contractId);
-        if (it != contractLinksMap.end())
-            setParentTransactions.insert(it->second.back());
-        contractLinksMap[contractId].emplace_back(hash);
+    if (entry.contractData != nullptr) {
+        for (auto& contractId : entry.contractData->contractAddrs) {
+            auto it = contractLinksMap.find(contractId);
+            if (it != contractLinksMap.end())
+                setParentTransactions.insert(it->second.back());
+            contractLinksMap[contractId].emplace_back(hash);
+        }
     }
     // Don't bother worrying about child transactions of this one.
     // Normal case of a new transaction arriving is that there can't be any
@@ -437,7 +462,7 @@ bool MCTxMemPool::addUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
 
     nTransactionsUpdated++;
     totalTxSize += entry.GetTxSize();
-    if (minerPolicyEstimator) {minerPolicyEstimator->processTransaction(entry, validFeeEstimate);}
+    if (minerPolicyEstimator) {minerPolicyEstimator->ProcessTransaction(entry, validFeeEstimate);}
 
     vTxHashes.emplace_back(tx.GetWitnessHash(), newit);
     newit->vTxHashesIdx = vTxHashes.size() - 1;
@@ -447,7 +472,7 @@ bool MCTxMemPool::addUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
     return true;
 }
 
-void MCTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
+void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
 {
     NotifyEntryRemoved(it->GetSharedTx(), reason);
     const uint256 hash = it->GetTx().GetHash();
@@ -475,7 +500,7 @@ void MCTxMemPool::removeUnchecked(txiter it, MemPoolRemovalReason reason)
     mapLinks.erase(it);
     mapTx.erase(it);
     nTransactionsUpdated++;
-    if (minerPolicyEstimator) {minerPolicyEstimator->removeTx(hash, false);}
+    if (minerPolicyEstimator) {minerPolicyEstimator->RemoveTx(hash, false);}
 }
 
 // Calculates descendants of entry that are not already in setDescendants, and adds to
@@ -507,7 +532,7 @@ void MCTxMemPool::CalculateDescendants(txiter entryit, setEntries &setDescendant
     }
 }
 
-void MCTxMemPool::removeRecursive(const MCTransaction &origTx, MemPoolRemovalReason reason)
+void MCTxMemPool::RemoveRecursive(const MCTransaction &origTx, MemPoolRemovalReason reason)
 {
     // Remove transaction from memory pool
     {
@@ -539,7 +564,7 @@ void MCTxMemPool::removeRecursive(const MCTransaction &origTx, MemPoolRemovalRea
     }
 }
 
-void MCTxMemPool::removeForReorg(const MCCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags)
+void MCTxMemPool::RemoveForReorg(const MCCoinsViewCache *pcoins, unsigned int nMemPoolHeight, int flags)
 {
     // Remove transactions spending a coinbase which are now immature and no-longer-final transactions
     LOCK(cs);
@@ -576,7 +601,7 @@ void MCTxMemPool::removeForReorg(const MCCoinsViewCache *pcoins, unsigned int nM
     RemoveStaged(setAllRemoves, false, MemPoolRemovalReason::REORG);
 }
 
-void MCTxMemPool::removeConflicts(const MCTransaction &tx)
+void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
 {
     // Remove transactions which depend on inputs of tx, recursively
     LOCK(cs);
@@ -587,7 +612,7 @@ void MCTxMemPool::removeConflicts(const MCTransaction &tx)
             if (txConflict != tx)
             {
                 ClearPrioritisation(txConflict.GetHash());
-                removeRecursive(txConflict, MemPoolRemovalReason::CONFLICT);
+                RemoveRecursive(txConflict, MemPoolRemovalReason::CONFLICT);
             }
         }
     }
@@ -596,7 +621,7 @@ void MCTxMemPool::removeConflicts(const MCTransaction &tx)
 /**
  * Called when a block is connected. Removes from mempool and updates the miner fee estimator.
  */
-void MCTxMemPool::removeForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight)
+void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight)
 {
     LOCK(cs);
     std::vector<const MCTxMemPoolEntry*> entries;
@@ -609,7 +634,7 @@ void MCTxMemPool::removeForBlock(const std::vector<MCTransactionRef>& vtx, unsig
             entries.push_back(&*i);
     }
     // Before the txs in the new block have been removed from the mempool, update policy estimates
-    if (minerPolicyEstimator) {minerPolicyEstimator->processBlock(nBlockHeight, entries);}
+    if (minerPolicyEstimator) {minerPolicyEstimator->ProcessBlock(nBlockHeight, entries);}
     for (const auto& tx : vtx)
     {
         uint256 txid = GetBranchTxHash(*tx);// remove Transaction that has be modified, as IsBranchChainTransStep2
@@ -619,14 +644,14 @@ void MCTxMemPool::removeForBlock(const std::vector<MCTransactionRef>& vtx, unsig
             stage.insert(it);
             RemoveStaged(stage, true, MemPoolRemovalReason::BLOCK);
         }
-        removeConflicts(*tx);
+        RemoveConflicts(*tx);
         ClearPrioritisation(txid);
     }
     lastRollingFeeUpdate = GetTime();
     blockSinceLastRollingFeeBump = true;
 }
 
-void MCTxMemPool::_clear()
+void MCTxMemPool::DoClear()
 {
     mapLinks.clear();
     mapTx.clear();
@@ -639,13 +664,13 @@ void MCTxMemPool::_clear()
     ++nTransactionsUpdated;
 }
 
-void MCTxMemPool::clear()
+void MCTxMemPool::Clear()
 {
     LOCK(cs);
-    _clear();
+    DoClear();
 }
 
-void MCTxMemPool::check(const MCCoinsViewCache *pcoins) const
+void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
 {
     if (nCheckFrequency == 0)
         return;
@@ -819,7 +844,7 @@ std::vector<MCTxMemPool::indexed_transaction_set::iterator> MCTxMemPool::GetSort
     return iters;
 }
 
-void MCTxMemPool::queryHashes(std::vector<uint256>& vtxid)
+void MCTxMemPool::QueryHashes(std::vector<uint256>& vtxid)
 {
     LOCK(cs);
     auto iters = GetSortedDepthAndScore();
@@ -836,7 +861,7 @@ static TxMempoolInfo GetInfo(MCTxMemPool::indexed_transaction_set::const_iterato
     return TxMempoolInfo{it->GetSharedTx(), it->GetTime(), MCFeeRate(it->GetFee(), it->GetTxSize()), it->GetModifiedFee() - it->GetFee()};
 }
 
-std::vector<TxMempoolInfo> MCTxMemPool::infoAll()
+std::vector<TxMempoolInfo> MCTxMemPool::InfoAll()
 {
     LOCK(cs);
     auto iters = GetSortedDepthAndScore();
@@ -850,7 +875,7 @@ std::vector<TxMempoolInfo> MCTxMemPool::infoAll()
     return ret;
 }
 
-MCTransactionRef MCTxMemPool::get(const uint256& hash) const
+MCTransactionRef MCTxMemPool::Get(const uint256& hash) const
 {
     LOCK(cs);
     indexed_transaction_set::const_iterator i = mapTx.find(hash);
@@ -859,7 +884,7 @@ MCTransactionRef MCTxMemPool::get(const uint256& hash) const
     return i->GetSharedTx();
 }
 
-TxMempoolInfo MCTxMemPool::info(const uint256& hash) const
+TxMempoolInfo MCTxMemPool::Info(const uint256& hash) const
 {
     LOCK(cs);
     indexed_transaction_set::const_iterator i = mapTx.find(hash);
@@ -917,7 +942,7 @@ void MCTxMemPool::ClearPrioritisation(const uint256 hash)
 bool MCTxMemPool::HasNoInputsOf(const MCTransaction &tx) const
 {
     for (unsigned int i = 0; i < tx.vin.size(); i++)
-        if (exists(tx.vin[i].prevout.hash))
+        if (Exists(tx.vin[i].prevout.hash))
             return false;
     return true;
 }
@@ -928,7 +953,7 @@ bool MCCoinsViewMemPool::GetCoin(const MCOutPoint &outpoint, Coin &coin) const {
     // If an entry in the mempool exists, always return that one, as it's guaranteed to never
     // conflict with the underlying cache, and it cannot have pruned entries (as it contains full)
     // transactions. First checking the underlying cache risks returning a pruned entry instead.
-    MCTransactionRef ptx = mempool.get(outpoint.hash);
+    MCTransactionRef ptx = mempool.Get(outpoint.hash);
     if (ptx) {
         if (outpoint.n < ptx->vout.size()) {
             coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
@@ -952,7 +977,7 @@ void MCTxMemPool::RemoveStaged(setEntries &stage, bool updateDescendants, MemPoo
     std::set<uint256> txHash;
     for (const txiter& it : stage) {
         txHash.insert(it->GetSharedTx()->GetHash());
-        removeUnchecked(it, reason);
+        RemoveUnchecked(it, reason);
     }
     for (auto it = contractLinksMap.begin(); it != contractLinksMap.end();) {
         for (auto sit = it->second.begin(); sit != it->second.end();) {
@@ -985,14 +1010,14 @@ int MCTxMemPool::Expire(int64_t time) {
     return stage.size();
 }
 
-bool MCTxMemPool::addUnchecked(const uint256&hash, const MCTxMemPoolEntry &entry, bool validFeeEstimate)
+bool MCTxMemPool::AddUnchecked(const uint256&hash, const MCTxMemPoolEntry &entry, bool validFeeEstimate)
 {
     LOCK(cs);
     setEntries setAncestors;
     uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
     CalculateMemPoolAncestors(entry, setAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy);
-    return addUnchecked(hash, entry, setAncestors, validFeeEstimate);
+    return AddUnchecked(hash, entry, setAncestors, validFeeEstimate);
 }
 
 void MCTxMemPool::UpdateChild(txiter entry, txiter child, bool add)
@@ -1094,7 +1119,7 @@ void MCTxMemPool::TrimToSize(size_t sizelimit, std::vector<MCOutPoint>* pvNoSpen
         if (pvNoSpendsRemaining) {
             for (const MCTransaction& tx : txn) {
                 for (const MCTxIn& txin : tx.vin) {
-                    if (exists(txin.prevout.hash)) continue;
+                    if (Exists(txin.prevout.hash)) continue;
                     pvNoSpendsRemaining->push_back(txin.prevout);
                 }
             }

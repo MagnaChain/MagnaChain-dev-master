@@ -276,28 +276,12 @@ public:
     }
 };
 
-class ContractDataFrom
-{
-public:
-    uint256 blockHash;
-    int txIndex;
-    uint256 dataHash;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(blockHash);
-        READWRITE(txIndex);
-        READWRITE(dataHash);
-    }
-};
-
 // 执行智能合约时的上下文数据
 class ContractInfo
 {
 public:
-    ContractDataFrom from;
+    int txIndex;
+    uint256 blockHash;
     std::string code;
     std::string data;
 
@@ -307,9 +291,24 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        READWRITE(from);
         READWRITE(code);
+        READWRITE(blockHash);
         READWRITE(data);
+    }
+};
+
+class ContractPrevDataItem
+{
+public:
+    uint256 blockHash;
+    int txIndex;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(blockHash);
+        READWRITE(txIndex);
     }
 };
 
@@ -317,13 +316,13 @@ class ContractPrevData
 {
 public:
     MCAmount coins;   // 执行合约时该合约的币数量
-    std::map<MCContractID, ContractDataFrom> dataFrom;
+    std::map<MCContractID, ContractPrevDataItem> items;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(coins);
-        READWRITE(dataFrom);
+        READWRITE(items);
     }
 };
 

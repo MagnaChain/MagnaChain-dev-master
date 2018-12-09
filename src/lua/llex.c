@@ -395,11 +395,8 @@ static int llex (LexState *ls, SemInfo *seminfo) {
       }
       case '.': {
         save_and_next(ls);
-        if (check_next(ls, ".")) {
-          if (check_next(ls, "."))
+        if (check_next(ls, ".") && check_next(ls, "."))
             return TK_DOTS;   /* ... */
-          else return TK_CONCAT;   /* .. */
-        }
         else if (!isdigit(ls->current)) return '.';
         else {
           read_numeral(ls, seminfo);

@@ -12,6 +12,16 @@
 #include "lobject.h"
 #include "ltm.h"
 
+static const long GAS_QUICK_STEP = 2;
+static const long GAS_FASTEST_STEP = 3;
+static const long GAS_FAST_STEP = 5;
+static const long GAS_MID_STEP = 8;
+static const long GAS_SLOW_STEP = 10;
+static const long GAS_EXT_STEP = 20;
+static const long GAS_RETURN = 0;
+static const long GAS_STOP = 0;
+static const long GAS_CONTRACT_BYTE = 200;
+
 
 #define tostring(L,o) ((ttype(o) == LUA_TSTRING) || (luaV_tostring(L, o)))
 

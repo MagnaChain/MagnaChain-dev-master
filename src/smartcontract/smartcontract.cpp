@@ -47,95 +47,62 @@ ret4 合约返回的json数据
 */
 
 static const char* initscript = "                                               \n\
-function printTable(t, indent)                                                  \n\
-	local strIndent = ''                                                        \n\
-	local istart = indent == nil                                                \n\
-	indent = indent or 0                                                        \n\
-	for i=1, indent do                                                          \n\
-		strIndent = strIndent..'  '                                             \n\
-	end                                                                         \n\
-	if istart then print(strIndent..'{') end                                    \n\
-	for k,v in pairs(t) do                                                      \n\
-		if type(v) == 'table' then                                              \n\
-			print(strIndent..tostring(k)..'={')                                 \n\
-			printTable(v, indent+1)                                             \n\
-		else                                                                    \n\
-			print(strIndent..tostring(k)..'='..tostring(v)..',')                \n\
-		end                                                                     \n\
-	end                                                                         \n\
-	print(strIndent..'}'..(istart and '' or ','))                               \n\
-end                                                                             \n\
-																				\n\
-local function copyTable(from, to)                                              \n\
-	for k,v in pairs(from) do                                                   \n\
-		if type(v) == 'table' then                                              \n\
-			to[k] = {}                                                          \n\
-			copyTable(v, to[k])                                                 \n\
-		else                                                                    \n\
-			to[k] = v                                                           \n\
-		end                                                                     \n\
-	end                                                                         \n\
-	return to                                                                   \n\
-end                                                                             \n\
-                                                                                \n\
---lua 5.1                                                                       \n\
 local function createSafeEnv()                                                  \n\
     local env = {}                                                              \n\
     env._G = env	                                                            \n\
     env._VERSION = _VERSION	                                                    \n\
---    env.arg = arg	                                                            \n\
+    --env.arg = arg	                                                            \n\
     env.assert = assert	                                                        \n\
     env.cmsgpack = nil                                                          \n\
---    env.collectgarbage = collectgarbage										\n\
---    env.coroutine = coroutine	                                                \n\
---    env.debug = debug	                                                        \n\
---    env.dofile = dofile	                                                    \n\
+    --env.collectgarbage = collectgarbage										\n\
+    --env.coroutine = coroutine	                                                \n\
+    --env.debug = debug	                                                        \n\
+    --env.dofile = dofile	                                                    \n\
     env.error = error	                                                        \n\
---    env.gcinfo = gcinfo														\n\
---    env.getfenv = getfenv                                                     \n\
---    env.getmetatable = getmetatable											\n\
---    env.io = io	                                                            \n\
+    --env.gcinfo = gcinfo														\n\
+    --env.getfenv = getfenv                                                     \n\
+    --env.getmetatable = getmetatable											\n\
+    --env.io = io	                                                            \n\
     env.ipairs = ipairs	                                                        \n\
---    env.load = load	                                                        \n\
---    env.loadfile = loadfile	                                                \n\
---    env.loadstring = loadstring	                                            \n\
+    --env.load = load	                                                        \n\
+    --env.loadfile = loadfile	                                                \n\
+    --env.loadstring = loadstring	                                            \n\
                                                                                 \n\
     env.math = {}	                                                            \n\
     env.math.pow = math.pow                                                     \n\
     env.math.max = math.max	                                                    \n\
     env.math.min = math.min                                                     \n\
 	                                                                            \n\
---    env.module = module	                                                    \n\
---    env.newproxy = newproxy													\n\
+    --env.module = module	                                                    \n\
+    --env.newproxy = newproxy													\n\
     env.next = next	                                                            \n\
 	                                                                            \n\
---	env.os = copyTable(os, {})                                                  \n\
---	env.os.execute = nil                                                        \n\
---	env.os.remove = nil                                                         \n\
---	env.os.rename = nil                                                         \n\
---	env.os.exit = nil                                                           \n\
+    --nv.os = copyTable(os, {})                                                 \n\
+    --nv.os.execute = nil                                                       \n\
+    --nv.os.remove = nil                                                        \n\
+    --nv.os.rename = nil                                                        \n\
+    --env.os.exit = nil                                                         \n\
 	                                                                            \n\
---    env.package = package	                                                    \n\
+    --env.package = package	                                                    \n\
     env.pairs = pairs	                                                        \n\
---    env.pcall = pcall	                                                        \n\
-    env.print = print	                                                        \n\
---    env.rawequal =                                                            \n\
---    env.rawget = rawget	                                                    \n\
---    env.rawset = rawset	                                                    \n\
---    env.require = require	                                                    \n\
+    --env.pcall = pcall	                                                        \n\
+    --env.print = print	                                                        \n\
+    --env.rawequal =                                                            \n\
+    --env.rawget = rawget	                                                    \n\
+    --env.rawset = rawset	                                                    \n\
+    --env.require = require	                                                    \n\
     env.select = select	                                                        \n\
---    env.setfenv = setfenv	                                                    \n\
+    --env.setfenv = setfenv	                                                    \n\
     env.setmetatable = setmetatable	                                            \n\
-    env.string = copyTable(string, {})	                                        \n\
-    env.string.dump = nil                                                       \n\
+    --env.string = string	                                                    \n\
     env.table = table	                                                        \n\
     env.tonumber = tonumber	                                                    \n\
     env.tostring = tostring	                                                    \n\
     env.type = type	                                                            \n\
     env.unpack = unpack	                                                        \n\
 	env.unpacktable = unpacktable												\n\
---    env.xpcall = xpcall	                                                    \n\
-	--lpcall                                                                    \n\
+    --env.xpcall = xpcall	                                                    \n\
+    --lpcall                                                                    \n\
 																				\n\
     env.msg = msg		                                                        \n\
     env.callcontract = callcontract		                                        \n\
@@ -209,7 +176,7 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 			ret = temp														    \n\
 		end																		\n\
 	else                                                                        \n\
-		return false, 'can not find function '..funcname..' in contract.' 		\n\
+		return false, string.format('can not find function %s.', funcname)      \n\
 	end                                                                         \n\
 	                                                                            \n\
 	local strPackData                                                           \n\
@@ -398,7 +365,7 @@ bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const 
         sls->deltaDataLen = data.size();
 
         if (sls->saveType > 0) {
-            contractInfo.from.txIndex = sls->txIndex;
+            contractInfo.txIndex = sls->txIndex;
             contractInfo.data = data;
             contractInfo.code = code;
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
@@ -475,7 +442,7 @@ bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const
         sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
 
         if (sls->saveType > 0) {
-            contractInfo.from.txIndex = sls->txIndex;
+            contractInfo.txIndex = sls->txIndex;
             contractInfo.data = data;
             assert(sls->pCoinAmountCache->DecAmount(contractId, sls->contractOut));
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
@@ -489,6 +456,7 @@ bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const
 
 bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
+    maxCallNum -= GAS_CONTRACT_BYTE;
     int top = lua_gettop(L);
     lua_getglobal(L, "callContract");
     lua_pushnumber(L, maxCallNum);
@@ -635,6 +603,9 @@ int SendCoins(lua_State* L)
     if (!lua_isnumber(L, 2))
         throw std::runtime_error(strprintf("%s param2 is not a number", __FUNCTION__));
 
+    if (sls->pCoinAmountCache == nullptr)
+        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+
     std::string strDest = lua_tostring(L, 1);
     MagnaChainAddress kDest(strDest);
     if (kDest.IsContractID()) {
@@ -750,7 +721,6 @@ void SmartLuaState::Clear()
     pCoinAmountCache = nullptr;
     _pContractContext = nullptr;
     _pPrevBlockIndex = nullptr;
-    pCoinAmountCache = nullptr;
     contractDataFrom.clear();
 }
 
@@ -773,14 +743,8 @@ bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo
             return false;
     }
 
-    if (contractDataFrom.count(contractId) == 0) {
-        if (contractInfo.from.dataHash.IsNull()) {
-            MCHashWriter ss(SER_GETHASH, 0);
-            ss << contractInfo.code << contractInfo.data;
-            contractInfo.from.dataHash = ss.GetHash();
-        }
+    if (contractDataFrom.count(contractId) == 0)
         contractDataFrom[contractId] = contractInfo;
-    }
 
     return true;
 }
@@ -799,7 +763,7 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
     UniValue ret(UniValue::VARR);
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx->pContractData->codeOrFunc;
-        sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
+        sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
         if (!PublishContract(sls, contractAddr, rawCode, ret))
             return false;
     }
@@ -854,7 +818,7 @@ uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractDa
     MCHashWriter ss(SER_GETHASH, 0);
     ss << txHash;
     for (auto item : contractData)
-        ss << item.first << item.second.from.txIndex << item.second.code << item.second.data;
+        ss << item.first << item.second.txIndex << item.second.code << item.second.data;
     return ss.GetHash();
 }
 

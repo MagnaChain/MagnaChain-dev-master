@@ -43,7 +43,7 @@ int64_t CalculateMaximumSignedTxSize(const MCTransaction &tx, const MCWallet *pW
     return GetVirtualTransactionSize(txNew);
 }
 
-bool CFeeBumper::preconditionChecks(const MCWallet *pWallet, const MCWalletTx& wtx) {
+bool MCFeeBumper::preconditionChecks(const MCWallet *pWallet, const MCWalletTx& wtx) {
     if (pWallet->HasWalletSpend(wtx.GetHash())) {
         vErrors.push_back("Transaction has descendants in the wallet");
         currentResult = BumpFeeResult::INVALID_PARAMETER;
@@ -68,11 +68,8 @@ bool CFeeBumper::preconditionChecks(const MCWallet *pWallet, const MCWalletTx& w
     return true;
 }
 
-CFeeBumper::CFeeBumper(const MCWallet *pWallet, const uint256 txidIn, const MCCoinControl& coin_control, MCAmount totalFee)
-    :
-    txid(std::move(txidIn)),
-    nOldFee(0),
-    nNewFee(0)
+MCFeeBumper::MCFeeBumper(const MCWallet *pWallet, const uint256 txidIn, const MCCoinControl& coin_control, MCAmount totalFee)
+    : txid(std::move(txidIn)), nOldFee(0), nNewFee(0)
 {
     vErrors.clear();
     bumpedTxid.SetNull();
@@ -84,6 +81,12 @@ CFeeBumper::CFeeBumper(const MCWallet *pWallet, const uint256 txidIn, const MCCo
     }
     auto it = pWallet->mapWallet.find(txid);
     const MCWalletTx& wtx = it->second;
+
+    if (wtx.IsSmartContract()) {
+        vErrors.push_back("Transaction is smart contract");
+        currentResult = BumpFeeResult::WALLET_ERROR;
+        return;
+    }
 
     if (!preconditionChecks(pWallet, wtx)) {
         return;
@@ -231,12 +234,12 @@ CFeeBumper::CFeeBumper(const MCWallet *pWallet, const uint256 txidIn, const MCCo
     currentResult = BumpFeeResult::OK;
 }
 
-bool CFeeBumper::signTransaction(MCWallet *pWallet)
+bool MCFeeBumper::signTransaction(MCWallet *pWallet)
 {
      return pWallet->SignTransaction(mtx);
 }
 
-bool CFeeBumper::commit(MCWallet *pWallet)
+bool MCFeeBumper::commit(MCWallet *pWallet)
 {
     AssertLockHeld(pWallet->cs_wallet);
     if (!vErrors.empty() || currentResult != BumpFeeResult::OK) {

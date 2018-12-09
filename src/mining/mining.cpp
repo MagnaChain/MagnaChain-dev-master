@@ -628,7 +628,7 @@ UniValue getmininginfo(const JSONRPCRequest& request)
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
     obj.push_back(Pair("errors",           GetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    getnetworkhashps(request)));
-    obj.push_back(Pair("pooledtx",         (uint64_t)mempool.size()));
+    obj.push_back(Pair("pooledtx",         (uint64_t)mempool.Size()));
     obj.push_back(Pair("chain",            Params().NetworkIDString()));
     return obj;
 }
@@ -1207,7 +1207,7 @@ UniValue estimatefee(const JSONRPCRequest& request)
     if (nBlocks < 1)
         nBlocks = 1;
 
-    MCFeeRate feeRate = ::feeEstimator.estimateFee(nBlocks);
+    MCFeeRate feeRate = ::feeEstimator.EstimateFee(nBlocks);
     if (feeRate == MCFeeRate(0))
         return -1.0;
 
@@ -1264,7 +1264,7 @@ UniValue estimatesmartfee(const JSONRPCRequest& request)
     UniValue result(UniValue::VOBJ);
     UniValue errors(UniValue::VARR);
     FeeCalculation feeCalc;
-    MCFeeRate feeRate = ::feeEstimator.estimateSmartFee(conf_target, &feeCalc, conservative);
+    MCFeeRate feeRate = ::feeEstimator.EstimateSmartFee(conf_target, &feeCalc, conservative);
     if (feeRate != MCFeeRate(0)) {
         result.push_back(Pair("feerate", ValueFromAmount(feeRate.GetFeePerK())));
     } else {
@@ -1338,7 +1338,7 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
         // Only output results for horizons which track the target
         if (conf_target > ::feeEstimator.HighestTargetTracked(horizon)) continue;
 
-        feeRate = ::feeEstimator.estimateRawFee(conf_target, threshold, horizon, &buckets);
+        feeRate = ::feeEstimator.EstimateRawFee(conf_target, threshold, horizon, &buckets);
         UniValue horizon_result(UniValue::VOBJ);
         UniValue errors(UniValue::VARR);
         UniValue passbucket(UniValue::VOBJ);

@@ -86,7 +86,7 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         // our unit tests aren't testing multiple parts of the code at once.
         GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
 
-        mempool.setSanityCheck(1.0);
+        mempool.SetSanityCheck(1.0);
         pblocktree = new MCBlockTreeDB(1 << 20, true);
         pcoinsdbview = new MCCoinsViewDB(1 << 23, true);
         pcoinsTip = new MCCoinsViewCache(pcoinsdbview);

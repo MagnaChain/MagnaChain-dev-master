@@ -7,41 +7,54 @@
 #include "transaction/txdb.h"
 #include <boost/threadpool.hpp>
 
-// 智能合约的存盘数据
-class DBContractInfo
+// 合约某高度存盘数据项
+class ContractDataSave
 {
 public:
-    ContractDataFrom from;
-    uint32_t blockHeight;
-    std::string data;
+    uint256 blockHash;
+    boost::optional<std::string> data;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(from);
-        READWRITE(blockHeight);
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
+        READWRITE(blockHash);
         READWRITE(data);
     }
 };
 
+// 合约某高度存盘数据
+class DBContractInfoByHeight
+{
+public:
+    bool dirty = false;
+    int32_t blockHeight;
+    std::vector<uint256> vecBlockHash;
+    std::vector<std::string> vecBlockContractData;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(blockHeight);
+    }
+};
+
 // 区块关联的智能合约存盘数据
-typedef std::list<DBContractInfo> DBContractList;
-class DBBlockContractInfo
+class DBContractInfo
 {
 public:
     std::string code;
-    DBContractList data;
+    std::list<DBContractInfoByHeight> items;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(code);
-        READWRITE(data);
+        READWRITE(items);
     }
 };
 
 class MCContractID;
-typedef std::map<MCContractID, DBBlockContractInfo> DBContractMap;
 typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
 
 class ContractTxFinalData
@@ -90,12 +103,15 @@ class ContractDataDB
 {
 private:
     MCDBWrapper db;
+    MCDBBatch writeBatch;
+    MCDBBatch removeBatch;
+    std::vector<uint160> removes;
     boost::threadpool::pool threadPool;
     std::map<boost::thread::id, SmartLuaState*> threadId2SmartLuaState;
     mutable MCCriticalSection cs_cache;
 
     // 合约缓存，同时包含多个合约对应的多个块合约数据快照
-    DBContractMap contractData;
+    std::map<MCContractID, DBContractInfo> contractData;
     BLOCK_CONTRACT_DATA blockContractData;
     std::map<int, std::vector<std::pair<uint256, bool>>> mapHeightHash;
 
@@ -115,8 +131,10 @@ public:
     static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, MCBlock* pBlock, SmartContractThreadData* threadData);
     void ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* pBlock, SmartContractThreadData* threadData);
 
-    void UpdateBlockContractInfo(MCBlockIndex* pBlockIndex, ContractContext* contractContext);
-    void Flush();
+    bool WriteBatch(MCDBBatch& batch);
+    bool WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* contractContext);
+    bool UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex);
+    void PruneContractInfo();
 };
 extern ContractDataDB* mpContractDb;
 

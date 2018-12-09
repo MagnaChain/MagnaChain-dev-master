@@ -24,6 +24,9 @@ static const unsigned char REJECT_NONSTANDARD = 0x40;
 static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
 static const unsigned char REJECT_CHECKPOINT = 0x43;
 
+static const int32_t BASE_INSTRUCTION_NUM = 600;
+static const int32_t STEP_INSTRUCTION_NUM = 300;
+
 /** Capture information about block/transaction validation */
 class MCValidationState {
 private:
@@ -91,26 +94,9 @@ public:
     std::string GetDebugMessage() const { return strDebugMessage; }
 };
 
-static inline int64_t GetTransactionWeight(const MCTransaction& tx, SmartLuaState* sls = nullptr)
+static inline int64_t GetTransactionWeight(const MCTransaction& tx)
 {
-    int factor = 1;
-    int basepart = 0;
-    if (tx.IsPregnantTx() || tx.IsBranchCreate() || tx.IsProve() || tx.IsReport()){
-        factor = 10;
-    }
-    if (tx.IsBranchChainTransStep2()){
-        factor = 20;
-    }
-    if (tx.IsSmartContract()){
-        if (sls != nullptr)
-        {
-            basepart = sls->runningTimes * 0.1 + sls->codeLen * 0.1 + sls->deltaDataLen * 0.1;
-        }
-    }
-
-    size_t part1 = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1);
-    size_t part2 = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
-    return (part1 + part2) * factor + basepart;
+    return ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 }
 
 static inline int64_t GetBlockWeight(const MCBlock& block)

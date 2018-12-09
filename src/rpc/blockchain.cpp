@@ -370,7 +370,7 @@ void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
     std::set<std::string> setDepends;
     for (const MCTxIn& txin : tx.vin)
     {
-        if (mempool.exists(txin.prevout.hash))
+        if (mempool.Exists(txin.prevout.hash))
             setDepends.insert(txin.prevout.hash.ToString());
     }
 
@@ -401,7 +401,7 @@ UniValue mempoolToJSON(bool fVerbose)
     else
     {
         std::vector<uint256> vtxid;
-        mempool.queryHashes(vtxid);
+        mempool.QueryHashes(vtxid);
 
         UniValue a(UniValue::VARR);
         for (const uint256& hash : vtxid)
@@ -1025,7 +1025,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     if (fMempool) {
         LOCK(mempool.cs);
         MCCoinsViewMemPool view(pcoinsTip, mempool);
-        if (!view.GetCoin(out, coin) || mempool.isSpent(out)) {
+        if (!view.GetCoin(out, coin) || mempool.IsSpent(out)) {
             return NullUniValue;
         }
     } else {
@@ -1054,7 +1054,7 @@ UniValue gettxout(const JSONRPCRequest& request)
 UniValue verifychain(const JSONRPCRequest& request)
 {
     int nCheckLevel = gArgs.GetArg("-checklevel", DEFAULT_CHECKLEVEL);
-    int nCheckDepth = gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS);
+    int nCheckDepth = gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS) / Params().GetConsensus().nPowTargetSpacing;
     if (request.fHelp || request.params.size() > 2)
         throw std::runtime_error(
             "verifychain ( checklevel nblocks )\n"
@@ -1361,7 +1361,7 @@ UniValue getchaintips(const JSONRPCRequest& request)
 UniValue mempoolInfoToJSON()
 {
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("size", (int64_t) mempool.size()));
+    ret.push_back(Pair("size", (int64_t) mempool.Size()));
     ret.push_back(Pair("bytes", (int64_t) mempool.GetTotalTxSize()));
     ret.push_back(Pair("usage", (int64_t) mempool.DynamicMemoryUsage()));
     size_t maxmempool = gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000;

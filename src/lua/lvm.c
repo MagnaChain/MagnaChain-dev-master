@@ -27,9 +27,23 @@
 #include "lvm.h"
 
 
-
 /* limit for table tag-method chains (to avoid loops) */
 #define MAXTAGLOOP	100
+
+
+int luaD_limitinstruction(lua_State *L, long instructions) {
+    if (L->limit_on != 0)/* limit run instruction */
+    {
+        long left = L->limit_instruction - instructions;
+        if (left < 0) {
+            L->limit_instruction = 0;
+            luaG_runerror(L, "run out of limit instruction.");
+        }
+        else
+            L->limit_instruction = left;
+    }
+    return 0;
+}
 
 
 const TValue *luaV_tonumber (const TValue *obj, TValue *n) {
@@ -398,7 +412,6 @@ void luaV_execute (lua_State *L, int nexeccalls) {
       }
       base = L->base;
     }
-	luaD_limitinstruction(L);
     /* warning!! several calls may realloc the stack and invalidate `ra' */
     ra = RA(i);
     lua_assert(base == L->base && L->base == L->ci->base);
@@ -406,19 +419,23 @@ void luaV_execute (lua_State *L, int nexeccalls) {
     lua_assert(L->top == L->ci->top || luaG_checkopenop(i));
     switch (GET_OPCODE(i)) {
       case OP_MOVE: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         setobjs2s(L, ra, RB(i));
         continue;
       }
       case OP_LOADK: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         setobj2s(L, ra, KBx(i));
         continue;
       }
       case OP_LOADBOOL: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         setbvalue(ra, GETARG_B(i));
         if (GETARG_C(i)) pc++;  /* skip next instruction (if C) */
         continue;
       }
       case OP_LOADNIL: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         TValue *rb = RB(i);
         do {
           setnilvalue(rb--);
@@ -426,11 +443,13 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_GETUPVAL: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         int b = GETARG_B(i);
         setobj2s(L, ra, cl->upvals[b]->v);
         continue;
       }
       case OP_GETGLOBAL: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         TValue g;
         TValue *rb = KBx(i);
         sethvalue(L, &g, cl->env);
@@ -439,10 +458,12 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_GETTABLE: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         Protect(luaV_gettable(L, RB(i), RKC(i), ra));
         continue;
       }
       case OP_SETGLOBAL: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         TValue g;
         sethvalue(L, &g, cl->env);
         lua_assert(ttisstring(KBx(i)));
@@ -450,16 +471,19 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_SETUPVAL: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         UpVal *uv = cl->upvals[GETARG_B(i)];
         setobj(L, uv->v, ra);
         luaC_barrier(L, uv, ra);
         continue;
       }
       case OP_SETTABLE: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         Protect(luaV_settable(L, ra, RKB(i), RKC(i)));
         continue;
       }
       case OP_NEWTABLE: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         int b = GETARG_B(i);
         int c = GETARG_C(i);
         sethvalue(L, ra, luaH_new(L, luaO_fb2int(b), luaO_fb2int(c)));
@@ -467,36 +491,44 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_SELF: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         StkId rb = RB(i);
         setobjs2s(L, ra+1, rb);
         Protect(luaV_gettable(L, rb, RKC(i), ra));
         continue;
       }
       case OP_ADD: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         arith_op(luai_numadd, TM_ADD);
         continue;
       }
       case OP_SUB: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         arith_op(luai_numsub, TM_SUB);
         continue;
       }
       case OP_MUL: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         arith_op(luai_nummul, TM_MUL);
         continue;
       }
       case OP_DIV: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         arith_op(luai_numdiv, TM_DIV);
         continue;
       }
       case OP_MOD: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         arith_op(luai_nummod, TM_MOD);
         continue;
       }
       case OP_POW: {
+        luaD_limitinstruction(L, GAS_SLOW_STEP);
         arith_op(luai_numpow, TM_POW);
         continue;
       }
       case OP_UNM: {
+        luaD_limitinstruction(L, GAS_QUICK_STEP);
         TValue *rb = RB(i);
         if (ttisnumber(rb)) {
           lua_Number nb = nvalue(rb);
@@ -508,6 +540,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_NOT: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         int res = l_isfalse(RB(i));  /* next assignment may change this value */
         setbvalue(ra, res);
         continue;
@@ -516,14 +549,17 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         const TValue *rb = RB(i);
         switch (ttype(rb)) {
           case LUA_TTABLE: {
+            luaD_limitinstruction(L, GAS_FAST_STEP);
             setnvalue(ra, cast_num(luaH_getn(hvalue(rb))));
             break;
           }
           case LUA_TSTRING: {
+            luaD_limitinstruction(L, GAS_QUICK_STEP);
             setnvalue(ra, cast_num(tsvalue(rb)->len));
             break;
           }
           default: {  /* try metamethod */
+            luaD_limitinstruction(L, GAS_FAST_STEP);
             Protect(
               if (!call_binTM(L, rb, luaO_nilobject, ra, TM_LEN))
                 luaG_typeerror(L, rb, "get length of");
@@ -532,18 +568,20 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         }
         continue;
       }
-      case OP_CONCAT: {
+      /*case OP_CONCAT: {
         int b = GETARG_B(i);
         int c = GETARG_C(i);
         Protect(luaV_concat(L, c-b+1, c); luaC_checkGC(L));
         setobjs2s(L, RA(i), base+b);
         continue;
-      }
+      }*/
       case OP_JMP: {
+        luaD_limitinstruction(L, GAS_MID_STEP);
         dojump(L, pc, GETARG_sBx(i));
         continue;
       }
       case OP_EQ: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         TValue *rb = RKB(i);
         TValue *rc = RKC(i);
         Protect(
@@ -554,6 +592,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_LT: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         Protect(
           if (luaV_lessthan(L, RKB(i), RKC(i)) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
@@ -562,6 +601,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_LE: {
+        luaD_limitinstruction(L, GAS_FASTEST_STEP);
         Protect(
           if (lessequal(L, RKB(i), RKC(i)) == GETARG_A(i))
             dojump(L, pc, GETARG_sBx(*pc));
@@ -570,12 +610,14 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_TEST: {
+        luaD_limitinstruction(L, GAS_MID_STEP);
         if (l_isfalse(ra) != GETARG_C(i))
           dojump(L, pc, GETARG_sBx(*pc));
         pc++;
         continue;
       }
       case OP_TESTSET: {
+        luaD_limitinstruction(L, GAS_MID_STEP);
         TValue *rb = RB(i);
         if (l_isfalse(rb) != GETARG_C(i)) {
           setobjs2s(L, ra, rb);
@@ -590,11 +632,13 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
         L->savedpc = pc;
         switch (luaD_precall(L, ra, nresults)) {
-          case PCRLUA: {
+        case PCRLUA: {
+            luaD_limitinstruction(L, GAS_FAST_STEP);
             nexeccalls++;
             goto reentry;  /* restart luaV_execute over new Lua function */
           }
-          case PCRC: {
+        case PCRC: {
+            luaD_limitinstruction(L, GAS_MID_STEP);
             /* it was a C function (`precall' called it); adjust results */
             if (nresults >= 0) L->top = L->ci->top;
             base = L->base;
@@ -606,6 +650,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         }
       }
       case OP_TAILCALL: {
+        luaD_limitinstruction(L, GAS_CONTRACT_BYTE);
         int b = GETARG_B(i);
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
         L->savedpc = pc;
@@ -638,6 +683,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         }
       }
       case OP_RETURN: {
+        luaD_limitinstruction(L, GAS_RETURN);
         int b = GETARG_B(i);
         if (b != 0) L->top = ra+b-1;
         if (L->openupval) luaF_close(L, base);
@@ -653,6 +699,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         }
       }
       case OP_FORLOOP: {
+        luaD_limitinstruction(L, GAS_QUICK_STEP);
         lua_Number step = nvalue(ra+2);
         lua_Number idx = luai_numadd(nvalue(ra), step); /* increment index */
         lua_Number limit = nvalue(ra+1);
@@ -665,6 +712,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_FORPREP: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         const TValue *init = ra;
         const TValue *plimit = ra+1;
         const TValue *pstep = ra+2;
@@ -680,6 +728,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_TFORLOOP: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         StkId cb = ra + 3;  /* call base */
         setobjs2s(L, cb+2, ra+2);
         setobjs2s(L, cb+1, ra+1);
@@ -696,6 +745,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_SETLIST: {
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         int n = GETARG_B(i);
         int c = GETARG_C(i);
         int last;
@@ -718,10 +768,12 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_CLOSE: {
+        luaD_limitinstruction(L, GAS_STOP);
         luaF_close(L, ra);
         continue;
       }
       case OP_CLOSURE: {
+        luaD_limitinstruction(L, GAS_SLOW_STEP);
         Proto *p;
         Closure *ncl;
         int nup, j;
@@ -742,6 +794,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         continue;
       }
       case OP_VARARG: {
+        luaD_limitinstruction(L, GAS_SLOW_STEP);
         int b = GETARG_B(i) - 1;
         int j;
         CallInfo *ci = L->ci;
@@ -765,4 +818,3 @@ void luaV_execute (lua_State *L, int nexeccalls) {
     }
   }
 }
-
