@@ -11,9 +11,9 @@ class MCDnsSeedOpts {
 public:
     MCDnsSeedOpts();
 
-    int nThreads;
-    int nPort;
-    int nDnsThreads;
+    int nThreads;//Number of crawlers to run in parallel (default 96)
+    int nPort;// dns UDP port 
+    int nDnsThreads;// dns
     int fUseTestNet;
     int fWipeBan;
     int fWipeIgnore;
@@ -29,6 +29,9 @@ public:
     string branchid;
     unsigned short defaultport;
     unsigned char pchMessageStart[4];
+
+    void InitMessageStart();
+    void PrintWhitelistFilter();
 };
 
 #endif

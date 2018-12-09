@@ -1,5 +1,8 @@
 #include "db.h"
 #include <stdlib.h>
+#include "util.h"
+#include <algorithm>
+#include <inttypes.h>
 
 using namespace std;
 
@@ -206,4 +209,68 @@ void MCAddrDB::GetIPs_(set<MCNetAddr>& ips, uint64_t requestedFlags, int max, co
     if (nets[ip.GetNetwork()])
       ips.insert(ip);
   }
+}
+
+void MCAddrDB::LoadDBData()
+{
+    std::string dbfilename = strprintf("dnsseed_%s.dat", pOpts->branchid.c_str());
+    FILE *f = fopen(dbfilename.c_str(), "r");
+    if (f) {
+        printf("Loading %s...", dbfilename.c_str());
+        MCAutoFile cf(f);
+        cf >> *this;
+        if (pOpts->fWipeBan)
+            this->banned.clear();
+        if (pOpts->fWipeIgnore)
+            this->ResetIgnores();
+        printf("done\n");
+    }
+}
+
+int StatCompare(const MCAddrReport& a, const MCAddrReport& b) {
+    if (a.uptime[4] == b.uptime[4]) {
+        if (a.uptime[3] == b.uptime[3]) {
+            return a.clientVersion > b.clientVersion;
+        }
+        else {
+            return a.uptime[3] > b.uptime[3];
+        }
+    }
+    else {
+        return a.uptime[4] > b.uptime[4];
+    }
+}
+
+void MCAddrDB::SaveDBData()
+{
+    std::string dbfilename = strprintf("dnsseed_%s.dat", pOpts->branchid.c_str());
+    std::string dbfilenamenew = strprintf("dnsseed_%s.dat.new", pOpts->branchid.c_str());
+    std::string dbfilenamedump = strprintf("dnsseed_%s.dump", pOpts->branchid.c_str());
+
+    vector<MCAddrReport> v = this->GetAll();
+    std::sort(v.begin(), v.end(), StatCompare);
+    FILE *f = fopen(dbfilenamenew.c_str(), "w+");
+    if (f) {
+        {
+            MCAutoFile cf(f);
+            cf << *this;
+        }
+        rename(dbfilenamenew.c_str(), dbfilename.c_str());
+    }
+    FILE *d = fopen(dbfilenamedump.c_str(), "w");
+    fprintf(d, "# address                                        good  lastSuccess    %%(2h)   %%(8h)   %%(1d)   %%(7d)  %%(30d)  blocks      svcs  version\n");
+    double stat[5] = { 0,0,0,0,0 };
+    for (vector<MCAddrReport>::const_iterator it = v.begin(); it < v.end(); it++) {
+        MCAddrReport rep = *it;
+        fprintf(d, "%-47s  %4d  %11" PRId64 "  %6.2f%% %6.2f%% %6.2f%% %6.2f%% %6.2f%%  %6i  %08" PRIx64 "  %5i \"%s\"\n", rep.ip.ToString().c_str(), (int)rep.fGood, rep.lastSuccess, 100.0*rep.uptime[0], 100.0*rep.uptime[1], 100.0*rep.uptime[2], 100.0*rep.uptime[3], 100.0*rep.uptime[4], rep.blocks, rep.services, rep.clientVersion, rep.clientSubVersion.c_str());
+        stat[0] += rep.uptime[0];
+        stat[1] += rep.uptime[1];
+        stat[2] += rep.uptime[2];
+        stat[3] += rep.uptime[3];
+        stat[4] += rep.uptime[4];
+    }
+    fclose(d);
+    FILE *ff = fopen("dnsstats.log", "a");
+    fprintf(ff, "%llu %g %g %g %g %g\n", (unsigned long long)(time(NULL)), stat[0], stat[1], stat[2], stat[3], stat[4]);
+    fclose(ff);
 }

@@ -4,7 +4,6 @@
   "-n <ns>      ns          Hostname of the nameserver\n"
   "-m <mbox>    mbox        E-Mail address reported in SOA records\n"
   "-t <threads> crawlers_t  Number of crawlers to run in parallel (default 96)\n"
-  "-d <threads> dns_t       Number of DNS server threads (default 4)\n"
   "-b <branchid>branchid    The branch id\n"
   "-s <seeds>	seeds       The seeds of the chain, array of domain name or IP\n"
   "--wipeban                Wipe list of banned nodes\n"
@@ -12,6 +11,7 @@
   "             defaultport Node default port, dns only return IP, no port.\n"
   
   "command params for all"
+  "-d <threads> dns_t       Number of DNS server threads (default 4)\n"
   "--testnet                Use testnet\n"
   "-p <port>    upd_p       UDP port to listen on (default 53)\n"
   "-o <ip:port> tor         Tor proxy IP/Port\n"

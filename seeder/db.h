@@ -208,6 +208,7 @@ struct MCServiceResult {
 
 class MCAddrDB {
 public:
+    MCAddrDB() :pOpts(nullptr) {}
     MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions){}
 private:
   mutable MCCriticalSection cs;
@@ -366,4 +367,7 @@ public:
     SHARED_CRITICAL_BLOCK(cs)
       GetIPs_(ips, requestedFlags, max, nets);
   }
+  public:
+  void LoadDBData();
+  void SaveDBData();
 };
