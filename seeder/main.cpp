@@ -316,7 +316,7 @@ public:
   }
 
   void run() {
-    dnsserver(&dns_opt);//TODO:
+    dnsserver(&dns_opt);//TODO:这里必须是第一个变量dns_opt，后面有代码将该指针转换成MCDnsThread
   }
 };
 
@@ -324,7 +324,6 @@ extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int 
   MCDnsThread *thread = (MCDnsThread*)data;
 
   std::string strReqHostName = requestedHostname;
-  //TODO:
   MCAddrDB* pDB = nullptr;
   if (g_mapHostDB.count(strReqHostName))
   {
@@ -527,7 +526,7 @@ int main(int argc, char **argv) {
   InitCommonOptions(argc, argv);
 
   bool fDNS = true;
-  //TODO:
+  //TODO: Check if no ns option then will not open dns thread 
   //if (!g_defaultOpts.ns) {
   //  printf("No nameserver set. Not starting DNS server.\n");
   //  fDNS = false;
@@ -562,47 +561,47 @@ int main(int argc, char **argv) {
   //多个dnsseed
   // main branch
   {
-      MCDnsSeedOpts opts;
-      opts.branchid = "main";
-      opts.defaultport = !fTestNet ? 8833 : 18833;
-      opts.nThreads = 30; //default 96
-      opts.fUseTestNet = fTestNet;
+      MCDnsSeedOpts* pOpts = new MCDnsSeedOpts();
+      pOpts->branchid = "main";
+      pOpts->defaultport = !fTestNet ? 8833 : 18833;
+      pOpts->nThreads = 33; //default 96
+      pOpts->fUseTestNet = fTestNet;
 
-      opts.host = "seed.celllinkseed.io";// -h
-      opts.ns = "dns.celllinkseed.io";// -n
-      opts.mbox = "alibuybuy@yandex.com"; // -m
+      pOpts->host = "seed.celllinkseed.io";// -h
+      pOpts->ns = "dns.celllinkseed.io";// -n
+      pOpts->mbox = "alibuybuy@yandex.com"; // -m
 
-      opts.seeds.push_back("120.92.85.97");
-      opts.seeds.push_back("1.2.3.4");// test data
+      pOpts->seeds.push_back("120.92.85.97");
+      pOpts->seeds.push_back("1.2.3.4");// test data
 
-      opts.InitMessageStart();
+      pOpts->InitMessageStart();
 
-      MCAddrDB db(&opts);
-      db.LoadDBData();
-      AddNewDB(db);
-      StartSeederThread(db, false);
+      MCAddrDB* pdb = new MCAddrDB(pOpts);
+      pdb->LoadDBData();
+      AddNewDB(*pdb);
+      StartSeederThread(*pdb, false);
   }
   // branch 1
   {
-      MCDnsSeedOpts opts;
-      opts.branchid = "9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c";
-      opts.defaultport = 28833;// TODO
-      opts.nThreads = 30; //default 96
-      opts.fUseTestNet = fTestNet;
+      MCDnsSeedOpts* pOpts = new MCDnsSeedOpts();
+      pOpts->branchid = "9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c";
+      pOpts->defaultport = 28833;// TODO: 
+      pOpts->nThreads = 33; //default 96
+      pOpts->fUseTestNet = fTestNet;
 
-      opts.host = "seedb1.celllinkseed.io";// -h
-      opts.ns = "dnsb1.celllinkseed.io";// -n
-      opts.mbox = "alibuybuy@yandex.com"; // -m
+      pOpts->host = "seedb1.celllinkseed.io";// -h
+      pOpts->ns = "dnsb1.celllinkseed.io";// -n
+      pOpts->mbox = "alibuybuy@yandex.com"; // -m
 
-      opts.seeds.push_back("120.92.85.97");
-      opts.seeds.push_back("11.22.33.44");// test data
+      pOpts->seeds.push_back("120.92.85.97");
+      pOpts->seeds.push_back("11.22.33.44");// test data
 
-      opts.InitMessageStart();
+      pOpts->InitMessageStart();
 
-      MCAddrDB db(&opts);
-      db.LoadDBData();
-      AddNewDB(db);
-      StartSeederThread(db, true);
+      MCAddrDB* pdb = new MCAddrDB(pOpts);
+      pdb->LoadDBData();
+      AddNewDB(*pdb);
+      StartSeederThread(*pdb, true);
   }
   return 0;
 }
