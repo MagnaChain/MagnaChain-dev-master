@@ -83,9 +83,9 @@ BOOST_AUTO_TEST_CASE(SimpleRoundTripTest)
 
         BOOST_CHECK_EQUAL(pool.mapTx.find(block.vtx[2]->GetHash())->GetSharedTx().use_count(), SHARED_TX_OFFSET + 1);
 
-        size_t poolSize = pool.size();
+        size_t poolSize = pool.Size();
         pool.RemoveRecursive(*block.vtx[2]);
-        BOOST_CHECK_EQUAL(pool.size(), poolSize - 1);
+        BOOST_CHECK_EQUAL(pool.Size(), poolSize - 1);
 
         MCBlock block2;
         {
