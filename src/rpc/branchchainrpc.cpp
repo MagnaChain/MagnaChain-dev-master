@@ -836,8 +836,10 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     if (!MoneyRange(nAmount))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
+    int64_t quotient = MIN_MINE_BRANCH_MORTGAGE / COIN;
+    int64_t remainder = MIN_MINE_BRANCH_MORTGAGE % COIN;
     if (nAmount < MIN_MINE_BRANCH_MORTGAGE)
-        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", (double)MIN_MINE_BRANCH_MORTGAGE / (double)COIN));
+        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", quotient, remainder));
 
     const std::string& strAddress = request.params[2].get_str();
     MagnaChainAddress address(strAddress);
