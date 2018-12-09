@@ -27,6 +27,12 @@
     <ClCompile Include="magnachain.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="MCDnsSeedOpts.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="config_luareader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="compat.h">
@@ -59,5 +65,14 @@
     <ClInclude Include="magnachain.h">
       <Filter>src</Filter>
     </ClInclude>
+    <ClInclude Include="MCDnsSeedOpts.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="config_luareader.h">
+      <Filter>src</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="config.lua" />
   </ItemGroup>
 </Project>

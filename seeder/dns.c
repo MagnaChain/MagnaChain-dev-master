@@ -455,13 +455,13 @@ int dnsserver(dns_opt_t *opt)
 {
     if (listenSocket == -1)
     {
-    listentype = DoListenIPv6(opt->port);
-	if (listentype < 0)
-	{
-        listentype = DoListenIPv4(opt->port);
-		if (listentype < 0)
-			return listentype;
-	}
+        listentype = DoListenIPv6(opt->port);
+        if (listentype < 0)
+        {
+            listentype = DoListenIPv4(opt->port);
+            if (listentype < 0)
+                return listentype;
+        }
     }
 	unsigned char inbuf[BUFLEN], outbuf[BUFLEN];
 	struct iovec iov[1] = {

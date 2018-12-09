@@ -2705,6 +2705,19 @@ bool MCWallet::SignTransaction(MCMutableTransaction &tx)
         UpdateTransaction(tx, nIn, sigdata);
         nIn++;
     }
+    // sign with contractSender addr's private key.
+    if (tx.IsSmartContract())
+    {
+        MCTransaction txNewConst(tx);
+        MCScript constractSig;
+        if (!SignContract(this, &txNewConst, constractSig))
+        {
+            return false;
+        }
+        else {
+            tx.pContractData->signature = constractSig;
+        }
+    }
     return true;
 }
 
@@ -3182,10 +3195,11 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
 			txNew.pContractData->address = GenerateContractAddressByTx(txNew);
 			//replace vout
             MCScript newScript = GetScriptForDestination(MagnaChainAddress(txNew.pContractData->address).Get());
-			for (auto out : txNew.vout)
+			for (auto &out : txNew.vout)
 			{
-				if (out.scriptPubKey == oldScript)
+				if (out.scriptPubKey == oldScript){
 					out.scriptPubKey = newScript;
+                }
 			}
 		}
 

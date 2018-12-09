@@ -25,6 +25,8 @@ class MCNode {
   int64 doneAfter;
   MCAddress you;
 
+  const string branchid;
+
   int GetTimeout() {
       if (you.IsTor())
           return 120;
@@ -82,7 +84,7 @@ class MCNode {
     BeginMessage("version");
     int nBestHeight = GetRequireHeight();
     string ver = "/magnachain-seeder:0.01/";
-    vSend << PROTOCOL_VERSION << nLocalServices << nTime << gBranchId << you << me << nLocalNonce << ver << nBestHeight;
+    vSend << PROTOCOL_VERSION << nLocalServices << nTime << this->branchid << you << me << nLocalNonce << ver << nBestHeight;
     EndMessage();
   }
  
@@ -115,7 +117,7 @@ class MCNode {
       if (nVersion >= 209 && !vRecv.empty())
 		vRecv >> nStartingHeight;
 
-	  if (strBranchId == gBranchId)
+	  if (strBranchId == this->branchid)
 	  {
 		  if (nVersion >= 209) {
 			  BeginMessage("verack");
@@ -209,7 +211,8 @@ class MCNode {
   }
   
 public:
-  MCNode(const MCService& ip, vector<MCAddress>* vAddrIn) : you(ip), nHeaderStart(-1), nMessageStart(-1), vAddr(vAddrIn), ban(0), doneAfter(0), nVersion(0) {
+  MCNode(const MCService& ip, vector<MCAddress>* vAddrIn, const string &strBranchId) 
+      : you(ip), nHeaderStart(-1), nMessageStart(-1), vAddr(vAddrIn), ban(0), doneAfter(0), nVersion(0), branchid(strBranchId){
     vSend.SetType(SER_NETWORK);
     vSend.SetVersion(0);
     vRecv.SetType(SER_NETWORK);
@@ -283,9 +286,9 @@ public:
   }
 };
 
-bool TestNode(const MCService &cip, int &ban, int &clientV, std::string &clientSV, int &blocks, vector<MCAddress>* vAddr) {
+bool TestNode(const MCService &cip, int &ban, int &clientV, std::string &clientSV, int &blocks, vector<MCAddress>* vAddr, const std::string &strBranchId) {
   try {
-    MCNode node(cip, vAddr);
+    MCNode node(cip, vAddr, strBranchId);
     bool ret = node.Run();
     if (!ret) {
       ban = node.GetBan();

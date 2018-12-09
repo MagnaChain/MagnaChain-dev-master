@@ -16,18 +16,6 @@
 #include <string>
 #include "uint256.h"
 
-extern std::string gBranchId;
-
-extern bool fTestNet;
-static inline unsigned short GetDefaultPort(const bool testnet = fTestNet)
-{
-	if (gBranchId.length() == 64)
-	{
-		return 28833;
-	}
-    return testnet ? 18833 : 8833;
-}
-
 //
 // Message header
 //  (4) message start
