@@ -24,8 +24,8 @@ static const unsigned char REJECT_NONSTANDARD = 0x40;
 static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
 static const unsigned char REJECT_CHECKPOINT = 0x43;
 
-static const int32_t BASE_INSTRUCTION_NUM = 600;
-static const int32_t STEP_INSTRUCTION_NUM = 300;
+static const int32_t BASE_INSTRUCTION_NUM = 1500;
+static const int32_t STEP_INSTRUCTION_NUM = 500;
 
 /** Capture information about block/transaction validation */
 class MCValidationState {

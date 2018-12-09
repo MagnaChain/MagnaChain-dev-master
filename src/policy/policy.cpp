@@ -274,19 +274,20 @@ int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost, int32_t r
     int64_t weight = (std::max(nWeight, nSigOpCost * nBytesPerSigOp) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR;
     weight *= factor;
 
-    int rate = 1;
+    double rate = 1;
+    double deltaWeight = 0;
     int instructions = runningTimes;
     int step = BASE_INSTRUCTION_NUM;
     while (instructions > 0) {
         int minNum = std::min(instructions, step);
         instructions -= minNum;
-        weight += minNum * rate;
+        deltaWeight += minNum * rate;
         if (instructions > 0) {
-            rate += rate;
+            rate *= 1.2;
             step = STEP_INSTRUCTION_NUM;
         }
     }
-    weight += deltaDataLen * 12;
+    weight += (int64_t)deltaWeight + deltaDataLen * 12;
 
     return weight;
 }

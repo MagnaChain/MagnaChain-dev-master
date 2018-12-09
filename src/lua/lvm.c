@@ -650,7 +650,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
         }
       }
       case OP_TAILCALL: {
-        luaD_limitinstruction(L, GAS_CONTRACT_BYTE);
+        luaD_limitinstruction(L, GAS_FAST_STEP);
         int b = GETARG_B(i);
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
         L->savedpc = pc;
