@@ -26,7 +26,6 @@
 
 
 seederconfig={
-{branchid="main",defaultport=8833,host="120.92.85.97",ns="dns.celllinkseed.io",mbox="hua_scott@163.com",seeds={"120.92.85.97"},pchMessageStart={}},
-{branchid="9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c",host="120.92.85.97",ns="dnsbranch1.celllinkseed.io",mbox="hua_scott@163.com",seeds="120.92.85.97",},
-{},
+{branchid="main",defaultport=8833,nThreads=1,host="seed.celllinkseed.io",ns="dns.celllinkseed.io",mbox="alibuybuy@yandex.com",seeds={"123.207.255.59"}}, --,pchMessageStart={}
+{branchid="9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c",defaultport=28834,nThreads=1,host="seedb1.celllinkseed.io",ns="dnsb1.celllinkseed.io",mbox="alibuybuy@yandex.com",seeds={"123.207.255.59"},},
 }

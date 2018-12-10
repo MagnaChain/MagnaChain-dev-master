@@ -10,6 +10,7 @@ using namespace std;
 class MCDnsSeedOpts {
 public:
     MCDnsSeedOpts();
+    MCDnsSeedOpts(const MCDnsSeedOpts& left);
 
     int nThreads;//Number of crawlers to run in parallel (default 96)
     int nPort;// dns UDP port 
@@ -17,12 +18,12 @@ public:
     int fUseTestNet;
     int fWipeBan;
     int fWipeIgnore;
-    const char *mbox;
-    const char *ns;
-    const char *host;
-    const char *tor;
-    const char *ipv4_proxy;
-    const char *ipv6_proxy;
+    char *mbox; // TODO: if have time, these three char* member need to change imp
+    char *ns;
+    char *host;
+    string tor;
+    string ipv4_proxy;
+    string ipv6_proxy;
     std::set<uint64_t> filter_whitelist;
     std::vector<string> seeds;
 
