@@ -243,6 +243,12 @@ error:
   return error;
 }
 
+extern bool CheckRequestName(char *name, dns_opt_t *opt);
+
+/*
+    dns_opt_t *opt   defalut option
+*/
+
 ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insize, unsigned char* outbuf) {
   int error = 0;
   if (insize < 12) // DNS header
@@ -267,16 +273,23 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
   int nquestion = (inbuf[4] << 8) + inbuf[5];
   if (nquestion == 0) { /* printf("No questions?\n"); */ error = 0; goto error; }
   if (nquestion > 1) { /* printf("Multiple questions %i?\n", nquestion); */ error = 4; goto error; }
+
   const unsigned char *inpos = inbuf + 12;
   const unsigned char *inend = inbuf + insize;
-  char name[256];
+
+  char name[256];//request name
   int offset = inpos - inbuf;
   int ret = parse_name(&inpos, inend, inbuf, name, 256);
   if (ret == -1) { error = 1; goto error; }
   if (ret == -2) { error = 5; goto error; }
-  int namel = strlen(name), hostl = strlen(opt->host);
-  if (strcasecmp(name, opt->host) && (namel<hostl+2 || name[namel-hostl-1]!='.' || strcasecmp(name+namel-hostl,opt->host))) { error = 5; goto error; }
+  //check request name
+  //int namel = strlen(name), hostl = strlen(opt->host);
+  //if (strcasecmp(name, opt->host) && (namel<hostl+2 || name[namel-hostl-1] != '.' || strcasecmp(name+namel-hostl,opt->host))) { error = 5; goto error; }
+  dns_opt_t targetopt;
+  if(!CheckRequestName(name, &targetopt)) { error = 5; goto error; }
+
   if (inend - inpos < 4) { error = 1; goto error; }
+  
   // copy question to output
   memcpy(outbuf+12, inbuf+12, inpos+4 - (inbuf+12));
   // set counts
@@ -303,11 +316,11 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
   if (!((typ == TYPE_NS || typ == QTYPE_ANY) && (cls == CLASS_IN || cls == QCLASS_ANY))) {
     // authority section will be necessary, either NS or SOA
     unsigned char *newpos = outpos;
-    write_record_ns(&newpos, outend, "", offset, CLASS_IN, 0, opt->ns);
+    write_record_ns(&newpos, outend, "", offset, CLASS_IN, 0, targetopt.ns);
     max_auth_size = newpos - outpos;
 
     newpos = outpos;
-    write_record_soa(&newpos, outend, "", offset, CLASS_IN, opt->nsttl, opt->ns, opt->mbox, time(NULL), 604800, 86400, 2592000, 604800);
+    write_record_soa(&newpos, outend, "", offset, CLASS_IN, targetopt.nsttl, targetopt.ns, targetopt.mbox, time(NULL), 604800, 86400, 2592000, 604800);
     if (max_auth_size < newpos - outpos)
         max_auth_size = newpos - outpos;
 //    printf("Authority section will claim %i bytes max\n", max_auth_size);
@@ -319,14 +332,14 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
 
   // NS records
   if ((typ == TYPE_NS || typ == QTYPE_ANY) && (cls == CLASS_IN || cls == QCLASS_ANY)) {
-    int ret2 = write_record_ns(&outpos, outend - max_auth_size, "", offset, CLASS_IN, opt->nsttl, opt->ns);
+    int ret2 = write_record_ns(&outpos, outend - max_auth_size, "", offset, CLASS_IN, targetopt.nsttl, targetopt.ns);
 //    printf("wrote NS record: %i\n", ret2);
     if (!ret2) { outbuf[7]++; have_ns++; }
   }
 
   // SOA records
-  if ((typ == TYPE_SOA || typ == QTYPE_ANY) && (cls == CLASS_IN || cls == QCLASS_ANY) && opt->mbox) {
-    int ret2 = write_record_soa(&outpos, outend - max_auth_size, "", offset, CLASS_IN, opt->nsttl, opt->ns, opt->mbox, time(NULL), 604800, 86400, 2592000, 604800);
+  if ((typ == TYPE_SOA || typ == QTYPE_ANY) && (cls == CLASS_IN || cls == QCLASS_ANY) && targetopt.mbox) {
+    int ret2 = write_record_soa(&outpos, outend - max_auth_size, "", offset, CLASS_IN, targetopt.nsttl, targetopt.ns, targetopt.mbox, time(NULL), 604800, 86400, 2592000, 604800);
 //    printf("wrote SOA record: %i\n", ret2);
     if (!ret2) { outbuf[7]++; }
   }
@@ -334,14 +347,14 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
   // A/AAAA records
   if ((typ == TYPE_A || typ == TYPE_AAAA || typ == QTYPE_ANY) && (cls == CLASS_IN || cls == QCLASS_ANY)) {
     addr_t addr[32];
-    int naddr = opt->cb((void*)opt, name, addr, 32, typ == TYPE_A || typ == QTYPE_ANY, typ == TYPE_AAAA || typ == QTYPE_ANY);
+    int naddr = opt->cb((void*)opt, name, addr, 32, typ == TYPE_A || typ == QTYPE_ANY, typ == TYPE_AAAA || typ == QTYPE_ANY);// cb的参数opt不能替换成targetopt,参数opt实际是MCDnsThread*
     int n = 0;
     while (n < naddr) {
       int ret = 1;
       if (addr[n].v == 4)
-         ret = write_record_a(&outpos, outend - max_auth_size, "", offset, CLASS_IN, opt->datattl, &addr[n]);
+         ret = write_record_a(&outpos, outend - max_auth_size, "", offset, CLASS_IN, targetopt.datattl, &addr[n]);
       else if (addr[n].v == 6)
-         ret = write_record_aaaa(&outpos, outend - max_auth_size, "", offset, CLASS_IN, opt->datattl, &addr[n]);
+         ret = write_record_aaaa(&outpos, outend - max_auth_size, "", offset, CLASS_IN, targetopt.datattl, &addr[n]);
 //      printf("wrote A record: %i\n", ret);
       if (!ret) {
         n++;
@@ -353,7 +366,7 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
   
   // Authority section
   if (!have_ns && outbuf[7]) {
-    int ret2 = write_record_ns(&outpos, outend, "", offset, CLASS_IN, opt->nsttl, opt->ns);
+    int ret2 = write_record_ns(&outpos, outend, "", offset, CLASS_IN, targetopt.nsttl, targetopt.ns);
 //    printf("wrote NS record: %i\n", ret2);
     if (!ret2) {
       outbuf[9]++;
@@ -364,7 +377,7 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
     // response. If we replied with NS above we'd create a bad horizontal
     // referral loop, as the NS response indicates where the resolver should
     // try next.
-    int ret2 = write_record_soa(&outpos, outend, "", offset, CLASS_IN, opt->nsttl, opt->ns, opt->mbox, time(NULL), 604800, 86400, 2592000, 604800);
+    int ret2 = write_record_soa(&outpos, outend, "", offset, CLASS_IN, targetopt.nsttl, targetopt.ns, targetopt.mbox, time(NULL), 604800, 86400, 2592000, 604800);
 //    printf("wrote SOA record: %i\n", ret2);
     if (!ret2) { outbuf[9]++; }
   }

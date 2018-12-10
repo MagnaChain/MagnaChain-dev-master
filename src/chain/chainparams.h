@@ -42,6 +42,8 @@ struct ChainTxData {
     double dTxRate;
 };
 
+bool GetBranchInitDefaultPort(bool fTestNet, bool fRegTest);
+
 /**
  * MCChainParams defines various tweakable parameters of a given instance of the
  * MagnaChain system. There are three: the main network on which people trade goods
@@ -65,7 +67,7 @@ public:
 
     const Consensus::Params& GetConsensus() const { return consensus; }
     const MCMessageHeader::MessageStartChars& MessageStart() const { return pchMessageStart; }
-    int GetDefaultPort() const { return nDefaultPort; }
+    int GetDefaultPort() const;
 
     const MCBlock& GenesisBlock() const { return genesis; }
     /** Default value for -checkmempool and -checkblockindex argument */

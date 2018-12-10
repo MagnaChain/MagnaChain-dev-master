@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <atomic>
+#include <map>
 
 #include "magnachain.h"
 #include "db.h"
@@ -18,9 +19,16 @@ extern "C" {
 
 #include "mcdnsseedopts.h"
 
+static const std::string strDefaultOpts = "defaultoptions";
+
 using namespace std;
 
 bool fTestNet = false;
+
+typedef std::map<std::string, MCAddrDB> MAP_BRANCH_DB;
+typedef std::map<std::string, MCAddrDB> MAP_HOST_DB;
+MAP_BRANCH_DB g_mapBranchDB;
+MAP_HOST_DB g_mapHostDB;
 
 void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
 
@@ -174,8 +182,15 @@ void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
     if (showHelp) fprintf(stderr, help, argv[0]);
 }
 
+void AddNewDB(MCAddrDB &db)
+{
+    g_mapBranchDB[db.pOpts->branchid] = db;
+    g_mapHostDB[db.pOpts->host] = db;
+}
+
 extern "C" void* ThreadCrawler(void* data) {
   MCAddrDB* pDB = (MCAddrDB*)data;
+  RenameThread(strprintf("Crawler%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   MCDnsSeedOpts* pOpts = pDB->pOpts;
   int nThreads = pOpts->nThreads;
   do {
@@ -197,7 +212,7 @@ extern "C" void* ThreadCrawler(void* data) {
       res.nHeight = 0;
       res.strClientV = "";
       bool getaddr = res.ourLastSuccess + 86400 < now;
-      res.fGood = TestNode(res.service, res.nBanTime, res.nClientV, res.strClientV, res.nHeight, getaddr ? &addr : NULL, pOpts->branchid);
+      res.fGood = TestNode(res.service, res.nBanTime, res.nClientV, res.strClientV, res.nHeight, getaddr ? &addr : NULL, pOpts->branchid, pOpts->pchMessageStart);
     }
     pDB->ResultMany(ips);
     pDB->Add(addr);
@@ -206,6 +221,37 @@ extern "C" void* ThreadCrawler(void* data) {
 }
 
 extern "C" int GetIPList(void *thread, char *requestedHostname, addr_t *addr, int max, int ipv4, int ipv6);
+
+void SetDNS_opt_by(dns_opt_t &dns_opt, MCDnsSeedOpts* opts)
+{
+    dns_opt.host = opts->host;
+    dns_opt.ns = opts->ns;
+    dns_opt.mbox = opts->mbox;
+    dns_opt.datattl = 3600;
+    dns_opt.nsttl = 40000;
+    dns_opt.cb = GetIPList;
+    dns_opt.port = opts->nPort;
+    dns_opt.nRequests = 0;
+}
+
+extern "C" bool CheckRequestName(char *name, dns_opt_t *opt)
+{
+    for (auto& mi : g_mapHostDB)
+    {
+        const char* host = mi.first.c_str();
+        int namel = strlen(name), hostl = strlen(host);
+        if (strcasecmp(name, host) && (namel < hostl + 2 || name[namel - hostl - 1] != '.' || strcasecmp(name + namel - hostl, host)))
+        {
+            // fail one
+        }
+        else {
+            SetDNS_opt_by(*opt, mi.second.pOpts);
+            return true;
+        }
+    }
+
+    return false;//all fail
+}
 
 class MCDnsThread {
 public:
@@ -217,15 +263,13 @@ public:
       FlagSpecificData() : nIPv4(0), nIPv6(0), cacheTime(0), cacheHits(0) {}
   };
 
-  dns_opt_t dns_opt; // must be first
+  dns_opt_t dns_opt; // must be first, GetIPList will trans dns_opt* to MCDnsThread*
   const int id;
   std::map<uint64_t, FlagSpecificData> perflag;
   std::atomic<uint64_t> dbQueries;
   std::set<uint64_t> filterWhitelist;
 
-  MCAddrDB* pDB;
-
-  void cacheHit(uint64_t requestedFlags, bool force = false) {
+  void cacheHit(uint64_t requestedFlags, MCAddrDB* pDB, bool force = false) {
     static bool nets[NET_MAX] = {};
     if (!nets[NET_IPV4]) {
         nets[NET_IPV4] = true;
@@ -264,43 +308,52 @@ public:
     }
   }
 
-  MCDnsThread(MCAddrDB* pdb, int idIn) : id(idIn) {
-    pDB = pdb;
+  MCDnsThread(MCAddrDB* pdb, int idIn) : id(idIn) { 
     MCDnsSeedOpts* opts = pdb->pOpts;
-    dns_opt.host = opts->host;
-    dns_opt.ns = opts->ns;
-    dns_opt.mbox = opts->mbox;
-    dns_opt.datattl = 3600;
-    dns_opt.nsttl = 40000;
-    dns_opt.cb = GetIPList;
-    dns_opt.port = opts->nPort;
-    dns_opt.nRequests = 0;
+    SetDNS_opt_by(dns_opt, opts);
     dbQueries = 0;
     perflag.clear();
     filterWhitelist = opts->filter_whitelist;
   }
 
   void run() {
-    dnsserver(&dns_opt);
+    dnsserver(&dns_opt);//TODO:这里必须是第一个变量dns_opt，后面有代码将该指针转换成MCDnsThread
   }
 };
 
 extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int max, int ipv4, int ipv6) {
   MCDnsThread *thread = (MCDnsThread*)data;
 
+  std::string strReqHostName = requestedHostname;
+  MCAddrDB* pDB = nullptr;
+  if (g_mapHostDB.count(strReqHostName))
+  {
+      pDB = &g_mapHostDB[strReqHostName];
+  }
+
   uint64_t requestedFlags = 0;
   int hostlen = strlen(requestedHostname);
-  if (hostlen > 1 && requestedHostname[0] == 'x' && requestedHostname[1] != '0') {
+  if (hostlen > 1 && requestedHostname[0] == 'x' && requestedHostname[1] != '0') {//TODO: if true ,pDB is nullpr. Zhe li zai zuo shen me a
     char *pEnd;
     uint64_t flags = (uint64_t)strtoull(requestedHostname+1, &pEnd, 16);
-    if (*pEnd == '.' && pEnd <= requestedHostname+17 && std::find(thread->filterWhitelist.begin(), thread->filterWhitelist.end(), flags) != thread->filterWhitelist.end())
+    if (*pEnd == '.' && pEnd <= requestedHostname+17 && std::find(thread->filterWhitelist.begin(), thread->filterWhitelist.end(), flags) != thread->filterWhitelist.end()){
       requestedFlags = flags;
+      
+    }
     else
       return 0;
   }
-  else if (strcasecmp(requestedHostname, thread->dns_opt.host))
+  else if (pDB== nullptr)//(strcasecmp(requestedHostname, thread->dns_opt.host))// HasModify
     return 0;
-  thread->cacheHit(requestedFlags);
+
+  //TODO: 把上面的if（334行）改好后,把这里if return 去掉
+  if (pDB == nullptr)
+  {
+      return 0;
+  }
+
+  thread->cacheHit(requestedFlags, pDB, false);
+
   auto& thisflag = thread->perflag[requestedFlags];
   unsigned int size = thisflag.cache.size();
   unsigned int maxmax = (ipv4 ? thisflag.nIPv4 : 0) + (ipv6 ? thisflag.nIPv6 : 0);
@@ -330,57 +383,22 @@ extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int 
 vector<MCDnsThread*> dnsThread;
 
 extern "C" void* ThreadDNS(void* arg) {
+  RenameThread("ThreadDNS");
   MCDnsThread *thread = (MCDnsThread*)arg;
   thread->run();
   return nullptr;
 }
 
-int StatCompare(const MCAddrReport& a, const MCAddrReport& b) {
-  if (a.uptime[4] == b.uptime[4]) {
-    if (a.uptime[3] == b.uptime[3]) {
-      return a.clientVersion > b.clientVersion;
-    } else {
-      return a.uptime[3] > b.uptime[3];
-    }
-  } else {
-    return a.uptime[4] > b.uptime[4];
-  }
-}
-
 extern "C" void* ThreadDumper(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
+  RenameThread(strprintf("Dumper_%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   int count = 0;
   do {
     Sleep(100000 << count); // First 100s, than 200s, 400s, 800s, 1600s, and then 3200s forever
     if (count < 5)
         count++;
     {
-      vector<MCAddrReport> v = pDB->GetAll();
-      sort(v.begin(), v.end(), StatCompare);
-      FILE *f = fopen("dnsseed.dat.new","w+");
-      if (f) {
-        {
-          MCAutoFile cf(f);
-          cf << pDB;
-        }
-        rename("dnsseed.dat.new", "dnsseed.dat");
-      }
-      FILE *d = fopen("dnsseed.dump", "w");
-      fprintf(d, "# address                                        good  lastSuccess    %%(2h)   %%(8h)   %%(1d)   %%(7d)  %%(30d)  blocks      svcs  version\n");
-      double stat[5]={0,0,0,0,0};
-      for (vector<MCAddrReport>::const_iterator it = v.begin(); it < v.end(); it++) {
-        MCAddrReport rep = *it;
-        fprintf(d, "%-47s  %4d  %11" PRId64 "  %6.2f%% %6.2f%% %6.2f%% %6.2f%% %6.2f%%  %6i  %08" PRIx64 "  %5i \"%s\"\n", rep.ip.ToString().c_str(), (int)rep.fGood, rep.lastSuccess, 100.0*rep.uptime[0], 100.0*rep.uptime[1], 100.0*rep.uptime[2], 100.0*rep.uptime[3], 100.0*rep.uptime[4], rep.blocks, rep.services, rep.clientVersion, rep.clientSubVersion.c_str());
-        stat[0] += rep.uptime[0];
-        stat[1] += rep.uptime[1];
-        stat[2] += rep.uptime[2];
-        stat[3] += rep.uptime[3];
-        stat[4] += rep.uptime[4];
-      }
-      fclose(d);
-      FILE *ff = fopen("dnsstats.log", "a");
-      fprintf(ff, "%llu %g %g %g %g %g\n", (unsigned long long)(time(NULL)), stat[0], stat[1], stat[2], stat[3], stat[4]);
-      fclose(ff);
+        pDB->SaveDBData();
     }
   } while(1);
   return nullptr;
@@ -388,7 +406,9 @@ extern "C" void* ThreadDumper(void*pData) {
 
 extern "C" void* ThreadStats(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
+  RenameThread(strprintf("Stats_%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   bool first = true;
+  std::string strShortName = pDB->pOpts->branchid.substr(0, 8).c_str();
   do {
     char c[256];
     time_t tim = time(NULL);
@@ -409,28 +429,31 @@ extern "C" void* ThreadStats(void*pData) {
     uint64_t requests = 0;
     uint64_t queries = 0;
     for (unsigned int i=0; i<dnsThread.size(); i++) {
-      requests += dnsThread[i]->dns_opt.nRequests;
+      requests += dnsThread[i]->dns_opt.nRequests;//OP: this may be can keep this
       queries += dnsThread[i]->dbQueries;
     }
-    printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries\n", c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, stats.nBanned, (unsigned long long)requests, (unsigned long long)queries);
+    printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries, branchid %s\n", 
+        c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, 
+        stats.nBanned, (unsigned long long)requests, (unsigned long long)queries, strShortName.c_str());
     Sleep(1000);
   } while(1);
   return nullptr;
 }
 
-static const string mainnet_seeds[] = {"120.92.85.97", ""};//domain name or IP
-static const string testnet_seeds[] = {"120.92.85.97", ""};
+//static const string mainnet_seeds[] = {"120.92.85.97", ""};//domain name or IP
+//static const string testnet_seeds[] = {"120.92.85.97", ""};
 //static const string *seeds = mainnet_seeds;
 
 extern "C" void* ThreadSeeder(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
+  RenameThread(strprintf("Seeder_%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   if (!fTestNet){
     //db.Add(MCService("kjy2eqzk4zwi5zd3.onion", 8333), true);
   }
   do {
-    for (int i=0; seeds[i] != ""; i++) {
+    for (int i=0; i < pDB->pOpts->seeds.size(); i++) {
       vector<MCNetAddr> ips;
-      LookupHost(seeds[i].c_str(), ips);
+      LookupHost(pDB->pOpts->seeds[i].c_str(), ips);
       for (vector<MCNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
           pDB->Add(MCService(*it, pDB->pOpts->defaultport), true);
       }
@@ -440,119 +463,154 @@ extern "C" void* ThreadSeeder(void*pData) {
   return nullptr;
 }
 
+MCDnsSeedOpts g_defaultOpts;// common options
+
+void InitCommonOptions(int argc, char **argv)
+{
+    ParseCommandLine(argc, argv, &g_defaultOpts);
+    g_defaultOpts.PrintWhitelistFilter();
+    g_defaultOpts.branchid = strDefaultOpts;
+    g_defaultOpts.defaultport = 0;
+    
+    if (g_defaultOpts.tor) {
+        MCService service(g_defaultOpts.tor, 9050);
+        if (service.IsValid()) {
+            printf("Using Tor proxy at %s\n", service.ToStringIPPort().c_str());
+            SetProxy(NET_TOR, service);
+        }
+    }
+    if (g_defaultOpts.ipv4_proxy) {
+        MCService service(g_defaultOpts.ipv4_proxy, 9050);
+        if (service.IsValid()) {
+            printf("Using IPv4 proxy at %s\n", service.ToStringIPPort().c_str());
+            SetProxy(NET_IPV4, service);
+        }
+    }
+    if (g_defaultOpts.ipv6_proxy) {
+        MCService service(g_defaultOpts.ipv6_proxy, 9050);
+        if (service.IsValid()) {
+            printf("Using IPv6 proxy at %s\n", service.ToStringIPPort().c_str());
+            SetProxy(NET_IPV6, service);
+        }
+    }
+    //defaultOpts.InitMessageStart();
+    if (g_defaultOpts.fUseTestNet)
+    {
+        printf("Using testnet.\n");
+        fTestNet = true;
+    }
+}
+
+//注意 最后调用的fend 传 true
+void StartSeederThread(MCAddrDB &db, bool fend)
+{
+    pthread_t threadSeed, threadDump, threadStats;
+    printf("Starting seeder...");
+    pthread_create(&threadSeed, NULL, ThreadSeeder, &db);
+    printf("done\n");
+    printf("Starting %i crawler threads...", db.pOpts->nThreads);
+    pthread_attr_t attr_crawler;
+    pthread_attr_init(&attr_crawler);
+    pthread_attr_setstacksize(&attr_crawler, 0x20000);
+    for (int i = 0; i < db.pOpts->nThreads; i++) {
+        pthread_t thread;
+        pthread_create(&thread, &attr_crawler, ThreadCrawler, &db);
+    }
+    pthread_attr_destroy(&attr_crawler);
+    printf("done\n");
+    pthread_create(&threadStats, NULL, ThreadStats, &db);
+    pthread_create(&threadDump, NULL, ThreadDumper, &db);
+    
+    if (fend)
+    {
+        void* res;
+        pthread_join(threadDump, &res);//
+    }
+}
+
 int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
   setbuf(stdout, NULL);
-  MCDnsSeedOpts opts;
-  MCAddrDB db(&opts);
-  ParseCommandLine(argc, argv, &opts);
-  printf("Supporting whitelisted filters: ");
-  for (std::set<uint64_t>::const_iterator it = opts.filter_whitelist.begin(); it != opts.filter_whitelist.end(); it++) {
-      if (it != opts.filter_whitelist.begin()) {
-          printf(",");
-      }
-      printf("0x%lx", (unsigned long)*it);
-  }
-  printf("\n");
-
-  if (opts.seeds.size() > 0)
-  {
-	  string* temp = new string[opts.seeds.size() + 1];
-	  for (int i = 0; i < opts.seeds.size(); ++i)
-		  temp[i] = opts.seeds[i];
-	  temp[opts.seeds.size()] = string("");
-	  seeds = (const string*)temp;
-  }
   
-  if (opts.tor) {
-    MCService service(opts.tor, 9050);
-    if (service.IsValid()) {
-      printf("Using Tor proxy at %s\n", service.ToStringIPPort().c_str());
-      SetProxy(NET_TOR, service);
-    }
-  }
-  if (opts.ipv4_proxy) {
-    MCService service(opts.ipv4_proxy, 9050);
-    if (service.IsValid()) {
-      printf("Using IPv4 proxy at %s\n", service.ToStringIPPort().c_str());
-      SetProxy(NET_IPV4, service);
-    }
-  }
-  if (opts.ipv6_proxy) {
-    MCService service(opts.ipv6_proxy, 9050);
-    if (service.IsValid()) {
-      printf("Using IPv6 proxy at %s\n", service.ToStringIPPort().c_str());
-      SetProxy(NET_IPV6, service);
-    }
-  }
-  bool fDNS = true;
+  InitCommonOptions(argc, argv);
 
-  if (!opts.fUseTestNet){
-      opts.pchMessageStart[0] = 0xce;
-      opts.pchMessageStart[1] = 0x11;
-      opts.pchMessageStart[2] = 0x16;
-      opts.pchMessageStart[3] = 0x89;
-  }
-  else{
-      printf("Using testnet.\n");
-      opts.pchMessageStart[0] = 0xce;
-      opts.pchMessageStart[1] = 0x11;
-      opts.pchMessageStart[2] = 0x09;
-      opts.pchMessageStart[3] = 0x07;
-      seeds = testnet_seeds;
-      fTestNet = true;
-  }
-  if (!opts.ns) {
-    printf("No nameserver set. Not starting DNS server.\n");
-    fDNS = false;
-  }
-  if (fDNS && !opts.host) {
-    fprintf(stderr, "No hostname set. Please use -h.\n");
-    exit(1);
-  }
-  if (fDNS && !opts.mbox) {
-    fprintf(stderr, "No e-mail address set. Please use -m.\n");
-    exit(1);
-  }
-  FILE *f = fopen("dnsseed.dat","r");
-  if (f) {
-    printf("Loading dnsseed.dat...");
-    MCAutoFile cf(f);
-    cf >> db;
-    if (opts.fWipeBan)
-        db.banned.clear();
-    if (opts.fWipeIgnore)
-        db.ResetIgnores();
-    printf("done\n");
-  }
-  pthread_t threadDns, threadSeed, threadDump, threadStats;
+  bool fDNS = true;
+  //TODO: Check if no ns option then will not open dns thread 
+  //if (!g_defaultOpts.ns) {
+  //  printf("No nameserver set. Not starting DNS server.\n");
+  //  fDNS = false;
+  //}
+  //if (fDNS && !g_defaultOpts.host) {
+  //  fprintf(stderr, "No hostname set. Please use -h.\n");
+  //  exit(1);
+  //}
+  //if (fDNS && !g_defaultOpts.mbox) {
+  //  fprintf(stderr, "No e-mail address set. Please use -m.\n");
+  //  exit(1);
+  //}
+
+  MCAddrDB defaultdb(&g_defaultOpts);
+  //defaultdb.LoadDBData();
+  //AddNewDB(defaultdb);
+
+  // dns threads share by all branch.
+  pthread_t threadDns;
   if (fDNS) {
-    printf("Starting %i DNS threads for %s on %s (port %i)...", opts.nDnsThreads, opts.host, opts.ns, opts.nPort);
+    printf("Starting %i DNS threads for %s on %s (port %i)...", g_defaultOpts.nDnsThreads, g_defaultOpts.host, g_defaultOpts.ns, g_defaultOpts.nPort);
     dnsThread.clear();
-    for (int i=0; i<opts.nDnsThreads; i++) {
-      dnsThread.push_back(new MCDnsThread(&db, i));
+    for (int i=0; i<g_defaultOpts.nDnsThreads; i++) {
+      dnsThread.push_back(new MCDnsThread(&defaultdb, i));
       pthread_create(&threadDns, NULL, ThreadDNS, dnsThread[i]);
       printf(".");
       Sleep(20);
     }
     printf("done\n");
   }
-  printf("Starting seeder...");
-  pthread_create(&threadSeed, NULL, ThreadSeeder, &db);
-  printf("done\n");
-  printf("Starting %i crawler threads...", opts.nThreads);
-  pthread_attr_t attr_crawler;
-  pthread_attr_init(&attr_crawler);
-  pthread_attr_setstacksize(&attr_crawler, 0x20000);
-  for (int i=0; i<opts.nThreads; i++) {
-    pthread_t thread;
-    pthread_create(&thread, &attr_crawler, ThreadCrawler, &db);
+
+  //多个dnsseed
+  // main branch
+  {
+      MCDnsSeedOpts* pOpts = new MCDnsSeedOpts();
+      pOpts->branchid = "main";
+      pOpts->defaultport = !fTestNet ? 8833 : 18833;
+      pOpts->nThreads = 33; //default 96
+      pOpts->fUseTestNet = fTestNet;
+
+      pOpts->host = "seed.celllinkseed.io";// -h
+      pOpts->ns = "dns.celllinkseed.io";// -n
+      pOpts->mbox = "alibuybuy@yandex.com"; // -m
+
+      pOpts->seeds.push_back("120.92.85.97");
+      //pOpts->seeds.push_back("1.2.3.4");// test data
+
+      pOpts->InitMessageStart();
+
+      MCAddrDB* pdb = new MCAddrDB(pOpts);
+      pdb->LoadDBData();
+      AddNewDB(*pdb);
+      StartSeederThread(*pdb, false);
   }
-  pthread_attr_destroy(&attr_crawler);
-  printf("done\n");
-  pthread_create(&threadStats, NULL, ThreadStats, &db);
-  pthread_create(&threadDump, NULL, ThreadDumper, &db);
-  void* res;
-  pthread_join(threadDump, &res);
+  // branch 1
+  {
+      MCDnsSeedOpts* pOpts = new MCDnsSeedOpts();
+      pOpts->branchid = "9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c";
+      pOpts->defaultport = 28833;// TODO: 
+      pOpts->nThreads = 33; //default 96
+      pOpts->fUseTestNet = fTestNet;
+
+      pOpts->host = "seedb1.celllinkseed.io";// -h
+      pOpts->ns = "dnsb1.celllinkseed.io";// -n
+      pOpts->mbox = "alibuybuy@yandex.com"; // -m
+
+      pOpts->seeds.push_back("120.92.85.97");
+      //pOpts->seeds.push_back("11.22.33.44");// test data
+
+      pOpts->InitMessageStart();
+
+      MCAddrDB* pdb = new MCAddrDB(pOpts);
+      pdb->LoadDBData();
+      AddNewDB(*pdb);
+      StartSeederThread(*pdb, true);
+  }
   return 0;
 }

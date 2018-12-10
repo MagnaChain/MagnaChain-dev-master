@@ -323,6 +323,10 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
     LOCK(cs_main);
     UniValue arr(UniValue::VARR);
     const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+
+    bool fRegTest = gArgs.GetBoolArg("-regtest", false);
+    bool fTestNet = gArgs.GetBoolArg("-testnet", false);
+    int branchInitDefaultPort = GetBranchInitDefaultPort(fTestNet, fRegTest);
     for (auto v: vCreated)
     {
         UniValue obj(UniValue::VOBJ);
@@ -335,6 +339,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
             confirmations = chainActive.Height() - mapBlockIndex[v.blockhash]->nHeight + 1;
         }
         obj.push_back(Pair("confirmations", confirmations));
+        obj.push_back(Pair("defaultport", branchInitDefaultPort++));
         obj.push_back(Pair("ismaturity", confirmations >= BRANCH_CHAIN_MATURITY));
         arr.push_back(obj);
     }
@@ -831,8 +836,10 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     if (!MoneyRange(nAmount))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
+    int64_t quotient = MIN_MINE_BRANCH_MORTGAGE / COIN;
+    int64_t remainder = MIN_MINE_BRANCH_MORTGAGE % COIN;
     if (nAmount < MIN_MINE_BRANCH_MORTGAGE)
-        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", (double)MIN_MINE_BRANCH_MORTGAGE / (double)COIN));
+        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", quotient, remainder));
 
     const std::string& strAddress = request.params[2].get_str();
     MagnaChainAddress address(strAddress);

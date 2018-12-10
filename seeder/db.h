@@ -16,10 +16,14 @@
 
 #define REQUIRE_VERSION 70001
 
+//TODO: 主网和测试网络的主链、支链（不同的支链也不同）,so is need to modify the GetRequireHeight func.
+#define MAIN_NET_REQ_HEIGHT 0 //bitcoin 500000
+#define TEST_NET_REQ_HEIGHT 0 //bitcoin 350000
+
 extern bool fTestNet;
 static inline int GetRequireHeight(const bool testnet = fTestNet)
 {
-    return testnet ? 500000 : 350000;
+    return testnet ? TEST_NET_REQ_HEIGHT : MAIN_NET_REQ_HEIGHT;
 }
 
 std::string static inline ToString(const MCService &ip) {
@@ -208,6 +212,7 @@ struct MCServiceResult {
 
 class MCAddrDB {
 public:
+    MCAddrDB() :pOpts(nullptr) {}
     MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions){}
 private:
   mutable MCCriticalSection cs;
@@ -366,4 +371,7 @@ public:
     SHARED_CRITICAL_BLOCK(cs)
       GetIPs_(ips, requestedFlags, max, nets);
   }
+  public:
+  void LoadDBData();
+  void SaveDBData();
 };

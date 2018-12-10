@@ -23,13 +23,11 @@
 //  (4) size
 //  (4) checksum
 
-extern unsigned char pchMessageStart[4];
-
 class MCMessageHeader
 {
     public:
-        MCMessageHeader();
-        MCMessageHeader(const char* pszCommand, unsigned int nMessageSizeIn);
+        MCMessageHeader(unsigned char* pchMsgStart);
+        MCMessageHeader(const char* pszCommand, unsigned int nMessageSizeIn, unsigned char* pchMsgStart);
 
         std::string GetCommand() const;
         bool IsValid() const;
@@ -46,7 +44,7 @@ class MCMessageHeader
     // TODO: make private (improves encapsulation)
     public:
         enum { COMMAND_SIZE=12 };
-        char pchMessageStart[sizeof(::pchMessageStart)];
+        char pchMessageStart[4];
         char pchCommand[COMMAND_SIZE];
         unsigned int nMessageSize;
         unsigned int nChecksum;
