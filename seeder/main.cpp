@@ -630,7 +630,12 @@ int main(int argc, char **argv) {
   }
 
   ConfigLuaReader luaConfReader;
-  vector<MCDnsSeedOpts> vectDNSSeeds = luaConfReader.ReadConfig(g_configgilename);
+  vector<MCDnsSeedOpts> vectDNSSeeds;
+  bool ret = luaConfReader.ReadConfig(g_configgilename, vectDNSSeeds);
+  if (!ret)
+  {
+      printf("reading config error!!\n");
+  }
 
   const size_t vecSize = vectDNSSeeds.size();
   for (int i=0; i < vecSize; i++)

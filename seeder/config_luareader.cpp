@@ -9,23 +9,21 @@ extern "C" {
 #include <stdio.h>
 #include <string.h>
 
-vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
+bool ConfigLuaReader::ReadConfig(const char* filename, vector<MCDnsSeedOpts> &vecOpts)
 {
-    vector<MCDnsSeedOpts> vecOpts;
     lua_State* L = lua_open();
     luaL_openlibs(L);
-
 
     if (luaL_dofile(L, filename))
     {
         printf("%s not exist!", filename);
-        return vecOpts;
+        return false;
     }
 
     lua_getglobal(L, "seederconfig");
     if (!lua_istable(L, -1))
     {
-        return vecOpts;
+        return false;
     }
 
     lua_pushnil(L);
@@ -51,13 +49,13 @@ vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
         MCDnsSeedOpts opt;
         {
             lua_getfield(L, -1, "branchid");
-            if (!lua_isstring(L, -1)) { printf("miss branchid\n"); return vecOpts; }
+            if (!lua_isstring(L, -1)) { printf("miss branchid\n"); return false; }
             opt.branchid = lua_tostring(L, -1);
             lua_pop(L, 1);
         }
         {
             lua_getfield(L, -1, "defaultport");
-            if (!lua_isnumber(L, -1)) { printf("miss defaultport\n"); return vecOpts; }
+            if (!lua_isnumber(L, -1)) { printf("miss defaultport\n"); return false; }
             opt.defaultport = lua_tonumber(L, -1);
             lua_pop(L, 1);
         }
@@ -72,7 +70,7 @@ vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
         }
         {
             lua_getfield(L, -1, "host");
-            if (!lua_isstring(L, -1)) { printf("miss host\n"); return vecOpts; }
+            if (!lua_isstring(L, -1)) { printf("miss host\n"); return false; }
             const char* tempstr = lua_tostring(L, -1);
             size_t len = strlen(tempstr);
             opt.host = (char*)malloc(len + 1);
@@ -82,7 +80,7 @@ vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
         }
         {
             lua_getfield(L, -1, "ns");
-            if (!lua_isstring(L, -1)) { printf("miss ns\n"); return vecOpts; }
+            if (!lua_isstring(L, -1)) { printf("miss ns\n"); return false; }
             const char* tempstr = lua_tostring(L, -1);
             size_t len = strlen(tempstr);
             opt.ns = (char*)malloc(len + 1);
@@ -92,7 +90,7 @@ vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
         }
         {
             lua_getfield(L, -1, "mbox");
-            if (!lua_isstring(L, -1)) { printf("miss mbox\n"); return vecOpts; }
+            if (!lua_isstring(L, -1)) { printf("miss mbox\n"); return false; }
             const char* tempstr = lua_tostring(L, -1);
             size_t len = strlen(tempstr);
             opt.mbox = (char*)malloc(len + 1);
@@ -102,12 +100,12 @@ vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
         }
         {
             lua_getfield(L, -1, "seeds");
-            if (!lua_istable(L, -1)) { printf("miss seeds\n"); return vecOpts; }
+            if (!lua_istable(L, -1)) { printf("miss seeds\n"); return false; }
             
             lua_pushnil(L);
             while (lua_next(L, -2))
             {
-                if (!lua_isstring(L, -1)) { printf("seeds item must string\n"); return vecOpts; }
+                if (!lua_isstring(L, -1)) { printf("seeds item must string\n"); return false; }
                 const char* confseed = lua_tostring(L, -1);
                 opt.seeds.push_back(confseed);
                 lua_pop(L, 1);
@@ -124,5 +122,5 @@ vector<MCDnsSeedOpts> ConfigLuaReader::ReadConfig(const char* filename)
     lua_pop(L, 1);
 
     lua_close(L);
-    return vecOpts;
+    return true;
 }

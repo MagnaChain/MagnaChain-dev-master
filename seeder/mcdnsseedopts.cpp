@@ -21,6 +21,11 @@ MCDnsSeedOpts::MCDnsSeedOpts(const MCDnsSeedOpts& left)
     mbox = left.mbox;
     ns = left.ns;
     host = left.host;
+
+    this->pchMessageStart[0] = left.pchMessageStart[0];
+    this->pchMessageStart[1] = left.pchMessageStart[1];
+    this->pchMessageStart[2] = left.pchMessageStart[2];
+    this->pchMessageStart[3] = left.pchMessageStart[3];
 }
 
 void MCDnsSeedOpts::InitMessageStart()
