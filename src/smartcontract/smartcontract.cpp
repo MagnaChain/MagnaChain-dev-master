@@ -22,6 +22,7 @@
 #include "univalue.h"
 #include "mining/miner.h"
 #include "consensus/merkle.h"
+#include "policy/policy.h"
 
 #if defined(_WIN32)
 #define strdup _strdup
@@ -117,6 +118,7 @@ cjson.encode_sparse_array(true, 1,1)                                            
 function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 	local fun, err = loadstring(_strScript)                                     \n\
 	if err then                                                                 \n\
+        print(_strScript)                                                       \n\
 		return false, err                                                       \n\
 	end                                                                         \n\
 	                                                                            \n\
@@ -376,13 +378,104 @@ bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const 
     return success;
 }
 
+std::string TrimCode(const std::string& rawCode)
+{
+    std::string line;
+    std::string codeOut;
+
+    int leftCount = 0;
+    size_t lastCodeOffset = 0;
+    while (true) {
+        size_t newCodeOffset = rawCode.find('\n', lastCodeOffset);
+        if (newCodeOffset == std::string::npos) {
+            if (lastCodeOffset >= rawCode.length())
+                break;
+            else
+                newCodeOffset = rawCode.length();
+        }
+        std::string line = rawCode.substr(lastCodeOffset, newCodeOffset - lastCodeOffset);
+        lastCodeOffset = newCodeOffset + 1;
+
+        char symbol = 0;
+        size_t pos = 0, start = 0;
+        for (size_t pos = 0; pos < line.length(); ++pos) {
+            size_t len = line.length();
+            if (leftCount == 0 && line[pos] == '\"' || line[pos] == '\'') {
+                if (symbol == line[pos])
+                    symbol = 0;
+                else
+                    symbol = line[pos];
+            }
+            else if (symbol != 0 && line[pos] == '\\')
+                ++pos;
+            else if (symbol == 0 && line[pos] == '-' && pos + 1 < len && line[pos + 1] == '-') {
+                if (pos + 3 < len) {
+                    if (line[pos + 2] == '[' && line[pos + 3] == '[') {
+                        if (++leftCount == 1)
+                            start = pos;
+                        pos += 3;
+                    }
+                    else if (line[pos + 2] == ']' && line[pos + 3] == ']' && leftCount > 0) {
+                        if (--leftCount == 0)
+                            line = line.replace(start, pos - start + 4, " ");
+                        pos = start;
+                    }
+                    else if (leftCount == 0) {
+                        line = line.replace(pos, len - pos, "");
+                        break;
+                    }
+                }
+                else if (leftCount == 0)
+                    line = line.replace(pos, len - pos, "");
+            }
+        }
+
+        if (leftCount > 0)
+            line = line.replace(start, line.length() - start, "");
+
+        int i = 0;
+        for (; i < line.length(); ++i) {
+            if (line[i] != ' ' && line[i] != '\t')
+                break;
+        }
+        int j = line.length() - 1;
+        for (; j >= 0; --j) {
+            if (line[j] != ' ' && line[j] != '\t')
+                break;
+        }
+        if (j > i) {
+            for (int k = i; k <= j;) {
+                if (line[k] != ';') {
+                    codeOut += line[k];
+                    if (line[k] == ' ' || line[k] == '\t') {
+                        for (k = k + 1; k <= j; ++k) {
+                            if (line[k] != ' ' && line[k] != '\t')
+                                break;
+                        }
+                    }
+                    else
+                        ++k;
+                }
+                else
+                    ++k;
+            }
+        }
+
+        codeOut += "\n";
+    }
+
+    return codeOut;
+}
+
 bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret)
 {
+    std::string trimRawCode = TrimCode(rawCode);
+
     int top = lua_gettop(L);
     lua_getglobal(L, "regContract");
     lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
-    lua_pushlstring(L, rawCode.c_str(), rawCode.size());
+    lua_pushlstring(L, trimRawCode.c_str(), trimRawCode.size());
     int argc = 3;
 
     assert(lua_pcall(L, argc, LUA_MULTRET, 0) == 0);
@@ -608,20 +701,18 @@ int SendCoins(lua_State* L)
 
     std::string strDest = lua_tostring(L, 1);
     MagnaChainAddress kDest(strDest);
-    if (kDest.IsContractID()) {
-        lua_pushboolean(L, false);
-        return 1;
-    }
+    if (kDest.IsContractID())
+        throw std::runtime_error(strprintf("%s Invalid ContractID", __FUNCTION__));
 
     MCAmount amount = lua_tonumber(L, 2);
+    if (amount < DUST_RELAY_TX_FEE)
+        throw std::runtime_error(strprintf("%s Dust amount", __FUNCTION__));
 
     MCContractID contractID;
     sls->contractAddrs[0].GetContractID(contractID);
     MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
-    if (sls->contractOut + amount > totalAmount) {
-        lua_pushboolean(L, false);
-        return 1;
-    }
+    if (sls->contractOut + amount > totalAmount)
+        throw std::runtime_error(strprintf("%s Contract has not enough amount", __FUNCTION__));
 
     MCTxOut out;
     out.nValue = amount;

@@ -511,7 +511,7 @@ private:
     typedef std::map<txiter, TxLinks, CompareIteratorByHash> txlinksMap;
     txlinksMap mapLinks;
     
-    std::map<MCKeyID, std::list<uint256>> contractLinksMap;
+    std::map<MCContractID, std::list<uint256>> contractLinksMap;
 
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);

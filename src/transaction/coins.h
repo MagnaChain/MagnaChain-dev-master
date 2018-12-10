@@ -14,6 +14,7 @@
 #include "misc/memusage.h"
 #include "io/serialize.h"
 #include "coding/uint256.h"
+#include "thread/sync.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -350,6 +351,7 @@ private:
     CoinAmountCacheBase* base;
     std::map<uint160, MCAmount> snapshots;
     std::map<uint160, MCAmount> coinAmountCache;
+    mutable MCCriticalSection cs;
 };
 
 //! Utility function to add all of a transaction's outputs to a cache.

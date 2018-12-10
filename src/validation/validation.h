@@ -57,11 +57,11 @@ static const bool DEFAULT_WHITELISTRELAY = true;
 /** Default for DEFAULT_WHITELISTFORCERELAY. */
 static const bool DEFAULT_WHITELISTFORCERELAY = true;
 /** Default for -minrelaytxfee, minimum relay fee for transactions */
-static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 30000000;
+static const unsigned int DEFAULT_MIN_RELAY_TX_FEE = 2500000;
 //! -maxtxfee default
 static const MCAmount DEFAULT_TRANSACTION_MAXFEE = 100 * COIN;
 //! Discourage users to set fees higher than this amount (in satoshis) per kB
-static const MCAmount HIGH_TX_FEE_PER_KB = 0.01 * COIN;
+static const MCAmount HIGH_TX_FEE_PER_KB = 30 * COIN;
 //! -maxtxfee will warn if called with a higher fee than this amount (in satoshis)
 static const MCAmount HIGH_MAX_TX_FEE = 100 * HIGH_TX_FEE_PER_KB;
 /** Default for -limitancestorcount, max number of in-mempool ancestors */
