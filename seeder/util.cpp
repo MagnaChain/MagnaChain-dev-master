@@ -5,7 +5,6 @@
 #include <pthread_np.h>
 #endif
 #if defined(__linux__)
-#define _GNU_SOURCE
 #include <pthread.h>
 #endif
 

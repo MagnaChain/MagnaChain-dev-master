@@ -18,6 +18,7 @@ extern "C" {
 }
 
 #include "mcdnsseedopts.h"
+#include "config_luareader.h"
 
 static const std::string strDefaultOpts = "defaultoptions";
 
@@ -30,6 +31,8 @@ typedef std::map<std::string, MCAddrDB> MAP_HOST_DB;
 MAP_BRANCH_DB g_mapBranchDB;
 MAP_HOST_DB g_mapHostDB;
 
+const char* g_configgilename = "config.lua";
+
 void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
 
     static const char *help = "MagnaChain-seeder\n"
@@ -37,17 +40,18 @@ void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
         "\n"
         "Options:\n"
         "-h <host>       Hostname of the DNS seed\n"
-        "-n <ns>         Hostname of the nameserver\n"
-        "-m <mbox>       E-Mail address reported in SOA records\n"
-        "-t <threads>    Number of crawlers to run in parallel (default 96)\n"
+        "-f <filename>   Config file for many branchs's options\n"
+        //"-n <ns>         Hostname of the nameserver\n"
+        //"-m <mbox>       E-Mail address reported in SOA records\n"
+        //"-t <threads>    Number of crawlers to run in parallel (default 96)\n"
         "-d <threads>    Number of DNS server threads (default 4)\n"
         "-p <port>       UDP port to listen on (default 53)\n"
         "-o <ip:port>    Tor proxy IP/Port\n"
         "-i <ip:port>    IPV4 SOCKS5 proxy IP/Port\n"
         "-k <ip:port>    IPV6 SOCKS5 proxy IP/Port\n"
         "-w f1,f2,...    Allow these flag combinations as filters\n"
-        "-b <branchid>   The branch id\n"
-        "-s <seeds>	   The seeds of the chain\n"
+        //"-b <branchid>   The branch id\n"
+        //"-s <seeds>	   The seeds of the chain\n"
         "--testnet       Use testnet\n"
         "--wipeban       Wipe list of banned nodes\n"
         "--wipeignore    Wipe list of ignored nodes\n"
@@ -58,6 +62,7 @@ void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
     while (1) {
         static struct option long_options[] = {
         { "host", required_argument, 0, 'h' },
+        { "conffile", required_argument, 0, 'f' },
         { "ns",   required_argument, 0, 'n' },
         { "mbox", required_argument, 0, 'm' },
         { "threads", required_argument, 0, 't' },
@@ -76,11 +81,15 @@ void ParseCommandLine(int argc, char **argv, MCDnsSeedOpts* opts) {
         { 0, 0, 0, 0 }
         };
         int option_index = 0;
-        int c = getopt_long(argc, argv, "h:n:m:t:p:d:o:i:k:w:b:s:", long_options, &option_index);
+        int c = getopt_long(argc, argv, "h:f:n:m:t:p:d:o:i:k:w:b:s:", long_options, &option_index);
         if (c == -1) break;
         switch (c) {
         case 'h': {
             thisopt->host = optarg;
+            break;
+        }
+        case 'f': {
+            g_configgilename = optarg;
             break;
         }
 
@@ -472,21 +481,21 @@ void InitCommonOptions(int argc, char **argv)
     g_defaultOpts.branchid = strDefaultOpts;
     g_defaultOpts.defaultport = 0;
     
-    if (g_defaultOpts.tor) {
+    if (!g_defaultOpts.tor.empty()) {
         MCService service(g_defaultOpts.tor, 9050);
         if (service.IsValid()) {
             printf("Using Tor proxy at %s\n", service.ToStringIPPort().c_str());
             SetProxy(NET_TOR, service);
         }
     }
-    if (g_defaultOpts.ipv4_proxy) {
+    if (!g_defaultOpts.ipv4_proxy.empty()) {
         MCService service(g_defaultOpts.ipv4_proxy, 9050);
         if (service.IsValid()) {
             printf("Using IPv4 proxy at %s\n", service.ToStringIPPort().c_str());
             SetProxy(NET_IPV4, service);
         }
     }
-    if (g_defaultOpts.ipv6_proxy) {
+    if (!g_defaultOpts.ipv6_proxy.empty()) {
         MCService service(g_defaultOpts.ipv6_proxy, 9050);
         if (service.IsValid()) {
             printf("Using IPv6 proxy at %s\n", service.ToStringIPPort().c_str());
@@ -556,7 +565,7 @@ int main(int argc, char **argv) {
   // dns threads share by all branch.
   pthread_t threadDns;
   if (fDNS) {
-    printf("Starting %i DNS threads for %s on %s (port %i)...", g_defaultOpts.nDnsThreads, g_defaultOpts.host, g_defaultOpts.ns, g_defaultOpts.nPort);
+    printf("Starting %i DNS threads (port %i)...\n", g_defaultOpts.nDnsThreads, g_defaultOpts.nPort);
     dnsThread.clear();
     for (int i=0; i<g_defaultOpts.nDnsThreads; i++) {
       dnsThread.push_back(new MCDnsThread(&defaultdb, i));
@@ -569,6 +578,7 @@ int main(int argc, char **argv) {
 
   //多个dnsseed
   // main branch
+  /*
   {
       MCDnsSeedOpts* pOpts = new MCDnsSeedOpts();
       pOpts->branchid = "main";
@@ -612,5 +622,40 @@ int main(int argc, char **argv) {
       AddNewDB(*pdb);
       StartSeederThread(*pdb, true);
   }
+  */
+  if (g_configgilename == nullptr)
+  {
+      printf("g_configgilename is null");
+      return 1;
+  }
+
+  ConfigLuaReader luaConfReader;
+  vector<MCDnsSeedOpts> vectDNSSeeds;
+  bool ret = luaConfReader.ReadConfig(g_configgilename, vectDNSSeeds);
+  if (!ret)
+  {
+      printf("reading config error!!\n");
+  }
+
+  const size_t vecSize = vectDNSSeeds.size();
+  for (int i=0; i < vecSize; i++)
+  {
+      MCDnsSeedOpts& opts = vectDNSSeeds[i];
+      if (g_mapBranchDB.count(opts.branchid))
+      {
+          printf("duplicate branch id %s\n", opts.branchid.c_str());
+          continue;
+      }
+      printf("running branch %s\n", opts.branchid.c_str());
+
+      opts.fUseTestNet = fTestNet;
+      opts.InitMessageStart();
+
+      MCAddrDB* pdb = new MCAddrDB(&opts);
+      pdb->LoadDBData();
+      AddNewDB(*pdb);
+      StartSeederThread(*pdb, i == (vecSize -1));
+  }
+
   return 0;
 }

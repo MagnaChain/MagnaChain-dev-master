@@ -1,14 +1,31 @@
 #include "mcdnsseedopts.h"
 
 MCDnsSeedOpts::MCDnsSeedOpts() :
-    nThreads(96), nDnsThreads(4), nPort(53), mbox(NULL), ns(NULL), host(NULL), tor(NULL)
-    ,fUseTestNet(false), fWipeBan(false), fWipeIgnore(false), ipv4_proxy(NULL), ipv6_proxy(NULL)
+    nThreads(96), nDnsThreads(4), nPort(53), mbox(NULL), ns(NULL), host(NULL)
+    ,fUseTestNet(false), fWipeBan(false), fWipeIgnore(false)
     ,defaultport(8833)
 {
     this->pchMessageStart[0] = 0;
     this->pchMessageStart[1] = 0;
     this->pchMessageStart[2] = 0;
     this->pchMessageStart[3] = 0;
+}
+
+MCDnsSeedOpts::MCDnsSeedOpts(const MCDnsSeedOpts& left)
+    :nThreads(left.nThreads),nPort(left.nPort),nDnsThreads(left.nDnsThreads),
+    fUseTestNet(left.fUseTestNet),fWipeBan(left.fWipeBan),fWipeIgnore(left.fWipeIgnore),
+    filter_whitelist(left.filter_whitelist), seeds(left.seeds), branchid(left.branchid),
+    defaultport(left.defaultport), tor(left.tor), ipv4_proxy(left.ipv4_proxy), ipv6_proxy(left.ipv6_proxy)
+{
+    //char pointer
+    mbox = left.mbox;
+    ns = left.ns;
+    host = left.host;
+
+    this->pchMessageStart[0] = left.pchMessageStart[0];
+    this->pchMessageStart[1] = left.pchMessageStart[1];
+    this->pchMessageStart[2] = left.pchMessageStart[2];
+    this->pchMessageStart[3] = left.pchMessageStart[3];
 }
 
 void MCDnsSeedOpts::InitMessageStart()

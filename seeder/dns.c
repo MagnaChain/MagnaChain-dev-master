@@ -412,7 +412,7 @@ int DoListenIPv6(int port)
         
 		int sockopt = 1;
         if (setsockopt(listenSocket, IPPROTO_IPV6, DSTADDR_SOCKOPT, &sockopt, sizeof sockopt) != 0)
-            printf("%s setsockopt failed(%s)", __func__, strerror(errno));
+            printf("%s setsockopt failed(%s)\n", __func__, strerror(errno));
 
         struct sockaddr_in6 si_me;
 		memset((char*)&si_me, 0, sizeof(si_me));
@@ -421,7 +421,7 @@ int DoListenIPv6(int port)
 		si_me.sin6_addr = in6addr_any;
         if (bind(listenSocket, (struct sockaddr*)&si_me, sizeof(si_me)) != 0)
 		{
-			printf("%s socket bind %d fail(%d)\n", __func__, port, strerror(errno));
+			printf("%s socket bind %d fail(%s)\n", __func__, port, strerror(errno));
 			return -2;
 		}
 		else
@@ -444,7 +444,7 @@ int DoListenIPv4(int port)
 
 		int sockopt = 1;
         if (setsockopt(listenSocket, IPPROTO_IP, DSTADDR_SOCKOPT, &sockopt, sizeof sockopt) != 0)
-            printf("%s setsockopt failed(%s)", __func__, strerror(errno));
+            printf("%s setsockopt failed(%s)\n", __func__, strerror(errno));
 
         struct sockaddr_in si_me;
 		memset((char*)&si_me, 0, sizeof(si_me));
