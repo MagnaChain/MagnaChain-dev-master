@@ -26,6 +26,7 @@ class MCNode {
   MCAddress you;
 
   const string branchid;
+  unsigned char pchMessageStart[4];
 
   int GetTimeout() {
       if (you.IsTor())
@@ -37,7 +38,7 @@ class MCNode {
   void BeginMessage(const char *pszCommand) {
     if (nHeaderStart != -1) AbortMessage();
     nHeaderStart = vSend.size();
-    vSend << MCMessageHeader(pszCommand, 0);
+    vSend << MCMessageHeader(pszCommand, 0, pchMessageStart);
     nMessageStart = vSend.size();
 //    printf("%s: SEND %s\n", ToString(you).c_str(), pszCommand); 
   }
@@ -169,7 +170,7 @@ class MCNode {
     if (vRecv.empty()) return false;
     do {
       MCDataStream::iterator pstart = search(vRecv.begin(), vRecv.end(), BEGIN(pchMessageStart), END(pchMessageStart));
-      int nHeaderSize = vRecv.GetSerializeSize(MCMessageHeader());
+      int nHeaderSize = vRecv.GetSerializeSize(MCMessageHeader(pchMessageStart));
       if (vRecv.end() - pstart < nHeaderSize) {
         if (vRecv.size() > nHeaderSize) {
           vRecv.erase(vRecv.begin(), vRecv.end() - nHeaderSize);
@@ -178,7 +179,7 @@ class MCNode {
       }
       vRecv.erase(vRecv.begin(), pstart);
       vector<char> vHeaderSave(vRecv.begin(), vRecv.begin() + nHeaderSize);
-      MCMessageHeader hdr;
+      MCMessageHeader hdr(pchMessageStart);
       vRecv >> hdr;
       if (!hdr.IsValid()) { 
         // printf("%s: BAD (invalid header)\n", ToString(you).c_str());
@@ -211,7 +212,7 @@ class MCNode {
   }
   
 public:
-  MCNode(const MCService& ip, vector<MCAddress>* vAddrIn, const string &strBranchId) 
+  MCNode(const MCService& ip, vector<MCAddress>* vAddrIn, const string &strBranchId, unsigned char* pchMsgStart)
       : you(ip), nHeaderStart(-1), nMessageStart(-1), vAddr(vAddrIn), ban(0), doneAfter(0), nVersion(0), branchid(strBranchId){
     vSend.SetType(SER_NETWORK);
     vSend.SetVersion(0);
@@ -221,6 +222,11 @@ public:
       vSend.SetVersion(209);
       vRecv.SetVersion(209);
     }
+    //copy
+    pchMessageStart[0] = pchMsgStart[0];
+    pchMessageStart[1] = pchMsgStart[1];
+    pchMessageStart[2] = pchMsgStart[2];
+    pchMessageStart[3] = pchMsgStart[3];
   }
   bool Run() {
     bool res = true;
@@ -286,9 +292,9 @@ public:
   }
 };
 
-bool TestNode(const MCService &cip, int &ban, int &clientV, std::string &clientSV, int &blocks, vector<MCAddress>* vAddr, const std::string &strBranchId) {
+bool TestNode(const MCService &cip, int &ban, int &clientV, std::string &clientSV, int &blocks, vector<MCAddress>* vAddr, const std::string &strBranchId, unsigned char* pchMessageStart) {
   try {
-    MCNode node(cip, vAddr, strBranchId);
+    MCNode node(cip, vAddr, strBranchId, pchMessageStart);
     bool ret = node.Run();
     if (!ret) {
       ban = node.GetBan();

@@ -13,24 +13,26 @@ MCDnsSeedOpts::MCDnsSeedOpts() :
 
 void MCDnsSeedOpts::InitMessageStart()
 {
-    if (this->branchid != "main") {//branch
-        this->pchMessageStart[0] = 0xce;
-        this->pchMessageStart[1] = 0x11;
-        this->pchMessageStart[2] = 0x68;
-        this->pchMessageStart[3] = 0x99;
-    }
-    else if (!this->fUseTestNet) {//main
+    if (this->branchid == "main" && !this->fUseTestNet) {//main
         this->pchMessageStart[0] = 0xce;
         this->pchMessageStart[1] = 0x11;
         this->pchMessageStart[2] = 0x16;
         this->pchMessageStart[3] = 0x89;
     }
-    else {
+    if (this->branchid == "main" && this->fUseTestNet)
+    {
         printf("Using testnet.\n");//testnet
         this->pchMessageStart[0] = 0xce;
         this->pchMessageStart[1] = 0x11;
         this->pchMessageStart[2] = 0x09;
         this->pchMessageStart[3] = 0x07;
+    }
+
+    if (this->branchid != "main") {//branch main net and test net use same header.
+        this->pchMessageStart[0] = 0xce;
+        this->pchMessageStart[1] = 0x11;
+        this->pchMessageStart[2] = 0x68;
+        this->pchMessageStart[3] = 0x99;
     }
 }
 

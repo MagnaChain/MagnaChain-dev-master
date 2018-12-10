@@ -212,7 +212,7 @@ extern "C" void* ThreadCrawler(void* data) {
       res.nHeight = 0;
       res.strClientV = "";
       bool getaddr = res.ourLastSuccess + 86400 < now;
-      res.fGood = TestNode(res.service, res.nBanTime, res.nClientV, res.strClientV, res.nHeight, getaddr ? &addr : NULL, pOpts->branchid);
+      res.fGood = TestNode(res.service, res.nBanTime, res.nClientV, res.strClientV, res.nHeight, getaddr ? &addr : NULL, pOpts->branchid, pOpts->pchMessageStart);
     }
     pDB->ResultMany(ips);
     pDB->Add(addr);
@@ -470,6 +470,7 @@ void InitCommonOptions(int argc, char **argv)
     ParseCommandLine(argc, argv, &g_defaultOpts);
     g_defaultOpts.PrintWhitelistFilter();
     g_defaultOpts.branchid = strDefaultOpts;
+    g_defaultOpts.defaultport = 0;
     
     if (g_defaultOpts.tor) {
         MCService service(g_defaultOpts.tor, 9050);
