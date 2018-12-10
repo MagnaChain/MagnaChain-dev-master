@@ -190,6 +190,7 @@ void AddNewDB(MCAddrDB &db)
 
 extern "C" void* ThreadCrawler(void* data) {
   MCAddrDB* pDB = (MCAddrDB*)data;
+  RenameThread(strprintf("Crawler%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   MCDnsSeedOpts* pOpts = pDB->pOpts;
   int nThreads = pOpts->nThreads;
   do {
@@ -382,6 +383,7 @@ extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int 
 vector<MCDnsThread*> dnsThread;
 
 extern "C" void* ThreadDNS(void* arg) {
+  RenameThread("ThreadDNS");
   MCDnsThread *thread = (MCDnsThread*)arg;
   thread->run();
   return nullptr;
@@ -389,6 +391,7 @@ extern "C" void* ThreadDNS(void* arg) {
 
 extern "C" void* ThreadDumper(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
+  RenameThread(strprintf("Dumper_%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   int count = 0;
   do {
     Sleep(100000 << count); // First 100s, than 200s, 400s, 800s, 1600s, and then 3200s forever
@@ -403,8 +406,9 @@ extern "C" void* ThreadDumper(void*pData) {
 
 extern "C" void* ThreadStats(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
+  RenameThread(strprintf("Stats_%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   bool first = true;
-  std::string strShortName = pDB->pOpts->branchid.substr(0, 8);
+  std::string strShortName = pDB->pOpts->branchid.substr(0, 8).c_str();
   do {
     char c[256];
     time_t tim = time(NULL);
@@ -442,6 +446,7 @@ extern "C" void* ThreadStats(void*pData) {
 
 extern "C" void* ThreadSeeder(void*pData) {
   MCAddrDB* pDB = (MCAddrDB*)pData;
+  RenameThread(strprintf("Seeder_%s", pDB->pOpts->branchid.substr(0, 8).c_str()).c_str());
   if (!fTestNet){
     //db.Add(MCService("kjy2eqzk4zwi5zd3.onion", 8333), true);
   }
