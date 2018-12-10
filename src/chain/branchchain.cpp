@@ -1337,8 +1337,6 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
 
 bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData)
 {
-    static SmartLuaState sls;
-
     ContractPrevData prevData;
     for (auto item : pProveData->contractData->contractPrevData) {
         prevData.items[item.first].blockHash = item.second.blockHash;
@@ -1358,6 +1356,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
     CoinAmountTemp coinAmountTemp;
     coinAmountTemp.IncAmount(proveTx->pContractData->address, pProveData->contractData->coins);
 
+    SmartLuaState sls;
     contractContext.txFinalData.data.resize(txIndex + 1);
     if (!ExecuteContract(&sls, proveTx, txIndex, pProveData->contractData->coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext))
         return false;
