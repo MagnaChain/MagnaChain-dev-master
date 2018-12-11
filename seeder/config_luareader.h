@@ -9,7 +9,7 @@ using namespace std;
 class ConfigLuaReader
 {
 public:
-    bool ReadConfig(const char* filename, vector<MCDnsSeedOpts> &vecOpts);
+    bool ReadConfig(const char* filename, vector<MCDnsSeedOpts*> &vecOpts);
 };
 
 #endif // !CONFIG-LUAREADER_H_

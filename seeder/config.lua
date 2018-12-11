@@ -20,12 +20,28 @@
   "-w f1,f2,... whitefilter Allow these flag combinations as filters\n"
 ]]
 
+--,pchMessageStart={}
 --mainchain
 
 --testnet
 
-
 seederconfig={
-{branchid="main",defaultport=8833,nThreads=1,host="seed.celllinkseed.io",ns="dns.celllinkseed.io",mbox="alibuybuy@yandex.com",seeds={"123.207.255.59"}}, --,pchMessageStart={}
-{branchid="9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c",defaultport=28834,nThreads=1,host="seedb1.celllinkseed.io",ns="dnsb1.celllinkseed.io",mbox="alibuybuy@yandex.com",seeds={"123.207.255.59"},},
+--main
+{ branchid="main",
+  defaultport=8833,
+  nThreads=1,
+  host="seed.celllinkseed.io",
+  ns="dns.celllinkseed.io",
+  mbox="alibuybuy@yandex.com",
+  seeds={"120.92.85.97","seed.magnachainseed.io"}
+},
+--branch
+{ branchid="9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c",
+  defaultport=28834,
+  nThreads=1,
+  host="seedb1.celllinkseed.io",
+  ns="dnsb1.celllinkseed.io",
+  mbox="alibuybuy@yandex.com",
+  seeds={"120.92.85.97", seedb1.magnachainseed.io},
+},
 }
