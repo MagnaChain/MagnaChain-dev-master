@@ -2586,6 +2586,8 @@ bool static ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
         for (unsigned int n = 0; n < nCount; n++) {
             vRecv >> headers[n];
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
+            ReadCompactSize(vRecv); // groupSize is 0
+            ReadCompactSize(vRecv); // prevContractData is 0
         }
 
         // Headers received via a HEADERS message should be valid, and reflect
