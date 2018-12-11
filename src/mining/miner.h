@@ -233,7 +233,7 @@ private:
     //
     void addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache);
     void addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache);
-    bool UpdateBranchTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
+    bool UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 };
 
 /** Modify the extranonce in a block */

@@ -1058,10 +1058,18 @@ bool MCWallet::AddToWalletIfInvolvingMe(const MCTransactionRef& ptx, const MCBlo
         AssertLockHeld(cs_wallet);
 
         if (pIndex != nullptr) {
+            uint256 txHash = GetBranchTxHash(*ptx);
             for (const MCTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
                     if (range.first->second != tx.GetHash()) {
+                        if (range.first->second == txHash) {
+                            auto temp = range.first;
+                            range.first++;
+                            mapTxSpends.erase(temp);
+                            mapTxSpends.insert(std::make_pair(txin.prevout, tx.GetHash()));
+                            continue;
+                        }
                         LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
                         MarkConflicted(pIndex->GetBlockHash(), range.first->second);
                     }

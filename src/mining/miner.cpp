@@ -260,14 +260,14 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
-    if ((chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()) ||
-        (iter->GetSharedTx()->IsSmartContract() && iter->GetSharedTx()->pContractData->amountOut > 0)) {
-        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0)
+    MCTransactionRef tx = iter->GetSharedTx();
+    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->amountOut > 0)) {
+        if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
-        pblock->vtx.emplace_back(utxoMaker.mapCache[iter->GetSharedTx()->GetHash()]);
+        pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
     }
     else
-        pblock->vtx.emplace_back(iter->GetSharedTx());
+        pblock->vtx.emplace_back(tx);
 
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
@@ -566,7 +566,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmou
     }
 
     //recharge
-    if (nValue > nAmount)
+    if (nValue > nAmount && nValue - nAmount > DUST_RELAY_TX_FEE)
     {
         MCTxOut tmpOut;
         tmpOut.scriptPubKey = changeScriptPubKey;
@@ -577,7 +577,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmou
     return true;
 }
 
-bool BlockAssembler::UpdateBranchTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
+bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCMutableTransaction newTx(*iter->GetSharedTx());
     uint256 oldHash = newTx.GetHash();
@@ -776,11 +776,11 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         bool fail = false;
         for (size_t i = 0; i < sortedEntries.size(); ++i) {
             MCTxMemPool::txiter entry = sortedEntries[i];
-            const MCTransactionRef& entryTx = iter->GetSharedTx();
+            const MCTransactionRef& entryTx = entry->GetSharedTx();
 
             if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
                 (entryTx->IsSmartContract() && entryTx->pContractData->amountOut > 0)) {
-                if (!UpdateBranchTx(entry, makeBTxHelper)) {
+                if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {
                         mapModifiedTx.get<ancestor_score>().erase(modit);
