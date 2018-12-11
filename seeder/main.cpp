@@ -537,6 +537,20 @@ void StartSeederThread(MCAddrDB &db, bool fend)
     }
 }
 
+void StartDNS(MCAddrDB& defaultdb)
+{
+    pthread_t threadDns;
+    printf("Starting %i DNS threads (port %i)...\n", g_defaultOpts.nDnsThreads, g_defaultOpts.nPort);
+    dnsThread.clear();
+    for (int i = 0; i < g_defaultOpts.nDnsThreads; i++) {
+        dnsThread.push_back(new MCDnsThread(&defaultdb, i));
+        pthread_create(&threadDns, NULL, ThreadDNS, dnsThread[i]);
+        printf(".");
+        Sleep(20);
+    }
+    printf("dns thread done\n");
+}
+
 int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
   setbuf(stdout, NULL);
@@ -562,23 +576,15 @@ int main(int argc, char **argv) {
   //defaultdb.LoadDBData();
   //AddNewDB(defaultdb);
 
-  // dns threads share by all branch.
-  pthread_t threadDns;
-  if (fDNS) {
-    printf("Starting %i DNS threads (port %i)...\n", g_defaultOpts.nDnsThreads, g_defaultOpts.nPort);
-    dnsThread.clear();
-    for (int i=0; i<g_defaultOpts.nDnsThreads; i++) {
-      dnsThread.push_back(new MCDnsThread(&defaultdb, i));
-      pthread_create(&threadDns, NULL, ThreadDNS, dnsThread[i]);
-      printf(".");
-      Sleep(20);
-    }
-    printf("done\n");
-  }
 
   //多个dnsseed
   // main branch
   /*
+
+  // dns threads share by all branch.
+  if (fDNS) {
+      StartDNS(defaultdb);
+  }
   {
       MCDnsSeedOpts* pOpts = new MCDnsSeedOpts();
       pOpts->branchid = "main";
@@ -630,28 +636,33 @@ int main(int argc, char **argv) {
   }
 
   ConfigLuaReader luaConfReader;
-  vector<MCDnsSeedOpts> vectDNSSeeds;
+  vector<MCDnsSeedOpts*> vectDNSSeeds;
   bool ret = luaConfReader.ReadConfig(g_configgilename, vectDNSSeeds);
   if (!ret)
   {
       printf("reading config error!!\n");
+      return 1;
+  }
+
+  if (fDNS) {
+      StartDNS(defaultdb);
   }
 
   const size_t vecSize = vectDNSSeeds.size();
   for (int i=0; i < vecSize; i++)
   {
-      MCDnsSeedOpts& opts = vectDNSSeeds[i];
-      if (g_mapBranchDB.count(opts.branchid))
+      MCDnsSeedOpts* opts = vectDNSSeeds[i];
+      if (g_mapBranchDB.count(opts->branchid))
       {
-          printf("duplicate branch id %s\n", opts.branchid.c_str());
+          printf("duplicate branch id %s\n", opts->branchid.c_str());
           continue;
       }
-      printf("running branch %s\n", opts.branchid.c_str());
+      printf("running branch %s\n", opts->branchid.c_str());
 
-      opts.fUseTestNet = fTestNet;
-      opts.InitMessageStart();
+      opts->fUseTestNet = fTestNet;
+      opts->InitMessageStart();
 
-      MCAddrDB* pdb = new MCAddrDB(&opts);
+      MCAddrDB* pdb = new MCAddrDB(opts);
       pdb->LoadDBData();
       AddNewDB(*pdb);
       StartSeederThread(*pdb, i == (vecSize -1));

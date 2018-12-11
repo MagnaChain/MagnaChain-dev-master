@@ -212,8 +212,8 @@ struct MCServiceResult {
 
 class MCAddrDB {
 public:
-    MCAddrDB() :pOpts(nullptr) {}
-    MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions){}
+    MCAddrDB() :pOpts(nullptr), nId(0), nDirty(0){}// shit? why these nId,nDirty member didn't need to init?
+    MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions), nId(0), nDirty(0){}
 private:
   mutable MCCriticalSection cs;
   int nId; // number of address id's
@@ -246,7 +246,13 @@ public:
       stats.nTracked = ourId.size();
       stats.nGood = goodId.size();
       stats.nNew = unkId.size();
-      stats.nAge = time(NULL) - idToInfo[ourId[0]].ourLastTry;
+      if (ourId.size()>0)//TODO: why luareader config 
+      {
+          stats.nAge = time(NULL) - idToInfo[ourId[0]].ourLastTry;
+      }
+      else {
+          printf("ourId size is zero\n");
+      }
     }
   }
 

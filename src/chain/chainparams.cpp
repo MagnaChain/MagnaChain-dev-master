@@ -163,7 +163,7 @@ public:
     CMainParams() {
         strNetworkID = "main";
 		consensus.BigBoomHeight = 1000;
-		consensus.BigBoomValue = 1500000 * COIN;
+        consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 210000 * 40;
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();
@@ -215,7 +215,7 @@ public:
 		// service bits we want, but we should get them updated to support all service bits wanted by any
 		// release ASAP to avoid it where possible.
 
-		vSeeds.emplace_back("seed.magnachainseed.io", false);
+		vSeeds.emplace_back("seed.celllinkseed.io", false);
 
         InitMainBase58Prefixes();
 
@@ -261,7 +261,7 @@ public:
     CTestNetParams() {
         strNetworkID = "test";
 		consensus.BigBoomHeight = 1000;
-		consensus.BigBoomValue = 1500000 * COIN;
+		consensus.BigBoomValue = 2600000 * COIN;
 		consensus.nSubsidyHalvingInterval = 210000 * 20;
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();
@@ -311,7 +311,7 @@ public:
 		vFixedSeeds.clear();
 		vSeeds.clear();
 		// nodes with support for servicebits filtering should be at the top
-		vSeeds.emplace_back("seedtest.magnachainseed.io", false);
+		vSeeds.emplace_back("seedtest.celllinkseed.io", false);
 
         InitTestnetBase58Prefixes();
 
@@ -346,7 +346,7 @@ public:
     CRegTestParams() {
         strNetworkID = "regtest";
 		consensus.BigBoomHeight = 1000;
-		consensus.BigBoomValue = 1500000 * COIN;
+		consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 150;
         consensus.BIP34Height = 0; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
         consensus.BIP34Hash = uint256();
@@ -452,10 +452,10 @@ public:
 		* The characters are rarely used upper ASCII, not valid as UTF-8, and produce
 		* a large 32-bit integer with any alignment.
 		*/
-		pchMessageStart[0] = 0xce;
-		pchMessageStart[1] = 0x11;
-		pchMessageStart[2] = 0x68;
-		pchMessageStart[3] = 0x99;
+        pchMessageStart[0] = 0xce;
+        pchMessageStart[1] = 0x11;
+        pchMessageStart[2] = 0x68;
+        pchMessageStart[3] = 0x99;
 
 		nDefaultPort = GetBranchInitDefaultPort(fTestNet, fRegTest);
 
