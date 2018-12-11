@@ -273,7 +273,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
                 pReserveKey->KeepKey();
         }
         ++nTries;
-        LogPrintf("%s use time %I64d\n", __FUNCTION__, GetTimeMillis() - startTime);
+        LogPrintf("%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
 		/*
 		while (nMaxTries > 0 && !CheckBlockWork(*pblock, val_state, Params().GetConsensus())) {
 			--nMaxTries;

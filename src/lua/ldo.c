@@ -283,6 +283,8 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
     }
     else {  /* vararg function */
       int nargs = cast_int(L->top - func) - 1;
+      if (nargs > 12)
+          luaG_runerror(L, "Too many args in lua function, max num is 12");
       base = adjust_varargs(L, p, nargs);
       func = restorestack(L, funcr);  /* previous call may change the stack */
     }

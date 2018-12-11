@@ -3858,8 +3858,7 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     // check and remove invalid contract transaction
     UpdateContractTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
-    
-    LogPrintf("%s use time %d\n", __FUNCTION__, GetTimeMillis() - start);
+    LogPrintf("%s useTime:%I, height:%d\n", __FUNCTION__, GetTimeMillis() - start, pindex->nHeight);
     return true;
 }
 
