@@ -296,8 +296,8 @@ int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, i
 {
     int factor = 1;
     if (tx.IsPregnantTx() || tx.IsBranchCreate() || tx.IsProve() || tx.IsReport())
-        factor = 10;
+        factor = 50;
     if (tx.IsBranchChainTransStep2())
-        factor = 20;
+        factor = 100;
     return GetVirtualTransactionSize(GetTransactionWeight(tx), nSigOpCost, runningTimes, deltaDataLen, factor);
 }

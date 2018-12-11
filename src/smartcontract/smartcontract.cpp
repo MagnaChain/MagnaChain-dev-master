@@ -383,6 +383,7 @@ std::string TrimCode(const std::string& rawCode)
     std::string line;
     std::string codeOut;
 
+    int lineCount = 0;
     int leftCount = 0;
     size_t lastCodeOffset = 0;
     while (true) {
@@ -394,6 +395,7 @@ std::string TrimCode(const std::string& rawCode)
                 newCodeOffset = rawCode.length();
         }
         std::string line = rawCode.substr(lastCodeOffset, newCodeOffset - lastCodeOffset);
+        lineCount++;
         lastCodeOffset = newCodeOffset + 1;
 
         char symbol = 0;
@@ -415,18 +417,16 @@ std::string TrimCode(const std::string& rawCode)
                             start = pos;
                         pos += 3;
                     }
-                    else if (line[pos + 2] == ']' && line[pos + 3] == ']' && leftCount > 0) {
-                        if (--leftCount == 0)
-                            line = line.replace(start, pos - start + 4, " ");
-                        pos = start;
-                    }
-                    else if (leftCount == 0) {
+                    else if (leftCount == 0)
                         line = line.replace(pos, len - pos, "");
-                        break;
-                    }
                 }
                 else if (leftCount == 0)
                     line = line.replace(pos, len - pos, "");
+            }
+            else if (leftCount > 0 && line[pos] == ']' && pos + 1 < len && line[pos + 1] == ']') {
+                if (--leftCount == 0)
+                    line = line.replace(start, pos - start + 4, " ");
+                pos = start;
             }
         }
 
@@ -444,23 +444,45 @@ std::string TrimCode(const std::string& rawCode)
                 break;
         }
         if (j > i) {
+            char symbol2 = 0;
             for (int k = i; k <= j;) {
-                if (line[k] != ';') {
+                if (line[k] == '\"' || line[k] == '\'') {
+                    if (symbol2 == line[k])
+                        symbol2 = 0;
+                    else
+                        symbol2 = line[k];
                     codeOut += line[k];
-                    if (line[k] == ' ' || line[k] == '\t') {
-                        for (k = k + 1; k <= j; ++k) {
-                            if (line[k] != ' ' && line[k] != '\t')
-                                break;
+                    ++k;
+                    continue;
+                }
+                else if (symbol2 != 0 && line[k] == '\\') {
+                    codeOut += line[k];
+                    if (k + 1 <= j)
+                        codeOut += line[++k];
+                    ++k;
+                    continue;
+                }
+                if (symbol2 == 0) {
+                    if (line[k] != ';') {
+                        codeOut += line[k];
+                        if (line[k] == ' ' || line[k] == '\t') {
+                            for (k = k + 1; k <= j; ++k) {
+                                if (line[k] != ' ' && line[k] != '\t')
+                                    break;
+                            }
                         }
+                        else
+                            ++k;
                     }
                     else
                         ++k;
                 }
-                else
+                else {
+                    codeOut += line[k];
                     ++k;
+                }
             }
         }
-
         codeOut += "\n";
     }
 

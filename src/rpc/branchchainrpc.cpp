@@ -133,7 +133,7 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
 
     unsigned int nBytes = GetVirtualTransactionSize(branchTx);
     FeeCalculation feeCalc;
-    fee = MCWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc) * 100;// step 2 will include step 1.
+    fee = MCWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc);// step 2 will include step 1.
 
     branchTx.inAmount = nAmount + fee;
     return true;
