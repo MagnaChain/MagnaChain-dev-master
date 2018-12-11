@@ -508,8 +508,6 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     return wtx.GetHash().GetHex();
 }
 
-SmartLuaState RPCSLS;
-
 UniValue publishcontract(const JSONRPCRequest& request)
 {
 	MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -549,8 +547,9 @@ UniValue publishcontract(const JSONRPCRequest& request)
     if (request.params.size() > 1)
         strSenderAddr = request.params[1].get_str();
 
+    SmartLuaState sls;
     UniValue ret(UniValue::VARR);
-	if (!PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret))
+	if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
@@ -588,8 +587,9 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
     if (request.params.size() > 1)
         strSenderAddr = request.params[1].get_str();
 
+    SmartLuaState sls;
     UniValue ret(UniValue::VARR);
-    if (!PublishContract(&RPCSLS, pwallet, strSenderAddr, rawCode, ret))
+    if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
@@ -655,14 +655,15 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
 	MagnaChainAddress contractAddr(contractId);
 
+    SmartLuaState sls;
     UniValue ret(UniValue::VARR);
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
-    if (!PublishContract(&RPCSLS, contractAddr, rawCode, ret))
+    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    if (!PublishContract(&sls, contractAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-    RPCSLS.contractIds.erase(contractId);
+    sls.contractIds.erase(contractId);
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.pContractData.reset(new ContractData);
@@ -670,7 +671,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     wtx.pContractData->sender = senderPubKey;
     wtx.pContractData->address = contractId;
     wtx.pContractData->amountOut = 0;
-    SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
+    SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
 
     ret.setObject();
     ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
@@ -779,13 +780,14 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 5);
 
+    SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
+    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     if (success) {
-        RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        RPCSLS.codeLen = 0;
+        sls.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls.codeLen = 0;
 
         UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
@@ -801,12 +803,12 @@ UniValue callcontract(const JSONRPCRequest& request)
             wtx.pContractData->codeOrFunc = strFuncName;
             wtx.pContractData->args = args.write();
             wtx.pContractData->address = contractId;
-            wtx.pContractData->amountOut = RPCSLS.contractOut;
+            wtx.pContractData->amountOut = sls.contractOut;
 
             bool subtractFeeFromAmount = false;
             MCCoinControl coinCtrl;
             EnsureWalletIsUnlocked(pwallet);
-            SendMoney(pwallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, &RPCSLS);
+            SendMoney(pwallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, &sls);
             ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
         }
         ret.push_back(Pair("return", callRet));
@@ -909,12 +911,13 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
 
+    SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
     long maxCallNum = MAX_CONTRACT_CALL;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&RPCSLS, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
-    RPCSLS.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-    RPCSLS.codeLen = 0;
+    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
+    sls.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+    sls.codeLen = 0;
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("return", callRet));
@@ -925,7 +928,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
             MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            RPCSLS.contractIds.erase(contractID);
+            sls.contractIds.erase(contractID);
             MCWalletTx wtx;
             wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
             wtx.pContractData.reset(new ContractData);
@@ -933,8 +936,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
             wtx.pContractData->codeOrFunc = strFuncName;
             wtx.pContractData->args = args.write();
             wtx.pContractData->address = contractID;
-            wtx.pContractData->amountOut = RPCSLS.contractOut;
-            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &RPCSLS);
+            wtx.pContractData->amountOut = sls.contractOut;
+            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
             UniValue coins(UniValue::VARR);
@@ -3596,7 +3599,7 @@ UniValue bumpfee(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
     EnsureWalletIsUnlocked(pwallet);
 
-    CFeeBumper feeBump(pwallet, hash, coin_control, totalFee);
+    MCFeeBumper feeBump(pwallet, hash, coin_control, totalFee);
     BumpFeeResult res = feeBump.getResult();
     if (res != BumpFeeResult::OK)
     {

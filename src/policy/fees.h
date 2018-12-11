@@ -176,7 +176,7 @@ private:
      * invalidates old estimates files. So leave it at 1000 unless it becomes
      * necessary to lower it, and then lower it substantially.
      */
-    static constexpr double MIN_BUCKET_FEERATE = 1000;
+    static constexpr double MIN_BUCKET_FEERATE = 7500000;
     static constexpr double MAX_BUCKET_FEERATE = 1e7;
 
     /** Spacing of FeeRate buckets
@@ -192,30 +192,30 @@ public:
     ~MCBlockPolicyEstimator();
 
     /** Process all the transactions that have been included in a block */
-    void processBlock(unsigned int nBlockHeight,
+    void ProcessBlock(unsigned int nBlockHeight,
                       std::vector<const MCTxMemPoolEntry*>& entries);
 
     /** Process a transaction accepted to the mempool*/
-    void processTransaction(const MCTxMemPoolEntry& entry, bool validFeeEstimate);
+    void ProcessTransaction(const MCTxMemPoolEntry& entry, bool validFeeEstimate);
 
     /** Remove a transaction from the mempool tracking stats*/
-    bool removeTx(uint256 hash, bool inBlock);
+    bool RemoveTx(uint256 hash, bool inBlock);
 
     /** DEPRECATED. Return a feerate estimate */
-    MCFeeRate estimateFee(int confTarget) const;
+    MCFeeRate EstimateFee(int confTarget) const;
 
     /** Estimate feerate needed to get be included in a block within confTarget
      *  blocks. If no answer can be given at confTarget, return an estimate at
      *  the closest target where one can be given.  'conservative' estimates are
      *  valid over longer time horizons also.
      */
-    MCFeeRate estimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const;
+    MCFeeRate EstimateSmartFee(int confTarget, FeeCalculation *feeCalc, bool conservative) const;
 
     /** Return a specific fee estimate calculation with a given success
      * threshold and time horizon, and optionally return detailed data about
      * calculation
      */
-    MCFeeRate estimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult *result = nullptr) const;
+    MCFeeRate EstimateRawFee(int confTarget, double successThreshold, FeeEstimateHorizon horizon, EstimationResult *result = nullptr) const;
 
     /** Write estimation data to a file */
     bool Write(MCAutoFile& fileout) const;
@@ -259,12 +259,12 @@ private:
     mutable MCCriticalSection cs_feeEstimator;
 
     /** Process a transaction confirmed in a block*/
-    bool processBlockTx(unsigned int nBlockHeight, const MCTxMemPoolEntry* entry);
+    bool ProcessBlockTx(unsigned int nBlockHeight, const MCTxMemPoolEntry* entry);
 
     /** Helper for estimateSmartFee */
-    double estimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const;
+    double EstimateCombinedFee(unsigned int confTarget, double successThreshold, bool checkShorterHorizon, EstimationResult *result) const;
     /** Helper for estimateSmartFee */
-    double estimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const;
+    double EstimateConservativeFee(unsigned int doubleTarget, EstimationResult *result) const;
     /** Number of blocks of data recorded while fee estimates have been running */
     unsigned int BlockSpan() const;
     /** Number of blocks of recorded fee estimate data represented in saved data file */

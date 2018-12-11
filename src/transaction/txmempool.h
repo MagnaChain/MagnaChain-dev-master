@@ -57,6 +57,14 @@ struct LockPoints {
 class MCTxMemPool;
 class MagnaChainAddress;
 
+class MCTxMemPoolEntryContractData
+{
+public:
+    std::set<MCContractID> contractAddrs;
+    uint32_t runnintTimes;
+    uint32_t deltaDataLen;
+};
+
 /** \class MCTxMemPoolEntry
  *
  * MCTxMemPoolEntry stores data about the corresponding transaction, as well
@@ -71,6 +79,9 @@ class MagnaChainAddress;
 
 class MCTxMemPoolEntry
 {
+    friend class BlockAssembler;
+    friend class MCTxMemPool;
+
 private:
     MCTransactionRef tx;
     MCAmount nFee;             //!< Cached to avoid expensive parent-transaction lookups
@@ -95,9 +106,9 @@ private:
     uint64_t nSizeWithAncestors;
     MCAmount nModFeesWithAncestors;
     int64_t nSigOpCostWithAncestors;
+    std::shared_ptr<MCTxMemPoolEntryContractData> contractData;
 
 public:
-    std::set<MCContractID> contractAddrs;
 
     MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& _nFee, int64_t _nTime, unsigned int _entryHeight, bool spendsCoinbase, int64_t nSigOpsCost, LockPoints lp);
 
@@ -124,6 +135,8 @@ public:
     void UpdateFeeDelta(int64_t feeDelta);
     // Update the LockPoints after a reorg
     void UpdateLockPoints(const LockPoints& lp);
+    // Update contract data
+    void UpdateContract(SmartLuaState* sls);
 
     uint64_t GetCountWithDescendants() const { return nCountWithDescendants; }
     uint64_t GetSizeWithDescendants() const { return nSizeWithDescendants; }
@@ -382,7 +395,7 @@ public:
  *
  * Usually when a new transaction is added to the mempool, it has no in-mempool
  * children (because any such children would be an orphan).  So in
- * addUnchecked(), we:
+ * AddUnchecked(), we:
  * - update a new entry's setMemPoolParents to include all in-mempool parents
  * - update the new entry's direct parents to include the new tx as a child
  * - update all ancestors of the transaction to include the new tx's size/fee
@@ -405,7 +418,7 @@ public:
  * unreachable from just looking at transactions in the mempool (the linking
  * transactions may also be in the disconnected block, waiting to be added).
  * Because of this, there's not much benefit in trying to search for in-mempool
- * children in addUnchecked().  Instead, in the special case of transactions
+ * children in AddUnchecked().  Instead, in the special case of transactions
  * being added from a disconnected block, we require the caller to clean up the
  * state, to account for in-mempool, out-of-block descendants for all the
  * in-block transactions by calling UpdateTransactionsFromBlock().  Note that
@@ -498,7 +511,7 @@ private:
     typedef std::map<txiter, TxLinks, CompareIteratorByHash> txlinksMap;
     txlinksMap mapLinks;
     
-    std::map<MCKeyID, std::list<uint256>> contractLinksMap;
+    std::map<MCContractID, std::list<uint256>> contractLinksMap;
 
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
@@ -519,26 +532,26 @@ public:
      * all inputs are in the mapNextTx array). If sanity-checking is turned off,
      * check does nothing.
      */
-    void check(const MCCoinsViewCache* pcoins) const;
-    void setSanityCheck(double dFrequency = 1.0) { nCheckFrequency = dFrequency * 4294967295.0; }
+    void Check(const MCCoinsViewCache* pcoins) const;
+    void SetSanityCheck(double dFrequency = 1.0) { nCheckFrequency = dFrequency * 4294967295.0; }
 
-    // addUnchecked must updated state for all ancestors of a given transaction,
+    // AddUnchecked must updated state for all ancestors of a given transaction,
     // to track size/count of descendant transactions.  First version of
-    // addUnchecked can be used to have it call CalculateMemPoolAncestors(), and
+    // AddUnchecked can be used to have it call CalculateMemPoolAncestors(), and
     // then invoke the second version.
-    bool addUnchecked(const uint256& hash, const MCTxMemPoolEntry& entry, bool validFeeEstimate = true);
-    bool addUnchecked(const uint256& hash, const MCTxMemPoolEntry& entry, setEntries& setAncestors, bool validFeeEstimate = true);
+    bool AddUnchecked(const uint256& hash, const MCTxMemPoolEntry& entry, bool validFeeEstimate = true);
+    bool AddUnchecked(const uint256& hash, const MCTxMemPoolEntry& entry, setEntries& setAncestors, bool validFeeEstimate = true);
 
-    void removeRecursive(const MCTransaction& tx, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
-    void removeForReorg(const MCCoinsViewCache* pcoins, unsigned int nMemPoolHeight, int flags);
-    void removeConflicts(const MCTransaction& tx);
-    void removeForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight);
+    void RemoveRecursive(const MCTransaction& tx, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
+    void RemoveForReorg(const MCCoinsViewCache* pcoins, unsigned int nMemPoolHeight, int flags);
+    void RemoveConflicts(const MCTransaction& tx);
+    void RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight);
 
-    void clear();
-    void _clear(); //lock free
+    void Clear();
+    void DoClear(); //lock free
     bool CompareDepthAndScore(const uint256& hasha, const uint256& hashb);
-    void queryHashes(std::vector<uint256>& vtxid);
-    bool isSpent(const MCOutPoint& outpoint);
+    void QueryHashes(std::vector<uint256>& vtxid);
+    bool IsSpent(const MCOutPoint& outpoint);
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
     /**
@@ -610,7 +623,7 @@ public:
     /** Returns false if the transaction is in the mempool and not within the chain limit specified. */
     bool TransactionWithinChainLimit(const uint256& txid, size_t chainLimit) const;
 
-    unsigned long size()
+    unsigned long Size()
     {
         LOCK(cs);
         return mapTx.size();
@@ -622,15 +635,15 @@ public:
         return totalTxSize;
     }
 
-    bool exists(uint256 hash) const
+    bool Exists(uint256 hash) const
     {
         LOCK(cs);
         return (mapTx.count(hash) != 0);
     }
 
-    MCTransactionRef get(const uint256& hash) const;
-    TxMempoolInfo info(const uint256& hash) const;
-    std::vector<TxMempoolInfo> infoAll();
+    MCTransactionRef Get(const uint256& hash) const;
+    TxMempoolInfo Info(const uint256& hash) const;
+    std::vector<TxMempoolInfo> InfoAll();
 
     size_t DynamicMemoryUsage() const;
 
@@ -665,7 +678,7 @@ private:
     /** Sever link between specified transaction and direct children. */
     void UpdateChildrenForRemoval(txiter entry);
 
-    /** Before calling removeUnchecked for a given transaction,
+    /** Before calling RemoveUnchecked for a given transaction,
      *  UpdateForRemoveFromMempool must be called on the entire (dependent) set
      *  of transactions being removed at the same time.  We use each
      *  MCTxMemPoolEntry's setMemPoolParents in order to walk ancestors of a
@@ -673,7 +686,7 @@ private:
      *  transactions in a chain before we've updated all the state for the
      *  removal.
      */
-    void removeUnchecked(txiter entry, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
+    void RemoveUnchecked(txiter entry, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
 
 public:
     int32_t GetCreateBranchChainTxCount()
@@ -765,7 +778,7 @@ struct DisconnectedBlockTransactions {
     }
 
     // Remove entries based on txid_index, and update memory usage.
-    void removeForBlock(const std::vector<MCTransactionRef>& vtx)
+    void RemoveForBlock(const std::vector<MCTransactionRef>& vtx)
     {
         // Short-circuit in the common case of a block being added to the tip
         if (queuedTx.empty()) {

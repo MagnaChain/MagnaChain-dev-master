@@ -12,8 +12,6 @@ class MCWalletTx;
 class MCCoinControl;
 class SmartLuaState;
 
-extern SmartLuaState RPCSLS;
-
 void RegisterWalletRPCCommands(CRPCTable &t);
 
 /**

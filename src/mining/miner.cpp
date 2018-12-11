@@ -260,14 +260,14 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
-    if ((chainparams.IsMainChain() && iter->GetSharedTx()->IsBranchChainTransStep2()) ||
-        (iter->GetSharedTx()->IsSmartContract() && iter->GetSharedTx()->pContractData->amountOut > 0)) {
-        if (utxoMaker.mapCache.count(iter->GetSharedTx()->GetHash()) == 0)
+    MCTransactionRef tx = iter->GetSharedTx();
+    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->amountOut > 0)) {
+        if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
-        pblock->vtx.emplace_back(utxoMaker.mapCache[iter->GetSharedTx()->GetHash()]);
+        pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
     }
     else
-        pblock->vtx.emplace_back(iter->GetSharedTx());
+        pblock->vtx.emplace_back(tx);
 
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
@@ -397,7 +397,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         if (tx->IsSmartContract()) {
             const MCTxMemPoolEntry* entry = blockTxEntries[i - offset + 1];
             int finalGroupId = groupId;
-            for (auto& contractAddr : entry->contractAddrs) {
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     finalGroupId = std::min(contractGroupId, finalGroupId);
@@ -411,7 +411,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
                 groupId = finalGroupId;
             }
 
-            for (auto& contractAddr : entry->contractAddrs) {
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     if (finalGroupId != contractGroupId) {
@@ -566,7 +566,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmou
     }
 
     //recharge
-    if (nValue > nAmount)
+    if (nValue > nAmount && nValue - nAmount > DUST_RELAY_TX_FEE)
     {
         MCTxOut tmpOut;
         tmpOut.scriptPubKey = changeScriptPubKey;
@@ -577,7 +577,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmou
     return true;
 }
 
-bool BlockAssembler::UpdateBranchTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
+bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCMutableTransaction newTx(*iter->GetSharedTx());
     uint256 oldHash = newTx.GetHash();
@@ -742,8 +742,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
 			++nConsecutiveFailed;
 
-			if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight >
-				nBlockMaxWeight - 4000) {
+			if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight > nBlockMaxWeight - 4000) {
 				// Give up if we're close to full and haven't succeeded in a while
 				break;
 			}
@@ -777,11 +776,11 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         bool fail = false;
         for (size_t i = 0; i < sortedEntries.size(); ++i) {
             MCTxMemPool::txiter entry = sortedEntries[i];
-            const MCTransactionRef& entryTx = iter->GetSharedTx();
+            const MCTransactionRef& entryTx = entry->GetSharedTx();
 
             if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
                 (entryTx->IsSmartContract() && entryTx->pContractData->amountOut > 0)) {
-                if (!UpdateBranchTx(entry, makeBTxHelper)) {
+                if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {
                         mapModifiedTx.get<ancestor_score>().erase(modit);
@@ -1041,7 +1040,7 @@ MCAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
         return 0;
 
     //178*COIN * nSubsidyHalvingInterval = 1.495199999454e+17
-    MCAmount nSubsidy = 89 * COIN; // 50 * COIN;
+    MCAmount nSubsidy = 85 * (COIN); // 50 * COIN;
     // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
     nSubsidy >>= halvings;
 

@@ -319,11 +319,13 @@ void CoinAmountTemp::IncAmount(const uint160& key, MCAmount delta)
 
 bool CoinAmountCache::HasKeyInCache(const uint160& key) const
 {
+    LOCK(cs);
     return (coinAmountCache.count(key) > 0);
 }
 
 MCAmount CoinAmountCache::GetAmount(const uint160& key)
 {
+    LOCK(cs);
     MCAmount nValue = 0;
     if (coinAmountCache.count(key) == 0) {
         if (base != nullptr)
@@ -343,6 +345,8 @@ MCAmount CoinAmountCache::GetAmount(const uint160& key)
 
 bool CoinAmountCache::IncAmount(const uint160& key, MCAmount delta)
 {
+    LOCK(cs);
+
     if (delta < 0)
         return false;
 
@@ -357,6 +361,7 @@ bool CoinAmountCache::IncAmount(const uint160& key, MCAmount delta)
 
 bool CoinAmountCache::DecAmount(const uint160& key, MCAmount delta)
 {
+    LOCK(cs);
     if (delta < 0)
         return false;
 
@@ -373,11 +378,13 @@ bool CoinAmountCache::DecAmount(const uint160& key, MCAmount delta)
 
 void CoinAmountCache::TakeSnapshot(const uint160& key)
 {
+    LOCK(cs);
     takeSnapshot = true;
 }
 
 void CoinAmountCache::RemoveSnapshot(const uint160& key, bool reverse)
 {
+    LOCK(cs);
     if (!takeSnapshot) {
         MCAmount value = GetAmount(key);
         snapshots.erase(key);
@@ -388,6 +395,7 @@ void CoinAmountCache::RemoveSnapshot(const uint160& key, bool reverse)
 
 void CoinAmountCache::Clear()
 {
+    LOCK(cs);
     snapshots.clear();
     coinAmountCache.clear();
 }

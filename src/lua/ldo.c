@@ -302,7 +302,6 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
       luaD_callhook(L, LUA_HOOKCALL, -1);
       L->savedpc--;  /* correct 'pc' */
     }
-	luaD_limitinstruction(L);
     return PCRLUA;
   }
   else {  /* if is a C function, call it */
@@ -318,7 +317,6 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
     if (L->hookmask & LUA_MASKCALL)
       luaD_callhook(L, LUA_HOOKCALL, -1);
     lua_unlock(L);
-	luaD_limitinstruction(L);
     n = (*curr_func(L)->c.f)(L);  /* do the actual call */
     lua_lock(L);
     if (n < 0)  /* yielding? */
@@ -348,7 +346,6 @@ int luaD_poscall (lua_State *L, StkId firstResult) {
   CallInfo *ci;
   if (L->hookmask & LUA_MASKRET)
     firstResult = callrethooks(L, firstResult);
-  luaD_limitinstruction(L);
   ci = L->ci--;
   res = ci->func;  /* res == final position of 1st result */
   wanted = ci->nresults;
@@ -517,14 +514,4 @@ int luaD_protectedparser (lua_State *L, ZIO *z, const char *name) {
   status = luaD_pcall(L, f_parser, &p, savestack(L, L->top), L->errfunc);
   luaZ_freebuffer(L, &p.buff);
   return status;
-}
-
-
-int luaD_limitinstruction(lua_State *L) {
-	if (L->limit_on != 0 && --L->limit_instruction <= 0)/* limit run instruction */
-	{
-		L->limit_instruction = 0;
-		luaG_runerror(L, "run out of limit instruction.");
-	}
-	return 0;
 }

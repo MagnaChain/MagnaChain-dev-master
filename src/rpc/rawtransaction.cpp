@@ -972,7 +972,7 @@ UniValue sendrawtransaction(const JSONRPCRequest& request)
         const Coin& existingCoin = view.AccessCoin(MCOutPoint(hashTx, o));
         fHaveChain = !existingCoin.IsSpent();
     }
-    bool fHaveMempool = mempool.exists(hashTx);
+    bool fHaveMempool = mempool.Exists(hashTx);
     if (!fHaveMempool && !fHaveChain) {
         // push to local node and sync with wallets
         MCValidationState state;

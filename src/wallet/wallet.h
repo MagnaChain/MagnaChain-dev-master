@@ -47,15 +47,15 @@ static const unsigned int DEFAULT_KEYPOOL_SIZE = 1000;
 //! -paytxfee default
 static const MCAmount DEFAULT_TRANSACTION_FEE = 0;
 //! -fallbackfee default
-static const MCAmount DEFAULT_FALLBACK_FEE = 20000;
+static const MCAmount DEFAULT_FALLBACK_FEE = 150000000;
 //! -m_discard_rate default
-static const MCAmount DEFAULT_DISCARD_FEE = 10000;
+static const MCAmount DEFAULT_DISCARD_FEE = 75000000;
 //! -mintxfee default
-static const MCAmount DEFAULT_TRANSACTION_MINFEE = 1000;
+static const MCAmount DEFAULT_TRANSACTION_MINFEE = 7500000;
 //! minimum recommended increment for BIP 125 replacement txs
-static const MCAmount WALLET_INCREMENTAL_RELAY_FEE = 5000;
+static const MCAmount WALLET_INCREMENTAL_RELAY_FEE = 3750000;
 //! target minimum change amount
-static const MCAmount MIN_CHANGE = CENT;
+static const MCAmount MIN_CHANGE = 7500000000;
 //! final minimum change amount after paying for fees
 static const MCAmount MIN_FINAL_CHANGE = MIN_CHANGE/2;
 //! Default for -spendzeroconfchange
@@ -1006,7 +1006,7 @@ public:
      * Estimate the minimum fee considering user set parameters
      * and the required fee
      */
-    static MCAmount GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coin_control, const MCTxMemPool& pool, const MCBlockPolicyEstimator& estimator, FeeCalculation *feeCalc, MCMutableTransaction* tx = nullptr, SmartLuaState* sls = nullptr);
+    static MCAmount GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coin_control, const MCTxMemPool& pool, const MCBlockPolicyEstimator& estimator, FeeCalculation *feeCalc, MCMutableTransaction* tx = nullptr);
     /**
      * Return the minimum required fee taking into account the
      * floating relay fee and user set minimum transaction fee

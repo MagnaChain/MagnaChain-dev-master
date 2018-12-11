@@ -1337,11 +1337,11 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
 
 bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData)
 {
-    static SmartLuaState sls;
-
     ContractPrevData prevData;
-    for (auto item : pProveData->contractData->contractPrevData)
-        prevData.dataFrom[item.first] = item.second.from;
+    for (auto item : pProveData->contractData->contractPrevData) {
+        prevData.items[item.first].blockHash = item.second.blockHash;
+        prevData.items[item.first].txIndex = item.second.txIndex;
+    }
     prevData.coins = pProveData->contractData->coins;
 
     uint256 hashWithPrevData = GetTxHashWithPrevData(proveTx->GetHash(), prevData);
@@ -1356,6 +1356,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
     CoinAmountTemp coinAmountTemp;
     coinAmountTemp.IncAmount(proveTx->pContractData->address, pProveData->contractData->coins);
 
+    SmartLuaState sls;
     contractContext.txFinalData.data.resize(txIndex + 1);
     if (!ExecuteContract(&sls, proveTx, txIndex, pProveData->contractData->coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext))
         return false;
@@ -1515,8 +1516,8 @@ bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, B
         return false;
 
     for (auto& item : tx.pReportData->contractData->proveContractData) {
-        auto it = tx.pReportData->contractData->reportedContractPrevData.dataFrom.find(item.first);
-        if (it != tx.pReportData->contractData->reportedContractPrevData.dataFrom.end()) {
+        auto it = tx.pReportData->contractData->reportedContractPrevData.items.find(item.first);
+        if (it != tx.pReportData->contractData->reportedContractPrevData.items.end()) {
             BranchBlockData& targetBlockData = branchData.mapHeads[it->second.blockHash];
             const BranchBlockData* subAncestorBlockData = branchData.GetAncestor(pReportedBlockData, targetBlockData.nHeight);
             if (subAncestorBlockData->mBlockHash != targetBlockData.mBlockHash)

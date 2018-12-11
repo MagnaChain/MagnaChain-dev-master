@@ -397,10 +397,10 @@ private:
     int64_t m_value;
 };
 
-typedef prevector<28, unsigned char> CScriptBase;
+typedef prevector<28, unsigned char> MCScriptBase;
 
 /** Serialized script, used inside transaction inputs and outputs */
-class MCScript : public CScriptBase
+class MCScript : public MCScriptBase
 {
 protected:
     MCScript& push_int64(int64_t n)
@@ -421,15 +421,15 @@ protected:
     }
 public:
     MCScript() { }
-    MCScript(const_iterator pbegin, const_iterator pend) : CScriptBase(pbegin, pend) { }
-    MCScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : CScriptBase(pbegin, pend) { }
-    MCScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
+    MCScript(const_iterator pbegin, const_iterator pend) : MCScriptBase(pbegin, pend) { }
+    MCScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : MCScriptBase(pbegin, pend) { }
+    MCScript(const unsigned char* pbegin, const unsigned char* pend) : MCScriptBase(pbegin, pend) { }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(static_cast<CScriptBase&>(*this));
+        READWRITE(static_cast<MCScriptBase&>(*this));
     }
 
     MCScript& operator+=(const MCScript& b)
@@ -677,7 +677,7 @@ public:
     void clear()
     {
         // The default prevector::clear() does not release memory
-        CScriptBase::clear();
+        MCScriptBase::clear();
         shrink_to_fit();
     }
 

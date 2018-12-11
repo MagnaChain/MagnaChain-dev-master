@@ -52,7 +52,5 @@ LUAI_FUNC void luaD_throw (lua_State *L, int errcode);
 LUAI_FUNC int luaD_rawrunprotected (lua_State *L, Pfunc f, void *ud);
 
 LUAI_FUNC void luaD_seterrorobj (lua_State *L, int errcode, StkId oldtop);
-
-LUAI_FUNC int luaD_limitinstruction(lua_State *L);
 #endif
 

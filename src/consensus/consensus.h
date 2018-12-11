@@ -12,11 +12,11 @@
 #include "misc/amount.h"
 
 /** The maximum allowed size for a serialized block, in bytes (only for buffer size limits) */
-static const unsigned int MAX_BLOCK_SERIALIZED_SIZE = 16000000;
+static const unsigned int MAX_BLOCK_SERIALIZED_SIZE = 8000000;
 /** The maximum allowed weight for a block, see BIP 141 (network rule) */
-static const unsigned int MAX_BLOCK_WEIGHT = 64000000;
+static const unsigned int MAX_BLOCK_WEIGHT = 8000000;
 /** The maximum allowed number of signature check operations in a block (network rule) */
-static const int64_t MAX_BLOCK_SIGOPS_COST = 480000;
+static const int64_t MAX_BLOCK_SIGOPS_COST = 100000;
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
 static int COINBASE_MATURITY = 500;
 
@@ -31,7 +31,7 @@ static const uint32_t MaxPowForCreateChainMortgage = 16; // (2^16) * CreateBranc
 
 static const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY = 527040; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
 static const uint32_t BRANCH_CHAIN_MATURITY = 2000;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
-static const MCAmount MIN_MINE_BRANCH_MORTGAGE = 100 * COIN; // 抵押挖矿最小值
+static const MCAmount MIN_MINE_BRANCH_MORTGAGE = 1000 * COIN; // 抵押挖矿最小值
 static const uint32_t REDEEM_SAFE_HEIGHT = 10800; // 10800 * 8s = 1 day (branch chain block time) 挖矿币安全高度（继续挖矿和赎回需要满足的高度）、举报高度
 static const uint32_t REPORT_OUTOF_HEIGHT = 2880; // 2880 * 30s = 1 day
 const uint32_t REPORT_LOCK_COIN_HEIGHT = 30; // 30 * 30s = 15 mins

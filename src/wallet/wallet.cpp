@@ -1058,10 +1058,18 @@ bool MCWallet::AddToWalletIfInvolvingMe(const MCTransactionRef& ptx, const MCBlo
         AssertLockHeld(cs_wallet);
 
         if (pIndex != nullptr) {
+            uint256 txHash = GetBranchTxHash(*ptx);
             for (const MCTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
                     if (range.first->second != tx.GetHash()) {
+                        if (range.first->second == txHash) {
+                            auto temp = range.first;
+                            range.first++;
+                            mapTxSpends.erase(temp);
+                            mapTxSpends.insert(std::make_pair(txin.prevout, tx.GetHash()));
+                            continue;
+                        }
                         LogPrintf("Transaction %s (in block %s) conflicts with wallet transaction %s (both spend %s:%i)\n", tx.GetHash().ToString(), pIndex->GetBlockHash().ToString(), range.first->second.ToString(), range.first->first.hash.ToString(), range.first->first.n);
                         MarkConflicted(pIndex->GetBlockHash(), range.first->second);
                     }
@@ -1703,7 +1711,7 @@ void MCWallet::ReacceptWalletTransactions()
 
         LOCK(mempool.cs);
         MCValidationState state;
-        wtx.AcceptToMemoryPool(maxTxFee, state, false);
+        wtx.AcceptToMemoryPool(maxTxFee, state, true);
     }
 }
 
@@ -1909,7 +1917,7 @@ MCAmount MCWalletTx::GetChange() const
 bool MCWalletTx::InMempool() const
 {
     LOCK(mempool.cs);
-    return mempool.exists(GetHash());
+    return mempool.Exists(GetHash());
 }
 
 bool MCWalletTx::IsTrusted() const
@@ -2777,7 +2785,7 @@ bool MCWallet::FundTransaction(MCMutableTransaction& tx, MCAmount& nFeeRet, int&
 MCFeeRate GetDiscardRate(const MCBlockPolicyEstimator& estimator)
 {
     unsigned int highest_target = estimator.HighestTargetTracked(FeeEstimateHorizon::LONG_HALFLIFE);
-    MCFeeRate discard_rate = estimator.estimateSmartFee(highest_target, nullptr /* FeeCalculation */, false /* conservative */);
+    MCFeeRate discard_rate = estimator.EstimateSmartFee(highest_target, nullptr /* FeeCalculation */, false /* conservative */);
     // Don't let discard_rate be greater than longest possible fee estimate if we get a valid fee estimate
     discard_rate = (discard_rate == MCFeeRate(0)) ? MCWallet::m_discard_rate : std::min(discard_rate, MCWallet::m_discard_rate);
     // Discard rate must be at least dustRelayFee
@@ -3084,8 +3092,14 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                     txNew.vout.emplace_back(txNew.pContractData->amountOut, GetScriptForDestination(txNew.pContractData->address));
                 }
 
-				// 获取交易字节大小 
-                nBytes = GetVirtualTransactionSize(txNew, 0, sls);
+				// 获取交易字节大小
+                int32_t runningTimes = 0;
+                int32_t deltaDataLen = 0;
+                if (sls != nullptr) {
+                    runningTimes = sls->runningTimes;
+                    deltaDataLen = sls->deltaDataLen;
+                }
+                nBytes = GetVirtualTransactionSize(txNew, 0, runningTimes, deltaDataLen);
 
                 if (sls != nullptr && sls->recipients.size() > 0) {
                     txNew.vin.resize(txNew.vin.size() - 1);
@@ -3106,7 +3120,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                     txNew.pContractData->address = wtxNew.pContractData->address;
                 }
 
-                nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew, sls);
+                nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew);
 				
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
                 // because we must be at the maximum allowed fee.
@@ -3131,7 +3145,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                     if (nChangePosInOut == -1 && nSubtractFeeFromAmount == 0 && pick_new_inputs) {
 						// 没有找零输出，则创建找零并计算相关费用 
                         unsigned int tx_size_with_change = nBytes + change_prototype_size + 2; // Add 2 as a buffer in case increasing # of outputs changes compact size
-                        MCAmount fee_needed_with_change = GetMinimumFee(tx_size_with_change, coin_control, ::mempool, ::feeEstimator, nullptr, &txNew, sls);
+                        MCAmount fee_needed_with_change = GetMinimumFee(tx_size_with_change, coin_control, ::mempool, ::feeEstimator, nullptr, &txNew);
                         MCAmount minimum_value_for_change = GetDustThreshold(change_prototype_txout, discard_rate);
                         if (nFeeRet >= fee_needed_with_change + minimum_value_for_change) {
                             pick_new_inputs = false;
@@ -3353,7 +3367,7 @@ MCAmount MCWallet::GetRequiredFee(unsigned int nTxBytes)
     return std::max(minTxFee.GetFee(nTxBytes), ::minRelayTxFee.GetFee(nTxBytes));
 }
 
-MCAmount MCWallet::GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coin_control, const MCTxMemPool& pool, const MCBlockPolicyEstimator& estimator, FeeCalculation *feeCalc, MCMutableTransaction* tx, SmartLuaState* sls)
+MCAmount MCWallet::GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coin_control, const MCTxMemPool& pool, const MCBlockPolicyEstimator& estimator, FeeCalculation *feeCalc, MCMutableTransaction* tx)
 {
     /* User control of how to calculate fee uses the following parameter precedence:
        1. coin_control.m_feerate
@@ -3364,20 +3378,17 @@ MCAmount MCWallet::GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coi
     */
     MCAmount fee_needed;
     if (coin_control.m_feerate) { // 1.
-		// 根据默认交易费率计算交易费用
         fee_needed = coin_control.m_feerate->GetFee(nTxBytes);
         if (feeCalc) feeCalc->reason = FeeReason::PAYTXFEE;
         // Allow to override automatic min/max check over coin control instance
         if (coin_control.fOverrideFeeRate) return fee_needed;
     }
     else if (!coin_control.m_confirm_target && ::payTxFee != MCFeeRate(0)) { // 3. TODO: remove magic value of 0 for global payTxFee
-		// 确认数量大于0且用户配置表设置的费率大于0时，根据用户配置表设置的费率计算费用
         fee_needed = ::payTxFee.GetFee(nTxBytes);
         if (feeCalc) feeCalc->reason = FeeReason::PAYTXFEE;
     }
     else { // 2. or 4.
         // We will use smart fee estimation
-		// 需要确认的次数
         unsigned int target = coin_control.m_confirm_target ? *coin_control.m_confirm_target : ::nTxConfirmTarget;
         // By default estimates are economical if we are signaling opt-in-RBF
         bool conservative_estimate = !coin_control.signalRbf;
@@ -3385,7 +3396,7 @@ MCAmount MCWallet::GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coi
         if (coin_control.m_fee_mode == FeeEstimateMode::CONSERVATIVE) conservative_estimate = true;			// 保守模式
         else if (coin_control.m_fee_mode == FeeEstimateMode::ECONOMICAL) conservative_estimate = false;		// 经济模式
 
-        fee_needed = estimator.estimateSmartFee(target, feeCalc, conservative_estimate).GetFee(nTxBytes);
+        fee_needed = estimator.EstimateSmartFee(target, feeCalc, conservative_estimate).GetFee(nTxBytes);
         if (fee_needed == 0) {
             // if we don't have enough data for estimateSmartFee, then use fallbackFee
             fee_needed = fallbackFee.GetFee(nTxBytes);
@@ -3401,7 +3412,7 @@ MCAmount MCWallet::GetMinimumFee(unsigned int nTxBytes, const MCCoinControl& coi
 
     // prevent user from paying a fee below minRelayTxFee or minTxFee
     MCAmount required_fee = GetRequiredFee(nTxBytes);
-    if (required_fee > fee_needed) {
+    if (fee_needed < required_fee) {
         fee_needed = required_fee;
         if (feeCalc) feeCalc->reason = FeeReason::REQUIRED;
     }

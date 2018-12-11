@@ -133,7 +133,7 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
 
     unsigned int nBytes = GetVirtualTransactionSize(branchTx);
     FeeCalculation feeCalc;
-    fee = MCWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc) * 100;// step 2 will include step 1.
+    fee = MCWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc);// step 2 will include step 1.
 
     branchTx.inAmount = nAmount + fee;
     return true;
@@ -142,6 +142,9 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
 uint256 GetBranchTxHash(const MCTransaction& tx)
 {
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
+        return RevertTransaction(tx, nullptr).GetHash();
+    }
+    else if (tx.IsSmartContract() && tx.pContractData->amountOut > 0) {
         return RevertTransaction(tx, nullptr).GetHash();
     }
     return tx.GetHash();
@@ -323,6 +326,10 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
     LOCK(cs_main);
     UniValue arr(UniValue::VARR);
     const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+
+    bool fRegTest = gArgs.GetBoolArg("-regtest", false);
+    bool fTestNet = gArgs.GetBoolArg("-testnet", false);
+    int branchInitDefaultPort = GetBranchInitDefaultPort(fTestNet, fRegTest);
     for (auto v: vCreated)
     {
         UniValue obj(UniValue::VOBJ);
@@ -335,6 +342,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
             confirmations = chainActive.Height() - mapBlockIndex[v.blockhash]->nHeight + 1;
         }
         obj.push_back(Pair("confirmations", confirmations));
+        obj.push_back(Pair("defaultport", branchInitDefaultPort++));
         obj.push_back(Pair("ismaturity", confirmations >= BRANCH_CHAIN_MATURITY));
         arr.push_back(obj);
     }
@@ -831,8 +839,10 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     if (!MoneyRange(nAmount))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
+    int64_t quotient = MIN_MINE_BRANCH_MORTGAGE / COIN;
+    int64_t remainder = MIN_MINE_BRANCH_MORTGAGE % COIN;
     if (nAmount < MIN_MINE_BRANCH_MORTGAGE)
-        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", (double)MIN_MINE_BRANCH_MORTGAGE / (double)COIN));
+        throw JSONRPCError(RPC_TYPE_ERROR, strprintf("MINE MORTGAGE at least %d.%08d COIN", quotient, remainder));
 
     const std::string& strAddress = request.params[2].get_str();
     MagnaChainAddress address(strAddress);
@@ -1457,7 +1467,6 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     return result;
 }
 
-SmartLuaState branchRpcSLS;
 UniValue reportcontractdata(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 4)
@@ -1546,9 +1555,10 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
     MCTransactionRef proveTx = proveBlock.vtx[proveTxIndex];
     pReportData->contractData->proveTxHash = proveTxHash;
 
+    SmartLuaState sls;
     ContractContext contractContext;
     contractContext.txFinalData.data.resize(proveBlock.vtx.size());
-    if (!ExecuteBlock(&branchRpcSLS, &proveBlock, pProveBlockIndex->pprev, 0, proveTxIndex + 1, &contractContext))
+    if (!ExecuteBlock(&sls, &proveBlock, pProveBlockIndex->pprev, 0, proveTxIndex + 1, &contractContext))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "executive contract fail");
     pReportData->contractData->proveContractData = contractContext.txFinalData.data[proveTxIndex];
 
@@ -1764,10 +1774,10 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (!mapBlockIndex.count(blockHash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-    MCBlockIndex*  pblockindex = mapBlockIndex[blockHash];
+    MCBlockIndex*  pBlockIndex = mapBlockIndex[blockHash];
 
     MCBlock block;
-    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))   
+    if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
@@ -1804,18 +1814,19 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get coinbase transaction prove data failed");
     }
     else {
-        if (!GetProveInfo(block, pblockindex->nHeight, pblockindex->pprev, targetTxIndex, mtx.pProveData))
+        if (!GetProveInfo(block, pBlockIndex->nHeight, pBlockIndex->pprev, targetTxIndex, mtx.pProveData))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
     }
 
     if (pProveTx->IsSmartContract()) {
+        SmartLuaState sls;
         ContractContext contractContext;
-        if (!ExecuteBlock(&RPCSLS, &block, pblockindex->pprev, 0, targetTxIndex + 1, &contractContext))
+        if (!ExecuteBlock(&sls, &block, pBlockIndex->pprev, 0, targetTxIndex + 1, &contractContext))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
         // 先证明合约数据来源合法
         mtx.pProveData->contractData->coins = block.prevContractData[targetTxIndex].coins;
-        mtx.pProveData->contractData->contractPrevData = std::move(RPCSLS.contractDataFrom);
+        mtx.pProveData->contractData->contractPrevData = std::move(sls.contractDataFrom);
 
         std::vector<uint256> reportedPrevDataLeaves;
         VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, reportedPrevDataLeaves);
@@ -1823,7 +1834,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         reportedMatch[targetTxIndex] = true;
         mtx.pProveData->contractData->prevDataSPV = std::move(MCPartialMerkleTree(reportedPrevDataLeaves, reportedMatch));
         
-        if (!ExecuteBlock(&RPCSLS, &block, pblockindex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
+        if (!ExecuteBlock(&sls, &block, pBlockIndex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
         std::vector<uint256> reportedDataLeaves;
@@ -1846,9 +1857,8 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, strprintf(std::string("call rpc error %s"), error.write()));
 
     const UniValue& result = find_value(reply, "result");
-    if (result.isNull()) {
+    if (result.isNull())
         throw JSONRPCError(RPC_VERIFY_ERROR, "RPC return value result is null");
-    }
 
     return result;
 }
