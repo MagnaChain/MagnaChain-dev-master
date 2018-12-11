@@ -215,7 +215,7 @@ public:
 		// service bits we want, but we should get them updated to support all service bits wanted by any
 		// release ASAP to avoid it where possible.
 
-		vSeeds.emplace_back("seed.magnachainseed.io", false);
+		vSeeds.emplace_back("seed.celllinkseed.io", false);
 
         InitMainBase58Prefixes();
 
@@ -311,7 +311,7 @@ public:
 		vFixedSeeds.clear();
 		vSeeds.clear();
 		// nodes with support for servicebits filtering should be at the top
-		vSeeds.emplace_back("seedtest.magnachainseed.io", false);
+		vSeeds.emplace_back("seedtest.celllinkseed.io", false);
 
         InitTestnetBase58Prefixes();
 
