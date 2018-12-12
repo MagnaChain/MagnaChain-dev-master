@@ -909,6 +909,7 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
     return true;
 }
 
+// 只在主链执行分支的智能合约
 bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext)
 {
     std::map<MCContractID, uint256> contract2txid;
@@ -919,8 +920,11 @@ bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockI
             return false;
 
         assert(!tx->GetHash().IsNull());
-        if (tx->IsSmartContract())
+        if (tx->IsSmartContract()) {
+            if (i >= pBlock->prevContractData.size())
+                return false;
             ExecuteContract(sls, tx, i, pBlock->prevContractData[i].coins, pBlock->GetBlockTime(), pPrevBlockIndex->nHeight + 1, pPrevBlockIndex, pContractContext);
+        }
     }
 
     return true;
