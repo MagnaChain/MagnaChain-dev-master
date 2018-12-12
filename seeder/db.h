@@ -17,7 +17,7 @@
 #define REQUIRE_VERSION 70001
 
 //TODO: 主网和测试网络的主链、支链（不同的支链也不同）,so is need to modify the GetRequireHeight func.
-#define MAIN_NET_REQ_HEIGHT 0 //bitcoin 500000
+#define MAIN_NET_REQ_HEIGHT 200 //bitcoin 500000
 #define TEST_NET_REQ_HEIGHT 0 //bitcoin 350000
 
 extern bool fTestNet;
@@ -212,7 +212,7 @@ struct MCServiceResult {
 
 class MCAddrDB {
 public:
-    MCAddrDB() :pOpts(nullptr), nId(0), nDirty(0){}// shit? why these nId,nDirty member didn't need to init?
+    MCAddrDB() :pOpts(nullptr), nId(0), nDirty(0){}// ? why these nId,nDirty member didn't need to init?
     MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions), nId(0), nDirty(0){}
 private:
   mutable MCCriticalSection cs;
