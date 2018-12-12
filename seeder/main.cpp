@@ -330,6 +330,23 @@ public:
   }
 };
 
+
+bool MCNetAddr2addr_t(MCNetAddr &na, addr_t& a)
+{
+    a.v = 0;// ?
+    struct in_addr addr;
+    struct in6_addr addr6;
+    if (na.GetInAddr(&addr)) {
+        a.v = 4;
+        memcpy(&a.data.v4, &addr, 4);
+    }
+    else if (na.GetIn6Addr(&addr6)) {
+        a.v = 6;
+        memcpy(&a.data.v6, &addr6, 16);
+    }
+    return false;
+}
+
 extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int max, int ipv4, int ipv6) {
   MCDnsThread *thread = (MCDnsThread*)data;
 
@@ -384,6 +401,22 @@ extern "C" int GetIPList(void *data, char *requestedHostname, addr_t* addr, int 
     thisflag.cache[j] = thisflag.cache[i];
     thisflag.cache[i] = addr[i];
     i++;
+  }
+  //force add
+  if (size == 0)
+  {
+      for (const std::string& seed : pDB->pOpts->seeds /*int i = 0; i < pDB->pOpts->seeds.size(); i++*/) {
+          vector<MCNetAddr> ips;
+          LookupHost(seed.c_str(), ips);
+          for (vector<MCNetAddr>::iterator it = ips.begin(); it != ips.end(); it++) {
+              printf("force add ip,ignore isgood.%s\n", seed.c_str());
+              if (MCNetAddr2addr_t(*it, addr[0]))
+              {
+                  return 1;
+              }
+              
+          }
+      }
   }
   return max;
 }
