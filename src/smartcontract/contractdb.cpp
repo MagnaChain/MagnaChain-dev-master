@@ -204,9 +204,11 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
                 }
             }
 
-            for (auto it : sls->contractDataFrom) {
-                pBlock->prevContractData[i].items[it.first].blockHash = it.second.blockHash;
-                pBlock->prevContractData[i].items[it.first].txIndex = it.second.txIndex;
+            if (i < pBlock->prevContractData.size()) {
+                for (auto it : sls->contractDataFrom) {
+                    pBlock->prevContractData[i].items[it.first].blockHash = it.second.blockHash;
+                    pBlock->prevContractData[i].items[it.first].txIndex = it.second.txIndex;
+                }
             }
             threadData->contractContext.txFinalData.data[i - threadData->offset] = threadData->contractContext.cache;
             threadData->contractContext.Commit();
@@ -234,7 +236,8 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     LogPrintf("Generate block vtx size:%d, group:%d\n", pBlock->vtx.size(), pBlock->groupSize.size());
     std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
     int size = pBlock->vtx.size();
-    pBlock->prevContractData.resize(size);
+    if (!Params().IsMainChain())
+        pBlock->prevContractData.resize(size);
     for (int i = 0; i < pBlock->groupSize.size(); ++i) {
         threadData[i].offset = offset;
         threadData[i].groupSize = pBlock->groupSize[i];
