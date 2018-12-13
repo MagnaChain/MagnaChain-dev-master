@@ -243,8 +243,10 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         MCBlock *pblock = &pblocktemplate->block;
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
-        pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
-        pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
+        if (!Params().IsMainChain()) {
+            pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
+            pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
+        }
         // 如果有修改头部的值，需要重新签名
         if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
         {

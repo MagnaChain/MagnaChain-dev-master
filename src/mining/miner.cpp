@@ -1498,6 +1498,11 @@ bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& s
         MCBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(params.Checkpoints());
 		if (pcheckpoint && nHeight < pcheckpoint->nHeight)
 			return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight), REJECT_CHECKPOINT, "bad-fork-prior-to-checkpoint");
+        const uint256* pcheckhash = params.GetCheckpointHeightHash(nHeight);
+        if (pcheckhash && block.GetHash() != *pcheckhash)
+        {
+            return state.DoS(100, error("%s: forked chain older than last checkpoint2 (height %d)", __func__, nHeight), REJECT_CHECKPOINT, "bad-fork-prior-to-checkpoint2");
+        }
 	}
 
 	// Check timestamp against prev

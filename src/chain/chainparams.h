@@ -87,6 +87,7 @@ public:
 	void ClearFixedSeeds() { vFixedSeeds.clear(); }
 	void PushFixedSeeds(const SeedSpec6 &ssp) { vFixedSeeds.emplace_back(ssp); }
     const MCCheckpointData& Checkpoints() const { return checkpointData; }
+    const uint256* GetCheckpointHeightHash(int height) const;
     const ChainTxData& TxData() const { return chainTxData; }
     void UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout);
 

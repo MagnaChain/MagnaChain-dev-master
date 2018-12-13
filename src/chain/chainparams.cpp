@@ -16,11 +16,12 @@
 #include "chain/chainparamsseeds.h"
 #include "key/keystore.h"
 #include "consensus/tx_verify.h"
+#include "smartcontract/smartcontract.h"
 
 SignatureCoinbaseTransactionPf SignatureCoinbaseTransactionPF = nullptr;
 
 
-static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward)
+static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward, bool isMainChain)
 {
     MCMutableTransaction txNew;
     txNew.nVersion = 1;
@@ -68,6 +69,17 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
     genesis.vtx.push_back(MakeTransactionRef(std::move(txNew)));
     genesis.hashPrevBlock.SetNull();
     genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
+
+    if (!isMainChain) {
+        ContractContext contractContext;
+        contractContext.txFinalData.coins = 0;
+        contractContext.txFinalData.data.resize(1);
+        genesis.groupSize.resize(1);
+        genesis.prevContractData.resize(1);
+        genesis.hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(genesis);
+        genesis.hashMerkleRootWithData = BlockMerkleRootWithData(genesis, contractContext);
+    }
+
     return genesis;
 }
 
@@ -83,10 +95,10 @@ const std::string DEFAULT_TIMESTAMP = "The Times 03/Jan/2009 Chancellor on brink
  *     MCTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static MCBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward)
+static MCBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward, bool isMainChain)
 {
     const MCScript genesisOutputScript = MCScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-    return CreateGenesisBlock(pszTimestamp.c_str(), genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
+    return CreateGenesisBlock(pszTimestamp.c_str(), genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward, isMainChain);
 }
 
 //
@@ -99,6 +111,16 @@ int MCChainParams::GetDefaultPort() const
     {
         return gArgs.GetArg("-defaultport", nDefaultPort);
     }
+}
+
+const uint256* MCChainParams::GetCheckpointHeightHash(int height) const
+{
+    MapCheckpoints::const_iterator cit = checkpointData.mapCheckpoints.find(height);
+    if (cit != checkpointData.mapCheckpoints.end())
+    {
+        return &cit->second;
+    }
+    return nullptr;
 }
 
 void MCChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
@@ -204,7 +226,7 @@ public:
         nDefaultPort = 8833;
         nPruneAfterHeight = 100000;
 
-		genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1231006505, 2, 0x207fffff, 1, 10 * COIN);
+		genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1231006505, 2, 0x207fffff, 1, 10 * COIN, IsMainChain());
         consensus.hashGenesisBlock = genesis.GetHash();
         //assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
         //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -225,9 +247,9 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
 
-        //checkpointData = (MCCheckpointData) {
-        //    {
-        //        // { 11111, uint256S("0x0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d")},
+        checkpointData = {
+            {
+                     { 1000, uint256S("0xd5ab372de41044fc193c253724a31f8224d7e353cc26248058d45c3a3ece22c8")},
         //        // { 33333, uint256S("0x000000002dd5588a74784eaa7ab0507a18ad16a236e7b1ce69f00d7ddfb5d0a6")},
         //        // { 74000, uint256S("0x0000000000573993a3c9e41ce34471c079dcf5f52a0e824a81e7f953b8661a20")},
         //        // {105000, uint256S("0x00000000000291ce28027faea320c8d2b054b2e0fe44a773f3eefb151d6bdc97")},
@@ -240,8 +262,8 @@ public:
         //        // {250000, uint256S("0x000000000000003887df1f29024b06fc2200b55f8af8f35453d7be294df2d214")},
         //        // {279000, uint256S("0x0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40")},
         //        // {295000, uint256S("0x00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983")},
-        //    }
-        //};
+            }
+        };
 
         chainTxData = ChainTxData{
             // Data as of block 000000000000000000d97e53664d17967bd4ee50b23abb92e54a34eb222d15ae (height 478913).
@@ -303,7 +325,7 @@ public:
         nPruneAfterHeight = 1000;
 
 		
-        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 1, 0x207fffff, 1, 10 * COIN);
+        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 1, 0x207fffff, 1, 10 * COIN, IsMainChain());
         consensus.hashGenesisBlock = genesis.GetHash();
         //assert(consensus.hashGenesisBlock == uint256S("0x000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"));
         //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -382,7 +404,7 @@ public:
         nDefaultPort = 18844;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 2, 0x207fffff, 1, 10 * COIN);
+        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 2, 0x207fffff, 1, 10 * COIN, IsMainChain());
         consensus.hashGenesisBlock = genesis.GetHash();
         //assert(consensus.hashGenesisBlock == uint256S("0x0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
         //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -472,7 +494,7 @@ public:
 
 		gArgs.SoftSetArg("datadir", "branch" + strBranchId);
 		std::string strTimestamp = "branch_" + strBranchId;
-		genesis = CreateGenesisBlock(strTimestamp, 1231006505, 2, 0x207fffff, 1, 10 * COIN);
+		genesis = CreateGenesisBlock(strTimestamp, 1231006505, 2, 0x207fffff, 1, 10 * COIN, IsMainChain());
 		consensus.hashGenesisBlock = genesis.GetHash();
 
 		//assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
