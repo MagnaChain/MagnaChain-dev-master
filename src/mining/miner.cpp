@@ -2112,8 +2112,10 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
     CoinAmountDB coinAmountDB;
     CoinAmountCache coinAmountCache(&coinAmountDB);
-    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache))
+    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
+        error("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
         return nullptr;
+    }
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));

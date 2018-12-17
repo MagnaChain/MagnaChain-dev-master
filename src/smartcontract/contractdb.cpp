@@ -233,7 +233,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
 
     int offset = 0;
     interrupt = false;
-    LogPrintf("Generate block vtx size:%d, group:%d\n", pBlock->vtx.size(), pBlock->groupSize.size());
+    LogPrint(BCLog::MINING, "Generate block vtx size:%d, group:%d\n", pBlock->vtx.size(), pBlock->groupSize.size());
     std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
     int size = pBlock->vtx.size();
     if (!Params().IsMainChain())

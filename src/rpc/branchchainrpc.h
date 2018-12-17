@@ -13,6 +13,4 @@ class MCTransaction;
 
 MCAmount GetCreateBranchMortgage(const MCBlock* pBlock=nullptr, const MCBlockIndex* pBlockIndex=nullptr);
 
-uint256 GetBranchTxHash(const MCTransaction& tx);
-
 #endif //  BRANCHCHAIN_PRC_H

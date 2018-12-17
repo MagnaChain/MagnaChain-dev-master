@@ -2812,10 +2812,12 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
     mempool.Check(pcoinsTip);
 
     // Callbacks/notifications for a new best chain.
-    if (fInvalidFound)
+    if (fInvalidFound) {
         CheckForkWarningConditionsOnNewFork(vpindexToConnect.back());
-    else
+    }
+    else {
         CheckForkWarningConditions();
+    }
 
     return true;
 }
@@ -2876,8 +2878,9 @@ bool ActivateBestChain(MCValidationState &state, const MCChainParams& chainparam
 
             bool fInvalidFound = false;
             std::shared_ptr<const MCBlock> nullBlockPtr;
-            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullBlockPtr, fInvalidFound, connectTrace))
+            if (!ActivateBestChainStep(state, chainparams, pindexMostWork, pblock && pblock->GetHash() == pindexMostWork->GetBlockHash() ? pblock : nullBlockPtr, fInvalidFound, connectTrace)) {
                 return false;
+            }
 
             if (fInvalidFound) {
                 // Wipe cache, we may need another branch now.
@@ -2900,18 +2903,21 @@ bool ActivateBestChain(MCValidationState &state, const MCChainParams& chainparam
         GetMainSignals().UpdatedBlockTip(pindexNewTip, pindexFork, fInitialDownload);
 
         // Always notify the UI if a new block tip was connected
-        if (pindexFork != pindexNewTip)
+        if (pindexFork != pindexNewTip) {
             uiInterface.NotifyBlockTip(fInitialDownload, pindexNewTip);
+        }
 
-        if (nStopAtHeight && pindexNewTip && pindexNewTip->nHeight >= nStopAtHeight)
+        if (nStopAtHeight && pindexNewTip && pindexNewTip->nHeight >= nStopAtHeight) {
             StartShutdown();
+        }
     } while (pindexNewTip != pindexMostWork);
 
     CheckBlockIndex(chainparams.GetConsensus());
 
     // Write changes periodically to disk, after relay.
-    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC))
+    if (!FlushStateToDisk(chainparams, state, FLUSH_STATE_PERIODIC)) {
         return false;
+    }
 
     return true;
 }
@@ -3387,7 +3393,7 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
 
         if (tx->IsBranchChainTransStep2())
         {
-            uint256 txid = GetBranchTxHash(*tx);
+            uint256 txid = mempool.GetOriTxHash(*tx);
             if (setTxid.count(txid)){
                 return state.DoS(100, false, REJECT_INVALID, "Duplicate tx in block.");
             }
@@ -3844,8 +3850,9 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     NotifyHeaderTip();
 
     MCValidationState state; // Only used to report errors, not invalidity - ignore it
-    if (!ActivateBestChain(state, chainparams, pblock))
+    if (!ActivateBestChain(state, chainparams, pblock)) {
         return error("%s: ActivateBestChain failed", __func__);
+    }
 
     pContractContext->ClearAll();
     ProcessBlockBranchChain();

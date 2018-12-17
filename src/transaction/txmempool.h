@@ -488,6 +488,7 @@ public:
 
     typedef indexed_transaction_set::nth_index<0>::type::iterator txiter;
     std::vector<std::pair<uint256, txiter>> vTxHashes; //!< All tx witness hashes/entries in mapTx, in random order
+    std::map<uint256, uint256> mapFinalTx2OriTx;
 
     struct CompareIteratorByHash {
         bool operator()(const txiter& a, const txiter& b) const
@@ -564,6 +565,8 @@ public:
     void PrioritiseTransaction(const uint256& hash, const MCAmount& nFeeDelta);
     void ApplyDelta(const uint256 hash, MCAmount& nFeeDelta) const;
     void ClearPrioritisation(const uint256 hash);
+
+    uint256 GetOriTxHash(const MCTransaction& tx);
 
 public:
     /** Remove a set of transactions from the mempool.
@@ -694,6 +697,8 @@ public:
         return nCreateBranchTxCount;
     }
 };
+
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fDeepRevert = false);
 
 /** 
  * MCCoinsView that brings transactions from a memorypool into view.

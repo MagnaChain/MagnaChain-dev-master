@@ -3,6 +3,8 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "branchtxdb.h"
 #include "rpc/branchchainrpc.h"
+#include "transaction/txmempool.h"
+#include "validation/validation.h"
 
 namespace {
     class MineCoinEntry {
@@ -69,7 +71,7 @@ void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const MCTransactionRe
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    uint256 txid = GetBranchTxHash(*tx);
+    uint256 txid = mempool.GetOriTxHash(*tx);
     BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.blockhash = blockhash;
@@ -81,7 +83,7 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRe
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    uint256 txid = GetBranchTxHash(*tx);
+    uint256 txid = mempool.GetOriTxHash(*tx);
     BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
@@ -164,7 +166,7 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const MCTransaction& tx, const MCBlo
     if (tx.IsBranchChainTransStep2() == false)
         return false;
 
-    uint256 txid = GetBranchTxHash(tx);
+    uint256 txid = mempool.GetOriTxHash(tx);
     BranchChainTxEntry keyentry(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo recvInfo;
     if (!m_db.Read(keyentry, recvInfo))

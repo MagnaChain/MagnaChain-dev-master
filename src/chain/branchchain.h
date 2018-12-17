@@ -94,7 +94,5 @@ bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& sta
 bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
 bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
 
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fDeepRevert = false);
-
 bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block, std::string *pStrErr = nullptr);
 #endif //  BRANCHCHAIN_H

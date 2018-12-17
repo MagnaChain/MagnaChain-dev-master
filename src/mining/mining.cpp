@@ -165,10 +165,11 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 {
 	if( vecOutput.empty() )
 		throw JSONRPCError(RPC_INTERNAL_ERROR, "no address with enough coins\n");
-    if (pcoinsCache == nullptr)
-    {
+
+    if (pcoinsCache == nullptr) {
         pcoinsCache = ::pcoinsTip;
     }
+
     static const int nInnerLoopCount = 0x10000;
     int nHeightEnd = 0;
     int nHeight = 0;
@@ -178,6 +179,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         nHeight = chainActive.Height();
         nHeightEnd = nHeight+nGenerate;
     }
+
 	uint64_t nTries = 0;
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
@@ -236,7 +238,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache));
         if (!pblocktemplate.get()) {
             // out of memory or MakeStokeTransaction fail
-            //throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
             nTries++;
             continue;
         }
@@ -247,6 +248,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
             pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
             pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
         }
+
         // 如果有修改头部的值，需要重新签名
         if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
         {
@@ -258,12 +260,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         }
 
         MCValidationState val_state;
-        // while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckBlockWork( *pblock, val_state, Params().GetConsensus())) {
-        // //while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) {
-            // ++pblock->nNonce;
-            // --nMaxTries;
-        // }
-
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
             std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
@@ -274,42 +270,9 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
             if (pReserveKey)
                 pReserveKey->KeepKey();
         }
+
         ++nTries;
-        LogPrintf("%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
-		/*
-		while (nMaxTries > 0 && !CheckBlockWork(*pblock, val_state, Params().GetConsensus())) {
-			--nMaxTries;
-			if (nMaxTries == 0 ) {
-				break;
-			}
-			MilliSleep(400);
-			if (pf != nullptr) {
-				(*pf)();
-			}
-			pblocktemplate = BlockAssembler(Params()).CreateNewBlock( vecScript[nMaxTries%vecScript.size()], true, keystoreIn );
-			pblock = &pblocktemplate->block;
-			{
-				LOCK(cs_main);
-				IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
-			}
-		}
-
-        if (nMaxTries == 0) {
-            break;
-        }
-        if (pblock->nNonce == nInnerLoopCount) {
-            continue;
-        }
-        std::shared_ptr<const MCBlock> shared_pblock = std::make_shared<const MCBlock>(*pblock);
-        if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
-        ++nHeight;
-        blockHashes.push_back(pblock->GetHash().GetHex());
-
-        mark script as important because it was used at least for one coinbase output if the script came from the wallet
-        if (keepScript) {
-			vecScript[nMaxTries%vecScript.size()].KeepScript();
-        }*/
+        LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
     }
     return blockHashes;
 }

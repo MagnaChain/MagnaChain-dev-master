@@ -1261,6 +1261,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
         ShrinkDebugFile();
     }
 
+    fPrintToDebugLog = fPrintToConsole ? gArgs.GetBoolArg("-printtodebuglog", false) : true;
     if (fPrintToDebugLog)
         OpenDebugLog();
 
