@@ -558,7 +558,7 @@ std::string HelpMessage(HelpMessageMode mode)
 std::string LicenseInfo()
 {
     const std::string URL_SOURCE_CODE = "opening soon.";
-    const std::string URL_WEBSITE = "<https://MCInfo.io>";
+    const std::string URL_WEBSITE = "<https://magnachain.co>";
 
     return CopyrightHolders(strprintf(_("Copyright (C) %i-%i"), 2016, COPYRIGHT_YEAR) + " ") + "\n" +
            "\n" +
