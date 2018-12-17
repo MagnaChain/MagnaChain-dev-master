@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(ToStringTest)
 {
     MCFeeRate feeRate;
     feeRate = MCFeeRate(1);
-    BOOST_CHECK_EQUAL(feeRate.ToString(), "0.00000001 CELL/kB");
+    BOOST_CHECK_EQUAL(feeRate.ToString(), "0.00000001 MGC/kB");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

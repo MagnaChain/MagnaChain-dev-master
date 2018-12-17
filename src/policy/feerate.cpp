@@ -8,7 +8,7 @@
 
 #include "misc/tinyformat.h"
 
-const std::string CURRENCY_UNIT = "CELL";
+const std::string CURRENCY_UNIT = "MGC";
 
 MCFeeRate::MCFeeRate(const MCAmount& nFeePaid, size_t nBytes_)
 {
