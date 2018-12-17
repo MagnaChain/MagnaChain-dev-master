@@ -127,7 +127,7 @@ Intro::Intro(QWidget *parent) :
     ui->lblExplanation1->setText(ui->lblExplanation1->text()
         .arg(QApplication::translate("magnachain-core", PACKAGE_NAME))
         .arg(BLOCK_CHAIN_SIZE)
-        .arg(2009)
+        .arg(2016)
         .arg(tr("MagnaChain"))
     );
     ui->lblExplanation2->setText(ui->lblExplanation2->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
