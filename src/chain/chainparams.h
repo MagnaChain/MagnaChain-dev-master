@@ -42,7 +42,7 @@ struct ChainTxData {
     double dTxRate;
 };
 
-bool GetBranchInitDefaultPort(bool fTestNet, bool fRegTest);
+int GetBranchInitDefaultPort(bool fTestNet, bool fRegTest);
 
 /**
  * MCChainParams defines various tweakable parameters of a given instance of the

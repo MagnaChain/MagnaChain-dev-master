@@ -160,7 +160,7 @@ void MCChainParams::InitRegtestBase58Prefixes()
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
 }
 
-bool GetBranchInitDefaultPort(bool fTestNet, bool fRegTest)
+int GetBranchInitDefaultPort(bool fTestNet, bool fRegTest)
 {
     if (fTestNet)
         return 38833;
