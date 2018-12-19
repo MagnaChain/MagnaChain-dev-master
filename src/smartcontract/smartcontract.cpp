@@ -493,6 +493,7 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
 {
     std::string trimRawCode = TrimCode(rawCode);
 
+    bool success = false;
     int top = lua_gettop(L);
     lua_getglobal(L, "regContract");
     lua_pushnumber(L, maxCallNum);
@@ -500,21 +501,26 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
     lua_pushlstring(L, trimRawCode.c_str(), trimRawCode.size());
     int argc = 3;
 
-    assert(lua_pcall(L, argc, LUA_MULTRET, 0) == 0);
-    maxCallNum = L->limit_instruction;
-    bool success = lua_toboolean(L, top + 1) != 0;
-    if (success) {
-        size_t dl = 0;
-        const char* temp = lua_tolstring(L, top + 2, &dl);
-        dataout.assign(temp, dl);
-
-        size_t cl = 0;
-        temp = lua_tolstring(L, top + 3, &cl);
-        codeout.assign(temp, cl);
-    }
-    else {
+    if (lua_pcall(L, argc, LUA_MULTRET, 0) != 0) {
         const char* err = lua_tostring(L, -1);
         ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+    }
+    else {
+        maxCallNum = L->limit_instruction;
+        success = lua_toboolean(L, top + 1) != 0;
+        if (success) {
+            size_t dl = 0;
+            const char* temp = lua_tolstring(L, top + 2, &dl);
+            dataout.assign(temp, dl);
+
+            size_t cl = 0;
+            temp = lua_tolstring(L, top + 3, &cl);
+            codeout.assign(temp, cl);
+        }
+        else {
+            const char* err = lua_tostring(L, -1);
+            ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+        }
     }
 
     lua_settop(L, top);
@@ -723,8 +729,8 @@ int SendCoins(lua_State* L)
 
     std::string strDest = lua_tostring(L, 1);
     MagnaChainAddress kDest(strDest);
-    if (kDest.IsContractID())
-        throw std::runtime_error(strprintf("%s Invalid ContractID", __FUNCTION__));
+    if (kDest.IsContractID() || !kDest.IsValid())
+        throw std::runtime_error(strprintf("%s Invalid destination address"));
 
     MCAmount amount = lua_tonumber(L, 2);
     if (amount < DUST_RELAY_TX_FEE)

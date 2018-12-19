@@ -104,13 +104,16 @@ namespace BCLog {
         LEVELDB     = (1 << 20),
 		BRANCH      = (1 << 21),
 		MINING      = (1 << 22),
+        TRANSACTION = (1 << 23),
+        WALLET      = (1 << 24),
         ALL         = ~(uint32_t)0,
     };
 }
 /** Return true if log accepts specified category */
 static inline bool LogAcceptCategory(uint32_t category)
 {
-    return (logCategories.load(std::memory_order_relaxed) & category) != 0;
+    uint32_t value = logCategories.load(std::memory_order_relaxed);
+    return (value & category) != 0;
 }
 
 /** Returns a string with the log categories. */

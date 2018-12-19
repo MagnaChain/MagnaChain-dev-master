@@ -1058,7 +1058,7 @@ bool MCWallet::AddToWalletIfInvolvingMe(const MCTransactionRef& ptx, const MCBlo
         AssertLockHeld(cs_wallet);
 
         if (pIndex != nullptr) {
-            uint256 txHash = GetBranchTxHash(*ptx);
+            uint256 txHash = mempool.GetOriTxHash(*ptx);
             for (const MCTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
@@ -1723,7 +1723,7 @@ bool MCWalletTx::RelayWalletTransaction(MCConnman* connman)
         MCValidationState state;
         /* GetDepthInMainChain already catches known conflicts. */
         if (InMempool() || AcceptToMemoryPool(maxTxFee, state, false)) {
-            LogPrintf("Relaying wtx %s\n", GetHash().ToString());
+            LogPrint(BCLog::WALLET, "Relaying wtx %s\n", GetHash().ToString());
             if (connman) {
                 MCInv inv(MSG_TX, GetHash());
                 connman->ForEachNode([&inv](MCNode* pnode)
@@ -3282,7 +3282,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
         }
     }
 
-    LogPrintf("Fee Calculation: Fee:%d Bytes:%u Needed:%d Tgt:%d (requested %d) Reason:\"%s\" Decay %.5f: Estimation: (%g - %g) %.2f%% %.1f/(%.1f %d mem %.1f out) Fail: (%g - %g) %.2f%% %.1f/(%.1f %d mem %.1f out)\n",
+    LogPrint(BCLog::TRANSACTION, "Fee Calculation: Fee:%d Bytes:%u Needed:%d Tgt:%d (requested %d) Reason:\"%s\" Decay %.5f: Estimation: (%g - %g) %.2f%% %.1f/(%.1f %d mem %.1f out) Fail: (%g - %g) %.2f%% %.1f/(%.1f %d mem %.1f out)\n",
               nFeeRet, nBytes, nFeeNeeded, feeCalc.returnedTarget, feeCalc.desiredTarget, StringForFeeReason(feeCalc.reason), feeCalc.est.decay,
               feeCalc.est.pass.start, feeCalc.est.pass.end,
               100 * feeCalc.est.pass.withinTarget / (feeCalc.est.pass.totalConfirmed + feeCalc.est.pass.inMempool + feeCalc.est.pass.leftMempool),
@@ -3300,7 +3300,7 @@ bool MCWallet::CommitTransaction(MCWalletTx& wtxNew, MCReserveKey& reservekey, M
 {
     {
         LOCK2(cs_main, cs_wallet);
-        LogPrintf("CommitTransaction:\n%s", wtxNew.tx->ToString());
+        LogPrint(BCLog::TRANSACTION, "CommitTransaction:\n%s", wtxNew.tx->ToString());
         {
             // Take key pair from key pool so it won't be used again
             reservekey.KeepKey();
@@ -3326,7 +3326,7 @@ bool MCWallet::CommitTransaction(MCWalletTx& wtxNew, MCReserveKey& reservekey, M
             // Broadcast
             bool fMissingInputs = false;
             if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, &fMissingInputs)) {
-                LogPrintf("CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs":"");
+                LogPrint(BCLog::TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs":"");
                 // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
                 return false;// zjh add this return false;
             } else {
@@ -3672,7 +3672,7 @@ bool MCWallet::TopUpKeyPool(unsigned int kpSize)
             m_pool_key_to_index[pubkey.GetID()] = index;
         }
         if (missingInternal + missingExternal > 0) {
-            LogPrintf("keypool added %d keys (%d internal), size=%u (%u internal)\n", missingInternal + missingExternal, missingInternal, setInternalKeyPool.size() + setExternalKeyPool.size(), setInternalKeyPool.size());
+            LogPrint(BCLog::WALLET, "keypool added %d keys (%d internal), size=%u (%u internal)\n", missingInternal + missingExternal, missingInternal, setInternalKeyPool.size() + setExternalKeyPool.size(), setInternalKeyPool.size());
         }
     }
     return true;
@@ -3712,7 +3712,7 @@ void MCWallet::ReserveKeyFromKeyPool(int64_t& nIndex, MCKeyPool& keypool, bool f
 
         assert(keypool.vchPubKey.IsValid());
         m_pool_key_to_index.erase(keypool.vchPubKey.GetID());
-        LogPrintf("keypool reserve %d\n", nIndex);
+        LogPrint(BCLog::WALLET, "keypool reserve %d\n", nIndex);
     }
 }
 
@@ -3721,7 +3721,7 @@ void MCWallet::KeepKey(int64_t nIndex)
     // Remove from key pool
     CWalletDB walletdb(*dbw);
     walletdb.ErasePool(nIndex);
-    LogPrintf("keypool keep %d\n", nIndex);
+    LogPrint(BCLog::WALLET, "keypool keep %d\n", nIndex);
 }
 
 void MCWallet::ReturnKey(int64_t nIndex, bool fInternal, const MCPubKey& pubkey)
@@ -3736,7 +3736,7 @@ void MCWallet::ReturnKey(int64_t nIndex, bool fInternal, const MCPubKey& pubkey)
         }
         m_pool_key_to_index[pubkey.GetID()] = nIndex;
     }
-    LogPrintf("keypool return %d\n", nIndex);
+    LogPrint(BCLog::WALLET, "keypool return %d\n", nIndex);
 }
 
 bool MCWallet::GetKeyFromPool(MCPubKey& result, bool internal)

@@ -557,8 +557,8 @@ std::string HelpMessage(HelpMessageMode mode)
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "opening soon.";
-    const std::string URL_WEBSITE = "<https://MCInfo.io>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/MagnaChain/MagnaChain-dev-master>";
+    const std::string URL_WEBSITE = "<https://magnachain.co>";
 
     return CopyrightHolders(strprintf(_("Copyright (C) %i-%i"), 2016, COPYRIGHT_YEAR) + " ") + "\n" +
            "\n" +
@@ -1261,6 +1261,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
         ShrinkDebugFile();
     }
 
+    fPrintToDebugLog = fPrintToConsole ? gArgs.GetBoolArg("-printtodebuglog", false) : true;
     if (fPrintToDebugLog)
         OpenDebugLog();
 

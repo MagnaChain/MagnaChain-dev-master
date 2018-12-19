@@ -41,9 +41,9 @@ QString MagnaChainUnits::name(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("MC");
-    case mBTC: return QString("mMC");
-    case uBTC: return QString::fromUtf8("μMC");
+    case BTC: return QString("MGC");
+    case mBTC: return QString("mMGC");
+    case uBTC: return QString::fromUtf8("μMGC");
     default: return QString("???");
     }
 }
@@ -52,9 +52,9 @@ QString MagnaChainUnits::description(int unit)
 {
     switch(unit)
     {
-    case BTC: return QString("MCs");
-    case mBTC: return QString("Milli-MCs (1 / 1" THIN_SP_UTF8 "000)");
-    case uBTC: return QString("Micro-MCs (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+    case BTC: return QString("MGCs");
+    case mBTC: return QString("Milli-MGCs (1 / 1" THIN_SP_UTF8 "000)");
+    case uBTC: return QString("Micro-MGCs (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
     default: return QString("???");
     }
 }

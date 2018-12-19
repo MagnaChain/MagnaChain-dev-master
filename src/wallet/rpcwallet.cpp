@@ -3656,7 +3656,7 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
 			"[                   (array of json object)\n"
 			"  {\n"
 			"    \"txhash\" : xxx,            (string) The txid in hex\n"
-			"    \"outn\" : xxx,              (string) The output index of vout array,number of CELL\n"
+			"    \"outn\" : xxx,              (string) The output index of vout array,number of " + CURRENCY_UNIT + "\n"
 			"    \"value\" : xxx,             (string) The amount of output\n"
 			"    \"script\" : xxx,            (string) The scriptPubKey in hex format\n"
             "    \"confirmations\" : xxx,     (number) The coin height\n"

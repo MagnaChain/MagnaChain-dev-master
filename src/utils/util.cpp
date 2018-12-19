@@ -250,6 +250,9 @@ const CLogCategoryDesc LogCategories[] =
     {BCLog::QT, "qt"},
     {BCLog::LEVELDB, "leveldb"},
     {BCLog::BRANCH, "branch"},
+    {BCLog::MINING, "mining"},
+    {BCLog::TRANSACTION, "transaction"},
+    {BCLog::WALLET, "wallet"},
     {BCLog::ALL, "1"},
     {BCLog::ALL, "all"},
 };
@@ -347,7 +350,7 @@ int LogPrintStr(const std::string &str)
         ret = fwrite(strTimestamped.data(), 1, strTimestamped.size(), stdout);
         fflush(stdout);
     }
-    else if (fPrintToDebugLog)
+    if (fPrintToDebugLog)
     {
         boost::call_once(&DebugPrintInit, debugPrintInitFlag);
         boost::mutex::scoped_lock scoped_lock(*mutexDebugLog);

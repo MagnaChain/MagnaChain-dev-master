@@ -39,6 +39,7 @@
 #include "chain/branchdb.h"
 #include "misc/timedata.h"
 #include "smartcontract/smartcontract.h"
+#include "transaction/txmempool.h"
 
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;
 
@@ -476,54 +477,6 @@ branch_script_type QuickGetBranchScriptType(const MCScript& scriptPubKey)
     }
 
     return BST_INVALID;
-}
-
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fDeepRevert)
-{
-    MCMutableTransaction mtx(tx);
-    if (fDeepRevert){
-        if (tx.IsBranchChainTransStep2()){
-            mtx.fromTx.clear();
-            if (pFromTx && pFromTx->IsMortgage()) {
-                mtx.vout[0].scriptPubKey.clear();
-            }
-            if (mtx.fromBranchId != MCBaseChainParams::MAIN) {
-                mtx.pPMT.reset(new MCSpvProof());
-            }
-        }
-    }
-    
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
-        //recover tx: remove UTXO
-        //vin like func MakeBranchTransStep2Tx
-        mtx.vin.clear();
-        mtx.vin.resize(1);
-        mtx.vin[0].prevout.hash.SetNull();
-        mtx.vin[0].prevout.n = 0;
-        mtx.vin[0].scriptSig.clear();
-        //remove vout branch recharge
-        for (int i = mtx.vout.size() - 1; i >= 0; i--) {
-            const MCScript& scriptPubKey = mtx.vout[i].scriptPubKey;
-            if (IsCoinBranchTranScript(scriptPubKey)) {
-                mtx.vout.erase(mtx.vout.begin() + i);
-            }
-        }
-    }
-    else if (tx.IsSmartContract()) {
-        for (int i = mtx.vin.size() - 1; i >= 0; i--) {
-            if (mtx.vin[i].scriptSig.IsContract()) {
-                mtx.vin.erase(mtx.vin.begin() + i);
-            }
-        }
-        for (int i = mtx.vout.size() - 1; i >= 0; i--) {
-            const MCScript& scriptPubKey = mtx.vout[i].scriptPubKey;
-            if (scriptPubKey.IsContractChange()) {
-                mtx.vout.erase(mtx.vout.begin() + i);
-            }
-        }
-    }
-
-    return mtx;
 }
 
 // 获取抵押币脚本中的数据

@@ -978,7 +978,7 @@ void BranchDb::LoadData()
         //LogPrintf("===== 2-branch db load data: %s \n", Params().GetBranchId());  
         return;
     }
-    MCDBIterator* it = db.NewIterator();
+    std::unique_ptr<MCDBIterator> it(db.NewIterator());
     for (it->SeekToFirst(); it->Valid(); it->Next()) {
         uint256 keyHash;
 

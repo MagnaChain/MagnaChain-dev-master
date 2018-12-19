@@ -139,17 +139,6 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
     return true;
 }
 
-uint256 GetBranchTxHash(const MCTransaction& tx)
-{
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
-        return RevertTransaction(tx, nullptr).GetHash();
-    }
-    else if (tx.IsSmartContract() && tx.pContractData->amountOut > 0) {
-        return RevertTransaction(tx, nullptr).GetHash();
-    }
-    return tx.GetHash();
-}
-
 UniValue createbranchchain(const JSONRPCRequest& request)
 {
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
