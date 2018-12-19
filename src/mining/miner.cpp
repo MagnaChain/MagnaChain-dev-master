@@ -566,7 +566,7 @@ bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmou
     }
 
     //recharge
-    if (nValue > nAmount && nValue - nAmount > DUST_RELAY_TX_FEE)
+    if (nValue > nAmount)
     {
         MCTxOut tmpOut;
         tmpOut.scriptPubKey = changeScriptPubKey;
