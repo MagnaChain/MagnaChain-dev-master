@@ -33,7 +33,7 @@ seederconfig={
   host="seed.celllinkseed.io",
   ns="dns.celllinkseed.io",
   mbox="alibuybuy@yandex.com",
-  seeds={"120.92.85.97","seed.magnachainseed.io"}
+  seeds={"main.celllinkseed.io","seed.magnachainseed.io"}, --"120.92.85.97", do not hard code the ip
 },
 --branch
 --[[
