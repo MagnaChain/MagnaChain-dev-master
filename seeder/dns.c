@@ -348,6 +348,7 @@ ssize_t static dnshandle(dns_opt_t *opt, const unsigned char *inbuf, size_t insi
   if ((typ == TYPE_A || typ == TYPE_AAAA || typ == QTYPE_ANY) && (cls == CLASS_IN || cls == QCLASS_ANY)) {
     addr_t addr[32];
     int naddr = opt->cb((void*)opt, name, addr, 32, typ == TYPE_A || typ == QTYPE_ANY, typ == TYPE_AAAA || typ == QTYPE_ANY);// cb的参数opt不能替换成targetopt,参数opt实际是MCDnsThread*
+    printf("%s get A records %d\n", name, naddr);
     int n = 0;
     while (n < naddr) {
       int ret = 1;
