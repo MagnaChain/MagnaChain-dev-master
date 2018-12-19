@@ -111,11 +111,26 @@ public:
   }
   
   bool IsGood() const {
-    if (ip.GetPort() != defaultport) return false;
-    if (!(services & NODE_NETWORK)) return false;
-    if (!ip.IsRoutable()) return false;
-    if (clientVersion && clientVersion < REQUIRE_VERSION) return false;
-    if (blocks && blocks < GetRequireHeight()) return false;
+    if (ip.GetPort() != defaultport){
+        //printf("not good for default port\n");
+        return false;
+    }
+    if (!(services & NODE_NETWORK)) {
+        printf("not good for node services type\n");
+        return false;
+    }
+    if (!ip.IsRoutable()) {
+        printf("not good for ip is not routable\n");
+        return false;
+    }
+    if (clientVersion && clientVersion < REQUIRE_VERSION) {
+        printf("not good for client version %d\n", clientVersion);
+        return false;
+    }
+    if (blocks && blocks < GetRequireHeight()) {
+        printf("not good for require height %d\n", blocks);
+        return false;
+    }
 
     if (total <= 3 && success * 2 >= total) return true;
 
@@ -125,6 +140,7 @@ public:
     if (stat1W.reliability > 0.45 && stat1W.count > 16) return true;
     if (stat1M.reliability > 0.35 && stat1M.count > 32) return true;
     
+    printf("not good for fucking stat parameters\n");
     return false;
   }
   int GetBanTime() const {

@@ -478,7 +478,7 @@ extern "C" void* ThreadStats(void*pData) {
     printf("%s %i/%i available (%i tried in %is, %i new, %i active), %i banned; %llu DNS requests, %llu db queries, branchid %s\n", 
         c, stats.nGood, stats.nAvail, stats.nTracked, stats.nAge, stats.nNew, stats.nAvail - stats.nTracked - stats.nNew, 
         stats.nBanned, (unsigned long long)requests, (unsigned long long)queries, strShortName.c_str());
-    Sleep(1000);
+    Sleep(5000);
   } while(1);
   return nullptr;
 }
