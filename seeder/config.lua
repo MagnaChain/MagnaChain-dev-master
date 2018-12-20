@@ -3,7 +3,7 @@
   "-h <host>    host        Hostname of the DNS seed\n"
   "-n <ns>      ns          Hostname of the nameserver\n"
   "-m <mbox>    mbox        E-Mail address reported in SOA records\n"
-  "-t <threads> crawlers_t  Number of crawlers to run in parallel (default 96)\n"
+  "-t <threads> nThreads    Number of crawlers to run in parallel (default 96)\n"
   "-b <branchid>branchid    The branch id\n"
   "-s <seeds>	seeds       The seeds of the chain, array of domain name or IP\n"
   "--wipeban                Wipe list of banned nodes\n"
