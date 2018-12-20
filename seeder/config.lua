@@ -29,7 +29,7 @@ seederconfig={
 --main
 { branchid="main",
   defaultport=8833,
-  nThreads=1,
+  nThreads=4,
   host="seed.celllinkseed.io",
   ns="dns.celllinkseed.io",
   mbox="alibuybuy@yandex.com",
@@ -39,7 +39,7 @@ seederconfig={
 --[[
 { branchid="9aa3965c779b2611c7ffd43d7c85a9a06bd811f11a45eb6c35f71c2bfe36a99c",
   defaultport=28834,
-  nThreads=1,
+  nThreads=4,
   host="seedb1.celllinkseed.io",
   ns="dnsb1.celllinkseed.io",
   mbox="alibuybuy@yandex.com",
