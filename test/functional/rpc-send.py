@@ -50,7 +50,6 @@ class BaseNode(NodeConnCB):
         super().__init__()
         # Stores a dictionary of all blocks received
         self.block_receive_map = defaultdict(int)
-        self.tx_map = {}
 
     def on_block(self, conn, message):
         """Override the standard on_block callback
@@ -178,7 +177,9 @@ class RpcSendTest(MagnaChainTestFramework):
 
         self.log.info("Create some blocks")
         self.tip = int(self.nodes[0].getbestblockhash(), 16)
+        print(self.tip)
         self.block_time = self.nodes[0].getblock(self.nodes[0].getbestblockhash())['time'] + 1
+        print(self.block_time)
 
         height = 1
 
@@ -197,7 +198,7 @@ class RpcSendTest(MagnaChainTestFramework):
             height += 1
 
         self.log.info("Wait for node1 to reach current tip (height 11) using RPC")
-        self.nodes[1].waitforblockheight(11)
+        # self.nodes[1].waitforblockheight(11)
 
         # self.log.info("Connect node2 and node1")
         # connect_nodes(self.nodes[1], 2)

@@ -205,6 +205,34 @@ def ser_int_vector(l):
         r += struct.pack("<i", i)
     return r
 
+
+def ser_map(d):
+    r = ser_compact_size(len(d))
+    for k,v in d.items():
+        r += k.serialize()
+        r += v.serialize()
+    return r
+
+# def deser_vector(f, c):
+#     nit = deser_compact_size(f)
+#     r = []
+#     for i in range(nit):
+#         t = c()
+#         t.deserialize(f)
+#         r.append(t)
+#     return r
+
+def deser_map(f, c):
+    nit = deser_compact_size(f)
+    r = {}
+    for i in range(nit):
+        t = c()
+        t.deserialize(f)
+        r.append(t)
+    return r
+
+
+#-------------------------------------------------------------------
 # Deserialize from a hex string representation (eg from RPC)
 def FromHex(obj, hex_string):
     obj.deserialize(BytesIO(hex_str_to_bytes(hex_string)))
@@ -531,22 +559,33 @@ class CBlockHeader(object):
             self.nVersion = header.nVersion
             self.hashPrevBlock = header.hashPrevBlock
             self.hashMerkleRoot = header.hashMerkleRoot
+            # new with mgc
+            self.hashMerkleRootWithData = header.hashMerkleRootWithData
+            self.hashMerkleRootWithPrevData = header.hashMerkleRootWithPrevData
+            # end
             self.nTime = header.nTime
             self.nBits = header.nBits
             self.nNonce = header.nNonce
             self.sha256 = header.sha256
             self.hash = header.hash
+            self.prevoutStake = header.prevoutStake  #new
+            self.vchBlockSig = header.vchBlockSig    #new
             self.calc_sha256()
 
     def set_null(self):
         self.nVersion = 1
         self.hashPrevBlock = 0
         self.hashMerkleRoot = 0
+        # new in mgc
+        self.hashMerkleRootWithData = 0
+        self.hashMerkleRootWithPrevData = 0
         self.nTime = 0
         self.nBits = 0
         self.nNonce = 0
         self.sha256 = None
         self.hash = None
+        self.prevoutStake = None
+        self.vchBlockSig = []
 
     def deserialize(self, f):
         self.nVersion = struct.unpack("<i", f.read(4))[0]
@@ -1608,10 +1647,11 @@ class NodeConn(asyncore.dispatcher):
         b"getblocktxn": msg_getblocktxn,
         b"blocktxn": msg_blocktxn
     }
+    # this is the MESSAGE_START
     MAGIC_BYTES = {
         "mainnet": b"\xf9\xbe\xb4\xd9",   # mainnet
         "testnet3": b"\x0b\x11\x09\x07",  # testnet3
-        "regtest": b"\xfa\xbf\xb5\xda",   # regtest
+        "regtest": b"\xce\x11\xb5\xda",   # regtest #mmmm
     }
 
     def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", services=NODE_NETWORK):
