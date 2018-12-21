@@ -1036,7 +1036,8 @@ static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMem
     }
     if (res)//accept ok
     {
-        g_pBranchDataMemCache->AddToCache(*tx);//check n add relate cache
+        if (g_pBranchDataMemCache)
+            g_pBranchDataMemCache->AddToCache(*tx);//check n add relate cache
     }
 
     // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
@@ -2651,7 +2652,8 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
     // Remove conflicting transactions from the mempool.;
     mempool.RemoveForBlock(blockConnecting.vtx, pindexNew->nHeight);
     disconnectpool.RemoveForBlock(blockConnecting.vtx);
-    g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
+    if (g_pBranchDataMemCache)
+        g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
     // Update chainActive & related variables.
     UpdateTip(pindexNew, chainparams);
 

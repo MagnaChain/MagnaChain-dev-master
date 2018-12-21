@@ -21,8 +21,6 @@
 #include "chain/chain.h"
 #include "chain/branchchain.h"
 
-static const std::string DB_MAP_REPORT_PROVE_DATA = "db_map_report_prove_data";
-
 BranchDb* g_pBranchDb = nullptr;
 
 BranchCache* g_pBranchDataMemCache = nullptr;
@@ -343,6 +341,11 @@ BranchData BrandchDataView::GetBranchData(const uint256& branchHash)
 {
     return BranchData();
 }
+VBRANCH_CHAIN BrandchDataView::GetActiveChain(const uint256& branchHash)
+{
+    VBRANCH_CHAIN vect;
+    return vect;
+}
 bool BrandchDataView::IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash)
 {
     return false;
@@ -386,6 +389,16 @@ BranchData BranchDataProcesser::GetBranchData(const uint256& branchHash)
     BranchData& branchdata = mapBranchsData[branchHash];
     branchdata.InitBranchGenesisBlockData(branchHash);
     return branchdata;
+}
+
+VBRANCH_CHAIN BranchDataProcesser::GetActiveChain(const uint256& branchHash)
+{
+    if (!HasBranchData(branchHash))
+    {
+        VBRANCH_CHAIN vect;
+        return vect;
+    }
+    return mapBranchsData[branchHash].vecChainActive;
 }
 
 bool BranchDataProcesser::IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash)
@@ -806,7 +819,7 @@ uint16_t BranchCache::GetTxReportState(const uint256& rpBranchId, const uint256&
 
 // Use in follow situation. 1.After finish build block
 // keep cache 
-void BranchCache::RemoveFromCache(const MCTransaction& tx)
+void BranchCache::RemoveFromCache(const MCTransaction& tx, std::set<uint256> &modifyBranch)
 {
     if (tx.IsSyncBranchInfo())
     {
@@ -826,6 +839,9 @@ void BranchCache::RemoveFromCache(const MCTransaction& tx)
             bData.mapHeads[blockHash].flags = BranchBlockData::eDELETE;
         else                                // set map data
             bData.mapHeads[blockHash] = blockData;
+        //bData.mapHeads.erase(blockHash);// if erase it should update mapHeads with readonly_db after RemoveFromBlock
+
+        modifyBranch.insert(branchHash);
     }
     if (tx.IsReport()) {
         uint256 reportFlagHash = GetReportTxHashKey(tx);
@@ -840,9 +856,21 @@ void BranchCache::RemoveFromCache(const MCTransaction& tx)
 
 void BranchCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
 {
+    std::set<uint256> modifyBranch;
     for (const auto& tx : vtx)
     {
-        RemoveFromCache(*tx);
+        RemoveFromCache(*tx, modifyBranch);
+    }
+
+    //update local mapBranchsData with readonly_db
+    if (readonly_db)
+    {
+        for (const uint256& branchHash : modifyBranch)
+        {
+            // update activechain
+            mapBranchsData[branchHash].vecChainActive = readonly_db->GetActiveChain(branchHash);
+            // don't update mapHeads
+        }
     }
 }
 

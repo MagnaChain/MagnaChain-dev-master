@@ -314,9 +314,9 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             MCSpvProof spvProof(*tx.pPMT);
             BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
             if (pBlockData == nullptr)
-                return false;
+                return state.DoS(0, false, REJECT_INVALID, "Get transstep2 blockdata fail.");
             if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pFromTx->GetHash()) < 0)
-                return false;
+                return state.DoS(0, false, REJECT_INVALID, "transstep2 checkSpvProof fail.");;
 
             // best chain check
             if (!pBranchCache->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
