@@ -55,6 +55,13 @@ NODE_WITNESS = (1 << 3)
 NODE_UNSUPPORTED_SERVICE_BIT_5 = (1 << 5)
 NODE_UNSUPPORTED_SERVICE_BIT_7 = (1 << 7)
 
+# enum ReportType {
+REPORT_TX = 1
+REPORT_COINBASE = 2
+REPORT_MERKLETREE = 3
+REPORT_CONTRACT_DATA = 4
+
+
 logger = logging.getLogger("TestFramework.mininode")
 
 # Keep our own socket map for asyncore, so that we can track disconnects
@@ -235,22 +242,19 @@ def ser_map(d):
         r += v.serialize()
     return r
 
-# def deser_vector(f, c):
-#     nit = deser_compact_size(f)
-#     r = []
-#     for i in range(nit):
-#         t = c()
-#         t.deserialize(f)
-#         r.append(t)
-#     return r
 
-def deser_map(f, c):
+def deser_map_with_obj(f, kc, vc):
+    '''
+    Need to specify the class corresponding to the dict key and value
+    '''
     nit = deser_compact_size(f)
     r = {}
     for i in range(nit):
-        t = c()
-        t.deserialize(f)
-        r
+        ko = kc()
+        ko.deserialize(f)
+        vo = vc()
+        vo.deserialize(f)
+        r[ko] = vo
     return r
 
 
@@ -469,6 +473,23 @@ class CTxWitness(object):
                 return False
         return True
 
+class CTransactionVersion(object):
+    CURRENT_VERSION = 2;
+    PUBLISH_CONTRACT_VERSION = 3;
+    CALL_CONTRACT_VERSION = 4;
+    CREATE_BRANCH_VERSION = 5; #  创建支链
+    TRANS_BRANCH_VERSION_S1 = 6; #  跨链交易的发起链方
+    TRANS_BRANCH_VERSION_S2 = 7; #  跨链交易的接收链方
+    MINE_BRANCH_MORTGAGE = 8; #  挖矿抵押, like
+    SYNC_BRANCH_INFO = 9; #  同步侧链数据, 给主链
+    REPORT_CHEAT = 10; #  举报
+    PROVE = 11; #  证明
+    REDEEM_MORTGAGE_STATEMENT = 12; #  赎回挖矿抵押(在侧链声明阶段, 把挖矿币销毁)
+    REDEEM_MORTGAGE = 13; #  赎回挖矿抵押币(把主链上的抵押拿回来)
+    STAKE = 14; #  mining
+    REPORT_REWARD = 15; #  举报奖励
+    LOCK_MORTGAGE_MINE_COIN = 16; #  锁定挖矿币
+    UNLOCK_MORTGAGE_MINE_COIN = 17; #  解锁挖矿币
 
 class CTransaction(object):
     def __init__(self, tx=None):
@@ -493,6 +514,11 @@ class CTransaction(object):
             self.branchBlockData = MCBranchBlockData()
             self.pmt = MCSpvProof()
             self.reportData = ReportData()
+            self.proveData = ProveData()
+            self.reporttxid = 0
+            self.coinpreouthash = 0
+            self.provetxid = 0
+            # new in mgc end
             self.sha256 = None
             self.hash = None
         else:
@@ -500,6 +526,8 @@ class CTransaction(object):
             self.vin = copy.deepcopy(tx.vin)
             self.vout = copy.deepcopy(tx.vout)
             self.nLockTime = tx.nLockTime
+            # new in mgc
+            # branch create data
             self.branchVSeeds = tx.branchVSeeds
             self.branchSeedSpec6 = tx.branchSeedSpec6
             # //branch trans start (step 1)
@@ -507,12 +535,20 @@ class CTransaction(object):
             self.sendToTxHexData = tx.sendToTxHexData
             # //branch trans end (step 2)
             self.fromBranchId = tx.fromBranchId
-            self.fromTx = copy.deepcopy(tx.fromTx)
+            self.fromTx = tx.fromTx  # CTransaction serialize str list
             self.inAmount = tx.inAmount
             self.contractData = tx.contractData
+            self.branchBlockData = tx.branchBlockData
+            self.pmt = tx.pmt
+            self.reportData =tx.reportData
+            self.proveData = tx.proveData
+            self.reporttxid = tx.reporttxid
+            self.coinpreouthash = tx.coinpreouthash
+            self.provetxid = tx.provetxid
+            # new in mgc end
             self.sha256 = tx.sha256
             self.hash = tx.hash
-            self.wit = copy.deepcopy(tx.wit)
+            # self.wit = copy.deepcopy(tx.wit)
 
     def deserialize(self, f):
         self.nVersion = struct.unpack("<i", f.read(4))[0]
@@ -531,6 +567,47 @@ class CTransaction(object):
             self.wit.vtxinwit = [CTxInWitness() for i in range(len(self.vin))]
             self.wit.deserialize(f)
         self.nLockTime = struct.unpack("<I", f.read(4))[0]
+
+        # new in mgc
+        if self.nVersion == CTransactionVersion.PUBLISH_CONTRACT_VERSION or self.nVersion == CTransactionVersion.CALL_CONTRACT_VERSION:
+            self.contractData.deserialize(f)
+        elif self.nVersion == CTransactionVersion.CREATE_BRANCH_VERSION:
+            self.branchVSeeds = deser_string(f)
+            self.branchSeedSpec6 = deser_string(f)
+        elif self.nVersion == CTransactionVersion.TRANS_BRANCH_VERSION_S1:
+            self.sendToBranchid = deser_uint256(f)
+            self.sendToTxHexData = deser_string(f)
+            if self.sendToBranchid == MY_BranchId:
+                self.pmt.deserialize(f)
+        elif self.nVersion == CTransactionVersion.TRANS_BRANCH_VERSION_S2:
+            self.fromBranchId = deser_uint256(f)
+            self.fromTx = deser_uint256(f)
+            self.inAmount = struct.pack("<Q", f.read(8))[0]
+            if self.sendToBranchid != MY_BranchId:
+                self.pmt.deserialize(f)
+        elif self.nVersion == CTransactionVersion.MINE_BRANCH_MORTGAGE:
+            self.sendToBranchid = deser_uint256(f)
+            self.sendToTxHexData = deser_string(f)
+        elif self.nVersion == CTransactionVersion.SYNC_BRANCH_INFO:
+            self.branchBlockData.deserialize(f)
+        elif self.nVersion == CTransactionVersion.REPORT_CHEAT:
+            self.reportData.deserialize(f)
+            self.pmt.deserialize(f)
+        elif self.nVersion == CTransactionVersion.PROVE:
+            self.proveData.deserialize(f)
+        elif self.nVersion == CTransactionVersion.REDEEM_MORTGAGE:
+            self.fromBranchId = deser_uint256(f)
+            self.fromTx = deser_uint256(f)
+            self.pmt.deserialize(f)
+        elif self.nVersion == CTransactionVersion.REPORT_REWARD:
+            self.reporttxid = deser_uint256(f)
+        elif self.nVersion == CTransactionVersion.LOCK_MORTGAGE_MINE_COIN:
+            self.reporttxid = deser_uint256(f)
+            self.coinpreouthash = deser_uint256(f)
+        elif self.nVersion == CTransactionVersion.UNLOCK_MORTGAGE_MINE_COIN:
+            self.reporttxid = deser_uint256(f)
+            self.coinpreouthash = deser_uint256(f)
+            self.provetxid = deser_uint256(f)
         self.sha256 = None
         self.hash = None
 
@@ -540,6 +617,45 @@ class CTransaction(object):
         r += ser_vector(self.vin)
         r += ser_vector(self.vout)
         r += struct.pack("<I", self.nLockTime)
+        if self.nVersion == CTransactionVersion.PUBLISH_CONTRACT_VERSION or self.nVersion == CTransactionVersion.CALL_CONTRACT_VERSION:
+            r += self.contractData.serialize()
+        elif self.nVersion == CTransactionVersion.CREATE_BRANCH_VERSION:
+            r += ser_string(self.branchVSeeds)
+            r += ser_string(self.branchSeedSpec6)
+        elif self.nVersion == CTransactionVersion.TRANS_BRANCH_VERSION_S1:
+            r += ser_uint256(self.sendToBranchid)
+            r += ser_string(self.sendToTxHexData)
+            if self.sendToBranchid == MY_BranchId:
+                r += self.pmt.serialize()
+        elif self.nVersion == CTransactionVersion.TRANS_BRANCH_VERSION_S2:
+            r += ser_uint256(self.fromBranchId)
+            r += ser_uint256(self.fromTx)
+            r += struct.pack("<Q", self.inAmount)
+            if self.sendToBranchid != MY_BranchId:
+                r += self.pmt.serialize()
+        elif self.nVersion == CTransactionVersion.MINE_BRANCH_MORTGAGE:
+            r += ser_uint256(self.sendToBranchid)
+            r += ser_string(self.sendToTxHexData)
+        elif self.nVersion == CTransactionVersion.SYNC_BRANCH_INFO:
+            r += self.branchBlockData.serialize()
+        elif self.nVersion == CTransactionVersion.REPORT_CHEAT:
+            r += self.reportData.serialize()
+            r += self.pmt.serialize()
+        elif self.nVersion == CTransactionVersion.PROVE:
+            r += self.proveData.serialize()
+        elif self.nVersion == CTransactionVersion.REDEEM_MORTGAGE:
+            r += ser_uint256(self.fromBranchId)
+            r += ser_uint256(self.fromTx)
+            r += self.pmt.serialize()
+        elif self.nVersion == CTransactionVersion.REPORT_REWARD:
+            r += ser_uint256(self.reporttxid)
+        elif self.nVersion ==CTransactionVersion.LOCK_MORTGAGE_MINE_COIN:
+            r += ser_uint256(self.reporttxid)
+            r += ser_uint256(self.coinpreouthash)
+        elif self.nVersion ==CTransactionVersion.UNLOCK_MORTGAGE_MINE_COIN:
+            r += ser_uint256(self.reporttxid)
+            r += ser_uint256(self.coinpreouthash)
+            r += ser_uint256(self.provetxid)
         return r
 
     # Only serialize with witness when explicitly called for
@@ -693,10 +809,14 @@ class CBlock(CBlockHeader):
     def __init__(self, header=None):
         super(CBlock, self).__init__(header)
         self.vtx = []
+        self.groupSize = []
+        self.prevContractData = []
 
     def deserialize(self, f):
         super(CBlock, self).deserialize(f)
         self.vtx = deser_vector(f, CTransaction)
+        self.groupSize = deser_int_vector(f)
+        self.prevContractData = deser_vector(f,ContractPrevData)
 
     def serialize(self, with_witness=False):
         r = b""
@@ -705,6 +825,8 @@ class CBlock(CBlockHeader):
             r += ser_vector(self.vtx, "serialize_with_witness")
         else:
             r += ser_vector(self.vtx)
+        r += ser_int_vector(self.groupSize)
+        r += ser_vector(self.prevContractData)
         return r
 
     # Calculate the merkle root given a vector of transaction hashes
@@ -1145,6 +1267,9 @@ class MCSpvProof(object):
         self.blockhash = deser_uint256(f)
         self.pmt.deserialize(f)
 
+    def __repr__(self):
+        return "MCSpvProof(hash=%064x pmt=%s)" % (self.coins, repr(self.pmt))
+
 class MCPartialMerkleTree(object):
 
     def __init__(self,pmt = None):
@@ -1169,6 +1294,9 @@ class MCPartialMerkleTree(object):
         self.vHash = deser_uint256_vector(f)
         dust = deser_string(f)
 
+    def __repr__(self):
+        return "MCPartialMerkleTree(nTransactions=%i vHash=%s)" % (self.nTransactions, self.vHash)
+
 
 class ReportData(object):
 
@@ -1187,10 +1315,26 @@ class ReportData(object):
             self.rContractData = reportData.rContractData
 
     def serialize(self):
-        pass
+        r = b''
+        r += struct.pack("<i",self.reporttype) # maybe 8 byte
+        r += ser_uint256(self.reportedBranchId)
+        r += ser_uint256(self.reportedBlockHash)
+        r += ser_uint256(self.reportedTxHash)
+        if self.reporttype == REPORT_CONTRACT_DATA:
+            r += self.rContractData.serialize()
+        return r
 
     def deserialize(self,f):
-        pass
+        self.reporttype = struct.unpack("<i",f.read(4))[0]
+        self.reportedBranchId = deser_uint256(f)
+        self.reportedBlockHash = deser_uint256(f)
+        self.reportedTxHash = deser_uint256(f)
+        if self.reporttype == REPORT_CONTRACT_DATA:
+            self.rContractData.deserialize(f)
+
+    def __repr__(self):
+        return "ReportData(reporttype=%i reportedBranchId=%064x reportedBlockHash=%064x reportedTxHash=%064x  rContractData=%s)" % (self.reporttype, self.reportedBranchId,self.reportedBlockHash,self.reportedTxHash,repr(self.rContractData))
+
 
 class ReportContractData(object):
 
@@ -1199,7 +1343,7 @@ class ReportContractData(object):
             self.reportedContractPrevData = ContractPrevData()
             self.reportedSpvProof = MCSpvProof()
             self.proveTxHash = 0
-            self.proveContractData = {}
+            self.proveContractData = {} #  std::map<MCContractID, ContractInfo> proveContractData;       // 被替换的数据
             self.proveSpvProof = MCSpvProof()
         else:
             self.reportedContractPrevData = rcd.reportedContractPrevData
@@ -1207,11 +1351,55 @@ class ReportContractData(object):
             self.proveTxHash = rcd.proveTxHash
             self.proveContractData = rcd.proveContractData
             self.proveSpvProof = rcd.proveSpvProof
+
     def serialize(self):
-        pass
+        r = b''
+        r += self.reportedContractPrevData.serialize()
+        r += self.reportedSpvProof.serialize()
+        r += ser_uint256(self.proveTxHash)
+        r += ser_map(self.proveContractData)
+        r += self.proveSpvProof.serialize()
+        return r
+
 
     def deserialize(self,f):
-        pass
+        self.reportedContractPrevData.deserialize(f)
+        self.reportedSpvProof.deserialize(f)
+        self.proveTxHash = deser_uint256(f)
+        self.proveContractData = deser_map_with_obj(f,MCContractID,ContractInfo)
+        self.proveSpvProof.deserialize(f)
+
+    def __repr__(self):
+        return "ReportContractData(reportedContractPrevData=%s reportedSpvProof=%s proveTxHash=%064x proveContractData=%s proveSpvProof=%s)" % (repr(self.reportedContractPrevData), repr(self.reportedSpvProof),self.proveTxHash,self.proveContractData,repr(self.proveSpvProof))
+
+class ContractInfo(object):
+
+    def __init__(self,info = None):
+        if info is None:
+            self.code = b''
+            self.blockHash = 0
+            self.data = b''
+        else:
+            self.code = info.code
+            self.blockHash = info.blockHash
+            self.data = info.data
+
+    def serialize(self):
+        r = b''
+        r += ser_string(self.code)
+        r += ser_uint256(self.blockHash)
+        r += ser_string(self.data)
+        return r
+
+
+    def deserialize(self,f):
+        self.code = deser_string(f)
+        self.blockHash = deser_uint256(f)
+        self.data = deser_string(f)
+
+    def __repr__(self):
+        return "ContractInfo(code=%s blockHash=%064x data=%s)" % (self.code,self.blockHash,self.data)
+
 
 class ContractPrevData(object):
 
@@ -1226,11 +1414,15 @@ class ContractPrevData(object):
     def serialize(self):
         r = b''
         r += struct.pack("<Q",self.coins)
-        r += ser_uint256_vector()
+        r += ser_map(self.items)
         return r
 
     def deserialize(self,f):
-        pass
+        self.coins = struct.uppack("<Q",f.read(8))[0]
+        self.items = deser_map_with_obj(f,MCContractID,ContractPrevDataItem)
+
+    def __repr__(self):
+        return "ContractPrevData(coins=%i items=%s)" % (self.coins, self.items)
 
 class ContractPrevDataItem(object):
 
@@ -1248,9 +1440,126 @@ class ContractPrevDataItem(object):
         self.blockhash = deser_uint256()
         self.txIndex = struct.unpack("<i",f.read(4))[0]
 
+    def __repr__(self):
+        return "ContractPrevDataItem(hash=%064x txIndex=%s)" % (self.blockhash, self.txIndex)
 
 
+class ProveData(object):
 
+    def __init__(self, proveData=None):
+        if proveData is None:
+            self.provetype = 0
+            self.branchId = 0
+            self.blockHash = 0
+            self.txHash = 0
+            self.vectProveData = []
+            self.contractData = ContractProveData()
+            self.vtxData = b''
+            self.vecBlockTxProve = []
+        else:
+            self.provetype = proveData.provetype
+            self.branchId = proveData.branchId
+            self.blockHash = proveData.blockHash
+            self.txHash = proveData.txHash
+            self.vectProveData = proveData.vecBlockTxProve
+            self.contractData = proveData.contractData
+            self.vtxData = proveData.vtxData
+            self.vecBlockTxProve = proveData.vecBlockTxProve
+
+    def serialize(self):
+        r = b''
+        r += struct.pack("<i",self.provetype)
+        r += ser_uint256(self.branchId)
+        r += ser_uint256(self.blockHash)
+        r += ser_uint256(self.txHash)
+        if self.provetype == REPORT_TX:
+            r += ser_vector(self.vectProveData)
+            r += self.contractData.serialize()
+        elif self.provetype == REPORT_COINBASE or self.provetype == REPORT_MERKLETREE:
+            r += ser_string(self.vtxData)
+            r += ser_vector(self.vecBlockTxProve)
+        return r
+
+    def deserialize(self, f):
+        self.provetype = struct.unpack("<i",f.read(4))[0]
+        self.branchId = deser_uint256(f)
+        self.blockHash = deser_uint256(f)
+        self.txHash = deser_uint256(f)
+        if self.provetype == REPORT_TX:
+            self.vectProveData = deser_vector(f,ProveDataItem)
+            self.contractData.deserialize(f)
+        elif self.provetype == REPORT_COINBASE or self.provetype == REPORT_MERKLETREE:
+            self.vtxData = deser_string(f)
+            self.vecBlockTxProve = deser_vector(f,ProveDataItem)
+
+
+    def __repr__(self):
+        return "ProveData(provetype=%i branchId=%064x blockHash=%064x txHash=%064x vectProveData=%s contractData=%s vtxData=%s vecBlockTxProve=%s)" \
+            % (self.provetype, self.branchId,self.blockHash, self.txHash,self.vectProveData,repr(self.contractData),
+               self.vtxData,self.vecBlockTxProve)
+
+
+class ProveDataItem(object):
+
+    def __init__(self, proveDataItem=None):
+        if proveDataItem is None:
+            self.blockHash = 0
+            self.tx = b''
+            self.pCSP = MCSpvProof()
+        else:
+            self.blockHash = proveDataItem.blockHash
+            self.tx = proveDataItem.tx
+            self.pCSP = proveDataItem.pCSP
+
+    def serialize(self):
+        r = b''
+        r += ser_uint256(self.blockHash)
+        r += ser_string(self.tx)
+        r += self.pCSP.serialize()
+        return r
+
+    def deserialize(self, f):
+        self.blockHash = deser_uint256(f)
+        self.tx = deser_string(f)
+        self.pCSP.deserialize(f)
+
+    def __repr__(self):
+        return "ProveDataItem(blockHash=%064x tx=%s pCSP=%s)" % (self.blockHash, self.tx, repr(self.pCSP))
+
+
+class ContractProveData(object):
+
+    def __init__(self, contractProveData=None):
+        if contractProveData is None:
+            self.coins = 0
+            self.contractPrevData = {}  # std::map<MCContractID, ContractInfo> contractPrevData;
+            self.prevDataSPV = MCPartialMerkleTree()
+            self.dataSPV = MCPartialMerkleTree()
+        else:
+            self.coins = contractProveData.coins
+            self.contractPrevData = contractProveData.contractPrevData
+            self.prevDataSPV = contractProveData.prevDataSPV
+            self.dataSPV = contractProveData.dataSPV
+
+    def serialize(self):
+        r = b''
+        r += struct.pack("<Q",self.coins)
+        r += ser_map(self.contractPrevData)
+        r += self.prevDataSPV.serialize()
+        r += self.dataSPV.serialize()
+        return r
+
+    def deserialize(self, f):
+        self.coins = struct.pack("<Q",f.read(8))[0]
+        self.contractPrevData = deser_map_with_obj(f,MCContractID,ContractInfo)
+        self.prevDataSPV.deserialize(f)
+        self.dataSPV.deserialize(f)
+
+    def __repr__(self):
+        return "ContractProveData(coins=%i contractPrevData=%s prevDataSPV=%s dataSPV=%s)" % (self.coins, self.contractPrevData,repr(self.contractPrevData), repr(self.dataSPV))
+
+
+#-----------------------------------------------------------------------
 # Objects that correspond to messages on the wire
 class msg_version(object):
     command = b"version"

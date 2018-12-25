@@ -182,7 +182,9 @@ class RpcSendTest(MagnaChainTestFramework):
         print(self.block_time)
 
         height = 1
-
+        import time
+        time.sleep(60)
+        print("one passed")
         for i in range(10):
             # Use the mininode and blocktools functionality to manually build a block
             # Calling the generate() rpc is easier, but this allows us to exactly
@@ -197,7 +199,8 @@ class RpcSendTest(MagnaChainTestFramework):
             self.block_time += 1
             height += 1
 
-        self.log.info("Wait for node1 to reach current tip (height 11) using RPC")
+        time.sleep(60 * 10)
+        self.log.info("Wait for node1 to reach current tip (height 11) using RPC",die)
         # self.nodes[1].waitforblockheight(11)
 
         # self.log.info("Connect node2 and node1")
