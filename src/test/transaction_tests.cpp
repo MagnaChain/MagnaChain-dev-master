@@ -206,8 +206,8 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
             std::map<MCOutPoint, int64_t> mapprevOutValues;
             UniValue inputs = test[0].get_array();
             bool fValid = true;
-	    for (unsigned int inpIdx = 0; inpIdx < inputs.size(); inpIdx++) {
-	        const UniValue& input = inputs[inpIdx];
+	        for (unsigned int inpIdx = 0; inpIdx < inputs.size(); inpIdx++) {
+	            const UniValue& input = inputs[inpIdx];
                 if (!input.isArray())
                 {
                     fValid = false;
@@ -238,6 +238,24 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
 
             MCValidationState state;
             fValid = CheckTransaction(tx, state) && state.IsValid();
+            if (tx.IsCoinBase())
+            {
+                if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)// in magnachain, size check is check to 200,
+                                                                                       // so don't modify test data and add this check here
+                    fValid = false;
+            }
+            //if (idx==35)
+            //{
+            //    extern void TxToJSON(const MCTransaction& tx, const uint256 hashBlock, UniValue& entry);
+
+            //    uint256 hashBlock;
+            //    UniValue result(UniValue::VOBJ);
+            //    TxToJSON(tx, hashBlock, result);
+            //    std::string str = result.write();
+            //    if (str.empty())
+            //    {
+            //    }
+            //}
 
             PrecomputedTransactionData txdata(tx);
             for (unsigned int i = 0; i < tx.vin.size() && fValid; i++)
