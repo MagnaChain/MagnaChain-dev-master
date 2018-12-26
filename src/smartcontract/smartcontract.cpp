@@ -535,6 +535,10 @@ bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCA
 
     sls->pCoinAmountCache->TakeSnapshot(contractID);
     bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
+    if (success) {
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = 0;
+    }
     sls->pCoinAmountCache->RemoveSnapshot(contractID, !success);
     return success;
 }
@@ -730,7 +734,7 @@ int SendCoins(lua_State* L)
     std::string strDest = lua_tostring(L, 1);
     MagnaChainAddress kDest(strDest);
     if (kDest.IsContractID() || !kDest.IsValid())
-        throw std::runtime_error(strprintf("%s Invalid destination address"));
+        throw std::runtime_error(strprintf("Invalid destination address"));
 
     MCAmount amount = lua_tonumber(L, 2);
     if (amount < DUST_RELAY_TX_FEE)
@@ -766,17 +770,9 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, 
     this->saveType = saveType;
     this->pCoinAmountCache = pCoinAmountCache;
 
-    if (_pContractContext == nullptr)
+    if (_pContractContext == nullptr) {
         _pContractContext = &mpContractDb->contractContext;
-
-    this->contractOut = 0;
-    this->recipients.clear();
-    this->contractIds.clear();
-    this->contractAddrs.clear();
-    _internalCallNum = 0;
-    runningTimes = 0;
-    deltaDataLen = 0;
-    codeLen = 0;
+    }
 }
 
 lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
@@ -811,8 +807,8 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
         L->userData = this;
     }
 
-    MCKeyID contractId;
-    contractAddr.GetKeyID(contractId);
+    MCContractID contractId;
+    contractAddr.GetContractID(contractId);
     contractIds.insert(contractId);
     contractAddrs.emplace_back(contractAddr);
 
@@ -840,6 +836,9 @@ void SmartLuaState::Clear()
     pCoinAmountCache = nullptr;
     _pContractContext = nullptr;
     _pPrevBlockIndex = nullptr;
+    recipients.clear();
+    contractIds.clear();
+    contractAddrs.clear();
     contractDataFrom.clear();
 }
 
@@ -870,7 +869,7 @@ bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo
 
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
 {
-    MCContractID contractId = tx->pContractData->address;
+    const MCContractID& contractId = tx->pContractData->address;
     MagnaChainAddress contractAddr(contractId);
     MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
     MCAmount amount = GetTxContractOut(*tx);
@@ -881,13 +880,13 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
 
     UniValue ret(UniValue::VARR);
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-        std::string rawCode = tx->pContractData->codeOrFunc;
+        const std::string& rawCode = tx->pContractData->codeOrFunc;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
         if (!PublishContract(sls, contractAddr, rawCode, ret))
             return false;
     }
     else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        std::string strFuncName = tx->pContractData->codeOrFunc;
+        const std::string& strFuncName = tx->pContractData->codeOrFunc;
         UniValue args;
         args.read(tx->pContractData->args);
 

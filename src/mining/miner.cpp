@@ -136,91 +136,6 @@ void BlockAssembler::resetBlock()
     nFees = 0;
 }
 
-/*
-std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, bool fMineWitnessTx)
-{
-    int64_t nTimeStart = GetTimeMicros();
-
-    resetBlock();
-
-    pblocktemplate.reset(new MCBlockTemplate());
-
-    if(!pblocktemplate.get())
-        return nullptr;
-    pblock = &pblocktemplate->block; // pointer for convenience
-
-    // Add dummy coinbase tx as first transaction
-    pblock->vtx.emplace_back();
-    pblocktemplate->vTxFees.push_back(-1); // updated at end
-    pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-
-    LOCK2(cs_main, mempool.cs);
-    MCBlockIndex* pindexPrev = chainActive.Tip();
-    nHeight = pindexPrev->nHeight + 1;
-
-    pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
-    // -regtest only: allow overriding block.nVersion with
-    // -blockversion=N to test forking scenarios
-    if (chainparams.MineBlocksOnDemand())
-        pblock->nVersion = gArgs.GetArg("-blockversion", pblock->nVersion);
-
-    pblock->nTime = GetAdjustedTime();
-    const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
-
-    nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
-                       ? nMedianTimePast
-                       : pblock->GetBlockTime();
-
-    // Decide whether to include witness transactions
-    // This is only needed in case the witness softfork activation is reverted
-    // (which would require a very deep reorganization) or when
-    // -promiscuousmempoolflags is used.
-    // TODO: replace this with a call to main to assess validity of a mempool
-    // transaction (which in most cases can be a no-op).
-    fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
-
-    int nPackagesSelected = 0;
-    int nDescendantsUpdated = 0;
-    addPackageTxs(nPackagesSelected, nDescendantsUpdated);
-
-    int64_t nTime1 = GetTimeMicros();
-
-    nLastBlockTx = nBlockTx;
-    nLastBlockWeight = nBlockWeight;
-
-    // Create coinbase transaction.
-    MCMutableTransaction coinbaseTx;
-    coinbaseTx.vin.resize(1);
-    coinbaseTx.vin[0].prevout.SetNull();
-    coinbaseTx.vout.resize(1);
-    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-    coinbaseTx.vin[0].scriptSig = MCScript() << nHeight << OP_0;
-    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
-    pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-    pblocktemplate->vTxFees[0] = -nFees;
-
-    LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
-
-    // Fill in header
-    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
-    pblock->nNonce         = 0;
-    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
-
-    MCValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
-    int64_t nTime2 = GetTimeMicros();
-
-    LogPrint(BCLog::BENCH, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
-
-    return std::move(pblocktemplate);
-}
-*/
-
 void BlockAssembler::onlyUnconfirmed(MCTxMemPool::setEntries& testSet)
 {
     for (MCTxMemPool::setEntries::iterator iit = testSet.begin(); iit != testSet.end();) {
@@ -291,7 +206,7 @@ int BlockAssembler::UpdatePackagesForAdded(const MCTxMemPool::setEntries& alread
     int nDescendantsUpdated = 0;
     for (const MCTxMemPool::txiter it : alreadyAdded) {
         MCTxMemPool::setEntries descendants;
-        mempool.CalculateDescendants(it, descendants);
+        mempool.CalculateDescendants(it, descendants, true);
         // Insert all descendants (not yet in block) into the modified set
         for (MCTxMemPool::txiter desc : descendants) {
             if (alreadyAdded.count(desc))
@@ -752,7 +667,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         MCTxMemPool::setEntries ancestors;
 		uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
 		std::string dummy;
-		mempool.CalculateMemPoolAncestors(*iter, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
+		mempool.CalculateMemPoolAncestors(*iter, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
 
 		onlyUnconfirmed(ancestors);
 		ancestors.insert(iter);
@@ -806,6 +721,10 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
 		// Update transactions that depend on each of these
 		nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
+
+        if (pblock->vtx.size() >= gArgs.GetArg("-maxtxnuminblock", std::numeric_limits<int64_t>::max())) {
+            break;
+        }
     }
 
     // 默认使用分片重新排列交易

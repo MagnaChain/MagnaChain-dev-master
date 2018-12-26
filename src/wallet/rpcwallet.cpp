@@ -786,9 +786,6 @@ UniValue callcontract(const JSONRPCRequest& request)
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     if (success) {
-        sls.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls.codeLen = 0;
-
         UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
             MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -916,8 +913,6 @@ UniValue precallcontract(const JSONRPCRequest& request)
     long maxCallNum = MAX_CONTRACT_CALL;
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
-    sls.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-    sls.codeLen = 0;
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("return", callRet));
