@@ -377,7 +377,6 @@ bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls)
     if (sls->contractOut == 0 && sls->recipients.size() == 0)
         return true;
 
-    // output
     for (size_t i = 0; i < sls->recipients.size(); ++i) {
         if (!tx.IsExistVout(sls->recipients[i]))
             return false;
@@ -385,44 +384,61 @@ bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls)
     return true;
 }
 
-bool CheckSmartContract(SmartLuaState* sls, const MCTransaction& tx, int saveType, MCValidationState& state, MCTxMemPoolEntry* entry, CoinAmountCache* pCoinAmountCache)
+bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int saveType, CoinAmountCache* pCoinAmountCache)
 {
+    const MCTransaction& tx = entry.GetTx();
     MagnaChainAddress contractAddr;
     contractAddr.Set(tx.pContractData->address);
 	MagnaChainAddress senderAddr;
     senderAddr.Set(tx.pContractData->sender.GetID());
 	UniValue args;
 	args.read(tx.pContractData->args);
-    std::string strFuncName = tx.pContractData->codeOrFunc;
+    const std::string& strFuncName = tx.pContractData->codeOrFunc;
     MCAmount amount = GetTxContractOut(tx);
 
     UniValue ret(UniValue::VARR);
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-        std::string rawCode = tx.pContractData->codeOrFunc;
+        const std::string& rawCode = tx.pContractData->codeOrFunc;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (PublishContract(sls, contractAddr, rawCode, ret) && CheckContractVinVout(tx, sls)) {
-            if (entry != nullptr) {
-                if (entry->GetTx().pContractData->amountOut != 0)
-                    return false;
-                entry->UpdateContract(sls);
-            }
-            return true;
+            return (tx.pContractData->amountOut == 0);
         }
 	}
     else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         long maxCallNum = MAX_CONTRACT_CALL;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) && CheckContractVinVout(tx, sls)) {
-            if (entry != nullptr) {
-                if (entry->GetTx().pContractData->amountOut != sls->contractOut)
-                    return false;
-                entry->UpdateContract(sls);
-            }
-            return true;
+            return (tx.pContractData->amountOut == sls->contractOut);
         }
 	}
 
 	return false;
+}
+
+void ReacceptTransactions()
+{
+    std::vector<MCTransactionRef> vecRemoves;
+    mpContractDb->contractContext.ClearAll();
+    pCoinAmountCache->Clear();
+
+    static SmartLuaState sls;
+    auto entries = mempool.GetSortedDepthAndScore();
+    for (int i = 0; i < entries.size(); ++i) {
+        MCTransactionRef pTx = entries[i]->GetSharedTx();
+        if (pTx->IsSmartContract()) {
+            if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
+                vecRemoves.emplace_back(pTx);
+            }
+            else {
+                mempool.CheckContract(entries[i], &sls);
+            }
+        }
+    }
+
+    for (const MCTransactionRef pTx : vecRemoves) {
+        mempool.RemoveRecursive(*pTx, MemPoolRemovalReason::BLOCK);
+    }
+    pCoinAmountCache->Clear();
 }
 
 // Returns the script flags which should be checked for a given block
@@ -755,10 +771,13 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                     strprintf("%d > %d", nFees, nAbsurdFee));
 
         if (tx.IsSmartContract()) {
-            SmartLuaState sls;
-            if (executeSmartContract && !CheckSmartContract(&sls, tx, SmartLuaState::SAVE_TYPE_CACHE, state, &entry, pCoinAmountCache)) {
-                mpContractDb->contractContext.ClearCache();
-                return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
+            if (executeSmartContract) {
+                SmartLuaState sls;
+                if (!CheckSmartContract(&sls, entry, SmartLuaState::SAVE_TYPE_CACHE, pCoinAmountCache)) {
+                    mpContractDb->contractContext.ClearCache();
+                    return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
+                }
+                entry.UpdateContract(&sls);
             }
         }
 
@@ -769,7 +788,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         size_t nLimitDescendants = gArgs.GetArg("-limitdescendantcount", DEFAULT_DESCENDANT_LIMIT);
         size_t nLimitDescendantSize = gArgs.GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT) * 50000;
         std::string errString;
-        if (!pool.CalculateMemPoolAncestors(entry, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
+        if (!pool.CalculateMemPoolAncestors(entry, nullptr, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
             mpContractDb->contractContext.ClearCache();
             return state.DoS(0, false, REJECT_NONSTANDARD, "too-long-mempool-chain", false, errString);
         }
@@ -856,7 +875,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                 // If not too many to replace, then calculate the set of
                 // transactions that would have to be evicted
                 for (MCTxMemPool::txiter it : setIterConflicting) {
-                    pool.CalculateDescendants(it, allConflicting);
+                    pool.CalculateDescendants(it, allConflicting, true);
                 }
                 for (MCTxMemPool::txiter it : allConflicting) {
                     nConflictingFees += it->GetModifiedFee();
@@ -1053,7 +1072,7 @@ bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState &state, const MCTra
                         bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract)
 {
     const MCChainParams& chainparams = Params();
-    return AcceptToMemoryPoolWithTime(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, GetTime(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, executeSmartContract);
+    return AcceptToMemoryPoolWithTime(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, GetTimeMillis(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, executeSmartContract);
 }
 
 
@@ -2780,8 +2799,9 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
             if (!ConnectTip(state, chainparams, pindexConnect, pindexConnect == pindexMostWork ? pblock : std::shared_ptr<const MCBlock>(), connectTrace, disconnectpool)) {
                 if (state.IsInvalid()) {
                     // The block violates a consensus rule.
-                    if (!state.CorruptionPossible())
+                    if (!state.CorruptionPossible()) {
                         InvalidChainFound(vpindexToConnect.back());
+                    }
                     state = MCValidationState();
                     fInvalidFound = true;
                     fContinue = false;
@@ -3785,33 +3805,6 @@ static bool AcceptBlock(const std::shared_ptr<const MCBlock>& pblock, MCValidati
     return true;
 }
 
-void UpdateContractTx(bool checkContract)
-{
-    if (checkContract)
-    {
-    	LOCK(cs_main);
-        std::vector<MCTransaction> vTxs;
-        mpContractDb->contractContext.ClearAll();
-        pCoinAmountCache->Clear();
-
-        static SmartLuaState sls;
-        auto items = mempool.GetSortedDepthAndScore();
-        for (int i = 0; i < items.size(); ++i) {
-            MCValidationState state;
-            MCTransaction tx = items[i]->GetTx();
-            auto item = *items[i];
-            if (tx.IsSmartContract()) {
-                if (!CheckSmartContract(&sls, tx, SmartLuaState::SAVE_TYPE_DATA, state, &item, pCoinAmountCache))
-                    vTxs.emplace_back(tx);
-            }
-        }
-
-        for (const MCTransaction& tran : vTxs)
-            mempool.RemoveRecursive(tran, MemPoolRemovalReason::BLOCK);
-        pCoinAmountCache->Clear();
-    }
-}
-
 bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock, bool executeContract)
 {
     int64_t start = GetTimeMillis();
@@ -3864,8 +3857,6 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     SendBranchBlockHeader(pblock, &strErr);
     if (!strErr.empty())
         LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock");
-    // check and remove invalid contract transaction
-    UpdateContractTx(chainActive.Tip()->GetBlockHash() == pblock->GetHash());
     
     LogPrintf("%s useTime:%I, height:%d\n", __FUNCTION__, GetTimeMillis() - start, pindex->nHeight);
     return true;

@@ -514,6 +514,8 @@ bool LoadMempool();
 
 bool ReadTxDataByTxIndex(const uint256& hash, MCTransactionRef& txOut, uint256& hashBlock, bool& retflag);
 
+void ReacceptTransactions();
+
 std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& setTxids);
 //bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof);
 

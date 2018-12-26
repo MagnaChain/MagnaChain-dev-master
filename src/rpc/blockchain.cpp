@@ -485,7 +485,7 @@ UniValue getmempoolancestors(const JSONRPCRequest& request)
     MCTxMemPool::setEntries setAncestors;
     uint64_t noLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
-    mempool.CalculateMemPoolAncestors(*it, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
+    mempool.CalculateMemPoolAncestors(*it, nullptr, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
@@ -547,7 +547,7 @@ UniValue getmempooldescendants(const JSONRPCRequest& request)
     }
 
     MCTxMemPool::setEntries setDescendants;
-    mempool.CalculateDescendants(it, setDescendants);
+    mempool.CalculateDescendants(it, setDescendants, true);
     // MCTxMemPool::CalculateDescendants will include the given tx
     setDescendants.erase(it);
 

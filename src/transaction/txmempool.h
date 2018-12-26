@@ -61,7 +61,7 @@ class MCTxMemPoolEntryContractData
 {
 public:
     std::set<MCContractID> contractAddrs;
-    uint32_t runnintTimes;
+    uint32_t runningTimes;
     uint32_t deltaDataLen;
 };
 
@@ -512,7 +512,7 @@ private:
     typedef std::map<txiter, TxLinks, CompareIteratorByHash> txlinksMap;
     txlinksMap mapLinks;
     
-    std::map<MCContractID, std::list<uint256>> contractLinksMap;
+    std::map<MCContractID, std::list<txiter>> contractLinksMap;
 
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
@@ -568,6 +568,9 @@ public:
 
     uint256 GetOriTxHash(const MCTransaction& tx);
 
+    // Update contract data
+    void CheckContract(txiter titer, SmartLuaState* sls);
+
 public:
     /** Remove a set of transactions from the mempool.
      *  If a transaction is in this set, then all in-mempool descendants must
@@ -589,6 +592,10 @@ public:
      */
     void UpdateTransactionsFromBlock(const std::vector<uint256>& vHashesToUpdate);
 
+    bool CalculateMemPoolAncestorsRecursive(const MCTxMemPoolEntry &entry, setEntries& parentHashes, setEntries &setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string &errString) const;
+
+    bool SearchForParents(const MCTxMemPoolEntry& entry, setEntries& parentHashes, std::set<MCContractID>* exclude, uint64_t limitAncestorCount, std::string& errString) const;
+
     /** Try to calculate all in-mempool ancestors of entry.
      *  (these are all calculated including the tx itself)
      *  limitAncestorCount = max number of ancestors
@@ -599,12 +606,12 @@ public:
      *  fSearchForParents = whether to search a tx's vin for in-mempool parents, or
      *    look up parents from mapLinks. Must be true for entries not in the mempool
      */
-    bool CalculateMemPoolAncestors(const MCTxMemPoolEntry& entry, setEntries& setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string& errString, bool fSearchForParents = true) const;
+    bool CalculateMemPoolAncestors(const MCTxMemPoolEntry& entry, std::set<MCContractID>* exclude, setEntries& setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string& errString, bool fSearchForParents = true) const;
 
     /** Populate setDescendants with all in-mempool descendants of hash.
      *  Assumes that setDescendants includes all in-mempool descendants of anything
      *  already in it.  */
-    void CalculateDescendants(txiter it, setEntries& setDescendants);
+    void CalculateDescendants(txiter it, setEntries& setDescendants, bool allContractDependencies);
 
     /** The minimum fee to get into the mempool, which may itself not be enough
       *  for larger-sized transactions.
@@ -690,6 +697,9 @@ private:
      *  removal.
      */
     void RemoveUnchecked(txiter entry, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
+
+    /* Remove contract links*/
+    void RemoveFromContractLinks(txiter it);
 
 public:
     int32_t GetCreateBranchChainTxCount()
