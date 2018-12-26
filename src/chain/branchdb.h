@@ -144,6 +144,7 @@ public:
     virtual uint256 GetBranchTipHash(const uint256& branchid);
     virtual uint32_t GetBranchHeight(const uint256& branchid);
     virtual BranchData GetBranchData(const uint256& branchHash);
+    virtual VBRANCH_CHAIN GetActiveChain(const uint256& branchHash);
     virtual bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash);
     virtual int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash);
     virtual uint16_t GetTxReportState(const uint256& rpBranchId, const uint256& rpBlockId, const uint256& flagHash);
@@ -159,6 +160,7 @@ public:
     uint32_t GetBranchHeight(const uint256& branchid) override;
     bool HasBranchData(const uint256& branchHash) const override;
     BranchData GetBranchData(const uint256& branchHash) override;
+    VBRANCH_CHAIN GetActiveChain(const uint256& branchHash) override;
     bool IsBlockInActiveChain(const uint256& branchHash, const uint256& blockHash) override;
     int GetBranchBlockMinedHeight(const uint256& branchHash, const uint256& blockHash) override;
 
@@ -228,7 +230,7 @@ public:
 private:
     bool FetchDataFromSource(const uint256& branchId);
 private:
-    void RemoveFromCache(const MCTransaction& tx);
+    void RemoveFromCache(const MCTransaction& tx, std::set<uint256> &modifyBranch);
 };
 
 /*
