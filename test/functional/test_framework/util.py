@@ -566,3 +566,167 @@ def mine_large_block(node, utxos=None):
     fee = 100 * node.getnetworkinfo()["relayfee"]
     create_lots_of_big_transactions(node, txouts, utxos, num, fee=fee)
     node.generate(1)
+
+
+def generate_contract(folder, syntax_err=False):
+    '''
+    生成测试合约代码
+    :param dir:
+    :return:
+    '''
+    code = '''
+        function say( ... )
+            -- body
+            if _G.print then
+                print(...)
+            else
+            end
+        end
+
+
+        function tailLoopTest(start)
+            if start < 0 then
+                return 0
+            else
+                --say("start is " ,tostring(start))
+                return tailLoopTest(start - 1)
+            end
+        end
+
+        function lotsOfParamsTest(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
+                   p11, p12, p13, p14, p15, p16, p17, p18, p19, p20,
+                   p21, p22, p23, p24, p25, p26, p27, p28, p29, p30,
+                   p31, p32, p33, p34, p35, p36, p37, p38, p39, p40,
+                   p41, p42, p43, p44, p45, p46, p48, p49, p50, p51,...)
+          local a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14
+          --say("test lots of params with func")
+        end
+
+
+
+        function tailLoopTest2(i, ...)
+          if i == 0 then
+            return ...
+          else
+            return tailLoopTest2(i-1, 1, ...)
+          end
+        end
+
+        function unpackTest( ... )
+            -- body
+            unpack({}, 0, 2^31 - 1)
+        end
+        
+        local function _call(addr,f,...)
+            say("call:",addr,f,...)
+            showMsg()
+            say(callcontract(addr,f,...))
+        end
+
+        function mainTest()
+            --say("begin test")
+            lotsOfParamsTest()
+            tailLoopTest(32)
+            --say('n pack test end')
+            local mt = {}
+            mt.__newindex = mt
+            local t = setmetatable({}, mt)
+            t[1] = 1
+            t[2^31] = 2
+            --say("big table test")
+            --unpackTest()
+            --say('unpack test ok')
+        end
+
+        local function _private( ... )
+            -- body
+        end
+
+        function localFuncTest( ... )
+            -- body
+            _call(msg.thisaddress,"_private")
+        end
+
+        function showMsg()
+            for k,v in pairs(msg) do
+                say(k," ---> ",v)
+            end
+        end
+
+        function callOtherContractTest(addr,func,...)
+            say("beCall by ",senderType , ",address is " , msg.sender )
+            addr = msg.thisaddress
+            _call(addr,func,...)
+        end
+
+        function contractDataTest( ... )
+            -- body
+            PersistentData.size = PersistentData.size - 1
+            PersistentData.negative = PersistentData.negative -1
+            PersistentData.counter = PersistentData.counter + 1
+            PersistentData[tostring(PersistentData.counter ^ 512 - 1)] = (PersistentData.counter ^ 512 - 1)
+            --PersistentData[table.concat( {'field', tostring(PersistentData.counter ^ 512 - 1)},"")] = (PersistentData.counter ^ 512 - 1)
+            for k,v in pairs(PersistentData) do
+                say(k,v)
+            end
+        end
+
+        function sendCoinTest( to,inum )
+            -- body
+            cell = 100000000
+            ret = send(to,inum * cell)
+            say("send ret:",ret)
+        end
+
+        function setThirdPartyContract( ... )
+            -- body
+            for i,v in ipairs({ ... }) do
+                table.insert(PersistentData.thirdPartyContracts,v)
+            end
+        end
+
+
+        glob = 10
+        function setGlob(val)
+            say('before set:',glob)
+            glob = val
+            say('after set:',glob)
+        end
+
+        function maxContractCallTest()
+            _call(msg.thisaddress,'setGlob',100)
+            for i=1,11 do
+                _call(msg.thisaddress,'setGlob',100)
+            end
+        end
+
+        function init()
+            --loop(3)
+            mainTest()
+            PersistentData = {}
+            PersistentData.name = "RMB"
+            PersistentData.symbol = "￥" --token symbol
+            PersistentData.decimals = 0 --
+            PersistentData.decimalsNum = math.pow(10, PersistentData.decimals)
+            local initialSupply = 21000000
+            PersistentData.totalSupply = initialSupply * PersistentData.decimalsNum
+            PersistentData.balanceOf = {}
+            PersistentData.balanceOf[msg.sender] = PersistentData.totalSupply
+            PersistentData.counter = 1
+            PersistentData.thirdPartyContracts = {}
+            PersistentData.size = 128
+            PersistentData.negative = 0
+
+        end
+
+
+        function payable()
+            --just for recharge
+        end
+    '''
+    if syntax_err:
+        code += 'syntax_err'
+    file_path = os.path.join(folder, "contract.lua")
+    with open(file_path, "w") as fh:
+        fh.write(code)
+    return file_path
