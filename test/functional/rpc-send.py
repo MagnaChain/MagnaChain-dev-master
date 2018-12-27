@@ -23,6 +23,8 @@ from test_framework.mininode import (
     mininode_lock,
     msg_block,
     msg_getdata,
+    uint256_from_compact,
+    ser_uint512,
 )
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import (
@@ -139,6 +141,60 @@ class RpcSendTest(MagnaChainTestFramework):
 
         self.log.info("Running custom_method")
 
+    def get_require_work(self,new_block_time):
+        block_height = self.nodes[0].getblockcount()
+        last_hash = self.nodes[0].getblockhash(block_height)
+        block_info = self.nodes[0].getblock(last_hash)
+        if block_height == 0:
+            # 只有创世块
+            return int("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16)
+        # time limit
+        if new_block_time < float(block_info["time"]):
+            return 17760256
+        if new_block_time - float(block_info["time"]) < 15:
+            #15 is params.nPowTargetSpacing
+            return 17760256
+
+        iRunTime = 1
+        if new_block_time - float(block_info["time"]) > 15 * 2 :
+            iRunTime = new_block_time - float(block_info["time"])  - 15 * 2
+            if iRunTime > 60 * 60 * 24 * 10:
+                iRunTime =  60 * 60 * 24 * 10
+            iRunTime /= 10
+            if iRunTime < 1:
+                iRunTime = 1
+
+        nMostWork = 0
+        iCount = 0
+
+        if block_height > 100:
+            max = 100
+        else:
+            max = block_height
+
+        bits_list = []
+        for i in range(block_height,block_height - max,-1):
+            # 这里排除创世块
+            # block_height = self.nodes[0].getblockcount()
+            hash = self.nodes[0].getblockhash(i)
+            nBits = int(self.nodes[0].getblock(hash)["bits"],16)
+            print("%s bits: %s"%(i,nBits),uint256_from_compact(nBits),hex(uint256_from_compact(nBits)))
+            print("---------------------:",537710958,uint256_from_compact(537710958),hex(uint256_from_compact(537710958)))
+            nWork = uint256_from_compact(nBits)
+            if nWork > 0:
+                # nMostWork += int(hex(nWork),16)
+                nMostWork += nWork
+                iCount += 1
+
+        nMostWork /= iCount
+        nMostWork *= 2 * iRunTime
+        nTarget = 0
+        print("nMostWork type&val:%s,%s  nWork type&val:%s,%s"%(type(nMostWork),int(nMostWork),type(nWork),nWork))
+        if nMostWork > int("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16):
+            return int("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",16)
+        else:
+            return int(nMostWork)
+
     def run_test(self):
         """Main test logic"""
 
@@ -178,19 +234,23 @@ class RpcSendTest(MagnaChainTestFramework):
         self.log.info("Create some blocks")
         self.tip = int(self.nodes[0].getbestblockhash(), 16)
         print(self.tip)
-        self.block_time = self.nodes[0].getblock(self.nodes[0].getbestblockhash())['time'] + 1
+        self.block_time = self.nodes[0].getblock(self.nodes[0].getbestblockhash())['time'] + 31
         print(self.block_time)
 
         height = 1
         import time
-        time.sleep(60)
-        print("one passed")
+        # time.sleep(60)
+        # print("one passed")
         for i in range(10):
             # Use the mininode and blocktools functionality to manually build a block
             # Calling the generate() rpc is easier, but this allows us to exactly
             # control the blocks and transactions.
-            block = create_block(self.tip, create_coinbase(height), self.block_time)
+            last_bits = self.get_require_work(self.block_time)
+            print("last_bits:",last_bits)
+            block = create_block(self.tip, create_coinbase(height), self.block_time,last_bits)
+            # block = create_block(self.tip, None, self.block_time)
             block.solve()
+            print(block)
             block_message = msg_block(block)
             # Send message is used to send a P2P message to the node over our NodeConn connection
             node0.send_message(block_message)
@@ -198,8 +258,9 @@ class RpcSendTest(MagnaChainTestFramework):
             blocks.append(self.tip)
             self.block_time += 1
             height += 1
+            last_bits += 70000
 
-        time.sleep(60 * 10)
+        time.sleep(1 * 10)
         self.log.info("Wait for node1 to reach current tip (height 11) using RPC",die)
         # self.nodes[1].waitforblockheight(11)
 

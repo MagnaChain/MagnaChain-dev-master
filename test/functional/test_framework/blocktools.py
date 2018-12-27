@@ -8,7 +8,7 @@ from .mininode import *
 from .script import CScript, OP_TRUE, OP_CHECKSIG, OP_RETURN
 
 # Create a block (with regtest difficulty)
-def create_block(hashprev, coinbase, nTime=None):
+def create_block(hashprev, coinbase, nTime=None,nBits = None):
     block = CBlock()
     if nTime is None:
         import time
@@ -16,7 +16,10 @@ def create_block(hashprev, coinbase, nTime=None):
     else:
         block.nTime = nTime
     block.hashPrevBlock = hashprev
-    block.nBits = 0x207fffff # Will break after a difficulty adjustment...
+    if nBits:
+        block.nBits = nBits
+    else:
+        block.nBits = 0x201fffff #0x201fffff # Will break after a difficulty adjustment...
     block.vtx.append(coinbase)
     block.hashMerkleRoot = block.calc_merkle_root()
     block.calc_sha256()
@@ -108,3 +111,4 @@ def get_legacy_sigopcount_tx(tx, fAccurate=True):
         # scriptSig might be of type bytes, so convert to CScript for the moment
         count += CScript(j.scriptSig).GetSigOpCount(fAccurate)
     return count
+
