@@ -145,6 +145,20 @@ def deser_uint160(f):
         r += t << (i * 32)
     return r
 
+def ser_uint512(u):
+    rs = b""
+    for i in range(16):
+        rs += struct.pack("<I", u & 0xFFFFFFFF)
+        u >>= 32
+    return rs
+
+def deser_uint512(f):
+    r = 0
+    for i in range(16):
+        t = struct.unpack("<I", f.read(4))[0]
+        r += t << (i * 32)
+    return r
+
 def uint256_from_str(s):
     r = 0
     t = struct.unpack("<IIIIIIII", s[:32])
@@ -160,10 +174,43 @@ def uint160_from_str(s):
     return r
 
 def uint256_from_compact(c):
+    #"""
+    #old
     nbytes = (c >> 24) & 0xFF
-    v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
+    if nbytes <= 3:
+        v = (c & 0xFFFFFF) >> 8 * (3 - nbytes)
+    else:
+        v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
     return v
+    # v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
+    # return v
+    #"""
+    # nSize = c >> 24
+    # nWord = c & 0x007fffff
+    # if nSize <= 3:
+    #     nWord >>= 8 * (3 - nSize);
+    # else:
+    #     nWord <<= 8 * (nSize - 3);
+    # return nWord
 
+def compact_from_uint256(v):
+    """Convert uint256 to compact encoding
+    """
+    nbytes = (v.bit_length() + 7) >> 3
+    compact = 0
+    if nbytes <= 3:
+        compact = (v & 0xFFFFFF) << 8 * (3 - nbytes)
+    else:
+        compact = v >> 8 * (nbytes - 3)
+        compact = compact & 0xFFFFFF
+
+    # If the sign bit (0x00800000) is set, divide the mantissa by 256 and
+    # increase the exponent to get an encoding without it set.
+    if compact & 0x00800000:
+        compact >>= 8
+        nbytes += 1
+
+    return compact | nbytes << 24
 
 def deser_vector(f, c):
     nit = deser_compact_size(f)
@@ -348,8 +395,11 @@ class CBlockLocator(object):
 
 class COutPoint(object):
     def __init__(self, hash=0, n=0):
-        self.hash = hash
-        self.n = n
+        if hash and n:
+            self.hash = hash
+            self.n = n
+        else:
+            self.set_null()
 
     def deserialize(self, f):
         self.hash = deser_uint256(f)
@@ -360,6 +410,10 @@ class COutPoint(object):
         r += ser_uint256(self.hash)
         r += struct.pack("<I", self.n)
         return r
+
+    def set_null(self):
+        self.hash = 0
+        self.n = 4294967295
 
     def __repr__(self):
         return "COutPoint(hash=%064x n=%i)" % (self.hash, self.n)
@@ -800,9 +854,11 @@ class CBlockHeader(object):
         return self.sha256
 
     def __repr__(self):
-        return "CBlockHeader(nVersion=%i hashPrevBlock=%064x hashMerkleRoot=%064x nTime=%s nBits=%08x nNonce=%08x)" \
+        return "CBlockHeader(nVersion=%i hashPrevBlock=%064x hashMerkleRoot=%064x hashMerkleRootWithData=%064x hashMerkleRootWithPrevData=%064x nTime=%s nBits=%08x nNonce=%08x prevoutStake=%s vchBlockSig=%s)" \
             % (self.nVersion, self.hashPrevBlock, self.hashMerkleRoot,
-               time.ctime(self.nTime), self.nBits, self.nNonce)
+               self.hashMerkleRootWithData,self.hashMerkleRootWithPrevData,
+               time.ctime(self.nTime), self.nBits, self.nNonce,
+                self.prevoutStake,self.vchBlockSig)
 
 
 class CBlock(CBlockHeader):
@@ -878,6 +934,7 @@ class CBlock(CBlockHeader):
             self.rehash()
 
     def __repr__(self):
+        print(super(CBlock, self).__repr__())
         return "CBlock(nVersion=%i hashPrevBlock=%064x hashMerkleRoot=%064x nTime=%s nBits=%08x nNonce=%08x vtx=%s)" \
             % (self.nVersion, self.hashPrevBlock, self.hashMerkleRoot,
                time.ctime(self.nTime), self.nBits, self.nNonce, repr(self.vtx))

@@ -130,9 +130,38 @@ def uint256_from_str(s):
 
 
 def uint256_from_compact(c):
+    '''
+    int nSize = nCompact >> 24;
+    uint32_t nWord = nCompact & 0x007fffff;
+    if (nSize <= 3) {
+        nWord >>= 8 * (3 - nSize);
+        *this = nWord;
+    } else {
+        *this = nWord;
+        *this <<= 8 * (nSize - 3);
+    }
+    if (pfNegative)
+        *pfNegative = nWord != 0 && (nCompact & 0x00800000) != 0;
+    if (pfOverflow)
+        *pfOverflow = nWord != 0 && ((nSize > 34) ||
+                                     (nWord > 0xff && nSize > 33) ||
+                                     (nWord > 0xffff && nSize > 32));
+    '''
+    '''
+    old 
     nbytes = (c >> 24) & 0xFF
     v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
     return v
+    '''
+    # new
+    nSize = c >> 24
+    nWord = c & 0x007fffff
+    if nSize <= 3:
+        nWord >>= 8 * (3 - nSize);
+    else:
+        nWord <<= 8 * (nSize - 3);
+    return nWord
+
 
 
 def deser_vector(f, c):
