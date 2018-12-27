@@ -505,6 +505,30 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
     UpdateAncestorsOf(true, newit, setAncestors);
     UpdateEntryForAncestors(newit, setAncestors);
 
+    // update contract amount
+    if (entry.GetTx().pContractData != nullptr && entry.GetTx().pContractData->amountOut > 0) {
+        pCoinAmountCache->DecAmount(entry.GetTx().pContractData->address, entry.GetTx().pContractData->amountOut);
+    }
+
+    const std::vector<MCTxOut>& vout = entry.GetTx().vout;
+    for (int i = 0; i < vout.size(); ++i) {
+        const MCScript& scriptPubKey = vout[i].scriptPubKey;
+        if (scriptPubKey.IsContract()) {
+            opcodetype opcode;
+            std::vector<unsigned char> vch;
+            MCScript::const_iterator pc = scriptPubKey.begin();
+            MCScript::const_iterator end = scriptPubKey.end();
+            scriptPubKey.GetOp(pc, opcode, vch);
+
+            assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+            vch.clear();
+            vch.assign(pc + 1, end);
+            uint160 key = uint160(vch);
+            MCContractID contractId = MCContractID(key);
+            pCoinAmountCache->IncAmount(contractId, vout[i].nValue);
+        }
+    }
+
     nTransactionsUpdated++;
     totalTxSize += entry.GetTxSize();
     if (minerPolicyEstimator) {minerPolicyEstimator->ProcessTransaction(entry, validFeeEstimate);}
@@ -582,6 +606,27 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
 	if (it->GetTx().IsBranchCreate()) {
 		nCreateBranchTxCount--;
 	}
+
+    // update contract amount
+    const std::vector<MCTxOut>& vout = it->GetTx().vout;
+    for (int i = 0; i < vout.size(); ++i) {
+        const MCScript& scriptPubKey = vout[i].scriptPubKey;
+        if (scriptPubKey.IsContract()) {
+            opcodetype opcode;
+            std::vector<unsigned char> vch;
+            MCScript::const_iterator pc = scriptPubKey.begin();
+            MCScript::const_iterator end = scriptPubKey.end();
+            scriptPubKey.GetOp(pc, opcode, vch);
+
+            if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE) {
+                vch.clear();
+                vch.assign(pc + 1, end);
+                uint160 key = uint160(vch);
+                MCContractID contractId = MCContractID(key);
+                pCoinAmountCache->DecAmount(contractId, vout[i].nValue);
+            }
+        }
+    }
 
     mapLinks.erase(it);
     mapTx.erase(it);
@@ -1131,15 +1176,13 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
     if (GetRand(std::numeric_limits<uint32_t>::max()) >= nCheckFrequency)
         return;
 
-    LOCK(cs);
-    // check and remove invalid contract transaction
-    ReacceptTransactions();
 
     LogPrint(BCLog::MEMPOOL, "Checking mempool with %u transactions and %u inputs\n", (unsigned int)mapTx.size(), (unsigned int)mapNextTx.size());
 
     uint64_t checkTotal = 0;
     uint64_t innerUsage = 0;
 
+    LOCK(cs);
     MCCoinsViewCache mempoolDuplicate(const_cast<MCCoinsViewCache*>(pcoins));
     const int64_t nSpendHeight = GetSpendHeight(mempoolDuplicate);
 
@@ -1495,6 +1538,53 @@ int MCTxMemPool::Expire(int64_t time) {
     }
     RemoveStaged(stage, false, MemPoolRemovalReason::EXPIRY);
     return stage.size();
+}
+
+void MCTxMemPool::ReacceptTransactions()
+{
+    LOCK(cs);
+    std::vector<MCTransactionRef> vecRemoves;
+    mpContractDb->contractContext.ClearAll();
+    pCoinAmountCache->Clear();
+
+    static SmartLuaState sls;
+    auto entries = mempool.GetSortedDepthAndScore();
+    for (int i = 0; i < entries.size(); ++i) {
+        MCTransactionRef pTx = entries[i]->GetSharedTx();
+        if (pTx->IsSmartContract()) {
+            if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
+                vecRemoves.emplace_back(pTx);
+            }
+            else {
+                CheckContract(entries[i], &sls);
+                if (pTx->pContractData != nullptr && pTx->pContractData->amountOut > 0) {
+                    pCoinAmountCache->DecAmount(pTx->pContractData->address, pTx->pContractData->amountOut);
+                }
+
+                for (int j = 0; j < pTx->vout.size(); ++j) {
+                    const MCScript& scriptPubKey = pTx->vout[j].scriptPubKey;
+                    if (scriptPubKey.IsContract()) {
+                        opcodetype opcode;
+                        std::vector<unsigned char> vch;
+                        MCScript::const_iterator pc = scriptPubKey.begin();
+                        MCScript::const_iterator end = scriptPubKey.end();
+                        scriptPubKey.GetOp(pc, opcode, vch);
+
+                        assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+                        vch.clear();
+                        vch.assign(pc + 1, end);
+                        uint160 key = uint160(vch);
+                        MCContractID contractId = MCContractID(key);
+                        pCoinAmountCache->IncAmount(contractId, pTx->vout[j].nValue);
+                    }
+                }
+            }
+        }
+    }
+
+    for (const MCTransactionRef pTx : vecRemoves) {
+        RemoveRecursive(*pTx, MemPoolRemovalReason::BLOCK);
+    }
 }
 
 bool MCTxMemPool::AddUnchecked(const uint256&hash, const MCTxMemPoolEntry &entry, bool validFeeEstimate)

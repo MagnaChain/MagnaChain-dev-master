@@ -198,8 +198,28 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
 
                 if (tx->pContractData->amountOut > 0) {
                     if (sls->pCoinAmountCache->HasKeyInCache(contractId)) {
-                        MCAmount amount = sls->pCoinAmountCache->GetAmount(contractId);
+                        MCAmount amount = threadData->pCoinAmountCache->GetAmount(contractId);
                         threadData->contractContext.txFinalData.coins = amount + tx->pContractData->amountOut;
+                    }
+                    threadData->pCoinAmountCache->DecAmount(tx->pContractData->address, tx->pContractData->amountOut);
+                }
+
+                const std::vector<MCTxOut>& vout = tx->vout;
+                for (int i = 0; i < vout.size(); ++i) {
+                    const MCScript& scriptPubKey = vout[i].scriptPubKey;
+                    if (scriptPubKey.IsContract()) {
+                        opcodetype opcode;
+                        std::vector<unsigned char> vch;
+                        MCScript::const_iterator pc = scriptPubKey.begin();
+                        MCScript::const_iterator end = scriptPubKey.end();
+                        scriptPubKey.GetOp(pc, opcode, vch);
+
+                        assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+                        vch.clear();
+                        vch.assign(pc + 1, end);
+                        uint160 key = uint160(vch);
+                        MCContractID contractId = MCContractID(key);
+                        threadData->pCoinAmountCache->IncAmount(contractId, vout[i].nValue);
                     }
                 }
             }

@@ -43,11 +43,13 @@ class MCConnman;
 class CScriptCheck;
 class MCBlockPolicyEstimator;
 class MCTxMemPool;
+class MCTxMemPoolEntry;
 class MCValidationState;
 class SmartLuaState;
 struct ChainTxData;
 class BranchCache;
 class ContractContext;
+class CoinAmountCache;
 
 struct PrecomputedTransactionData;
 struct LockPoints;
@@ -372,6 +374,8 @@ bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp = nul
 
 bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls);
 
+bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int saveType, CoinAmountCache* pCoinAmountCache);
+
 /**
  * Closure representing one script verification
  * Note that this stores references to the spending transaction 
@@ -513,8 +517,6 @@ void DumpMempool();
 bool LoadMempool();
 
 bool ReadTxDataByTxIndex(const uint256& hash, MCTransactionRef& txOut, uint256& hashBlock, bool& retflag);
-
-void ReacceptTransactions();
 
 std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& setTxids);
 //bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof);

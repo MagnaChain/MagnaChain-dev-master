@@ -400,45 +400,22 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         const std::string& rawCode = tx.pContractData->codeOrFunc;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (PublishContract(sls, contractAddr, rawCode, ret) && CheckContractVinVout(tx, sls)) {
-            return (tx.pContractData->amountOut == 0);
+        if (PublishContract(sls, contractAddr, rawCode, ret)) {
+            if (CheckContractVinVout(tx, sls)) {
+                return (tx.pContractData->amountOut == 0);
+            }
         }
 	}
     else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         long maxCallNum = MAX_CONTRACT_CALL;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) && CheckContractVinVout(tx, sls)) {
-            return (tx.pContractData->amountOut == sls->contractOut);
-        }
+        if (CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret)) {
+            if (CheckContractVinVout(tx, sls))
+                return (tx.pContractData->amountOut == sls->contractOut);
+        } 
 	}
 
 	return false;
-}
-
-void ReacceptTransactions()
-{
-    std::vector<MCTransactionRef> vecRemoves;
-    mpContractDb->contractContext.ClearAll();
-    pCoinAmountCache->Clear();
-
-    static SmartLuaState sls;
-    auto entries = mempool.GetSortedDepthAndScore();
-    for (int i = 0; i < entries.size(); ++i) {
-        MCTransactionRef pTx = entries[i]->GetSharedTx();
-        if (pTx->IsSmartContract()) {
-            if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
-                vecRemoves.emplace_back(pTx);
-            }
-            else {
-                mempool.CheckContract(entries[i], &sls);
-            }
-        }
-    }
-
-    for (const MCTransactionRef pTx : vecRemoves) {
-        mempool.RemoveRecursive(*pTx, MemPoolRemovalReason::BLOCK);
-    }
-    pCoinAmountCache->Clear();
 }
 
 // Returns the script flags which should be checked for a given block
@@ -505,9 +482,10 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
         // ignore validation errors in resurrected transactions
         MCValidationState stateDummy;
         MCTransactionRef ptx = *it;
-        if (fAddToMempool){
-            if (ptx->IsBranchChainTransStep2() && ptx->fromBranchId != MCBaseChainParams::MAIN)// revert transaction data
-            {
+        if (fAddToMempool) {
+            if ((ptx->IsBranchChainTransStep2() && ptx->fromBranchId != MCBaseChainParams::MAIN) ||
+                (ptx->IsSmartContract() && ptx->pContractData->amountOut > 0)) {
+                // revert transaction data
                 MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr);
                 ptx = MakeTransactionRef(mtx);
             }
@@ -2771,6 +2749,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
         if (!DisconnectTip(state, chainparams, &disconnectpool)) {
             // This is likely a fatal error, but keep the mempool consistent,
             // just in case. Only remove from the mempool in this case.
+            mempool.ReacceptTransactions();
             UpdateMempoolForReorg(disconnectpool, false);
             return false;
         }
@@ -2811,6 +2790,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
                     // A system error occurred (disk space, database error, ...).
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
+                    mempool.ReacceptTransactions();
                     UpdateMempoolForReorg(disconnectpool, false);
                     return false;
                 }
@@ -2826,6 +2806,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
         }
     }
 
+    mempool.ReacceptTransactions();
     if (fBlocksDisconnected) {
         // If any blocks were disconnected, disconnectpool may be non empty.  Add
         // any disconnected transactions back to the mempool.
@@ -2995,6 +2976,7 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
         if (!DisconnectTip(state, chainparams, &disconnectpool)) {
             // It's probably hopeless to try to make the mempool consistent
             // here if DisconnectTip failed, but we can try.
+            mempool.ReacceptTransactions();
             UpdateMempoolForReorg(disconnectpool, false);
             return false;
         }
@@ -3017,6 +2999,7 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
 
     // DisconnectTip will add transactions to disconnectpool; try to add these
     // back to the mempool.
+    mempool.ReacceptTransactions();
     UpdateMempoolForReorg(disconnectpool, true);
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so

@@ -614,9 +614,9 @@ bool CallContract(lua_State* L, const std::string& code, const std::string& data
         argc++;
     }
 
-    assert(lua_pcall(L, argc, LUA_MULTRET, 0) == 0);
+    int result = lua_pcall(L, argc, LUA_MULTRET, 0);
     maxCallNum = L->limit_instruction;
-    bool success = lua_toboolean(L, top + 1) != 0;
+    bool success = ((result == 0) && (lua_toboolean(L, top + 1) != 0));
     if (success) {
         size_t dl = 0;
         const char* temp = lua_tolstring(L, top + 2, &dl);
@@ -648,6 +648,7 @@ bool CallContract(lua_State* L, const std::string& code, const std::string& data
     else {
         const char* err = lua_tostring(L, -1);
         ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, err);
     }
 
     lua_settop(L, top);
@@ -744,7 +745,7 @@ int SendCoins(lua_State* L)
     sls->contractAddrs[0].GetContractID(contractID);
     MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
     if (sls->contractOut + amount > totalAmount)
-        throw std::runtime_error(strprintf("%s Contract has not enough amount", __FUNCTION__));
+        throw std::runtime_error(strprintf("Contract %s has not enough amount", contractID.ToString().c_str()));
 
     MCTxOut out;
     out.nValue = amount;

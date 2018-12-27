@@ -536,6 +536,8 @@ public:
     void Check(const MCCoinsViewCache* pcoins) const;
     void SetSanityCheck(double dFrequency = 1.0) { nCheckFrequency = dFrequency * 4294967295.0; }
 
+    void ReacceptTransactions();
+
     // AddUnchecked must updated state for all ancestors of a given transaction,
     // to track size/count of descendant transactions.  First version of
     // AddUnchecked can be used to have it call CalculateMemPoolAncestors(), and
