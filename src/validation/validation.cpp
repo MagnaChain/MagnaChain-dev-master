@@ -3837,7 +3837,8 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
 
     // check and remove invalid contract transaction
     std::string strErr;
-    SendBranchBlockHeader(pblock, &strErr);
+    if (!Params().IsMainChain())
+        SendBranchBlockHeader(pblock, &strErr);
     if (!strErr.empty())
         LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock");
     

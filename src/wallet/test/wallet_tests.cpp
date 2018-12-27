@@ -638,6 +638,7 @@ public:
 
 BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
 {
+    BOOST_CHECK_EQUAL(chainActive.Height(), COINBASE_MATURITY+1);
     std::string coinbaseAddress = coinbaseKey.GetPubKey().GetID().ToString();
     LOCK2(cs_main, wallet->cs_wallet);
 
@@ -646,25 +647,29 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     auto list = wallet->ListCoins();
     BOOST_CHECK_EQUAL(list.size(), 1);
     BOOST_CHECK_EQUAL(boost::get<MCKeyID>(list.begin()->first).ToString(), coinbaseAddress);
-    BOOST_CHECK_EQUAL(list.begin()->second.size(), 1);
+    BOOST_CHECK_EQUAL(list.begin()->second.size(), 260);//
 
     // Check initial balance from one mature coinbase transaction.
-    BOOST_CHECK_EQUAL(50 * COIN, wallet->GetAvailableBalance());
+    MCAmount target = Params().GetConsensus().BigBoomValue + 85 * COIN;
+    BOOST_CHECK_EQUAL(target, wallet->GetAvailableBalance());
 
     // Add a transaction creating a change address, and confirm ListCoins still
     // returns the coin associated with the change address underneath the
     // coinbaseKey pubkey, even though the change address has a different
     // pubkey.
+    int height = chainActive.Height();
+    MilliSleep(Params().GetConsensus().nPowTargetSpacing * 1000);
     AddTx(MCRecipient{GetScriptForRawPubKey({}), 1 * COIN, false /* subtract fee */});
+    BOOST_CHECK_EQUAL(chainActive.Height(), ++height);
     list = wallet->ListCoins();
     BOOST_CHECK_EQUAL(list.size(), 1);
     BOOST_CHECK_EQUAL(boost::get<MCKeyID>(list.begin()->first).ToString(), coinbaseAddress);
-    BOOST_CHECK_EQUAL(list.begin()->second.size(), 2);
+    BOOST_CHECK_EQUAL(list.begin()->second.size(), 260 * 2);
 
     // Lock both coins. Confirm number of available coins drops to 0.
     std::vector<MCOutput> available;
     wallet->AvailableCoins(available);
-    BOOST_CHECK_EQUAL(available.size(), 2);
+    BOOST_CHECK_EQUAL(available.size(), 260 * 2);
     for (const auto& group : list) {
         for (const auto& coin : group.second) {
             wallet->LockCoin(MCOutPoint(coin.tx->GetHash(), coin.i));
@@ -678,7 +683,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     list = wallet->ListCoins();
     BOOST_CHECK_EQUAL(list.size(), 1);
     BOOST_CHECK_EQUAL(boost::get<MCKeyID>(list.begin()->first).ToString(), coinbaseAddress);
-    BOOST_CHECK_EQUAL(list.begin()->second.size(), 2);
+    BOOST_CHECK_EQUAL(list.begin()->second.size(), 260 * 2);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
