@@ -3242,7 +3242,7 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() > 3)
 		throw std::runtime_error(
-			"getbalance ( \"account\" minconf include_watchonly )\n"
+			"getbalanceof ( \"account\" minconf include_watchonly )\n"
 			"\nIf account is not specified, returns the server's total available balance.\n"
 			"If account is specified (DEPRECATED), returns the balance in the account.\n"
 			"Note that the account \"\" is not the same as leaving the parameter out.\n"
@@ -3275,34 +3275,35 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 
 	LOCK2(cs_main, pwallet->cs_wallet);
 
-	if (request.params.size() == 0)
-		return  ValueFromAmount(pwallet->GetBalance());
+    if (request.params.size() == 0) {
+        return  ValueFromAmount(pwallet->GetBalance());
+    }
 
 	const std::string& account_param = request.params[0].get_str();
 	const std::string* account = account_param != "*" ? &account_param : nullptr;
 
 	int nMinDepth = 1;
-	if (!request.params[1].isNull())
-		nMinDepth = request.params[1].get_int();
+    if (!request.params[1].isNull()) {
+        nMinDepth = request.params[1].get_int();
+    }
+
 	isminefilter filter = ISMINE_SPENDABLE;
-	if (!request.params[2].isNull())
-		if (request.params[2].get_bool())
-			filter = filter | ISMINE_WATCH_ONLY;
+    if (!request.params[2].isNull()) {
+        if (request.params[2].get_bool()) {
+            filter = filter | ISMINE_WATCH_ONLY;
+        }
+    }
 
-	MagnaChainAddress btcaddr(account_param);
-	if (!btcaddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
-
-	if (btcaddr.Get().type() != typeid(MCKeyID))
-	{
+	MagnaChainAddress addr(account_param);
+	if (!addr.IsKeyID() && !addr.IsContractID()) {
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 	}
 
-	const MCKeyID& kAddr = boost::get<MCKeyID>(btcaddr.Get());
-	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
-	//LogPrintf("Send contract address %s\n", addr.ToString());
+    uint160 key;
+    boost::apply_visitor(CoinCacheVisitor(key), addr.Get());
 
-	MCAmount nValue = 0;
+    MCAmount nValue = 0;
+	CoinListPtr plist = pcoinListDb->GetList(key);
 	if (plist != nullptr) {
 		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
 			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
@@ -3316,7 +3317,6 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 		}
 	}
 	return ValueFromAmount(nValue);
-	//return ValueFromAmount(pwallet->GetLegacyBalance(filter, nMinDepth, account));
 }
 
 UniValue fundrawtransaction(const JSONRPCRequest& request)

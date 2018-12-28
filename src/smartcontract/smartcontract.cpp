@@ -533,13 +533,11 @@ bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCA
     if (!contractAddr.GetContractID(contractID))
         return false;
 
-    sls->pCoinAmountCache->TakeSnapshot(contractID);
     bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
     if (success) {
         sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
         sls->codeLen = 0;
     }
-    sls->pCoinAmountCache->RemoveSnapshot(contractID, !success);
     return success;
 }
 
@@ -569,7 +567,6 @@ bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const
         if (sls->saveType > 0) {
             contractInfo.txIndex = sls->txIndex;
             contractInfo.data = data;
-            assert(sls->pCoinAmountCache->DecAmount(contractId, sls->contractOut));
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
@@ -906,11 +903,14 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
             total += sls->recipients[j].nValue;
         }
 
-        if (total != tx->pContractData->amountOut)
+        if (total != tx->pContractData->amountOut) {
             return false;
+        }
+
+        // 这里只执行一次合约调用，所以不需要更新coinAmountCache
     }
 
-    pContractContext->txFinalData.data[txIndex] = pContractContext->cache;
+    pContractContext->txFinalData[txIndex].data = pContractContext->cache;
     pContractContext->Commit();
     return true;
 }
@@ -919,16 +919,18 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
 bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext)
 {
     std::map<MCContractID, uint256> contract2txid;
-    pContractContext->txFinalData.data.resize(pBlock->vtx.size());
+    pContractContext->txFinalData.resize(pBlock->vtx.size());
     for (int i = offset; i < offset + count; ++i) {
         const MCTransactionRef tx = pBlock->vtx[i];
-        if (tx->IsNull())
+        if (tx->IsNull()) {
             return false;
+        }
 
         assert(!tx->GetHash().IsNull());
         if (tx->IsSmartContract()) {
-            if (i >= pBlock->prevContractData.size())
+            if (i >= pBlock->prevContractData.size()) {
                 return false;
+            }
             ExecuteContract(sls, tx, i, pBlock->prevContractData[i].coins, pBlock->GetBlockTime(), pPrevBlockIndex->nHeight + 1, pPrevBlockIndex, pContractContext);
         }
     }
@@ -940,8 +942,9 @@ uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractDa
 {
     MCHashWriter ss(SER_GETHASH, 0);
     ss << txHash;
-    for (auto item : contractData)
+    for (auto item : contractData) {
         ss << item.first << item.second.txIndex << item.second.code << item.second.data;
+    }
     return ss.GetHash();
 }
 
@@ -952,38 +955,44 @@ uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& con
     return ss.GetHash();
 }
 
-bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves)
+bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractTxFinalData>& contractData, std::vector<uint256>& leaves)
 {
-    if (vtx.size() != contractData.size())
+    if (vtx.size() != contractData.size()) {
         return false;
+    }
     leaves.resize(vtx.size());
-    for (size_t i = 0; i < vtx.size(); ++i)
-        leaves[i] = GetTxHashWithData(vtx[i]->GetHash(), contractData[i]);
+    for (size_t i = 0; i < vtx.size(); ++i) {
+        leaves[i] = GetTxHashWithData(vtx[i]->GetHash(), contractData[i].data);
+    }
     return true;
 }
 
 bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves)
 {
-    if (vtx.size() != contractData.size())
+    if (vtx.size() != contractData.size()) {
         return false;
+    }
     leaves.resize(vtx.size(), uint256());
-    for (size_t i = 0; i < vtx.size(); ++i)
+    for (size_t i = 0; i < vtx.size(); ++i) {
         leaves[i] = GetTxHashWithPrevData(vtx[i]->GetHash(), contractData[i]);
+    }
     return true;
 }
 
 uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool*mutated)
 {
     std::vector<uint256> leaves;
-    if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, leaves))
+    if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, leaves)) {
         return uint256();
+    }
     return ComputeMerkleRoot(leaves, mutated);
 }
 
 uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated)
 {
     std::vector<uint256> leaves;
-    if (!VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, leaves))
+    if (!VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, leaves)) {
         return uint256();
+    }
     return ComputeMerkleRoot(leaves, mutated);
 }

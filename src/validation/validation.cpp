@@ -410,8 +410,9 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
         long maxCallNum = MAX_CONTRACT_CALL;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret)) {
-            if (CheckContractVinVout(tx, sls))
+            if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == sls->contractOut);
+            }
         } 
 	}
 
@@ -752,7 +753,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
 
         // No transactions are allowed below minRelayTxFee except from disconnected blocks
         if (fLimitFree && nModifiedFees < ::minRelayTxFee.GetFee(nSize)) {
-            return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
+            return state.DoS(0, false, REJECT_INSUFFICIENTFEE, strprintf("min relay fee not met(%I/%I)", nModifiedFees, ::minRelayTxFee.GetFee(nSize)));
         }
 
         if (nAbsurdFee && nFees > nAbsurdFee) {

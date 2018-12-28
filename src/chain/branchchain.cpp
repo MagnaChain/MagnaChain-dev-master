@@ -1299,25 +1299,26 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
 
     uint256 hashWithPrevData = GetTxHashWithPrevData(proveTx->GetHash(), prevData);
     int txIndex = CheckSpvProof(pBlockData->header.hashMerkleRootWithPrevData, pProveData->contractData->prevDataSPV, hashWithPrevData);
-    if (txIndex < 0)
+    if (txIndex < 0) {
         return false;
+    }
 
     ContractContext contractContext;
-    for (auto item : pProveData->contractData->contractPrevData)
+    for (auto item : pProveData->contractData->contractPrevData) {
         contractContext.data[item.first] = std::move(item.second);
-
-    CoinAmountTemp coinAmountTemp;
-    coinAmountTemp.IncAmount(proveTx->pContractData->address, pProveData->contractData->coins);
+    }
 
     SmartLuaState sls;
-    contractContext.txFinalData.data.resize(txIndex + 1);
-    if (!ExecuteContract(&sls, proveTx, txIndex, pProveData->contractData->coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext))
+    contractContext.txFinalData.resize(txIndex + 1);
+    if (!ExecuteContract(&sls, proveTx, txIndex, prevData.coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext)) {
         return false;
+    }
 
-    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData.data[txIndex]);
+    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData[txIndex].data);
     int txIndexFinal = CheckSpvProof(pBlockData->header.hashMerkleRootWithData, pProveData->contractData->dataSPV, hashWithData);
-    if (txIndexFinal < 0 || txIndexFinal != txIndex)
+    if (txIndexFinal < 0 || txIndexFinal != txIndex) {
         return false;
+    }
 
     return true;
 }

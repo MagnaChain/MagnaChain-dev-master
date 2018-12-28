@@ -10,6 +10,7 @@
 #include "transaction/coins.h"
 #include "io/dbwrapper.h"
 #include "chain/chain.h"
+#include "script/standard.h"
 
 #include <map>
 #include <string>
@@ -172,10 +173,8 @@ protected:
 
 public:
 	void Flush(void);
-
 	void ImportCoins(MCCoinsMap& cacheCoins);
-
-	CoinListPtr GetList(const uint160& kAddr) const;
+	CoinListPtr GetList(const uint160& addr) const;
 };
 
 #endif // MAGNACHAIN_TXDB_H

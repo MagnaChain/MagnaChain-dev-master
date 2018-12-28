@@ -1546,15 +1546,15 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     ContractContext contractContext;
-    contractContext.txFinalData.data.resize(proveBlock.vtx.size());
+    contractContext.txFinalData.resize(proveBlock.vtx.size());
     if (!ExecuteBlock(&sls, &proveBlock, pProveBlockIndex->pprev, 0, proveTxIndex + 1, &contractContext))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "executive contract fail");
-    pReportData->contractData->proveContractData = contractContext.txFinalData.data[proveTxIndex];
+    pReportData->contractData->proveContractData = contractContext.txFinalData[proveTxIndex].data;
 
     std::vector<bool> proveMatch(proveBlock.vtx.size(), false);
     proveMatch[proveTxIndex] = true;
     std::vector<uint256> proveLeaves;
-    VecTxMerkleLeavesWithData(proveBlock.vtx, contractContext.txFinalData.data, proveLeaves);
+    VecTxMerkleLeavesWithData(proveBlock.vtx, contractContext.txFinalData, proveLeaves);
     pReportData->contractData->proveSpvProof = std::move(MCSpvProof(proveLeaves, proveMatch, proveBlockHash));
 
     MCRPCConfig branchrpccfg;
@@ -1827,7 +1827,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
         std::vector<uint256> reportedDataLeaves;
-        VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, reportedDataLeaves);
+        VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, reportedDataLeaves);
         mtx.pProveData->contractData->dataSPV = std::move(MCPartialMerkleTree(reportedDataLeaves, reportedMatch));
     }
 
