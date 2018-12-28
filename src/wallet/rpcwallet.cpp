@@ -3843,14 +3843,14 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 	if (request.fHelp || request.params.size() < 4 || request.params.size() > 5)
 		throw std::runtime_error(
 			"premaketransaction fromaddress toaddress changeaddress amount \n"
-			"\n rebroadcast the branch chain transaction by txid, in case that transction has not be send to the target chain .\n"
+			"\n SDK interface, make a transaction no sign \n"
 			"\nArguments:\n"
 			"1. \"fromaddress\"                  (string, required) The address for input coins\n"
 			"2. \"toaddress\"                    (string, required) Send to address\n"
 			"3. \"changeaddress\"                (string, required) The address for change coins\n"
 			"4. \"amount\"                       (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
 			"5. \"fee\"                          (numeric or string, optional) The amount in " + CURRENCY_UNIT + " to for fee eg 0.0001, default 0 and will calc fee by system\n"
-			"\nReturns the hash of the created branch chain.\n"
+			"\nReturns transaction data \n"
 			"\nResult:\n"
 			"{\n"
 			"  \"txhex\" : xxx,            (string) The transaction hex data\n"
