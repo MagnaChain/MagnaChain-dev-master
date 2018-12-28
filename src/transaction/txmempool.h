@@ -83,6 +83,7 @@ class MCTxMemPoolEntry
     friend class MCTxMemPool;
 
 private:
+    uint64_t entryOrder;
     MCTransactionRef tx;
     MCAmount nFee;             //!< Cached to avoid expensive parent-transaction lookups
     size_t nTxWeight;         //!< ... and avoid recomputing tx weight (also used for GetTxSize())
@@ -114,6 +115,7 @@ public:
 
     MCTxMemPoolEntry(const MCTxMemPoolEntry& other);
 
+    const uint64_t GetOrder() const { return this->entryOrder; }
     const MCTransaction& GetTx() const { return *this->tx; }
     MCTransactionRef GetSharedTx() const { return this->tx; }
     const MCAmount& GetFee() const { return nFee; }
