@@ -24,6 +24,12 @@ logger = logging.getLogger("TestFramework.utils")
 # Assert functions
 ##################
 
+def assert_contains(string,sub_string):
+    if sub_string not in string:
+        raise AssertionError("(%s) not in (%s)" %(sub_string,string))
+
+
+
 def assert_fee_amount(fee, tx_size, fee_per_kB):
     """Assert the fee was in range"""
     target_fee = tx_size * fee_per_kB / 1000
@@ -568,6 +574,9 @@ def mine_large_block(node, utxos=None):
     node.generate(1)
 
 
+
+###############################
+# smart contract functools
 def generate_contract(folder, syntax_err=False):
     '''
     生成测试合约代码
@@ -619,7 +628,7 @@ def generate_contract(folder, syntax_err=False):
         
         local function _call(addr,f,...)
             say("call:",addr,f,...)
-            showMsg()
+            --showMsg()
             say(callcontract(addr,f,...))
         end
 
@@ -655,7 +664,7 @@ def generate_contract(folder, syntax_err=False):
 
         function callOtherContractTest(addr,func,...)
             say("beCall by ",senderType , ",address is " , msg.sender )
-            addr = msg.thisaddress
+            --addr = msg.thisaddress
             _call(addr,func,...)
         end
 
@@ -674,6 +683,7 @@ def generate_contract(folder, syntax_err=False):
         function sendCoinTest( to,inum )
             -- body
             cell = 100000000
+            inum = inum or 1
             ret = send(to,inum * cell)
             say("send ret:",ret)
         end
@@ -693,9 +703,9 @@ def generate_contract(folder, syntax_err=False):
             say('after set:',glob)
         end
 
-        function maxContractCallTest()
+        function maxContractCallTest(inum)
             _call(msg.thisaddress,'setGlob',100)
-            for i=1,11 do
+            for i=1,inum do
                 _call(msg.thisaddress,'setGlob',100)
             end
         end
@@ -730,3 +740,28 @@ def generate_contract(folder, syntax_err=False):
     with open(file_path, "w") as fh:
         fh.write(code)
     return file_path
+
+def caller_factory(mgr,contract_id,sender):
+    '''
+
+    :param mgr: the test_framework obj
+    :param contract_id:
+    :param sender:
+    :return: a function
+    '''
+    node = mgr.nodes[0]
+    contract_id = contract_id
+    sender = sender
+
+    def _call_contract(func,*args,amount = random.randint(1, 10000)):
+        mgr.log.info("%s,%s,%s,%s,%s"%(contract_id,func,sender,amount,args))
+        balance = node.getbalance()
+        try:
+            result = node.callcontract(True, amount, contract_id, sender, func,*args)
+            mgr.log.info("total cost :%s"%(balance - node.getbalance() - amount))
+            return result
+        except Exception as e:
+            print(e)
+            assert all(re.findall('-\d+\)$', repr(e)))
+            return repr(e)
+    return _call_contract
