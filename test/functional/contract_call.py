@@ -13,6 +13,7 @@ from collections import defaultdict
 import random
 import re
 from functools import wraps
+from decimal import Decimal
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
@@ -23,6 +24,11 @@ from test_framework.util import (
     generate_contract,
     caller_factory
 )
+
+# TODO SKIP should be set False
+SKIP = True
+PAYABLE = "payable"
+CYCLE_CALL = "callOtherContractTest"
 
 
 class ContractCallTest(MagnaChainTestFramework):
@@ -55,24 +61,25 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract = caller_factory(self,contract_id,sender)
         # call
         # no coins
-        call_contract("payable",amount = 10000000)
+        call_contract(PAYABLE,amount = 10000000)
 
         # # 非法的入参
         for amount in [10000000000, -1, 0, 0.00009]:
-            call_contract("payable", amount=amount)
+            call_contract(PAYABLE, amount=amount)
 
         # # 合约不存在
-        caller_factory(self, "2PPWpHssgXjA8yEgfd3Vo36Hhx1eimbGCcP", sender)("payable")
+        caller_factory(self, "2PPWpHssgXjA8yEgfd3Vo36Hhx1eimbGCcP", sender)(PAYABLE)
 
         # # 地址错误
         for addr in [contract_id + 'x',sender]:
-            caller_factory(self, addr, sender)("payable")
+            caller_factory(self, addr, sender)(PAYABLE)
 
         # 函数不存在
-        # assert_contains( call_contract("payable2"),"can not find function")
+        if not SKIP:
+            assert_contains( call_contract("payable2"),"can not find function")
 
         # recharge to contract
-        call_contract("payable")
+        call_contract(PAYABLE)
         node.generate(nblocks = 1)
 
         # # tailLoopTest
@@ -87,10 +94,12 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract("unpackTest"), "too many results to unpack")
 
         # localFuncTest
-        # assert_contains(call_contract("localFuncTest"), "can not find function")
+        if not SKIP:
+            assert_contains(call_contract("localFuncTest"), "can not find function")
 
         # contractDataTest
         call_contract("contractDataTest")
+        assert_equal(call_contract("get", "size")['return'][0], 127)
 
         # sendCoinTest
         # send to mgc address
@@ -100,7 +109,6 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_equal(node.getbalanceof(new_address),1)
 
         # #send to contract
-        new_address = node.getnewaddress()
         tmp_id = node.publishcontract(contract)["contractaddress"]
         assert_contains(call_contract("sendCoinTest", tmp_id, 100),"Invalid destination address")
         node.generate(nblocks = 1)
@@ -110,24 +118,50 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract("maxContractCallTest", 12), "run out of limit instruction")
 
         # callOtherContractTest
-        # cycle call with sendCoins just like a->b->c->a(send be called in last a)
+        # cycle call
         # step1 create contracts
-        func_name = "callOtherContractTest"
         ca_id = contract_id
         cb_id = node.publishcontract(contract)["contractaddress"]
         cc_id = node.publishcontract(contract)["contractaddress"]
-        cd_id = node.publishcontract(contract)["contractaddress"]
-        caller_a = call_contract
         caller_b = caller_factory(self,cb_id,sender)
-        caller_c = caller_factory(self, cc_id, sender)
-        caller_d = caller_factory(self, cd_id, sender)
         node.generate(nblocks=1)
 
-        # step2  a->b->c->a(send be called in last a)
+        # step2  a->b->c->a(send will be call in last a)
         new_address = node.getnewaddress()
-        caller_a(func_name,cb_id,func_name,cc_id,func_name,ca_id,"sendCoinTest",new_address)
+        if not SKIP:
+            call_contract(CYCLE_CALL,cb_id,CYCLE_CALL,cc_id,CYCLE_CALL,ca_id,"sendCoinTest",new_address)
+            node.generate(nblocks=1)
+            assert_equal(node.getbalanceof(new_address), 1)
+
+        # step3 a->b->c->b,modify PersistentData
+        if not SKIP:
+            caller_b("contractDataTest") # after called,size should be 127
+            assert_equal(caller_b("get", "size")['return'][0], 127)
+            call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest", new_address) # after called,size should be 126
+            node.generate(nblocks=1)
+            # print(caller_b("get", "size"))
+            assert_equal( caller_b("get","size")['return'][0],126 )
+
+        # lots of dust vin in contract's send transaction
+        # TODO:maybe  need to set payfee param in magnachaind
+        cd_id = node.publishcontract(contract)["contractaddress"]
+        caller_d = caller_factory(self, cd_id, sender)
+        for i in range(2000):
+            caller_d(PAYABLE,amount = Decimal("1"))
+            if i % 50 == 0:
+                node.generate(nblocks = 1)
+        new_address = node.getnewaddress()
+        caller_d("sendCoinTest", new_address,1900,amount = Decimal("0"))
         node.generate(nblocks=1)
-        assert_equal(node.getbalanceof(new_address), 1)
+        assert_equal(node.getbalanceof(new_address),1900)
+
+        #
+
+
+
+
+
+
 
 
 
