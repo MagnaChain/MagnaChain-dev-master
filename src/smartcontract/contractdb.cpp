@@ -396,7 +396,7 @@ bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
         for (auto heightIt = contractInfo.items.begin(); heightIt != contractInfo.items.end();) {
             // 将小于确认区块以下的不属于该链的区块数据移除掉
             if (heightIt->blockHeight <= confirmBlockHeight) {
-                for (int i = 0; i < heightIt->vecBlockHash.size(); ++i) {
+                for (int i = 0; i < heightIt->vecBlockHash.size();) {
                     BlockMap::iterator bi = mapBlockIndex.find(heightIt->vecBlockHash[i]);
                     if (bi == mapBlockIndex.end() || 
                         newConfirmBlock->GetAncestor(heightIt->blockHeight)->GetBlockHash() != heightIt->vecBlockHash[i]) {
@@ -408,6 +408,9 @@ bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
                         heightIt->vecBlockHash.erase(heightIt->vecBlockHash.begin() + i);
                         heightIt->vecBlockContractData.erase(heightIt->vecBlockContractData.begin() + i);
                         continue;
+                    }
+                    else {
+                        ++i;
                     }
                 }
                 assert(heightIt->vecBlockHash.size() == 1 && heightIt->vecBlockContractData.size() == 1);
