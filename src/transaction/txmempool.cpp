@@ -26,6 +26,9 @@ MCTxMemPoolEntry::MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& 
     tx(_tx), nFee(_nFee), nTime(_nTime), entryHeight(_entryHeight),
     spendsCoinbase(_spendsCoinbase), sigOpCost(_sigOpsCost), lockPoints(lp)
 {
+    static uint64_t nextEntryOrder = 1;
+    entryOrder = nextEntryOrder++;
+
     nTxWeight = GetTransactionWeight(*tx);
     nUsageSize = RecursiveDynamicUsage(tx);
 
@@ -259,8 +262,8 @@ bool MCTxMemPool::SearchForParents(const MCTxMemPoolEntry& entry, setEntries& pa
 
             auto last = links->second.end();
             for (auto liter = links->second.begin(); liter != links->second.end(); ++liter) {
-                if ((*liter)->GetTime() >= entry.GetTime()) {
-                    if ((*liter)->GetTime() == entry.GetTime())
+                if ((*liter)->GetOrder() >= entry.GetOrder()) {
+                    if ((*liter)->GetOrder() == entry.GetOrder())
                         assert((*liter)->GetTx().GetHash() == txHash);
                     break;
                 }
@@ -838,8 +841,8 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
             auto& links = contractLinksMap[contractId];
             auto citer = links.end();
             for (auto liter = links.begin(); liter != links.end(); ++liter) {
-                if ((*liter)->GetTime() >= titer->GetTime()) {
-                    assert((*liter)->GetTime() != titer->GetTime());
+                if ((*liter)->GetOrder() >= titer->GetOrder()) {
+                    assert((*liter)->GetOrder() != titer->GetOrder());
                     citer = liter;
                     break;
                 }

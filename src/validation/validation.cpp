@@ -720,8 +720,20 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             }
         }
 
-        MCTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(),
-                fSpendsCoinbase, nSigOpsCost, lp);
+        MCTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(), fSpendsCoinbase, nSigOpsCost, lp);
+
+        // execute contract
+        if (tx.IsSmartContract()) {
+            if (executeSmartContract) {
+                SmartLuaState sls;
+                if (!CheckSmartContract(&sls, entry, SmartLuaState::SAVE_TYPE_CACHE, pCoinAmountCache)) {
+                    mpContractDb->contractContext.ClearCache();
+                    return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
+                }
+                entry.UpdateContract(&sls);
+            }
+        }
+
         unsigned int nSize = entry.GetTxSize();
 
         // Check that the transaction doesn't have an excessive number of
@@ -729,9 +741,9 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         // itself can contain sigops MAX_STANDARD_TX_SIGOPS is less than
         // MAX_BLOCK_SIGOPS; we still consider this an invalid rather than
         // merely non-standard transaction.
-        if (nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST)
-            return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false,
-                    strprintf("%d", nSigOpsCost));
+        if (nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST) {
+            return state.DoS(0, false, REJECT_NONSTANDARD, "bad-txns-too-many-sigops", false, strprintf("%d", nSigOpsCost));
+        }
 
         MCAmount mempoolRejectFee = pool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFee(nSize);
         if (mempoolRejectFee > 0 && nModifiedFees < mempoolRejectFee) {
@@ -743,20 +755,8 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "min relay fee not met");
         }
 
-        if (nAbsurdFee && nFees > nAbsurdFee)
-            return state.Invalid(false,
-                    REJECT_HIGHFEE, "absurdly-high-fee",
-                    strprintf("%d > %d", nFees, nAbsurdFee));
-
-        if (tx.IsSmartContract()) {
-            if (executeSmartContract) {
-                SmartLuaState sls;
-                if (!CheckSmartContract(&sls, entry, SmartLuaState::SAVE_TYPE_CACHE, pCoinAmountCache)) {
-                    mpContractDb->contractContext.ClearCache();
-                    return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
-                }
-                entry.UpdateContract(&sls);
-            }
+        if (nAbsurdFee && nFees > nAbsurdFee) {
+            return state.Invalid(false, REJECT_HIGHFEE, "absurdly-high-fee", strprintf("%d > %d", nFees, nAbsurdFee));
         }
 
         // Calculate in-mempool ancestors, up to a limit.
