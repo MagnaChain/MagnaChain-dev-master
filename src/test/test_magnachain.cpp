@@ -59,6 +59,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
         fPrintToDebugLog = false; // don't want to write to debug.log file
         fCheckBlockIndex = true;
 		ECC_Stop();// in SelectParams has a pair function call(ECC_Start and ECC_Stop)
+        gArgs.ForceSetArg("-powtargetspacing", "1");//force change mining space time
         SelectParams(chainName);
 		ECC_Start();
         noui_connect();
