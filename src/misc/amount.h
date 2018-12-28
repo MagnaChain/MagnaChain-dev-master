@@ -24,7 +24,7 @@ static const MCAmount CENT = 1000000;
  * critical; in unusual circumstances like a(nother) overflow bug that allowed
  * for the creation of coins out of thin air modification could lead to a fork.
  * */
-static const MCAmount MAX_MONEY = 4000000000 * COIN;
+static const MCAmount MAX_MONEY = 402799999865600000;// *COIN;
 inline bool MoneyRange(const MCAmount& nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 
 #endif //  MAGNACHAIN_AMOUNT_H

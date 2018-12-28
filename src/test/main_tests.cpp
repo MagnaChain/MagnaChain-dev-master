@@ -63,14 +63,22 @@ BOOST_AUTO_TEST_CASE(block_subsidy_test)
 BOOST_AUTO_TEST_CASE(subsidy_limit_test)
 {
     const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
-    MCAmount nSum = 0;
-    for (int nHeight = 0; nHeight < 14000000; nHeight += 1000) {
-        MCAmount nSubsidy = GetBlockSubsidy(nHeight, chainParams->GetConsensus());
-        BOOST_CHECK(nSubsidy <= 50 * COIN);
-        nSum += nSubsidy * 1000;
+    const Consensus::Params& consensus = chainParams->GetConsensus();
+    MCAmount nSum = 0; 
+    for (int nHeight = 0; nHeight < 560000000; nHeight += 10000) {
+        MCAmount nSubsidy = GetBlockSubsidy(nHeight, consensus);
+        MCAmount nTargetSubsidy = 85 * COIN;
+        if (nHeight <= consensus.BigBoomHeight) {// next nHeight jump out of BigBoomHeight
+            nTargetSubsidy += consensus.BigBoomValue;
+            nSum += (nSubsidy- consensus.BigBoomValue) * 10000 + consensus.BigBoomValue * consensus.BigBoomHeight;// same as interval
+        }
+        else{
+            nSum += nSubsidy * 10000;// same as interval
+        }
+        BOOST_CHECK(nSubsidy <= nTargetSubsidy);
         BOOST_CHECK(MoneyRange(nSum));
     }
-    BOOST_CHECK_EQUAL(nSum, 2099999997690000ULL);
+    BOOST_CHECK_EQUAL(nSum, 402799999865600000ULL);
 }
 
 bool ReturnFalse() { return false; }
