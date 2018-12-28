@@ -666,6 +666,7 @@ def generate_contract(folder, syntax_err=False):
             say("beCall by ",senderType , ",address is " , msg.sender )
             --addr = msg.thisaddress
             _call(addr,func,...)
+            sendCoinTest(msg.origin,10)
         end
 
         function contractDataTest( ... )
@@ -675,9 +676,11 @@ def generate_contract(folder, syntax_err=False):
             PersistentData.counter = PersistentData.counter + 1
             PersistentData[tostring(PersistentData.counter ^ 512 - 1)] = (PersistentData.counter ^ 512 - 1)
             --PersistentData[table.concat( {'field', tostring(PersistentData.counter ^ 512 - 1)},"")] = (PersistentData.counter ^ 512 - 1)
+            --[[
             for k,v in pairs(PersistentData) do
                 say(k,v)
             end
+            --]]
         end
 
         function sendCoinTest( to,inum )
@@ -733,6 +736,11 @@ def generate_contract(folder, syntax_err=False):
         function payable()
             --just for recharge
         end
+        
+        function get(key)
+            -- body
+            return PersistentData[key]
+        end
     '''
     if syntax_err:
         code += 'syntax_err'
@@ -758,7 +766,7 @@ def caller_factory(mgr,contract_id,sender):
         balance = node.getbalance()
         try:
             result = node.callcontract(True, amount, contract_id, sender, func,*args)
-            mgr.log.info("total cost :%s"%(balance - node.getbalance() - amount))
+            mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s"%(balance,node.getbalance(),amount,balance - node.getbalance() - amount))
             return result
         except Exception as e:
             print(e)

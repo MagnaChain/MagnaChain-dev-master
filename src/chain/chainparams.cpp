@@ -72,8 +72,7 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
 
     if (!isMainChain) {
         ContractContext contractContext;
-        contractContext.txFinalData.coins = 0;
-        contractContext.txFinalData.data.resize(1);
+        contractContext.txFinalData.resize(1);
         genesis.groupSize.resize(1);
         genesis.prevContractData.resize(1);
         genesis.hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(genesis);

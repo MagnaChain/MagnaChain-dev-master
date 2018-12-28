@@ -312,6 +312,11 @@ bool MagnaChainAddress::IsScript() const
     return IsValid() && vchVersion == Params().Base58Prefix(MCChainParams::SCRIPT_ADDRESS);
 }
 
+bool MagnaChainAddress::IsKeyID() const
+{
+    return IsValid() && vchVersion == Params().Base58Prefix(MCChainParams::PUBKEY_ADDRESS);
+}
+
 void MagnaChainSecret::SetKey(const MCKey& vchSecret)
 {
     assert(vchSecret.IsValid());

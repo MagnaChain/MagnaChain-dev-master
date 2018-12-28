@@ -106,7 +106,7 @@ bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockI
 
 uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
 uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData);
-bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves);
+bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractTxFinalData>& contractData, std::vector<uint256>& leaves);
 bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves);
 uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool* mutated = nullptr);
 uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated = nullptr);

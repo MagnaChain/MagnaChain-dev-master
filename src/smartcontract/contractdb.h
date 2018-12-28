@@ -61,7 +61,10 @@ class ContractTxFinalData
 {
 public:
     MCAmount coins;
-    std::vector<CONTRACT_DATA> data;
+    CONTRACT_DATA data;
+
+public:
+    ContractTxFinalData() : coins(0) {}
 };
 
 class ContractContext
@@ -71,8 +74,8 @@ class ContractContext
 public:
     CONTRACT_DATA cache;    // 数据缓存，用于回滚
     CONTRACT_DATA data;
-    ContractTxFinalData txFinalData;
     CONTRACT_DATA prevData;
+    std::vector<ContractTxFinalData> txFinalData;
 
 public:
     void SetCache(const MCContractID& contractId, ContractInfo& contractInfo);
@@ -92,6 +95,7 @@ struct SmartContractThreadData
     int offset;
     uint16_t groupSize;
     int blockHeight;
+    std::vector<MCAmount> coins;
     ContractContext contractContext;
     MCBlockIndex* pPrevBlockIndex;
     CoinAmountCache* pCoinAmountCache;

@@ -126,11 +126,16 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
 #ifndef _DEBUG
     try {
 #endif
+        bool mainChain = Params().IsMainChain();
+        if (!mainChain) {
+            threadData->contractContext.txFinalData.resize(threadData->groupSize);
+        }
+
         std::map<MCContractID, uint256> contract2txid;
-        threadData->contractContext.txFinalData.data.resize(threadData->groupSize);
         for (int i = threadData->offset; i < threadData->offset + threadData->groupSize; ++i) {
-            if (interrupt)
+            if (interrupt) {
                 return;
+            }
 
             const MCTransactionRef tx = pBlock->vtx[i];
             if (tx->IsNull()) {
@@ -138,18 +143,16 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
                 return;
             }
 
-            assert(!tx->GetHash().IsNull());
             threadData->associationTransactions.insert(tx->GetHash());
-            //printf("%s group offset %d, tx hash %s\n", __FUNCTION__, threadData->offset, tx->GetHash().ToString().c_str());
             for (int j = 0; j < tx->vin.size(); ++j) {
                 if (!tx->vin[j].prevout.hash.IsNull()) {
-                    //printf("%s group offset %d, vin hash %s\n", __FUNCTION__, threadData->offset, tx->vin[j].prevout.hash.ToString().c_str());
                     threadData->associationTransactions.insert(tx->vin[j].prevout.hash);
                 }
             }
 
-            if (!tx->IsSmartContract())
+            if (!tx->IsSmartContract()) {
                 continue;
+            }
 
             MCContractID contractId = tx->pContractData->address;
             MagnaChainAddress contractAddr(contractId);
@@ -158,15 +161,15 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
 
             UniValue ret(UniValue::VARR);
             if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-                std::string rawCode = tx->pContractData->codeOrFunc;
+                const std::string& rawCode = tx->pContractData->codeOrFunc;
                 sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
-                if (!PublishContract(sls, contractAddr, rawCode, ret)) {
+                if (!PublishContract(sls, contractAddr, rawCode, ret) || tx->pContractData->amountOut != 0 || tx->pContractData->amountOut != sls->contractOut) {
                     interrupt = true;
                     return;
                 }
             }
             else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-                std::string strFuncName = tx->pContractData->codeOrFunc;
+                const std::string& strFuncName = tx->pContractData->codeOrFunc;
                 UniValue args;
                 args.read(tx->pContractData->args);
 
@@ -191,16 +194,16 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
                     total += sls->recipients[j].nValue;
                 }
 
-                if (total != tx->pContractData->amountOut) {
+                if (total != tx->pContractData->amountOut || tx->pContractData->amountOut != sls->contractOut) {
                     interrupt = true;
                     return;
                 }
 
+                if (!mainChain) {
+                    threadData->contractContext.txFinalData[i].coins = threadData->pCoinAmountCache->GetAmount(contractId);
+                }
+                
                 if (tx->pContractData->amountOut > 0) {
-                    if (sls->pCoinAmountCache->HasKeyInCache(contractId)) {
-                        MCAmount amount = threadData->pCoinAmountCache->GetAmount(contractId);
-                        threadData->contractContext.txFinalData.coins = amount + tx->pContractData->amountOut;
-                    }
                     threadData->pCoinAmountCache->DecAmount(tx->pContractData->address, tx->pContractData->amountOut);
                 }
 
@@ -224,13 +227,13 @@ void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* p
                 }
             }
 
-            if (i < pBlock->prevContractData.size()) {
+            if (!mainChain) {
                 for (auto it : sls->contractDataFrom) {
                     pBlock->prevContractData[i].items[it.first].blockHash = it.second.blockHash;
                     pBlock->prevContractData[i].items[it.first].txIndex = it.second.txIndex;
                 }
+                threadData->contractContext.txFinalData[i - threadData->offset].data = threadData->contractContext.cache;
             }
-            threadData->contractContext.txFinalData.data[i - threadData->offset] = threadData->contractContext.cache;
             threadData->contractContext.Commit();
             sls->contractDataFrom.clear();
         }
@@ -256,8 +259,10 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     LogPrint(BCLog::MINING, "Generate block vtx size:%d, group:%d\n", pBlock->vtx.size(), pBlock->groupSize.size());
     std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
     int size = pBlock->vtx.size();
-    if (!Params().IsMainChain())
+    bool mainChain = Params().IsMainChain();
+    if (!mainChain) {
         pBlock->prevContractData.resize(size);
+    }
     for (int i = 0; i < pBlock->groupSize.size(); ++i) {
         threadData[i].offset = offset;
         threadData[i].groupSize = pBlock->groupSize[i];
@@ -274,27 +279,35 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
 
     offset = 0;
     pContractContext->ClearCache();
-    pContractContext->txFinalData.data.resize(pBlock->vtx.size());
+    if (!mainChain) {
+        pContractContext->txFinalData.resize(pBlock->vtx.size());
+    }
     std::set<uint256> finalTransactions;
     for (int i = 0; i < threadData.size(); ++i) {
-        for (int j = offset; j < offset + pBlock->groupSize[i]; ++j)
-            pContractContext->txFinalData.data[j] = std::move(threadData[i].contractContext.txFinalData.data[j - offset]);
-        pContractContext->txFinalData.coins = threadData[i].contractContext.txFinalData.coins;
-        offset += pBlock->groupSize[i];
-
+        // 检查是否有关联交易交叉
         for (auto item : threadData[i].associationTransactions) {
-            if (finalTransactions.find(item) == finalTransactions.end())
+            if (finalTransactions.count(item) == 0)
                 finalTransactions.insert(item);
             else
                 return false;
         }
 
+        // 保存数据，同时检查是否有关联数据交叉
         for (auto item : threadData[i].contractContext.data) {
-            if (pContractContext->cache.find(item.first) == pContractContext->cache.end())
+            if (pContractContext->cache.count(item.first) == 0)
                 pContractContext->SetCache(item.first, item.second);
             else
                 return false;
         }
+
+        // 支链保存交易最后的数据以便在需要时提供证明使用
+        if (!mainChain) {
+            for (int j = offset; j < offset + pBlock->groupSize[i]; ++j) {
+                pContractContext->txFinalData[j].coins = threadData[i].contractContext.txFinalData[j - offset].coins;
+                pContractContext->txFinalData[j].data = std::move(threadData[i].contractContext.txFinalData[j - offset].data);
+            }
+        }
+        offset += pBlock->groupSize[i];
     }
     pContractContext->Commit();
 
