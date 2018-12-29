@@ -1166,7 +1166,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iAmount = GetBlockWork(block, block.prevoutStake, hash);
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash);
 
 	// check
 	bool fNegative;
@@ -1177,13 +1177,13 @@ bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consen
 
 	//// Check range
 	if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256( consensusParams.powLimit))
-		return false;
+		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, bnTarget error");
 
 	if (UintToArith256(hash) > bnTarget)
-		return false;
+		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, UintToArith256(hash) > bnTarget");
 
-	if (iAmount != block.nNonce)
-		return false;
+	if (iBlockWork != block.nNonce)
+		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, iBlockWork != block.nNonce");;
 	return true;
 }
 
