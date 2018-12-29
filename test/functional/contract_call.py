@@ -61,14 +61,18 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract = caller_factory(self,contract_id,sender)
         # call
         # no coins
-        call_contract(PAYABLE,amount = 10000000)
+        assert_contains(call_contract(PAYABLE,amount = 10000000),"Insufficient funds")
 
         # # 非法的入参
-        for amount in [10000000000, -1, 0, 0.00009]:
+        for amount in [10000000000, -1, 0, Decimal("0.0009").quantize(Decimal("0.0000"))]:
             call_contract(PAYABLE, amount=amount)
 
+        # 非法sender
+        for sender_addr in [sender + "x",contract_id]:
+            assert_contains(caller_factory(self, contract_id, sender_addr)(PAYABLE),"Invalid sender address")
+
         # # 合约不存在
-        caller_factory(self, "2PPWpHssgXjA8yEgfd3Vo36Hhx1eimbGCcP", sender)(PAYABLE)
+        assert_contains(caller_factory(self, "2PPWpHssgXjA8yEgfd3Vo36Hhx1eimbGCcP", sender)(PAYABLE),"GetContractInfo fail")
 
         # # 地址错误
         for addr in [contract_id + 'x',sender]:
@@ -105,13 +109,49 @@ class ContractCallTest(MagnaChainTestFramework):
         # send to mgc address
         new_address = node.getnewaddress()
         call_contract("sendCoinTest",new_address,1)
-        node.generate(nblocks = 1)
-        assert_equal(node.getbalanceof(new_address),1)
+        call_contract("sendCoinTest", new_address, "1")
+        assert_contains(call_contract("sendCoinTest", new_address, 2**31 - 1),"not enough amount ")
+        assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
+        assert_contains(call_contract("sendCoinTest", new_address, 0), "Dust amount")
+        assert_contains(call_contract("sendCoinTest", new_address, -1), "Dust amount")
+        # send all balance
+        tmp_id = node.publishcontract(contract)["contractaddress"]
+        tmp_caller = caller_factory(self,tmp_id,sender)
+        tmp_caller(PAYABLE,amount = Decimal("1"))
+        tmp_caller("sendCoinTest",new_address,1,amount = Decimal("0"))
+        node.generate(nblocks=2) # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
+        assert_equal(node.getbalanceof(new_address),3)
+        assert_contains(tmp_caller("sendCoinTest", new_address, 1), "not enough amount ")
 
-        # #send to contract
+        # send to contract
         tmp_id = node.publishcontract(contract)["contractaddress"]
         assert_contains(call_contract("sendCoinTest", tmp_id, 100),"Invalid destination address")
         node.generate(nblocks = 1)
+
+        # batchSendTest
+        # 12个参数是上限，除去内部调用之后，实际能用的就只有7个参数位，并且不支持数组
+        for to in range(35):
+            to_list = [ node.getnewaddress() for i in range(7)]
+            call_contract("addWithdrawList", *to_list)
+        call_contract("batchSendTest")
+        node.generate(nblocks=2)
+        for addr in to_list:
+            assert_equal(node.getbalanceof(addr),1)
+
+        # updateContractTest
+        call_contract("updateContract","self","weigun")
+        node.generate(nblocks=1)
+        assert_equal(call_contract("get","self")['return'][0],"weigun")
+
+        # cycleSelfTest
+        if not SKIP:
+            for i in range(100):
+                call_contract("cycleSelf")
+                call_contract("updateContract", "this", "")
+                if i % 10 == 0:
+                    node.generate(nblocks = 1)
+            node.generate(nblocks=1)
+
 
         # maxContractCallTest
         call_contract("maxContractCallTest",11) # 11 is the limit
@@ -139,23 +179,36 @@ class ContractCallTest(MagnaChainTestFramework):
             assert_equal(caller_b("get", "size")['return'][0], 127)
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest", new_address) # after called,size should be 126
             node.generate(nblocks=1)
-            # print(caller_b("get", "size"))
             assert_equal( caller_b("get","size")['return'][0],126 )
 
         # lots of dust vin in contract's send transaction
         # TODO:maybe  need to set payfee param in magnachaind
-        cd_id = node.publishcontract(contract)["contractaddress"]
-        caller_d = caller_factory(self, cd_id, sender)
-        for i in range(2000):
-            caller_d(PAYABLE,amount = Decimal("1"))
-            if i % 50 == 0:
-                node.generate(nblocks = 1)
-        new_address = node.getnewaddress()
-        caller_d("sendCoinTest", new_address,1900,amount = Decimal("0"))
-        node.generate(nblocks=1)
-        assert_equal(node.getbalanceof(new_address),1900)
+        if not SKIP:
+            cd_id = node.publishcontract(contract)["contractaddress"]
+            caller_d = caller_factory(self, cd_id, sender)
+            for i in range(2000):
+                caller_d(PAYABLE,amount = Decimal("1"))
+                if i % 50 == 0:
+                    node.generate(nblocks = 1)
+            new_address = node.getnewaddress()
+            caller_d("sendCoinTest", new_address,1900,amount = Decimal("0"))
+            node.generate(nblocks=2)
+            assert_equal(node.getbalanceof(new_address),1900)
 
-        #
+        # dust change vout in send
+        new_sender = node.getnewaddress()
+        node.sendtoaddress(new_sender,2)
+        tmp_id = node.publishcontract(contract)['contractaddress']
+        caller_tmp = caller_factory(self, tmp_id, new_sender)
+        caller_tmp(PAYABLE,amount = 1)
+        node.generate(nblocks=2)
+        print(node.getbalanceof(new_sender))
+        node.generate(nblocks = 1)
+        caller_tmp("dustChangeTest",new_sender)
+        node.generate(nblocks=2)
+        print(node.getbalanceof(new_sender))
+
+
 
 
 
