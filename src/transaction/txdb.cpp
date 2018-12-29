@@ -577,20 +577,18 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
             const Coin& coin = it->second.coin;
             const MCOutPoint& outpoint = it->first;
 
-            MCTxDestination kDest;
-            if (!GetCoinDest(outpoint, coin, kDest)) {
+            MCTxDestination dest;
+            if (!GetCoinDest(outpoint, coin, dest)) {
                 continue;
             }
 
-            uint160 kKey;
-            boost::apply_visitor(CoinCacheVisitor(kKey), kDest);
-
             CoinListPtr pList = nullptr;
-            MCCoinListMap::iterator mit = cache.find(kKey);
+            const uint160& key = GetUint160(dest);
+            MCCoinListMap::iterator mit = cache.find(key);
             if (mit == cache.end()) {
                 pList.reset(new CoinList());
-                plistDB->Read(CoinListEntry(&kKey), *pList);
-                cache[kKey] = pList;
+                plistDB->Read(CoinListEntry(&key), *pList);
+                cache[key] = pList;
             } else {
                 pList = mit->second;
             }

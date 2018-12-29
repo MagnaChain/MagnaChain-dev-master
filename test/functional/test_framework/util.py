@@ -688,7 +688,32 @@ def generate_contract(folder, syntax_err=False):
             cell = 100000000
             inum = inum or 1
             ret = send(to,inum * cell)
-            say("send ret:",ret)
+            --say("send ret:",ret)
+        end
+
+        function dustChangeTest(to)
+            -- body
+            --dust to this contract
+            cell = 100000000
+            ret = send(to,(cell / 11) * 10)
+            say("dustChangeTest ret:",ret)
+        end
+        
+        function addWithdrawList( ... )
+            -- body
+            for _,v in ipairs({...}) do
+                table.insert(PersistentData.withdrawList,v)
+            end
+        end
+
+        function batchSendTest()
+            -- body
+            cell = 100000000
+            ret = false
+            for _,to in pairs(PersistentData.withdrawList) do
+                ret = send(to,1 * cell)
+            end
+            return ret
         end
 
         function setThirdPartyContract( ... )
@@ -729,6 +754,14 @@ def generate_contract(folder, syntax_err=False):
             PersistentData.thirdPartyContracts = {}
             PersistentData.size = 128
             PersistentData.negative = 0
+            PersistentData.withdrawList = {}
+            setUpHook()
+            PersistentData.func = function ( ... )
+                -- body
+                for k,v in pairs(PersistentData) do
+                    say(k,v)
+                end
+            end
 
         end
 
@@ -740,6 +773,22 @@ def generate_contract(folder, syntax_err=False):
         function get(key)
             -- body
             return PersistentData[key]
+        end
+        
+        function updateContract( key,val )
+            -- body
+            PersistentData[key] = val
+        end
+
+        function cycleSelf()
+            -- body
+            --PersistentData["this"] = PersistentData
+            PersistentData["this"] = PersistentData
+        end
+        
+        function setUpHook()
+            -- body
+            setmetatable(_G,{__index = PersistentData})
         end
     '''
     if syntax_err:
@@ -770,6 +819,6 @@ def caller_factory(mgr,contract_id,sender):
             return result
         except Exception as e:
             print(e)
-            assert all(re.findall('-\d+\)$', repr(e)))
+            assert all(re.findall('-\d\)$', repr(e)))
             return repr(e)
     return _call_contract
