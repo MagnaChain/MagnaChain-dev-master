@@ -3299,8 +3299,7 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 	}
 
-    uint160 key;
-    boost::apply_visitor(CoinCacheVisitor(key), addr.Get());
+    const uint160& key = GetUint160(addr.Get());
 
     MCAmount nValue = 0;
 	CoinListPtr plist = pcoinListDb->GetList(key);

@@ -77,26 +77,6 @@ public:
  */
 typedef boost::variant<MCNoDestination, MCKeyID, MCScriptID, MCContractID> MCTxDestination;
 
-class CoinCacheVisitor : public boost::static_visitor<bool>
-{
-private:
-    uint160 & key;
-
-public:
-    CoinCacheVisitor(uint160& cache) : key(cache) {}
-
-    bool operator()(const MCContractID& id) const {
-        key = id;
-        return true;
-    }
-    bool operator()(const MCKeyID& id) const {
-        key = id;
-        return true;
-    }
-    bool operator()(const MCScriptID& id) const { return false; }
-    bool operator()(const MCNoDestination& no) const { return false; }
-};
-
 const char* GetTxnOutputType(txnouttype t);
 
 bool Solver(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<std::vector<unsigned char> >& vSolutionsRet);
@@ -107,5 +87,7 @@ MCScript GetScriptForDestination(const MCTxDestination& dest);
 MCScript GetScriptForRawPubKey(const MCPubKey& pubkey);
 MCScript GetScriptForMultisig(int nRequired, const std::vector<MCPubKey>& keys);
 MCScript GetScriptForWitness(const MCScript& redeemscript);
+
+uint160 GetUint160(const MCTxDestination& dest);
 
 #endif // MAGNACHAIN_SCRIPT_STANDARD_H

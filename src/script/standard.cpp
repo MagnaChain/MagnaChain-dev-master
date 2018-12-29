@@ -372,3 +372,30 @@ MCScript GetScriptForWitness(const MCScript& redeemscript)
     ret << OP_0 << ToByteVector(hash);
     return ret;
 }
+
+class CoinCacheVisitor : public boost::static_visitor<bool>
+{
+private:
+    uint160 & key;
+
+public:
+    CoinCacheVisitor(uint160& cache) : key(cache) {}
+
+    bool operator()(const MCContractID& id) const {
+        key = id;
+        return true;
+    }
+    bool operator()(const MCKeyID& id) const {
+        key = id;
+        return true;
+    }
+    bool operator()(const MCScriptID& id) const { return false; }
+    bool operator()(const MCNoDestination& no) const { return false; }
+};
+
+uint160 GetUint160(const MCTxDestination& dest)
+{
+    uint160 key;
+    boost::apply_visitor(CoinCacheVisitor(key), dest);
+    return key;
+}
