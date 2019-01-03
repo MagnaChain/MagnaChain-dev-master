@@ -527,7 +527,13 @@ BOOST_FIXTURE_TEST_CASE(coin_mark_dirty_immature_credit, TestChain100Setup)
     // credit amount is calculated.
     wtx.MarkDirty();
     wallet.AddKeyPubKey(coinbaseKey, coinbaseKey.GetPubKey());
-    BOOST_CHECK_EQUAL(wtx.GetImmatureCredit(), 50*COIN);
+    const Consensus::Params& consensus = Params().GetConsensus();
+    MCAmount targetSubsidy = 85 * COIN;
+    if (chainActive.Height() <= consensus.BigBoomHeight)
+    {
+        targetSubsidy += consensus.BigBoomValue;
+    }
+    BOOST_CHECK_EQUAL(wtx.GetImmatureCredit(), targetSubsidy);
 }
 
 static int64_t AddTx(MCWallet& wallet, uint32_t lockTime, int64_t mockTime, int64_t blockTime)
