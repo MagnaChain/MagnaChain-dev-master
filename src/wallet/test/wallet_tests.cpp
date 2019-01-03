@@ -455,15 +455,16 @@ BOOST_FIXTURE_TEST_CASE(importwallet_rescan, TestChain100Setup)
     LOCK(cs_main);
 
     // Create two blocks with same timestamp to verify that importwallet rescan
-    // will pick up both blocks, not just the first.
+    // will pick up both blocks, not just the first. Sorry above not work in MGC
     const int64_t BLOCK_TIME = chainActive.Tip()->GetBlockTimeMax() + 5;
     SetMockTime(BLOCK_TIME);
     coinbaseTxns.emplace_back(*CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey())).vtx[0]);
+    SetMockTime(BLOCK_TIME + Params().GetConsensus().nPowTargetSpacing);
     coinbaseTxns.emplace_back(*CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey())).vtx[0]);
-
+    
     // Set key birthday to block time increased by the timestamp window, so
     // rescan will start at the block time.
-    const int64_t KEY_TIME = BLOCK_TIME + TIMESTAMP_WINDOW;
+    const int64_t KEY_TIME = BLOCK_TIME + Params().GetConsensus().nPowTargetSpacing + TIMESTAMP_WINDOW;
     SetMockTime(KEY_TIME);
     coinbaseTxns.emplace_back(*CreateAndProcessBlock({}, GetScriptForRawPubKey(coinbaseKey.GetPubKey())).vtx[0]);
 
@@ -471,7 +472,7 @@ BOOST_FIXTURE_TEST_CASE(importwallet_rescan, TestChain100Setup)
     {
         MCWallet wallet;
         LOCK(wallet.cs_wallet);
-        wallet.mapKeyMetadata[coinbaseKey.GetPubKey().GetID()].nCreateTime = KEY_TIME;
+        wallet.mapKeyMetadata[coinbaseKey.GetPubKey().GetID()].nCreateTime = KEY_TIME - Params().GetConsensus().nPowTargetSpacing;
         wallet.AddKeyPubKey(coinbaseKey, coinbaseKey.GetPubKey());
 
         JSONRPCRequest request;
@@ -493,10 +494,10 @@ BOOST_FIXTURE_TEST_CASE(importwallet_rescan, TestChain100Setup)
         ::importwallet(request);
 
         BOOST_CHECK_EQUAL(wallet.mapWallet.size(), 3);
-        BOOST_CHECK_EQUAL(coinbaseTxns.size(), 103);
+        BOOST_CHECK_EQUAL(coinbaseTxns.size(), COINBASE_MATURITY + 3);
         for (size_t i = 0; i < coinbaseTxns.size(); ++i) {
             bool found = wallet.GetWalletTx(coinbaseTxns[i].GetHash());
-            bool expected = i >= 100;
+            bool expected = i >= COINBASE_MATURITY;
             BOOST_CHECK_EQUAL(found, expected);
         }
     }
@@ -666,7 +667,8 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     // coinbaseKey pubkey, even though the change address has a different
     // pubkey.
     int height = chainActive.Height();
-    MilliSleep(Params().GetConsensus().nPowTargetSpacing * 1000);
+    //MilliSleep(Params().GetConsensus().nPowTargetSpacing * 1000);
+    SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing);
     AddTx(MCRecipient{GetScriptForRawPubKey({}), 1 * COIN, false /* subtract fee */});
     BOOST_CHECK_EQUAL(chainActive.Height(), ++height);
     list = wallet->ListCoins();
