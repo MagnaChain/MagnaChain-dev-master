@@ -195,18 +195,23 @@ class ContractCallTest(MagnaChainTestFramework):
             node.generate(nblocks=2)
             assert_equal(node.getbalanceof(new_address),1900)
 
+
         # dust change vout in send
-        new_sender = node.getnewaddress()
-        node.sendtoaddress(new_sender,2)
+        # node.sendtoaddress(new_sender,2)
         tmp_id = node.publishcontract(contract)['contractaddress']
-        caller_tmp = caller_factory(self, tmp_id, new_sender)
-        caller_tmp(PAYABLE,amount = 1)
+        caller_tmp = caller_factory(self, tmp_id, sender)
+        senders = [node.getnewaddress() for i in range(11)]
+        list(map(lambda x:  caller_tmp(PAYABLE,amount = 1),senders))  # 充值11次，每次1个MGC
         node.generate(nblocks=2)
-        print(node.getbalanceof(new_sender))
-        node.generate(nblocks = 1)
-        caller_tmp("dustChangeTest",new_sender)
+        list(map(lambda to: assert_equal(isinstance(caller_tmp("dustChangeTest", to,amount = Decimal("0")),dict),True), senders)) # 向每个地址发送(cell / 11) * 10(最小单位)，cell = 100000000。这里应该有11个微交易的找零
         node.generate(nblocks=2)
-        print(node.getbalanceof(new_sender))
+        tmp_sender = node.getnewaddress()
+        assert_equal(isinstance(caller_tmp("sendCoinTest",tmp_sender,1,amount = Decimal("0")),dict),True) # 组合所有微交易的找零，应该足够1个MGC的
+        node.generate(nblocks=2)
+        assert_equal(node.getbalanceof(tmp_sender),1)
+
+        #
+
 
 
 

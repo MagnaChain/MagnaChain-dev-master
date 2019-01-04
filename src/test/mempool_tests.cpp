@@ -479,7 +479,7 @@ BOOST_AUTO_TEST_CASE(MempoolSizeLimitTest)
     BOOST_CHECK(!pool.Exists(tx3.GetHash()));
 
     MCFeeRate maxFeeRateRemoved(25000, GetVirtualTransactionSize(tx3) + GetVirtualTransactionSize(tx2));
-    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), maxFeeRateRemoved.GetFeePerK() + 1000);
+    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), maxFeeRateRemoved.GetFeePerK() + DEFAULT_INCREMENTAL_RELAY_FEE);
 
     MCMutableTransaction tx4 = MCMutableTransaction();
     tx4.vin.resize(2);
@@ -556,23 +556,26 @@ BOOST_AUTO_TEST_CASE(MempoolSizeLimitTest)
     std::vector<MCTransactionRef> vtx;
     SetMockTime(42);
     SetMockTime(42 + MCTxMemPool::ROLLING_FEE_HALFLIFE);
-    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), maxFeeRateRemoved.GetFeePerK() + 1000);
+    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), maxFeeRateRemoved.GetFeePerK() + DEFAULT_INCREMENTAL_RELAY_FEE);
     // ... we should keep the same min fee until we get a block
     pool.RemoveForBlock(vtx, 1);
     SetMockTime(42 + 2*MCTxMemPool::ROLLING_FEE_HALFLIFE);
-    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + 1000)/2);
+    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + DEFAULT_INCREMENTAL_RELAY_FEE)/2);
     // ... then feerate should drop 1/2 each halflife
 
     SetMockTime(42 + 2*MCTxMemPool::ROLLING_FEE_HALFLIFE + MCTxMemPool::ROLLING_FEE_HALFLIFE/2);
-    BOOST_CHECK_EQUAL(pool.GetMinFee(pool.DynamicMemoryUsage() * 5 / 2).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + 1000)/4);
+    extern MCFeeRate incrementalRelayFee;
+    incrementalRelayFee = MCFeeRate(1000);//TODO: mgc add. 1000 is bitcoin code value.
+    BOOST_CHECK_EQUAL(pool.GetMinFee(pool.DynamicMemoryUsage() * 5 / 2).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + DEFAULT_INCREMENTAL_RELAY_FEE)/4);
     // ... with a 1/2 halflife when mempool is < 1/2 its target size
 
     SetMockTime(42 + 2*MCTxMemPool::ROLLING_FEE_HALFLIFE + MCTxMemPool::ROLLING_FEE_HALFLIFE/2 + MCTxMemPool::ROLLING_FEE_HALFLIFE/4);
-    BOOST_CHECK_EQUAL(pool.GetMinFee(pool.DynamicMemoryUsage() * 9 / 2).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + 1000)/8);
+    BOOST_CHECK_EQUAL(pool.GetMinFee(pool.DynamicMemoryUsage() * 9 / 2).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + DEFAULT_INCREMENTAL_RELAY_FEE)/8);
     // ... with a 1/4 halflife when mempool is < 1/4 its target size
 
+    incrementalRelayFee = MCFeeRate(DEFAULT_INCREMENTAL_RELAY_FEE);// TODO: reset,mgc add
     SetMockTime(42 + 7*MCTxMemPool::ROLLING_FEE_HALFLIFE + MCTxMemPool::ROLLING_FEE_HALFLIFE/2 + MCTxMemPool::ROLLING_FEE_HALFLIFE/4);
-    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), 1000);
+    BOOST_CHECK_EQUAL(pool.GetMinFee(1).GetFeePerK(), 0);//DEFAULT_INCREMENTAL_RELAY_FEE
     // ... but feerate should never drop below 1000
 
     SetMockTime(42 + 8*MCTxMemPool::ROLLING_FEE_HALFLIFE + MCTxMemPool::ROLLING_FEE_HALFLIFE/2 + MCTxMemPool::ROLLING_FEE_HALFLIFE/4);
