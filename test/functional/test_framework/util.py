@@ -737,6 +737,12 @@ def generate_contract(folder, syntax_err=False):
                 _call(msg.thisaddress,'setGlob',100)
             end
         end
+        
+        function reentrancyTest( to )
+            -- body
+            _call(msg.thisaddress,'updateContract','this','')
+            _call(msg.thisaddress,'cycleSelf')
+        end
 
         function init()
             --loop(3)
@@ -768,6 +774,10 @@ def generate_contract(folder, syntax_err=False):
 
         function payable()
             --just for recharge
+            str = [==[
+            just for recharge
+            ]==]
+            return str
         end
         
         function get(key)
