@@ -377,6 +377,7 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
 {
     LOCK(cs_main);
 
+    const Consensus::Params& consensus = Params().GetConsensus();
     // Cap last block file size, and mine new block in a new block file.
     MCBlockIndex* const nullBlock = nullptr;
     MCBlockIndex* oldTip = chainActive.Tip();
@@ -390,7 +391,8 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
         MCWallet wallet;
         AddKey(wallet, coinbaseKey);
         BOOST_CHECK_EQUAL(nullBlock, wallet.ScanForWalletTransactions(oldTip));
-        BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), 100 * COIN);
+        MCAmount targetSubsidy = 85 * COIN + consensus.BigBoomValue;
+        BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), targetSubsidy*2);
     }
 
     // Prune the older block file.
@@ -403,7 +405,7 @@ BOOST_FIXTURE_TEST_CASE(rescan, TestChain100Setup)
         MCWallet wallet;
         AddKey(wallet, coinbaseKey);
         BOOST_CHECK_EQUAL(oldTip, wallet.ScanForWalletTransactions(oldTip));
-        BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), 50 * COIN);
+        BOOST_CHECK_EQUAL(wallet.GetImmatureBalance(), 85 * COIN + consensus.BigBoomValue);
     }
 
     // Verify importmulti RPC returns failure for a key whose creation time is
