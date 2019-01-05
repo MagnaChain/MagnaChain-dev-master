@@ -81,9 +81,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
             // At this point we should need to combine 3 buckets to get enough data points
             // So EstimateFee(1) should fail and EstimateFee(2) should return somewhere around
             // 9*baserate.  EstimateFee(2) %'s are 100,100,90 = average 97%
-            BOOST_CHECK(feeEst.EstimateFee(1) == MCFeeRate(0));
-            BOOST_CHECK(feeEst.EstimateFee(2).GetFeePerK() < 9*baseRate.GetFeePerK() + deltaFee);
-            BOOST_CHECK(feeEst.EstimateFee(2).GetFeePerK() > 9*baseRate.GetFeePerK() - deltaFee);
+            BOOST_REQUIRE(feeEst.EstimateFee(1) == MCFeeRate(0));
+            BOOST_REQUIRE(feeEst.EstimateFee(2).GetFeePerK() < 9*baseRate.GetFeePerK() + deltaFee);
+            BOOST_REQUIRE(feeEst.EstimateFee(2).GetFeePerK() > 9*baseRate.GetFeePerK() - deltaFee);
         }
     }
 
@@ -97,12 +97,12 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     for (int i = 1; i < 10;i++) {
         origFeeEst.push_back(feeEst.EstimateFee(i).GetFeePerK());
         if (i > 2) { // Fee estimates should be monotonically decreasing
-            BOOST_CHECK(origFeeEst[i-1] <= origFeeEst[i-2]);
+            BOOST_REQUIRE(origFeeEst[i-1] <= origFeeEst[i-2]);
         }
         int mult = 11-i;
         if (i % 2 == 0) { //At scale 2, test logic is only correct for even targets
-            BOOST_CHECK(origFeeEst[i-1] < mult*baseRate.GetFeePerK() + deltaFee);
-            BOOST_CHECK(origFeeEst[i-1] > mult*baseRate.GetFeePerK() - deltaFee);
+            BOOST_REQUIRE(origFeeEst[i-1] < mult*baseRate.GetFeePerK() + deltaFee);
+            BOOST_REQUIRE(origFeeEst[i-1] > mult*baseRate.GetFeePerK() - deltaFee);
         }
     }
     // Fill out rest of the original estimates
@@ -115,10 +115,10 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     while (blocknum < 250)
         mpool.RemoveForBlock(block, ++blocknum);
 
-    BOOST_CHECK(feeEst.EstimateFee(1) == MCFeeRate(0));
+    BOOST_REQUIRE(feeEst.EstimateFee(1) == MCFeeRate(0));
     for (int i = 2; i < 10;i++) {
-        BOOST_CHECK(feeEst.EstimateFee(i).GetFeePerK() < origFeeEst[i-1] + deltaFee);
-        BOOST_CHECK(feeEst.EstimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        BOOST_REQUIRE(feeEst.EstimateFee(i).GetFeePerK() < origFeeEst[i-1] + deltaFee);
+        BOOST_REQUIRE(feeEst.EstimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
     }
 
 
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     }
 
     for (int i = 1; i < 10;i++) {
-        BOOST_CHECK(feeEst.EstimateFee(i) == MCFeeRate(0) || feeEst.EstimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        BOOST_REQUIRE(feeEst.EstimateFee(i) == MCFeeRate(0) || feeEst.EstimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
     }
 
     // Mine all those transactions
@@ -152,9 +152,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
     }
     mpool.RemoveForBlock(block, 266);
     block.clear();
-    BOOST_CHECK(feeEst.EstimateFee(1) == MCFeeRate(0));
+    BOOST_REQUIRE(feeEst.EstimateFee(1) == MCFeeRate(0));
     for (int i = 2; i < 10;i++) {
-        BOOST_CHECK(feeEst.EstimateFee(i) == MCFeeRate(0) || feeEst.EstimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
+        BOOST_REQUIRE(feeEst.EstimateFee(i) == MCFeeRate(0) || feeEst.EstimateFee(i).GetFeePerK() > origFeeEst[i-1] - deltaFee);
     }
 
     // Mine 400 more blocks where everything is mined every block
@@ -174,9 +174,9 @@ BOOST_AUTO_TEST_CASE(BlockPolicyEstimates)
         mpool.RemoveForBlock(block, ++blocknum);
         block.clear();
     }
-    BOOST_CHECK(feeEst.EstimateFee(1) == MCFeeRate(0));
+    BOOST_REQUIRE(feeEst.EstimateFee(1) == MCFeeRate(0));
     for (int i = 2; i < 9; i++) { // At 9, the original estimate was already at the bottom (b/c scale = 2)
-        BOOST_CHECK(feeEst.EstimateFee(i).GetFeePerK() < origFeeEst[i-1] - deltaFee);
+        BOOST_REQUIRE(feeEst.EstimateFee(i).GetFeePerK() < origFeeEst[i-1] - deltaFee);
     }
 }
 

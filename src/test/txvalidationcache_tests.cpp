@@ -129,20 +129,20 @@ void ValidateCheckInputsForAllFlags(MCMutableTransaction &tx, uint32_t failing_f
             // is set.
             expected_return_value = !(test_flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS);
         }
-        BOOST_CHECK_EQUAL(ret, expected_return_value);
+        BOOST_REQUIRE_EQUAL(ret, expected_return_value);
 
         // Test the caching
         if (ret && add_to_cache) {
             // Check that we get a cache hit if the tx was valid
             std::vector<CScriptCheck> scriptchecks;
-            BOOST_CHECK(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
-            BOOST_CHECK(scriptchecks.empty());
+            BOOST_REQUIRE(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
+            BOOST_REQUIRE(scriptchecks.empty());
         } else {
             // Check that we get script executions to check, if the transaction
             // was invalid, or we didn't add to cache.
             std::vector<CScriptCheck> scriptchecks;
-            BOOST_CHECK(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
-            BOOST_CHECK_EQUAL(scriptchecks.size(), tx.vin.size());
+            BOOST_REQUIRE(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
+            BOOST_REQUIRE_EQUAL(scriptchecks.size(), tx.vin.size());
         }
     }
 }
