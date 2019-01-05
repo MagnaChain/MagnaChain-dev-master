@@ -129,6 +129,7 @@ class AbandonConflictTest(MagnaChainTestFramework):
         balance = newbalance
 
         # TODO 因为上面的block了，后面的部分还有待测试
+        # TODO sendcoin的交易，合约账户的交易
         # Send child tx again so its unabandoned
         self.nodes[0].sendrawtransaction(signed2["hex"])
         newbalance = self.nodes[0].getbalance()
