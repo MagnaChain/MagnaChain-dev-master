@@ -54,7 +54,6 @@ local function createSafeEnv()                                                  
     env._VERSION = _VERSION	                                                    \n\
     --env.arg = arg	                                                            \n\
     env.assert = assert	                                                        \n\
-    env.cmsgpack = nil                                                          \n\
     --env.collectgarbage = collectgarbage										\n\
     --env.coroutine = coroutine	                                                \n\
     --env.debug = debug	                                                        \n\
@@ -68,22 +67,18 @@ local function createSafeEnv()                                                  
     --env.load = load	                                                        \n\
     --env.loadfile = loadfile	                                                \n\
     --env.loadstring = loadstring	                                            \n\
-                                                                                \n\
     env.math = {}	                                                            \n\
     env.math.pow = math.pow                                                     \n\
     env.math.max = math.max	                                                    \n\
     env.math.min = math.min                                                     \n\
-	                                                                            \n\
     --env.module = module	                                                    \n\
     --env.newproxy = newproxy													\n\
     env.next = next	                                                            \n\
-	                                                                            \n\
     --nv.os = copyTable(os, {})                                                 \n\
     --nv.os.execute = nil                                                       \n\
     --nv.os.remove = nil                                                        \n\
     --nv.os.rename = nil                                                        \n\
     --env.os.exit = nil                                                         \n\
-	                                                                            \n\
     --env.package = package	                                                    \n\
     env.pairs = pairs	                                                        \n\
     --env.pcall = pcall	                                                        \n\
@@ -98,17 +93,14 @@ local function createSafeEnv()                                                  
     --env.string = string	                                                    \n\
     env.table = table	                                                        \n\
     env.tonumber = tonumber	                                                    \n\
-    env.tostring = tostring	                                                    \n\
+    --env.tostring = tostring	                                                \n\
     env.type = type	                                                            \n\
     env.unpack = unpack	                                                        \n\
 	env.unpacktable = unpacktable												\n\
     --env.xpcall = xpcall	                                                    \n\
-    --lpcall                                                                    \n\
-																				\n\
     env.msg = msg		                                                        \n\
     env.callcontract = callcontract		                                        \n\
     env.setfenv = setfenv				                                        \n\
-    env.innerCall = innerCall			                                        \n\
     env.send = send						                                        \n\
 	return env                                                                  \n\
 end                                                                             \n\
