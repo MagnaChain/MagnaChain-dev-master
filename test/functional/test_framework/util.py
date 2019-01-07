@@ -584,6 +584,8 @@ def generate_contract(folder, syntax_err=False):
     :return:
     '''
     code = '''
+        cell = 100000000
+        
         function say( ... )
             -- body
             if _G.print then
