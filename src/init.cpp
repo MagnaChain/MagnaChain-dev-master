@@ -77,7 +77,7 @@ bool fFeeEstimatesInitialized = false;
 std::unique_ptr<MCConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 
-#ifdef ENABLE_ZMQ
+#if ENABLE_ZMQ
 CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 #endif
 
