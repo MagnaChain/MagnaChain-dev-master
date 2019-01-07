@@ -48,11 +48,25 @@ class ContractPublishTest(MagnaChainTestFramework):
 
         node.generate(nblocks=1)
         # 错误的合约
-        contract = generate_contract(self.options.tmpdir,True)
+        contract = generate_contract(self.options.tmpdir,err_type = "syntax_err")
         try:
             result = node.publishcontract(contract)
         except Exception as e:
             assert 'expected near' in repr(e)
+
+        # 超大合约
+        contract = generate_contract(self.options.tmpdir,err_type = "bigfile")
+        try:
+            result = node.publishcontract(contract)
+        except Exception as e:
+            assert 'Transaction too large' in repr(e)
+
+        # 测试代码压缩
+        contract = generate_contract(self.options.tmpdir,err_type = "trim_code")
+        try:
+            result = node.publishcontract(contract)
+        except Exception as e:
+            assert 'Transaction too large' not in repr(e)
 
         # 正确的合约，并且进行重复测试
         j = 2

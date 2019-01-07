@@ -577,13 +577,15 @@ def mine_large_block(node, utxos=None):
 
 ###############################
 # smart contract functools
-def generate_contract(folder, syntax_err=False):
+def generate_contract(folder, err_type=None):
     '''
     生成测试合约代码
     :param dir:
     :return:
     '''
     code = '''
+        cell = 100000000
+        
         function say( ... )
             -- body
             if _G.print then
@@ -800,9 +802,18 @@ def generate_contract(folder, syntax_err=False):
             -- body
             setmetatable(_G,{__index = PersistentData})
         end
+        
+        function setNil( ... )
+            -- body
+            PersistentData = nil
+        end
     '''
-    if syntax_err:
+    if err_type == "syntax_err":
         code += 'syntax_err'
+    elif err_type == "bigfile":
+        code += "local a = [==[\n" + "a" * (int(2147483647 / 10)) + "\n]==]"
+    elif err_type == "trim_code":
+        code += "--1" * int(2147483647 / 10)
     file_path = os.path.join(folder, "contract.lua")
     with open(file_path, "w") as fh:
         fh.write(code)
