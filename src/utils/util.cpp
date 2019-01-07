@@ -10,13 +10,14 @@
 
 #include "utils/util.h"
 
+#include "chain/chainparams.h"
 #include "chain/chainparamsbase.h"
 #include "io/fs.h"
-#include "misc/random.h"
 #include "io/serialize.h"
+#include "misc/random.h"
+#include "net/net.h"
 #include "utils/utilstrencodings.h"
 #include "utils/utiltime.h"
-#include "chain/chainparams.h"
 
 #include <stdarg.h>
 

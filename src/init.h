@@ -8,6 +8,7 @@
 #define MAGNACHAIN_INIT_H
 
 #include <string>
+#include "net/protocol.h"
 
 class MCScheduler;
 class MCWallet;
@@ -17,8 +18,20 @@ namespace boost
 class thread_group;
 } // namespace boost
 
+static const bool DEFAULT_PROXYRANDOMIZE = true;
+static const bool DEFAULT_REST_ENABLE = false;
+static const bool DEFAULT_DISABLE_SAFEMODE = false;
+static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
+
+#if ENABLE_ZMQ
+#include "zmq/zmqnotificationinterface.h"
+extern CZMQNotificationInterface* pzmqNotificationInterface;
+#endif
+
 void StartShutdown();
+void StopShutdown();
 bool ShutdownRequested();
+
 /** Interrupt threads */
 void Interrupt(boost::thread_group& threadGroup);
 void Shutdown();
@@ -26,6 +39,7 @@ void Shutdown();
 void InitLogging();
 //!Parameter interaction: change current parameters depending on various rules
 void InitParameterInteraction();
+std::string ResolveErrMsg(const char * const optname, const std::string& strBind);
 
 /** Initialize magnachain core: Basic context setup.
  *  @note This can be done before daemonization. Do not call Shutdown() if this function fails.

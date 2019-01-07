@@ -93,7 +93,7 @@ local function createSafeEnv()                                                  
     --env.string = string	                                                    \n\
     env.table = table	                                                        \n\
     env.tonumber = tonumber	                                                    \n\
-    --env.tostring = tostring	                                                \n\
+    env.tostring = tostring	                                                    \n\
     env.type = type	                                                            \n\
     env.unpack = unpack	                                                        \n\
 	env.unpacktable = unpacktable												\n\

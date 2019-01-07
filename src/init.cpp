@@ -73,16 +73,12 @@
 #include "smartcontract/contractdb.h"
 
 bool fFeeEstimatesInitialized = false;
-static const bool DEFAULT_PROXYRANDOMIZE = true;
-static const bool DEFAULT_REST_ENABLE = false;
-static const bool DEFAULT_DISABLE_SAFEMODE = false;
-static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 
 std::unique_ptr<MCConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 
-#if ENABLE_ZMQ
-static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
+#ifdef ENABLE_ZMQ
+CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 #endif
 
 #ifdef _WIN32
@@ -129,6 +125,10 @@ std::atomic<bool> fDumpMempoolLater(false);
 void StartShutdown()
 {
     fRequestShutdown = true;
+}
+void StopShutdown()
+{
+    fRequestShutdown = false;
 }
 bool ShutdownRequested()
 {
@@ -310,7 +310,7 @@ void Shutdown()
  */
 static void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 static void HandleSIGHUP(int)
@@ -726,7 +726,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     } // End scope of CImportingNow
     if (gArgs.GetArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
         LoadMempool();
-        fDumpMempoolLater = !fRequestShutdown;
+        fDumpMempoolLater = !ShutdownRequested();
     }
 }
 
@@ -843,7 +843,7 @@ void InitParameterInteraction()
     }
 }
 
-static std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
+std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
 {
     return strprintf(_("Cannot resolve -%s address: '%s'"), optname, strBind);
 }
@@ -1448,7 +1448,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     LogPrintf("* Using %.1fMiB for in-memory UTXO set (plus up to %.1fMiB of unused mempool space)\n", nCoinCacheUsage * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
 
     bool fLoaded = false;
-    while (!fLoaded && !fRequestShutdown) {
+    while (!fLoaded && !ShutdownRequested()) {
         bool fReset = fReindex;
         std::string strLoadError;
 
@@ -1477,7 +1477,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
-                if (fRequestShutdown) break;
+                if (ShutdownRequested()) break;
 
                 // LoadBlockIndex will load fTxIndex from the db, or set it if
                 // we're reindexing. It will also load fHavePruned if we've
@@ -1617,7 +1617,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
             fLoaded = true;
         } while (false);
 
-        if (!fLoaded && !fRequestShutdown) {
+        if (!fLoaded && !ShutdownRequested()) {
             // first suggest a reindex
             if (!fReset) {
                 bool fRet = uiInterface.ThreadSafeQuestion(
@@ -1626,7 +1626,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     "", MCClientUIInterface::MSG_ERROR | MCClientUIInterface::BTN_ABORT);
                 if (fRet) {
                     fReindex = true;
-                    fRequestShutdown = false;
+                    StopShutdown();
                 } else {
                     LogPrintf("Aborted block database rebuild. Exiting.\n");
                     return false;
@@ -1640,7 +1640,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
-    if (fRequestShutdown)
+    if (ShutdownRequested())
     {
         LogPrintf("Shutdown requested. Exiting.\n");
         return false;
@@ -1795,5 +1795,5 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     }
 #endif
 
-    return !fRequestShutdown;
+    return !ShutdownRequested();
 }

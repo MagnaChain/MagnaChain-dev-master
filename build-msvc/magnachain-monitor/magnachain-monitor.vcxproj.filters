@@ -4,6 +4,19 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Filter Include="src">
+      <UniqueIdentifier>{632c5daa-1b37-4c45-9de8-0de616613703}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
     <ClCompile Include="..\..\src\magnachaind-monitor.cpp" />
+    <ClCompile Include="..\..\src\monitor\monitorinit.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\monitor\monitorinit.h">
+      <Filter>src</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
