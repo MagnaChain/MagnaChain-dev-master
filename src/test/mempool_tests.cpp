@@ -12,6 +12,7 @@
 #include <boost/test/unit_test.hpp>
 #include <list>
 #include <vector>
+#include "policy/policy.h"
 
 BOOST_FIXTURE_TEST_SUITE(mempool_tests, TestingSetup)
 
@@ -564,7 +565,7 @@ BOOST_AUTO_TEST_CASE(MempoolSizeLimitTest)
     // ... then feerate should drop 1/2 each halflife
 
     SetMockTime(42 + 2*MCTxMemPool::ROLLING_FEE_HALFLIFE + MCTxMemPool::ROLLING_FEE_HALFLIFE/2);
-    extern MCFeeRate incrementalRelayFee;
+
     incrementalRelayFee = MCFeeRate(1000);//TODO: mgc add. 1000 is bitcoin code value.
     BOOST_CHECK_EQUAL(pool.GetMinFee(pool.DynamicMemoryUsage() * 5 / 2).GetFeePerK(), (maxFeeRateRemoved.GetFeePerK() + DEFAULT_INCREMENTAL_RELAY_FEE)/4);
     // ... with a 1/2 halflife when mempool is < 1/2 its target size

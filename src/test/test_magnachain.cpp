@@ -142,7 +142,7 @@ TestChain100Setup::TestChain100Setup() : TestingSetup(MCBaseChainParams::REGTEST
         MCBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
         coinbaseTxns.push_back(*b.vtx[0]);
         //MilliSleep(Params().GetConsensus().nPowTargetSpacing*1000);
-        SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing);
+        SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing + 10000);
     }
 }
 

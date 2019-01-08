@@ -670,7 +670,7 @@ BOOST_FIXTURE_TEST_CASE(ListCoins, ListCoinsTestingSetup)
     // pubkey.
     int height = chainActive.Height();
     //MilliSleep(Params().GetConsensus().nPowTargetSpacing * 1000);
-    SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing);
+    SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing + 10000);
     AddTx(MCRecipient{GetScriptForRawPubKey({}), 1 * COIN, false /* subtract fee */});
     BOOST_CHECK_EQUAL(chainActive.Height(), ++height);
     list = wallet->ListCoins();
