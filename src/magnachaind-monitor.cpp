@@ -9,18 +9,19 @@
 #endif
 
 #include "chain/chainparams.h"
-#include "misc/clientversion.h"
-#include "net/compat.h"
-#include "io/fs.h"
-#include "rpc/server.h"
-#include "init.h"
-#include "ui/noui.h"
-#include "thread/scheduler.h"
-#include "utils/util.h"
-#include "net/http/httpserver.h"
-#include "net/http/httprpc.h"
-#include "utils/utilstrencodings.h"
 #include "consensus/tx_verify.h"
+#include "init.h"
+#include "io/fs.h"
+#include "misc/clientversion.h"
+#include "monitor/monitorinit.h"
+#include "net/compat.h"
+#include "net/http/httprpc.h"
+#include "net/http/httpserver.h"
+#include "rpc/server.h"
+#include "thread/scheduler.h"
+#include "ui/noui.h"
+#include "utils/util.h"
+#include "utils/utilstrencodings.h"
 
 #include <boost/thread.hpp>
 
@@ -143,11 +144,6 @@ bool AppInit(int argc, char* argv[])
             // InitError will have been called with detailed error, which ends up on console
             exit(EXIT_FAILURE);
         }
-        if (!AppInitSanityChecks())
-        {
-            // InitError will have been called with detailed error, which ends up on console
-            exit(EXIT_FAILURE);
-        }
         if (gArgs.GetBoolArg("-daemon", false))
         {
 #if HAVE_DECL_DAEMON
@@ -163,13 +159,7 @@ bool AppInit(int argc, char* argv[])
             return false;
 #endif // HAVE_DECL_DAEMON
         }
-        // Lock data directory after daemonization
-        if (!AppInitLockDataDirectory())
-        {
-            // If locking the data directory failed, exit immediately
-            exit(EXIT_FAILURE);
-        }
-        fRet = AppInitMain(threadGroup, scheduler);
+        fRet = MonitorInitMain(threadGroup, scheduler);
     }
     catch (const std::exception& e) {
         PrintExceptionContinue(&e, "AppInit()");

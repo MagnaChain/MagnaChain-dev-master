@@ -173,6 +173,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\magnachaind-monitor.cpp" />
+    <ClCompile Include="..\..\src\monitor\monitorinit.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\monitor\monitorinit.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
