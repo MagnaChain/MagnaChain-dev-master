@@ -811,9 +811,9 @@ def generate_contract(folder, err_type=None):
     if err_type == "syntax_err":
         code += 'syntax_err'
     elif err_type == "bigfile":
-        code += "local a = [==[\n" + "a" * (int(2147483647 / 10)) + "\n]==]"
+        code += "local a = [==[\n" + "a" * (int(2147483647 / 20)) + "\n]==]"
     elif err_type == "trim_code":
-        code += "--1" * int(2147483647 / 10)
+        code += "--1" * int(2147483647 / 20)
     file_path = os.path.join(folder, "contract.lua")
     with open(file_path, "w") as fh:
         fh.write(code)
