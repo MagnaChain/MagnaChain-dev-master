@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(sighash_test)
 // Goal: check that SignatureHash generates correct hash
 BOOST_AUTO_TEST_CASE(sighash_from_data)
 {
-    if (true) return;// TODO: need update test data
+    // TODO: need update test data
     UniValue tests = read_json(std::string(json_tests::sighash, json_tests::sighash + sizeof(json_tests::sighash)));
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
@@ -198,8 +198,8 @@ BOOST_AUTO_TEST_CASE(sighash_from_data)
           stream >> tx;
 
           MCValidationState state;
-          BOOST_CHECK_MESSAGE(CheckTransaction(*tx, state), strTest);
-          BOOST_CHECK(state.IsValid());
+          BOOST_REQUIRE_MESSAGE(CheckTransaction(*tx, state), strTest);
+          BOOST_REQUIRE(state.IsValid());
 
           std::vector<unsigned char> raw = ParseHex(raw_script);
           scriptCode.insert(scriptCode.end(), raw.begin(), raw.end());
@@ -209,7 +209,7 @@ BOOST_AUTO_TEST_CASE(sighash_from_data)
         }
 
         sh = SignatureHash(scriptCode, *tx, nIn, nHashType, 0, SIGVERSION_BASE);
-        BOOST_CHECK_MESSAGE(sh.GetHex() == sigHashHex, strTest);
+        BOOST_REQUIRE_MESSAGE(sh.GetHex() == sigHashHex, strTest);
     }
 }
 BOOST_AUTO_TEST_SUITE_END()
