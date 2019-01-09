@@ -64,7 +64,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
 
     def setup_network(self):
         # Need a bit of extra time for the nodes to start up for this test
-        self.add_nodes(self.num_nodes, extra_args=self.extra_args, timewait=90)
+        self.add_nodes(self.num_nodes, extra_args=self.extra_args, timewait=900)
         self.start_nodes()
         # Leave them unconnected, we'll use submitblock directly in this test
 
@@ -75,7 +75,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         after 60 seconds. Returns the utxo hash of the given node."""
 
         time_start = time.time()
-        while time.time() - time_start < 120:
+        while time.time() - time_start < 240:
             try:
                 # Any of these RPC calls could throw due to node crash
                 self.start_node(node_index)
@@ -86,7 +86,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
                 # An exception here should mean the node is about to crash.
                 # If magnachaind exits, then try again.  wait_for_node_exit()
                 # should raise an exception if magnachaind doesn't exit.
-                self.wait_for_node_exit(node_index, timeout=10)
+                self.wait_for_node_exit(node_index, timeout=60)
             self.crashed_on_restart += 1
             time.sleep(1)
 
@@ -186,7 +186,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             assert_equal(nodei_utxo_hash, node3_utxo_hash)
 
     def generate_small_transactions(self, node, count, utxo_list):
-        FEE = 1000  # TODO: replace this with node relay fee based calculation
+        FEE = 100000  # TODO: replace this with node relay fee based calculation
         num_transactions = 0
         random.shuffle(utxo_list)
         while len(utxo_list) >= 2 and num_transactions < count:
@@ -207,7 +207,11 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
 
             # Sign and send the transaction to get into the mempool
             tx_signed_hex = node.signrawtransaction(ToHex(tx))['hex']
-            node.sendrawtransaction(tx_signed_hex)
+            try:
+                node.sendrawtransaction(tx_signed_hex)
+            except Exception as e:
+                print(e)
+                raise
             num_transactions += 1
 
     def run_test(self):
@@ -217,7 +221,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
 
         # Start by creating a lot of utxos on node3
         initial_height = self.nodes[3].getblockcount()
-        utxo_list = create_confirmed_utxos(self.nodes[3].getnetworkinfo()['relayfee'], self.nodes[3], 5000)
+        utxo_list = create_confirmed_utxos(self.nodes[3].getnetworkinfo()['relayfee'], self.nodes[3], 10)
         self.log.info("Prepped %d utxo entries", len(utxo_list))
 
         # Sync these blocks with the other nodes
@@ -237,7 +241,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         for i in range(40):
             self.log.info("Iteration %d, generating 2500 transactions %s", i, self.restart_counts)
             # Generate a bunch of small-ish transactions
-            self.generate_small_transactions(self.nodes[3], 2500, utxo_list)
+            self.generate_small_transactions(self.nodes[3], 360, utxo_list) # TODO should be 2500
             # Pick a random block between current tip, and starting tip
             current_height = self.nodes[3].getblockcount()
             random_height = random.randint(starting_tip_height, current_height)

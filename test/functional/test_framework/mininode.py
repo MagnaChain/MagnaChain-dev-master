@@ -394,12 +394,13 @@ class CBlockLocator(object):
 
 
 class COutPoint(object):
-    def __init__(self, hash=0, n=0):
-        if hash and n:
+    def __init__(self, hash=0, n=None):
+        if hash:
             self.hash = hash
+        if n is not None:
             self.n = n
         else:
-            self.set_null()
+            self.n = 4294967295
 
     def deserialize(self, f):
         self.hash = deser_uint256(f)
@@ -411,9 +412,6 @@ class COutPoint(object):
         r += struct.pack("<I", self.n)
         return r
 
-    def set_null(self):
-        self.hash = 0
-        self.n = 4294967295
 
     def __repr__(self):
         return "COutPoint(hash=%064x n=%i)" % (self.hash, self.n)
