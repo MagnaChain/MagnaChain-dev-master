@@ -10,12 +10,17 @@ Major test publish smart contract
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
 from collections import defaultdict
+from decimal import Decimal
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import (
     assert_equal,
     assert_greater_than,
-    generate_contract
+    generate_contract,
+    assert_contains,
+    bytes_to_hex_str,
+    hex_str_to_bytes,
+    sync_blocks,
 )
 
 class ContractPublishTest(MagnaChainTestFramework):
@@ -29,15 +34,16 @@ class ContractPublishTest(MagnaChainTestFramework):
 
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
-        self.num_nodes = 1
+        self.num_nodes = 2
 
 
     def run_test(self):
         """Main test logic"""
         # prepare
         node = self.nodes[0]
-        node.generate(nblocks=1) # make some coins
-        self.sync_all()
+        node.generate(2) # make some coins
+        self.nodes[1].generate(2)
+        sync_blocks(self.nodes)
 
         # no coins
         try:
@@ -46,7 +52,7 @@ class ContractPublishTest(MagnaChainTestFramework):
         except Exception as e:
             assert "GetSenderAddr" in repr(e)
 
-        node.generate(nblocks=1)
+        node.generate(1)
         # 错误的合约
         contract = generate_contract(self.options.tmpdir,err_type = "syntax_err")
         try:
@@ -59,15 +65,102 @@ class ContractPublishTest(MagnaChainTestFramework):
         try:
             result = node.publishcontract(contract)
         except Exception as e:
-            assert 'Transaction too large' in repr(e)
+            # assert 'Transaction too large' in repr(e)
+            pass
 
         # 测试代码压缩
         contract = generate_contract(self.options.tmpdir,err_type = "trim_code")
         try:
             result = node.publishcontract(contract)
         except Exception as e:
-            assert 'Transaction too large' not in repr(e)
+            # assert 'Transaction too large' not in repr(e)
+            pass
 
+        # 测试sdk发布合约的接口
+        # prepublishcodeTest
+        contract = generate_contract(self.options.tmpdir)
+        with open(contract) as fh:
+            content = "".join(fh.readlines())
+        hex_content = bytes_to_hex_str(bytes(content,encoding='utf-8'))
+        coster = node.getnewaddress()
+        for i in range(10):
+            node.sendtoaddress(coster, 1000)
+        node.generate(2)
+        sender = coster
+        amount = 1
+        changeaddress = node.getnewaddress()
+        result = node.prepublishcode(hex_content,coster,sender,amount,changeaddress)
+        print(result)
+
+        # syntax_err hex content
+        contract = generate_contract(self.options.tmpdir,err_type = "syntax_err")
+        with open(contract) as fh:
+            content = "".join(fh.readlines())
+        hex_content_tmp = bytes_to_hex_str(bytes(content,encoding='utf-8'))
+        try:
+            result = node.prepublishcode(hex_content_tmp, coster, sender, amount, changeaddress)
+        except Exception as e:
+            assert 'expected near' in repr(e)
+
+        # empty content
+        hex_content_tmp = bytes_to_hex_str(bytes("",encoding='utf-8'))
+        try:
+            result = node.prepublishcode(hex_content_tmp, coster, sender, amount, changeaddress)
+        except Exception as e:
+            assert 'code data can not empty' in repr(e)
+
+        # not hex
+        hex_content_tmp = "not hex data"
+        try:
+            result = node.prepublishcode(hex_content_tmp, coster, sender, amount, changeaddress)
+        except Exception as e:
+            assert 'code data must hex data' in repr(e)
+
+        # coster test
+        # Invalid address
+        contract = generate_contract(self.options.tmpdir)
+        contract_id = node.publishcontract(contract)["contractaddress"]
+        node1_newaddress = self.nodes[1].getnewaddress()
+        self.nodes[1].sendtoaddress(node1_newaddress, 100)
+        self.nodes[1].generate(2)
+        sync_blocks(self.nodes)
+        for coster_tmp in ["","DFGHJK12316547645",contract_id,node1_newaddress]:
+            try:
+                result = node.prepublishcode(hex_content, coster_tmp, sender, amount, changeaddress)
+            except Exception as e:
+                assert 'Invalid MagnaChain public key address' in repr(e) or "Invalid MagnaChain fund address" in repr(e)
+                continue
+        node.generate(1)
+
+        # sender test
+        # Invalid address
+        for sender_tmp in ["", "DFGHJK12316547645", contract_id, node1_newaddress]:
+            try:
+                result = node.prepublishcode(hex_content, coster, sender_tmp, amount, changeaddress)
+            except Exception as e:
+                assert 'Invalid MagnaChain public key address' in repr(e) or "Invalid MagnaChain sender address" in repr(e)
+                continue
+        node.generate(1)
+
+        # amount test
+        for amount_tmp in [10000000000, "10",-1, 0, Decimal("0.0009").quantize(Decimal("0.0000"))]:
+            try:
+                result = node.prepublishcode(hex_content, coster, sender, amount_tmp, changeaddress)
+            except Exception as e:
+                assert 'Invalid amount for send' in repr(e) or "Amount out of range" in repr(e) or "Invalid amount" in repr(e)
+                continue
+        node.generate(1)
+
+        # changeaddress test
+        for changeaddress_tmp in ["", "DFGHJK12316547645", contract_id, node1_newaddress]:
+            try:
+                result = node.prepublishcode(hex_content, coster, sender, amount_tmp, changeaddress)
+            except Exception as e:
+                assert 'Invalid MagnaChain public key address' in repr(e) or "Invalid MagnaChain change address" in repr(e)
+                continue
+        node.generate(1)
+
+        return
         # 正确的合约，并且进行重复测试
         j = 2
         contract = generate_contract(self.options.tmpdir)
@@ -79,10 +172,10 @@ class ContractPublishTest(MagnaChainTestFramework):
             self.log.info("publish cost:%s"%(balance - node.getbalance()))
             if i % j == 0:
                 # 每个多少个交易后才打一次包
-                node.generate(nblocks=1)
+                node.generate(1)
                 j = min(64,j * 2)
 
-        node.generate(nblocks=1)
+        node.generate(1)
 
 if __name__ == '__main__':
     ContractPublishTest().main()
