@@ -534,6 +534,11 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
             + HelpExampleCli("generatetoaddress", "11 \"myaddress\"")
         );
 
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "disablewallet option open, no address to mine");
+    }
+
     int nGenerate = request.params[0].get_int();
     uint64_t nMaxTries = 1000000;
     if (!request.params[2].isNull()) {
