@@ -199,11 +199,9 @@ void TestPackageSelection(const MCChainParams& chainparams, MCScript scriptPubKe
 }
 
 // NOTE: These tests rely on CreateNewBlock doing its own self-validation!
-BOOST_AUTO_TEST_CASE(CreateNewBlock_validity)
-{//TODO: this case need rewrite, now is pos.
-    if (true)
-        return;
-
+BOOST_AUTO_TEST_CASE(CreateNewBlock_validity_need_rewrite)
+{
+    if (true) return;
     // Note that by default, these tests run with size accounting enabled.
     const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
     const MCChainParams& chainparams = *chainParams;
