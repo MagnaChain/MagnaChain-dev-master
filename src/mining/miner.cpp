@@ -1123,6 +1123,12 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 
         pNextIndex = pNextIndex->pprev;
 	}
+
+    if (kDest.type() != typeid(MCKeyID))
+    {
+        LogPrintf("%s: Mine out key type invalid \n", __func__);
+        return 0;
+    }
     MCKeyID kKey = boost::get<MCKeyID>(kDest);
 	sheader << (uint160)kKey;
 	sheader << out.hash;

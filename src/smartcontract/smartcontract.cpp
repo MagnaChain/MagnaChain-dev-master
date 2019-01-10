@@ -296,81 +296,7 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pop(L, 1);
 }
 
-bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
-{
-    MagnaChainAddress senderAddr;
-    if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
-        throw std::runtime_error("GetSenderAddr fail.");
-
-    MCKeyID senderKey;
-    MCPubKey senderPubKey;
-    if (!senderAddr.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey))
-        throw std::runtime_error("Get Key or PubKey fail.");
-
-    // temp addresss, replace in MCWallet::CreateTransaction
-    MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);
-    MagnaChainAddress contractAddr(contractId);
-
-    std::string codeout;
-    sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
-    bool success = PublishContract(sls, contractAddr, rawCode, ret);
-    if (success) {
-        MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
-
-        sls->contractIds.erase(contractId);
-        MCWalletTx wtx;
-        wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
-        wtx.pContractData.reset(new ContractData);
-        wtx.pContractData->codeOrFunc = rawCode;
-        wtx.pContractData->sender = senderPubKey;
-        wtx.pContractData->address = contractId;
-        wtx.pContractData->amountOut = 0;
-
-        bool subtractFeeFromAmount = false;
-        MCCoinControl coinCtrl;
-        EnsureWalletIsUnlocked(pWallet);
-        SendMoney(pWallet, scriptPubKey, 0, subtractFeeFromAmount, wtx, coinCtrl, sls);
-
-        ret.setObject();
-        ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
-        ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
-        ret.push_back(Pair("senderaddress", senderAddr.ToString()));
-    }
-
-    return success;
-}
-
-bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret)
-{
-    MCContractID contractId;
-    contractAddr.GetContractID(contractId);
-    ContractInfo contractInfo;
-    if (sls->GetContractInfo(contractId, contractInfo))
-        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
-
-    std::string code, data;
-    long maxCallNum = MAX_CONTRACT_CALL;
-    lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
-    bool success = PublishContract(L, rawCode, maxCallNum, code, data, ret);
-    if (success) {
-        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls->codeLen = code.size();
-        sls->deltaDataLen = data.size();
-
-        if (sls->saveType > 0) {
-            contractInfo.txIndex = sls->txIndex;
-            contractInfo.data = data;
-            contractInfo.code = code;
-            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
-        }
-    }
-    sls->ReleaseLuaState(L);
-
-    return success;
-}
-
-std::string TrimCode(const std::string& rawCode)
+const std::string& TrimCode(const std::string& rawCode)
 {
     std::string line;
     std::string codeOut;
@@ -481,16 +407,88 @@ std::string TrimCode(const std::string& rawCode)
     return codeOut;
 }
 
+bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret)
+{
+    MagnaChainAddress senderAddr;
+    if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
+        throw std::runtime_error("GetSenderAddr fail.");
+
+    MCKeyID senderKey;
+    MCPubKey senderPubKey;
+    if (!senderAddr.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey))
+        throw std::runtime_error("Get Key or PubKey fail.");
+
+    // temp addresss, replace in MCWallet::CreateTransaction
+    const std::string& trimRawCode = TrimCode(rawCode);
+    MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, trimRawCode);
+    MagnaChainAddress contractAddr(contractId);
+
+    sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    bool success = PublishContract(sls, contractAddr, trimRawCode, ret);
+    if (success) {
+        MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
+
+        sls->contractIds.erase(contractId);
+        MCWalletTx wtx;
+        wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
+        wtx.pContractData.reset(new ContractData);
+        wtx.pContractData->codeOrFunc = trimRawCode;
+        wtx.pContractData->sender = senderPubKey;
+        wtx.pContractData->address = contractId;
+        wtx.pContractData->amountOut = 0;
+
+        bool subtractFeeFromAmount = false;
+        MCCoinControl coinCtrl;
+        EnsureWalletIsUnlocked(pWallet);
+        SendMoney(pWallet, scriptPubKey, 0, subtractFeeFromAmount, wtx, coinCtrl, sls);
+
+        ret.setObject();
+        ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
+        ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
+        ret.push_back(Pair("senderaddress", senderAddr.ToString()));
+    }
+
+    return success;
+}
+
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret)
+{
+    MCContractID contractId;
+    contractAddr.GetContractID(contractId);
+    ContractInfo contractInfo;
+    if (sls->GetContractInfo(contractId, contractInfo))
+        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
+
+    std::string code, data;
+    long maxCallNum = MAX_CONTRACT_CALL;
+    lua_State* L = sls->GetLuaState(contractAddr);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
+    bool success = PublishContract(L, rawCode, maxCallNum, code, data, ret);
+    if (success) {
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = code.size();
+        sls->deltaDataLen = data.size();
+
+        if (sls->saveType > 0) {
+            contractInfo.txIndex = sls->txIndex;
+            contractInfo.data = data;
+            contractInfo.code = code;
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+        }
+    }
+    sls->ReleaseLuaState(L);
+
+    return success;
+}
+
 bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret)
 {
-    std::string trimRawCode = TrimCode(rawCode);
-
     bool success = false;
     int top = lua_gettop(L);
     lua_getglobal(L, "regContract");
     lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
-    lua_pushlstring(L, trimRawCode.c_str(), trimRawCode.size());
+    lua_pushlstring(L, rawCode.c_str(), rawCode.size());
     int argc = 3;
 
     if (lua_pcall(L, argc, LUA_MULTRET, 0) != 0) {
