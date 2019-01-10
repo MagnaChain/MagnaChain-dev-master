@@ -106,6 +106,7 @@ typedef std::map<uint256, std::vector<std::map<MCContractID, ContractInfo>>> BLO
 class ContractDataDB
 {
 private:
+    std::atomic<bool> interrupt;
     MCDBWrapper db;
     MCDBBatch writeBatch;
     MCDBBatch removeBatch;
@@ -132,8 +133,7 @@ public:
     int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex);
 
     bool RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
-    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, MCBlock* pBlock, SmartContractThreadData* threadData);
-    void ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* pBlock, SmartContractThreadData* threadData);
+    void ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData);
 
     bool WriteBatch(MCDBBatch& batch);
     bool WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* contractContext);
