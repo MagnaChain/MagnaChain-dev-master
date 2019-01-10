@@ -626,7 +626,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	}
 
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
-	std::string rawCode(vCode.begin(), vCode.end());
+    std::string rawCode(vCode.begin(), vCode.end());
+    const std::string& trimRawCode = TrimCode(rawCode);
 
 	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
@@ -652,13 +653,13 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	else
         changeAddr = fundAddr;
 
-    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
+    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, trimRawCode);
 	MagnaChainAddress contractAddr(contractId);
 
     SmartLuaState sls;
     UniValue ret(UniValue::VARR);
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
-    if (!PublishContract(&sls, contractAddr, rawCode, ret))
+    if (!PublishContract(&sls, contractAddr, trimRawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -667,7 +668,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.pContractData.reset(new ContractData);
-    wtx.pContractData->codeOrFunc = rawCode;
+    wtx.pContractData->codeOrFunc = trimRawCode;
     wtx.pContractData->sender = senderPubKey;
     wtx.pContractData->address = contractId;
     wtx.pContractData->amountOut = 0;

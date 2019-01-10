@@ -5,7 +5,7 @@
 """Test a node with the -disablewallet option.
 
 - Test that validateaddress RPC works when running with -disablewallet
-- Test that it is not possible to mine to an invalid address.
+- Test that it is not possible to mine
 """
 
 from test_framework.test_framework import MagnaChainTestFramework
@@ -40,11 +40,18 @@ class DisableWalletTest (MagnaChainTestFramework):
         x = node.validateaddress(contract_id)
         assert(x['isvalid'] == True)
 
-        # Checking mining to an address without a wallet. Generating to a valid address should succeed
-        # but generating to an invalid address will fail.
-        node.generatetoaddress(1, new_address)
-        assert_raises_rpc_error(-5, "Invalid address", node.generatetoaddress, 1, invalid_address)
-        assert_raises_rpc_error(-5, "Invalid address", node.generatetoaddress, 1, contract_id)
+        # Make sure wallet is really disabled then return "disablewallet option open, no address to mine"
+        assert_raises_rpc_error(-25, "disablewallet option open, no address to mine", node.generatetoaddress, 1, new_address)
+
+        # assert_raises_rpc_error(-5, "Invalid address", node.generatetoaddress, 1, invalid_address)
+        # assert_raises_rpc_error(-5, "Invalid address", node.generatetoaddress, 1, contract_id)
+
+        # mine test
+        assert_raises_rpc_error(-32601, "Method not found (wallet method is disabled because no wallet is loaded)", node.generate, 1)
+
+        # contract test
+        assert_raises_rpc_error(-32601, "Method not found", node.publishcontract, 1)
+        assert_raises_rpc_error(-32601, "Method not found", node.callcontract, True, 1, contract_id, new_address,"payable")
 
 if __name__ == '__main__':
     DisableWalletTest ().main ()

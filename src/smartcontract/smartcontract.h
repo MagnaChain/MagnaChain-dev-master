@@ -73,8 +73,8 @@ public:
     void Clear();
 };
 
-extern bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
-extern MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
+bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
+MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
 
 //temp contract address for publish
 template<typename TxType>
@@ -91,15 +91,16 @@ MCContractID GenerateContractAddressByTx(TxType& tx)
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
-extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
+const std::string& TrimCode(const std::string& rawCode);
+void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
-extern bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret);
-extern bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret);
-extern bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret);
+bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret);
+bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret);
 
-extern bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
-extern bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
-extern bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret);
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
+bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
+bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret);
 
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
 bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);
@@ -112,7 +113,7 @@ uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& con
 uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated = nullptr);
 
 // Lua内置函数
-extern int InternalCallContract(lua_State *L);
-extern int SendCoins(lua_State* L);
+int InternalCallContract(lua_State *L);
+int SendCoins(lua_State* L);
 
 #endif

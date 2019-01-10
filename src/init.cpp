@@ -74,7 +74,6 @@
 
 bool fFeeEstimatesInitialized = false;
 
-std::unique_ptr<MCConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 
 #if ENABLE_ZMQ
@@ -93,31 +92,7 @@ CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 
 static const char* FEE_ESTIMATES_FILENAME = "fee_estimates.dat";
 
-//////////////////////////////////////////////////////////////////////////////
-//
-// Shutdown
-//
-
-//
-// Thread management and startup/shutdown:
-//
-// The network-processing threads are all part of a thread group
-// created by AppInit() or the Qt main() function.
-//
-// A clean exit happens when StartShutdown() or the SIGTERM
-// signal handler sets fRequestShutdown, which triggers
-// the DetectShutdownThread(), which interrupts the main thread group.
-// DetectShutdownThread() then exits, which causes AppInit() to
-// continue (it .joins the shutdown thread).
-// Shutdown() is then
-// called to clean up database connections, and stop other
-// threads that should only be stopped after the main network-processing
-// threads have exited.
-//
-// Shutdown for Qt is very similar, only it uses a QTimer to detect
-// fRequestShutdown getting set, and then does the normal Qt
-// shutdown thing.
-//
+std::unique_ptr<MCConnman> g_connman;
 
 std::atomic<bool> fRequestShutdown(false);
 std::atomic<bool> fDumpMempoolLater(false);
@@ -856,16 +831,6 @@ void InitLogging()
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
     LogPrintf("MagnaChain version %s\n", FormatFullVersion());
 }
-
-namespace { // Variables internal to initialization process only
-
-ServiceFlags nRelevantServices = NODE_NETWORK;
-int nMaxConnections;
-int nUserMaxConnections;
-int nFD;
-ServiceFlags nLocalServices = NODE_NETWORK;
-
-} // namespace
 
 [[noreturn]] static void new_handler_terminate()
 {

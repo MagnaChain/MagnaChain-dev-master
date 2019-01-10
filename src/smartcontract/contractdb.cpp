@@ -96,8 +96,9 @@ void ContractContext::ClearAll()
 ContractDataDB::ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe)
     : db(path, nCacheSize, fMemory, fWipe, true), writeBatch(db), removeBatch(db), threadPool(boost::thread::hardware_concurrency())
 {
-    for (int i = 0; i < threadPool.size(); ++i)
+    for (int i = 0; i < threadPool.size(); ++i) {
         threadPool.schedule(boost::bind(InitializeThread, this));
+    }
 }
 
 void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
@@ -109,20 +110,18 @@ void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
     boost::this_thread::sleep(boost::posix_time::milliseconds(200));
 }
 
-bool interrupt;
-
-void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contractDB, MCBlock* pBlock, SmartContractThreadData* threadData)
+void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData)
 {
-    auto it = contractDB->threadId2SmartLuaState.find(boost::this_thread::get_id());
-    if (it == contractDB->threadId2SmartLuaState.end())
-        throw std::runtime_error(strprintf("%s sls == nullptr\n", __FUNCTION__));
+    auto it = threadId2SmartLuaState.find(boost::this_thread::get_id());
+    if (it == threadId2SmartLuaState.end()) {
+        throw std::runtime_error(strprintf("%s:%d it == threadId2SmartLuaState.end()\n", __FUNCTION__, __LINE__));
+    }
 
-    if (contractDB != nullptr)
-        contractDB->ExecutiveTransactionContract(it->second, pBlock, threadData);
-}
+    SmartLuaState* sls = it->second;
+    if (sls == nullptr) {
+        throw std::runtime_error(strprintf("%s:%d sls == nullptr\n", __FUNCTION__, __LINE__));
+    }
 
-void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* pBlock, SmartContractThreadData* threadData)
-{
 #ifndef _DEBUG
     try {
 #endif
@@ -269,7 +268,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
         threadData[i].blockHeight = blockHeight;
         threadData[i].pPrevBlockIndex = pPrevBlockIndex;
         threadData[i].pCoinAmountCache = pCoinAmountCache;
-        threadPool.schedule(boost::bind(ExecutiveTransactionContractThread, this, pBlock, &threadData[i]));
+        threadPool.schedule(boost::bind(&ContractDataDB::ExecutiveTransactionContract, this, pBlock, &threadData[i]));
         offset += pBlock->groupSize[i];
     }
     threadPool.wait();

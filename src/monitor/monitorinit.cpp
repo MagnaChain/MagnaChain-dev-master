@@ -1,6 +1,12 @@
-﻿#include "monitor/monitorinit.h"
+﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2016-2019 The MagnaChain Core developers
+// Distributed under the MIT software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+#include "monitor/monitorinit.h"
 
 #include "init.h"
+#include "misc/clientversion.h"
 #include "net/net.h"
 #include "net/netbase.h"
 #include "net/torcontrol.h"
@@ -9,14 +15,6 @@
 #include "utils/util.h"
 
 #include <assert.h>
-
-namespace { // Variables internal to initialization process only
-    ServiceFlags nRelevantServices = NODE_NETWORK;
-    int nMaxConnections;
-    int nUserMaxConnections;
-    int nFD;
-    ServiceFlags nLocalServices = NODE_NETWORK;
-} // namespace
 
 bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
@@ -60,6 +58,18 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     // 这里要取消注释
     //peerLogic.reset(new PeerLogicValidation(&connman, scheduler));
     //RegisterValidationInterface(peerLogic.get());
+
+    std::vector<std::string> uacomments;
+    for (const std::string& cmt : gArgs.GetArgs("-uacomment")) {
+        if (cmt != SanitizeString(cmt, SAFE_CHARS_UA_COMMENT))
+            return InitError(strprintf(_("User Agent comment (%s) contains unsafe characters."), cmt));
+        uacomments.push_back(cmt);
+    }
+    strSubVersion = FormatSubVersion(CLIENT_NAME, CLIENT_VERSION, uacomments);
+    if (strSubVersion.size() > MAX_SUBVERSION_LENGTH) {
+        return InitError(strprintf(_("Total length of network version string (%i) exceeds maximum length (%i). Reduce the number or size of uacomments."),
+            strSubVersion.size(), MAX_SUBVERSION_LENGTH));
+    }
 
     if (gArgs.IsArgSet("-onlynet")) {
         std::set<enum Network> nets;

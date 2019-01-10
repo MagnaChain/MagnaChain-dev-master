@@ -65,7 +65,7 @@ class ContractPublishTest(MagnaChainTestFramework):
         try:
             result = node.publishcontract(contract)
         except Exception as e:
-            # assert 'Transaction too large' in repr(e)
+            assert 'Transaction too large' in repr(e)
             pass
 
         # 测试代码压缩
@@ -73,7 +73,7 @@ class ContractPublishTest(MagnaChainTestFramework):
         try:
             result = node.publishcontract(contract)
         except Exception as e:
-            # assert 'Transaction too large' not in repr(e)
+            assert 'Transaction too large' not in repr(e)
             pass
 
         # 测试sdk发布合约的接口
