@@ -25,6 +25,11 @@ class KeypoolRestoreTest(MagnaChainTestFramework):
         self.num_nodes = 2
         self.extra_args = [['-usehd=0'], ['-usehd=1', '-keypool=100', '-keypoolmin=20']]
 
+    def setup_network(self):
+        # Need a bit of extra time for the nodes to start up for this test
+        self.add_nodes(self.num_nodes, extra_args=self.extra_args, timewait=900)
+        self.start_nodes()
+
     def run_test(self):
         self.tmpdir = self.options.tmpdir
         self.nodes[0].generate(101)
