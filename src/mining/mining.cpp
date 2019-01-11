@@ -669,7 +669,7 @@ std::string gbt_vb_name(const Consensus::DeploymentPos pos) {
 
 UniValue getblocktemplate(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() > 1)
+    if (request.fHelp || request.params.size() > 2)
         throw std::runtime_error(
             "getblocktemplate ( TemplateRequest )\n"
             "\nIf the request parameters include a 'mode' key, that is used to explicitly select between the default 'template' request or a 'proposal'.\n"
@@ -681,7 +681,8 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             "    https://github.com/magnachain/bips/blob/master/bip-0145.mediawiki\n"
 
             "\nArguments:\n"
-            "1. template_request         (json object, optional) A json object in the following spec\n"
+            "1. address                  (string, optional) Address for coinbase out and signature.\n"
+            "2. template_request         (json object, optional) A json object in the following spec\n"
             "     {\n"
             "       \"mode\":\"template\"    (string, optional) This must be set to \"template\", \"proposal\" (see BIP 23), or omitted\n"
             "       \"capabilities\":[     (array, optional) A list of strings\n"
@@ -871,6 +872,12 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         // TODO: Maybe recheck connections/IBD and (if something wrong) send an expires-immediately template to stop miners?
     }
 
+    //mining block need wallet for private key to sign block.
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, false)) {
+        return NullUniValue;
+    }
+
     const struct VBDeploymentInfo& segwit_info = VersionBitsDeploymentInfo[Consensus::DEPLOYMENT_SEGWIT];
     // If the caller is indicating segwit support, then allow CreateNewBlock()
     // to select witness transactions, after segwit activates (otherwise
@@ -898,10 +905,33 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         fLastTemplateSupportsSegwit = fSupportsSegwit;
 
         // Create new block
-        MCScript scriptDummy = MCScript() << OP_TRUE;
+        MCScript scriptForMine;
+        if (request.params.size() > 0)
+        {
+            MagnaChainAddress address(request.params[0].get_str());
+            if (!address.IsValid())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address.");
+            MCKeyID keyid;
+            if (!address.GetKeyID(keyid)){
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address(need pubkey address).");
+            }
+            if (!pwallet->HaveKey(keyid)){
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Param 1 address is not in wallet.");
+            }
+            scriptForMine = GetScriptForDestination(keyid);
+        }
+        else {
+            MCPubKey newKey;
+            if (!pwallet->GetKeyFromPool(newKey)) {
+                throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+            }
+            MCKeyID keyID = newKey.GetID();
+            //pwallet->SetAddressBook(keyID, "", "");
+            scriptForMine = GetScriptForDestination(keyID);
+        }
 
         ContractContext contractContext;
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptDummy, &contractContext, fSupportsSegwit);
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
@@ -1353,7 +1383,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true,  {"nblocks","height"} },
     { "mining",             "getmininginfo",          &getmininginfo,          true,  {} },
     { "mining",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","dummy","fee_delta"} },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
+    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
 
     { "generating",         "generate",               &generate,               true,  { "nblocks","maxtries" } },
