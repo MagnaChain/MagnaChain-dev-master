@@ -91,7 +91,7 @@ MCContractID GenerateContractAddressByTx(TxType& tx)
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
-const std::string& TrimCode(const std::string& rawCode);
+std::string TrimCode(const std::string& rawCode);
 void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
 
 bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
