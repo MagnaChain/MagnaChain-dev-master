@@ -418,6 +418,10 @@ UniValue addbranchnode(const JSONRPCRequest& request)
  */ 
 UniValue sendtobranchchain(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -776,6 +780,10 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
 //         
 UniValue mortgageminebranch(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -917,6 +925,10 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
 // 侧链向主链提交区块头
 UniValue submitbranchblockinfo(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1080,6 +1092,10 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
 // 赎回挖矿币, 步骤1
 UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1186,6 +1202,10 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 //赎回挖矿币,步骤2
 UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1580,6 +1600,10 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
 //主链接收处理举报交易
 UniValue handlebranchreport(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1671,6 +1695,10 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 // 举报merkle
 UniValue reportbranchchainblockmerkle(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1918,6 +1946,10 @@ UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
 //主链接收举报的证明
 UniValue handlebranchprove(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1990,6 +2022,10 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 // 锁定挖矿币
 UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -2120,6 +2156,10 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
 // 解锁挖矿币
 UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
