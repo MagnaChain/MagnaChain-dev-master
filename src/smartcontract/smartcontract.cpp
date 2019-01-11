@@ -296,7 +296,7 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pop(L, 1);
 }
 
-const std::string& TrimCode(const std::string& rawCode)
+std::string TrimCode(const std::string& rawCode)
 {
     std::string line;
     std::string codeOut;
