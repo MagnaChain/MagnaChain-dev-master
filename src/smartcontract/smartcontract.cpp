@@ -420,6 +420,9 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
 
     // temp addresss, replace in MCWallet::CreateTransaction
     const std::string& trimRawCode = TrimCode(rawCode);
+    if (trimRawCode.empty())
+        throw std::runtime_error("code is empty");
+
     MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, trimRawCode);
     MagnaChainAddress contractAddr(contractId);
 
