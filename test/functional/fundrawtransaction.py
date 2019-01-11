@@ -44,11 +44,19 @@ class RawTransactionsTest(MagnaChainTestFramework):
 
         self.nodes[2].generate(1)
         self.sync_all()
-        self.nodes[0].generate(121)
+        # self.nodes[0].generate(121)
+        for i in range(12):
+            self.nodes[0].generate(2)
+        sender = self.nodes[0].getnewaddress("1")
+        for i in range(50):
+            self.nodes[0].sendtoaddress(sender,100)
+        self.nodes[0].generate(1)
         self.sync_all()
+        print(self.nodes[0].getbalance(""))
 
         # ensure that setting changePosition in fundraw with an exact match is handled properly
-        rawmatch = self.nodes[2].createrawtransaction([], {self.nodes[2].getnewaddress():50})
+        # 不够找零
+        rawmatch = self.nodes[2].createrawtransaction([], {self.nodes[2].getnewaddress():500000})
         rawmatch = self.nodes[2].fundrawtransaction(rawmatch, {"changePosition":1, "subtractFeeFromOutputs":[0]})
         assert_equal(rawmatch["changepos"], -1)
 
@@ -340,7 +348,8 @@ class RawTransactionsTest(MagnaChainTestFramework):
         rawtx = self.nodes[0].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[0].fundrawtransaction(rawtx)
         #create same transaction over sendtoaddress
-        txId = self.nodes[0].sendmany("", outputs)
+        print(self.nodes[0].getbalanceof(sender),self.nodes[0].listaccounts())
+        txId = self.nodes[0].sendmany("1", outputs)
         signedFee = self.nodes[0].getrawmempool(True)[txId]['fee']
 
         #compare fee
@@ -433,7 +442,6 @@ class RawTransactionsTest(MagnaChainTestFramework):
         outputs = {self.nodes[1].getnewaddress():1.1}
         rawtx = self.nodes[2].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[2].fundrawtransaction(rawtx)
-
         signedTx = self.nodes[2].signrawtransaction(fundedTx['hex'])
         txId = self.nodes[2].sendrawtransaction(signedTx['hex'])
         self.sync_all()
@@ -441,7 +449,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
         self.sync_all()
 
         # make sure funds are received at node1
-        assert_equal(oldBalance+Decimal('1.10000000'), self.nodes[1].getbalance())
+        assert_equal(oldBalance+Decimal('1.10000000'), self.nodes[1].getbalance() - Decimal('2600085.00129400'))
 
         ############################################################
         # locked wallet test
@@ -480,21 +488,27 @@ class RawTransactionsTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-13, "walletpassphrase", self.nodes[1].sendtoaddress, self.nodes[0].getnewaddress(), 1.2)
 
         oldBalance = self.nodes[0].getbalance()
+        oldBalanceOfNode1 = self.nodes[1].getbalance()
 
         inputs = []
         outputs = {self.nodes[0].getnewaddress():1.1}
         rawtx = self.nodes[1].createrawtransaction(inputs, outputs)
         fundedTx = self.nodes[1].fundrawtransaction(rawtx)
 
+        print(self.nodes[1].getbalance())
         #now we need to unlock
         self.nodes[1].walletpassphrase("test", 600)
         signedTx = self.nodes[1].signrawtransaction(fundedTx['hex'])
         txId = self.nodes[1].sendrawtransaction(signedTx['hex'])
+        print(self.nodes[1].getbalance())
         self.nodes[1].generate(1)
         self.sync_all()
+        print(self.nodes[1].getbalance())
 
-        # make sure funds are received at node1
-        assert_equal(oldBalance+Decimal('51.10000000'), self.nodes[0].getbalance())
+        # make sure funds are received at node0
+        # assert_equal(oldBalance+Decimal('51.10000000')+Decimal('2600085.00129400'), self.nodes[0].getbalance())
+        assert_equal(oldBalance + Decimal('1.10000000'), self.nodes[0].getbalance())
+        assert_equal(oldBalanceOfNode1 - Decimal('1.10000000') + Decimal('2600085.00129400') - Decimal('0.001294'), self.nodes[1].getbalance())
 
 
         ###############################################
@@ -519,7 +533,13 @@ class RawTransactionsTest(MagnaChainTestFramework):
         fundedTx = self.nodes[1].fundrawtransaction(rawtx)
 
         #create same transaction over sendtoaddress
-        txId = self.nodes[1].sendmany("", outputs)
+        sender1 = self.nodes[1].getnewaddress("2")
+        for i in range(50):
+            self.nodes[1].sendtoaddress(sender1,100)
+        self.nodes[1].generate(1)
+        self.sync_all()
+        print(self.nodes[1].getbalance("1"), self.nodes[1].getbalance(), self.nodes[1].listaccounts())
+        txId = self.nodes[1].sendmany("2", outputs)
         signedFee = self.nodes[1].getrawmempool(True)[txId]['fee']
 
         #compare fee
@@ -539,7 +559,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
 
         for i in range(0,20):
             self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.01)
-        self.nodes[0].generate(1)
+        self.nodes[0].generate(2)
         self.sync_all()
 
         #fund a tx with ~20 small inputs
@@ -554,7 +574,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(oldBalance+Decimal('50.19000000'), self.nodes[0].getbalance()) #0.19+block reward
+        assert_equal(oldBalance+Decimal('0.19000000') + Decimal('2600085'), self.nodes[0].getbalance()) #0.19+block reward
 
         #####################################################
         # test fundrawtransaction with OP_RETURN and no vin #
