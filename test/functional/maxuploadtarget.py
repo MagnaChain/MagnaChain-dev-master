@@ -39,6 +39,11 @@ class MaxUploadTest(MagnaChainTestFramework):
         # Cache for utxos, as the listunspent may take a long time later in the test
         self.utxo_cache = []
 
+    def setup_network(self):
+        # Need a bit of extra time for the nodes to start up for this test
+        self.add_nodes(self.num_nodes, extra_args=self.extra_args, timewait=7200)
+        self.start_nodes()
+
     def run_test(self):
         # Before we connect anything, we first set the time on the node
         # to be in the past, otherwise things break because the CNode
@@ -47,7 +52,10 @@ class MaxUploadTest(MagnaChainTestFramework):
         self.nodes[0].setmocktime(old_time)
 
         # Generate some old blocks
-        self.nodes[0].generate(130)
+        for i in range(65):
+            print(i)
+            self.nodes[0].generate(2)
+        print("Generate some old blocks done")
 
         # test_nodes[0] will only request old blocks
         # test_nodes[1] will only request new blocks
@@ -66,6 +74,7 @@ class MaxUploadTest(MagnaChainTestFramework):
         # Test logic begins here
 
         # Now mine a big block
+        print("mining  a big block")
         mine_large_block(self.nodes[0], self.utxo_cache)
 
         # Store the hash; we'll request this later
@@ -77,6 +86,7 @@ class MaxUploadTest(MagnaChainTestFramework):
         self.nodes[0].setmocktime(int(time.time()) - 2*60*60*24)
 
         # Mine one more block, so that the prior block looks old
+        print("Mine one more block, so that the prior block looks old")
         mine_large_block(self.nodes[0], self.utxo_cache)
 
         # We'll be requesting this new block too
