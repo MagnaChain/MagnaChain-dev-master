@@ -931,7 +931,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         }
 
         ContractContext contractContext;
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit);
+        MCCoinsView viewDummy;
+        MCCoinsViewCache view(&viewDummy);
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
