@@ -177,9 +177,9 @@ class ContractCallTest(MagnaChainTestFramework):
             caller_b("contractDataTest")  # after called,size should be 127
             assert_equal(caller_b("get", "size")['return'][0], 127)
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest",
-                          new_address)  # after called,size should be 126
+                          new_address)  # after called,size should be 127,because of replace dump
             node.generate(nblocks=1)
-            assert_equal(caller_b("get", "size")['return'][0], 126)
+            assert_equal(caller_b("get", "size")['return'][0], 127)
 
         # lots of dust vin in contract's send transaction
         # TODO:maybe  need to set payfee param in magnachaind

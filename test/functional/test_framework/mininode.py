@@ -394,9 +394,11 @@ class CBlockLocator(object):
 
 
 class COutPoint(object):
-    def __init__(self, hash=0, n=None):
-        if hash:
+    def __init__(self, hash=None, n=None):
+        if hash is not None:
             self.hash = hash
+        else:
+            self.hash = 0
         if n is not None:
             self.n = n
         else:

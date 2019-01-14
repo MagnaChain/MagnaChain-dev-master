@@ -18,27 +18,31 @@ def txFromHex(hexstring):
 class ListTransactionsTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
-        self.enable_mocktime()
+        # self.enable_mocktime()
+        self.setup_clean_chain = True
 
     def run_test(self):
+        self.nodes[0].generate(2)
         # Simple send, 0 to 1:
-        txid = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 0.1)
+        txid = self.nodes[0].sendtoaddress(self.nodes[1].getnewaddress(), 10)
         self.sync_all()
         assert_array_result(self.nodes[0].listtransactions(),
                            {"txid":txid},
-                           {"category":"send","account":"","amount":Decimal("-0.1"),"confirmations":0})
+                           {"category":"send","account":"","amount":Decimal("-10"),"confirmations":0})
         assert_array_result(self.nodes[1].listtransactions(),
                            {"txid":txid},
-                           {"category":"receive","account":"","amount":Decimal("0.1"),"confirmations":0})
+                           {"category":"receive","account":"","amount":Decimal("10"),"confirmations":0})
         # mine a block, confirmations should change:
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_array_result(self.nodes[0].listtransactions(),
+        array0 = [o for i,o in enumerate(self.nodes[0].listtransactions("*", 1000, 0)) if o["txid"] == txid]
+        array1 = [o for i, o in enumerate(self.nodes[1].listtransactions("*", 1000, 0)) if o["txid"] == txid]
+        assert_array_result(array0,
                            {"txid":txid},
-                           {"category":"send","account":"","amount":Decimal("-0.1"),"confirmations":1})
-        assert_array_result(self.nodes[1].listtransactions(),
+                           {"category":"send","account":"","amount":Decimal("-10"),"confirmations":1})
+        assert_array_result(array1,
                            {"txid":txid},
-                           {"category":"receive","account":"","amount":Decimal("0.1"),"confirmations":1})
+                           {"category":"receive","account":"","amount":Decimal("10"),"confirmations":1})
 
         # send-to-self:
         txid = self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(), 0.2)
@@ -54,7 +58,12 @@ class ListTransactionsTest(MagnaChainTestFramework):
                     self.nodes[1].getnewaddress() : 0.22,
                     self.nodes[0].getaccountaddress("from1") : 0.33,
                     self.nodes[1].getaccountaddress("toself") : 0.44 }
-        txid = self.nodes[1].sendmany("", send_to)
+
+        sender = self.nodes[1].getnewaddress("1")
+        for i in range(4):
+            self.nodes[1].sendtoaddress(sender,0.5)
+        self.nodes[1].generate(1)
+        txid = self.nodes[1].sendmany("1", send_to)
         self.sync_all()
         assert_array_result(self.nodes[1].listtransactions(),
                            {"category":"send","amount":Decimal("-0.11")},
@@ -76,7 +85,7 @@ class ListTransactionsTest(MagnaChainTestFramework):
                            {"txid":txid, "account" : "from1"} )
         assert_array_result(self.nodes[1].listtransactions(),
                            {"category":"send","amount":Decimal("-0.44")},
-                           {"txid":txid, "account" : ""} )
+                           {"txid":txid, "account" : "1"} )
         assert_array_result(self.nodes[1].listtransactions(),
                            {"category":"receive","amount":Decimal("0.44")},
                            {"txid":txid, "account" : "toself"} )
@@ -92,6 +101,23 @@ class ListTransactionsTest(MagnaChainTestFramework):
                            {"txid":txid, "account" : "watchonly"} )
 
         self.run_rbf_opt_in_test()
+
+        # add contract test
+        print( self.nodes[0].getbalance())
+        contract = generate_contract(self.options.tmpdir)
+        result = self.nodes[0].publishcontract(contract)
+        txid, contract_id = result["txid"],result["contractaddress"]
+        self.sync_all()
+        array0 = [o for i, o in enumerate(self.nodes[0].listtransactions()) if o["txid"] == txid]
+        array1 = [o for i, o in enumerate(self.nodes[1].listtransactions()) if o["txid"] == txid]
+        assert  array0 != [] and array1 != []
+        # assert_array_result(array0,
+        #                    {"txid":txid},
+        #                    {"category":"send","account":"","amount":Decimal("-10"),"confirmations":0})
+        # assert_array_result(array1,
+        #                    {"txid":txid},
+        #                    {"category":"send","account":"","amount":Decimal("-10"),"confirmatio
+
 
     # Check that the opt-in-rbf flag works properly, for sent and received
     # transactions.

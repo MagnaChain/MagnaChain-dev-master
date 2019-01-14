@@ -7,13 +7,14 @@
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_array_result, assert_raises_rpc_error
 
+# TODO 需要加上合约的情况
 class ListSinceBlockTest (MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
         self.setup_clean_chain = True
 
     def run_test(self):
-        self.nodes[2].generate(101)
+        self.nodes[2].generate(51)
         self.sync_all()
 
         self.test_no_blockhash()
