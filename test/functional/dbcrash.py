@@ -54,7 +54,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
 
         # Set different crash ratios and cache sizes.  Note that not all of
         # -dbcache goes to pcoinsTip.
-        self.node0_args = ["-dbcrashratio=8", "-dbcache=4"] + self.base_args
+        self.node0_args = ["-dbcrashratio=4", "-dbcache=4"] + self.base_args
         self.node1_args = ["-dbcrashratio=16", "-dbcache=8"] + self.base_args
         self.node2_args = ["-dbcrashratio=24", "-dbcache=16"] + self.base_args
 
@@ -88,6 +88,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
                 # should raise an exception if magnachaind doesn't exit.
                 self.wait_for_node_exit(node_index, timeout=60)
             self.crashed_on_restart += 1
+            self.log.info("crashed_on_restart %d", self.crashed_on_restart);
             time.sleep(1)
 
         # If we got here, magnachaind isn't coming back up on restart.  Could be a
