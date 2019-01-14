@@ -1486,7 +1486,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 pcoinsdbview = new MCCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
                 pcoinscatcher = new MCCoinsViewErrorCatcher(pcoinsdbview);
-
+                
                 // If necessary, upgrade from older database format.
                 // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!pcoinsdbview->Upgrade()) {
@@ -1494,6 +1494,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
+                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
                 // ReplayBlocks is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!ReplayBlocks(chainparams, pcoinsdbview)) {
                     strLoadError = _("Unable to replay blocks. You will need to rebuild the database using -reindex-chainstate.");
@@ -1502,7 +1503,6 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 // The on-disk coinsdb is now in a good state, create the cache
                 pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
-				pcoinListDb = new CoinListDB( pcoinsdbview->GetDb() );
 				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, false);
                 pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, false);
                 pCoinAmountDB = new CoinAmountDB();
