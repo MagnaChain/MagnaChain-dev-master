@@ -609,7 +609,7 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
                     if (to.hash == outpoint.hash && to.n == outpoint.n) {
                         bGot = true;
                         LogPrint(BCLog::COINDB, "COIN_LIST, Readd trans : %s %d \n", to.hash.ToString(), to.n);
-                        assert(false);
+                        //assert(false);//TODO: when db crash, and ReplayBlocks will make this happen.
                         break;
                     }
                 }
