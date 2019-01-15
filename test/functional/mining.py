@@ -16,6 +16,7 @@ from test_framework.blocktools import create_coinbase
 from test_framework.mininode import CBlock
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_raises_rpc_error
+from test_framework.script import CScriptNum
 
 def b2x(b):
     return b2a_hex(b).decode('ascii')
@@ -40,8 +41,8 @@ class MiningTest(MagnaChainTestFramework):
         assert_equal(mining_info['chain'], 'regtest')
         assert_equal(mining_info['currentblocktx'], 0)
         assert_equal(mining_info['currentblockweight'], 0)
-        assert_equal(mining_info['difficulty'], Decimal('4.656542373906925E-10'))
-        assert_equal(mining_info['networkhashps'], Decimal('0.003333333333333334'))
+        assert_equal(mining_info['difficulty'], Decimal('4.940617326170113E-9'))
+        assert_equal(mining_info['networkhashps'], Decimal('0.2066111111111111'))
         assert_equal(mining_info['pooledtx'], 0)
 
         # Mine a block to leave initial block download
@@ -51,10 +52,18 @@ class MiningTest(MagnaChainTestFramework):
         assert 'proposal' in tmpl['capabilities']
         assert 'coinbasetxn' not in tmpl
 
-        coinbase_tx = create_coinbase(height=int(tmpl["height"]) + 1)
+        next_height = int(tmpl["height"])
+        coinbase_tx = create_coinbase(height=next_height)
         # sequence numbers must not be max for nLockTime to have effect
         coinbase_tx.vin[0].nSequence = 2 ** 32 - 2
         coinbase_tx.rehash()
+
+        # round-trip the encoded bip34 block height commitment
+        assert_equal(CScriptNum.decode(coinbase_tx.vin[0].scriptSig), next_height)
+        # round-trip negative and multi-byte CScriptNums to catch python regression
+        assert_equal(CScriptNum.decode(CScriptNum.encode(CScriptNum(1500))), 1500)
+        assert_equal(CScriptNum.decode(CScriptNum.encode(CScriptNum(-1500))), -1500)
+        assert_equal(CScriptNum.decode(CScriptNum.encode(CScriptNum(-1))), -1)
 
         block = CBlock()
         block.nVersion = tmpl["version"]
@@ -133,3 +142,4 @@ class MiningTest(MagnaChainTestFramework):
 
 if __name__ == '__main__':
     MiningTest().main()
+
