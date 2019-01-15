@@ -2454,7 +2454,7 @@ class NodeConn(asyncore.dispatcher):
                     self.recvbuf = self.recvbuf[4+12+4+4+msglen:]
                 if command in self.messagemap:
                     f = BytesIO(msg)
-                    print("recv msg len:",len(msg),command,msg)
+                    print("recv msg len:",len(msg),command)
                     t = self.messagemap[command]()
                     t.deserialize(f)
                     self.got_message(t)
