@@ -171,6 +171,7 @@ class ImportRescanTest(MagnaChainTestFramework):
             variant.sent_txid = self.nodes[0].sendtoaddress(variant.address["address"], variant.sent_amount)
 
         # Generate a block containing the new transactions.
+        set_node_times(self.nodes, timestamp + TIMESTAMP_WINDOW + 10)
         self.nodes[0].generate(1)
         assert_equal(self.nodes[0].getrawmempool(), [])
         sync_blocks(self.nodes)
