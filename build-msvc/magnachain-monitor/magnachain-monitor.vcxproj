@@ -112,7 +112,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include;$(SolutionDir)/db-4.8.30/build_windows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include;$(SolutionDir)/db-4.8.30/build_windows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -150,7 +150,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include;$(SolutionDir)/db-4.8.30/build_windows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -173,10 +173,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\magnachaind-monitor.cpp" />
+    <ClCompile Include="..\..\src\monitor\database.cpp" />
     <ClCompile Include="..\..\src\monitor\monitorinit.cpp" />
+    <ClCompile Include="..\..\src\monitor\net_processing.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\monitor\database.h" />
     <ClInclude Include="..\..\src\monitor\monitorinit.h" />
+    <ClInclude Include="..\..\src\monitor\net_processing.h" />
+    <ClInclude Include="..\..\src\monitor\sql.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
@@ -227,6 +232,7 @@
     <Import Project="..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets" Condition="Exists('..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets')" />
     <Import Project="..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets" Condition="Exists('..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets')" />
     <Import Project="..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets" Condition="Exists('..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets')" />
+    <Import Project="..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets" Condition="Exists('..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -279,5 +285,6 @@
     <Error Condition="!Exists('..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets'))" />
     <Error Condition="!Exists('..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets'))" />
     <Error Condition="!Exists('..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets'))" />
+    <Error Condition="!Exists('..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets'))" />
   </Target>
 </Project>

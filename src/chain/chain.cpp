@@ -71,7 +71,7 @@ MCBlockIndex* MCChain::FindEarliestAtLeast(int64_t nTime) const
 int static inline InvertLowestOne(int n) { return n & (n - 1); }
 
 /** Compute what height to jump back to with the MCBlockIndex::pskip pointer. */
-int static inline GetSkipHeight(int height) {
+int GetSkipHeight(int height) {
     if (height < 2)
         return 0;
 

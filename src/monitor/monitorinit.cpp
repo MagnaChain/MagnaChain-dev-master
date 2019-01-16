@@ -5,19 +5,30 @@
 
 #include "monitor/monitorinit.h"
 
+#include "chain/chainparams.h"
 #include "init.h"
 #include "misc/clientversion.h"
+#include "monitor/net_processing.h"
+#include "monitor/database.h"
 #include "net/net.h"
 #include "net/netbase.h"
 #include "net/torcontrol.h"
 #include "rpc/server.h"
 #include "ui/ui_interface.h"
 #include "utils/util.h"
+#include "validation/validation.h"
 
 #include <assert.h>
 
 bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
+    const MCChainParams& chainparams = Params();
+
+    // ********************************************************* Initialize database
+    if (!DBInitialize()) {
+        return InitError("Initialize database fail");
+    }
+
     // ********************************************************* Step 4a: application initialization
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());
@@ -56,8 +67,8 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     MCConnman& connman = *g_connman;
 
     // 这里要取消注释
-    //peerLogic.reset(new PeerLogicValidation(&connman, scheduler));
-    //RegisterValidationInterface(peerLogic.get());
+    peerLogic.reset(new PeerLogicValidation(&connman, scheduler, &MonitorProcessMessage, &MonitorGetLocator));
+    RegisterValidationInterface(peerLogic.get());
 
     std::vector<std::string> uacomments;
     for (const std::string& cmt : gArgs.GetArgs("-uacomment")) {
@@ -159,6 +170,18 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
         nMaxOutboundLimit = gArgs.GetArg("-maxuploadtarget", DEFAULT_MAX_UPLOAD_TARGET) * 1024 * 1024;
     }
 
+    // ********************************************************* Step 7: load block chain
+    uint256 bestBlockHash = GetMaxHeightBlock();
+    if (bestBlockHash.IsNull()) {
+        WriteBlockToDatabase(chainparams.GenesisBlock());
+        bestBlockHash = chainparams.GenesisBlock().GetHash();
+    }
+
+    // 创建一个BlockIndex，只填充少数的字段
+    MCBlockIndex* pBlockIndex = new MCBlockIndex();
+    pBlockIndex->phashBlock = new uint256(bestBlockHash);
+    chainActive.SetTip(pBlockIndex);
+
     // ********************************************************* Step 11: start node
 
     if (gArgs.GetBoolArg("-listenonion", DEFAULT_LISTEN_ONION))
@@ -176,9 +199,9 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     connOptions.nMaxOutbound = std::min(MAX_OUTBOUND_CONNECTIONS, connOptions.nMaxConnections);
     connOptions.nMaxAddnode = MAX_ADDNODE_CONNECTIONS;
     connOptions.nMaxFeeler = 1;
-    //connOptions.nBestHeight = chainActive.Height();
+    connOptions.nBestHeight = chainActive.Height();
     connOptions.uiInterface = &uiInterface;
-    //connOptions.m_msgproc = peerLogic.get();
+    connOptions.m_msgproc = peerLogic.get();
     connOptions.nSendBufferMaxSize = 1000 * gArgs.GetArg("-maxsendbuffer", DEFAULT_MAXSENDBUFFER);
     connOptions.nReceiveFloodSize = 1000 * gArgs.GetArg("-maxreceivebuffer", DEFAULT_MAXRECEIVEBUFFER);
 
@@ -221,7 +244,6 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
     // ********************************************************* Step 12: finished
 
-    SetRPCWarmupFinished();
     uiInterface.InitMessage(_("Done loading"));
 
     return !ShutdownRequested();
