@@ -746,6 +746,7 @@ def generate_contract(folder, err_type=None):
         function setGlob(val)
             say('before set:',glob)
             glob = val
+            PersistentData.decimals = val
             say('after set:',glob)
         end
 
@@ -859,3 +860,18 @@ def caller_factory(mgr,contract_id,sender):
             assert all(re.findall('-\d\)$', repr(e)))
             return repr(e)
     return _call_contract
+
+
+def gen_lots_of_contracts(node,contract,num = 500):
+    """
+    发布很多合约交易，用于构造需要大量合约交易的情况
+    返回{txid:xxxxx,address:xxx}集合
+    :param node:
+    :param num:
+    :return: txids
+    """
+    infos = []
+    for i in range(num):
+        result = node.publishcontract(contract)
+        infos.append({'txid': result['txid'],'address' : result['contractaddress']})
+    return infos
