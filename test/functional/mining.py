@@ -17,6 +17,7 @@ from test_framework.mininode import CBlock
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_raises_rpc_error
 from test_framework.script import CScriptNum
+from test_framework.key import CECKey
 
 def b2x(b):
     return b2a_hex(b).decode('ascii')
@@ -52,8 +53,13 @@ class MiningTest(MagnaChainTestFramework):
         assert 'proposal' in tmpl['capabilities']
         assert 'coinbasetxn' not in tmpl
 
+        newaddress = node.getnewaddress()
+        pubkey = node.validateaddress(newaddress)["pubkey"]
         next_height = int(tmpl["height"])
-        coinbase_tx = create_coinbase(height=next_height)
+        coinbase_key = CECKey()
+        coinbase_key.set_secretbytes(b"horsebattery")
+        coinbase_pubkey = coinbase_key.get_pubkey()
+        coinbase_tx = create_coinbase(height=next_height,pubkey = coinbase_pubkey)#bytes(pubkey,encoding='utf-8'))
         # sequence numbers must not be max for nLockTime to have effect
         coinbase_tx.vin[0].nSequence = 2 ** 32 - 2
         coinbase_tx.rehash()

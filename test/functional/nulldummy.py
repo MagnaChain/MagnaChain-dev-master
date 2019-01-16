@@ -52,8 +52,8 @@ class NULLDUMMYTest(MagnaChainTestFramework):
         self.coinbase_blocks = self.nodes[0].generate(2) # Block 2
         coinbase_txid = []
         for i in self.coinbase_blocks:
-            coinbase_txid.append(self.nodes[0].getblock(i)['tx'][0])
-        self.nodes[0].generate(427) # Block 429
+            coinbase_txid.append(self.nodes[0].getblock(i,True,1)['tx'][0])
+        self.nodes[0].generate(57) # Block 429
         self.lastblockhash = self.nodes[0].getbestblockhash()
         self.tip = int("0x" + self.lastblockhash, 0)
         self.lastblockheight = 429
@@ -117,7 +117,7 @@ class NULLDUMMYTest(MagnaChainTestFramework):
         witness and add_witness_commitment(block)
         block.rehash()
         block.solve()
-        node.submitblock(bytes_to_hex_str(block.serialize(True)))
+        assert "CheckBlockWork fail" not in node.submitblock(bytes_to_hex_str(block.serialize(True)))
         if (accept):
             assert_equal(node.getbestblockhash(), block.hash)
             self.tip = block.sha256
