@@ -194,7 +194,7 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             batch.Erase(keyentry);
 
         if (batch.SizeEstimate() > batch_size) {
-            LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+            LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 0, Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
             m_db.WriteBatch(batch);
             batch.Clear();
         }
@@ -220,6 +220,10 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
     }
     cache.m_mapChainTxInfos.clear();
 
+    LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 0, Writing final batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+    m_db.WriteBatch(batch);
+    batch.Clear();
+
     for (auto mit = cache.m_mapRecvRecord.begin(); mit != cache.m_mapRecvRecord.end(); mit++) {
         const BranchChainTxEntry& keyentry = mit->first;
         const BranchChainTxRecvInfo& txinfo = mit->second;
@@ -229,7 +233,7 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             batch.Erase(keyentry);
 
         if (batch.SizeEstimate() > batch_size) {
-            LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+            LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
             m_db.WriteBatch(batch);
             batch.Clear();
         }
@@ -239,7 +243,9 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
         batch.Write(DB_BRANCH_CHAIN_LIST, m_vCreatedBranchTxs);
     }
 
-    bool ret = m_db.WriteBatch(batch);
+    LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing final batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+    bool ret = m_db.WriteBatch(batch);// final batch
+    batch.Clear();
     cache.m_mapRecvRecord.clear();
 
     for (auto mit = cache.m_mapCoinBeReport.begin(); mit != cache.m_mapCoinBeReport.end(); mit++)
