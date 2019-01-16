@@ -753,9 +753,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     UniValue lpval = NullUniValue;
     std::set<std::string> setClientRules;
     int64_t nMaxVersionPreVB = -1;
-    if (!request.params[0].isNull())
+    if (!request.params[1].isNull())
     {
-        const UniValue& oparam = request.params[0].get_obj();
+        const UniValue& oparam = request.params[1].get_obj();
         const UniValue& modeval = find_value(oparam, "mode");
         if (modeval.isStr())
             strMode = modeval.get_str();
