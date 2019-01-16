@@ -1287,7 +1287,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
     LogPrintf("Init branch chain %s\n", chainparams.GetBranchId());
 
-    peerLogic.reset(new PeerLogicValidation(&connman, scheduler));
+    peerLogic.reset(new PeerLogicValidation(&connman, scheduler, &ProcessMessage, &GetLocator));
     RegisterValidationInterface(peerLogic.get());
 
     // sanitize comments per BIP-0014, format user agent and check total size

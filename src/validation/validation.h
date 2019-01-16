@@ -499,6 +499,9 @@ extern VersionBitsCache versionbitscache;
  */
 int32_t ComputeBlockVersion(const MCBlockIndex* pindexPrev, const Consensus::Params& params);
 
+/** Add block to MCBlockIndex */
+MCBlockIndex* AddToBlockIndex(const MCBlockHeader& block);
+
 /** Reject codes greater or equal to this can be returned by AcceptToMemPool
  * for transactions, to signal internal conditions. They cannot and should not
  * be sent over the P2P network.
@@ -524,5 +527,3 @@ std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& set
 bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
 bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
 #endif // MAGNACHAIN_VALIDATION_H
-
-

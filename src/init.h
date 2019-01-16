@@ -13,6 +13,7 @@
 
 class MCScheduler;
 class MCWallet;
+class PeerLogicValidation;
 
 namespace boost
 {
@@ -33,6 +34,7 @@ namespace { // Variables internal to initialization process only
 } // namespace
 
 extern std::unique_ptr<MCConnman> g_connman;
+extern std::unique_ptr<PeerLogicValidation> peerLogic;
 
 #if ENABLE_ZMQ
 #include "zmq/zmqnotificationinterface.h"
