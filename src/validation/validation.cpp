@@ -3052,7 +3052,7 @@ bool ResetBlockFailureFlags(MCBlockIndex *pindex) {
     return true;
 }
 
-static MCBlockIndex* AddToBlockIndex(const MCBlockHeader& block)
+MCBlockIndex* AddToBlockIndex(const MCBlockHeader& block)
 {
     // Check for duplicate
     uint256 hash = block.GetHash();
