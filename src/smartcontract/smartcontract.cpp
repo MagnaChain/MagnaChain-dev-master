@@ -501,7 +501,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
         throw std::runtime_error("Get Key or PubKey fail.");
 
     // temp addresss, replace in MCWallet::CreateTransaction
-    std::string& trimRawCode = TrimCode(rawCode);
+    std::string trimRawCode = TrimCode(rawCode);
     if (trimRawCode.empty())
         throw std::runtime_error("code is empty");
 

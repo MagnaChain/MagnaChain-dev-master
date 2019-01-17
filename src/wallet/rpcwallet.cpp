@@ -627,7 +627,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
     std::string rawCode(vCode.begin(), vCode.end());
-    std::string& trimRawCode = TrimCode(rawCode);
+    std::string trimRawCode = TrimCode(rawCode);
 
 	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
