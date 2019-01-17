@@ -160,7 +160,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 
             UniValue ret(UniValue::VARR);
             if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-                const std::string& rawCode = tx->pContractData->codeOrFunc;
+                std::string rawCode = tx->pContractData->codeOrFunc;
                 sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
                 if (!PublishContract(sls, contractAddr, rawCode, ret) || tx->pContractData->amountOut != 0 || tx->pContractData->amountOut != sls->contractOut) {
                     interrupt = true;

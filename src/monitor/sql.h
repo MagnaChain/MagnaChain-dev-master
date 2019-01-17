@@ -13,6 +13,7 @@ const char* sqls[] = {
     ", `bits` INT(11) NOT NULL"
     ", `nonce` INT(11) NOT NULL"
     ", PRIMARY KEY(`blockhash`)"
+    ", INDEX(`hashprevblock`, `height`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `transaction` ("
@@ -66,6 +67,7 @@ const char* sqls[] = {
     ", `amountout` INT(11) NOT NULL"
     ", `signature` BLOB NOT NULL"
     ", PRIMARY KEY(`txhash`)"
+    ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `branchblockdata` ("
@@ -113,6 +115,7 @@ const char* sqls[] = {
     ", `blockhash` VARCHAR(64) NOT NULL"
     ", `txindex` VARCHAR(64) NOT NULL"
     ", PRIMARY KEY(`txhash`, `contractid`)"
+    ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `contractinfo` ("
@@ -123,6 +126,7 @@ const char* sqls[] = {
     ", `code` BLOB NOT NULL"
     ", `data` BLOB NOT NULL"
     ", PRIMARY KEY(`txhash`, `contractid`)"
+    ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 };
 

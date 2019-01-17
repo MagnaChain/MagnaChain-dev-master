@@ -407,6 +407,92 @@ std::string TrimCode(const std::string& rawCode)
     return codeOut;
 }
 
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+std::string Compress(const std::string& buffer)
+{
+    std::string zipData;
+    boost::iostreams::filtering_ostream zout(boost::iostreams::zlib_compressor() | boost::iostreams::back_inserter(zipData));
+    boost::iostreams::copy(boost::make_iterator_range(buffer), zout);
+    return zipData;
+}
+
+std::string Decompress(const std::string& buffer)
+{
+    std::string unzipData;
+    boost::iostreams::filtering_ostream uzout(boost::iostreams::zlib_decompressor() | boost::iostreams::back_inserter(unzipData));
+    boost::iostreams::copy(boost::make_iterator_range(buffer), uzout);
+    return unzipData;
+}
+
+bool PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum, std::string& dataout, UniValue& ret)
+{
+    bool success = false;
+    int top = lua_gettop(L);
+    lua_getglobal(L, "regContract");
+    lua_pushnumber(L, maxCallNum);
+    lua_pushnumber(L, MAX_DATA_LEN);
+    lua_pushlstring(L, rawCode.c_str(), rawCode.size());
+    int argc = 3;
+
+    if (lua_pcall(L, argc, LUA_MULTRET, 0) != 0) {
+        const char* err = lua_tostring(L, -1);
+        ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+    }
+    else {
+        maxCallNum = L->limit_instruction;
+        success = lua_toboolean(L, top + 1) != 0;
+        if (success) {
+            size_t dl = 0;
+            const char* temp = lua_tolstring(L, top + 2, &dl);
+            dataout.assign(temp, dl);
+
+            size_t cl = 0;
+            temp = lua_tolstring(L, top + 3, &cl);
+            rawCode.assign(temp, cl);
+        }
+        else {
+            const char* err = lua_tostring(L, -1);
+            ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+        }
+    }
+
+    lua_settop(L, top);
+    return success;
+}
+
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret)
+{
+    MCContractID contractId;
+    contractAddr.GetContractID(contractId);
+    ContractInfo contractInfo;
+    if (sls->GetContractInfo(contractId, contractInfo))
+        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
+
+    std::string data;
+    long maxCallNum = MAX_CONTRACT_CALL;
+    lua_State* L = sls->GetLuaState(contractAddr);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
+    bool success = PublishContract(L, rawCode, maxCallNum, data, ret);
+    if (success) {
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = rawCode.size();
+        sls->deltaDataLen = data.size();
+
+        if (sls->saveType > 0) {
+            contractInfo.txIndex = sls->txIndex;
+            contractInfo.data = data;
+            contractInfo.code = Compress(rawCode);
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+        }
+    }
+    sls->ReleaseLuaState(L);
+
+    return success;
+}
+
 bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret)
 {
     MagnaChainAddress senderAddr;
@@ -419,7 +505,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
         throw std::runtime_error("Get Key or PubKey fail.");
 
     // temp addresss, replace in MCWallet::CreateTransaction
-    const std::string& trimRawCode = TrimCode(rawCode);
+    std::string& trimRawCode = TrimCode(rawCode);
     if (trimRawCode.empty())
         throw std::runtime_error("code is empty");
 
@@ -451,72 +537,6 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
         ret.push_back(Pair("senderaddress", senderAddr.ToString()));
     }
 
-    return success;
-}
-
-bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret)
-{
-    MCContractID contractId;
-    contractAddr.GetContractID(contractId);
-    ContractInfo contractInfo;
-    if (sls->GetContractInfo(contractId, contractInfo))
-        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
-
-    std::string code, data;
-    long maxCallNum = MAX_CONTRACT_CALL;
-    lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
-    bool success = PublishContract(L, rawCode, maxCallNum, code, data, ret);
-    if (success) {
-        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls->codeLen = code.size();
-        sls->deltaDataLen = data.size();
-
-        if (sls->saveType > 0) {
-            contractInfo.txIndex = sls->txIndex;
-            contractInfo.data = data;
-            contractInfo.code = code;
-            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
-        }
-    }
-    sls->ReleaseLuaState(L);
-
-    return success;
-}
-
-bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret)
-{
-    bool success = false;
-    int top = lua_gettop(L);
-    lua_getglobal(L, "regContract");
-    lua_pushnumber(L, maxCallNum);
-    lua_pushnumber(L, MAX_DATA_LEN);
-    lua_pushlstring(L, rawCode.c_str(), rawCode.size());
-    int argc = 3;
-
-    if (lua_pcall(L, argc, LUA_MULTRET, 0) != 0) {
-        const char* err = lua_tostring(L, -1);
-        ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
-    }
-    else {
-        maxCallNum = L->limit_instruction;
-        success = lua_toboolean(L, top + 1) != 0;
-        if (success) {
-            size_t dl = 0;
-            const char* temp = lua_tolstring(L, top + 2, &dl);
-            dataout.assign(temp, dl);
-
-            size_t cl = 0;
-            temp = lua_tolstring(L, top + 3, &cl);
-            codeout.assign(temp, cl);
-        }
-        else {
-            const char* err = lua_tostring(L, -1);
-            ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
-        }
-    }
-
-    lua_settop(L, top);
     return success;
 }
 
@@ -569,8 +589,10 @@ bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const
     return success;
 }
 
-bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
+bool CallContract(lua_State* L, const std::string& rawCode, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
+    const std::string& code = Decompress(rawCode);
+
     maxCallNum -= GAS_CONTRACT_BYTE;
     int top = lua_gettop(L);
     lua_getglobal(L, "callContract");
@@ -871,7 +893,7 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
 
     UniValue ret(UniValue::VARR);
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-        const std::string& rawCode = tx->pContractData->codeOrFunc;
+        std::string rawCode = tx->pContractData->codeOrFunc;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
         if (!PublishContract(sls, contractAddr, rawCode, ret))
             return false;
