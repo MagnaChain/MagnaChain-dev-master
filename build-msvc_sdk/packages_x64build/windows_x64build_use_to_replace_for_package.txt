@@ -1,2 +1,6 @@
-1、备份../packages里对应的目录
-2、把当前目录拷贝进去
+1、先在32位环境下好packages
+2、备份../packages里对应的目录（package_x64build）
+3、把package_x64build目录下面内容拷贝到packages
+
+-------------------------
+leveldb magnachain/src/leveldb
