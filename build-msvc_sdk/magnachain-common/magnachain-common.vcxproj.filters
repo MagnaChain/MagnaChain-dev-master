@@ -1131,4 +1131,7 @@
       <Filter>src\transaction</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
 </Project>

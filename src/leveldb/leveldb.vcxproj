@@ -111,6 +111,7 @@
     <ClCompile>
       <PreprocessorDefinitions>LEVELDB_PLATFORM_WINDOWS;OS_WIN</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.\;.\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

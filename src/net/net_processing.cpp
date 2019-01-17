@@ -33,7 +33,7 @@
 #include "utils/utilstrencodings.h"
 #include "validation/validationinterface.h"
 
-#if defined(NDEBUG)
+#if defined(NDEBUG) && !defined(SDK_RELEASE)
 # error "MagnaChain cannot be compiled without assertions."
 #endif
 
