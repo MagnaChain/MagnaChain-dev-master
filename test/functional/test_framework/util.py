@@ -848,7 +848,7 @@ def caller_factory(mgr,contract_id,sender):
     contract_id = contract_id
     sender = sender
 
-    def _call_contract(func,*args,amount = random.randint(1, 10000)):
+    def _call_contract(func,*args,amount = random.randint(1, 10000),throw_exception = False):
         mgr.log.info("%s,%s,%s,%s,%s"%(contract_id,func,sender,amount,args))
         balance = node.getbalance()
         try:
@@ -856,6 +856,8 @@ def caller_factory(mgr,contract_id,sender):
             mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s"%(balance,node.getbalance(),amount,balance - node.getbalance() - amount))
             return result
         except Exception as e:
+            if throw_exception:
+                raise
             print(e)
             assert all(re.findall('-\d\)$', repr(e)))
             return repr(e)

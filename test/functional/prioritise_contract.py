@@ -17,7 +17,8 @@ from test_framework.util import *
 from test_framework.mininode import COIN, MAX_BLOCK_BASE_SIZE
 
 
-MAX_CONTRACT_NUM = 507  # 一个区块最多可以包含多少个发布合约的交易
+MAX_CONTRACT_NUM = 506  # 一个区块最多可以包含多少个发布合约的交易
+MAX_CONTRACT_CALL_NUM = 50  # 一个区块最多可以包含多少个调用合约的交易
 class PrioritiseContractTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
@@ -25,137 +26,70 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         self.extra_args = [["-printpriority=1"], ["-printpriority=1"]]
 
     def run_test(self):
+
+        self.relayfee = self.nodes[0].getnetworkinfo()['relayfee']
+        base_fee = self.relayfee * 1000
+
         # prepare
         node0,node1 = self.nodes[0:2]
         node0.generate(2)  # make some coins
         self.sync_all()
-
-        txids = []
-
-        # publish
-        # [node0.generate(5) for _ in range(5)]
-        # txids = [node0.sendtoaddress(node0.getnewaddress(),50) for i in range(5000)]
-        # mempool = node0.getrawmempool(True)
-        # print(len(mempool),node0.getmempoolinfo())
-        # node0.generate(1)
-        # return
         contract = generate_contract(self.options.tmpdir)
-        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM)
+        '''
+        # 测试发布合约的交易
+        self.log.info("Test contract publish transaction")
+        contract = generate_contract(self.options.tmpdir)
+        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM + -100)
+        node0.prioritisetransaction(txid=infos[-1]['txid'], fee_delta=int(3 * base_fee * COIN))
         node0.generate(1)
-        mempool = node0.getrawmempool(True)
-        assert len(mempool) == 0
-        pass
-        return
-        node0_call_contract = caller_factory(self, contract_id, sender)
-        node0_call_contract()
-        self.txouts = gen_return_txouts()
-        self.relayfee = self.nodes[0].getnetworkinfo()['relayfee']
+        mempool = node0.getrawmempool()
+        assert infos[-1]['txid'] not in mempool  #should be mined
+        assert infos[-2]['txid'] in mempool
+        node0.generate(1) #clear mempool
+        assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
 
-        utxo_count = 90
-        utxos = create_confirmed_utxos(self.relayfee, self.nodes[0], utxo_count)
-        base_fee = self.relayfee*100 # our transactions are smaller than 100kb
-        txids = []
+        # 测试调用合约的交易
+        self.log.info("Test call contract transaction")
+        # node0_call_contract = caller_factory(self, infos[-1]['address'], node0.getnewaddress())
+        txids = [node0.callcontract(True, 0, infos[i]['address'], node0.getnewaddress(), 'payable')['txid'] for i in range(MAX_CONTRACT_CALL_NUM + 1)]
+        node0.prioritisetransaction(txid=txids[-1], fee_delta=int(3 * base_fee * COIN))
+        node0.generate(1)
+        mempool = node0.getrawmempool()
+        assert txids[-1] not in mempool  #should be mined
+        assert infos[-2]['txid'] in mempool
+        node0.generate(1) #clear mempool
+        assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
+        
+        '''
+        # 测试有依赖的合约交易的优先级，依赖方式为调用同一合约
+        publish_transaction = gen_lots_of_contracts(node0, contract, 1)
+        print(publish_transaction)
+        self.sync_all()
+        txid = node0.callcontract(True, 0, publish_transaction[0]['address'], node0.getnewaddress(), 'payable')['txid']
+        self.sync_all()
+        mempool_old = node0.getrawmempool()
+        node0.prioritisetransaction(txid=txid, fee_delta=int(30 * base_fee * COIN))
+        mempool_new = node0.getrawmempool()
+        # print(mempool_old,mempool_new)
+        assert mempool_old == mempool_new #因为有依赖关系，所以内存池顺序应该是一致的
+        node0.generate(2)
 
-        # Create 3 batches of transactions at 3 different fee rate levels
-        range_size = utxo_count // 3
-        for i in range(3):
-            txids.append([])
-            start_range = i * range_size
-            end_range = start_range + range_size
-            txids[i] = create_lots_of_big_transactions(self.nodes[0], self.txouts, utxos[start_range:end_range], end_range - start_range, (i+1)*base_fee)
+        to = node0.getnewaddress()
+        txid1 = node0.callcontract(True, 1, publish_transaction[0]['address'], node0.getnewaddress(), 'payable')['txid']
+        print("txid1:",txid1)
+        txid2 = node0.callcontract(True, 0, publish_transaction[0]['address'], node0.getnewaddress(), 'sendCoinTest',to,1)['txid']
+        print("txid2:",txid2)
+        self.sync_all()
+        mempool_old = node0.getrawmempool()
+        node0.prioritisetransaction(txid=txid2, fee_delta=int(30 * base_fee * COIN))
+        mempool_new = node0.getrawmempool()
+        assert mempool_old == mempool_new  # 因为有依赖关系，所以内存池顺序应该是一致的
+        self.sync_all()
+        assert  mempool_new == node1.getrawmempool()
+        node0.generate(2)
+        assert node0.getbalanceof(to) == 1
 
-        # Make sure that the size of each group of transactions exceeds
-        # MAX_BLOCK_BASE_SIZE -- otherwise the test needs to be revised to create
-        # more transactions.
-        mempool = self.nodes[0].getrawmempool(True)
-        sizes = [0, 0, 0]
-        for i in range(3):
-            for j in txids[i]:
-                assert(j in mempool)
-                sizes[i] += mempool[j]['size']
-            assert(sizes[i] > MAX_BLOCK_BASE_SIZE) # Fail => raise utxo_count
 
-        # add a fee delta to something in the cheapest bucket and make sure it gets mined
-        # also check that a different entry in the cheapest bucket is NOT mined
-        self.nodes[0].prioritisetransaction(txid=txids[0][0], fee_delta=int(3*base_fee*COIN))
-
-        self.nodes[0].generate(1)
-
-        mempool = self.nodes[0].getrawmempool()
-        self.log.info("Assert that prioritised transaction was mined")
-        assert(txids[0][0] not in mempool)
-        assert(txids[0][1] in mempool)
-
-        high_fee_tx = None
-        for x in txids[2]:
-            if x not in mempool:
-                high_fee_tx = x
-
-        # Something high-fee should have been mined!
-        assert(high_fee_tx != None)
-
-        # Add a prioritisation before a tx is in the mempool (de-prioritising a
-        # high-fee transaction so that it's now low fee).
-        self.nodes[0].prioritisetransaction(txid=high_fee_tx, fee_delta=-int(2*base_fee*COIN))
-
-        # Add everything back to mempool
-        self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
-
-        # Check to make sure our high fee rate tx is back in the mempool
-        mempool = self.nodes[0].getrawmempool()
-        assert(high_fee_tx in mempool)
-
-        # Now verify the modified-high feerate transaction isn't mined before
-        # the other high fee transactions. Keep mining until our mempool has
-        # decreased by all the high fee size that we calculated above.
-        while (self.nodes[0].getmempoolinfo()['bytes'] > sizes[0] + sizes[1]):
-            self.nodes[0].generate(1)
-
-        # High fee transaction should not have been mined, but other high fee rate
-        # transactions should have been.
-        mempool = self.nodes[0].getrawmempool()
-        self.log.info("Assert that de-prioritised transaction is still in mempool")
-        assert(high_fee_tx in mempool)
-        for x in txids[2]:
-            if (x != high_fee_tx):
-                assert(x not in mempool)
-
-        # Create a free transaction.  Should be rejected.
-        utxo_list = self.nodes[0].listunspent()
-        assert(len(utxo_list) > 0)
-        utxo = utxo_list[0]
-
-        inputs = []
-        outputs = {}
-        inputs.append({"txid" : utxo["txid"], "vout" : utxo["vout"]})
-        outputs[self.nodes[0].getnewaddress()] = utxo["amount"]
-        raw_tx = self.nodes[0].createrawtransaction(inputs, outputs)
-        tx_hex = self.nodes[0].signrawtransaction(raw_tx)["hex"]
-        tx_id = self.nodes[0].decoderawtransaction(tx_hex)["txid"]
-
-        # This will raise an exception due to min relay fee not being met
-        assert_raises_rpc_error(-26, "66: min relay fee not met", self.nodes[0].sendrawtransaction, tx_hex)
-        assert(tx_id not in self.nodes[0].getrawmempool())
-
-        # This is a less than 1000-byte transaction, so just set the fee
-        # to be the minimum for a 1000 byte transaction and check that it is
-        # accepted.
-        self.nodes[0].prioritisetransaction(txid=tx_id, fee_delta=int(self.relayfee*COIN))
-
-        self.log.info("Assert that prioritised free transaction is accepted to mempool")
-        assert_equal(self.nodes[0].sendrawtransaction(tx_hex), tx_id)
-        assert(tx_id in self.nodes[0].getrawmempool())
-
-        # Test that calling prioritisetransaction is sufficient to trigger
-        # getblocktemplate to (eventually) return a new block.
-        mock_time = int(time.time())
-        self.nodes[0].setmocktime(mock_time)
-        template = self.nodes[0].getblocktemplate()
-        self.nodes[0].prioritisetransaction(txid=tx_id, fee_delta=-int(self.relayfee*COIN))
-        self.nodes[0].setmocktime(mock_time+10)
-        new_template = self.nodes[0].getblocktemplate()
-
-        assert(template != new_template)
 
 if __name__ == '__main__':
     PrioritiseContractTest().main()
