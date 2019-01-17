@@ -1,14 +1,9 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <stdlib.h>
-#include <string.h>
-#include <string>
 
-#include <boost/foreach.hpp>
-
-#include "coding/base58.h"
 #include "smartcontract/smartcontract.h"
+#include "coding/base58.h"
 #include "script/standard.h"
 #include "transaction/txmempool.h"
 #include "univalue.h"
@@ -23,6 +18,11 @@
 #include "mining/miner.h"
 #include "consensus/merkle.h"
 #include "policy/policy.h"
+
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
 
 #if defined(_WIN32)
 #define strdup _strdup
@@ -273,7 +273,7 @@ MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress&
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
-void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
+void static SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
 {
     // 创建msg表
     lua_newtable(L);
@@ -407,11 +407,7 @@ std::string TrimCode(const std::string& rawCode)
     return codeOut;
 }
 
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
-#include <boost/iostreams/filter/zlib.hpp>
-std::string Compress(const std::string& buffer)
+std::string static Compress(const std::string& buffer)
 {
     std::string zipData;
     boost::iostreams::filtering_ostream zout(boost::iostreams::zlib_compressor() | boost::iostreams::back_inserter(zipData));
@@ -419,7 +415,7 @@ std::string Compress(const std::string& buffer)
     return zipData;
 }
 
-std::string Decompress(const std::string& buffer)
+std::string static Decompress(const std::string& buffer)
 {
     std::string unzipData;
     boost::iostreams::filtering_ostream uzout(boost::iostreams::zlib_decompressor() | boost::iostreams::back_inserter(unzipData));
@@ -427,7 +423,7 @@ std::string Decompress(const std::string& buffer)
     return unzipData;
 }
 
-bool PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum, std::string& dataout, UniValue& ret)
+bool static PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
     bool success = false;
     int top = lua_gettop(L);
@@ -540,56 +536,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
     return success;
 }
 
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
-{
-    MCContractID contractID;
-    if (!contractAddr.GetContractID(contractID))
-        return false;
-
-    bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
-    if (success) {
-        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls->codeLen = 0;
-    }
-    return success;
-}
-
-bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
-{
-    if (amount < 0)
-        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
-
-    MCContractID contractId;
-    contractAddr.GetContractID(contractId);
-    ContractInfo contractInfo;
-    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
-        throw std::runtime_error(strprintf("%s GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
-
-    if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM)
-        throw std::runtime_error(strprintf("%s no more max internal call number", __FUNCTION__));
-
-    sls->_internalCallNum++;
-    std::string data;
-    std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
-    lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
-    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, data, ret);
-    if (success) {
-        sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
-
-        if (sls->saveType > 0) {
-            contractInfo.txIndex = sls->txIndex;
-            contractInfo.data = data;
-            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
-        }
-    }
-    sls->ReleaseLuaState(L);
-    sls->_internalCallNum--;
-
-    return success;
-}
-
-bool CallContract(lua_State* L, const std::string& rawCode, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
+bool static CallContract(lua_State* L, const std::string& rawCode, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
     const std::string& code = Decompress(rawCode);
 
@@ -667,8 +614,57 @@ bool CallContract(lua_State* L, const std::string& rawCode, const std::string& d
     return success;
 }
 
+bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+{
+    if (amount < 0)
+        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
+
+    MCContractID contractId;
+    contractAddr.GetContractID(contractId);
+    ContractInfo contractInfo;
+    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
+        throw std::runtime_error(strprintf("%s GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
+
+    if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM)
+        throw std::runtime_error(strprintf("%s no more max internal call number", __FUNCTION__));
+
+    sls->_internalCallNum++;
+    std::string data;
+    std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
+    lua_State* L = sls->GetLuaState(contractAddr);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
+    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, data, ret);
+    if (success) {
+        sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
+
+        if (sls->saveType > 0) {
+            contractInfo.txIndex = sls->txIndex;
+            contractInfo.data = data;
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+        }
+    }
+    sls->ReleaseLuaState(L);
+    sls->_internalCallNum--;
+
+    return success;
+}
+
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+{
+    MCContractID contractID;
+    if (!contractAddr.GetContractID(contractID))
+        return false;
+
+    bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
+    if (success) {
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = 0;
+    }
+    return success;
+}
+
 // Lua内部嵌套调用合约
-int InternalCallContract(lua_State* L)
+int static InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
@@ -729,7 +725,7 @@ int InternalCallContract(lua_State* L)
 }
 
 // Lua内部向指定地址发送代币
-int SendCoins(lua_State* L)
+int static SendCoins(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
