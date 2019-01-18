@@ -25,13 +25,14 @@ def get_sub_array_from_array(object_array, to_match):
 class ReceivedByTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
-        self.enable_mocktime()
+        # self.enable_mocktime()
 
     def run_test(self):
         '''
         listreceivedbyaddress Test
         '''
         # Send from node 0 to 1
+        self.nodes[1].generate(2)  #先挖一个矿，避免长时间使用缓存，导致内存池同步失败
         addr = self.nodes[1].getnewaddress()
         txid = self.nodes[0].sendtoaddress(addr, 0.1)
         self.sync_all()

@@ -28,9 +28,9 @@ class RawTransactionsTest(MagnaChainTestFramework):
     def run_test(self):
 
         #prepare some coins for multiple *rawtransaction commands
-        self.nodes[2].generate(1)
+        self.nodes[2].generate(10)
         self.sync_all()
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(10)
         self.sync_all()
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),1.5)
         self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),1.0)
@@ -106,6 +106,8 @@ class RawTransactionsTest(MagnaChainTestFramework):
                 vout = outpoint
                 break
 
+        self.nodes[0].generate(1)
+        self.sync_all()
         bal = self.nodes[0].getbalance()
         inputs = [{ "txid" : txId, "vout" : vout['n'], "scriptPubKey" : vout['scriptPubKey']['hex']}]
         outputs = { self.nodes[0].getnewaddress() : 2.19 }
@@ -120,7 +122,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(self.nodes[0].getbalance(), bal+Decimal('50.00000000')+Decimal('2.19000000')) #block reward + tx
+        assert_equal(self.nodes[0].getbalance(), bal+Decimal('2600085.00000000')+Decimal('2.19000000')) #block reward + tx
 
         # 2of2 test for combining transactions
         bal = self.nodes[2].getbalance()
@@ -151,6 +153,8 @@ class RawTransactionsTest(MagnaChainTestFramework):
                 vout = outpoint
                 break
 
+        self.nodes[0].generate(1)
+        self.sync_all()
         bal = self.nodes[0].getbalance()
         inputs = [{ "txid" : txId, "vout" : vout['n'], "scriptPubKey" : vout['scriptPubKey']['hex'], "redeemScript" : mSigObjValid['hex']}]
         outputs = { self.nodes[0].getnewaddress() : 2.19 }
@@ -169,7 +173,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
         self.sync_all()
         self.nodes[0].generate(1)
         self.sync_all()
-        assert_equal(self.nodes[0].getbalance(), bal+Decimal('50.00000000')+Decimal('2.19000000')) #block reward + tx
+        assert_equal(self.nodes[0].getbalance(), bal+Decimal('2600085.00000000')+Decimal('2.19000000')) #block reward + tx
 
         # getrawtransaction tests
         # 1. valid parameters - only supply txid
