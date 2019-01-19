@@ -25,6 +25,7 @@ MAGNACHAIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPF
 MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include
 MAGNACHAIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
+LIBMAGNACHAIN_LUA=libmagnachain_lua.a
 LIBMAGNACHAIN_SERVER=libmagnachain_server.a
 LIBMAGNACHAIN_COMMON=libmagnachain_common.a
 LIBMAGNACHAIN_CONSENSUS=libmagnachain_consensus.a
@@ -50,6 +51,7 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES += \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_CRYPTO) \
   $(LIBMAGNACHAIN_UTIL) \
   $(LIBMAGNACHAIN_COMMON) \
@@ -275,7 +277,16 @@ crypto_libmagnachain_crypto_a_SOURCES = \
   crypto/sha256.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
-  crypto/sha512.h \
+  crypto/sha512.h
+  
+
+if EXPERIMENTAL_ASM
+crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
+endif
+
+libmagnachain_lua_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_CONFIG_INCLUDES)
+libmagnachain_lua_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_lua_a_SOURCES = \
   lua/lapi.c \
   lua/lauxlib.c \
   lua/lbaselib.c \
@@ -310,11 +321,6 @@ crypto_libmagnachain_crypto_a_SOURCES = \
   lua/cjson/lua_cjson.c \
   lua/cjson/strbuf.c \
   lua/lua_cmsgpack.c
-  
-
-if EXPERIMENTAL_ASM
-crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
-endif
 
 # consensus: shared between all executables that validate any consensus rules.
 libmagnachain_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
@@ -424,6 +430,7 @@ magnachaind_SOURCES += magnachaind-res.rc
 endif
 
 magnachaind_LDADD = \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_SERVER) \
   $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
@@ -469,6 +476,7 @@ magnachain_tx_SOURCES += magnachain-tx-res.rc
 endif
 
 magnachain_tx_LDADD = \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_SERVER) \
   $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
