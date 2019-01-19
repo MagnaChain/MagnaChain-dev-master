@@ -22,7 +22,7 @@ endif
 MAGNACHAIN_CONFIG_INCLUDES=-I$(builddir)/config
 MAGNACHAIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
-MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include
+MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include -I$(srcdir)/lua
 MAGNACHAIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
 LIBMAGNACHAIN_LUA=libmagnachain_lua.a
@@ -51,12 +51,12 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES += \
-  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_CRYPTO) \
   $(LIBMAGNACHAIN_UTIL) \
   $(LIBMAGNACHAIN_COMMON) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_CLI) \
   $(LIBMAGNACHAIN_WALLET) \
   $(LIBMAGNACHAIN_ZMQ)
@@ -175,7 +175,9 @@ MAGNACHAIN_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
+  zmq/zmqpublishnotifier.h \
+  smartcontract/smartcontract.h \
+  smartcontract/contractdb.h
 
 
 obj/build.h: FORCE
@@ -284,7 +286,7 @@ if EXPERIMENTAL_ASM
 crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
 endif
 
-libmagnachain_lua_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_CONFIG_INCLUDES)
+libmagnachain_lua_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_lua_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_lua_a_SOURCES = \
   lua/lapi.c \
@@ -430,7 +432,6 @@ magnachaind_SOURCES += magnachaind-res.rc
 endif
 
 magnachaind_LDADD = \
-  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_SERVER) \
   $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
@@ -439,6 +440,7 @@ magnachaind_LDADD = \
   $(LIBMAGNACHAIN_ZMQ) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -476,7 +478,6 @@ magnachain_tx_SOURCES += magnachain-tx-res.rc
 endif
 
 magnachain_tx_LDADD = \
-  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_SERVER) \
   $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
@@ -485,6 +486,7 @@ magnachain_tx_LDADD = \
   $(LIBMAGNACHAIN_ZMQ) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
