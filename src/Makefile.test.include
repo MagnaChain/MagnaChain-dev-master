@@ -126,6 +126,7 @@ test_test_magnachain_fuzzy_LDADD = \
   $(LIBMAGNACHAIN_UTIL) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBSECP256K1)
 
 test_test_magnachain_fuzzy_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
