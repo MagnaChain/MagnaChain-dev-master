@@ -56,17 +56,20 @@ BASE_SCRIPTS= [
     # Longest test should go first, to favor running tests in parallel
     'wallet-hd.py',
     'walletbackup.py',
+    'contract_publish.py',
+    'contract_call.py',
     # vv Tests less than 5m vv
     'p2p-fullblocktest.py',
     'fundrawtransaction.py',
     'p2p-compactblocks.py',
-    'segwit.py',
+    # 'segwit.py',
     # vv Tests less than 2m vv
     'wallet.py',
     'wallet-accounts.py',
     'p2p-segwit.py',
     'wallet-dump.py',
     'listtransactions.py',
+    'prioritise_contract.py',
     # vv Tests less than 60s vv
     'sendheaders.py',
     'zapwallettxes.py',
@@ -93,7 +96,7 @@ BASE_SCRIPTS= [
     'multiwallet.py',
     'httpbasics.py',
     'multi_rpc.py',
-    'proxy_test.py',
+    # 'proxy_test.py',
     'signrawtransactions.py',
     'disconnect_ban.py',
     'decodescript.py',
