@@ -21,7 +21,7 @@ enum NETWORK_TYPE
 	BRANCH
 };
 
-class CELLLINK_API IxCellLinkBridge
+class CELLLINK_API IxMagnaChainBridge
 {
 private:
 	MCExtKey* m_pRootKey;
@@ -37,8 +37,8 @@ private:
     ECCVerifyHandle *m_pVerifyHandle;
     int initArgN;
 public:
-	IxCellLinkBridge();
-	~IxCellLinkBridge();
+	IxMagnaChainBridge();
+	~IxMagnaChainBridge();
 
 	// this function must call first
 	static void Initialize(NETWORK_TYPE eNetworkType = NETWORK_TYPE::TESTNET);
@@ -68,5 +68,5 @@ public:
 	
 	float GetBalance(const char* pAddress);
 
-	bool Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr, const std::string& strPrivKey);
+	bool Transfer(const char* pFromPirKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr);
 };

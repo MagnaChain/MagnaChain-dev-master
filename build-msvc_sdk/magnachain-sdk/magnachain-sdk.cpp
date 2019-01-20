@@ -20,13 +20,13 @@
 
 typedef std::map<MCOutPoint, MCTxOut> MAP_OUTPUT_COINS;
 
-IxCellLinkBridge::IxCellLinkBridge()
+IxMagnaChainBridge::IxMagnaChainBridge()
 {
 	m_pRootKey = NULL;
     m_pVerifyHandle = new ECCVerifyHandle();
 }
 
-IxCellLinkBridge::~IxCellLinkBridge()
+IxMagnaChainBridge::~IxMagnaChainBridge()
 {
 	if (m_pRootKey != NULL)
 	{
@@ -40,7 +40,7 @@ IxCellLinkBridge::~IxCellLinkBridge()
 
 extern bool SignatureCoinbaseTransaction(int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& txNew, MCAmount nValue, const MCScript& scriptPubKey);
 
-void IxCellLinkBridge::Initialize(NETWORK_TYPE eNetworkType)
+void IxMagnaChainBridge::Initialize(NETWORK_TYPE eNetworkType)
 {
 	SignatureCoinbaseTransactionPF = &SignatureCoinbaseTransaction;
 
@@ -77,7 +77,7 @@ void IxCellLinkBridge::Initialize(NETWORK_TYPE eNetworkType)
 	SelectParams(strNetwork);
 }
 
-void IxCellLinkBridge::Release()
+void IxMagnaChainBridge::Release()
 {
 	bool hasstartecc = ECC_HasStarted();
 	if (hasstartecc)
@@ -86,7 +86,7 @@ void IxCellLinkBridge::Release()
 	}
 }
 
-bool IxCellLinkBridge::GetExtKeyWif(MCExtKey* pExtKey, char* pOutWif, int iSize)
+bool IxMagnaChainBridge::GetExtKeyWif(MCExtKey* pExtKey, char* pOutWif, int iSize)
 {
 	if (pExtKey == NULL || pOutWif == NULL)
 	{
@@ -109,7 +109,7 @@ bool IxCellLinkBridge::GetExtKeyWif(MCExtKey* pExtKey, char* pOutWif, int iSize)
 	return true;
 }
 
-MCExtKey IxCellLinkBridge::ImportExtKey(const char* pExtKeyWif)
+MCExtKey IxMagnaChainBridge::ImportExtKey(const char* pExtKeyWif)
 {
 	std::string strK = pExtKeyWif;
     MagnaChainExtKey* pCLEK = new MagnaChainExtKey(strK);
@@ -118,7 +118,7 @@ MCExtKey IxCellLinkBridge::ImportExtKey(const char* pExtKeyWif)
 	return kCEK;
 }
 
-MCKey* IxCellLinkBridge::GetCellKey(MCExtKey* pCEK)
+MCKey* IxMagnaChainBridge::GetCellKey(MCExtKey* pCEK)
 {
 	if (pCEK == NULL)
 	{
@@ -128,7 +128,7 @@ MCKey* IxCellLinkBridge::GetCellKey(MCExtKey* pCEK)
 	return &pCEK->key;
 }
 
-bool IxCellLinkBridge::GetKeyWif(MCKey* pKey, char* pOutWif, int iSize)
+bool IxMagnaChainBridge::GetKeyWif(MCKey* pKey, char* pOutWif, int iSize)
 {
 	if (pKey == NULL || pOutWif == NULL)
 	{
@@ -146,7 +146,7 @@ bool IxCellLinkBridge::GetKeyWif(MCKey* pKey, char* pOutWif, int iSize)
 	return true;
 }
 
-MCKey IxCellLinkBridge::ImportKey(const char* pWif)
+MCKey IxMagnaChainBridge::ImportKey(const char* pWif)
 {
 	MagnaChainSecret kCS;
 
@@ -171,7 +171,7 @@ MCKey IxCellLinkBridge::ImportKey(const char* pWif)
 //	return CellLinkAddress(kCKI).ToString();
 //}
 
-bool IxCellLinkBridge::GetAddress(MCKey* pKey, char* pOutWif, int iSize)
+bool IxMagnaChainBridge::GetAddress(MCKey* pKey, char* pOutWif, int iSize)
 {
 	if (pKey == NULL || pOutWif == NULL)
 	{
@@ -192,7 +192,7 @@ bool IxCellLinkBridge::GetAddress(MCKey* pKey, char* pOutWif, int iSize)
 	return true;
 }
 
-bool IxCellLinkBridge::CreateRootExtKey(const char* pAid)
+bool IxMagnaChainBridge::CreateRootExtKey(const char* pAid)
 {
 	int iLen = ::strlen(pAid);
 	if (iLen == 0)
@@ -214,12 +214,12 @@ bool IxCellLinkBridge::CreateRootExtKey(const char* pAid)
 	return true;
 }
 
-MCExtKey* IxCellLinkBridge::GetRootExtKey()
+MCExtKey* IxMagnaChainBridge::GetRootExtKey()
 {
 	return m_pRootKey;
 }
 
-void IxCellLinkBridge::InitializeRPCInfo(const char* pHost, const char* pPort, const char* pUser, const char* pPwd)
+void IxMagnaChainBridge::InitializeRPCInfo(const char* pHost, const char* pPort, const char* pUser, const char* pPwd)
 {
 	m_strHost = pHost;
 	m_strPort = pPort;
@@ -242,7 +242,7 @@ void IxCellLinkBridge::InitializeRPCInfo(const char* pHost, const char* pPort, c
 	m_arrRpcArg[initArgN++] = strPwd.c_str();
 }
 
-void IxCellLinkBridge::ResetArgs()
+void IxMagnaChainBridge::ResetArgs()
 {
     for (int i=5; i < sizeof(m_arrRpcArg)/sizeof(m_arrRpcArg[0]); i++)
     {
@@ -252,7 +252,7 @@ void IxCellLinkBridge::ResetArgs()
 
 int CommandLineRPC(int argc, char *argv[], UniValue& kRet);
 
-float IxCellLinkBridge::GetBalance(const char* pAddress)
+float IxMagnaChainBridge::GetBalance(const char* pAddress)
 {
 	if (pAddress == NULL)
 	{
@@ -351,14 +351,33 @@ bool SignTransaction(MCMutableTransaction &mtx, MAP_OUTPUT_COINS &mapCoins, MCBa
     }
 }
 
-bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr, const std::string& strPrivKey)
+bool IxMagnaChainBridge::Transfer(const char* pFromPirKeyWif, const char* pDestAddr, float fAmount, const char* pChangeAddr)
 {
+	if (pFromPirKeyWif == NULL || pDestAddr == NULL)
+	{
+		return false;
+	}
+
     ResetArgs();
+
+	// get from address first
+	char arrFromAddress[256];
+
+	MCKey kPriKey = ImportKey(pFromPirKeyWif);
+	if (GetAddress(&kPriKey, arrFromAddress, sizeof(arrFromAddress))== false)
+	{
+		return false;
+	}
+
+	if (pChangeAddr == NULL)
+	{
+		pChangeAddr = arrFromAddress;
+	}
 
     // avoid to use pointer which may be deleted by other user.
     int argc = initArgN;
     m_arrRpcArg[argc++] = "premaketransaction";
-    m_arrRpcArg[argc++] = pFromKeyWif;
+    m_arrRpcArg[argc++] = arrFromAddress;
     m_arrRpcArg[argc++] = pDestAddr;
     m_arrRpcArg[argc++] = pChangeAddr;
     std::string strAmount = strprintf("%f", fAmount);
@@ -397,7 +416,7 @@ bool IxCellLinkBridge::Transfer(const char* pFromKeyWif, const char* pDestAddr, 
     
     //把私钥添加进 keystore
     MagnaChainSecret vchSecret;
-    if (!vchSecret.SetString(strPrivKey)) return false;
+    if (!vchSecret.SetString(pFromPirKeyWif)) return false;
 
     MCKey key = vchSecret.GetKey();
     if (!key.IsValid()) return false;
