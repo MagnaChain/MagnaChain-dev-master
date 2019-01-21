@@ -16,7 +16,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
     def logblockcount(self):
         blockcount = 'Nodes blockcount: '
         for i in range(self.num_nodes):
-            blockcount = blockcount + '['+ str(i) +']:' + str(self.nodes[i].getblockcount()) + ' '
+            blockcount = blockcount + str(self.nodes[i].getblockcount()) + ' '
         self.log.info(blockcount)
 
     def sync_all(self, node_groups=None):
