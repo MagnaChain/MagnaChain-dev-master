@@ -6,18 +6,18 @@
 #include "utils/util.h"
 #include "validation/validation.h"
 
-#include <jdbc/cppconn/exception.h>
-#include <jdbc/cppconn/metadata.h>
-#include <jdbc/cppconn/parameter_metadata.h>
-#include <jdbc/cppconn/prepared_statement.h>
-#include <jdbc/cppconn/resultset.h>
-#include <jdbc/cppconn/statement.h>
-#include <jdbc/mysql_connection.h>
-#include <jdbc/mysql_driver.h>
+#include <cppconn/connection.h>
+#include <cppconn/driver.h>
+#include <cppconn/exception.h>
+#include <cppconn/metadata.h>
+#include <cppconn/parameter_metadata.h>
+#include <cppconn/prepared_statement.h>
+#include <cppconn/resultset.h>
+#include <cppconn/statement.h>
 
 std::map<uint256, DatabaseBlock> blocks;
 
-sql::mysql::MySQL_Driver* sqlDriver;
+sql::Driver* sqlDriver;
 std::unique_ptr<sql::Connection> sqlConnection;
 std::unique_ptr<sql::Statement> sqlStatement;
 std::unique_ptr<sql::PreparedStatement> selectBlockStatement;
@@ -240,7 +240,7 @@ bool DBCreateTable()
 
 bool DBInitialize()
 {
-    sqlDriver = sql::mysql::get_mysql_driver_instance();
+    sqlDriver = get_driver_instance();
     if (sqlDriver == nullptr) {
         printf("%s:%d => Get driver instance fail\n", __FUNCTION__, __LINE__);
         return false;
