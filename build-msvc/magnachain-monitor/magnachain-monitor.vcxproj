@@ -92,9 +92,9 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)/../src/univalue/include;$(SolutionDir)/../db-4.8.30/build_windows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)/../src/univalue/include;$(SolutionDir)/../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -110,9 +110,9 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -128,9 +128,9 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -148,9 +148,9 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;NDEBUG;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -175,11 +175,85 @@
     <ClCompile Include="..\..\src\magnachaind-monitor.cpp" />
     <ClCompile Include="..\..\src\monitor\database.cpp" />
     <ClCompile Include="..\..\src\monitor\monitorinit.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_resultset.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_rset_metadata.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_debug.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_driver.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_metadata.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_parameter_metadata.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_prepared_statement.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset_metadata.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultbind.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset_metadata.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_statement.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_uri.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_util.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_warning.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\library_loader.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_client_api.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_connection_wrapper.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_driver_wrapper.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_resultset_wrapper.cpp" />
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_statement_wrapper.cpp" />
     <ClCompile Include="..\..\src\monitor\net_processing.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\monitor\database.h" />
     <ClInclude Include="..\..\src\monitor\monitorinit.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\build_config.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\config.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\connection.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\datatype.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\driver.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\exception.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\parameter_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\prepared_statement.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\resultset.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\resultset_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\sqlstring.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\statement.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\variant.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\version_info.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\warning.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_resultset.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_rset_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection_data.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection_options.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_debug.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_driver.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_error.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_parameter_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_prepared_statement.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_public_iface.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultbind.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset_metadata.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_statement.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_statement_options.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_uri.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_util.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_warning.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\binding_config.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\library_loader.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_client_api.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_connection_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_driver_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_resultset_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_statement_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_private_iface.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_connection_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_driver_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_resultset_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_statement_wrapper.h" />
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\version_info.h" />
     <ClInclude Include="..\..\src\monitor\net_processing.h" />
     <ClInclude Include="..\..\src\monitor\sql.h" />
   </ItemGroup>
@@ -232,7 +306,7 @@
     <Import Project="..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets" Condition="Exists('..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets')" />
     <Import Project="..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets" Condition="Exists('..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets')" />
     <Import Project="..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets" Condition="Exists('..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets')" />
-    <Import Project="..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets" Condition="Exists('..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets')" />
+    <Import Project="..\packages\libmysql-cpp.5.7.24\build\libmysql-cpp.targets" Condition="Exists('..\packages\libmysql-cpp.5.7.24\build\libmysql-cpp.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
@@ -285,6 +359,6 @@
     <Error Condition="!Exists('..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets'))" />
     <Error Condition="!Exists('..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets'))" />
     <Error Condition="!Exists('..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libzmq-vc141.4.2.2\build\native\libzmq-vc141.targets'))" />
-    <Error Condition="!Exists('..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\mysql-connector-cpp-jdbc-vc15.1.1.0\build\mysql-connector-cpp-jdbc-vc15.targets'))" />
+    <Error Condition="!Exists('..\packages\libmysql-cpp.5.7.24\build\libmysql-cpp.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libmysql-cpp.5.7.24\build\libmysql-cpp.targets'))" />
   </Target>
 </Project>

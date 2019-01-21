@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2016 The MagnaChain Core developers
+# Copyright (c) 2013-2016 The Bitcoin Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -22,9 +22,10 @@ endif
 MAGNACHAIN_CONFIG_INCLUDES=-I$(builddir)/config
 MAGNACHAIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
-MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include
+MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include -I$(srcdir)/lua
 MAGNACHAIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
+LIBMAGNACHAIN_LUA=libmagnachain_lua.a
 LIBMAGNACHAIN_SERVER=libmagnachain_server.a
 LIBMAGNACHAIN_COMMON=libmagnachain_common.a
 LIBMAGNACHAIN_CONSENSUS=libmagnachain_consensus.a
@@ -55,6 +56,7 @@ EXTRA_LIBRARIES += \
   $(LIBMAGNACHAIN_COMMON) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_CLI) \
   $(LIBMAGNACHAIN_WALLET) \
   $(LIBMAGNACHAIN_ZMQ)
@@ -173,7 +175,9 @@ MAGNACHAIN_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
+  zmq/zmqpublishnotifier.h \
+  smartcontract/smartcontract.h \
+  smartcontract/contractdb.h
 
 
 obj/build.h: FORCE
@@ -275,7 +279,16 @@ crypto_libmagnachain_crypto_a_SOURCES = \
   crypto/sha256.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
-  crypto/sha512.h \
+  crypto/sha512.h
+  
+
+if EXPERIMENTAL_ASM
+crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
+endif
+
+libmagnachain_lua_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_lua_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_lua_a_SOURCES = \
   lua/lapi.c \
   lua/lauxlib.c \
   lua/lbaselib.c \
@@ -310,11 +323,6 @@ crypto_libmagnachain_crypto_a_SOURCES = \
   lua/cjson/lua_cjson.c \
   lua/cjson/strbuf.c \
   lua/lua_cmsgpack.c
-  
-
-if EXPERIMENTAL_ASM
-crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
-endif
 
 # consensus: shared between all executables that validate any consensus rules.
 libmagnachain_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
@@ -432,6 +440,7 @@ magnachaind_LDADD = \
   $(LIBMAGNACHAIN_ZMQ) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
@@ -477,6 +486,7 @@ magnachain_tx_LDADD = \
   $(LIBMAGNACHAIN_ZMQ) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \

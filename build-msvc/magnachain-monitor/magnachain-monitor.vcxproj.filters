@@ -7,6 +7,18 @@
     <Filter Include="src">
       <UniqueIdentifier>{632c5daa-1b37-4c45-9de8-0de616613703}</UniqueIdentifier>
     </Filter>
+    <Filter Include="mysqlcppconn">
+      <UniqueIdentifier>{5b6dace2-060d-42e4-821f-51224a792b7b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mysqlcppconn\cppconn">
+      <UniqueIdentifier>{f9896068-af05-41b5-bed4-24f7b83b80cb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mysqlcppconn\driver">
+      <UniqueIdentifier>{1ea94b45-bf70-477b-a649-3060422b741d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mysqlcppconn\driver\nativeapi">
+      <UniqueIdentifier>{c3b15dd8-7f85-4f46-b393-63cfd391b963}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\monitor\monitorinit.cpp">
@@ -21,6 +33,75 @@
     <ClCompile Include="..\..\src\magnachaind-monitor.cpp">
       <Filter>src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_resultset.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_rset_metadata.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_debug.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_driver.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_metadata.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_parameter_metadata.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_prepared_statement.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset_metadata.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultbind.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset_metadata.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_statement.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_uri.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_util.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_warning.cpp">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\library_loader.cpp">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_client_api.cpp">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_connection_wrapper.cpp">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_driver_wrapper.cpp">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_resultset_wrapper.cpp">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_statement_wrapper.cpp">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\monitor\monitorinit.h">
@@ -34,6 +115,159 @@
     </ClInclude>
     <ClInclude Include="..\..\src\monitor\sql.h">
       <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\build_config.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\config.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\connection.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\datatype.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\driver.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\exception.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\metadata.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\parameter_metadata.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\prepared_statement.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\resultset.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\resultset_metadata.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\sqlstring.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\statement.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\variant.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\version_info.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\cppconn\warning.h">
+      <Filter>mysqlcppconn\cppconn</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_resultset.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_rset_metadata.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection_data.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_connection_options.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_debug.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_driver.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_error.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_metadata.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_parameter_metadata.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_prepared_statement.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_ps_resultset_metadata.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_public_iface.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultbind.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_resultset_metadata.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_statement.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_statement_options.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_uri.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_util.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\mysql_warning.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\version_info.h">
+      <Filter>mysqlcppconn\driver</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\binding_config.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\library_loader.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_client_api.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_connection_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_driver_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_resultset_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_native_statement_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\mysql_private_iface.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_connection_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_driver_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_resultset_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\monitor\mysqlcppconn\driver\nativeapi\native_statement_wrapper.h">
+      <Filter>mysqlcppconn\driver\nativeapi</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
