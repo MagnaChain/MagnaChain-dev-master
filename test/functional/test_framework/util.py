@@ -359,7 +359,7 @@ def connect_nodes_bi(nodes, a, b):
     connect_nodes(nodes[a], b)
     connect_nodes(nodes[b], a)
 
-def sync_blocks(rpc_connections, *, wait=1, timeout=60):
+def sync_blocks(rpc_connections, *, wait=1, timeout=60, logger=None):
     """
     Wait until everybody has the same tip.
 
@@ -372,6 +372,8 @@ def sync_blocks(rpc_connections, *, wait=1, timeout=60):
     # variables (chainActive vs latestBlock) and the former gets updated
     # earlier.
     maxheight = max(x.getblockcount() for x in rpc_connections)
+    if logger:
+        logger.info("maxheight: " + str(maxheight))
     start_time = cur_time = time.time()
     while cur_time <= start_time + timeout:
         tips = [r.waitforblockheight(maxheight, int(wait * 1000)) for r in rpc_connections]

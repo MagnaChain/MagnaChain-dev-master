@@ -13,6 +13,16 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         self.num_nodes = 4
         self.setup_clean_chain = True
 
+    def logblockcount(self):
+        blockcount = 'Nodes blockcount: '
+        for i in range(self.num_nodes):
+            blockcount = blockcount + '['+ str(i) +']:' + str(self.nodes[i].getblockcount()) + ' '
+        self.log.info(blockcount)
+
+    def sync_all(self, node_groups=None):
+        self.logblockcount()
+        super(ListSinceBlockTest, self).sync_all(node_groups)
+
     def run_test(self):
         self.nodes[2].generate(51)
         self.sync_all()
@@ -83,6 +93,8 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         This test only checks that [tx0] is present.
         '''
 
+        self.log.info("test_reorg")
+        self.logblockcount()
         # Split network into two
         self.split_network()
 
@@ -137,6 +149,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         node wallet.
         '''
 
+        self.log.info("test_double_spend")
         self.sync_all()
 
         # Split network into two
@@ -215,7 +228,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         3. It is listed with a confirmations count of 2 (bb3, bb4), not
            3 (aa1, aa2, aa3).
         '''
-
+        self.log.info("test_double_send")
         self.sync_all()
 
         # Split network into two

@@ -319,8 +319,9 @@ class MagnaChainTestFramework(object):
         if not node_groups:
             node_groups = [self.nodes]
 
+        self.log.info("syncall group : %s" % (str([len(g) for g in node_groups])))
         for group in node_groups:
-            sync_blocks(group)
+            sync_blocks(group, logger=self.log)
             sync_mempools(group)
 
     def enable_mocktime(self):
