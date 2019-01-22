@@ -104,6 +104,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # generate on both sides
         lastblockhash = self.nodes[1].generate(6)[5]
         self.nodes[2].generate(7)
+        self.make_more_work_than(2,1)
         self.log.info('lastblockhash=%s' % (lastblockhash))
 
         self.sync_all([self.nodes[:2], self.nodes[2:]])
@@ -187,6 +188,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # generate on both sides
         lastblockhash = self.nodes[1].generate(3)[2]
         self.nodes[2].generate(4)
+        self.make_more_work_than(2,1)
 
         self.join_network()
 
@@ -266,6 +268,8 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # generate on both sides
         lastblockhash = self.nodes[1].generate(3)[2]
         self.nodes[2].generate(2)
+        genmore = self.make_more_work_than(2,1)
+        genmorelen = len(genmore)
 
         self.join_network()
 
@@ -283,12 +287,12 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # find transaction and ensure confirmations is valid
         for tx in lsbres['transactions']:
             if tx['txid'] == txid1:
-                assert_equal(tx['confirmations'], 2)
+                assert_equal(tx['confirmations'], 2+genmorelen)
 
         # the same check for the removed array; confirmations should STILL be 2
         for tx in lsbres['removed']:
             if tx['txid'] == txid1:
-                assert_equal(tx['confirmations'], 2)
+                assert_equal(tx['confirmations'], 2+genmorelen)
 
 if __name__ == '__main__':
     ListSinceBlockTest().main()
