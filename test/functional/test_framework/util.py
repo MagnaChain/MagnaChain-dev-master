@@ -879,3 +879,4 @@ def gen_lots_of_contracts(node,contract,num = 500):
         result = node.publishcontract(contract)
         infos.append({'txid': result['txid'],'address' : result['contractaddress']})
     return infos
+
