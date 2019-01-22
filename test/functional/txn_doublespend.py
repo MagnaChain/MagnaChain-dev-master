@@ -33,7 +33,8 @@ class TxnMallTest(MagnaChainTestFramework):
         # All nodes should start with 1,250 BTC:
         for i in range(2):
             for i in range(4):
-                self.nodes[i].generate(10)
+                genblocks = self.nodes[i].generate(25)
+                assert_equal(len(genblocks), 25)
                 sync_blocks(self.nodes)
         self.nodes[i].generate(1)
         sync_blocks(self.nodes)
