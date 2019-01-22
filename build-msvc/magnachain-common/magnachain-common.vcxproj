@@ -193,6 +193,7 @@
     <ClCompile Include="..\..\src\compat\glibcxx_sanity.cpp" />
     <ClCompile Include="..\..\src\compat\glibc_sanity.cpp" />
     <ClCompile Include="..\..\src\compat\strnlen.cpp" />
+    <ClCompile Include="..\..\src\consensus\consensus.cpp" />
     <ClCompile Include="..\..\src\consensus\merkle.cpp" />
     <ClCompile Include="..\..\src\consensus\tx_verify.cpp" />
     <ClCompile Include="..\..\src\crypto\aes.cpp" />

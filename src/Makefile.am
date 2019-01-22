@@ -196,6 +196,7 @@ libmagnachain_server_a_SOURCES = \
   transaction/blockencodings.cpp \
   chain/chain.cpp \
   validation/checkpoints.cpp \
+  consensus/consensus.cpp \
   consensus/tx_verify.cpp \
   net/http/httprpc.cpp \
   net/http/httpserver.cpp \
