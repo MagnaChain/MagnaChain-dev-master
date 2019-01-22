@@ -167,6 +167,23 @@ UniValue getblockcount(const JSONRPCRequest& request)
     return chainActive.Height();
 }
 
+UniValue getchaintipwork(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "getchaintipwork\n"
+            "\nReturns the tip block work.\n"
+            "\nResult:\n"
+            "n    (numeric) The current block count\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getchaintipwork", "")
+            + HelpExampleRpc("getchaintipwork", "")
+        );
+
+    LOCK(cs_main);
+    return chainActive.Tip()->nChainWork.GetHex();
+}
+
 UniValue getbestblockhash(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() != 0)
@@ -1578,6 +1595,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getchaintxstats",        &getchaintxstats,        true,  {"nblocks", "blockhash"} },
     { "blockchain",         "getbestblockhash",       &getbestblockhash,       true,  {} },
     { "blockchain",         "getblockcount",          &getblockcount,          true,  {} },
+    { "blockchain",         "getchaintipwork",        &getchaintipwork,        true,{} },
     { "blockchain",         "getblock",               &getblock,               true,  {"blockhash","verbosity|verbose"} },
 	{ "blockchain",         "getlastblocktx",         &getlastblock_tx,        true,  {} },
 	{ "blockchain",         "getblockhash",           &getblockhash,           true,  {"height"} },

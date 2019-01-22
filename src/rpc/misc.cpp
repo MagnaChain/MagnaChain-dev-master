@@ -119,11 +119,6 @@ UniValue getinfo(const JSONRPCRequest& request)
     return obj;
 }
 
-UniValue testrpc(const JSONRPCRequest& request)
-{
-	return "ok";
-}
-
 #ifdef ENABLE_WALLET
 class DescribeAddressVisitor : public boost::static_visitor<UniValue>
 {
@@ -668,7 +663,6 @@ static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
     { "control",            "getinfo",                &getinfo,                true,  {} }, /* uses wallet if enabled */
-	{ "testrpc",            "testrpc",                &testrpc,                true,  {} },
     { "control",            "getmemoryinfo",          &getmemoryinfo,          true,  {"mode"} },
     { "util",               "validateaddress",        &validateaddress,        true,  {"address"} }, /* uses wallet if enabled */
     { "util",               "createmultisig",         &createmultisig,         true,  {"nrequired","keys"} },
