@@ -43,7 +43,9 @@ class AuthServiceProxyWrapper(object):
         called to a file.
 
         """
-        if self.auth_service_proxy_instance._service_name == "generate":
+
+        if kwargs.get('each_generate',False):
+            kwargs.pop('each_generate')
             return_val = []
             for i in range(int(args[0])):
                 val = self.auth_service_proxy_instance.__call__((1), **kwargs)
