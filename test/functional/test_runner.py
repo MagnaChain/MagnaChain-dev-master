@@ -83,7 +83,7 @@ BASE_SCRIPTS= [
     'reindex.py',
     # vv Tests less than 30s vv
     'keypool-topup.py',
-    'zmq_test.py',
+    # 'zmq_test.py',
     'magnachain_cli.py',
     'mempool_resurrect_test.py',
     'txn_doublespend.py --mineblock',
