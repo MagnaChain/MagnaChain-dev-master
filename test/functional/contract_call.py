@@ -3,9 +3,13 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """
-Smart Contract Testing - Published
+Smart Contract Testing - call
 
-Major test publish smart contract
+Major test call smart contract
+
+开2个节点：
+节点1作为主测试节点
+节点2作为辅助验证
 """
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
@@ -42,7 +46,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
-        self.num_nodes = 1
+        self.num_nodes = 2
 
     def run_test(self):
         """Main test logic"""
