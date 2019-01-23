@@ -35,6 +35,7 @@ import shutil
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
+from test_framework.mininode import MINER_REWARD
 
 class WalletBackupTest(MagnaChainTestFramework):
     def set_test_params(self):
@@ -102,12 +103,12 @@ class WalletBackupTest(MagnaChainTestFramework):
         sync_blocks(self.nodes)
         self.nodes[2].generate(1)
         sync_blocks(self.nodes)
-        self.nodes[3].generate(100)
+        self.nodes[3].generate(1)
         sync_blocks(self.nodes)
 
-        assert_equal(self.nodes[0].getbalance(), 50)
-        assert_equal(self.nodes[1].getbalance(), 50)
-        assert_equal(self.nodes[2].getbalance(), 50)
+        assert_equal(self.nodes[0].getbalance(), MINER_REWARD)
+        assert_equal(self.nodes[1].getbalance(), MINER_REWARD)
+        assert_equal(self.nodes[2].getbalance(), MINER_REWARD)
         assert_equal(self.nodes[3].getbalance(), 0)
 
         self.log.info("Creating transactions")
@@ -129,7 +130,7 @@ class WalletBackupTest(MagnaChainTestFramework):
             self.do_one_round()
 
         # Generate 101 more blocks, so any fees paid mature
-        self.nodes[3].generate(101)
+        self.nodes[3].generate(1)
         self.sync_all()
 
         balance0 = self.nodes[0].getbalance()
@@ -140,7 +141,7 @@ class WalletBackupTest(MagnaChainTestFramework):
 
         # At this point, there are 214 blocks (103 for setup, then 10 rounds, then 101.)
         # 114 are mature, so the sum of all wallets should be 114 * 50 = 5700.
-        assert_equal(total, 5700)
+        assert_equal(total, MINER_REWARD * 14)
 
         ##
         # Test restoring spender wallets from backups
