@@ -5,8 +5,8 @@
 """Test the wallet."""
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
+from test_framework.mininode import MINER_REWARD
 
-MINER_REWARD = 2600085
 def find_spent_index(node,utxos):
     '''
 
