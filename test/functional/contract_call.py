@@ -63,7 +63,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract(PAYABLE, amount=10000000), "Insufficient funds")
 
         # # 非法的入参
-        for amount in [10000000000, -1, 0, Decimal("0.0009").quantize(Decimal("0.0000"))]:
+        for amount in [10000000000, -1, 0, Decimal("0.0009").quantize(Decimal("0.0000")),"1e-3"]:
             call_contract(PAYABLE, amount=amount)
 
         # 非法sender
@@ -109,7 +109,7 @@ class ContractCallTest(MagnaChainTestFramework):
         # send to mgc address
         new_address = node.getnewaddress()
         call_contract("sendCoinTest", new_address, 1)
-        call_contract("sendCoinTest", new_address, "1")
+        call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
         assert_contains(call_contract("sendCoinTest", new_address, 0), "Dust amount")

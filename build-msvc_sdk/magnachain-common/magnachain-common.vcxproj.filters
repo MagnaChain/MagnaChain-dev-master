@@ -593,6 +593,9 @@
     <ClCompile Include="..\..\src\transaction\partialmerkletree.cpp">
       <Filter>src\transaction</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\consensus\consensus.cpp">
+      <Filter>src\consensus</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h" />

@@ -748,6 +748,12 @@ bool AppInitServers(boost::thread_group& threadGroup)
 // Parameter interaction based on rules
 void InitParameterInteraction()
 {
+    // modify COINBASE_MATURITY for regtest
+    if (Params().NetworkIDString() == MCBaseChainParams::REGTEST)
+    {
+        COINBASE_MATURITY = gArgs.GetArg("-regtestmaturity", 1);
+    }
+
     // when specifying an explicit binding address, you want to listen on it
     // even when -connect or -proxy is specified
     if (gArgs.IsArgSet("-bind")) {

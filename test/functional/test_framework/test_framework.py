@@ -315,12 +315,23 @@ class MagnaChainTestFramework(object):
         connect_nodes_bi(self.nodes, 1, 2)
         self.sync_all()
 
+    """make a chain have more work than b"""
+    def make_more_work_than(self, a, b):
+        bwork = int(self.nodes[b].getchaintipwork(), 16)
+        genblocks=[]
+        while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
+            genblocks.append(self.nodes[a].generate(1))
+        if len(genblocks) > 0:
+            self.log.info("make more work by gen %d" %(len(genblocks)))
+        return genblocks
+
     def sync_all(self, node_groups=None):
         if not node_groups:
             node_groups = [self.nodes]
 
+        self.log.info("syncall group : %s" % (str([len(g) for g in node_groups])))
         for group in node_groups:
-            sync_blocks(group)
+            sync_blocks(group, logger=self.log)
             sync_mempools(group)
 
     def enable_mocktime(self):
