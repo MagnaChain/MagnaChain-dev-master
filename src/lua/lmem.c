@@ -69,7 +69,7 @@ void *luaM_toobig (lua_State *L) {
 }
 
 
-lu_mem MAX_LUA_ALLOC_SIZE = 64 * 1024;
+lu_mem MAX_LUA_ALLOC_SIZE = 1024 * 1024;
 /*
 ** generic allocation routine.
 */

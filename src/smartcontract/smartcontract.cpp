@@ -24,29 +24,6 @@
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
 
-#if defined(_WIN32)
-#define strdup _strdup
-#endif
-
-/*
-函数 regContract(filename)
-参数 filename 智能合约脚本路径
-ret1 bool 是否注册成功
-ret2 ret1=true时表示指令执行数
-ret3 如果注册失败,返回失败信息,如果成功,返回编译好的字节码
-ret4 如果注册失败,返回nil,如果成功,初始化的数据,可能是nil
-
-函数 callContract(strComplieFun, strData, funname, jsonparams)
-strComplieFun 合约代码
-strData msgpack后的数据
-funname 用调用的合约函数名
-jsonparams string json参数
-ret1 调用是否成功
-ret2 ret1=true时表示指令执行数
-ret3 ret1 = false,返回错误信息,ret1 = true,返回新的数据
-ret4 合约返回的json数据
-*/
-
 static const char* initscript = "                                               \n\
 local function createSafeEnv()                                                  \n\
     local env = {}                                                              \n\
@@ -104,8 +81,6 @@ local function createSafeEnv()                                                  
     env.send = send						                                        \n\
 	return env                                                                  \n\
 end                                                                             \n\
-                                                                                \n\
-cjson.encode_sparse_array(true, 1,1)                                            \n\
                                                                                 \n\
 function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 	local fun, err = loadstring(_strScript)                                     \n\
@@ -801,7 +776,7 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
 
         luaL_openlibs(L);
         luaopen_cmsgpack(L);
-        luaopen_cjson(L);
+        //luaopen_cjson(L);
 
         if (luaL_dostring(L, initscript)) {
             error("%s\n", lua_tostring(L, -1));
