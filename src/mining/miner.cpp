@@ -1755,56 +1755,6 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
     MCAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     MCAmount kMinReward = kReward;
 
-    /*
-	Explorer kTempWallet;
-	MCAmount kUnspent = kTempWallet.GetUnspent(strMineAddr);
-	MCAmount kMinReward = kReward * 0.7;
-
-
-	// get parent
-	std::string strParent;
-	MCAmount kParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strMineAddr, strParent, kParentBalance);
-	MCAmount kParentReward = 0;
-	if (kParentBalance > 0)
-	{
-		double fRate = std::min((double)kParentBalance / (double)kUnspent, 1.0);
-		kParentReward = kReward * 0.2 * fRate;
-	}
-
-	//get g parent
-	std::string strGParent;
-	MCAmount kGParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strParent, strGParent, kGParentBalance);
-	MCAmount kGParentReward = 0;
-	if (kGParentBalance > 0)
-	{
-		kGParentReward = kReward * 0.26 - kParentReward;
-		double fRate = std::min((double)kGParentBalance / (double)kUnspent, 1.0);
-		kGParentReward = kGParentReward * fRate;
-		if (kGParentReward > kReward * 0.2)
-			kGParentReward = kReward * 0.2;
-	}
-
-	//get g g parent
-	std::string strG2Parent;
-	MCAmount kG2ParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strGParent, strG2Parent, kG2ParentBalance);
-	MCAmount kG2ParentReward = 0;
-	if (kG2ParentBalance > 0)
-	{
-		kG2ParentReward = kReward * 0.3 - kParentReward - kGParentReward;
-		double fRate = std::min((double)kG2ParentBalance / (double)kUnspent, 1.0);
-		kG2ParentReward = kG2ParentReward * fRate;
-		if (kG2ParentReward > kReward * 0.2)
-			kG2ParentReward = kReward * 0.2;
-	}
-
-	//dev reward
-	assert(kReward >= kMinReward + kParentReward + kGParentReward + kG2ParentReward );
-	MCAmount kDevReward = kReward - kMinReward - kParentReward - kGParentReward - kG2ParentReward;
-	*/
-
     // Create coinbase transaction.
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
@@ -1812,7 +1762,7 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
 
     // split output when outcoin too large, this use for big boom stage
     // because big boom coin well make block work too big
-    // 在gen big boom的时候，把大额的币分成小份，不至于挖矿时一个大额币把挖矿难度瞬间提高
+    // 在gen big boom的时候，把大额的币分成小份
     if (chainparams.IsMainChain() && nHeight <= chainparams.GetConsensus().BigBoomHeight)
     {
         const MCAmount minAmount = (10000 * COIN);
@@ -1836,58 +1786,7 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
         coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
         coinbaseTx.vout[0].nValue = nFees + kMinReward; //nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     }
-    /*
-	if (kParentReward > 0)
-	{
-		MCTxOut kOut;
-		MagnaChainAddress kRewardAddr(strParent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
 
-	if (kGParentReward > 0)
-	{
-		MCTxOut kOut;
-		MagnaChainAddress kRewardAddr(strGParent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kGParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kG2ParentReward > 0)
-	{
-		MCTxOut kOut;
-		MagnaChainAddress kRewardAddr(strG2Parent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kG2ParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kDevReward > 0)
-	{
-		MCTxOut kOut;
-		uint64_t iMax = 0;
-		MagnaChainAddress* pkAddr = nullptr;
-		// get a definite dev addr
-		for (int i = 0; i < sizeof(kdevAddrs)/ sizeof(kdevAddrs[0]); ++i) {
-			MagnaChainAddress& kAddr = kdevAddrs[i];
-			const MCKeyID& kMinerKeyId = boost::get< const MCKeyID&>(kMinerDest);
-			MCKeyID kTestKeyId;
-			kAddr.GetKeyID(kTestKeyId);
-			uint64_t iTest =  kTestKeyId.GetUint64(0) ^ kMinerKeyId.GetUint64(0);
-			if (iTest > iMax) {
-				iMax = iTest;
-				pkAddr = &kAddr;
-			}
-		}
-
-		MagnaChainAddress kRewardAddr(*pkAddr);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kDevReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-	*/
     return kReward + nFees;
 }
 
