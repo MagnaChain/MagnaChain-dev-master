@@ -31,28 +31,34 @@ class TxnMallTest(MagnaChainTestFramework):
 
     def run_test(self):
         # All nodes should start with 1,250 BTC:
-        for i in range(2):
+        for i in range(1):
             for i in range(4):
-                genblocks = self.nodes[i].generate(10)
-                assert_equal(len(genblocks), 10)
+                pergennum = 1
+                genblocks = self.nodes[i].generate(pergennum)
+                assert_equal(len(genblocks), pergennum)
                 sync_blocks(self.nodes)
         self.nodes[i].generate(1)
         sync_blocks(self.nodes)
+
         disconnect_nodes(self.nodes[1], 2)
         disconnect_nodes(self.nodes[2], 1)
-        starting_balance = 52001700
+        
+        fp_blockreward = 2600085 #mine block reward
+        starting_balance = 2600085 # min unspent value is 10000 in mgc.
         for i in range(4):
             nodebalance=self.nodes[i].getbalance()
             assert_equal(nodebalance, starting_balance)
             self.nodes[i].getnewaddress("")  # bug workaround, coins generated assigned to first getnewaddress!
 
+        nfoo_spend = 2591085 # 1219
+        nbar_spend = 5999 # 29
         # Assign coins to foo and bar addresses:
         node0_address_foo = self.nodes[0].getnewaddress()
-        fund_foo_txid = self.nodes[0].sendtoaddress(node0_address_foo, 1219)
+        fund_foo_txid = self.nodes[0].sendtoaddress(node0_address_foo, nfoo_spend)
         fund_foo_tx = self.nodes[0].gettransaction(fund_foo_txid)
 
         node0_address_bar = self.nodes[0].getnewaddress()
-        fund_bar_txid = self.nodes[0].sendtoaddress(node0_address_bar, 29)
+        fund_bar_txid = self.nodes[0].sendtoaddress(node0_address_bar, nbar_spend)
         fund_bar_tx = self.nodes[0].gettransaction(fund_bar_txid)
 
         assert_equal(self.nodes[0].getbalance(),
@@ -61,27 +67,28 @@ class TxnMallTest(MagnaChainTestFramework):
         # Coins are sent to node1_address
         node1_address = self.nodes[1].getnewaddress()
 
-        # First: use raw transaction API to send 1240 BTC to node1_address,
+        ndb_spend = 2597000 # 1240
+        # First: use raw transaction API to send $ndb_spend BTC to node1_address,
         # but don't broadcast:
         doublespend_fee = Decimal('-.02')
         rawtx_input_0 = {}
         rawtx_input_0["txid"] = fund_foo_txid
-        rawtx_input_0["vout"] = find_output(self.nodes[0], fund_foo_txid, 1219)
+        rawtx_input_0["vout"] = find_output(self.nodes[0], fund_foo_txid, nfoo_spend)
         rawtx_input_1 = {}
         rawtx_input_1["txid"] = fund_bar_txid
-        rawtx_input_1["vout"] = find_output(self.nodes[0], fund_bar_txid, 29)
+        rawtx_input_1["vout"] = find_output(self.nodes[0], fund_bar_txid, nbar_spend)
         inputs = [rawtx_input_0, rawtx_input_1]
         change_address = self.nodes[0].getnewaddress()
         outputs = {}
-        outputs[node1_address] = 1240
-        outputs[change_address] = 1248 - 1240 + doublespend_fee
+        outputs[node1_address] = ndb_spend
+        outputs[change_address] = (nfoo_spend + nbar_spend) - ndb_spend + doublespend_fee
         rawtx = self.nodes[0].createrawtransaction(inputs, outputs)
         doublespend = self.nodes[0].signrawtransaction(rawtx)
         assert_equal(doublespend["complete"], True)
 
         # Create two spends using 1 50 BTC coin each
-        txid1 = self.nodes[0].sendtoaddress(node1_address, 40)
-        txid2 = self.nodes[0].sendtoaddress(node1_address, 20)
+        txid1 = self.nodes[0].sendtoaddress(node1_address, 9000) # 40
+        txid2 = self.nodes[0].sendtoaddress(node1_address, 8000) # 20
 
         # Have node0 mine a block:
         if (self.options.mine_block):
@@ -95,7 +102,7 @@ class TxnMallTest(MagnaChainTestFramework):
         # matured block, minus 40, minus 20, and minus transaction fees:
         expected = starting_balance + fund_foo_tx["fee"] + fund_bar_tx["fee"]
         if self.options.mine_block:
-            expected += 50
+            expected += 0 # node 0 is the last one in init test data.no more coinbase mature
         expected += tx1["amount"] + tx1["fee"]
         expected += tx2["amount"] + tx2["fee"]
         assert_equal(self.nodes[0].getbalance(), expected)
@@ -137,14 +144,14 @@ class TxnMallTest(MagnaChainTestFramework):
         assert_equal(tx1["confirmations"], -2)
         assert_equal(tx2["confirmations"], -2)
 
-        # Node0's total balance should be starting balance, plus 100BTC for
-        # two more matured blocks, minus 1240 for the double-spend, plus fees (which are
+        # Node0's total balance should be starting balance, plus 2*$fp_blockreward MGC for
+        # two more matured blocks, minus $ndb_spend for the double-spend, plus fees (which are
         # negative):
-        expected = starting_balance + 100 - 1240 + fund_foo_tx["fee"] + fund_bar_tx["fee"] + doublespend_fee
+        expected = starting_balance - ndb_spend + fund_foo_tx["fee"] + fund_bar_tx["fee"] + doublespend_fee # + fp_blockreward*2
         assert_equal(self.nodes[0].getbalance(), expected)
 
-        # Node1's balance should be its initial balance (1250 for 25 block rewards) plus the doublespend:
-        assert_equal(self.nodes[1].getbalance(), 1250 + 1240)
+        # Node1's balance should be its initial balance ($starting_balance for 25 block rewards) plus the doublespend:
+        assert_equal(self.nodes[1].getbalance(), starting_balance + ndb_spend)
 
 if __name__ == '__main__':
     TxnMallTest().main()
