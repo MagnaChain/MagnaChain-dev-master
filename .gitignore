@@ -44,6 +44,7 @@ src/magnachain
 src/magnachaind
 src/magnachain-cli
 src/magnachain-tx
+src/magnachain-monitor
 src/test/test_magnachain
 src/test/test_magnachain_fuzzy
 src/qt/test/test_magnachain-qt

@@ -25,6 +25,8 @@ MAGNACHAIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPF
 MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include -I$(srcdir)/lua
 MAGNACHAIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
+MAGNACHAIN_MONITOR_INCLUDES = -I$(srcdir)/monitor/mysqlcppconn
+
 LIBMAGNACHAIN_LUA=libmagnachain_lua.a
 LIBMAGNACHAIN_SERVER=libmagnachain_server.a
 LIBMAGNACHAIN_COMMON=libmagnachain_common.a
@@ -40,6 +42,9 @@ LIBMAGNACHAIN_ZMQ=libmagnachain_zmq.a
 endif
 if BUILD_MAGNACHAIN_LIBS
 LIBMAGNACHAINCONSENSUS=libmagnachainconsensus.la
+endif
+if BUILD_MAGNACHAIN_MONITOR
+LIBMAGNACHAIN_MYSQLCPPCONN=libmagnachain_mysqlcppconn.a
 endif
 if ENABLE_WALLET
 LIBMAGNACHAIN_WALLET=libmagnachain_wallet.a
@@ -59,7 +64,8 @@ EXTRA_LIBRARIES += \
   $(LIBMAGNACHAIN_LUA) \
   $(LIBMAGNACHAIN_CLI) \
   $(LIBMAGNACHAIN_WALLET) \
-  $(LIBMAGNACHAIN_ZMQ)
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_MYSQLCPPCONN)
 
 lib_LTLIBRARIES = $(LIBMAGNACHAINCONSENSUS)
 
@@ -70,6 +76,10 @@ BENCHMARKS =
 
 if BUILD_MAGNACHAIND
   bin_PROGRAMS += magnachaind
+endif
+
+if BUILD_MAGNACHAIN_MONITOR
+  bin_PROGRAMS += magnachain-monitor
 endif
 
 if BUILD_MAGNACHAIN_UTILS
@@ -260,6 +270,33 @@ libmagnachain_wallet_a_SOURCES = \
   wallet/walletdb.cpp \
   $(MAGNACHAIN_CORE_H)
 
+libmagnachain_mysqlcppconn_a_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) $(MYSQL_CLIENT_CFLAGS) $(MAGNACHAIN_MONITOR_INCLUDES)
+libmagnachain_mysqlcppconn_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_mysqlcppconn_a_SOURCES = \
+  monitor/mysqlcppconn/driver/nativeapi/library_loader.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_client_api.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_connection_wrapper.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_driver_wrapper.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_resultset_wrapper.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_statement_wrapper.cpp \
+  monitor/mysqlcppconn/driver/mysql_art_resultset.cpp \
+  monitor/mysqlcppconn/driver/mysql_art_rset_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_connection.cpp \
+  monitor/mysqlcppconn/driver/mysql_debug.cpp \
+  monitor/mysqlcppconn/driver/mysql_driver.cpp \
+  monitor/mysqlcppconn/driver/mysql_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_parameter_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_prepared_statement.cpp \
+  monitor/mysqlcppconn/driver/mysql_ps_resultset.cpp \
+  monitor/mysqlcppconn/driver/mysql_ps_resultset_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_resultbind.cpp \
+  monitor/mysqlcppconn/driver/mysql_resultset.cpp \
+  monitor/mysqlcppconn/driver/mysql_resultset_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_statement.cpp \
+  monitor/mysqlcppconn/driver/mysql_uri.cpp \
+  monitor/mysqlcppconn/driver/mysql_util.cpp \
+  monitor/mysqlcppconn/driver/mysql_warning.cpp
+
 # crypto primitives library
 crypto_libmagnachain_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_CONFIG_INCLUDES)
 crypto_libmagnachain_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
@@ -449,6 +486,35 @@ magnachaind_LDADD = \
 
 magnachaind_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
 
+# magnachain monitor binary #
+magnachain_monitor_SOURCES = \
+	magnachain-monitor.cpp \
+	monitor/database.cpp \
+	monitor/monitorinit.cpp \
+	monitor/net_processing.cpp
+
+magnachain_monitor_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MYSQL_CLIENT_CFLAGS) $(MAGNACHAIN_MONITOR_INCLUDES)
+magnachain_monitor_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachain_monitor_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+
+magnachain_monitor_LDADD = \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
+  $(LIBUNIVALUE) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
+  $(LIBLEVELDB) \
+  $(LIBLEVELDB_SSE42) \
+  $(LIBMEMENV) \
+  $(LIBSECP256K1) \
+  $(LIBMAGNACHAIN_MYSQLCPPCONN)
+
+magnachain_monitor_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(MYSQL_CLIENT_LIBS)
+
 # magnachain-cli binary #
 magnachain_cli_SOURCES = magnachain-cli.cpp
 magnachain_cli_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(EVENT_CFLAGS)
@@ -538,6 +604,7 @@ CLEANFILES += lua/*.gcda lua/*.gcno
 CLEANFILES += main/*.gcda main/*.gcno
 CLEANFILES += mining/*.gcda mining/*.gcno
 CLEANFILES += misc/*.gcda misc/*.gcno
+CLEANFILES += monitor/*.gcda monitor/*.gcno
 CLEANFILES += net/*.gcda net/*.gcno
 CLEANFILES += policy/*.gcda policy/*.gcno
 CLEANFILES += primitives/*.gcda primitives/*.gcno
