@@ -599,8 +599,8 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
     MCContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
-        throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractId.ToString()));
+    if (sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
+        throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
 
     if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM)
         throw std::runtime_error(strprintf("%s => no more max internal call number", __FUNCTION__));
@@ -730,7 +730,7 @@ int static SendCoins(lua_State* L)
     sls->contractAddrs[0].GetContractID(contractID);
     MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
     if (sls->contractOut + amount > totalAmount)
-        throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, contractID.ToString()));
+        throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, sls->contractAddrs[0].ToString()));
 
     MCTxOut out;
     out.nValue = amount;
