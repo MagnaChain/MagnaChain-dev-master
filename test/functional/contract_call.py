@@ -3,9 +3,13 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """
-Smart Contract Testing - Published
+Smart Contract Testing - call
 
-Major test publish smart contract
+Major test call smart contract
+
+开2个节点：
+节点1作为主测试节点
+节点2作为辅助验证
 """
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
@@ -42,7 +46,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
-        self.num_nodes = 1
+        self.num_nodes = 2
 
     def run_test(self):
         """Main test logic"""
@@ -63,7 +67,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract(PAYABLE, amount=10000000), "Insufficient funds")
 
         # # 非法的入参
-        for amount in [10000000000, -1, 0, Decimal("0.0009").quantize(Decimal("0.0000"))]:
+        for amount in [10000000000, -1, 0, Decimal("0.0009").quantize(Decimal("0.0000")),"1e-3"]:
             call_contract(PAYABLE, amount=amount)
 
         # 非法sender
@@ -109,7 +113,7 @@ class ContractCallTest(MagnaChainTestFramework):
         # send to mgc address
         new_address = node.getnewaddress()
         call_contract("sendCoinTest", new_address, 1)
-        call_contract("sendCoinTest", new_address, "1")
+        call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
         assert_contains(call_contract("sendCoinTest", new_address, 0), "Dust amount")

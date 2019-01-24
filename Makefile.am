@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2016 The MagnaChain Core developers
+# Copyright (c) 2013-2016 The Bitcoin Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -21,6 +21,7 @@ endif
 MAGNACHAIND_BIN=$(top_builddir)/src/$(MAGNACHAIN_DAEMON_NAME)$(EXEEXT)
 MAGNACHAIN_QT_BIN=$(top_builddir)/src/qt/$(MAGNACHAIN_GUI_NAME)$(EXEEXT)
 MAGNACHAIN_CLI_BIN=$(top_builddir)/src/$(MAGNACHAIN_CLI_NAME)$(EXEEXT)
+MAGNACHAIN_MONITOR_BIN=$(top_builddir)/src/$(MAGNACHAIN_MONITOR_NAME)$(EXEEXT)
 MAGNACHAIN_WIN_INSTALLER=$(PACKAGE)-$(PACKAGE_VERSION)-win$(WINDOWS_BITS)-setup$(EXEEXT)
 
 empty :=
@@ -167,6 +168,9 @@ $(MAGNACHAIND_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
 $(MAGNACHAIN_CLI_BIN): FORCE
+	$(MAKE) -C src $(@F)
+
+$(MAGNACHAIN_MONITOR_BIN): FORCE
 	$(MAKE) -C src $(@F)
 
 if USE_LCOV
