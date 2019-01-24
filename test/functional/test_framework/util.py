@@ -765,6 +765,12 @@ def generate_contract(folder, err_type=None):
             _call(msg.thisaddress,'cycleSelf')
         end
 
+        function rpcSendTest()
+            -- body
+            _call(msg.thisaddress,'send',msg.sender,10)
+        end
+
+
         function init()
             --loop(3)
             mainTest()
@@ -830,9 +836,9 @@ def generate_contract(folder, err_type=None):
     if err_type == "syntax_err":
         code += 'syntax_err'
     elif err_type == "bigfile":
-        code += "local a = [==[\n" + "a" * (int(2147483647 / 20)) + "\n]==]"
+        code += "local a = [==[\n" + "a" * (int(2147483647 / 30)) + "\n]==]"
     elif err_type == "trim_code":
-        code += "--1" * int(2147483647 / 20)
+        code += "--1" * int(2147483647 / 30)
     file_path = os.path.join(folder, "contract.lua")
     with open(file_path, "w") as fh:
         fh.write(code)

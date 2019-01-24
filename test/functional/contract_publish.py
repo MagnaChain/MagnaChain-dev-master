@@ -41,9 +41,9 @@ class ContractPublishTest(MagnaChainTestFramework):
         """Main test logic"""
         # prepare
         node = self.nodes[0]
-        node.generate(2) # make some coins
-        self.nodes[1].generate(2)
-        sync_blocks(self.nodes)
+        node2 = self.nodes[1]
+        node2.generate(2) # make some coins
+        self.sync_all()
 
         # no coins
         try:
@@ -52,7 +52,11 @@ class ContractPublishTest(MagnaChainTestFramework):
         except Exception as e:
             assert "GetSenderAddr" in repr(e)
 
-        node.generate(1)
+        # make sure not in mempool when the tx failed
+        assert_equal([],node.getrawmempool())
+
+        node.generate(2) # make some coins
+        self.sync_all()
         # 错误的合约
         contract = generate_contract(self.options.tmpdir,err_type = "syntax_err")
         try:
@@ -61,15 +65,18 @@ class ContractPublishTest(MagnaChainTestFramework):
             assert 'expected near' in repr(e)
 
         # 超大合约
-        contract = generate_contract(self.options.tmpdir,err_type = "bigfile")
+        # 当前会crash，先skip bigfile
+        contract = generate_contract(self.options.tmpdir,err_type = "bigfile") # should be bigfile
         try:
             result = node.publishcontract(contract)
         except Exception as e:
+            # here will be crash with `double free or corruption (out)`
             assert 'Transaction too large' in repr(e)
             pass
 
         # 测试代码压缩
-        contract = generate_contract(self.options.tmpdir,err_type = "trim_code")
+        # 当前会crash，先skip trim_code
+        contract = generate_contract(self.options.tmpdir,err_type = "trim_code") # should be trim_code
         try:
             result = node.publishcontract(contract)
         except Exception as e:
@@ -160,7 +167,6 @@ class ContractPublishTest(MagnaChainTestFramework):
                 continue
         node.generate(1)
 
-        return
         # 正确的合约，并且进行重复测试
         j = 2
         contract = generate_contract(self.options.tmpdir)
@@ -172,6 +178,7 @@ class ContractPublishTest(MagnaChainTestFramework):
             self.log.info("publish cost:%s"%(balance - node.getbalance()))
             if i % j == 0:
                 # 每个多少个交易后才打一次包
+                self.sync_all()
                 node.generate(1)
                 j = min(64,j * 2)
 

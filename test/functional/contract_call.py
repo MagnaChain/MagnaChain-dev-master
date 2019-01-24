@@ -52,6 +52,7 @@ class ContractCallTest(MagnaChainTestFramework):
         """Main test logic"""
         # prepare
         node = self.nodes[0]
+        node2 = self.nodes[1]
         node.generate(nblocks=2)  # make some coins
         self.sync_all()
 
@@ -85,6 +86,12 @@ class ContractCallTest(MagnaChainTestFramework):
         # 函数不存在
         if not SKIP:
             assert_contains(call_contract("payable2"), "can not find function")
+
+        # send不能被裸调用
+        # bug被修复前，暂时跳过
+        if not SKIP:
+            assert_contains(call_contract("send",sender,0),'can not find function')
+            assert_contains(call_contract("rpcSendTest"), 'can not find function')
 
         # recharge to contract
         call_contract(PAYABLE)
