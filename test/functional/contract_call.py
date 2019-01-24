@@ -26,7 +26,9 @@ from test_framework.util import (
     assert_greater_than,
     assert_contains,
     generate_contract,
-    caller_factory
+    caller_factory,
+    sync_mempools,
+    sync_blocks,
 )
 
 # TODO SKIP should be set False
@@ -89,13 +91,27 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # send不能被裸调用
         # bug被修复前，暂时跳过
+        # if not SKIP:
+        #     assert_contains(call_contract("send",sender,0),'can not find function')
+        #     assert_contains(call_contract("rpcSendTest"), 'can not find function')
+
+        # when not commit transaction, make sure contract tx is not in mempool
         if not SKIP:
-            assert_contains(call_contract("send",sender,0),'can not find function')
-            assert_contains(call_contract("rpcSendTest"), 'can not find function')
+            mempool = node.getrawmempool()
+            node.callcontract(False, 1, contract_id, sender, PAYABLE)
+            assert mempool == node.getrawmempool()
 
         # recharge to contract
-        call_contract(PAYABLE)
+        txid = call_contract(PAYABLE,amount = 1000)['txid']
+        sync_mempools(self.nodes)
+        assert txid in node.getrawmempool()
+        assert txid in node2.getrawmempool()
+        assert_equal(node.getbalanceof(contract_id), 0)  #合约的余额只会在一定的确认数之后才可以查看，在内存池中是不生效的
         node.generate(nblocks=1)
+        self.sync_all()
+        assert txid not in node.getrawmempool()
+        assert txid not in node2.getrawmempool()
+        assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
         # # tailLoopTest
         call_contract("tailLoopTest", 594)  # v452,594 is the limit
@@ -119,7 +135,8 @@ class ContractCallTest(MagnaChainTestFramework):
         # sendCoinTest
         # send to mgc address
         new_address = node.getnewaddress()
-        call_contract("sendCoinTest", new_address, 1)
+        txid = call_contract("sendCoinTest", new_address, 1)['txid']
+        assert txid in node.getrawmempool()
         call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
@@ -130,8 +147,13 @@ class ContractCallTest(MagnaChainTestFramework):
         tmp_caller = caller_factory(self, tmp_id, sender)
         tmp_caller(PAYABLE, amount=Decimal("1"))
         tmp_caller("sendCoinTest", new_address, 1, amount=Decimal("0"))
-        node.generate(nblocks=2)  # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
+        # 利用节点2挖矿，确保节点1的交易可以打包的块
+        node2.generate(nblocks=2)  # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
+        self.sync_all()
         assert_equal(node.getbalanceof(new_address), 3)
+        assert_equal(node.getbalanceof(tmp_id), 0)
+        assert_equal(node2.getbalanceof(new_address), 3)
+        assert_equal(node2.getbalanceof(tmp_id), 0)
         assert_contains(tmp_caller("sendCoinTest", new_address, 1), "not enough amount ")
 
         # send to contract
