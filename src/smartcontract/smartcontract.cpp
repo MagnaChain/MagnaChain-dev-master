@@ -511,7 +511,8 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
     return success;
 }
 
-bool static CallContract(lua_State* L, const std::string& rawCode, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
+bool static CallContract(lua_State* L, const std::string& rawCode, const std::string& data, 
+    const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
     const std::string& code = Decompress(rawCode);
 
@@ -589,7 +590,8 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
     return success;
 }
 
-bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, 
+    const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
     if (amount < 0)
         throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
@@ -598,10 +600,10 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
     if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
-        throw std::runtime_error(strprintf("%s GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
+        throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractId.ToString()));
 
     if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM)
-        throw std::runtime_error(strprintf("%s no more max internal call number", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => no more max internal call number", __FUNCTION__));
 
     sls->_internalCallNum++;
     std::string data;
@@ -643,16 +645,16 @@ int static InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
-        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
     std::string strContractAddr = lua_tostring(L, 1);
     MagnaChainAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
-        throw std::runtime_error(strprintf("%s contractAddr is invalid", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => contractAddr is invalid", __FUNCTION__));
 
     std::string strFuncName = lua_tostring(L, 2);
     if (strFuncName.empty())
-        throw std::runtime_error(strprintf("%s function name is empty", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => function name is empty", __FUNCTION__));
 
     int top = lua_gettop(L);
     UniValue args(UniValue::VType::VARR);
@@ -704,31 +706,31 @@ int static SendCoins(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
-        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
     if (!lua_isstring(L, 1))
-        throw std::runtime_error(strprintf("%s param1 is not a string", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => param1 is not a string", __FUNCTION__));
 
     if (!lua_isnumber(L, 2))
-        throw std::runtime_error(strprintf("%s param2 is not a number", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => param2 is not a number", __FUNCTION__));
 
     if (sls->pCoinAmountCache == nullptr)
-        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
     std::string strDest = lua_tostring(L, 1);
     MagnaChainAddress kDest(strDest);
     if (kDest.IsContractID() || !kDest.IsValid())
-        throw std::runtime_error(strprintf("Invalid destination address"));
+        throw std::runtime_error(strprintf("%s => Invalid destination address", __FUNCTION__));
 
     MCAmount amount = lua_tonumber(L, 2);
     if (amount < DUST_RELAY_TX_FEE)
-        throw std::runtime_error(strprintf("%s Dust amount", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => Dust amount", __FUNCTION__));
 
     MCContractID contractID;
     sls->contractAddrs[0].GetContractID(contractID);
     MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
     if (sls->contractOut + amount > totalAmount)
-        throw std::runtime_error(strprintf("Contract %s has not enough amount", contractID.ToString().c_str()));
+        throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, contractID.ToString()));
 
     MCTxOut out;
     out.nValue = amount;
