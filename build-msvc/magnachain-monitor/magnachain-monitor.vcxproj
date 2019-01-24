@@ -172,7 +172,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\magnachaind-monitor.cpp" />
+    <ClCompile Include="..\..\src\magnachain-monitor.cpp" />
     <ClCompile Include="..\..\src\monitor\database.cpp" />
     <ClCompile Include="..\..\src\monitor\monitorinit.cpp" />
     <ClCompile Include="..\..\src\monitor\mysqlcppconn\driver\mysql_art_resultset.cpp" />

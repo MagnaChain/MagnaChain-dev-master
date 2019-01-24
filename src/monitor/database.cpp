@@ -111,8 +111,11 @@ bool GetAncestor(DatabaseBlock& indexWalk, int height)
 const uint256 GetMaxHeightBlock()
 {
     char sql[] = "SELECT `blockhash` FROM `block` WHERE (`height`, `time`)"
-        "IN (SELECT `height`, MIN(`time`) FROM `block` WHERE `height` = (SELECT MAX(`height`) FROM `block`));";
-    std::unique_ptr<sql::ResultSet> resultSet(sqlStatement->executeQuery(sql));
+        "IN (SELECT `height`, MIN(`time`) FROM `block` WHERE `height` = (SELECT MAX(`height`) FROM `block` WHERE `regtest` = ? AND `branchid` = ?));";
+    std::unique_ptr<sql::PreparedStatement> getMaxHeightBlockStatement(sqlConnection->prepareStatement(sql));
+    getMaxHeightBlockStatement->setBoolean(1, gArgs.GetBoolArg("-regtest", false));
+    getMaxHeightBlockStatement->setString(2, gArgs.GetArg("-branchid", ""));
+    std::unique_ptr<sql::ResultSet> resultSet(getMaxHeightBlockStatement->executeQuery());
     if (resultSet == nullptr || !resultSet->next()) {
         return uint256();
     }
@@ -174,15 +177,16 @@ bool DBCreateTable()
 
     {
         char sql[] = "INSERT INTO `block`(`blockhash`, `hashprevblock`, `hashskipblock`, `hashmerkleroot`"
-            ", `height`, `version`, `time`, `bits`, `nonce`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            ", `height`, `version`, `time`, `bits`, `nonce`, `regtest`, `branchid`)"
+            " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         insertBlockStatement.reset(sqlConnection->prepareStatement(sql));
     }
 
     {
         char sql[] = "INSERT INTO `transaction`(`txhash`, `blockhash`, `blockindex`, `version`, `locktime`"
             ", `branchvseeds`, `branchseedspec6`, `sendtobranchid`, `sendtotxhexdata`, `frombranchid`, `fromtx`"
-            ", `inamount`, `contractdata`, `branchblockdata`, `pmt`, `reportdata`, `provedata`, `reporttxid`"
-            ", `coinpreouthash`, `provetxid`) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            ", `inamount`, `reporttxid`, `coinpreouthash`, `provetxid`)"
+            " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         insertTransactionStatement.reset(sqlConnection->prepareStatement(sql));
     }
 
@@ -258,9 +262,6 @@ bool DBInitialize()
         }
     }
 
-    std::string dbschema = gArgs.GetArg("-dbschema", "magnachain");
-    sqlConnection->setSchema(dbschema);
-
     sqlStatement.reset(sqlConnection->createStatement());
     if (sqlStatement == nullptr) {
         const sql::SQLWarning* warnings = sqlConnection->getWarnings();
@@ -269,6 +270,10 @@ bool DBInitialize()
             return false;
         }
     }
+
+    std::string dbschema = gArgs.GetArg("-dbschema", "magnachain");
+    sqlStatement->execute(std::string("CREATE DATABASE IF NOT EXISTS `") + dbschema + "`;");
+    sqlConnection->setSchema(dbschema);
 
     return DBCreateTable();
 }
@@ -331,6 +336,8 @@ int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock)
     insertBlockStatement->setUInt(7, block.nTime);
     insertBlockStatement->setUInt(8, block.nBits);
     insertBlockStatement->setUInt(9, block.nNonce);
+    insertBlockStatement->setBoolean(10, gArgs.GetBoolArg("-regtest", false));
+    insertBlockStatement->setString(11, gArgs.GetArg("-branchid", ""));
     if (!insertBlockStatement->executeUpdate()) {
         const sql::SQLWarning* warnings = insertBlockStatement->getWarnings();
         if (warnings != nullptr) {
@@ -349,7 +356,7 @@ int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock)
 bool WriteTxIn(const MCTransactionRef tx)
 {
     const std::string& txHash(tx->GetHash().ToString());
-    for (int i = 0; i < tx->vin.size(); ++i) {
+    for (uint32_t i = 0; i < tx->vin.size(); ++i) {
         const MCTxIn& txin = tx->vin[i];
         if (txin.prevout.IsNull()) {
             continue;
@@ -359,9 +366,9 @@ bool WriteTxIn(const MCTransactionRef tx)
         std::istringstream scriptSigStream(scriptSig);
 
         insertTxInStatement->setString(1, txHash);
-        insertTxInStatement->setInt(2, i);
+        insertTxInStatement->setUInt(2, i);
         insertTxInStatement->setString(3, txin.prevout.hash.ToString());
-        insertTxInStatement->setInt(4, txin.prevout.n);
+        insertTxInStatement->setUInt(4, txin.prevout.n);
         insertTxInStatement->setUInt(5, txin.nSequence);
         insertTxInStatement->setBlob(6, &scriptSigStream);
 
@@ -380,15 +387,15 @@ bool WriteTxIn(const MCTransactionRef tx)
 bool WriteTxOut(const MCTransactionRef tx)
 {
     const std::string& txHash(tx->GetHash().ToString());
-    for (int i = 0; i < tx->vout.size(); ++i) {
+    for (uint32_t i = 0; i < tx->vout.size(); ++i) {
         const MCTxOut& txout = tx->vout[i];
 
         const std::string scriptPubKey(txout.scriptPubKey.begin(), txout.scriptPubKey.end());
         std::istringstream scriptPubKeyStream(scriptPubKey);
 
         insertTxOutStatement->setString(1, txHash);
-        insertTxOutStatement->setInt(2, i);
-        insertTxOutStatement->setUInt(3, txout.nValue);
+        insertTxOutStatement->setUInt(2, i);
+        insertTxOutStatement->setInt64(3, txout.nValue);
         insertTxOutStatement->setBlob(4, &scriptPubKeyStream);
 
         if (!insertTxOutStatement->executeUpdate()) {
@@ -422,7 +429,7 @@ bool WriteContract(const MCTransactionRef tx)
     insertContractStatement->setString(3, HexStr(contractData->sender));
     insertContractStatement->setBlob(4, &codeOrFuncStream);
     insertContractStatement->setBlob(5, &argsStream);
-    insertContractStatement->setUInt64(6, contractData->amountOut);
+    insertContractStatement->setInt64(6, contractData->amountOut);
     insertContractStatement->setBlob(7, &signatureStream);
 
     if (!insertContractStatement->executeUpdate()) {
@@ -458,10 +465,10 @@ bool WriteBranchBlockData(const MCTransactionRef tx)
     insertBranchBlockDataStatement->setUInt(8, branchBlockData->nBits);
     insertBranchBlockDataStatement->setUInt(9, branchBlockData->nNonce);
     insertBranchBlockDataStatement->setString(10, branchBlockData->prevoutStake.hash.ToString());
-    insertBranchBlockDataStatement->setInt(11, branchBlockData->prevoutStake.n);
+    insertBranchBlockDataStatement->setUInt(11, branchBlockData->prevoutStake.n);
     insertBranchBlockDataStatement->setBlob(12, &blockSigStream);
     insertBranchBlockDataStatement->setString(13, branchBlockData->branchID.ToString());
-    insertBranchBlockDataStatement->setUInt(14, branchBlockData->blockHeight);
+    insertBranchBlockDataStatement->setInt(14, branchBlockData->blockHeight);
     insertBranchBlockDataStatement->setBlob(15, &stakeTxDataStream);
 
     if (!insertBranchBlockDataStatement->executeUpdate()) {
@@ -565,7 +572,7 @@ bool WriteReportData(const MCTransactionRef tx)
     insertReportDataStatement->setString(3, reportData->reportedBranchId.ToString());
     insertReportDataStatement->setString(4, reportData->reportedBlockHash.ToString());
     insertReportDataStatement->setString(5, reportData->reportedTxHash.ToString());
-    insertReportDataStatement->setUInt64(6, reportData->contractData->reportedContractPrevData.coins);
+    insertReportDataStatement->setInt64(6, reportData->contractData->reportedContractPrevData.coins);
     insertReportDataStatement->setBlob(7, &contractReportedSpvProofStream);
     insertReportDataStatement->setString(8, reportData->contractData->proveTxHash.ToString());
     insertReportDataStatement->setBlob(9, &contractProveSpvProofStream);
@@ -598,7 +605,7 @@ bool WriteReportData(const MCTransactionRef tx)
 bool WriteTransaction(const MCBlock& block)
 {
     const std::string& blockHash(block.GetHash().ToString());
-    for (int i = 0; i < block.vtx.size(); ++i) {
+    for (uint32_t i = 0; i < block.vtx.size(); ++i) {
         MCTransactionRef tx = block.vtx[i];
 
         std::string sendToTxHexData(tx->sendToTxHexData);
@@ -613,7 +620,7 @@ bool WriteTransaction(const MCBlock& block)
 
         insertTransactionStatement->setString(1, tx->GetHash().ToString());
         insertTransactionStatement->setString(2, blockHash);
-        insertTransactionStatement->setInt(3, i);
+        insertTransactionStatement->setUInt(3, i);
         insertTransactionStatement->setInt(4, tx->nVersion);
         insertTransactionStatement->setUInt(5, tx->nLockTime);
         insertTransactionStatement->setString(6, tx->branchVSeeds);
@@ -622,15 +629,10 @@ bool WriteTransaction(const MCBlock& block)
         insertTransactionStatement->setBlob(9, &sendToTxHexDataStream);
         insertTransactionStatement->setString(10, tx->fromBranchId);
         insertTransactionStatement->setBlob(11, &fromTxStream);
-        insertTransactionStatement->setUInt64(12, 0);
-        insertTransactionStatement->setInt(13, 0);
-        insertTransactionStatement->setInt(14, 0);
-        insertTransactionStatement->setInt(15, 0);
-        insertTransactionStatement->setInt(16, 0);
-        insertTransactionStatement->setInt(17, 0);
-        insertTransactionStatement->setString(18, reporttxid);
-        insertTransactionStatement->setString(19, coinpreouthash);
-        insertTransactionStatement->setString(20, provetxid);
+        insertTransactionStatement->setInt64(12, tx->inAmount);
+        insertTransactionStatement->setString(13, reporttxid);
+        insertTransactionStatement->setString(14, coinpreouthash);
+        insertTransactionStatement->setString(15, provetxid);
 
         if (!insertTransactionStatement->executeUpdate()) {
             const sql::SQLWarning* warnings = insertTransactionStatement->getWarnings();
