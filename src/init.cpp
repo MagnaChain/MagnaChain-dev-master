@@ -1509,10 +1509,10 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 // The on-disk coinsdb is now in a good state, create the cache
                 pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
-				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, false);
-                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, false);
                 pCoinAmountDB = new CoinAmountDB();
                 pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
+				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
+                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
                 
                 if (Params().IsMainChain()) //only in main chain
                 {
