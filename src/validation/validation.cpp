@@ -4663,7 +4663,7 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                     ContractContext contractContext;
                     MCBlock& block = *pblock;
                     if (!mpContractDb->RunBlockContract(&block, &contractContext, &coinAmountCache))
-                        return error("%s: RunBlockContract failed", __FUNCTION__);
+                        continue;
 
                     MCValidationState state;
                     if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr, &contractContext))
