@@ -35,11 +35,11 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         node0.generate(2)  # make some coins
         self.sync_all()
         contract = generate_contract(self.options.tmpdir)
-        '''
+        ''''''
         # 测试发布合约的交易
         self.log.info("Test contract publish transaction")
         contract = generate_contract(self.options.tmpdir)
-        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM + -100)
+        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM)
         node0.prioritisetransaction(txid=infos[-1]['txid'], fee_delta=int(3 * base_fee * COIN))
         node0.generate(1)
         mempool = node0.getrawmempool()
@@ -60,7 +60,7 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         node0.generate(1) #clear mempool
         assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
         
-        '''
+        ''''''
         # 测试有依赖的合约交易的优先级，依赖方式为调用同一合约
         publish_transaction = gen_lots_of_contracts(node0, contract, 1)
         print(publish_transaction)
