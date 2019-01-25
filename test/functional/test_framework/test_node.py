@@ -13,6 +13,8 @@ import os
 import subprocess
 import time
 
+import sys
+
 from .util import (
     assert_equal,
     get_rpc_proxy,
@@ -46,6 +48,11 @@ class TestNode():
             self.rpc_timeout = 60
         if binary is None:
             self.binary = os.getenv("MAGNACHAIND", "magnachaind")
+            if not os.path.exists(self.binary):
+                exeext  = '.exe' if sys.platform == 'win32' else ''
+                cur_dir = os.path.abspath(os.path.dirname(__file__))
+                self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind' + exeext)
+
         else:
             self.binary = binary
         self.stderr = stderr
