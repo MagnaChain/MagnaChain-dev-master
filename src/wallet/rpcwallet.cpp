@@ -659,7 +659,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     SmartLuaState sls;
     UniValue ret(UniValue::VARR);
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
-    if (!PublishContract(&sls, contractAddr, trimRawCode, ret))
+    if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());

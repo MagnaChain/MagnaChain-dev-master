@@ -21,7 +21,7 @@ extern "C"
 #include "smartcontract/contractdb.h"
 #include "coding/base58.h"
 
-const int MAX_CONTRACT_CALL = 10000;
+const int MAX_CONTRACT_CALL = 15000;
 const int MAX_DATA_LEN = 1024 * 1024;
 
 class Coin;
@@ -94,7 +94,7 @@ MCContractID GenerateContractAddressByTx(TxType& tx)
 std::string TrimCode(const std::string& rawCode);
 
 bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
-bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret);
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret, bool decompress);
 bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
 
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);

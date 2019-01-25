@@ -400,7 +400,7 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx.pContractData->codeOrFunc;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (PublishContract(sls, contractAddr, rawCode, ret)) {
+        if (PublishContract(sls, contractAddr, rawCode, ret, true)) {
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == 0);
             }
