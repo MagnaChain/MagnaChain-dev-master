@@ -73,6 +73,9 @@ class RESTTest (MagnaChainTestFramework):
         self.url = urllib.parse.urlparse(self.nodes[0].url)
         self.log.info("Mine blocks and send MGC to node 1")
 
+        # Random address so node1's balance doesn't increase
+        not_related_address = "mYHK7inMqfFGYBDRN4BrKHiTyMGwLGdyEK"
+
         self.nodes[0].generate(1)
         self.sync_all()
         self.nodes[1].generate(10)
@@ -204,7 +207,7 @@ class RESTTest (MagnaChainTestFramework):
         response_header = self.test_rest_request("/headers/1/{}".format(bb_hash), req_type=ReqType.BIN, ret_type=RetType.OBJ)
         assert_equal(int(response_header.getheader('content-length')), 181) # 80 header is modified, added new fields.
         response_header_bytes = response_header.read()
-        assert_equal(response_bytes[:80], response_header_bytes)
+        assert_equal(response_bytes[:181], response_header_bytes)
 
         # Check block hex format
         response_hex = self.test_rest_request("/block/{}".format(bb_hash), req_type=ReqType.HEX, ret_type=RetType.OBJ)
