@@ -202,7 +202,7 @@ class RESTTest (MagnaChainTestFramework):
 
         # Compare with block header
         response_header = self.test_rest_request("/headers/1/{}".format(bb_hash), req_type=ReqType.BIN, ret_type=RetType.OBJ)
-        assert_equal(int(response_header.getheader('content-length')), 80)
+        assert_equal(int(response_header.getheader('content-length')), 181) # 80 header is modified, added new fields.
         response_header_bytes = response_header.read()
         assert_equal(response_bytes[:80], response_header_bytes)
 
