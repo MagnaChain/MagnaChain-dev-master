@@ -138,6 +138,9 @@ static const CRPCConvertParam vRPCConvertParams[] =
     { "disconnectnode", 1, "nodeid" },
     //{ "getaddresscoins",0,"address" },
     { "getaddresscoins",1,"withscript" },
+    { "updateminingreservetxsize", 0, "reservesize"},
+    { "updateminingreservetxsize", 1, "reservesize" },
+    { "updateminingreservetxsize", 2, "reservesize" },
     // Echo with conversion (For testing only)
     { "echojson", 0, "arg0" },
     { "echojson", 1, "arg1" },

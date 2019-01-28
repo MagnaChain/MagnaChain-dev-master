@@ -1379,6 +1379,45 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue updateminingreservetxsize(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 3)
+        throw std::runtime_error(
+            "set/get tx reserve size for addPackageTxs.\n"
+            "\nArguments:\n"
+            "1. pubcontractsize (numeric, optional) ReservePubContractBlockDataSize\n"
+            "2. callcontractsize   (numeric, optional) ReserveCallContractBlockDataSize\n"
+            "3. branchtxsize      (numeric, optional) ReserveBranchTxBlockDataSize\n"
+            "\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"ReservePubContractBlockDataSize\" : ReservePubContractBlockDataSize\n"
+            "  \"ReserveCallContractBlockDataSize\" : ReserveCallContractBlockDataSize\n"
+            "  \"ReserveBranchTxBlockDataSize\" : ReserveBranchTxBlockDataSize\n"
+            "}\n"
+            "\n"
+            "Results are returned for any horizon which tracks blocks up to the confirmation target.\n"
+            "\nExample:\n"
+            + HelpExampleCli("updateminingreservetxsize", "100 1000 1000")
+        );
+
+    if (request.params.size() > 0){
+        ReservePubContractBlockDataSize = request.params[0].get_int64();
+    }
+    if (request.params.size() > 1) {
+        ReserveCallContractBlockDataSize = request.params[1].get_int64();
+    }
+    if (request.params.size() > 2) {
+        ReserveBranchTxBlockDataSize = request.params[2].get_int64();
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("ReservePubContractBlockDataSize", ReservePubContractBlockDataSize));
+    result.push_back(Pair("ReserveCallContractBlockDataSize", ReserveCallContractBlockDataSize));
+    result.push_back(Pair("ReserveBranchTxBlockDataSize", ReserveBranchTxBlockDataSize));
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
@@ -1399,6 +1438,7 @@ static const CRPCCommand commands[] =
     { "util",               "estimatesmartfee",       &estimatesmartfee,       true,  {"conf_target", "estimate_mode"} },
 
     { "hidden",             "estimaterawfee",         &estimaterawfee,         true,  {"conf_target", "threshold"} },
+    { "mining",             "updateminingreservetxsize",&updateminingreservetxsize ,true, {"reservesize","reservesize","reservesize"} },
 };
 
 void RegisterMiningRPCCommands(CRPCTable &t)

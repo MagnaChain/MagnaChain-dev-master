@@ -62,8 +62,15 @@ typedef base_uint<512> uint512;
 
 //////////////////////////////////////////////////////////////////////////////
 //
-// BitcoinMiner
+// MagnachainMiner
 //
+
+// Define reserve size use in addPackageTxs, to avoid bad-blk-length failure.
+// Because some tx will add more data to transaction after add to block(after addPackageTxs),
+// that will increase block final size.
+uint64_t ReservePubContractBlockDataSize = 100;
+uint64_t ReserveCallContractBlockDataSize = 1000;
+uint64_t ReserveBranchTxBlockDataSize = 100;
 
 //
 // Unconfirmed transactions in the memory pool often depend on other
@@ -148,8 +155,26 @@ void BlockAssembler::onlyUnconfirmed(MCTxMemPool::setEntries& testSet)
     }
 }
 
-bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost)
+uint64_t BlockAssembler::GetTxReserveBlockSize(const MCTransaction& tx)
 {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
+        return ReservePubContractBlockDataSize;
+    }
+    else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+        return ReserveCallContractBlockDataSize;
+    }
+    else if (tx.IsBranchChainTransStep2()) {
+        if (chainparams.IsMainChain()) {
+            return ReserveBranchTxBlockDataSize;
+        }
+    }
+    return 0;
+}
+
+bool BlockAssembler::TestPackage(MCTxMemPool::txiter iter, uint64_t packageSize, int64_t packageSigOpsCost)
+{
+    packageSize += GetTxReserveBlockSize(iter->GetTx()) * std::max<uint64_t>( 1, iter->GetCountWithAncestors());
+
     // TODO: switch to weight-based accounting for packages instead of vsize-based accounting.
     if (nBlockWeight + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxWeight)
         return false;
@@ -186,7 +211,7 @@ void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxo
 
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
-    nBlockWeight += iter->GetTxWeight();
+    nBlockWeight += iter->GetTxWeight() + GetTxReserveBlockSize(iter->GetTx()); // append reserve block size
     ++nBlockTx;
     nBlockSigOpsCost += iter->GetSigOpCost();
     nFees += iter->GetFee();
@@ -646,7 +671,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 			return;
 		}
 
-		if (!TestPackage(packageSize, packageSigOpsCost)) {
+		if (!TestPackage(iter, packageSize, packageSigOpsCost)) {
 			if (fUsingModified) {
 				// Since we always look at the best entry in mapModifiedTx,
 				// we must erase failed entries so that we can consider the
