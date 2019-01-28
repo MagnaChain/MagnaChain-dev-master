@@ -556,7 +556,7 @@ public:
     void DoClear(); //lock free
     bool CompareDepthAndScore(const uint256& hasha, const uint256& hashb);
     void QueryHashes(std::vector<uint256>& vtxid);
-    bool IsSpent(const MCOutPoint& outpoint);
+    bool IsSpent(const MCOutPoint& outpoint) const;
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
     /**
