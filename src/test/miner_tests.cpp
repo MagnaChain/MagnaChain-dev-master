@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity_need_rewrite)
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);
 
         std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
-        BOOST_CHECK(ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false));
+        BOOST_CHECK(ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr));
         pblock->hashPrevBlock = pblock->GetHash();
     }
 

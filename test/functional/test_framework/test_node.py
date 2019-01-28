@@ -49,10 +49,11 @@ class TestNode():
         if binary is None:
             self.binary = os.getenv("MAGNACHAIND", "magnachaind")
             if not os.path.exists(self.binary):
-                exeext  = '.exe' if sys.platform == 'win32' else ''
                 cur_dir = os.path.abspath(os.path.dirname(__file__))
-                self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind' + exeext)
-
+                if sys.platform == 'win32':
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'build-msvc\\Debug','magnachaind.exe')
+                else:
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind')
         else:
             self.binary = binary
         self.stderr = stderr

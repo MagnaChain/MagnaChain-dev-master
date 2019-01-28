@@ -1492,6 +1492,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 pcoinsdbview = new MCCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
                 pcoinscatcher = new MCCoinsViewErrorCatcher(pcoinsdbview);
+                mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
+                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
                 
                 // If necessary, upgrade from older database format.
                 // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
@@ -1500,7 +1502,6 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
-                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
                 // ReplayBlocks is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!ReplayBlocks(chainparams, pcoinsdbview)) {
                     strLoadError = _("Unable to replay blocks. You will need to rebuild the database using -reindex-chainstate.");
@@ -1509,10 +1510,9 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 // The on-disk coinsdb is now in a good state, create the cache
                 pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
+                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
                 pCoinAmountDB = new CoinAmountDB();
                 pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
-				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
-                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
                 
                 if (Params().IsMainChain()) //only in main chain
                 {
