@@ -140,7 +140,7 @@ class RESTTest (MagnaChainTestFramework):
         response_hash = binascii.hexlify(output.read(32)[::-1]).decode('ascii')
 
         assert_equal(bb_hash, response_hash)  # check if getutxo's chaintip during calculation was fine
-        assert_equal(chain_height, 102)  # chain height must be 102
+        assert_equal(chain_height, 12)  # chain height must be 102
 
         self.log.info("Test the /getutxos URI with and without /checkmempool")
         # Create a transaction, check that it's found with /checkmempool, but
