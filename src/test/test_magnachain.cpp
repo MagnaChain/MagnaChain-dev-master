@@ -197,7 +197,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
     std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(block);
-    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false);
+    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr);
 
     MCBlock result = block;
     return result;

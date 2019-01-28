@@ -263,7 +263,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
             std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
-            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr, false))
+            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
             ++nHeight;
             blockHashes.push_back(pblock->GetHash().GetHex());
@@ -1167,7 +1167,7 @@ UniValue submitblock(const JSONRPCRequest& request)
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
     ContractContext contractContext;
-    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr, true);
+    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found) {

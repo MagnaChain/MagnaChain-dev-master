@@ -2349,7 +2349,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             // compact blocks with less work than our tip, it is safe to treat
             // reconstructed compact blocks as having been requested.
             ContractContext contractContext;
-            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock, true);
+            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2434,7 +2434,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             // protections in the compact block handler -- see related comment
             // in compact block optimistic reconstruction handling.
             ContractContext contractContext;
-            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock, true);
+            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2492,7 +2492,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         }
         bool fNewBlock = false;
         ContractContext contractContext;
-        ProcessNewBlock(chainparams, pblock, &contractContext, forceProcessing, &fNewBlock, true);
+        ProcessNewBlock(chainparams, pblock, &contractContext, forceProcessing, &fNewBlock);
         if (fNewBlock) {
             pfrom->nLastBlockTime = GetTime();
         } else {

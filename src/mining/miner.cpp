@@ -1185,11 +1185,20 @@ bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consen
 	if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256( consensusParams.powLimit))
 		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, bnTarget error");
 
-	if (UintToArith256(hash) > bnTarget)
-		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, UintToArith256(hash) > bnTarget");
+    if (UintToArith256(hash) > bnTarget) {
+        // only for -reindex, -reindexchainstate
+        if (mapBlockIndex.size() == 1 && mapBlockIndex.count(block.GetHash()) > 0 && block.GetHash() == Params().GenesisBlock().GetHash()) {
+            return true;
+        }
+        else {
+            return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, UintToArith256(hash) > bnTarget");
+        }
+    }
 
-	if (iBlockWork != block.nNonce)
-		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, iBlockWork != block.nNonce");;
+    if (iBlockWork != block.nNonce) {
+        return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, iBlockWork != block.nNonce");;
+    }
+
 	return true;
 }
 

@@ -3694,10 +3694,10 @@ bool ProcessNewBlockHeaders(const std::vector<MCBlockHeader>& headers, MCValidat
 }
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
-static bool AcceptBlock(const std::shared_ptr<const MCBlock>& pblock, MCValidationState& state, const MCChainParams& chainparams, MCBlockIndex** ppindex, 
-        bool fRequested, const MCDiskBlockPos* dbp, bool* fNewBlock, ContractContext* pContractContext)
+static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationState& state, const MCChainParams& chainparams, MCBlockIndex** ppindex, 
+        bool fRequested, const MCDiskBlockPos* dbp, bool* fNewBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
 {
-    const MCBlock& block = *pblock;
+    MCBlock& block = *pblock;
 
     if (fNewBlock) *fNewBlock = false;
     AssertLockHeld(cs_main);
@@ -3754,12 +3754,15 @@ static bool AcceptBlock(const std::shared_ptr<const MCBlock>& pblock, MCValidati
         return error("%s: %s", __func__, FormatStateMessage(state));
     }
 
+    if (pindex->nHeight > 0) {
+        if (!mpContractDb->RunBlockContract(&block, pContractContext, pCoinAmountCache))
+            return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
+    }
+
     // Header is valid/has work, merkle tree and segwit merkle tree are good...RELAY NOW
     // (but if it does not build on our best tip, let the SendMessages loop relay it)
     if (!IsInitialBlockDownload() && chainActive.Tip() == pindex->pprev)
         GetMainSignals().NewPoWValidBlock(pindex, pblock);
-
-    int nHeight = pindex->nHeight;
 
     // Write block to history file
     try {
@@ -3767,7 +3770,7 @@ static bool AcceptBlock(const std::shared_ptr<const MCBlock>& pblock, MCValidati
         MCDiskBlockPos blockPos;
         if (dbp != nullptr)
             blockPos = *dbp;
-        if (!FindBlockPos(state, blockPos, nBlockSize+8, nHeight, block.GetBlockTime(), dbp != nullptr))
+        if (!FindBlockPos(state, blockPos, nBlockSize+8, pindex->nHeight, block.GetBlockTime(), dbp != nullptr))
             return error("AcceptBlock(): FindBlockPos failed");
         if (dbp == nullptr)
             if (!WriteBlockToDisk(block, blockPos, chainparams.MessageStart()))
@@ -3789,7 +3792,7 @@ static bool AcceptBlock(const std::shared_ptr<const MCBlock>& pblock, MCValidati
     return true;
 }
 
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock, bool executeContract)
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock)
 {
     int64_t start = GetTimeMillis();
 
@@ -3806,18 +3809,11 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
             return error("%s: find prev block failed", __func__);
 
         LOCK(cs_main);
-
-        if (executeContract) {
+        if (ret) {
             CoinAmountDB coinAmountDB;
             CoinAmountCache coinAmountCache(&coinAmountDB);
-            MCBlock& block = *pblock;
-            if (!mpContractDb->RunBlockContract(&block, pContractContext, &coinAmountCache))
-                return error("%s: RunBlockContract failed", __func__);
-        }
-
-        if (ret) {
             // Store to disk
-            ret = AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock, pContractContext);
+            ret = AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock, pContractContext, &coinAmountCache);
         }
         CheckBlockIndex(chainparams.GetConsensus());
         if (!ret) {
@@ -4658,15 +4654,12 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                 if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0) {
                     LOCK(cs_main);
 
+                    ContractContext contractContext;
                     CoinAmountDB coinAmountDB;
                     CoinAmountCache coinAmountCache(&coinAmountDB);
-                    ContractContext contractContext;
-                    MCBlock& block = *pblock;
-                    if (!mpContractDb->RunBlockContract(&block, &contractContext, &coinAmountCache))
-                        continue;
 
                     MCValidationState state;
-                    if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr, &contractContext))
+                    if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr, &contractContext, &coinAmountCache))
                         nLoaded++;
                     if (state.IsError())
                         break;
@@ -4700,15 +4693,12 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                                     head.ToString());
                             LOCK(cs_main);
 
+                            ContractContext contractContext;
                             CoinAmountDB coinAmountDB;
                             CoinAmountCache coinAmountCache(&coinAmountDB);
-                            ContractContext contractContext;
-                            MCBlock& block = *pblockrecursive;
-                            if (!mpContractDb->RunBlockContract(&block, &contractContext, &coinAmountCache))
-                                return error("%s: RunBlockContract failed", __FUNCTION__);
 
                             MCValidationState dummy;
-                            if (AcceptBlock(pblockrecursive, dummy, chainparams, nullptr, true, &it->second, nullptr, &contractContext))
+                            if (AcceptBlock(pblockrecursive, dummy, chainparams, nullptr, true, &it->second, nullptr, &contractContext, &coinAmountCache))
                             {
                                 nLoaded++;
                                 queue.push_back(pblockrecursive->GetHash());
