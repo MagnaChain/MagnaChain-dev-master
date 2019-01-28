@@ -597,7 +597,6 @@ def mine_large_block_with_mocktime(node, utxos=None,mocktime = None):
 # smart contract functools
 def generate_contract(folder, err_type=None):
     '''
-    生成测试合约代码
     :param dir:
     :return:
     '''
@@ -776,7 +775,7 @@ def generate_contract(folder, err_type=None):
             mainTest()
             PersistentData = {}
             PersistentData.name = "RMB"
-            PersistentData.symbol = "￥" --token symbol
+            PersistentData.symbol = "$" --token symbol
             PersistentData.decimals = 0 --
             PersistentData.decimalsNum = math.pow(10, PersistentData.decimals)
             local initialSupply = 21000000
