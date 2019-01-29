@@ -427,10 +427,8 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 
     if (uriParts.size() > 0)
     {
-
         //inputs is sent over URI scheme (/rest/getutxos/checkmempool/txid1-n/txid2-n/...)
-        if (uriParts.size() > 0 && uriParts[0] == "checkmempool")
-            fCheckMemPool = true;
+        if (uriParts[0] == "checkmempool") fCheckMemPool = true;
 
         for (size_t i = (fCheckMemPool) ? 1 : 0; i < uriParts.size(); i++)
         {
@@ -500,26 +498,29 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     std::vector<bool> hits;
     bitmap.resize((vOutPoints.size() + 7) / 8);
     {
-        LOCK2(cs_main, mempool.cs);
-
-        MCCoinsView viewDummy;
-        MCCoinsViewCache view(&viewDummy);
-
-        MCCoinsViewCache& viewChain = *pcoinsTip;
-        MCCoinsViewMemPool viewMempool(&viewChain, mempool);
-
-        if (fCheckMemPool)
-            view.SetBackend(viewMempool); // switch cache backend to db+mempool in case user likes to query mempool
-
-        for (size_t i = 0; i < vOutPoints.size(); i++) {
-            bool hit = false;
-            Coin coin;
-            if (view.GetCoin(vOutPoints[i], coin) && !mempool.IsSpent(vOutPoints[i])) {
-                hit = true;
-                outs.emplace_back(std::move(coin));
+        auto process_utxos = [&vOutPoints, &outs, &hits](const MCCoinsView& view, const MCTxMemPool& mempool) {
+            for (const MCOutPoint& vOutPoint : vOutPoints) {
+                Coin coin;
+                bool hit = !mempool.IsSpent(vOutPoint) && view.GetCoin(vOutPoint, coin);
+                hits.push_back(hit);
+                if (hit) outs.emplace_back(std::move(coin));
             }
+        };
 
-            hits.push_back(hit);
+        if (fCheckMemPool) {
+            // use db+mempool as cache backend in case user likes to query mempool
+            LOCK2(cs_main, mempool.cs);
+            MCCoinsViewCache& viewChain = *pcoinsTip;
+            MCCoinsViewMemPool viewMempool(&viewChain, mempool);
+            process_utxos(viewMempool, mempool);
+        }
+        else {
+            LOCK(cs_main);  // no need to lock mempool!
+            process_utxos(*pcoinsTip, MCTxMemPool());
+        }
+
+        for (size_t i = 0; i < hits.size(); ++i) {
+            const bool hit = hits[i];
             bitmapStringRepresentation.append(hit ? "1" : "0"); // form a binary string representation (human-readable for json output)
             bitmap[i / 8] |= ((uint8_t)hit) << (i % 8);
         }

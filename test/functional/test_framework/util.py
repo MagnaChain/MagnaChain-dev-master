@@ -597,6 +597,7 @@ def mine_large_block_with_mocktime(node, utxos=None,mocktime = None):
 # smart contract functools
 def generate_contract(folder, err_type=None):
     '''
+    生成合约代码
     :param dir:
     :return:
     '''

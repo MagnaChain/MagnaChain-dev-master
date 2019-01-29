@@ -432,7 +432,7 @@ MCTxMemPool::MCTxMemPool(MCBlockPolicyEstimator* estimator) :
     nCheckFrequency = 0;
 }
 
-bool MCTxMemPool::IsSpent(const MCOutPoint& outpoint)
+bool MCTxMemPool::IsSpent(const MCOutPoint& outpoint) const
 {
     LOCK(cs);
     return mapNextTx.count(outpoint);
