@@ -715,7 +715,7 @@ def generate_contract(folder, err_type=None):
             -- body
             --dust to this contract
             cell = 100000000
-            ret = send(to,(cell / 11) * 10)
+            ret = send(to,cell - 999)
             say("dustChangeTest ret:",ret)
         end
         
