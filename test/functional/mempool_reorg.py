@@ -26,29 +26,32 @@ class MempoolCoinbaseTest(MagnaChainTestFramework):
 
         # Mine four blocks. After this, nodes[0] blocks
         # 101, 102, and 103 are spend-able.
-        new_blocks = []
-        for block_list in (self.nodes[1].generate(5) for i in range(4)):
-            new_blocks.extend(block_list)
+        for i in range(2):
+            for peer in range(self.num_nodes):
+                self.nodes[peer].generate(4)
+        
+        new_blocks = self.nodes[1].generate(4)
 
         self.sync_all()
 
         node0_address = self.nodes[0].getnewaddress()
         node1_address = self.nodes[1].getnewaddress()
 
+        coinbaseout0 = 10000
         # Three scenarios for re-orging coinbase spends in the memory pool:
         # 1. Direct coinbase spend  :  spend_101
         # 2. Indirect (coinbase spend in chain, child in mempool) : spend_102 and spend_102_1
         # 3. Indirect (coinbase and child both in chain) : spend_103 and spend_103_1
         # Use invalidatblock to make all of the above coinbase spends invalid (immature coinbase),
         # and make sure the mempool code behaves correctly.
-        b = [ self.nodes[0].getblockhash(n) for n in range(11, 15) ]
+        b = [ self.nodes[0].getblockhash(n) for n in range(9, 13) ]
         coinbase_txids = [ self.nodes[0].getblock(h,True,1)['tx'][0] for h in b ]
-        spend_101_raw = create_tx(self.nodes[0], coinbase_txids[1], node1_address, 10000 - 10)
-        spend_102_raw = create_tx(self.nodes[0], coinbase_txids[2], node0_address, 10000 - 10)
-        spend_103_raw = create_tx(self.nodes[0], coinbase_txids[3], node0_address, 10000 - 10)
+        spend_101_raw = create_tx(self.nodes[0], coinbase_txids[1], node1_address, coinbaseout0 - 10)
+        spend_102_raw = create_tx(self.nodes[0], coinbase_txids[2], node0_address, coinbaseout0 - 10)
+        spend_103_raw = create_tx(self.nodes[0], coinbase_txids[3], node0_address, coinbaseout0 - 10)
 
         # Create a transaction which is time-locked to two blocks in the future
-        timelock_tx = self.nodes[0].createrawtransaction([{"txid": coinbase_txids[0], "vout": 0}], {node0_address: 100000 - 10})
+        timelock_tx = self.nodes[0].createrawtransaction([{"txid": coinbase_txids[0], "vout": 0}], {node0_address: coinbaseout0 - 10})
         # Set the time lock
         timelock_tx = timelock_tx.replace("ffffffff", "11111191", 1)
         timelock_tx = timelock_tx[:-8] + hex(self.nodes[0].getblockcount() + 2)[2:] + "000000"
@@ -64,8 +67,8 @@ class MempoolCoinbaseTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-26,'non-final', self.nodes[0].sendrawtransaction, timelock_tx)
 
         # Create 102_1 and 103_1:
-        spend_102_1_raw = create_tx(self.nodes[0], spend_102_id, node1_address, 100000 - 10)
-        spend_103_1_raw = create_tx(self.nodes[0], spend_103_id, node1_address, 100000 - 10)
+        spend_102_1_raw = create_tx(self.nodes[0], spend_102_id, node1_address, coinbaseout0 - 20)
+        spend_103_1_raw = create_tx(self.nodes[0], spend_103_id, node1_address, coinbaseout0 - 20)
 
         # Broadcast and mine 103_1:
         spend_103_1_id = self.nodes[0].sendrawtransaction(spend_103_1_raw)
