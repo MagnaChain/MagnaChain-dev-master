@@ -463,6 +463,7 @@ bool MCCoinsViewDB::Upgrade()
 struct CoinListEntry {
     uint160* addr;
     char key;
+
     CoinListEntry(const uint160* ptr) : addr(const_cast<uint160*>(ptr)), key(DB_COINLIST) {}
 
     template <typename Stream>
@@ -478,26 +479,6 @@ struct CoinListEntry {
         s >> key;
         s >> *addr;
     }
-};
-
-class CoinCacheVisitor : public boost::static_visitor<bool>
-{
-private:
-    uint160& key;
-
-public:
-    CoinCacheVisitor(uint160& cache) : key(cache) {}
-
-    bool operator()(const MCContractID& id) const { 
-        key = id;
-        return true;
-    }
-    bool operator()(const MCKeyID& id) const {
-        key = id;
-        return true;
-    }
-    bool operator()(const MCScriptID& id) const { return false; }
-    bool operator()(const MCNoDestination& no) const { return false; }
 };
 
 
@@ -596,19 +577,18 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
             const Coin& coin = it->second.coin;
             const MCOutPoint& outpoint = it->first;
 
-            MCTxDestination kDest;
-            if (!GetCoinDest(outpoint, coin, kDest))
+            MCTxDestination dest;
+            if (!GetCoinDest(outpoint, coin, dest)) {
                 continue;
+            }
 
-            uint160 kKey;
-            boost::apply_visitor(CoinCacheVisitor(kKey), kDest);
-
-            MCCoinListMap::iterator mit = cache.find(kKey);
             CoinListPtr pList = nullptr;
+            const uint160& key = GetUint160(dest);
+            MCCoinListMap::iterator mit = cache.find(key);
             if (mit == cache.end()) {
                 pList.reset(new CoinList());
-                plistDB->Read(CoinListEntry(&kKey), *pList);
-                cache[kKey] = pList;
+                plistDB->Read(CoinListEntry(&key), *pList);
+                cache[key] = pList;
             } else {
                 pList = mit->second;
             }
@@ -629,7 +609,7 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
                     if (to.hash == outpoint.hash && to.n == outpoint.n) {
                         bGot = true;
                         LogPrint(BCLog::COINDB, "COIN_LIST, Readd trans : %s %d \n", to.hash.ToString(), to.n);
-                        assert(false);
+                        //assert(false);//TODO: when db crash, and ReplayBlocks will make this happen.
                         break;
                     }
                 }
@@ -671,13 +651,13 @@ void CoinListDB::Flush(void)
     cache.clear();
 }
 
-CoinListPtr CoinListDB::GetList(const uint160& kAddr) const
+CoinListPtr CoinListDB::GetList(const uint160& addr) const
 {
     // not cache list read from db, cause it's not modified
-    MCCoinListMap::const_iterator mit = cache.find(kAddr);
+    MCCoinListMap::const_iterator mit = cache.find(addr);
     if (mit == cache.end()) {
         CoinListPtr pList(new CoinList());
-        plistDB->Read(CoinListEntry(&kAddr), *pList);
+        plistDB->Read(CoinListEntry(&addr), *pList);
         return pList;
     }
     return mit->second;

@@ -13,6 +13,8 @@ import os
 import subprocess
 import time
 
+import sys
+
 from .util import (
     assert_equal,
     get_rpc_proxy,
@@ -46,13 +48,22 @@ class TestNode():
             self.rpc_timeout = 60
         if binary is None:
             self.binary = os.getenv("MAGNACHAIND", "magnachaind")
+            if not os.path.exists(self.binary):
+                cur_dir = os.path.abspath(os.path.dirname(__file__))
+                if sys.platform == 'win32':
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'build-msvc\\Debug','magnachaind.exe')
+                    if not os.path.exists(self.binary):
+                        self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
+                                                   'magnachaind.exe')
+                else:
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind')
         else:
             self.binary = binary
         self.stderr = stderr
         self.coverage_dir = coverage_dir
         # Most callers will just need to add extra args to the standard list below. For those callers that need more flexibity, they can just set the args property directly.
         self.extra_args = extra_args
-        self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest", "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb", "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i]
+        self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest", "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb", "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i, "-powtargetspacing=1","-regtestmaturity=1"]
 
         self.cli = TestNodeCLI(os.getenv("MAGNACHAINCLI", "magnachain-cli"), self.datadir)
 

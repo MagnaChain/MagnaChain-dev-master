@@ -9,7 +9,7 @@ testing.
 """
 
 import os
-
+import time
 
 REFERENCE_FILENAME = 'rpc_interface.txt'
 
@@ -43,7 +43,17 @@ class AuthServiceProxyWrapper(object):
         called to a file.
 
         """
-        return_val = self.auth_service_proxy_instance.__call__(*args, **kwargs)
+
+        if kwargs.get('each_generate',False):
+            kwargs.pop('each_generate')
+            return_val = []
+            for i in range(int(args[0])):
+                val = self.auth_service_proxy_instance.__call__((1), **kwargs)
+                return_val = return_val + val
+                time.sleep(1)
+        else:
+            return_val = self.auth_service_proxy_instance.__call__(*args, **kwargs)
+
         rpc_method = self.auth_service_proxy_instance._service_name
 
         if self.coverage_logfile:

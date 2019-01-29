@@ -47,15 +47,15 @@ static const unsigned int DEFAULT_KEYPOOL_SIZE = 1000;
 //! -paytxfee default
 static const MCAmount DEFAULT_TRANSACTION_FEE = 0;
 //! -fallbackfee default
-static const MCAmount DEFAULT_FALLBACK_FEE = 150000000;
+static const MCAmount DEFAULT_FALLBACK_FEE = 30000000;
 //! -m_discard_rate default
-static const MCAmount DEFAULT_DISCARD_FEE = 75000000;
+static const MCAmount DEFAULT_DISCARD_FEE = 10000;
 //! -mintxfee default
 static const MCAmount DEFAULT_TRANSACTION_MINFEE = 100000;
 //! minimum recommended increment for BIP 125 replacement txs
-static const MCAmount WALLET_INCREMENTAL_RELAY_FEE = 3750000;
+static const MCAmount WALLET_INCREMENTAL_RELAY_FEE = 5000;
 //! target minimum change amount
-static const MCAmount MIN_CHANGE = 7500000000;
+static const MCAmount MIN_CHANGE = CENT;
 //! final minimum change amount after paying for fees
 static const MCAmount MIN_FINAL_CHANGE = MIN_CHANGE/2;
 //! Default for -spendzeroconfchange

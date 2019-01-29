@@ -24,14 +24,20 @@ logger = logging.getLogger("TestFramework.utils")
 # Assert functions
 ##################
 
+def assert_contains(string,sub_string):
+    if sub_string not in string:
+        raise AssertionError("(%s) not in (%s)" %(sub_string,string))
+
+
+
 def assert_fee_amount(fee, tx_size, fee_per_kB):
     """Assert the fee was in range"""
     target_fee = tx_size * fee_per_kB / 1000
     if fee < target_fee:
-        raise AssertionError("Fee of %s BTC too low! (Should be %s BTC)" % (str(fee), str(target_fee)))
+        raise AssertionError("Fee of %s MGC too low! (Should be %s MGC)" % (str(fee), str(target_fee)))
     # allow the wallet's estimation to be at most 2 bytes off
     if fee > (tx_size + 2) * fee_per_kB / 1000:
-        raise AssertionError("Fee of %s BTC too high! (Should be %s BTC)" % (str(fee), str(target_fee)))
+        raise AssertionError("Fee of %s MGC too high! (Should be %s MGC)" % (str(fee), str(target_fee)))
 
 def assert_equal(thing1, thing2, *args):
     if thing1 != thing2 or any(thing1 != arg for arg in args):
@@ -353,7 +359,7 @@ def connect_nodes_bi(nodes, a, b):
     connect_nodes(nodes[a], b)
     connect_nodes(nodes[b], a)
 
-def sync_blocks(rpc_connections, *, wait=1, timeout=60):
+def sync_blocks(rpc_connections, *, wait=1, timeout=60, logger=None):
     """
     Wait until everybody has the same tip.
 
@@ -366,6 +372,8 @@ def sync_blocks(rpc_connections, *, wait=1, timeout=60):
     # variables (chainActive vs latestBlock) and the former gets updated
     # earlier.
     maxheight = max(x.getblockcount() for x in rpc_connections)
+    if logger:
+        logger.info("maxheight: " + str(maxheight))
     start_time = cur_time = time.time()
     while cur_time <= start_time + timeout:
         tips = [r.waitforblockheight(maxheight, int(wait * 1000)) for r in rpc_connections]
@@ -477,7 +485,8 @@ def random_transaction(nodes, amount, min_fee, fee_increment, fee_variants):
 # Helper to create at least "count" utxos
 # Pass in a fee that is sufficient for relay and mining new transactions.
 def create_confirmed_utxos(fee, node, count):
-    to_generate = int(0.5 * count) + 101
+    # to_generate = int(0.5 * count) + 101
+    to_generate = int(0.5 * count) + 2
     while to_generate > 0:
         node.generate(min(25, to_generate))
         to_generate -= 25
@@ -566,3 +575,314 @@ def mine_large_block(node, utxos=None):
     fee = 100 * node.getnetworkinfo()["relayfee"]
     create_lots_of_big_transactions(node, txouts, utxos, num, fee=fee)
     node.generate(1)
+
+def mine_large_block_with_mocktime(node, utxos=None,mocktime = None):
+    # generate a 66k transaction,
+    # and 14 of them is close to the 1MB block limit
+    num = 14
+    txouts = gen_return_txouts()
+    utxos = utxos if utxos is not None else []
+    if len(utxos) < num:
+        utxos.clear()
+        utxos.extend(node.listunspent())
+    fee = 100 * node.getnetworkinfo()["relayfee"]
+    create_lots_of_big_transactions(node, txouts, utxos, num, fee=fee)
+    print("mocktime:",mocktime)
+    node.setmocktime(mocktime)
+    node.generate(1)
+
+
+
+###############################
+# smart contract functools
+def generate_contract(folder, err_type=None):
+    '''
+    生成合约代码
+    :param dir:
+    :return:
+    '''
+    code = '''
+        cell = 100000000
+        
+        function say( ... )
+            -- body
+            if _G.print then
+                print(...)
+            else
+            end
+        end
+
+
+        function tailLoopTest(start)
+            if start < 0 then
+                return 0
+            else
+                --say("start is " ,tostring(start))
+                return tailLoopTest(start - 1)
+            end
+        end
+
+        function lotsOfParamsTest(p1, p2, p3, p4, p5, p6, p7, p8, p9, p10,
+                   p11, p12, p13, p14, p15, p16, p17, p18, p19, p20,
+                   p21, p22, p23, p24, p25, p26, p27, p28, p29, p30,
+                   p31, p32, p33, p34, p35, p36, p37, p38, p39, p40,
+                   p41, p42, p43, p44, p45, p46, p48, p49, p50, p51,...)
+          local a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13, a14
+          --say("test lots of params with func")
+        end
+
+
+
+        function tailLoopTest2(i, ...)
+          if i == 0 then
+            return ...
+          else
+            return tailLoopTest2(i-1, 1, ...)
+          end
+        end
+
+        function unpackTest( ... )
+            -- body
+            unpack({}, 0, 2^31 - 1)
+        end
+        
+        local function _call(addr,f,...)
+            say("call:",addr,f,...)
+            --showMsg()
+            say(callcontract(addr,f,...))
+        end
+
+        function mainTest()
+            --say("begin test")
+            lotsOfParamsTest()
+            tailLoopTest(32)
+            --say('n pack test end')
+            local mt = {}
+            mt.__newindex = mt
+            local t = setmetatable({}, mt)
+            t[1] = 1
+            t[2^31] = 2
+            --say("big table test")
+            --unpackTest()
+            --say('unpack test ok')
+        end
+
+        local function _private( ... )
+            -- body
+        end
+
+        function localFuncTest( ... )
+            -- body
+            _call(msg.thisaddress,"_private")
+        end
+
+        function showMsg()
+            for k,v in pairs(msg) do
+                say(k," ---> ",v)
+            end
+        end
+
+        function callOtherContractTest(addr,func,...)
+            say("beCall by ",senderType , ",address is " , msg.sender )
+            --addr = msg.thisaddress
+            _call(addr,func,...)
+            sendCoinTest(msg.origin,10)
+        end
+
+        function contractDataTest( ... )
+            -- body
+            PersistentData.size = PersistentData.size - 1
+            PersistentData.negative = PersistentData.negative -1
+            PersistentData.counter = PersistentData.counter + 1
+            PersistentData[tostring(PersistentData.counter ^ 512 - 1)] = (PersistentData.counter ^ 512 - 1)
+            --PersistentData[table.concat( {'field', tostring(PersistentData.counter ^ 512 - 1)},"")] = (PersistentData.counter ^ 512 - 1)
+            --[[
+            for k,v in pairs(PersistentData) do
+                say(k,v)
+            end
+            --]]
+        end
+
+        function sendCoinTest( to,inum )
+            -- body
+            cell = 100000000
+            inum = inum or 1
+            ret = send(to,inum * cell)
+            --say("send ret:",ret)
+        end
+
+        function dustChangeTest(to)
+            -- body
+            --dust to this contract
+            cell = 100000000
+            ret = send(to,cell - 999)
+            say("dustChangeTest ret:",ret)
+        end
+        
+        function addWithdrawList( ... )
+            -- body
+            for _,v in ipairs({...}) do
+                table.insert(PersistentData.withdrawList,v)
+            end
+        end
+
+        function batchSendTest()
+            -- body
+            cell = 100000000
+            ret = false
+            for _,to in pairs(PersistentData.withdrawList) do
+                ret = send(to,1 * cell)
+            end
+            return ret
+        end
+
+        function setThirdPartyContract( ... )
+            -- body
+            for i,v in ipairs({ ... }) do
+                table.insert(PersistentData.thirdPartyContracts,v)
+            end
+        end
+
+
+        glob = 10
+        function setGlob(val)
+            say('before set:',glob)
+            glob = val
+            PersistentData.decimals = val
+            say('after set:',glob)
+        end
+
+        function maxContractCallTest(inum)
+            _call(msg.thisaddress,'setGlob',100)
+            for i=1,inum do
+                _call(msg.thisaddress,'setGlob',100)
+            end
+        end
+        
+        function reentrancyTest( to )
+            -- body
+            _call(msg.thisaddress,'updateContract','this','')
+            _call(msg.thisaddress,'cycleSelf')
+        end
+
+        function rpcSendTest()
+            -- body
+            _call(msg.thisaddress,'send',msg.sender,10)
+        end
+
+
+        function init()
+            --loop(3)
+            mainTest()
+            PersistentData = {}
+            PersistentData.name = "RMB"
+            PersistentData.symbol = "$" --token symbol
+            PersistentData.decimals = 0 --
+            PersistentData.decimalsNum = math.pow(10, PersistentData.decimals)
+            local initialSupply = 21000000
+            PersistentData.totalSupply = initialSupply * PersistentData.decimalsNum
+            PersistentData.balanceOf = {}
+            PersistentData.balanceOf[msg.sender] = PersistentData.totalSupply
+            PersistentData.counter = 1
+            PersistentData.thirdPartyContracts = {}
+            PersistentData.size = 128
+            PersistentData.negative = 0
+            PersistentData.withdrawList = {}
+            setUpHook()
+            PersistentData.func = function ( ... )
+                -- body
+                for k,v in pairs(PersistentData) do
+                    say(k,v)
+                end
+            end
+
+        end
+
+
+        function payable()
+            --just for recharge
+            str = [==[
+            just for recharge
+            ]==]
+            return str
+        end
+        
+        function get(key)
+            -- body
+            return PersistentData[key]
+        end
+        
+        function updateContract( key,val )
+            -- body
+            PersistentData[key] = val
+        end
+
+        function cycleSelf()
+            -- body
+            --PersistentData["this"] = PersistentData
+            PersistentData["this"] = PersistentData
+        end
+        
+        function setUpHook()
+            -- body
+            setmetatable(_G,{__index = PersistentData})
+        end
+        
+        function setNil( ... )
+            -- body
+            PersistentData = nil
+        end
+    '''
+    if err_type == "syntax_err":
+        code += 'syntax_err'
+    elif err_type == "bigfile":
+        code += "local a = [==[\n" + "a" * (int(2147483647 / 30)) + "\n]==]"
+    elif err_type == "trim_code":
+        code += "--1" * 10
+    file_path = os.path.join(folder, "contract.lua")
+    with open(file_path, "w") as fh:
+        fh.write(code)
+    return file_path
+
+def caller_factory(mgr,contract_id,sender):
+    '''
+
+    :param mgr: the test_framework obj
+    :param contract_id:
+    :param sender:
+    :return: a function
+    '''
+    node = mgr.nodes[0]
+    contract_id = contract_id
+    sender = sender
+
+    def _call_contract(func,*args,amount = random.randint(1, 10000),throw_exception = False):
+        mgr.log.info("%s,%s,%s,%s,%s"%(contract_id,func,sender,amount,args))
+        balance = node.getbalance()
+        try:
+            result = node.callcontract(True, amount, contract_id, sender, func,*args)
+            mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s"%(balance,node.getbalance(),amount,balance - node.getbalance() - amount))
+            return result
+        except Exception as e:
+            if throw_exception:
+                raise
+            print(e)
+            assert all(re.findall('-\d\)$', repr(e)))
+            return repr(e)
+    return _call_contract
+
+
+def gen_lots_of_contracts(node,contract,num = 500):
+    """
+    发布很多合约交易，用于构造需要大量合约交易的情况
+    返回{txid:xxxxx,address:xxx}集合
+    :param node:
+    :param num:
+    :return: txids
+    """
+    infos = []
+    for i in range(num):
+        result = node.publishcontract(contract)
+        infos.append({'txid': result['txid'],'address' : result['contractaddress']})
+    return infos
+

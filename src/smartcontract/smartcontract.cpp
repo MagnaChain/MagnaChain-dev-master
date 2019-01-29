@@ -1,14 +1,9 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include <stdlib.h>
-#include <string.h>
-#include <string>
 
-#include <boost/foreach.hpp>
-
-#include "coding/base58.h"
 #include "smartcontract/smartcontract.h"
+#include "coding/base58.h"
 #include "script/standard.h"
 #include "transaction/txmempool.h"
 #include "univalue.h"
@@ -24,28 +19,10 @@
 #include "consensus/merkle.h"
 #include "policy/policy.h"
 
-#if defined(_WIN32)
-#define strdup _strdup
-#endif
-
-/*
-函数 regContract(filename)
-参数 filename 智能合约脚本路径
-ret1 bool 是否注册成功
-ret2 ret1=true时表示指令执行数
-ret3 如果注册失败,返回失败信息,如果成功,返回编译好的字节码
-ret4 如果注册失败,返回nil,如果成功,初始化的数据,可能是nil
-
-函数 callContract(strComplieFun, strData, funname, jsonparams)
-strComplieFun 合约代码
-strData msgpack后的数据
-funname 用调用的合约函数名
-jsonparams string json参数
-ret1 调用是否成功
-ret2 ret1=true时表示指令执行数
-ret3 ret1 = false,返回错误信息,ret1 = true,返回新的数据
-ret4 合约返回的json数据
-*/
+#include <boost/iostreams/copy.hpp>
+#include <boost/iostreams/device/back_inserter.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
 
 static const char* initscript = "                                               \n\
 local function createSafeEnv()                                                  \n\
@@ -54,7 +31,6 @@ local function createSafeEnv()                                                  
     env._VERSION = _VERSION	                                                    \n\
     --env.arg = arg	                                                            \n\
     env.assert = assert	                                                        \n\
-    env.cmsgpack = nil                                                          \n\
     --env.collectgarbage = collectgarbage										\n\
     --env.coroutine = coroutine	                                                \n\
     --env.debug = debug	                                                        \n\
@@ -68,22 +44,18 @@ local function createSafeEnv()                                                  
     --env.load = load	                                                        \n\
     --env.loadfile = loadfile	                                                \n\
     --env.loadstring = loadstring	                                            \n\
-                                                                                \n\
     env.math = {}	                                                            \n\
     env.math.pow = math.pow                                                     \n\
     env.math.max = math.max	                                                    \n\
     env.math.min = math.min                                                     \n\
-	                                                                            \n\
     --env.module = module	                                                    \n\
     --env.newproxy = newproxy													\n\
     env.next = next	                                                            \n\
-	                                                                            \n\
     --nv.os = copyTable(os, {})                                                 \n\
     --nv.os.execute = nil                                                       \n\
     --nv.os.remove = nil                                                        \n\
     --nv.os.rename = nil                                                        \n\
     --env.os.exit = nil                                                         \n\
-	                                                                            \n\
     --env.package = package	                                                    \n\
     env.pairs = pairs	                                                        \n\
     --env.pcall = pcall	                                                        \n\
@@ -103,17 +75,12 @@ local function createSafeEnv()                                                  
     env.unpack = unpack	                                                        \n\
 	env.unpacktable = unpacktable												\n\
     --env.xpcall = xpcall	                                                    \n\
-    --lpcall                                                                    \n\
-																				\n\
     env.msg = msg		                                                        \n\
     env.callcontract = callcontract		                                        \n\
     env.setfenv = setfenv				                                        \n\
-    env.innerCall = innerCall			                                        \n\
     env.send = send						                                        \n\
 	return env                                                                  \n\
 end                                                                             \n\
-                                                                                \n\
-cjson.encode_sparse_array(true, 1,1)                                            \n\
                                                                                 \n\
 function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 	local fun, err = loadstring(_strScript)                                     \n\
@@ -155,8 +122,11 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 		data = cmsgpack.unpack(data)                                            \n\
 	end                                                                         \n\
                                                                                 \n\
-	local lf = loadstring(code)	                                            	\n\
 	local myenv = createSafeEnv()                                               \n\
+    if myenv[funcname] ~= nil then                                              \n\
+        return false, 'can not call lua internal function directly'             \n\
+    end                                                                         \n\
+	local lf = loadstring(code)	                                            	\n\
     myenv.PersistentData = data                                                 \n\
 	setfenv(lf, myenv)                                                          \n\
 	local success, err = lpcall(maxCallNum, lf)							        \n\
@@ -281,7 +251,7 @@ MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress&
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
-void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
+void static SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& origin, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight)
 {
     // 创建msg表
     lua_newtable(L);
@@ -302,80 +272,6 @@ void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::st
     lua_pushnumber(L, blockHeight);
     lua_setfield(L, -2, "blockheight");
     lua_pop(L, 1);
-}
-
-bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, std::string& rawCode, UniValue& ret)
-{
-    MagnaChainAddress senderAddr;
-    if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
-        throw std::runtime_error("GetSenderAddr fail.");
-
-    MCKeyID senderKey;
-    MCPubKey senderPubKey;
-    if (!senderAddr.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey))
-        throw std::runtime_error("Get Key or PubKey fail.");
-
-    // temp addresss, replace in MCWallet::CreateTransaction
-    MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, rawCode);
-    MagnaChainAddress contractAddr(contractId);
-
-    std::string codeout;
-    sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
-    bool success = PublishContract(sls, contractAddr, rawCode, ret);
-    if (success) {
-        MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
-
-        sls->contractIds.erase(contractId);
-        MCWalletTx wtx;
-        wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
-        wtx.pContractData.reset(new ContractData);
-        wtx.pContractData->codeOrFunc = rawCode;
-        wtx.pContractData->sender = senderPubKey;
-        wtx.pContractData->address = contractId;
-        wtx.pContractData->amountOut = 0;
-
-        bool subtractFeeFromAmount = false;
-        MCCoinControl coinCtrl;
-        EnsureWalletIsUnlocked(pWallet);
-        SendMoney(pWallet, scriptPubKey, 0, subtractFeeFromAmount, wtx, coinCtrl, sls);
-
-        ret.setObject();
-        ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
-        ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
-        ret.push_back(Pair("senderaddress", senderAddr.ToString()));
-    }
-
-    return success;
-}
-
-bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& rawCode, UniValue& ret)
-{
-    MCContractID contractId;
-    contractAddr.GetContractID(contractId);
-    ContractInfo contractInfo;
-    if (sls->GetContractInfo(contractId, contractInfo))
-        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
-
-    std::string code, data;
-    long maxCallNum = MAX_CONTRACT_CALL;
-    lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
-    bool success = PublishContract(L, rawCode, maxCallNum, code, data, ret);
-    if (success) {
-        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls->codeLen = code.size();
-        sls->deltaDataLen = data.size();
-
-        if (sls->saveType > 0) {
-            contractInfo.txIndex = sls->txIndex;
-            contractInfo.data = data;
-            contractInfo.code = code;
-            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
-        }
-    }
-    sls->ReleaseLuaState(L);
-
-    return success;
 }
 
 std::string TrimCode(const std::string& rawCode)
@@ -489,16 +385,30 @@ std::string TrimCode(const std::string& rawCode)
     return codeOut;
 }
 
-bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum, std::string& codeout, std::string& dataout, UniValue& ret)
+std::string static CompressCode(const std::string& buffer)
 {
-    std::string trimRawCode = TrimCode(rawCode);
+    std::string zipData;
+    boost::iostreams::filtering_ostream zout(boost::iostreams::zlib_compressor() | boost::iostreams::back_inserter(zipData));
+    boost::iostreams::copy(boost::make_iterator_range(buffer), zout);
+    return zipData;
+}
 
+std::string static DecompressCode(const std::string& buffer)
+{
+    std::string unzipData;
+    boost::iostreams::filtering_ostream uzout(boost::iostreams::zlib_decompressor() | boost::iostreams::back_inserter(unzipData));
+    boost::iostreams::copy(boost::make_iterator_range(buffer), uzout);
+    return unzipData;
+}
+
+bool static PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum, std::string& dataout, UniValue& ret)
+{
     bool success = false;
     int top = lua_gettop(L);
     lua_getglobal(L, "regContract");
     lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
-    lua_pushlstring(L, trimRawCode.c_str(), trimRawCode.size());
+    lua_pushlstring(L, rawCode.c_str(), rawCode.size());
     int argc = 3;
 
     if (lua_pcall(L, argc, LUA_MULTRET, 0) != 0) {
@@ -515,7 +425,7 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
 
             size_t cl = 0;
             temp = lua_tolstring(L, top + 3, &cl);
-            codeout.assign(temp, cl);
+            rawCode.assign(temp, cl);
         }
         else {
             const char* err = lua_tostring(L, -1);
@@ -527,66 +437,112 @@ bool PublishContract(lua_State* L, const std::string& rawCode, long& maxCallNum,
     return success;
 }
 
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret, bool decompress)
 {
-    MCContractID contractID;
-    if (!contractAddr.GetContractID(contractID))
-        return false;
+    if (decompress) {
+        rawCode = DecompressCode(rawCode);
+    }
 
-    sls->pCoinAmountCache->TakeSnapshot(contractID);
-    bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
-    sls->pCoinAmountCache->RemoveSnapshot(contractID, !success);
-    return success;
-}
+    if (rawCode.empty()) {
+        throw std::runtime_error("code is empty");
+    }
 
-bool CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
-{
-    if (amount < 0)
-        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
+    if (rawCode.size() > 1024 * 60) {
+        throw std::runtime_error("code is too large");
+    }
 
     MCContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0)
-        throw std::runtime_error(strprintf("%s GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
+    if (sls->GetContractInfo(contractId, contractInfo)) {
+        throw std::runtime_error(strprintf("%s GetContractInfo fail", __FUNCTION__));
+    }
 
-    if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM)
-        throw std::runtime_error(strprintf("%s no more max internal call number", __FUNCTION__));
-
-    sls->_internalCallNum++;
     std::string data;
-    std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
+    long maxCallNum = MAX_CONTRACT_CALL;
     lua_State* L = sls->GetLuaState(contractAddr);
-    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
-    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, data, ret);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
+    bool success = PublishContract(L, rawCode, maxCallNum, data, ret);
     if (success) {
-        sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
+        rawCode = CompressCode(rawCode);
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = rawCode.size();
+        sls->deltaDataLen = data.size();
 
         if (sls->saveType > 0) {
             contractInfo.txIndex = sls->txIndex;
             contractInfo.data = data;
-            assert(sls->pCoinAmountCache->DecAmount(contractId, sls->contractOut));
+            contractInfo.code = rawCode;
             sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
         }
     }
     sls->ReleaseLuaState(L);
-    sls->_internalCallNum--;
 
     return success;
 }
 
-bool CallContract(lua_State* L, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
+bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret)
 {
+    MagnaChainAddress senderAddr;
+    if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
+        throw std::runtime_error("GetSenderAddr fail.");
+
+    MCKeyID senderKey;
+    MCPubKey senderPubKey;
+    if (!senderAddr.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey)) {
+        throw std::runtime_error("Get Key or PubKey fail.");
+    }
+
+    // temp addresss, replace in MCWallet::CreateTransaction
+    std::string trimRawCode = TrimCode(rawCode);
+    MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, trimRawCode);
+    MagnaChainAddress contractAddr(contractId);
+
+    sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    bool success = PublishContract(sls, contractAddr, trimRawCode, ret, false);
+    if (success) {
+        MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
+
+        sls->contractIds.erase(contractId);
+        MCWalletTx wtx;
+        wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
+        wtx.pContractData.reset(new ContractData);
+        wtx.pContractData->codeOrFunc = trimRawCode;
+        wtx.pContractData->sender = senderPubKey;
+        wtx.pContractData->address = contractId;
+        wtx.pContractData->amountOut = 0;
+
+        bool subtractFeeFromAmount = false;
+        MCCoinControl coinCtrl;
+        EnsureWalletIsUnlocked(pWallet);
+        SendMoney(pWallet, scriptPubKey, 0, subtractFeeFromAmount, wtx, coinCtrl, sls);
+
+        ret.setObject();
+        ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
+        ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
+        ret.push_back(Pair("senderaddress", senderAddr.ToString()));
+    }
+
+    return success;
+}
+
+bool static CallContract(lua_State* L, const std::string& rawCode, const std::string& data, 
+    const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
+{
+    const std::string& code = DecompressCode(rawCode);
+
     maxCallNum -= GAS_CONTRACT_BYTE;
     int top = lua_gettop(L);
     lua_getglobal(L, "callContract");
     lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
     lua_pushlstring(L, code.c_str(), code.size());
-    if (data.size() > 0)
+    if (data.size() > 0) {
         lua_pushlstring(L, data.c_str(), data.size());
-    else
+    }
+    else {
         lua_pushnil(L);
+    }
     lua_pushstring(L, strFuncName.c_str());
     int argc = 5;
 
@@ -610,9 +566,9 @@ bool CallContract(lua_State* L, const std::string& code, const std::string& data
         argc++;
     }
 
-    assert(lua_pcall(L, argc, LUA_MULTRET, 0) == 0);
+    int result = lua_pcall(L, argc, LUA_MULTRET, 0);
     maxCallNum = L->limit_instruction;
-    bool success = lua_toboolean(L, top + 1) != 0;
+    bool success = ((result == 0) && (lua_toboolean(L, top + 1) != 0));
     if (success) {
         size_t dl = 0;
         const char* temp = lua_tolstring(L, top + 2, &dl);
@@ -644,27 +600,82 @@ bool CallContract(lua_State* L, const std::string& code, const std::string& data
     else {
         const char* err = lua_tostring(L, -1);
         ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, err);
     }
 
     lua_settop(L, top);
     return success;
 }
 
+bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, 
+    const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+{
+    if (amount < 0) {
+        throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
+    }
+
+    MCContractID contractId;
+    contractAddr.GetContractID(contractId);
+    ContractInfo contractInfo;
+    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0) {
+        throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
+    }
+
+    if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM) {
+        throw std::runtime_error(strprintf("%s => no more max internal call number", __FUNCTION__));
+    }
+
+    sls->_internalCallNum++;
+    std::string data;
+    std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
+    lua_State* L = sls->GetLuaState(contractAddr);
+    SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
+    bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, data, ret);
+    if (success) {
+        sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
+
+        if (sls->saveType > 0) {
+            contractInfo.txIndex = sls->txIndex;
+            contractInfo.data = data;
+            sls->SetContractInfo(contractId, contractInfo, sls->saveType == SmartLuaState::SAVE_TYPE_CACHE);
+        }
+    }
+    sls->ReleaseLuaState(L);
+    sls->_internalCallNum--;
+
+    return success;
+}
+
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+{
+    MCContractID contractID;
+    if (!contractAddr.GetContractID(contractID)) {
+        return false;
+    }
+
+    bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
+    if (success) {
+        sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
+        sls->codeLen = 0;
+    }
+    return success;
+}
+
 // Lua内部嵌套调用合约
-int InternalCallContract(lua_State* L)
+int static InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
-        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
     std::string strContractAddr = lua_tostring(L, 1);
     MagnaChainAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
-        throw std::runtime_error(strprintf("%s contractAddr is invalid", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => contractAddr is invalid", __FUNCTION__));
 
     std::string strFuncName = lua_tostring(L, 2);
     if (strFuncName.empty())
-        throw std::runtime_error(strprintf("%s function name is empty", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => function name is empty", __FUNCTION__));
 
     int top = lua_gettop(L);
     UniValue args(UniValue::VType::VARR);
@@ -712,35 +723,33 @@ int InternalCallContract(lua_State* L)
 }
 
 // Lua内部向指定地址发送代币
-int SendCoins(lua_State* L)
+int static SendCoins(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr)
-        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
     if (!lua_isstring(L, 1))
-        throw std::runtime_error(strprintf("%s param1 is not a string", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => param1 is not a string", __FUNCTION__));
 
     if (!lua_isnumber(L, 2))
-        throw std::runtime_error(strprintf("%s param2 is not a number", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => param2 is not a number", __FUNCTION__));
 
     if (sls->pCoinAmountCache == nullptr)
-        throw std::runtime_error(strprintf("%s smartLuaState == nullptr", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
     std::string strDest = lua_tostring(L, 1);
     MagnaChainAddress kDest(strDest);
     if (kDest.IsContractID() || !kDest.IsValid())
-        throw std::runtime_error(strprintf("%s Invalid destination address"));
+        throw std::runtime_error(strprintf("%s => Invalid destination address", __FUNCTION__));
 
     MCAmount amount = lua_tonumber(L, 2);
-    if (amount < DUST_RELAY_TX_FEE)
-        throw std::runtime_error(strprintf("%s Dust amount", __FUNCTION__));
 
     MCContractID contractID;
     sls->contractAddrs[0].GetContractID(contractID);
     MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
     if (sls->contractOut + amount > totalAmount)
-        throw std::runtime_error(strprintf("%s Contract has not enough amount", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, sls->contractAddrs[0].ToString()));
 
     MCTxOut out;
     out.nValue = amount;
@@ -766,17 +775,9 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, 
     this->saveType = saveType;
     this->pCoinAmountCache = pCoinAmountCache;
 
-    if (_pContractContext == nullptr)
+    if (_pContractContext == nullptr) {
         _pContractContext = &mpContractDb->contractContext;
-
-    this->contractOut = 0;
-    this->recipients.clear();
-    this->contractIds.clear();
-    this->contractAddrs.clear();
-    _internalCallNum = 0;
-    runningTimes = 0;
-    deltaDataLen = 0;
-    codeLen = 0;
+    }
 }
 
 lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
@@ -796,7 +797,7 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
 
         luaL_openlibs(L);
         luaopen_cmsgpack(L);
-        luaopen_cjson(L);
+        //luaopen_cjson(L);
 
         if (luaL_dostring(L, initscript)) {
             error("%s\n", lua_tostring(L, -1));
@@ -811,8 +812,8 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
         L->userData = this;
     }
 
-    MCKeyID contractId;
-    contractAddr.GetKeyID(contractId);
+    MCContractID contractId;
+    contractAddr.GetContractID(contractId);
     contractIds.insert(contractId);
     contractAddrs.emplace_back(contractAddr);
 
@@ -840,6 +841,9 @@ void SmartLuaState::Clear()
     pCoinAmountCache = nullptr;
     _pContractContext = nullptr;
     _pPrevBlockIndex = nullptr;
+    recipients.clear();
+    contractIds.clear();
+    contractAddrs.clear();
     contractDataFrom.clear();
 }
 
@@ -870,7 +874,7 @@ bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo
 
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
 {
-    MCContractID contractId = tx->pContractData->address;
+    const MCContractID& contractId = tx->pContractData->address;
     MagnaChainAddress contractAddr(contractId);
     MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
     MCAmount amount = GetTxContractOut(*tx);
@@ -883,11 +887,11 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx->pContractData->codeOrFunc;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
-        if (!PublishContract(sls, contractAddr, rawCode, ret))
+        if (!PublishContract(sls, contractAddr, rawCode, ret, true))
             return false;
     }
     else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        std::string strFuncName = tx->pContractData->codeOrFunc;
+        const std::string& strFuncName = tx->pContractData->codeOrFunc;
         UniValue args;
         args.read(tx->pContractData->args);
 
@@ -906,11 +910,14 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
             total += sls->recipients[j].nValue;
         }
 
-        if (total != tx->pContractData->amountOut)
+        if (total != tx->pContractData->amountOut) {
             return false;
+        }
+
+        // 这里只执行一次合约调用，所以不需要更新coinAmountCache
     }
 
-    pContractContext->txFinalData.data[txIndex] = pContractContext->cache;
+    pContractContext->txFinalData[txIndex].data = pContractContext->cache;
     pContractContext->Commit();
     return true;
 }
@@ -919,16 +926,18 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
 bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext)
 {
     std::map<MCContractID, uint256> contract2txid;
-    pContractContext->txFinalData.data.resize(pBlock->vtx.size());
+    pContractContext->txFinalData.resize(pBlock->vtx.size());
     for (int i = offset; i < offset + count; ++i) {
         const MCTransactionRef tx = pBlock->vtx[i];
-        if (tx->IsNull())
+        if (tx->IsNull()) {
             return false;
+        }
 
         assert(!tx->GetHash().IsNull());
         if (tx->IsSmartContract()) {
-            if (i >= pBlock->prevContractData.size())
+            if (i >= pBlock->prevContractData.size()) {
                 return false;
+            }
             ExecuteContract(sls, tx, i, pBlock->prevContractData[i].coins, pBlock->GetBlockTime(), pPrevBlockIndex->nHeight + 1, pPrevBlockIndex, pContractContext);
         }
     }
@@ -940,8 +949,9 @@ uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractDa
 {
     MCHashWriter ss(SER_GETHASH, 0);
     ss << txHash;
-    for (auto item : contractData)
+    for (auto item : contractData) {
         ss << item.first << item.second.txIndex << item.second.code << item.second.data;
+    }
     return ss.GetHash();
 }
 
@@ -952,38 +962,44 @@ uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& con
     return ss.GetHash();
 }
 
-bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves)
+bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractTxFinalData>& contractData, std::vector<uint256>& leaves)
 {
-    if (vtx.size() != contractData.size())
+    if (vtx.size() != contractData.size()) {
         return false;
+    }
     leaves.resize(vtx.size());
-    for (size_t i = 0; i < vtx.size(); ++i)
-        leaves[i] = GetTxHashWithData(vtx[i]->GetHash(), contractData[i]);
+    for (size_t i = 0; i < vtx.size(); ++i) {
+        leaves[i] = GetTxHashWithData(vtx[i]->GetHash(), contractData[i].data);
+    }
     return true;
 }
 
 bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves)
 {
-    if (vtx.size() != contractData.size())
+    if (vtx.size() != contractData.size()) {
         return false;
+    }
     leaves.resize(vtx.size(), uint256());
-    for (size_t i = 0; i < vtx.size(); ++i)
+    for (size_t i = 0; i < vtx.size(); ++i) {
         leaves[i] = GetTxHashWithPrevData(vtx[i]->GetHash(), contractData[i]);
+    }
     return true;
 }
 
 uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool*mutated)
 {
     std::vector<uint256> leaves;
-    if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, leaves))
+    if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, leaves)) {
         return uint256();
+    }
     return ComputeMerkleRoot(leaves, mutated);
 }
 
 uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated)
 {
     std::vector<uint256> leaves;
-    if (!VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, leaves))
+    if (!VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, leaves)) {
         return uint256();
+    }
     return ComputeMerkleRoot(leaves, mutated);
 }

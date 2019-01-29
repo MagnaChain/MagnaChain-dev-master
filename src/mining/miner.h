@@ -15,6 +15,10 @@
 #include "boost/multi_index_container.hpp"
 #include "boost/multi_index/ordered_index.hpp"
 
+extern uint64_t ReservePubContractBlockDataSize;
+extern uint64_t ReserveCallContractBlockDataSize;
+extern uint64_t ReserveBranchTxBlockDataSize;
+
 class MCBlockIndex;
 class MCChainParams;
 class MCScript;
@@ -213,8 +217,11 @@ private:
     // helper functions for addPackageTxs()
     /** Remove confirmed (inBlock) entries from given set */
     void onlyUnconfirmed(MCTxMemPool::setEntries& testSet);
+
+    uint64_t GetTxReserveBlockSize(const MCTransaction& tx);
+
     /** Test if a new package would "fit" in the block */
-    bool TestPackage(uint64_t packageSize, int64_t packageSigOpsCost);
+    bool TestPackage(MCTxMemPool::txiter iter, uint64_t packageSize, int64_t packageSigOpsCost);
     /** Perform checks on each transaction in a package:
       * locktime, premature-witness, serialized size (if necessary)
       * These checks should always succeed, and they're here

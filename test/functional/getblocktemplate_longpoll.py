@@ -8,6 +8,7 @@ from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
 import threading
+import time
 
 class LongpollThread(threading.Thread):
     def __init__(self, node):
@@ -20,7 +21,12 @@ class LongpollThread(threading.Thread):
         self.node = get_rpc_proxy(node.url, 1, timeout=600, coveragedir=node.coverage_dir)
 
     def run(self):
-        self.node.getblocktemplate({'longpollid':self.longpollid})
+        while(True):
+            try:
+                self.node.getblocktemplate({'longpollid':self.longpollid})
+                time.sleep(1)
+            except Exception as e:
+                break
 
 class GetBlockTemplateLPTest(MagnaChainTestFramework):
     def set_test_params(self):

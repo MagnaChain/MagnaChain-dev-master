@@ -1,4 +1,4 @@
-# Copyright (c) 2013-2016 The MagnaChain Core developers
+# Copyright (c) 2013-2016 The Bitcoin Core developers
 # Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -101,7 +101,7 @@ test_test_magnachain_LDADD =
 if ENABLE_WALLET
 test_test_magnachain_LDADD += $(LIBMAGNACHAIN_WALLET)
 endif
-test_test_magnachain_LDADD += $(LIBMAGNACHAIN_SERVER) $(LIBMAGNACHAIN_CLI) $(LIBMAGNACHAIN_COMMON) $(LIBMAGNACHAIN_UTIL) $(LIBMAGNACHAIN_CONSENSUS) $(LIBMAGNACHAIN_CRYPTO) $(LIBUNIVALUE) \
+test_test_magnachain_LDADD += $(LIBMAGNACHAIN_SERVER) $(LIBMAGNACHAIN_CLI) $(LIBMAGNACHAIN_COMMON) $(LIBMAGNACHAIN_UTIL) $(LIBMAGNACHAIN_CONSENSUS) $(LIBMAGNACHAIN_CRYPTO) $(LIBMAGNACHAIN_LUA) $(LIBUNIVALUE) \
   $(LIBLEVELDB) $(LIBLEVELDB_SSE42) $(LIBMEMENV) $(BOOST_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) $(LIBSECP256K1) $(EVENT_LIBS) $(EVENT_PTHREADS_LIBS)
 test_test_magnachain_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
@@ -126,6 +126,7 @@ test_test_magnachain_fuzzy_LDADD = \
   $(LIBMAGNACHAIN_UTIL) \
   $(LIBMAGNACHAIN_CONSENSUS) \
   $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBSECP256K1)
 
 test_test_magnachain_fuzzy_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)

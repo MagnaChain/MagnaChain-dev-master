@@ -340,16 +340,10 @@ public:
     MCAmount GetAmount(const uint160& key);
     bool IncAmount(const uint160& key, MCAmount delta);
     bool DecAmount(const uint160& key, MCAmount delta);
-
-    void TakeSnapshot(const uint160& key);
-    void RemoveSnapshot(const uint160& key, bool reverse);
-
     void Clear();
 
 private:
-    bool takeSnapshot;
     CoinAmountCacheBase* base;
-    std::map<uint160, MCAmount> snapshots;
     std::map<uint160, MCAmount> coinAmountCache;
     mutable MCCriticalSection cs;
 };

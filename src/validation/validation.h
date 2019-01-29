@@ -43,11 +43,13 @@ class MCConnman;
 class CScriptCheck;
 class MCBlockPolicyEstimator;
 class MCTxMemPool;
+class MCTxMemPoolEntry;
 class MCValidationState;
 class SmartLuaState;
 struct ChainTxData;
 class BranchCache;
 class ContractContext;
+class CoinAmountCache;
 
 struct PrecomputedTransactionData;
 struct LockPoints;
@@ -247,7 +249,7 @@ bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
  * @param[out]  fNewBlock A boolean which is set to indicate if the block was first received via this call
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool executeContract);
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock);
 
 /**
  * Process incoming block headers.
@@ -372,6 +374,8 @@ bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp = nul
 
 bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls);
 
+bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int saveType, CoinAmountCache* pCoinAmountCache);
+
 /**
  * Closure representing one script verification
  * Note that this stores references to the spending transaction 
@@ -495,6 +499,9 @@ extern VersionBitsCache versionbitscache;
  */
 int32_t ComputeBlockVersion(const MCBlockIndex* pindexPrev, const Consensus::Params& params);
 
+/** Add block to MCBlockIndex */
+MCBlockIndex* AddToBlockIndex(const MCBlockHeader& block);
+
 /** Reject codes greater or equal to this can be returned by AcceptToMemPool
  * for transactions, to signal internal conditions. They cannot and should not
  * be sent over the P2P network.
@@ -520,5 +527,3 @@ std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& set
 bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
 bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
 #endif // MAGNACHAIN_VALIDATION_H
-
-

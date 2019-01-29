@@ -16,6 +16,7 @@ from test_framework.util import assert_equal
 class GetChainTipsTest (MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
+        # self.setup_clean_chain = False
 
     def run_test (self):
         tips = self.nodes[0].getchaintips ()
@@ -47,7 +48,8 @@ class GetChainTipsTest (MagnaChainTestFramework):
         # Join the network halves and check that we now have two tips
         # (at least at the nodes that previously had the short chain).
         self.join_network ()
-
+        for i in range(4):
+            print(i,self.nodes[i].getblockcount())
         tips = self.nodes[0].getchaintips ()
         assert_equal (len (tips), 2)
         assert_equal (tips[0], longTip)
@@ -57,6 +59,7 @@ class GetChainTipsTest (MagnaChainTestFramework):
         tips[1]['branchlen'] = 0
         tips[1]['status'] = 'active'
         assert_equal (tips[1], shortTip)
+
 
 if __name__ == '__main__':
     GetChainTipsTest ().main ()

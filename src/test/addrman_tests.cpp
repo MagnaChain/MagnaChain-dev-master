@@ -10,6 +10,7 @@
 #include "coding/hash.h"
 #include "net/netbase.h"
 #include "misc/random.h"
+#include "chain/chainparams.h"
 
 class MCAddrManTest : public MCAddrMan
 {
@@ -354,15 +355,16 @@ BOOST_AUTO_TEST_CASE(addrman_getaddr)
     std::vector<MCAddress> vAddr1 = addrman.GetAddr();
     BOOST_CHECK_EQUAL(vAddr1.size(), 0);
 
-    MCAddress addr1 = MCAddress(ResolveService("250.250.2.1", 8333), NODE_NONE);
+    const int defaultport = Params().GetDefaultPort();
+    MCAddress addr1 = MCAddress(ResolveService("250.250.2.1", defaultport), NODE_NONE);
     addr1.nTime = GetAdjustedTime(); // Set time so isTerrible = false
     MCAddress addr2 = MCAddress(ResolveService("250.251.2.2", 9999), NODE_NONE);
     addr2.nTime = GetAdjustedTime();
-    MCAddress addr3 = MCAddress(ResolveService("251.252.2.3", 8333), NODE_NONE);
+    MCAddress addr3 = MCAddress(ResolveService("251.252.2.3", defaultport), NODE_NONE);
     addr3.nTime = GetAdjustedTime();
-    MCAddress addr4 = MCAddress(ResolveService("252.253.3.4", 8333), NODE_NONE);
+    MCAddress addr4 = MCAddress(ResolveService("252.253.3.4", defaultport), NODE_NONE);
     addr4.nTime = GetAdjustedTime();
-    MCAddress addr5 = MCAddress(ResolveService("252.254.4.5", 8333), NODE_NONE);
+    MCAddress addr5 = MCAddress(ResolveService("252.254.4.5", defaultport), NODE_NONE);
     addr5.nTime = GetAdjustedTime();
     MCNetAddr source1 = ResolveIP("250.1.2.1");
     MCNetAddr source2 = ResolveIP("250.2.3.3");
@@ -399,9 +401,9 @@ BOOST_AUTO_TEST_CASE(addrman_getaddr)
 
     size_t percent23 = (addrman.size() * 23) / 100;
     BOOST_CHECK_EQUAL(vAddr.size(), percent23);
-    BOOST_CHECK_EQUAL(vAddr.size(), 461);
+    BOOST_CHECK_EQUAL(vAddr.size(), 465);//461
     // (Addrman.size() < number of addresses added) due to address collisions.
-    BOOST_CHECK_EQUAL(addrman.size(), 2006);
+    BOOST_CHECK_EQUAL(addrman.size(), 2025);//2006
 }
 
 

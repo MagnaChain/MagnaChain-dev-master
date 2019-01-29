@@ -61,7 +61,7 @@ class MCTxMemPoolEntryContractData
 {
 public:
     std::set<MCContractID> contractAddrs;
-    uint32_t runnintTimes;
+    uint32_t runningTimes;
     uint32_t deltaDataLen;
 };
 
@@ -83,6 +83,7 @@ class MCTxMemPoolEntry
     friend class MCTxMemPool;
 
 private:
+    uint64_t entryOrder;
     MCTransactionRef tx;
     MCAmount nFee;             //!< Cached to avoid expensive parent-transaction lookups
     size_t nTxWeight;         //!< ... and avoid recomputing tx weight (also used for GetTxSize())
@@ -114,6 +115,7 @@ public:
 
     MCTxMemPoolEntry(const MCTxMemPoolEntry& other);
 
+    const uint64_t GetOrder() const { return this->entryOrder; }
     const MCTransaction& GetTx() const { return *this->tx; }
     MCTransactionRef GetSharedTx() const { return this->tx; }
     const MCAmount& GetFee() const { return nFee; }
@@ -512,7 +514,7 @@ private:
     typedef std::map<txiter, TxLinks, CompareIteratorByHash> txlinksMap;
     txlinksMap mapLinks;
     
-    std::map<MCContractID, std::list<uint256>> contractLinksMap;
+    std::map<MCContractID, std::list<txiter>> contractLinksMap;
 
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
@@ -536,6 +538,8 @@ public:
     void Check(const MCCoinsViewCache* pcoins) const;
     void SetSanityCheck(double dFrequency = 1.0) { nCheckFrequency = dFrequency * 4294967295.0; }
 
+    void ReacceptTransactions();
+
     // AddUnchecked must updated state for all ancestors of a given transaction,
     // to track size/count of descendant transactions.  First version of
     // AddUnchecked can be used to have it call CalculateMemPoolAncestors(), and
@@ -552,7 +556,7 @@ public:
     void DoClear(); //lock free
     bool CompareDepthAndScore(const uint256& hasha, const uint256& hashb);
     void QueryHashes(std::vector<uint256>& vtxid);
-    bool IsSpent(const MCOutPoint& outpoint);
+    bool IsSpent(const MCOutPoint& outpoint) const;
     unsigned int GetTransactionsUpdated() const;
     void AddTransactionsUpdated(unsigned int n);
     /**
@@ -567,6 +571,9 @@ public:
     void ClearPrioritisation(const uint256 hash);
 
     uint256 GetOriTxHash(const MCTransaction& tx);
+
+    // Update contract data
+    void CheckContract(txiter titer, SmartLuaState* sls);
 
 public:
     /** Remove a set of transactions from the mempool.
@@ -589,6 +596,10 @@ public:
      */
     void UpdateTransactionsFromBlock(const std::vector<uint256>& vHashesToUpdate);
 
+    bool CalculateMemPoolAncestorsRecursive(const MCTxMemPoolEntry &entry, setEntries& parentHashes, setEntries &setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string &errString) const;
+
+    bool SearchForParents(const MCTxMemPoolEntry& entry, setEntries& parentHashes, std::set<MCContractID>* exclude, uint64_t limitAncestorCount, std::string& errString) const;
+
     /** Try to calculate all in-mempool ancestors of entry.
      *  (these are all calculated including the tx itself)
      *  limitAncestorCount = max number of ancestors
@@ -599,12 +610,12 @@ public:
      *  fSearchForParents = whether to search a tx's vin for in-mempool parents, or
      *    look up parents from mapLinks. Must be true for entries not in the mempool
      */
-    bool CalculateMemPoolAncestors(const MCTxMemPoolEntry& entry, setEntries& setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string& errString, bool fSearchForParents = true) const;
+    bool CalculateMemPoolAncestors(const MCTxMemPoolEntry& entry, std::set<MCContractID>* exclude, setEntries& setAncestors, uint64_t limitAncestorCount, uint64_t limitAncestorSize, uint64_t limitDescendantCount, uint64_t limitDescendantSize, std::string& errString, bool fSearchForParents = true) const;
 
     /** Populate setDescendants with all in-mempool descendants of hash.
      *  Assumes that setDescendants includes all in-mempool descendants of anything
      *  already in it.  */
-    void CalculateDescendants(txiter it, setEntries& setDescendants);
+    void CalculateDescendants(txiter it, setEntries& setDescendants, bool allContractDependencies);
 
     /** The minimum fee to get into the mempool, which may itself not be enough
       *  for larger-sized transactions.
@@ -690,6 +701,9 @@ private:
      *  removal.
      */
     void RemoveUnchecked(txiter entry, MemPoolRemovalReason reason = MemPoolRemovalReason::UNKNOWN);
+
+    /* Remove contract links*/
+    void RemoveFromContractLinks(txiter it);
 
 public:
     int32_t GetCreateBranchChainTxCount()

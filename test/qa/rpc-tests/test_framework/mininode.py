@@ -130,9 +130,38 @@ def uint256_from_str(s):
 
 
 def uint256_from_compact(c):
+    '''
+    int nSize = nCompact >> 24;
+    uint32_t nWord = nCompact & 0x007fffff;
+    if (nSize <= 3) {
+        nWord >>= 8 * (3 - nSize);
+        *this = nWord;
+    } else {
+        *this = nWord;
+        *this <<= 8 * (nSize - 3);
+    }
+    if (pfNegative)
+        *pfNegative = nWord != 0 && (nCompact & 0x00800000) != 0;
+    if (pfOverflow)
+        *pfOverflow = nWord != 0 && ((nSize > 34) ||
+                                     (nWord > 0xff && nSize > 33) ||
+                                     (nWord > 0xffff && nSize > 32));
+    '''
+    '''
+    old 
     nbytes = (c >> 24) & 0xFF
     v = (c & 0xFFFFFF) << (8 * (nbytes - 3))
     return v
+    '''
+    # new
+    nSize = c >> 24
+    nWord = c & 0x007fffff
+    if nSize <= 3:
+        nWord >>= 8 * (3 - nSize);
+    else:
+        nWord <<= 8 * (nSize - 3);
+    return nWord
+
 
 
 def deser_vector(f, c):
@@ -205,6 +234,34 @@ def ser_int_vector(l):
         r += struct.pack("<i", i)
     return r
 
+
+def ser_map(d):
+    r = ser_compact_size(len(d))
+    for k,v in d.items():
+        r += k.serialize()
+        r += v.serialize()
+    return r
+
+# def deser_vector(f, c):
+#     nit = deser_compact_size(f)
+#     r = []
+#     for i in range(nit):
+#         t = c()
+#         t.deserialize(f)
+#         r.append(t)
+#     return r
+
+def deser_map(f, c):
+    nit = deser_compact_size(f)
+    r = {}
+    for i in range(nit):
+        t = c()
+        t.deserialize(f)
+        r.append(t)
+    return r
+
+
+#-------------------------------------------------------------------
 # Deserialize from a hex string representation (eg from RPC)
 def FromHex(obj, hex_string):
     obj.deserialize(BytesIO(hex_str_to_bytes(hex_string)))
@@ -531,22 +588,33 @@ class CBlockHeader(object):
             self.nVersion = header.nVersion
             self.hashPrevBlock = header.hashPrevBlock
             self.hashMerkleRoot = header.hashMerkleRoot
+            # new with mgc
+            self.hashMerkleRootWithData = header.hashMerkleRootWithData
+            self.hashMerkleRootWithPrevData = header.hashMerkleRootWithPrevData
+            # end
             self.nTime = header.nTime
             self.nBits = header.nBits
             self.nNonce = header.nNonce
             self.sha256 = header.sha256
             self.hash = header.hash
+            self.prevoutStake = header.prevoutStake  #new
+            self.vchBlockSig = header.vchBlockSig    #new
             self.calc_sha256()
 
     def set_null(self):
         self.nVersion = 1
         self.hashPrevBlock = 0
         self.hashMerkleRoot = 0
+        # new in mgc
+        self.hashMerkleRootWithData = 0
+        self.hashMerkleRootWithPrevData = 0
         self.nTime = 0
         self.nBits = 0
         self.nNonce = 0
         self.sha256 = None
         self.hash = None
+        self.prevoutStake = None
+        self.vchBlockSig = []
 
     def deserialize(self, f):
         self.nVersion = struct.unpack("<i", f.read(4))[0]
@@ -1608,10 +1676,11 @@ class NodeConn(asyncore.dispatcher):
         b"getblocktxn": msg_getblocktxn,
         b"blocktxn": msg_blocktxn
     }
+    # this is the MESSAGE_START
     MAGIC_BYTES = {
         "mainnet": b"\xf9\xbe\xb4\xd9",   # mainnet
         "testnet3": b"\x0b\x11\x09\x07",  # testnet3
-        "regtest": b"\xfa\xbf\xb5\xda",   # regtest
+        "regtest": b"\xce\x11\xb5\xda",   # regtest #mmmm
     }
 
     def __init__(self, dstaddr, dstport, rpc, callback, net="regtest", services=NODE_NETWORK):

@@ -88,4 +88,6 @@ MCScript GetScriptForRawPubKey(const MCPubKey& pubkey);
 MCScript GetScriptForMultisig(int nRequired, const std::vector<MCPubKey>& keys);
 MCScript GetScriptForWitness(const MCScript& redeemscript);
 
+uint160 GetUint160(const MCTxDestination& dest);
+
 #endif // MAGNACHAIN_SCRIPT_STANDARD_H

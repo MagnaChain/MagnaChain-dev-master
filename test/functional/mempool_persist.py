@@ -48,14 +48,20 @@ class MempoolPersistTest(MagnaChainTestFramework):
         self.nodes[0].generate(1)
         self.sync_all()
 
-        self.log.debug("Send 5 transactions from node2 (to its own address)")
+        self.log.debug("Send 5 standard transactions from node2 (to its own address)")
         for i in range(5):
             self.nodes[2].sendtoaddress(self.nodes[2].getnewaddress(), Decimal("10"))
+
+        self.log.debug("Send 5 contract transactions from node2 (to its own address)")
+        contract = generate_contract(self.options.tmpdir)
+        contract_id = self.nodes[2].publishcontract(contract)["contractaddress"]
+        for i in range(4):
+            self.nodes[2].callcontract(True, 10, contract_id, self.nodes[2].getnewaddress(), 'payable')
         self.sync_all()
 
-        self.log.debug("Verify that node0 and node1 have 5 transactions in their mempools")
-        assert_equal(len(self.nodes[0].getrawmempool()), 5)
-        assert_equal(len(self.nodes[1].getrawmempool()), 5)
+        self.log.debug("Verify that node0 and node1 have 10 transactions in their mempools")
+        assert_equal(len(self.nodes[0].getrawmempool()), 10)
+        assert_equal(len(self.nodes[1].getrawmempool()), 10)
 
         self.log.debug("Stop-start node0 and node1. Verify that node0 has the transactions in its mempool and node1 does not.")
         self.stop_nodes()
@@ -63,7 +69,7 @@ class MempoolPersistTest(MagnaChainTestFramework):
         self.start_node(1)
         # Give magnachaind a second to reload the mempool
         time.sleep(1)
-        wait_until(lambda: len(self.nodes[0].getrawmempool()) == 5)
+        wait_until(lambda: len(self.nodes[0].getrawmempool()) == 10)
         assert_equal(len(self.nodes[1].getrawmempool()), 0)
 
         self.log.debug("Stop-start node0 with -persistmempool=0. Verify that it doesn't load its mempool.dat file.")
@@ -76,7 +82,7 @@ class MempoolPersistTest(MagnaChainTestFramework):
         self.log.debug("Stop-start node0. Verify that it has the transactions in its mempool.")
         self.stop_nodes()
         self.start_node(0)
-        wait_until(lambda: len(self.nodes[0].getrawmempool()) == 5)
+        wait_until(lambda: len(self.nodes[0].getrawmempool()) == 10)
 
 if __name__ == '__main__':
     MempoolPersistTest().main()

@@ -68,18 +68,21 @@ BOOST_FIXTURE_TEST_CASE(tx_mempool_block_doublespend, TestChain100Setup)
     block = CreateAndProcessBlock(spends, scriptPubKey);
     BOOST_CHECK(chainActive.Tip()->GetBlockHash() != block.GetHash());
 
+    SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing + 10000);
     // Test 2: ... and should be rejected if spend1 is in the memory pool
     BOOST_CHECK(ToMemPool(spends[0]));
     block = CreateAndProcessBlock(spends, scriptPubKey);
     BOOST_CHECK(chainActive.Tip()->GetBlockHash() != block.GetHash());
     mempool.Clear();
 
+    SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing + 10000);
     // Test 3: ... and should be rejected if spend2 is in the memory pool
     BOOST_CHECK(ToMemPool(spends[1]));
     block = CreateAndProcessBlock(spends, scriptPubKey);
     BOOST_CHECK(chainActive.Tip()->GetBlockHash() != block.GetHash());
     mempool.Clear();
 
+    SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing + 10000);
     // Final sanity test: first spend in mempool, second in block, that's OK:
     std::vector<MCMutableTransaction> oneSpend;
     oneSpend.push_back(spends[0]);
@@ -129,20 +132,20 @@ void ValidateCheckInputsForAllFlags(MCMutableTransaction &tx, uint32_t failing_f
             // is set.
             expected_return_value = !(test_flags & SCRIPT_VERIFY_DISCOURAGE_UPGRADABLE_NOPS);
         }
-        BOOST_CHECK_EQUAL(ret, expected_return_value);
+        BOOST_REQUIRE_EQUAL(ret, expected_return_value);
 
         // Test the caching
         if (ret && add_to_cache) {
             // Check that we get a cache hit if the tx was valid
             std::vector<CScriptCheck> scriptchecks;
-            BOOST_CHECK(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
-            BOOST_CHECK(scriptchecks.empty());
+            BOOST_REQUIRE(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
+            BOOST_REQUIRE(scriptchecks.empty());
         } else {
             // Check that we get script executions to check, if the transaction
             // was invalid, or we didn't add to cache.
             std::vector<CScriptCheck> scriptchecks;
-            BOOST_CHECK(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
-            BOOST_CHECK_EQUAL(scriptchecks.size(), tx.vin.size());
+            BOOST_REQUIRE(CheckInputs(tx, state, pcoinsTip, true, test_flags, true, add_to_cache, txdata, &scriptchecks));
+            BOOST_REQUIRE_EQUAL(scriptchecks.size(), tx.vin.size());
         }
     }
 }
@@ -186,7 +189,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
     {
         std::vector<unsigned char> vchSig;
         uint256 hash = SignatureHash(p2pk_scriptPubKey, spend_tx, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
-        BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+        BOOST_REQUIRE(coinbaseKey.Sign(hash, vchSig));
         vchSig.push_back((unsigned char) 0); // padding byte makes this non-DER
         vchSig.push_back((unsigned char)SIGHASH_ALL);
         spend_tx.vin[0].scriptSig << vchSig;
@@ -201,14 +204,14 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         MCValidationState state;
         PrecomputedTransactionData ptd_spend_tx(spend_tx);
 
-        BOOST_CHECK(!CheckInputs(spend_tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG, true, true, ptd_spend_tx, nullptr));
+        BOOST_REQUIRE(!CheckInputs(spend_tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG, true, true, ptd_spend_tx, nullptr));
 
         // If we call again asking for scriptchecks (as happens in
         // ConnectBlock), we should add a script check object for this -- we're
         // not caching invalidity (if that changes, delete this test case).
         std::vector<CScriptCheck> scriptchecks;
-        BOOST_CHECK(CheckInputs(spend_tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG, true, true, ptd_spend_tx, &scriptchecks));
-        BOOST_CHECK_EQUAL(scriptchecks.size(), 1);
+        BOOST_REQUIRE(CheckInputs(spend_tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG, true, true, ptd_spend_tx, &scriptchecks));
+        BOOST_REQUIRE_EQUAL(scriptchecks.size(), 1);
 
         // Test that CheckInputs returns true iff DERSIG-enforcing flags are
         // not present.  Don't add these checks to the cache, so that we can
@@ -217,12 +220,20 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         ValidateCheckInputsForAllFlags(spend_tx, SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_LOW_S | SCRIPT_VERIFY_STRICTENC, false, false);
 
         // And if we produce a block with this tx, it should be valid (DERSIG not
-        // enabled yet), even though there's no cache entry.
-        MCBlock block;
+        // enabled yet), even though there's no cache entry.(Ha ha this is valid in magnachain! boy)
+        //MCBlock block;
+        //block = CreateAndProcessBlock({spend_tx}, p2pk_scriptPubKey);
+        //BOOST_REQUIRE(chainActive.Tip()->GetBlockHash() == block.GetHash());
+        //BOOST_REQUIRE(pcoinsTip->GetBestBlock() == block.GetHash());
 
-        block = CreateAndProcessBlock({spend_tx}, p2pk_scriptPubKey);
-        BOOST_CHECK(chainActive.Tip()->GetBlockHash() == block.GetHash());
-        BOOST_CHECK(pcoinsTip->GetBestBlock() == block.GetHash());
+        // MGC: resign 
+        std::vector<unsigned char> vchSig;
+        uint256 hash = SignatureHash(p2pk_scriptPubKey, spend_tx, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
+        BOOST_REQUIRE(coinbaseKey.Sign(hash, vchSig));
+        vchSig.push_back((unsigned char)SIGHASH_ALL);
+        spend_tx.vin[0].scriptSig << vchSig;
+        MCBlock block;
+        block = CreateAndProcessBlock({ spend_tx }, p2pk_scriptPubKey);
     }
 
     // Test P2SH: construct a transaction that is valid without P2SH, and
@@ -258,7 +269,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         // Sign
         std::vector<unsigned char> vchSig;
         uint256 hash = SignatureHash(spend_tx.vout[2].scriptPubKey, invalid_with_cltv_tx, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
-        BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+        BOOST_REQUIRE(coinbaseKey.Sign(hash, vchSig));
         vchSig.push_back((unsigned char)SIGHASH_ALL);
         invalid_with_cltv_tx.vin[0].scriptSig = MCScript() << vchSig << 101;
 
@@ -268,7 +279,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         invalid_with_cltv_tx.vin[0].scriptSig = MCScript() << vchSig << 100;
         MCValidationState state;
         PrecomputedTransactionData txdata(invalid_with_cltv_tx);
-        BOOST_CHECK(CheckInputs(invalid_with_cltv_tx, state, pcoinsTip, true, SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY, true, true, txdata, nullptr));
+        BOOST_REQUIRE(CheckInputs(invalid_with_cltv_tx, state, pcoinsTip, true, SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY, true, true, txdata, nullptr));
     }
 
     // TEST CHECKSEQUENCEVERIFY
@@ -286,7 +297,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         // Sign
         std::vector<unsigned char> vchSig;
         uint256 hash = SignatureHash(spend_tx.vout[3].scriptPubKey, invalid_with_csv_tx, 0, SIGHASH_ALL, 0, SIGVERSION_BASE);
-        BOOST_CHECK(coinbaseKey.Sign(hash, vchSig));
+        BOOST_REQUIRE(coinbaseKey.Sign(hash, vchSig));
         vchSig.push_back((unsigned char)SIGHASH_ALL);
         invalid_with_csv_tx.vin[0].scriptSig = MCScript() << vchSig << 101;
 
@@ -296,7 +307,7 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         invalid_with_csv_tx.vin[0].scriptSig = MCScript() << vchSig << 100;
         MCValidationState state;
         PrecomputedTransactionData txdata(invalid_with_csv_tx);
-        BOOST_CHECK(CheckInputs(invalid_with_csv_tx, state, pcoinsTip, true, SCRIPT_VERIFY_CHECKSEQUENCEVERIFY, true, true, txdata, nullptr));
+        BOOST_REQUIRE(CheckInputs(invalid_with_csv_tx, state, pcoinsTip, true, SCRIPT_VERIFY_CHECKSEQUENCEVERIFY, true, true, txdata, nullptr));
     }
 
     // TODO: add tests for remaining script flags
@@ -358,14 +369,14 @@ BOOST_FIXTURE_TEST_CASE(checkinputs_test, TestChain100Setup)
         MCValidationState state;
         PrecomputedTransactionData txdata(tx);
         // This transaction is now invalid under segwit, because of the second input.
-        BOOST_CHECK(!CheckInputs(tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, true, true, txdata, nullptr));
+        BOOST_REQUIRE(!CheckInputs(tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, true, true, txdata, nullptr));
 
         std::vector<CScriptCheck> scriptchecks;
         // Make sure this transaction was not cached (ie because the first
         // input was valid)
-        BOOST_CHECK(CheckInputs(tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, true, true, txdata, &scriptchecks));
+        BOOST_REQUIRE(CheckInputs(tx, state, pcoinsTip, true, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_WITNESS, true, true, txdata, &scriptchecks));
         // Should get 2 script checks back -- caching is on a whole-transaction basis.
-        BOOST_CHECK_EQUAL(scriptchecks.size(), 2);
+        BOOST_REQUIRE_EQUAL(scriptchecks.size(), 2);
     }
 }
 

@@ -7,13 +7,24 @@
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_array_result, assert_raises_rpc_error
 
+# TODO 需要加上合约的情况
 class ListSinceBlockTest (MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
         self.setup_clean_chain = True
 
+    def logblockcount(self):
+        blockcount = 'Nodes blockcount: '
+        for i in range(self.num_nodes):
+            blockcount = blockcount + str(self.nodes[i].getblockcount()) + ' '
+        self.log.info(blockcount)
+
+    def sync_all(self, node_groups=None):
+        self.logblockcount()
+        super(ListSinceBlockTest, self).sync_all(node_groups)
+
     def run_test(self):
-        self.nodes[2].generate(101)
+        self.nodes[2].generate(51)
         self.sync_all()
 
         self.test_no_blockhash()
@@ -82,6 +93,8 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         This test only checks that [tx0] is present.
         '''
 
+        self.log.info("test_reorg")
+        self.logblockcount()
         # Split network into two
         self.split_network()
 
@@ -91,6 +104,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # generate on both sides
         lastblockhash = self.nodes[1].generate(6)[5]
         self.nodes[2].generate(7)
+        self.make_more_work_than(2,1)
         self.log.info('lastblockhash=%s' % (lastblockhash))
 
         self.sync_all([self.nodes[:2], self.nodes[2:]])
@@ -136,6 +150,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         node wallet.
         '''
 
+        self.log.info("test_double_spend")
         self.sync_all()
 
         # Split network into two
@@ -173,6 +188,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # generate on both sides
         lastblockhash = self.nodes[1].generate(3)[2]
         self.nodes[2].generate(4)
+        self.make_more_work_than(2,1)
 
         self.join_network()
 
@@ -214,7 +230,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         3. It is listed with a confirmations count of 2 (bb3, bb4), not
            3 (aa1, aa2, aa3).
         '''
-
+        self.log.info("test_double_send")
         self.sync_all()
 
         # Split network into two
@@ -252,6 +268,8 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # generate on both sides
         lastblockhash = self.nodes[1].generate(3)[2]
         self.nodes[2].generate(2)
+        genmore = self.make_more_work_than(2,1)
+        genmorelen = len(genmore)
 
         self.join_network()
 
@@ -269,12 +287,12 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         # find transaction and ensure confirmations is valid
         for tx in lsbres['transactions']:
             if tx['txid'] == txid1:
-                assert_equal(tx['confirmations'], 2)
+                assert_equal(tx['confirmations'], 2+genmorelen)
 
         # the same check for the removed array; confirmations should STILL be 2
         for tx in lsbres['removed']:
             if tx['txid'] == txid1:
-                assert_equal(tx['confirmations'], 2)
+                assert_equal(tx['confirmations'], 2+genmorelen)
 
 if __name__ == '__main__':
     ListSinceBlockTest().main()

@@ -59,6 +59,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName)
         fPrintToDebugLog = false; // don't want to write to debug.log file
         fCheckBlockIndex = true;
 		ECC_Stop();// in SelectParams has a pair function call(ECC_Start and ECC_Stop)
+        gArgs.ForceSetArg("-powtargetspacing", "1");//force change mining space time
         SelectParams(chainName);
 		ECC_Start();
         noui_connect();
@@ -93,6 +94,8 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
 		pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
 		mpContractDb = new ContractDataDB(GetDataDir() / "contract", 1 << 23, false, false);
 		pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", 1 << 23, false, false);
+        pCoinAmountDB = new CoinAmountDB();
+        pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
         if (!LoadGenesisBlock(chainparams)) {
             throw std::runtime_error("LoadGenesisBlock failed.");
         }
@@ -107,7 +110,7 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
             threadGroup.create_thread(&ThreadScriptCheck);
         g_connman = std::unique_ptr<MCConnman>(new MCConnman(0x1337, 0x1337)); // Deterministic randomness for tests.
         connman = g_connman.get();
-        peerLogic.reset(new PeerLogicValidation(connman, scheduler));
+        peerLogic.reset(new PeerLogicValidation(connman, scheduler, &ProcessMessage, &GetLocator));
 }
 
 TestingSetup::~TestingSetup()
@@ -138,9 +141,12 @@ TestChain100Setup::TestChain100Setup() : TestingSetup(MCBaseChainParams::REGTEST
         std::vector<MCMutableTransaction> noTxns;
         MCBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
         coinbaseTxns.push_back(*b.vtx[0]);
+        //MilliSleep(Params().GetConsensus().nPowTargetSpacing*1000);
+        SetMockTime(GetTime() + Params().GetConsensus().nPowTargetSpacing + 10000);
     }
 }
 
+extern MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFees, MCBlockIndex* pindexPrev, const MCScript& scriptPubKeyIn, const MCChainParams& chainparams);
 //
 // Create a new block with just given transactions, coinbase paying to
 // scriptPubKey, and try to add it to the current chain.
@@ -149,17 +155,41 @@ MCBlock
 TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns, const MCScript& scriptPubKey)
 {
     const MCChainParams& chainparams = Params();
-	//MCWallet tempWallet;
-	//tempWallet.AddKey(coinbaseKey);
+	MCWallet tempWallet;
+	tempWallet.AddKey(coinbaseKey);
+
     //std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
     ContractContext contractContext;
-	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext);
+	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext, true, &tempWallet);
     MCBlock& block = pblocktemplate->block;
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
     block.vtx.resize(1);
-    for (const MCMutableTransaction& tx : txns)
+    for (const MCMutableTransaction& tx : txns){
         block.vtx.push_back(MakeTransactionRef(tx));
+    }
+    if (txns.size() > 0)
+    {
+        MCAmount nFees = 0;
+        MCCoinsViewCache view(pcoinsTip);
+        for (int i=1; i < block.vtx.size(); i++)
+        {
+            const MCTransactionRef& ptx = block.vtx[i];
+            nFees += view.GetValueIn(*ptx) - ptx->GetValueOut();
+        }
+
+        MCBlockIndex* pindexPrev = mapBlockIndex[block.hashPrevBlock];
+        MCMutableTransaction coinbaseTx(*block.vtx[0]);
+        MCAmount nReward = MakeCoinbaseTransaction(coinbaseTx, nFees, pindexPrev, scriptPubKey, chainparams);
+        block.vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
+        GenerateCoinbaseCommitment(block, pindexPrev, chainparams.GetConsensus());
+    
+        int nHeight = pindexPrev->nHeight + 1;
+        MCMutableTransaction kSignTx(*block.vtx[0]);
+        if (!SignatureCoinbaseTransaction(nHeight, &tempWallet, kSignTx, nReward, scriptPubKey))
+            throw std::runtime_error("sign coin base transaction error");
+        block.vtx[0] = MakeTransactionRef(std::move(kSignTx));
+    }
     // IncrementExtraNonce creates a valid coinbase and merkleRoot
     unsigned int extraNonce = 0;
     IncrementExtraNonce(&block, chainActive.Tip(), extraNonce);
@@ -167,7 +197,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
     std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(block);
-    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr, false);
+    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr);
 
     MCBlock result = block;
     return result;

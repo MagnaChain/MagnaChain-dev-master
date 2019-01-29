@@ -263,7 +263,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
             std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
-            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr, false))
+            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
             ++nHeight;
             blockHashes.push_back(pblock->GetHash().GetHex());
@@ -534,6 +534,11 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
             + HelpExampleCli("generatetoaddress", "11 \"myaddress\"")
         );
 
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "disablewallet option open, no address to mine");
+    }
+
     int nGenerate = request.params[0].get_int();
     uint64_t nMaxTries = 1000000;
     if (!request.params[2].isNull()) {
@@ -664,7 +669,7 @@ std::string gbt_vb_name(const Consensus::DeploymentPos pos) {
 
 UniValue getblocktemplate(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() > 1)
+    if (request.fHelp || request.params.size() > 2)
         throw std::runtime_error(
             "getblocktemplate ( TemplateRequest )\n"
             "\nIf the request parameters include a 'mode' key, that is used to explicitly select between the default 'template' request or a 'proposal'.\n"
@@ -676,7 +681,8 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             "    https://github.com/magnachain/bips/blob/master/bip-0145.mediawiki\n"
 
             "\nArguments:\n"
-            "1. template_request         (json object, optional) A json object in the following spec\n"
+            "1. address                  (string, optional) Address for coinbase out and signature.\n"
+            "2. template_request         (json object, optional) A json object in the following spec\n"
             "     {\n"
             "       \"mode\":\"template\"    (string, optional) This must be set to \"template\", \"proposal\" (see BIP 23), or omitted\n"
             "       \"capabilities\":[     (array, optional) A list of strings\n"
@@ -747,9 +753,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     UniValue lpval = NullUniValue;
     std::set<std::string> setClientRules;
     int64_t nMaxVersionPreVB = -1;
-    if (!request.params[0].isNull())
+    if (!request.params[1].isNull())
     {
-        const UniValue& oparam = request.params[0].get_obj();
+        const UniValue& oparam = request.params[1].get_obj();
         const UniValue& modeval = find_value(oparam, "mode");
         if (modeval.isStr())
             strMode = modeval.get_str();
@@ -866,6 +872,12 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         // TODO: Maybe recheck connections/IBD and (if something wrong) send an expires-immediately template to stop miners?
     }
 
+    //mining block need wallet for private key to sign block.
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, false)) {
+        return NullUniValue;
+    }
+
     const struct VBDeploymentInfo& segwit_info = VersionBitsDeploymentInfo[Consensus::DEPLOYMENT_SEGWIT];
     // If the caller is indicating segwit support, then allow CreateNewBlock()
     // to select witness transactions, after segwit activates (otherwise
@@ -893,10 +905,35 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         fLastTemplateSupportsSegwit = fSupportsSegwit;
 
         // Create new block
-        MCScript scriptDummy = MCScript() << OP_TRUE;
+        MCScript scriptForMine;
+        if (request.params.size() > 0)
+        {
+            MagnaChainAddress address(request.params[0].get_str());
+            if (!address.IsValid())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address.");
+            MCKeyID keyid;
+            if (!address.GetKeyID(keyid)){
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address(need pubkey address).");
+            }
+            if (!pwallet->HaveKey(keyid)){
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Param 1 address is not in wallet.");
+            }
+            scriptForMine = GetScriptForDestination(keyid);
+        }
+        else {
+            MCPubKey newKey;
+            if (!pwallet->GetKeyFromPool(newKey)) {
+                throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+            }
+            MCKeyID keyID = newKey.GetID();
+            //pwallet->SetAddressBook(keyID, "", "");
+            scriptForMine = GetScriptForDestination(keyID);
+        }
 
         ContractContext contractContext;
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptDummy, &contractContext, fSupportsSegwit);
+        MCCoinsView viewDummy;
+        MCCoinsViewCache view(&viewDummy);
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
@@ -1130,7 +1167,7 @@ UniValue submitblock(const JSONRPCRequest& request)
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
     ContractContext contractContext;
-    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr, true);
+    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found) {
@@ -1342,13 +1379,52 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue updateminingreservetxsize(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 3)
+        throw std::runtime_error(
+            "set/get tx reserve size for addPackageTxs.\n"
+            "\nArguments:\n"
+            "1. pubcontractsize (numeric, optional) ReservePubContractBlockDataSize\n"
+            "2. callcontractsize   (numeric, optional) ReserveCallContractBlockDataSize\n"
+            "3. branchtxsize      (numeric, optional) ReserveBranchTxBlockDataSize\n"
+            "\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"ReservePubContractBlockDataSize\" : ReservePubContractBlockDataSize\n"
+            "  \"ReserveCallContractBlockDataSize\" : ReserveCallContractBlockDataSize\n"
+            "  \"ReserveBranchTxBlockDataSize\" : ReserveBranchTxBlockDataSize\n"
+            "}\n"
+            "\n"
+            "Results are returned for any horizon which tracks blocks up to the confirmation target.\n"
+            "\nExample:\n"
+            + HelpExampleCli("updateminingreservetxsize", "100 1000 1000")
+        );
+
+    if (request.params.size() > 0){
+        ReservePubContractBlockDataSize = request.params[0].get_int64();
+    }
+    if (request.params.size() > 1) {
+        ReserveCallContractBlockDataSize = request.params[1].get_int64();
+    }
+    if (request.params.size() > 2) {
+        ReserveBranchTxBlockDataSize = request.params[2].get_int64();
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("ReservePubContractBlockDataSize", ReservePubContractBlockDataSize));
+    result.push_back(Pair("ReserveCallContractBlockDataSize", ReserveCallContractBlockDataSize));
+    result.push_back(Pair("ReserveBranchTxBlockDataSize", ReserveBranchTxBlockDataSize));
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true,  {"nblocks","height"} },
     { "mining",             "getmininginfo",          &getmininginfo,          true,  {} },
     { "mining",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","dummy","fee_delta"} },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
+    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
 
     { "generating",         "generate",               &generate,               true,  { "nblocks","maxtries" } },
@@ -1362,6 +1438,7 @@ static const CRPCCommand commands[] =
     { "util",               "estimatesmartfee",       &estimatesmartfee,       true,  {"conf_target", "estimate_mode"} },
 
     { "hidden",             "estimaterawfee",         &estimaterawfee,         true,  {"conf_target", "threshold"} },
+    { "mining",             "updateminingreservetxsize",&updateminingreservetxsize ,true, {"reservesize","reservesize","reservesize"} },
 };
 
 void RegisterMiningRPCCommands(CRPCTable &t)

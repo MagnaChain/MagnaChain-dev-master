@@ -61,7 +61,10 @@ class ContractTxFinalData
 {
 public:
     MCAmount coins;
-    std::vector<CONTRACT_DATA> data;
+    CONTRACT_DATA data;
+
+public:
+    ContractTxFinalData() : coins(0) {}
 };
 
 class ContractContext
@@ -71,8 +74,8 @@ class ContractContext
 public:
     CONTRACT_DATA cache;    // 数据缓存，用于回滚
     CONTRACT_DATA data;
-    ContractTxFinalData txFinalData;
     CONTRACT_DATA prevData;
+    std::vector<ContractTxFinalData> txFinalData;
 
 public:
     void SetCache(const MCContractID& contractId, ContractInfo& contractInfo);
@@ -92,6 +95,7 @@ struct SmartContractThreadData
     int offset;
     uint16_t groupSize;
     int blockHeight;
+    std::vector<MCAmount> coins;
     ContractContext contractContext;
     MCBlockIndex* pPrevBlockIndex;
     CoinAmountCache* pCoinAmountCache;
@@ -102,6 +106,7 @@ typedef std::map<uint256, std::vector<std::map<MCContractID, ContractInfo>>> BLO
 class ContractDataDB
 {
 private:
+    std::atomic<bool> interrupt;
     MCDBWrapper db;
     MCDBBatch writeBatch;
     MCDBBatch removeBatch;
@@ -128,8 +133,7 @@ public:
     int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex);
 
     bool RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
-    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, MCBlock* pBlock, SmartContractThreadData* threadData);
-    void ExecutiveTransactionContract(SmartLuaState* sls, MCBlock* pBlock, SmartContractThreadData* threadData);
+    void ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData);
 
     bool WriteBatch(MCDBBatch& batch);
     bool WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* contractContext);

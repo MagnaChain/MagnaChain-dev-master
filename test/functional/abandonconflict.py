@@ -19,7 +19,7 @@ class AbandonConflictTest(MagnaChainTestFramework):
         self.extra_args = [["-minrelaytxfee=0.00001"], []]
 
     def run_test(self):
-        self.nodes[1].generate(100)
+        self.nodes[1].generate(2)
         sync_blocks(self.nodes)
         balance = self.nodes[0].getbalance()
         txA = self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(), Decimal("10"))
@@ -30,7 +30,7 @@ class AbandonConflictTest(MagnaChainTestFramework):
 
         sync_blocks(self.nodes)
         newbalance = self.nodes[0].getbalance()
-        assert(balance - newbalance < Decimal("0.001")) #no more than fees lost
+        assert(balance - newbalance < Decimal("1.0171")) #no more than fees lost
         balance = newbalance
 
         # Disconnect nodes so node0's transactions don't get into node1's mempool
@@ -129,6 +129,7 @@ class AbandonConflictTest(MagnaChainTestFramework):
         # Mine double spend from node 1
         inputs =[]
         inputs.append({"txid":txA, "vout":nA})
+        inputs.append({"txid": txC, "vout": nC})
         outputs = {}
         outputs[self.nodes[1].getnewaddress()] = Decimal("9.9999")
         tx = self.nodes[0].createrawtransaction(inputs, outputs)
@@ -141,7 +142,7 @@ class AbandonConflictTest(MagnaChainTestFramework):
 
         # Verify that B and C's 10 BTC outputs are available for spending again because AB1 is now conflicted
         newbalance = self.nodes[0].getbalance()
-        assert_equal(newbalance, balance + Decimal("20"))
+        assert_equal(newbalance, balance + Decimal("10"))
         balance = newbalance
 
         # There is currently a minor bug around this and so this test doesn't work.  See Issue #7315

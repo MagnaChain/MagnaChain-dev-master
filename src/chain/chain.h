@@ -378,6 +378,8 @@ public:
     const MCBlockIndex* GetAncestor(int height) const;
 };
 
+int GetSkipHeight(int height);
+
 arith_uint256 GetBlockProof(const MCBlockIndex& block);
 arith_uint256 GetBlockProof(uint32_t blockBits);
 /** Return the time it would take to redo the work difference between from and to, assuming the current hashrate corresponds to the difficulty at tip, in seconds. */

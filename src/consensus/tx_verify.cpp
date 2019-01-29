@@ -314,9 +314,9 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             MCSpvProof spvProof(*tx.pPMT);
             BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
             if (pBlockData == nullptr)
-                return false;
+                return state.DoS(0, false, REJECT_INVALID, "Get transstep2 blockdata fail.");
             if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pFromTx->GetHash()) < 0)
-                return false;
+                return state.DoS(0, false, REJECT_INVALID, "transstep2 checkSpvProof fail.");;
 
             // best chain check
             if (!pBranchCache->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
@@ -410,179 +410,180 @@ extern bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey
 
 bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state, const MCCoinsViewCache& inputs, int nSpendHeight)
 {
-        // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
-        // for an attacker to attempt to split the network.
-        if (!inputs.HaveInputs(tx))
-            return state.Invalid(false, 0, "", "Inputs unavailable");
+    // This doesn't trigger the DoS code on purpose; if it did, it would make it easier
+    // for an attacker to attempt to split the network.
+    if (!inputs.HaveInputs(tx))
+        return state.Invalid(false, 0, "", "Inputs unavailable");
 
-        MCAmount nMortgageCoin = 0;
-        int nCountMortgageCoin = 0;
-        uint256 mortgageFromTxid;
+    MCAmount nMortgageCoin = 0;
+    int nCountMortgageCoin = 0;
+    uint256 mortgageFromTxid;
 
-        MCAmount nValueIn = 0;
-        MCAmount nFees = 0;
-        MCAmount nContractAmountIn = 0;
-        MCScript contractScript;
-        if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-            contractScript = GetScriptForDestination(tx.pContractData->address);
+    MCAmount nValueIn = 0;
+    MCAmount nFees = 0;
+    MCAmount nContractAmountIn = 0;
+    MCScript contractScript;
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
+        contractScript = GetScriptForDestination(tx.pContractData->address);
 
+    for (unsigned int i = 0; i < tx.vin.size(); i++)
+    {
+        const MCOutPoint &prevout = tx.vin[i].prevout;
+        const Coin& coin = inputs.AccessCoin(prevout);
+        assert(!coin.IsSpent());
+
+        // If prev is coinbase, check that it's matured
+        if (coin.IsCoinBase()) {
+            if (nSpendHeight - coin.nHeight < COINBASE_MATURITY)
+                return state.Invalid(false,
+                    REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
+                    strprintf("tried to spend coinbase at depth %d", nSpendHeight - coin.nHeight));
+        }
+        if (coin.IsCoinCreateBranch()) {
+            if (nSpendHeight - coin.nHeight < BRANCH_CHAIN_CREATE_COIN_MATURITY) {
+                return state.Invalid(false,
+                    REJECT_INVALID, "bad-txns-premature-spend-of-coincreatebranch",
+                    strprintf("tried to spend coincreatebranch at depth %d", nSpendHeight - coin.nHeight));
+            }
+        }
+
+        // Check for negative or overflow input values
+        nValueIn += coin.out.nValue;
+        if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+
+        if (tx.vin[i].scriptSig.IsContract()) {
+            if (tx.vin[i].scriptSig != contractScript)
+                return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
+            nContractAmountIn += coin.out.nValue;
+        }
+
+        // Check input types
+        branch_script_type bst = QuickGetBranchScriptType(coin.out.scriptPubKey);
+        if ((bst == BST_MORTGAGE_MINE && !tx.IsRedeemMortgage() && !tx.IsBranchChainTransStep2())) // 除了赎回抵押币
+            return state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
+        if ((bst == BST_MORTGAGE_COIN && !tx.IsRedeemMortgageStatement() && !tx.IsStake())) // 除了声明赎回挖矿币,挖矿时可以使用挖矿币
+            return state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
+
+        if (tx.IsRedeemMortgageStatement()) {
+            if (GetMortgageCoinData(coin.out.scriptPubKey, &mortgageFromTxid)) {
+                nMortgageCoin += coin.out.nValue;
+                nCountMortgageCoin++;
+                if (nCountMortgageCoin > 1)
+                    return state.DoS(100, false, REJECT_INVALID, "more-than-one-mortgage-coin", false, "Just one mortgage coin in, one redeem coin out");
+
+                if (nSpendHeight - coin.nHeight < REDEEM_SAFE_HEIGHT) // 挖矿币需要满足一定高度后才能赎回
+                    return state.Invalid(false,
+                        REJECT_INVALID, "bad-txns-premature-redeem-of-mortgage",
+                        strprintf("tried to redeem mortgage at depth %d", nSpendHeight - coin.nHeight));
+            }
+        }
+    }
+
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.pContractData->amountOut > 0) {
+        nValueIn += tx.pContractData->amountOut;
+        if (!MoneyRange(tx.pContractData->amountOut) || !MoneyRange(nValueIn))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+        nContractAmountIn += tx.pContractData->amountOut;
+    }
+
+    MCAmount nValueOut = 0;
+    MCAmount nContractAmountChange = 0;
+    for (const auto& tx_out : tx.vout) {
+        nValueOut += tx_out.nValue;
+        if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+
+        if (tx_out.scriptPubKey.IsContract()) {
+            MCContractID contractId;
+            if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
+                return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
+            if (tx_out.scriptPubKey.IsContractChange()) {
+                // 合约输出只能有一个找零
+                if (nContractAmountChange > 0)
+                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_amount_change");
+                nContractAmountChange += tx_out.nValue;
+            }
+        }
+    }
+
+    if (nValueIn < nValueOut)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
+            strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
+
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN)
+    {
+        MCAmount nInValueBranch = 0;
         for (unsigned int i = 0; i < tx.vin.size(); i++)
         {
             const MCOutPoint &prevout = tx.vin[i].prevout;
-            const Coin& coin = inputs.AccessCoin(prevout);
-            assert(!coin.IsSpent());
-
-            // If prev is coinbase, check that it's matured
-            if (coin.IsCoinBase()) {
-                if (nSpendHeight - coin.nHeight < COINBASE_MATURITY)
-                    return state.Invalid(false,
-                        REJECT_INVALID, "bad-txns-premature-spend-of-coinbase",
-                        strprintf("tried to spend coinbase at depth %d", nSpendHeight - coin.nHeight));
+            const Coin& coin = inputs.AccessCoin(prevout);// coin type has check in 
+            nInValueBranch += coin.out.nValue;
+        }
+        uint256 frombranchid;
+        frombranchid.SetHex(tx.fromBranchId);
+        MCAmount nOrginalOut = 0;
+        MCAmount nBranchRecharge = 0;
+        for (const auto& txout : tx.vout) {
+            if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
+                nOrginalOut += txout.nValue;
             }
-            if (coin.IsCoinCreateBranch()){
-                if (nSpendHeight - coin.nHeight < BRANCH_CHAIN_CREATE_COIN_MATURITY){
-                    return state.Invalid(false,
-                        REJECT_INVALID, "bad-txns-premature-spend-of-coincreatebranch",
-                        strprintf("tried to spend coincreatebranch at depth %d", nSpendHeight - coin.nHeight));
-                }
-            }
-
-            // Check for negative or overflow input values
-            nValueIn += coin.out.nValue;
-            if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn))
-                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-
-            if (tx.vin[i].scriptSig.IsContract()) {
-                if (tx.vin[i].scriptSig != contractScript)
-                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
-                nContractAmountIn += coin.out.nValue;
-            }
-
-            // Check input types
-            branch_script_type bst = QuickGetBranchScriptType(coin.out.scriptPubKey);
-            if ((bst == BST_MORTGAGE_MINE && !tx.IsRedeemMortgage() && !tx.IsBranchChainTransStep2())) // 除了赎回抵押币
-                return state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
-            if ((bst == BST_MORTGAGE_COIN && !tx.IsRedeemMortgageStatement() && !tx.IsStake())) // 除了声明赎回挖矿币,挖矿时可以使用挖矿币
-                return state.DoS(100, error("Can not use mortgage coin in not-stake transaction"));
-
-            if (tx.IsRedeemMortgageStatement()){
-                if (GetMortgageCoinData(coin.out.scriptPubKey, &mortgageFromTxid)){
-                    nMortgageCoin += coin.out.nValue;
-                    nCountMortgageCoin++;
-                    if (nCountMortgageCoin > 1)
-                        return state.DoS(100, false, REJECT_INVALID, "more-than-one-mortgage-coin", false, "Just one mortgage coin in, one redeem coin out");
-
-                    if (nSpendHeight - coin.nHeight < REDEEM_SAFE_HEIGHT) // 挖矿币需要满足一定高度后才能赎回
-                        return state.Invalid(false,
-                            REJECT_INVALID, "bad-txns-premature-redeem-of-mortgage",
-                            strprintf("tried to redeem mortgage at depth %d", nSpendHeight - coin.nHeight));
+            else {
+                nBranchRecharge += txout.nValue;
+                if (!CheckTranBranchScript(frombranchid, txout.scriptPubKey)) {
+                    return state.DoS(100, false, REJECT_INVALID, "branch-step-2-recharge-script-invalid");
                 }
             }
         }
-
-        if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.pContractData->amountOut > 0) {
-            nValueIn += tx.pContractData->amountOut;
-            if (!MoneyRange(tx.pContractData->amountOut) || !MoneyRange(nValueIn))
-                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-            nContractAmountIn += tx.pContractData->amountOut;
+        if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount) {
+            return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
         }
+    }
 
-        MCAmount nValueOut = 0;
-        MCAmount nContractAmountChange = 0;
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->amountOut > 0) {
+        if (nContractAmountIn - nContractAmountChange != tx.pContractData->amountOut)
+            return state.DoS(100, false, REJECT_INVALID, "contract amount not match");
+    }
+
+    //check vout
+    if (tx.IsRedeemMortgageStatement()) {
+        MCAmount nMortgageCoinOut = 0;
+        int nCountMortgageCoinOut = 0;
         for (const auto& tx_out : tx.vout) {
-            nValueOut += tx_out.nValue;
-            if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
-                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-
-            if (tx_out.scriptPubKey.IsContract()) {
-                MCContractID contractId;
-                if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
-                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
-                if (tx_out.scriptPubKey.IsContractChange()) {
-                    // 合约输出只能有一个找零
-                    if (nContractAmountChange > 0)
-                        return state.DoS(100, false, REJECT_INVALID, "bad_contract_amount_change");
-                    nContractAmountChange += tx_out.nValue;
-                }
+            uint256 fromtxid;
+            if (GetRedeemSriptData(tx_out.scriptPubKey, &fromtxid)) {
+                nMortgageCoinOut += tx_out.nValue;
+                nCountMortgageCoinOut++;
+                if (nCountMortgageCoinOut > 1)
+                    return state.DoS(100, false, REJECT_INVALID, "more-than-one-redeem-out", false, "Just one mortgage coin in, one redeem coin out");
+                //check redeem out from txid.
+                if (fromtxid != mortgageFromTxid)
+                    return state.DoS(100, false, REJECT_INVALID, "redeem-out-script-error", false, "Redeem out script fromtxid not eq");
             }
         }
-
-        if (nValueIn < nValueOut)
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
-                strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
-
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN)
-        {
-            MCAmount nInValueBranch = 0;
-            for (unsigned int i = 0; i < tx.vin.size(); i++)
-            {
-                const MCOutPoint &prevout = tx.vin[i].prevout;
-                const Coin& coin = inputs.AccessCoin(prevout);// coin type has check in 
-                nInValueBranch += coin.out.nValue;
+        if (nMortgageCoinOut != nMortgageCoin) {
+            return state.DoS(100, false, REJECT_INVALID, "Invalid-redeem-tx", false, "mortgage coin nValue not eq redeem coin out");
+        }
+    }
+    else {
+        for (const auto& tx_out : tx.vout) {
+            branch_script_type obst = QuickGetBranchScriptType(tx_out.scriptPubKey);
+            if ((obst == BST_MORTGAGE_MINE && !tx.IsMortgage())) {
+                return state.DoS(100, false, REJECT_INVALID, "Mortgage-mine-out-tx-invalid");
             }
-            uint256 frombranchid;
-            frombranchid.SetHex(tx.fromBranchId);
-            MCAmount nOrginalOut = 0;
-            MCAmount nBranchRecharge = 0;
-            for (const auto& txout : tx.vout) {
-                if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
-                    nOrginalOut += txout.nValue;
-                }
-                else{
-                    nBranchRecharge += txout.nValue;
-                    if (!CheckTranBranchScript(frombranchid, txout.scriptPubKey)) {
-                        return state.DoS(100, false, REJECT_INVALID, "branch-step-2-recharge-script-invalid");
-                    }
-                }
-            }
-            if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount){
-                return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
+            if ((obst == BST_MORTGAGE_COIN && !tx.IsBranchChainTransStep2() && !tx.IsStake())) {
+                return state.DoS(100, false, REJECT_INVALID, "Mortgage-coin-out-tx-invalid");
             }
         }
+    }
 
-        if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->amountOut > 0) {
-            if (nContractAmountIn - nContractAmountChange != tx.pContractData->amountOut)
-                return state.DoS(100, false, REJECT_INVALID, "contract amount not match");
-        }
+    // Tally transaction fees
+    MCAmount nTxFee = nValueIn - tx.GetValueOut();
+    if (nTxFee < 0)
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
+    nFees += nTxFee;
+    if (!MoneyRange(nFees))
+        return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
 
-        //check vout
-        if (tx.IsRedeemMortgageStatement()){
-            MCAmount nMortgageCoinOut = 0;
-            int nCountMortgageCoinOut = 0;
-            for (const auto& tx_out : tx.vout) {
-                uint256 fromtxid;
-                if (GetRedeemSriptData(tx_out.scriptPubKey, &fromtxid)) {
-                    nMortgageCoinOut += tx_out.nValue;
-                    nCountMortgageCoinOut++;
-                    if (nCountMortgageCoinOut > 1)
-                        return state.DoS(100, false, REJECT_INVALID, "more-than-one-redeem-out", false, "Just one mortgage coin in, one redeem coin out");
-                    //check redeem out from txid.
-                    if (fromtxid != mortgageFromTxid)
-                        return state.DoS(100, false, REJECT_INVALID, "redeem-out-script-error", false, "Redeem out script fromtxid not eq");
-                }
-            }
-            if (nMortgageCoinOut != nMortgageCoin) {
-                return state.DoS(100, false, REJECT_INVALID, "Invalid-redeem-tx", false, "mortgage coin nValue not eq redeem coin out");
-            }
-        }
-        else{
-            for (const auto& tx_out : tx.vout) {
-                branch_script_type obst = QuickGetBranchScriptType(tx_out.scriptPubKey);
-                if ((obst == BST_MORTGAGE_MINE && !tx.IsMortgage())){
-                    return state.DoS(100, false, REJECT_INVALID, "Mortgage-mine-out-tx-invalid");
-                }
-                if ((obst == BST_MORTGAGE_COIN && !tx.IsBranchChainTransStep2() && !tx.IsStake())){
-                    return state.DoS(100, false, REJECT_INVALID, "Mortgage-coin-out-tx-invalid");
-                }
-            }
-        }
-
-        // Tally transaction fees
-        MCAmount nTxFee = nValueIn - tx.GetValueOut();
-        if (nTxFee < 0)
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-negative");
-        nFees += nTxFee;
-        if (!MoneyRange(nFees))
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-fee-outofrange");
     return true;
 }

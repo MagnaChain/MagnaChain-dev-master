@@ -62,8 +62,15 @@ typedef base_uint<512> uint512;
 
 //////////////////////////////////////////////////////////////////////////////
 //
-// BitcoinMiner
+// MagnachainMiner
 //
+
+// Define reserve size use in addPackageTxs, to avoid bad-blk-length failure.
+// Because some tx will add more data to transaction after add to block(after addPackageTxs),
+// that will increase block final size.
+uint64_t ReservePubContractBlockDataSize = 100;
+uint64_t ReserveCallContractBlockDataSize = 1000;
+uint64_t ReserveBranchTxBlockDataSize = 100;
 
 //
 // Unconfirmed transactions in the memory pool often depend on other
@@ -136,91 +143,6 @@ void BlockAssembler::resetBlock()
     nFees = 0;
 }
 
-/*
-std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, bool fMineWitnessTx)
-{
-    int64_t nTimeStart = GetTimeMicros();
-
-    resetBlock();
-
-    pblocktemplate.reset(new MCBlockTemplate());
-
-    if(!pblocktemplate.get())
-        return nullptr;
-    pblock = &pblocktemplate->block; // pointer for convenience
-
-    // Add dummy coinbase tx as first transaction
-    pblock->vtx.emplace_back();
-    pblocktemplate->vTxFees.push_back(-1); // updated at end
-    pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-
-    LOCK2(cs_main, mempool.cs);
-    MCBlockIndex* pindexPrev = chainActive.Tip();
-    nHeight = pindexPrev->nHeight + 1;
-
-    pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
-    // -regtest only: allow overriding block.nVersion with
-    // -blockversion=N to test forking scenarios
-    if (chainparams.MineBlocksOnDemand())
-        pblock->nVersion = gArgs.GetArg("-blockversion", pblock->nVersion);
-
-    pblock->nTime = GetAdjustedTime();
-    const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
-
-    nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
-                       ? nMedianTimePast
-                       : pblock->GetBlockTime();
-
-    // Decide whether to include witness transactions
-    // This is only needed in case the witness softfork activation is reverted
-    // (which would require a very deep reorganization) or when
-    // -promiscuousmempoolflags is used.
-    // TODO: replace this with a call to main to assess validity of a mempool
-    // transaction (which in most cases can be a no-op).
-    fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
-
-    int nPackagesSelected = 0;
-    int nDescendantsUpdated = 0;
-    addPackageTxs(nPackagesSelected, nDescendantsUpdated);
-
-    int64_t nTime1 = GetTimeMicros();
-
-    nLastBlockTx = nBlockTx;
-    nLastBlockWeight = nBlockWeight;
-
-    // Create coinbase transaction.
-    MCMutableTransaction coinbaseTx;
-    coinbaseTx.vin.resize(1);
-    coinbaseTx.vin[0].prevout.SetNull();
-    coinbaseTx.vout.resize(1);
-    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-    coinbaseTx.vin[0].scriptSig = MCScript() << nHeight << OP_0;
-    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
-    pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-    pblocktemplate->vTxFees[0] = -nFees;
-
-    LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
-
-    // Fill in header
-    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
-    pblock->nNonce         = 0;
-    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
-
-    MCValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
-    int64_t nTime2 = GetTimeMicros();
-
-    LogPrint(BCLog::BENCH, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
-
-    return std::move(pblocktemplate);
-}
-*/
-
 void BlockAssembler::onlyUnconfirmed(MCTxMemPool::setEntries& testSet)
 {
     for (MCTxMemPool::setEntries::iterator iit = testSet.begin(); iit != testSet.end();) {
@@ -233,8 +155,26 @@ void BlockAssembler::onlyUnconfirmed(MCTxMemPool::setEntries& testSet)
     }
 }
 
-bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost)
+uint64_t BlockAssembler::GetTxReserveBlockSize(const MCTransaction& tx)
 {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
+        return ReservePubContractBlockDataSize;
+    }
+    else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+        return ReserveCallContractBlockDataSize;
+    }
+    else if (tx.IsBranchChainTransStep2()) {
+        if (chainparams.IsMainChain()) {
+            return ReserveBranchTxBlockDataSize;
+        }
+    }
+    return 0;
+}
+
+bool BlockAssembler::TestPackage(MCTxMemPool::txiter iter, uint64_t packageSize, int64_t packageSigOpsCost)
+{
+    packageSize += GetTxReserveBlockSize(iter->GetTx()) * std::max<uint64_t>( 1, iter->GetCountWithAncestors());
+
     // TODO: switch to weight-based accounting for packages instead of vsize-based accounting.
     if (nBlockWeight + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxWeight)
         return false;
@@ -271,7 +211,7 @@ void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxo
 
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
-    nBlockWeight += iter->GetTxWeight();
+    nBlockWeight += iter->GetTxWeight() + GetTxReserveBlockSize(iter->GetTx()); // append reserve block size
     ++nBlockTx;
     nBlockSigOpsCost += iter->GetSigOpCost();
     nFees += iter->GetFee();
@@ -291,7 +231,7 @@ int BlockAssembler::UpdatePackagesForAdded(const MCTxMemPool::setEntries& alread
     int nDescendantsUpdated = 0;
     for (const MCTxMemPool::txiter it : alreadyAdded) {
         MCTxMemPool::setEntries descendants;
-        mempool.CalculateDescendants(it, descendants);
+        mempool.CalculateDescendants(it, descendants, true);
         // Insert all descendants (not yet in block) into the modified set
         for (MCTxMemPool::txiter desc : descendants) {
             if (alreadyAdded.count(desc))
@@ -731,7 +671,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 			return;
 		}
 
-		if (!TestPackage(packageSize, packageSigOpsCost)) {
+		if (!TestPackage(iter, packageSize, packageSigOpsCost)) {
 			if (fUsingModified) {
 				// Since we always look at the best entry in mapModifiedTx,
 				// we must erase failed entries so that we can consider the
@@ -752,7 +692,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         MCTxMemPool::setEntries ancestors;
 		uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
 		std::string dummy;
-		mempool.CalculateMemPoolAncestors(*iter, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
+		mempool.CalculateMemPoolAncestors(*iter, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
 
 		onlyUnconfirmed(ancestors);
 		ancestors.insert(iter);
@@ -806,6 +746,10 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
 		// Update transactions that depend on each of these
 		nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
+
+        if (pblock->vtx.size() >= gArgs.GetArg("-maxtxnuminblock", std::numeric_limits<int64_t>::max())) {
+            break;
+        }
     }
 
     // 默认使用分片重新排列交易
@@ -1204,6 +1148,12 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 
         pNextIndex = pNextIndex->pprev;
 	}
+
+    if (kDest.type() != typeid(MCKeyID))
+    {
+        LogPrintf("%s: Mine out key type invalid \n", __func__);
+        return 0;
+    }
     MCKeyID kKey = boost::get<MCKeyID>(kDest);
 	sheader << (uint160)kKey;
 	sheader << out.hash;
@@ -1247,7 +1197,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iAmount = GetBlockWork(block, block.prevoutStake, hash);
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash);
 
 	// check
 	bool fNegative;
@@ -1258,13 +1208,22 @@ bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consen
 
 	//// Check range
 	if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256( consensusParams.powLimit))
-		return false;
+		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, bnTarget error");
 
-	if (UintToArith256(hash) > bnTarget)
-		return false;
+    if (UintToArith256(hash) > bnTarget) {
+        // only for -reindex, -reindexchainstate
+        if (mapBlockIndex.size() == 1 && mapBlockIndex.count(block.GetHash()) > 0 && block.GetHash() == Params().GenesisBlock().GetHash()) {
+            return true;
+        }
+        else {
+            return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, UintToArith256(hash) > bnTarget");
+        }
+    }
 
-	if (iAmount != block.nNonce)
-		return false;
+    if (iBlockWork != block.nNonce) {
+        return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, iBlockWork != block.nNonce");;
+    }
+
 	return true;
 }
 
@@ -1830,56 +1789,6 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
     MCAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     MCAmount kMinReward = kReward;
 
-    /*
-	Explorer kTempWallet;
-	MCAmount kUnspent = kTempWallet.GetUnspent(strMineAddr);
-	MCAmount kMinReward = kReward * 0.7;
-
-
-	// get parent
-	std::string strParent;
-	MCAmount kParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strMineAddr, strParent, kParentBalance);
-	MCAmount kParentReward = 0;
-	if (kParentBalance > 0)
-	{
-		double fRate = std::min((double)kParentBalance / (double)kUnspent, 1.0);
-		kParentReward = kReward * 0.2 * fRate;
-	}
-
-	//get g parent
-	std::string strGParent;
-	MCAmount kGParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strParent, strGParent, kGParentBalance);
-	MCAmount kGParentReward = 0;
-	if (kGParentBalance > 0)
-	{
-		kGParentReward = kReward * 0.26 - kParentReward;
-		double fRate = std::min((double)kGParentBalance / (double)kUnspent, 1.0);
-		kGParentReward = kGParentReward * fRate;
-		if (kGParentReward > kReward * 0.2)
-			kGParentReward = kReward * 0.2;
-	}
-
-	//get g g parent
-	std::string strG2Parent;
-	MCAmount kG2ParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strGParent, strG2Parent, kG2ParentBalance);
-	MCAmount kG2ParentReward = 0;
-	if (kG2ParentBalance > 0)
-	{
-		kG2ParentReward = kReward * 0.3 - kParentReward - kGParentReward;
-		double fRate = std::min((double)kG2ParentBalance / (double)kUnspent, 1.0);
-		kG2ParentReward = kG2ParentReward * fRate;
-		if (kG2ParentReward > kReward * 0.2)
-			kG2ParentReward = kReward * 0.2;
-	}
-
-	//dev reward
-	assert(kReward >= kMinReward + kParentReward + kGParentReward + kG2ParentReward );
-	MCAmount kDevReward = kReward - kMinReward - kParentReward - kGParentReward - kG2ParentReward;
-	*/
-
     // Create coinbase transaction.
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
@@ -1887,7 +1796,7 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
 
     // split output when outcoin too large, this use for big boom stage
     // because big boom coin well make block work too big
-    // 在gen big boom的时候，把大额的币分成小份，不至于挖矿时一个大额币把挖矿难度瞬间提高
+    // 在gen big boom的时候，把大额的币分成小份
     if (chainparams.IsMainChain() && nHeight <= chainparams.GetConsensus().BigBoomHeight)
     {
         const MCAmount minAmount = (10000 * COIN);
@@ -1911,58 +1820,7 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
         coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
         coinbaseTx.vout[0].nValue = nFees + kMinReward; //nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     }
-    /*
-	if (kParentReward > 0)
-	{
-		MCTxOut kOut;
-		MagnaChainAddress kRewardAddr(strParent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
 
-	if (kGParentReward > 0)
-	{
-		MCTxOut kOut;
-		MagnaChainAddress kRewardAddr(strGParent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kGParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kG2ParentReward > 0)
-	{
-		MCTxOut kOut;
-		MagnaChainAddress kRewardAddr(strG2Parent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kG2ParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kDevReward > 0)
-	{
-		MCTxOut kOut;
-		uint64_t iMax = 0;
-		MagnaChainAddress* pkAddr = nullptr;
-		// get a definite dev addr
-		for (int i = 0; i < sizeof(kdevAddrs)/ sizeof(kdevAddrs[0]); ++i) {
-			MagnaChainAddress& kAddr = kdevAddrs[i];
-			const MCKeyID& kMinerKeyId = boost::get< const MCKeyID&>(kMinerDest);
-			MCKeyID kTestKeyId;
-			kAddr.GetKeyID(kTestKeyId);
-			uint64_t iTest =  kTestKeyId.GetUint64(0) ^ kMinerKeyId.GetUint64(0);
-			if (iTest > iMax) {
-				iMax = iTest;
-				pkAddr = &kAddr;
-			}
-		}
-
-		MagnaChainAddress kRewardAddr(*pkAddr);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kDevReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-	*/
     return kReward + nFees;
 }
 

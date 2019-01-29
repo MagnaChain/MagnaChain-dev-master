@@ -55,13 +55,13 @@ class FeeFilterTest(MagnaChainTestFramework):
         test_node.wait_for_verack()
 
         # Test that invs are received for all txs at feerate of 20 sat/byte
-        node1.settxfee(Decimal("0.00020000"))
+        node1.settxfee(Decimal("0.020000"))
         txids = [node1.sendtoaddress(node1.getnewaddress(), 1) for x in range(3)]
         assert(allInvsMatch(txids, test_node))
         test_node.clear_invs()
 
         # Set a filter of 15 sat/byte
-        test_node.send_and_ping(msg_feefilter(15000))
+        test_node.send_and_ping(msg_feefilter(150000))
 
         # Test that txs are still being received (paying 20 sat/byte)
         txids = [node1.sendtoaddress(node1.getnewaddress(), 1) for x in range(3)]
@@ -69,7 +69,7 @@ class FeeFilterTest(MagnaChainTestFramework):
         test_node.clear_invs()
 
         # Change tx fee rate to 10 sat/byte and test they are no longer received
-        node1.settxfee(Decimal("0.00010000"))
+        node1.settxfee(Decimal("0.000010000"))
         [node1.sendtoaddress(node1.getnewaddress(), 1) for x in range(3)]
         sync_mempools(self.nodes) # must be sure node 0 has received all txs 
 
@@ -80,7 +80,7 @@ class FeeFilterTest(MagnaChainTestFramework):
         # to 35 entries in an inv, which means that when this next transaction
         # is eligible for relay, the prior transactions from node1 are eligible
         # as well.
-        node0.settxfee(Decimal("0.00020000"))
+        node0.settxfee(Decimal("1"))
         txids = [node0.sendtoaddress(node0.getnewaddress(), 1)]
         assert(allInvsMatch(txids, test_node))
         test_node.clear_invs()

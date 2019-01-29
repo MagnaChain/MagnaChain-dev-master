@@ -418,6 +418,10 @@ UniValue addbranchnode(const JSONRPCRequest& request)
  */ 
 UniValue sendtobranchchain(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -776,6 +780,10 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
 //         
 UniValue mortgageminebranch(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -917,6 +925,10 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
 // 侧链向主链提交区块头
 UniValue submitbranchblockinfo(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1080,6 +1092,10 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
 // 赎回挖矿币, 步骤1
 UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1186,6 +1202,10 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
 //赎回挖矿币,步骤2
 UniValue redeemmortgagecoin(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1546,15 +1566,15 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     ContractContext contractContext;
-    contractContext.txFinalData.data.resize(proveBlock.vtx.size());
+    contractContext.txFinalData.resize(proveBlock.vtx.size());
     if (!ExecuteBlock(&sls, &proveBlock, pProveBlockIndex->pprev, 0, proveTxIndex + 1, &contractContext))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "executive contract fail");
-    pReportData->contractData->proveContractData = contractContext.txFinalData.data[proveTxIndex];
+    pReportData->contractData->proveContractData = contractContext.txFinalData[proveTxIndex].data;
 
     std::vector<bool> proveMatch(proveBlock.vtx.size(), false);
     proveMatch[proveTxIndex] = true;
     std::vector<uint256> proveLeaves;
-    VecTxMerkleLeavesWithData(proveBlock.vtx, contractContext.txFinalData.data, proveLeaves);
+    VecTxMerkleLeavesWithData(proveBlock.vtx, contractContext.txFinalData, proveLeaves);
     pReportData->contractData->proveSpvProof = std::move(MCSpvProof(proveLeaves, proveMatch, proveBlockHash));
 
     MCRPCConfig branchrpccfg;
@@ -1580,6 +1600,10 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
 //主链接收处理举报交易
 UniValue handlebranchreport(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1671,6 +1695,10 @@ UniValue handlebranchreport(const JSONRPCRequest& request)
 // 举报merkle
 UniValue reportbranchchainblockmerkle(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1827,7 +1855,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
         std::vector<uint256> reportedDataLeaves;
-        VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData.data, reportedDataLeaves);
+        VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, reportedDataLeaves);
         mtx.pProveData->contractData->dataSPV = std::move(MCPartialMerkleTree(reportedDataLeaves, reportedMatch));
     }
 
@@ -1918,6 +1946,10 @@ UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
 //主链接收举报的证明
 UniValue handlebranchprove(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -1990,6 +2022,10 @@ UniValue handlebranchprove(const JSONRPCRequest& request)
 // 锁定挖矿币
 UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
@@ -2120,6 +2156,10 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
 // 解锁挖矿币
 UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 {
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+    }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;

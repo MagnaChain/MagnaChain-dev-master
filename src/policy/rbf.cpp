@@ -37,7 +37,7 @@ RBFTransactionState IsRBFOptIn(const MCTransaction &tx, MCTxMemPool &pool)
     uint64_t noLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
     MCTxMemPoolEntry entry = *pool.mapTx.find(tx.GetHash());
-    pool.CalculateMemPoolAncestors(entry, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
+    pool.CalculateMemPoolAncestors(entry, nullptr, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
 
     for (MCTxMemPool::txiter it : setAncestors) {
         if (SignalsOptInRBF(it->GetTx())) {

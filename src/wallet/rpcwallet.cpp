@@ -626,7 +626,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	}
 
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
-	std::string rawCode(vCode.begin(), vCode.end());
+    std::string rawCode(vCode.begin(), vCode.end());
+    std::string trimRawCode = TrimCode(rawCode);
 
 	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
@@ -652,13 +653,13 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	else
         changeAddr = fundAddr;
 
-    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, rawCode);
+    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, trimRawCode);
 	MagnaChainAddress contractAddr(contractId);
 
     SmartLuaState sls;
     UniValue ret(UniValue::VARR);
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
-    if (!PublishContract(&sls, contractAddr, rawCode, ret))
+    if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
     MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -667,7 +668,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.pContractData.reset(new ContractData);
-    wtx.pContractData->codeOrFunc = rawCode;
+    wtx.pContractData->codeOrFunc = trimRawCode;
     wtx.pContractData->sender = senderPubKey;
     wtx.pContractData->address = contractId;
     wtx.pContractData->amountOut = 0;
@@ -786,9 +787,6 @@ UniValue callcontract(const JSONRPCRequest& request)
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
     if (success) {
-        sls.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-        sls.codeLen = 0;
-
         UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
             MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -916,8 +914,6 @@ UniValue precallcontract(const JSONRPCRequest& request)
     long maxCallNum = MAX_CONTRACT_CALL;
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
-    sls.runningTimes = MAX_CONTRACT_CALL - maxCallNum;
-    sls.codeLen = 0;
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("return", callRet));
@@ -3247,7 +3243,7 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() > 3)
 		throw std::runtime_error(
-			"getbalance ( \"account\" minconf include_watchonly )\n"
+			"getbalanceof ( \"account\" minconf include_watchonly )\n"
 			"\nIf account is not specified, returns the server's total available balance.\n"
 			"If account is specified (DEPRECATED), returns the balance in the account.\n"
 			"Note that the account \"\" is not the same as leaving the parameter out.\n"
@@ -3280,34 +3276,34 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 
 	LOCK2(cs_main, pwallet->cs_wallet);
 
-	if (request.params.size() == 0)
-		return  ValueFromAmount(pwallet->GetBalance());
+    if (request.params.size() == 0) {
+        return  ValueFromAmount(pwallet->GetBalance());
+    }
 
 	const std::string& account_param = request.params[0].get_str();
 	const std::string* account = account_param != "*" ? &account_param : nullptr;
 
 	int nMinDepth = 1;
-	if (!request.params[1].isNull())
-		nMinDepth = request.params[1].get_int();
+    if (!request.params[1].isNull()) {
+        nMinDepth = request.params[1].get_int();
+    }
+
 	isminefilter filter = ISMINE_SPENDABLE;
-	if (!request.params[2].isNull())
-		if (request.params[2].get_bool())
-			filter = filter | ISMINE_WATCH_ONLY;
+    if (!request.params[2].isNull()) {
+        if (request.params[2].get_bool()) {
+            filter = filter | ISMINE_WATCH_ONLY;
+        }
+    }
 
-	MagnaChainAddress btcaddr(account_param);
-	if (!btcaddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
-
-	if (btcaddr.Get().type() != typeid(MCKeyID))
-	{
+	MagnaChainAddress addr(account_param);
+	if (!addr.IsKeyID() && !addr.IsContractID()) {
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 	}
 
-	const MCKeyID& kAddr = boost::get<MCKeyID>(btcaddr.Get());
-	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
-	//LogPrintf("Send contract address %s\n", addr.ToString());
+    const uint160& key = GetUint160(addr.Get());
 
-	MCAmount nValue = 0;
+    MCAmount nValue = 0;
+	CoinListPtr plist = pcoinListDb->GetList(key);
 	if (plist != nullptr) {
 		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
 			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
@@ -3321,7 +3317,6 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 		}
 	}
 	return ValueFromAmount(nValue);
-	//return ValueFromAmount(pwallet->GetLegacyBalance(filter, nMinDepth, account));
 }
 
 UniValue fundrawtransaction(const JSONRPCRequest& request)
@@ -3848,14 +3843,14 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 	if (request.fHelp || request.params.size() < 4 || request.params.size() > 5)
 		throw std::runtime_error(
 			"premaketransaction fromaddress toaddress changeaddress amount \n"
-			"\n rebroadcast the branch chain transaction by txid, in case that transction has not be send to the target chain .\n"
+			"\n SDK interface, make a transaction no sign \n"
 			"\nArguments:\n"
 			"1. \"fromaddress\"                  (string, required) The address for input coins\n"
 			"2. \"toaddress\"                    (string, required) Send to address\n"
 			"3. \"changeaddress\"                (string, required) The address for change coins\n"
 			"4. \"amount\"                       (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
 			"5. \"fee\"                          (numeric or string, optional) The amount in " + CURRENCY_UNIT + " to for fee eg 0.0001, default 0 and will calc fee by system\n"
-			"\nReturns the hash of the created branch chain.\n"
+			"\nReturns transaction data \n"
 			"\nResult:\n"
 			"{\n"
 			"  \"txhex\" : xxx,            (string) The transaction hex data\n"

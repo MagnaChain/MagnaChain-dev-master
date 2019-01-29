@@ -121,6 +121,7 @@ public:
     bool GetKeyID(MCKeyID &keyID) const;
     bool IsContractID() const;
     bool IsScript() const;
+    bool IsKeyID() const;
 };
 
 /**

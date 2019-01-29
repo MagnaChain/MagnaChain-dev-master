@@ -73,7 +73,7 @@ Options when installing required Boost library files:
 individual boost development packages, so the following can be used to only
 install necessary parts of boost:
 
-        sudo apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev
+        sudo apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev libboost-iostreams-dev
 
 2. If that doesn't work, you can install all boost development packages with:
 
@@ -103,6 +103,11 @@ Optional (see --with-miniupnpc and --enable-upnp-default):
 ZMQ dependencies (provides ZMQ API 4.x):
 
     sudo apt-get install libzmq3-dev
+    
+Optional (see --with-monitor):
+
+    sudo apt-get install libmysql++-dev
+
 
 Dependencies for the GUI: Ubuntu & Debian
 -----------------------------------------
@@ -263,6 +268,13 @@ In this case there is no dependency on Berkeley DB 4.8.
 
 Mining is also possible in disable-wallet mode, but only using the `getblocktemplate` RPC
 call not `getwork`.
+
+Enable-monitor mode
+--------------------
+Make all data of blocks into MySQL database for data analysis:
+
+    ./configure --with-monitor
+
 
 Additional Configure Flags
 --------------------------

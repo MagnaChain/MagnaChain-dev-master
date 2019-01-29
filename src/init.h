@@ -8,17 +8,69 @@
 #define MAGNACHAIN_INIT_H
 
 #include <string>
+#include "net/net.h"
+#include "net/protocol.h"
 
 class MCScheduler;
 class MCWallet;
+class PeerLogicValidation;
 
 namespace boost
 {
 class thread_group;
 } // namespace boost
 
+static const bool DEFAULT_PROXYRANDOMIZE = true;
+static const bool DEFAULT_REST_ENABLE = false;
+static const bool DEFAULT_DISABLE_SAFEMODE = false;
+static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
+
+namespace { // Variables internal to initialization process only
+    ServiceFlags nRelevantServices = NODE_NETWORK;
+    int nMaxConnections;
+    int nUserMaxConnections;
+    int nFD;
+    ServiceFlags nLocalServices = NODE_NETWORK;
+} // namespace
+
+extern std::unique_ptr<MCConnman> g_connman;
+extern std::unique_ptr<PeerLogicValidation> peerLogic;
+
+#if ENABLE_ZMQ
+#include "zmq/zmqnotificationinterface.h"
+extern CZMQNotificationInterface* pzmqNotificationInterface;
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
+//
+// Shutdown
+//
+
+//
+// Thread management and startup/shutdown:
+//
+// The network-processing threads are all part of a thread group
+// created by AppInit() or the Qt main() function.
+//
+// A clean exit happens when StartShutdown() or the SIGTERM
+// signal handler sets fRequestShutdown, which triggers
+// the DetectShutdownThread(), which interrupts the main thread group.
+// DetectShutdownThread() then exits, which causes AppInit() to
+// continue (it .joins the shutdown thread).
+// Shutdown() is then
+// called to clean up database connections, and stop other
+// threads that should only be stopped after the main network-processing
+// threads have exited.
+//
+// Shutdown for Qt is very similar, only it uses a QTimer to detect
+// fRequestShutdown getting set, and then does the normal Qt
+// shutdown thing.
+//
+
 void StartShutdown();
+void StopShutdown();
 bool ShutdownRequested();
+
 /** Interrupt threads */
 void Interrupt(boost::thread_group& threadGroup);
 void Shutdown();
@@ -26,6 +78,7 @@ void Shutdown();
 void InitLogging();
 //!Parameter interaction: change current parameters depending on various rules
 void InitParameterInteraction();
+std::string ResolveErrMsg(const char * const optname, const std::string& strBind);
 
 /** Initialize magnachain core: Basic context setup.
  *  @note This can be done before daemonization. Do not call Shutdown() if this function fails.

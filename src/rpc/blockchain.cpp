@@ -16,6 +16,7 @@
 #include "io/core_io.h"
 #include "policy/feerate.h"
 #include "policy/policy.h"
+#include <policy/rbf.h>
 #include "primitives/transaction.h"
 #include "rpc/server.h"
 #include "io/streams.h"
@@ -165,6 +166,23 @@ UniValue getblockcount(const JSONRPCRequest& request)
 
     LOCK(cs_main);
     return chainActive.Height();
+}
+
+UniValue getchaintipwork(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "getchaintipwork\n"
+            "\nReturns the tip block work.\n"
+            "\nResult:\n"
+            "n    (numeric) The current block count\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getchaintipwork", "")
+            + HelpExampleRpc("getchaintipwork", "")
+        );
+
+    LOCK(cs_main);
+    return chainActive.Tip()->nChainWork.GetHex();
 }
 
 UniValue getbestblockhash(const JSONRPCRequest& request)
@@ -366,6 +384,7 @@ void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
     info.push_back(Pair("ancestorcount", e.GetCountWithAncestors()));
     info.push_back(Pair("ancestorsize", e.GetSizeWithAncestors()));
     info.push_back(Pair("ancestorfees", e.GetModFeesWithAncestors()));
+    info.pushKV("wtxid", mempool.vTxHashes[e.vTxHashesIdx].first.ToString());
     const MCTransaction& tx = e.GetTx();
     std::set<std::string> setDepends;
     for (const MCTxIn& txin : tx.vin)
@@ -381,6 +400,27 @@ void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
     }
 
     info.push_back(Pair("depends", depends));
+
+    UniValue spent(UniValue::VARR);
+    const MCTxMemPool::txiter &it = mempool.mapTx.find(tx.GetHash());
+    const MCTxMemPool::setEntries &setChildren = mempool.GetMemPoolChildren(it);
+    for (MCTxMemPool::txiter childiter : setChildren) {
+        spent.push_back(childiter->GetTx().GetHash().ToString());
+    }
+
+    info.pushKV("spentby", spent);
+
+    // Add opt-in RBF status
+    bool rbfStatus = false;
+    RBFTransactionState rbfState = IsRBFOptIn(tx, mempool);
+    if (rbfState == RBFTransactionState::RBF_TRANSACTIONSTATE_UNKNOWN) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Transaction is not in mempool");
+    }
+    else if (rbfState == RBFTransactionState::RBF_TRANSACTIONSTATE_REPLACEABLE_BIP125) {
+        rbfStatus = true;
+    }
+
+    info.pushKV("bip125-replaceable", rbfStatus);
 }
 
 UniValue mempoolToJSON(bool fVerbose)
@@ -485,7 +525,7 @@ UniValue getmempoolancestors(const JSONRPCRequest& request)
     MCTxMemPool::setEntries setAncestors;
     uint64_t noLimit = std::numeric_limits<uint64_t>::max();
     std::string dummy;
-    mempool.CalculateMemPoolAncestors(*it, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
+    mempool.CalculateMemPoolAncestors(*it, nullptr, setAncestors, noLimit, noLimit, noLimit, noLimit, dummy, false);
 
     if (!fVerbose) {
         UniValue o(UniValue::VARR);
@@ -547,7 +587,7 @@ UniValue getmempooldescendants(const JSONRPCRequest& request)
     }
 
     MCTxMemPool::setEntries setDescendants;
-    mempool.CalculateDescendants(it, setDescendants);
+    mempool.CalculateDescendants(it, setDescendants, true);
     // MCTxMemPool::CalculateDescendants will include the given tx
     setDescendants.erase(it);
 
@@ -1578,6 +1618,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getchaintxstats",        &getchaintxstats,        true,  {"nblocks", "blockhash"} },
     { "blockchain",         "getbestblockhash",       &getbestblockhash,       true,  {} },
     { "blockchain",         "getblockcount",          &getblockcount,          true,  {} },
+    { "blockchain",         "getchaintipwork",        &getchaintipwork,        true,{} },
     { "blockchain",         "getblock",               &getblock,               true,  {"blockhash","verbosity|verbose"} },
 	{ "blockchain",         "getlastblocktx",         &getlastblock_tx,        true,  {} },
 	{ "blockchain",         "getblockhash",           &getblockhash,           true,  {"height"} },

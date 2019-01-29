@@ -18,6 +18,7 @@ MAGNACHAIN_DAEMON_NAME=magnachaind
 MAGNACHAIN_GUI_NAME=magnachain-qt
 MAGNACHAIN_CLI_NAME=magnachain-cli
 MAGNACHAIN_TX_NAME=magnachain-tx
+MAGNACHAIN_MONITOR_NAME=magnachain-monitor
 
 dnl Unless the user specified ARFLAGS, force it to be cr
 AC_ARG_VAR(ARFLAGS, [Flags for the archiver, defaults to <cr> if not set])
@@ -306,6 +307,12 @@ AC_ARG_WITH([daemon],
   [build magnachain daemon (default=yes)])],
   [build_magnachaind=$withval],
   [build_magnachaind=yes])
+
+AC_ARG_WITH([monitor],
+  [AS_HELP_STRING([--with-monitor],
+  [build magnachain monitor (default=no)])],
+  [build_magnachain_monitor=$withval],
+  [build_magnachain_monitor=no])
 
 use_pkgconfig=yes
 case $host in
@@ -710,6 +717,11 @@ if test x$enable_wallet != xno; then
     MAGNACHAIN_FIND_BDB48
 fi
 
+if test x$build_magnachain_monitor = xyes; then
+	dnl Check for libmysqlclient only if monitor enabled
+	MYSQL_CLIENT
+fi
+
 dnl Check for libminiupnpc (optional)
 if test x$use_upnp != xno; then
   AC_CHECK_HEADERS(
@@ -724,7 +736,7 @@ MAGNACHAIN_QT_INIT
 dnl sets $magnachain_enable_qt, $magnachain_enable_qt_test, $magnachain_enable_qt_dbus
 MAGNACHAIN_QT_CONFIGURE([$use_pkgconfig], [qt5])
 
-if test x$build_magnachain_utils$build_magnachaind$magnachain_enable_qt$use_tests$use_bench = xnonononono; then
+if test x$build_magnachain_utils$build_magnachaind$build_magnachain_monitor$magnachain_enable_qt$use_tests$use_bench = xnononononono; then
     use_boost=no
 else
     use_boost=yes
@@ -742,6 +754,7 @@ AX_BOOST_FILESYSTEM
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_THREAD
 AX_BOOST_CHRONO
+AX_BOOST_IOSTREAMS
 
 dnl Boost 1.56 through 1.62 allow using std::atomic instead of its own atomic
 dnl counter implementations. In 1.63 and later the std::atomic approach is default.
@@ -808,7 +821,7 @@ fi
 
 if test x$use_boost = xyes; then
 
-BOOST_LIBS="$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_FILESYSTEM_LIB $BOOST_PROGRAM_OPTIONS_LIB $BOOST_THREAD_LIB $BOOST_CHRONO_LIB"
+BOOST_LIBS="$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $BOOST_FILESYSTEM_LIB $BOOST_PROGRAM_OPTIONS_LIB $BOOST_THREAD_LIB $BOOST_CHRONO_LIB $BOOST_IOSTREAMS_LIB"
 
 
 dnl If boost (prior to 1.57) was built without c++11, it emulated scoped enums
@@ -1034,6 +1047,10 @@ AC_MSG_CHECKING([whether to build magnachaind])
 AM_CONDITIONAL([BUILD_MAGNACHAIND], [test x$build_magnachaind = xyes])
 AC_MSG_RESULT($build_magnachaind)
 
+AC_MSG_CHECKING([whether to build magnachain-monitor])
+AM_CONDITIONAL([BUILD_MAGNACHAIN_MONITOR], [test x$build_magnachain_monitor = xyes])
+AC_MSG_RESULT($build_magnachain_monitor)
+
 AC_MSG_CHECKING([whether to build utils (magnachain-cli magnachain-tx)])
 AM_CONDITIONAL([BUILD_MAGNACHAIN_UTILS], [test x$build_magnachain_utils = xyes])
 AC_MSG_RESULT($build_magnachain_utils)
@@ -1162,8 +1179,8 @@ else
   AC_MSG_RESULT([no])
 fi
 
-if test x$build_magnachain_utils$build_magnachain_libs$build_magnachaind$magnachain_enable_qt$use_bench$use_tests = xnononononono; then
-  AC_MSG_ERROR([No targets! Please specify at least one of: --with-utils --with-libs --with-daemon --with-gui --enable-bench or --enable-tests])
+if test x$build_magnachain_utils$build_magnachain_libs$build_magnachaind$build_magnachain_monitor$magnachain_enable_qt$use_bench$use_tests = xnonononononono; then
+  AC_MSG_ERROR([No targets! Please specify at least one of: --with-utils --with-libs --with-daemon --with-monitor --with-gui --enable-bench or --enable-tests])
 fi
 
 AM_CONDITIONAL([TARGET_DARWIN], [test x$TARGET_OS = xdarwin])
@@ -1204,6 +1221,7 @@ AC_SUBST(MAGNACHAIN_DAEMON_NAME)
 AC_SUBST(MAGNACHAIN_GUI_NAME)
 AC_SUBST(MAGNACHAIN_CLI_NAME)
 AC_SUBST(MAGNACHAIN_TX_NAME)
+AC_SUBST(MAGNACHAIN_MONITOR_NAME)
 
 AC_SUBST(RELDFLAGS)
 AC_SUBST(ERROR_CXXFLAGS)

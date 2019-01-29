@@ -73,16 +73,11 @@
 #include "smartcontract/contractdb.h"
 
 bool fFeeEstimatesInitialized = false;
-static const bool DEFAULT_PROXYRANDOMIZE = true;
-static const bool DEFAULT_REST_ENABLE = false;
-static const bool DEFAULT_DISABLE_SAFEMODE = false;
-static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 
-std::unique_ptr<MCConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 
 #if ENABLE_ZMQ
-static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
+CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 #endif
 
 #ifdef _WIN32
@@ -97,31 +92,7 @@ static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 
 static const char* FEE_ESTIMATES_FILENAME = "fee_estimates.dat";
 
-//////////////////////////////////////////////////////////////////////////////
-//
-// Shutdown
-//
-
-//
-// Thread management and startup/shutdown:
-//
-// The network-processing threads are all part of a thread group
-// created by AppInit() or the Qt main() function.
-//
-// A clean exit happens when StartShutdown() or the SIGTERM
-// signal handler sets fRequestShutdown, which triggers
-// the DetectShutdownThread(), which interrupts the main thread group.
-// DetectShutdownThread() then exits, which causes AppInit() to
-// continue (it .joins the shutdown thread).
-// Shutdown() is then
-// called to clean up database connections, and stop other
-// threads that should only be stopped after the main network-processing
-// threads have exited.
-//
-// Shutdown for Qt is very similar, only it uses a QTimer to detect
-// fRequestShutdown getting set, and then does the normal Qt
-// shutdown thing.
-//
+std::unique_ptr<MCConnman> g_connman;
 
 std::atomic<bool> fRequestShutdown(false);
 std::atomic<bool> fDumpMempoolLater(false);
@@ -129,6 +100,10 @@ std::atomic<bool> fDumpMempoolLater(false);
 void StartShutdown()
 {
     fRequestShutdown = true;
+}
+void StopShutdown()
+{
+    fRequestShutdown = false;
 }
 bool ShutdownRequested()
 {
@@ -310,7 +285,7 @@ void Shutdown()
  */
 static void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 static void HandleSIGHUP(int)
@@ -726,7 +701,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     } // End scope of CImportingNow
     if (gArgs.GetArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
         LoadMempool();
-        fDumpMempoolLater = !fRequestShutdown;
+        fDumpMempoolLater = !ShutdownRequested();
     }
 }
 
@@ -773,6 +748,12 @@ bool AppInitServers(boost::thread_group& threadGroup)
 // Parameter interaction based on rules
 void InitParameterInteraction()
 {
+    // modify COINBASE_MATURITY for regtest
+    if (Params().NetworkIDString() == MCBaseChainParams::REGTEST)
+    {
+        COINBASE_MATURITY = gArgs.GetArg("-regtestmaturity", 1);
+    }
+
     // when specifying an explicit binding address, you want to listen on it
     // even when -connect or -proxy is specified
     if (gArgs.IsArgSet("-bind")) {
@@ -843,7 +824,7 @@ void InitParameterInteraction()
     }
 }
 
-static std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
+std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
 {
     return strprintf(_("Cannot resolve -%s address: '%s'"), optname, strBind);
 }
@@ -856,16 +837,6 @@ void InitLogging()
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
     LogPrintf("MagnaChain version %s\n", FormatFullVersion());
 }
-
-namespace { // Variables internal to initialization process only
-
-ServiceFlags nRelevantServices = NODE_NETWORK;
-int nMaxConnections;
-int nUserMaxConnections;
-int nFD;
-ServiceFlags nLocalServices = NODE_NETWORK;
-
-} // namespace
 
 [[noreturn]] static void new_handler_terminate()
 {
@@ -1322,7 +1293,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
     LogPrintf("Init branch chain %s\n", chainparams.GetBranchId());
 
-    peerLogic.reset(new PeerLogicValidation(&connman, scheduler));
+    peerLogic.reset(new PeerLogicValidation(&connman, scheduler, &ProcessMessage, &GetLocator));
     RegisterValidationInterface(peerLogic.get());
 
     // sanitize comments per BIP-0014, format user agent and check total size
@@ -1448,7 +1419,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     LogPrintf("* Using %.1fMiB for in-memory UTXO set (plus up to %.1fMiB of unused mempool space)\n", nCoinCacheUsage * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
 
     bool fLoaded = false;
-    while (!fLoaded && !fRequestShutdown) {
+    while (!fLoaded && !ShutdownRequested()) {
         bool fReset = fReindex;
         std::string strLoadError;
 
@@ -1477,7 +1448,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
-                if (fRequestShutdown) break;
+                if (ShutdownRequested()) break;
 
                 // LoadBlockIndex will load fTxIndex from the db, or set it if
                 // we're reindexing. It will also load fHavePruned if we've
@@ -1521,7 +1492,9 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 pcoinsdbview = new MCCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
                 pcoinscatcher = new MCCoinsViewErrorCatcher(pcoinsdbview);
-
+                mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
+                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
+                
                 // If necessary, upgrade from older database format.
                 // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!pcoinsdbview->Upgrade()) {
@@ -1537,9 +1510,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 
                 // The on-disk coinsdb is now in a good state, create the cache
                 pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
-				pcoinListDb = new CoinListDB( pcoinsdbview->GetDb() );
-				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, false);
-                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, false);
+                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
                 pCoinAmountDB = new CoinAmountDB();
                 pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
                 
@@ -1617,7 +1588,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
             fLoaded = true;
         } while (false);
 
-        if (!fLoaded && !fRequestShutdown) {
+        if (!fLoaded && !ShutdownRequested()) {
             // first suggest a reindex
             if (!fReset) {
                 bool fRet = uiInterface.ThreadSafeQuestion(
@@ -1626,7 +1597,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     "", MCClientUIInterface::MSG_ERROR | MCClientUIInterface::BTN_ABORT);
                 if (fRet) {
                     fReindex = true;
-                    fRequestShutdown = false;
+                    StopShutdown();
                 } else {
                     LogPrintf("Aborted block database rebuild. Exiting.\n");
                     return false;
@@ -1640,7 +1611,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
-    if (fRequestShutdown)
+    if (ShutdownRequested())
     {
         LogPrintf("Shutdown requested. Exiting.\n");
         return false;
@@ -1795,5 +1766,5 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     }
 #endif
 
-    return !fRequestShutdown;
+    return !ShutdownRequested();
 }

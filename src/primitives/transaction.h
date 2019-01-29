@@ -212,7 +212,7 @@ public:
     MCScript vchBlockSig;
     //additional data
     uint256 branchID;
-    uint32_t blockHeight;
+    int32_t blockHeight;
     std::vector<unsigned char> vchStakeTxData;// block.vtx[1] stake transaction serialize data
 
     ADD_SERIALIZE_METHODS;
@@ -301,7 +301,7 @@ class ContractPrevDataItem
 {
 public:
     uint256 blockHash;
-    int txIndex;
+    int32_t txIndex;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -508,7 +508,7 @@ public:
 	//branch trans end (step 2)
 	const std::string fromBranchId;
 	const std::vector<unsigned char> fromTx;
-	const uint64_t inAmount;
+	const MCAmount inAmount;
 	
     const std::shared_ptr<const ContractData> pContractData;
 	const std::shared_ptr<const MCBranchBlockInfo> pBranchBlockData;
