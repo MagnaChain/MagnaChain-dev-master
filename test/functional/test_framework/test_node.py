@@ -52,6 +52,9 @@ class TestNode():
                 cur_dir = os.path.abspath(os.path.dirname(__file__))
                 if sys.platform == 'win32':
                     self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'build-msvc\\Debug','magnachaind.exe')
+                    if not os.path.exists(self.binary):
+                        self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
+                                                   'magnachaind.exe')
                 else:
                     self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind')
         else:
