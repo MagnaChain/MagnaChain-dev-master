@@ -16,6 +16,7 @@
 #include "io/core_io.h"
 #include "policy/feerate.h"
 #include "policy/policy.h"
+#include <policy/rbf.h>
 #include "primitives/transaction.h"
 #include "rpc/server.h"
 #include "io/streams.h"
@@ -383,6 +384,7 @@ void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
     info.push_back(Pair("ancestorcount", e.GetCountWithAncestors()));
     info.push_back(Pair("ancestorsize", e.GetSizeWithAncestors()));
     info.push_back(Pair("ancestorfees", e.GetModFeesWithAncestors()));
+    info.pushKV("wtxid", mempool.vTxHashes[e.vTxHashesIdx].first.ToString());
     const MCTransaction& tx = e.GetTx();
     std::set<std::string> setDepends;
     for (const MCTxIn& txin : tx.vin)
@@ -398,6 +400,27 @@ void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
     }
 
     info.push_back(Pair("depends", depends));
+
+    UniValue spent(UniValue::VARR);
+    const MCTxMemPool::txiter &it = mempool.mapTx.find(tx.GetHash());
+    const MCTxMemPool::setEntries &setChildren = mempool.GetMemPoolChildren(it);
+    for (MCTxMemPool::txiter childiter : setChildren) {
+        spent.push_back(childiter->GetTx().GetHash().ToString());
+    }
+
+    info.pushKV("spentby", spent);
+
+    // Add opt-in RBF status
+    bool rbfStatus = false;
+    RBFTransactionState rbfState = IsRBFOptIn(tx, mempool);
+    if (rbfState == RBFTransactionState::RBF_TRANSACTIONSTATE_UNKNOWN) {
+        throw JSONRPCError(RPC_MISC_ERROR, "Transaction is not in mempool");
+    }
+    else if (rbfState == RBFTransactionState::RBF_TRANSACTIONSTATE_REPLACEABLE_BIP125) {
+        rbfStatus = true;
+    }
+
+    info.pushKV("bip125-replaceable", rbfStatus);
 }
 
 UniValue mempoolToJSON(bool fVerbose)
