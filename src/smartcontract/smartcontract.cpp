@@ -729,10 +729,6 @@ int static SendCoins(lua_State* L)
     if (sls == nullptr)
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
-    if (sls->contractAddrs.size() > 1) {
-        throw std::runtime_error("SendCoins can only be called from the outermost contract");
-    }
-
     if (!lua_isstring(L, 1))
         throw std::runtime_error(strprintf("%s => param1 is not a string", __FUNCTION__));
 
@@ -748,8 +744,6 @@ int static SendCoins(lua_State* L)
         throw std::runtime_error(strprintf("%s => Invalid destination address", __FUNCTION__));
 
     MCAmount amount = lua_tonumber(L, 2);
-    if (amount < DUST_RELAY_TX_FEE)
-        throw std::runtime_error(strprintf("%s => Dust amount", __FUNCTION__));
 
     MCContractID contractID;
     sls->contractAddrs[0].GetContractID(contractID);

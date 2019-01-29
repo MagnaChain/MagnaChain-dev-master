@@ -114,8 +114,9 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
         # # tailLoopTest
-        call_contract("tailLoopTest", 594)  # v452,594 is the limit
-        assert_contains(call_contract("tailLoopTest", 595), "run out of limit instruction")
+        call_contract("tailLoopTest", 896)  # v452,594 is the limit
+        assert_contains(call_contract("tailLoopTest", 897), "run out of limit instruction")
+
 
         # # tailLoopTest2
         call_contract("tailLoopTest2", 11)
@@ -150,9 +151,9 @@ class ContractCallTest(MagnaChainTestFramework):
         # 利用节点2挖矿，确保节点1的交易可以打包的块
         node2.generate(nblocks=2)  # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
         self.sync_all()
-        assert_equal(node.getbalanceof(new_address), 3)
+        assert_equal(node.getbalanceof(new_address), 2)
         assert_equal(node.getbalanceof(tmp_id), 0)
-        assert_equal(node2.getbalanceof(new_address), 3)
+        assert_equal(node2.getbalanceof(new_address), 2)
         assert_equal(node2.getbalanceof(tmp_id), 0)
         assert_contains(tmp_caller("sendCoinTest", new_address, 1), "not enough amount ")
 
@@ -186,8 +187,8 @@ class ContractCallTest(MagnaChainTestFramework):
             node.generate(nblocks=1)
 
         # maxContractCallTest
-        call_contract("maxContractCallTest", 11)  # 11 is the limit
-        assert_contains(call_contract("maxContractCallTest", 12), "run out of limit instruction")
+        call_contract("maxContractCallTest", 15)  # 15 is the limit
+        assert_contains(call_contract("maxContractCallTest", 16), "run out of limit instruction")
 
         # callOtherContractTest
         # cycle call
@@ -236,9 +237,9 @@ class ContractCallTest(MagnaChainTestFramework):
             senders = [node.getnewaddress() for i in range(11)]
             list(map(lambda x: caller_tmp(PAYABLE, amount=1), senders))  # 充值11次，每次1个MGC
             node.generate(nblocks=2)
-            list(map(
-                lambda to: assert_equal(isinstance(caller_tmp("dustChangeTest", to, amount=Decimal("0")), dict), True),
-                senders))  # 向每个地址发送(cell / 11) * 10(最小单位)，cell = 100000000。这里应该有11个微交易的找零
+            for to in senders:
+                # 向每个地址发送(cell / 11) * 10(最小单位)，cell = 100000000。这里应该有11个微交易的找零
+                assert_equal(isinstance(caller_tmp("dustChangeTest", to, amount=Decimal("0")), dict), True)
             node.generate(nblocks=2)
             tmp_sender = node.getnewaddress()
             assert_equal(isinstance(caller_tmp("sendCoinTest", tmp_sender, 1, amount=Decimal("0")), dict),

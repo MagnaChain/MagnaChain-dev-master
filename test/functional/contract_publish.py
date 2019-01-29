@@ -12,6 +12,7 @@ Major test publish smart contract
 from collections import defaultdict
 from decimal import Decimal
 
+import time
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import (
     assert_equal,
@@ -21,6 +22,9 @@ from test_framework.util import (
     bytes_to_hex_str,
     hex_str_to_bytes,
     sync_blocks,
+    count_bytes,
+    assert_raises_rpc_error,
+    connect_nodes_bi,
 )
 
 class ContractPublishTest(MagnaChainTestFramework):
@@ -70,18 +74,7 @@ class ContractPublishTest(MagnaChainTestFramework):
         try:
             result = node.publishcontract(contract)
         except Exception as e:
-            # here will be crash with `double free or corruption (out)`
-            assert 'Transaction too large' in repr(e)
-            pass
-
-        # 测试代码压缩
-        # 当前会crash，先skip trim_code
-        contract = generate_contract(self.options.tmpdir,err_type = "trim_code") # should be trim_code
-        try:
-            result = node.publishcontract(contract)
-        except Exception as e:
-            assert 'Transaction too large' not in repr(e)
-            pass
+            assert 'code is too large' in repr(e)
 
         # 测试sdk发布合约的接口
         # prepublishcodeTest
@@ -166,6 +159,32 @@ class ContractPublishTest(MagnaChainTestFramework):
                 assert 'Invalid MagnaChain public key address' in repr(e) or "Invalid MagnaChain change address" in repr(e)
                 continue
         node.generate(1)
+
+        # test fee
+        # encrypt wallet test with contract
+        node.node_encrypt_wallet('test')
+        self.stop_node(1)
+        self.start_nodes()
+        connect_nodes_bi(self.nodes, 0, 1)
+        node.walletpassphrase("test", 1)
+        time.sleep(2) # wait for timeout
+        assert_raises_rpc_error(-13,'Please enter the wallet passphrase with walletpassphrase first',node.publishcontract,contract)
+        node.walletpassphrase("test", 100)
+        payfee = node.getinfo()['paytxfee']
+        relayfee = node.getinfo()['relayfee']
+        txid = node.publishcontract(contract)['txid']
+        txfee = node.gettransaction(txid)['fee']
+        tx_size = count_bytes(node.getrawtransaction(txid))
+        node.settxfee(20)
+        txid = node.publishcontract(contract)['txid']
+        print(txfee,node.gettransaction(txid)['fee'])
+        assert abs(node.gettransaction(txid)['fee']) > abs(txfee) and abs(node.gettransaction(txid)['fee']) == 100
+        assert_equal(node.gettransaction(txid)['confirmations'],0)
+        self.sync_all()
+        node2.generate(1)
+        self.sync_all()
+        assert_equal(node.gettransaction(txid)['confirmations'], 1)
+        node.settxfee(payfee)
 
         # 正确的合约，并且进行重复测试
         j = 2
