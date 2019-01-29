@@ -256,11 +256,12 @@ class RESTTest (MagnaChainTestFramework):
 
         # Make 3 tx and mine them on node 1
         txs = []
-        txs.append(self.nodes[0].sendtoaddress(not_related_address, 11))
-        txs.append(self.nodes[0].sendtoaddress(not_related_address, 11))
+        txs.append(self.nodes[0].sendtoaddress(not_related_address, self.nodes[0].getbalance()/2))
+        txs.append(self.nodes[0].sendtoaddress(not_related_address, self.nodes[0].getbalance()-40))
         txs.append(self.nodes[0].sendtoaddress(not_related_address, 11))
         self.sync_all()
 
+        self.log.info(txs)
         # Check that there are exactly 3 transactions in the TX memory pool before generating the block
         json_obj = self.test_rest_request("/mempool/info")
         assert_equal(json_obj['size'], 3)
