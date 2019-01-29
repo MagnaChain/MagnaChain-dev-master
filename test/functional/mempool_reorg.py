@@ -92,8 +92,9 @@ class MempoolCoinbaseTest(MagnaChainTestFramework):
 
         # Use invalidateblock to re-org back and make all those coinbase spends
         # immature/invalid:
+        new_blocks_hash = self.nodes[0].getblockhash(10) # = new_blocks[0]
         for node in self.nodes:
-            node.invalidateblock(new_blocks[0])
+            node.invalidateblock(new_blocks_hash) # invalid the last block which block will make the self.nodes[0]'s coinbase un mature.
 
         self.sync_all()
 
