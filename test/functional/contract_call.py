@@ -70,7 +70,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract(PAYABLE, amount=10000000), "Insufficient funds")
 
         # # 非法的入参
-        for amount in [10000000000, -1, 0, Decimal("0.0009").quantize(Decimal("0.0000")),"1e-3"]:
+        for amount in [10000000000, -1, 0, Decimal("0.000009").quantize(Decimal("0.000000"))]:
             call_contract(PAYABLE, amount=amount)
 
         # 非法sender
