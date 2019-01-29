@@ -31,6 +31,8 @@ class ReindexTest(MagnaChainTestFramework):
         self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(),1)
         self.nodes[0].generate(2)
 
+        # TODO 还需要测试跨链交易的情况
+
         blockcount = self.nodes[0].getblockcount()
         self.stop_nodes()
         extra_args = [["-reindex-chainstate" if justchainstate else "-reindex", "-checkblockindex=1"]]
