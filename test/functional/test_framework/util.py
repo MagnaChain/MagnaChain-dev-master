@@ -776,6 +776,9 @@ def generate_contract(folder, err_type=None):
             last = -1
             for i=1,10 do
                 j = 0
+                -- note the cmsgpack when first load data from block,ensure iter is sequence
+                --this also DP,pls ban the next function
+                --for k,v in next,t do
                 for k,v in pairs(t) do
                     if k == 'b' then
                         if last ~= -1 and last ~= j then
