@@ -783,10 +783,10 @@ def generate_contract(folder, err_type=None):
                             say(i,"last:",last," j:",j)
                             if j % 2 == 0 then
                                 send(to,1 * cell)
-                                say("1 send to ",to)
+                                say("one send to ",to)
                             else
                                 send(msg.sender,1 * cell)
-                                say("2 send to ",to)
+                                say("two send to ",to)
                             end
                             last = j
                         end
