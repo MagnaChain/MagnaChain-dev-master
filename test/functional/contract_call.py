@@ -49,13 +49,13 @@ class ContractCallTest(MagnaChainTestFramework):
 
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
-        self.num_nodes = 1
+        self.num_nodes = 2
 
     def run_test(self):
         """Main test logic"""
         # prepare
         node = self.nodes[0]
-        node2 = self.nodes[0]
+        node2 = self.nodes[1]
         node.generate(nblocks=2)  # make some coins
         self.sync_all()
 
@@ -113,6 +113,10 @@ class ContractCallTest(MagnaChainTestFramework):
         assert txid not in node.getrawmempool()
         assert txid not in node2.getrawmempool()
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
+
+        # doubleSpendTest
+        call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
+        self.sync_all()
 
         # # tailLoopTest
         call_contract("tailLoopTest", 896)  # v452,594 is the limit

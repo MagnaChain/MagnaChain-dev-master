@@ -770,7 +770,36 @@ def generate_contract(folder, err_type=None):
             _call(msg.thisaddress,'send',msg.sender,10)
         end
 
-
+        function doubleSpendTest(to)
+            -- body
+            t={a=1121212,c=121212,b=3,d=4,e=5,f=6,g=7,h=8,i=9,a0 = 12,243546,565,6,6,}
+            last = -1
+            for i=1,10 do
+                j = 0
+                for k,v in pairs(t) do
+                    if k == 'b' then
+                        if last ~= -1 and last ~= j then
+                            say(i,"last:",last," j:",j)
+                            if j % 2 == 0 then
+                                send(to,1 * cell)
+                                say("1 send to ",to)
+                            else
+                                send(msg.sender,1 * cell)
+                                say("2 send to ",to)
+                            end
+                            last = j
+                        end
+                        if last == -1 then
+                            last = j
+                        end
+                    end
+                    j = j + 1
+                end
+                index = {1,2,3}
+                t[index] = index
+            end
+        end
+        
         function init()
             --loop(3)
             mainTest()
