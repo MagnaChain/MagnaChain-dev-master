@@ -779,6 +779,7 @@ def generate_contract(folder, err_type=None):
                 for k,v in pairs(t) do
                     if k == 'b' then
                         if last ~= -1 and last ~= j then
+                            --may be doubleSpend here
                             say(i,"last:",last," j:",j)
                             if j % 2 == 0 then
                                 send(to,1 * cell)
