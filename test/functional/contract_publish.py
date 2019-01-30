@@ -69,7 +69,6 @@ class ContractPublishTest(MagnaChainTestFramework):
             assert 'expected near' in repr(e)
 
         # 超大合约
-        # 当前会crash，先skip bigfile
         contract = generate_contract(self.options.tmpdir,err_type = "bigfile") # should be bigfile
         try:
             result = node.publishcontract(contract)
@@ -77,6 +76,7 @@ class ContractPublishTest(MagnaChainTestFramework):
             assert 'code is too large' in repr(e)
 
         # 测试sdk发布合约的接口
+        # TODO 需要单独测试prepublishcode接口
         # prepublishcodeTest
         contract = generate_contract(self.options.tmpdir)
         with open(contract) as fh:

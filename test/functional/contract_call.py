@@ -130,6 +130,12 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             assert_contains(call_contract("localFuncTest"), "can not find function")
 
+        # longReturnTest
+        if not SKIP:
+            c = generate_contract(self.options.tmpdir, err_type="long_string_return")
+            addre = node.publishcontract(c)['contractaddress']
+            node.callcontract(True,1,addre,sender,'longReturnTest')
+
         # contractDataTest
         call_contract("contractDataTest")
         assert_equal(call_contract("get", "size")['return'][0], 127)

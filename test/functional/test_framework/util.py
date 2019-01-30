@@ -795,7 +795,9 @@ def generate_contract(folder, err_type=None):
                     say(k,v)
                 end
             end
-
+            if longReturnTest then
+                return longReturnTest()
+            end
         end
 
 
@@ -839,6 +841,10 @@ def generate_contract(folder, err_type=None):
         code += "local a = [==[\n" + "a" * (int(2147483647 / 30)) + "\n]==]"
     elif err_type == "trim_code":
         code += "--1" * 10
+    elif err_type == "long_string_return":
+        add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2700)
+        # add_code = "function longReturnTest() return {} '1' end\n".format("'string'," * 248)
+        code += add_code
     file_path = os.path.join(folder, "contract.lua")
     with open(file_path, "w") as fh:
         fh.write(code)
