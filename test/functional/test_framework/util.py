@@ -786,7 +786,7 @@ def generate_contract(folder, err_type=None):
                                 say("one send to ",to)
                             else
                                 send(msg.sender,1 * cell)
-                                say("two send to ",to)
+                                say("two send to ",msg.sender)
                             end
                             last = j
                         end
