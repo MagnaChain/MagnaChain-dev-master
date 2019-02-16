@@ -146,6 +146,13 @@ void luaV_gettable (lua_State *L, const TValue *t, TValue *key, StkId val) {
 
 
 void luaV_settable (lua_State *L, const TValue *t, TValue *key, StkId val) {
+  if (ttistable(key))
+    luaG_runerror(L, "table index is table");
+  else if (ttisfunction(key))
+    luaG_runerror(L, "table index is function");
+  else if (ttisuserdata(key))
+    luaG_runerror(L, "table index is userdata");
+
   int loop;
   TValue temp;
   for (loop = 0; loop < MAXTAGLOOP; loop++) {
