@@ -429,7 +429,9 @@ bool static PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum
         }
         else {
             const char* err = lua_tostring(L, -1);
-            ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+            if (err != nullptr) {
+                ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+            }
         }
     }
 
@@ -617,8 +619,12 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
     MCContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
-    if (!sls->GetContractInfo(contractId, contractInfo) || contractInfo.code.size() <= 0) {
+    if (!sls->GetContractInfo(contractId, contractInfo)) {
         throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
+    }
+
+    if (contractInfo.code.size() <= 0) {
+        throw std::runtime_error(strprintf("%s => contract code size <= 0, contractid is %s", __FUNCTION__, contractAddr.ToString()));
     }
 
     if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM) {
@@ -866,8 +872,9 @@ bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo
             return false;
     }
 
-    if (contractDataFrom.count(contractId) == 0)
+    if (contractDataFrom.count(contractId) == 0) {
         contractDataFrom[contractId] = contractInfo;
+    }
 
     return true;
 }

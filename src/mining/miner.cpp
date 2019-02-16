@@ -666,7 +666,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             packageFees = modit->nModFeesWithAncestors;
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
-		if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+        if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+            LogPrintf("%s:%d %d < %d\n", __FUNCTION__, __LINE__, packageFees, blockMinFeeRate.GetFee(packageSize));
 			// Everything else we might consider has a lower fee rate
 			return;
 		}
@@ -753,7 +754,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
     }
 
     // 默认使用分片重新排列交易
-    if (gArgs.GetBoolArg("-grouping", true))
+    bool grouping = gArgs.GetBoolArg("-grouping", true);
+    if (grouping)
         GroupingTransaction(1, blockTxEntries);
     else {
         pblock->groupSize.emplace_back(offset);
@@ -1970,6 +1972,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
     CoinAmountDB coinAmountDB;
     CoinAmountCache coinAmountCache(&coinAmountDB);
+    LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
     if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
         error("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
         return nullptr;

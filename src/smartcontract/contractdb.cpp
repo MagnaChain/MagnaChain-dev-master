@@ -250,15 +250,19 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
 {
     auto it = mapBlockIndex.find(pBlock->hashPrevBlock);
-    if (it == mapBlockIndex.end())
+    if (it == mapBlockIndex.end()) {
         return false;
+    }
+
+    if (pBlock->groupSize.size() == 0) {
+        return false;
+    }
     
     MCBlockIndex* pPrevBlockIndex = it->second;
     int blockHeight = pPrevBlockIndex->nHeight + 1;
 
     int offset = 0;
     interrupt = false;
-    LogPrint(BCLog::MINING, "Generate block vtx size:%d, group:%d\n", pBlock->vtx.size(), pBlock->groupSize.size());
     std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
     int size = pBlock->vtx.size();
     bool mainChain = Params().IsMainChain();
@@ -276,8 +280,9 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     }
     threadPool.wait();
 
-    if (interrupt)
+    if (interrupt) {
         return false;
+    }
 
     offset = 0;
     pContractContext->ClearCache();
@@ -288,18 +293,22 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     for (int i = 0; i < threadData.size(); ++i) {
         // 检查是否有关联交易交叉
         for (auto item : threadData[i].associationTransactions) {
-            if (finalTransactions.count(item) == 0)
+            if (finalTransactions.count(item) == 0) {
                 finalTransactions.insert(item);
-            else
+            }
+            else {
                 return false;
+            }
         }
 
         // 保存数据，同时检查是否有关联数据交叉
         for (auto item : threadData[i].contractContext.data) {
-            if (pContractContext->cache.count(item.first) == 0)
+            if (pContractContext->cache.count(item.first) == 0) {
                 pContractContext->SetCache(item.first, item.second);
-            else
+            }
+            else {
                 return false;
+            }
         }
 
         // 支链保存交易最后的数据以便在需要时提供证明使用
@@ -499,8 +508,9 @@ int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo
     auto di = contractData.find(contractId);
     if (di == contractData.end()) {
         DBContractInfo contractInfo;
-        if (!db.Read(contractId, contractInfo))
+        if (!db.Read(contractId, contractInfo)) {
             return -1;
+        }
         else {
             contractData[contractId] = contractInfo;
             di = contractData.find(contractId);

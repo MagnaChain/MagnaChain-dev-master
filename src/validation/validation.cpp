@@ -3757,6 +3757,7 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
     }
 
     if (pindex->nHeight > 0) {
+        LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
         if (!mpContractDb->RunBlockContract(&block, pContractContext, pCoinAmountCache))
             return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
     }
