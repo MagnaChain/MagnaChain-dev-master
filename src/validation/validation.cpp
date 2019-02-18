@@ -4605,6 +4605,10 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
 
     int nLoaded = 0;
     try {
+        ContractContext contractContext;
+        CoinAmountDB coinAmountDB;
+        CoinAmountCache coinAmountCache(&coinAmountDB);
+
         // This takes over fileIn and calls fclose() on it in the MCBufferedFile destructor
         MCBufferedFile blkdat(fileIn, 2*MAX_BLOCK_SERIALIZED_SIZE, MAX_BLOCK_SERIALIZED_SIZE+8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
@@ -4656,11 +4660,6 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                 // process in case the block isn't known yet
                 if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0) {
                     LOCK(cs_main);
-
-                    ContractContext contractContext;
-                    CoinAmountDB coinAmountDB;
-                    CoinAmountCache coinAmountCache(&coinAmountDB);
-
                     MCValidationState state;
                     if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr, &contractContext, &coinAmountCache))
                         nLoaded++;
@@ -4695,10 +4694,6 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                             LogPrint(BCLog::REINDEX, "%s: Processing out of order child %s of %s\n", __func__, pblockrecursive->GetHash().ToString(),
                                     head.ToString());
                             LOCK(cs_main);
-
-                            ContractContext contractContext;
-                            CoinAmountDB coinAmountDB;
-                            CoinAmountCache coinAmountCache(&coinAmountDB);
 
                             MCValidationState dummy;
                             if (AcceptBlock(pblockrecursive, dummy, chainparams, nullptr, true, &it->second, nullptr, &contractContext, &coinAmountCache))
