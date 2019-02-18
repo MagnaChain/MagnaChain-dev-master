@@ -71,7 +71,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract(PAYABLE, amount=10000000), "Insufficient funds")
 
         # # 非法的入参
-        for amount in [10000000000, -1, 0, Decimal("0.000009").quantize(Decimal("0.000000"))]:
+        for amount in [10000000000, -1, 0, Decimal("0.00000009").quantize(Decimal("0.000000"))]:
             call_contract(PAYABLE, amount=amount)
 
         # 非法sender
@@ -92,9 +92,9 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # send不能被裸调用
         # bug被修复前，暂时跳过
-        # if not SKIP:
-        #     assert_contains(call_contract("send",sender,0),'can not find function')
-        #     assert_contains(call_contract("rpcSendTest"), 'can not find function')
+        if not SKIP:
+            assert_contains(call_contract("send",sender,0),'can not call lua internal function directly')
+            assert_contains(call_contract("rpcSendTest"), 'can not call lua internal function directly')
 
         # when not commit transaction, make sure contract tx is not in mempool
         if not SKIP:
@@ -116,6 +116,10 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # doubleSpendTest
         call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
+
+        # cmsgpackTest
+        if not not SKIP:
+            call_contract("cmsgpackTest", node.getnewaddress(), throw_exception=True)
         self.sync_all()
 
         # # tailLoopTest
@@ -144,6 +148,9 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("contractDataTest")
         assert_equal(call_contract("get", "size")['return'][0], 127)
 
+        # make sure node1 mempool is empty
+        node.generate(nblocks=2)
+        assert_equal([], node.getrawmempool())
         # sendCoinTest
         # send to mgc address
         new_address = node.getnewaddress()
@@ -152,18 +159,22 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
-        assert_contains(call_contract("sendCoinTest", new_address, 0), "Dust amount")
-        assert_contains(call_contract("sendCoinTest", new_address, -1), "Dust amount")
+        call_contract("sendCoinTest", new_address, 0,throw_exception = True)
+        assert_contains(call_contract("sendCoinTest", new_address, -1), "bad-txns-vout-negative")
         # send all balance
         tmp_id = node.publishcontract(contract)["contractaddress"]
         tmp_caller = caller_factory(self, tmp_id, sender)
         tmp_caller(PAYABLE, amount=Decimal("1"))
-        tmp_caller("sendCoinTest", new_address, 1, amount=Decimal("0"))
+        tmp_txid = tmp_caller("sendCoinTest", new_address, 1, amount=Decimal("0"),throw_exception = True)['txid']
         # 利用节点2挖矿，确保节点1的交易可以打包的块
         node2.generate(nblocks=2)  # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
+        # make sure two transactions not in mempool
+        # if assert failed it should be bug here
+        assert txid not in node.getrawmempool()
+        assert tmp_txid not in node.getrawmempool()
         self.sync_all()
-        assert_equal(node.getbalanceof(new_address), 2)
         assert_equal(node.getbalanceof(tmp_id), 0)
+        assert_equal(node.getbalanceof(new_address), 2)
         assert_equal(node2.getbalanceof(new_address), 2)
         assert_equal(node2.getbalanceof(tmp_id), 0)
         assert_contains(tmp_caller("sendCoinTest", new_address, 1), "not enough amount ")

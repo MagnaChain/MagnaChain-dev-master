@@ -777,7 +777,6 @@ def generate_contract(folder, err_type=None):
             for i=1,10 do
                 j = 0
                 -- note the cmsgpack when first load data from block,ensure iter is sequence
-                --this also DP,pls ban the next function
                 --for k,v in next,t do
                 for k,v in pairs(t) do
                     if k == 'b' then
@@ -800,12 +799,19 @@ def generate_contract(folder, err_type=None):
                     j = j + 1
                 end
                 index = {1,2,3}
-                t[index] = index
+                t[tostring(i)] = index
+                table.insert(t,i)
             end
         end
+
+        function cmsgpackTest( ... )
+            -- body
+            PersistentData["this"] = PersistentData
+            PersistentData["this1"] = PersistentData
+            PersistentData["this2"] = PersistentData
+        end        
         
         function init()
-            --loop(3)
             mainTest()
             PersistentData = {}
             PersistentData.name = "RMB"
@@ -875,7 +881,7 @@ def generate_contract(folder, err_type=None):
     elif err_type == "trim_code":
         code += "--1" * 10
     elif err_type == "long_string_return":
-        add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2700)
+        add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2655)
         # add_code = "function longReturnTest() return {} '1' end\n".format("'string'," * 248)
         code += add_code
     file_path = os.path.join(folder, "contract.lua")
