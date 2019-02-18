@@ -15,8 +15,6 @@ Major test call smart contract
 # libraries then local imports).
 from collections import defaultdict
 import random
-import re
-from functools import wraps
 from decimal import Decimal
 
 # Avoid wildcard * imports if possible
@@ -31,6 +29,7 @@ from test_framework.util import (
     sync_mempools,
     sync_blocks,
 )
+from test_framework.contract import Contract
 
 # TODO SKIP should be set False
 SKIP = False
@@ -118,7 +117,7 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
 
         # cmsgpackTest
-        if not not SKIP:
+        if not SKIP:
             call_contract("cmsgpackTest", node.getnewaddress(), throw_exception=True)
         self.sync_all()
 
@@ -227,13 +226,13 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # step2  a->b->c->a(send will be call in last a)
         new_address = node.getnewaddress()
-        if  SKIP:
+        if not SKIP:
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, ca_id, "sendCoinTest", new_address,throw_exception = True)
             node.generate(nblocks=1)
             assert_equal(node.getbalanceof(new_address), 1)
 
         # step3 a->b->c->b,modify PersistentData
-        if  SKIP:
+        if not SKIP:
             caller_b("contractDataTest")  # after called,size should be 127
             assert_equal(caller_b("get", "size")['return'][0], 127)
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest",
@@ -243,7 +242,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # lots of dust vin in contract's send transaction
         # TODO:maybe  need to set payfee param in magnachaind
-        if  SKIP:
+        if not SKIP:
             cd_id = node.publishcontract(contract)["contractaddress"]
             caller_d = caller_factory(self, cd_id, sender)
             for i in range(2000):
