@@ -254,7 +254,11 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
         return false;
     }
 
-    if (pBlock->groupSize.size() == 0) {
+    int totalSize = 0;
+    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+        totalSize += pBlock->groupSize[i];
+    }
+    if (totalSize == 0 || totalSize != pBlock->vtx.size()) {
         return false;
     }
     
