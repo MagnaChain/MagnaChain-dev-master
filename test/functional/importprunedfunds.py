@@ -101,7 +101,7 @@ class ImportPrunedFundsTest(MagnaChainTestFramework):
         balance3 = self.nodes[1].getbalance("add3", 0, False)
         assert_equal(balance3, Decimal('0.025'))
         balance3 = self.nodes[1].getbalance("*", 0, True)
-        assert_equal(balance3, Decimal('0.075'))
+        assert_equal(balance3, Decimal('0.025'))
 
         #Addresses Test - after import
         address_info = self.nodes[1].validateaddress(address1)
@@ -120,7 +120,7 @@ class ImportPrunedFundsTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-8, "Transaction does not exist in wallet.", self.nodes[1].removeprunedfunds, txnid5)
 
         balance1 = self.nodes[1].getbalance("*", 0, True)
-        assert_equal(balance1, Decimal('0.075'))
+        assert_equal(balance1, Decimal('0.025'))
 
         self.nodes[1].removeprunedfunds(txnid2)
         balance2 = self.nodes[1].getbalance("*", 0, True)

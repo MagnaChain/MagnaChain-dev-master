@@ -13,11 +13,11 @@
 """
 
 from test_framework.test_framework import MagnaChainTestFramework
-from test_framework.util import *
+from test_framework.util import assert_equal,generate_contract,gen_lots_of_contracts
 from test_framework.mininode import COIN, MAX_BLOCK_BASE_SIZE
 
 
-MAX_CONTRACT_NUM = 506  # 一个区块最多可以包含多少个发布合约的交易
+MAX_CONTRACT_NUM = 973  # 一个区块最多可以包含多少个发布合约的交易
 MAX_CONTRACT_CALL_NUM = 50  # 一个区块最多可以包含多少个调用合约的交易
 class PrioritiseContractTest(MagnaChainTestFramework):
     def set_test_params(self):
@@ -46,7 +46,7 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         assert infos[-1]['txid'] not in mempool  #should be mined
         assert infos[-2]['txid'] in mempool
         node0.generate(1) #clear mempool
-        assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
+        assert_equal(len(node0.getrawmempool()),0) # make sure mempool is clean
 
         # 测试调用合约的交易
         self.log.info("Test call contract transaction")
