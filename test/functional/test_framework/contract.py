@@ -8,15 +8,7 @@ import tempfile
 import random
 
 
-from test_framework.util import (
-    assert_equal,
-    assert_greater_than,
-    assert_contains,
-    generate_contract,
-    caller_factory,
-    sync_mempools,
-    sync_blocks,
-)
+from test_framework.util import generate_contract
 
 class Caller(object):
     """
@@ -28,8 +20,10 @@ class Caller(object):
         self.contract_id = contract_id
         self.sender = sender
 
-    def __call__(self, *args,amount = random.randint(1,10000),throw_exception = True,broadcasting = True):
+    def __call__(self, *args,sender = None,amount = random.randint(1,10000),throw_exception = True,broadcasting = True):
         try:
+            if sender:
+                self.sender = sender
             print("%s,%s,%s,%s,%s"%(self.contract_id,self.func,self.sender,amount,args))
             return self.node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
         except Exception as e:
@@ -59,7 +53,7 @@ class Contract(object):
             contract_path = tempfile.mkdtemp(prefix="contract_")
         self.contract_path = generate_contract(contract_path)
         if sender is not None:
-            self._sender = sender
+            self.publisher = sender
 
         self.has_publish = False
         if immediate:
@@ -75,17 +69,9 @@ class Contract(object):
         if not self.has_publish:
             result = self.bind_node.publishcontract(self.contract_path)
             self.contract_id = result['contractaddress']
-            self.sender = result['senderaddress']
+            self.publisher = result['senderaddress']
+            self.publish_txid = result['txid']
             self.has_publish = True
-
-
-    @property
-    def sender(self):
-        return self._sender
-
-    @sender.setter
-    def sender(self, value):
-        self._sender = value
 
     def __getattr__(self, item):
         '''
@@ -97,7 +83,7 @@ class Contract(object):
             raise Exception("contract not publish,can not be call")
         if item.startswith('call_'):
             item = item.replace('call_','',1)
-            return Caller(self.bind_node,item,self.contract_id, self.sender)
+            return Caller(self.bind_node,item,self.contract_id, self.publisher)
         raise AttributeError
 
 
