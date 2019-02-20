@@ -412,7 +412,7 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == sls->contractOut);
             }
-        } 
+        }
 	}
 
 	return false;

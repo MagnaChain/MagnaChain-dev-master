@@ -21,6 +21,7 @@ extern "C"
 #include "smartcontract/contractdb.h"
 #include "coding/base58.h"
 
+const int MAX_CONTRACT_FILE_LEN = 65536;
 const int MAX_CONTRACT_CALL = 15000;
 const int MAX_DATA_LEN = 1024 * 1024;
 
