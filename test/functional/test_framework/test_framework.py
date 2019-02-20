@@ -325,7 +325,7 @@ class MagnaChainTestFramework(object):
             self.log.info("make more work by gen %d" %(len(genblocks)))
         return genblocks
 
-    def sync_all(self, node_groups=None,show_max_height = False):
+    def sync_all(self, node_groups=None,show_max_height = False,timeout = 60):
         if not node_groups:
             node_groups = [self.nodes]
 
@@ -333,8 +333,8 @@ class MagnaChainTestFramework(object):
             self.log.info("syncall group : %s" % (str([len(g) for g in node_groups])))
         for group in node_groups:
             logger = self.log if show_max_height else None
-            sync_blocks(group, logger=logger)
-            sync_mempools(group)
+            sync_blocks(group, logger=logger,timeout = timeout)
+            sync_mempools(group,timeout = timeout)
 
     def enable_mocktime(self):
         """Enable mocktime for the script.
