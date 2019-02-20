@@ -783,9 +783,8 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    long maxCallNum = MAX_CONTRACT_CALL;
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
     if (success) {
         UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
@@ -911,9 +910,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    long maxCallNum = MAX_CONTRACT_CALL;
     sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("return", callRet));

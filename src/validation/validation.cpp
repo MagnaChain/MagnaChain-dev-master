@@ -407,9 +407,8 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
         }
 	}
     else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        long maxCallNum = MAX_CONTRACT_CALL;
         sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret)) {
+        if (CallContract(sls, contractAddr, amount, strFuncName, args, ret)) {
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == sls->contractOut);
             }

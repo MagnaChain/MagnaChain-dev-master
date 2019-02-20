@@ -480,7 +480,13 @@ void mp_encode_lua_null(lua_State *L, mp_buf *buf) {
     mp_buf_append(buf,b,1);
 }
 
+int sc = 0;
 void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level) {
+    if (++sc >= LUACMSGPACK_MAX_NESTING) {
+        sc = 0;
+        luaG_runerror(L, "cmsgpack => sc >= LUACMSGPACK_MAX_NESTING");
+    }
+
     int t = lua_type(L,-1);
 
     /* Limit the encoding of nested tables to a specified maximum depth, so that
@@ -504,6 +510,7 @@ void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level) {
     default: mp_encode_lua_null(L,buf); break;
     }
     lua_pop(L,1);
+    --sc;
 }
 
 /*
@@ -511,6 +518,7 @@ void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level) {
  * Returns error if no arguments provided.
  */
 int mp_pack(lua_State *L) {
+    luaL_checkstack(L, (LUACMSGPACK_MAX_NESTING * 2), "cmsgpack => Can't grow stack.");
     int nargs = lua_gettop(L);
     int i;
     mp_buf *buf;
@@ -518,6 +526,7 @@ int mp_pack(lua_State *L) {
     if (nargs == 0)
         return luaL_argerror(L, 0, "MessagePack pack needs input.");
 
+    sc = 0;
     buf = mp_buf_new(L);
     for(i = 1; i <= nargs; i++) {
         /* Copy argument i to top of stack for _encode processing;

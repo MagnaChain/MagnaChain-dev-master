@@ -82,8 +82,8 @@ local function createSafeEnv()                                                  
 	return env                                                                  \n\
 end                                                                             \n\
                                                                                 \n\
-function regContract(maxCallNum, maxDataLen, _strScript)						\n\
-	local fun, err = loadstring(_strScript)                                     \n\
+function regContract(maxDataLen, _strScript)						            \n\
+	local contract, err = loadstring(_strScript)                                \n\
 	if err then                                                                 \n\
         print(_strScript)                                                       \n\
 		return false, err                                                       \n\
@@ -91,20 +91,20 @@ function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 	                                                                            \n\
     local success                                                               \n\
 	local myenv = createSafeEnv()                                               \n\
-	setfenv(fun, myenv)                                                         \n\
-	success, err = lpcall(maxCallNum, fun)							            \n\
+	setfenv(contract, myenv)                                                    \n\
+	success, err = pcall(contract)							                    \n\
 	if not success then                                                         \n\
 		return false, err                                  						\n\
 	end                                                                         \n\
 	                                                                            \n\
 	if type(myenv.init) == 'function' then                                      \n\
-		success, err = lpcall(-1, myenv.init)						            \n\
+		success, err = pcall(myenv.init)						                \n\
 		if not success then                                                     \n\
 			return false, err					                                \n\
 		end                                                                     \n\
 	end                                                                         \n\
 	                                                                            \n\
-	local strCompileFun = string.dump(fun)                                      \n\
+	local strCompileFun = string.dump(contract)                                 \n\
 	local strPackData                                                           \n\
 	if type(myenv.PersistentData) == 'table' then                               \n\
 		strPackData = cmsgpack.pack(myenv.PersistentData)                       \n\
@@ -117,7 +117,7 @@ function regContract(maxCallNum, maxDataLen, _strScript)						\n\
 	return true, strPackData, strCompileFun					                    \n\
 end                                                                             \n\
                                                                                 \n\
-function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
+function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 	if data and #data >0 then                                                   \n\
 		data = cmsgpack.unpack(data)                                            \n\
 	end                                                                         \n\
@@ -126,18 +126,19 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
     if myenv[funcname] ~= nil then                                              \n\
         return false, 'can not call lua internal function directly'             \n\
     end                                                                         \n\
-	local lf = loadstring(code)	                                            	\n\
+                                                                                \n\
+	local contract = loadstring(code)	                                        \n\
     myenv.PersistentData = data                                                 \n\
-	setfenv(lf, myenv)                                                          \n\
-	local success, err = lpcall(maxCallNum, lf)							        \n\
+	setfenv(contract, myenv)                                                    \n\
+	local success, err = pcall(contract)							            \n\
 	if not success then                                                         \n\
 		return false, err                                                       \n\
 	end                                                                         \n\
                                                                                 \n\
 	local ret		                                                            \n\
-	local callfun = myenv[funcname]                                             \n\
-	if type(callfun) == 'function' and funcname ~= 'init' then                  \n\
-		ret = { lpcall(-1, callfun, ...) }							            \n\
+	local func = myenv[funcname]                                                \n\
+	if type(func) == 'function' and funcname ~= 'init' then                     \n\
+		ret = { pcall(func, ...) }							                    \n\
 		if not ret[1] then                                                      \n\
 			return false, ret[2]  			                                    \n\
 		else																	\n\
@@ -159,7 +160,7 @@ function callContract(maxCallNum, maxDataLen, code, data, funcname, ...)	    \n\
 			return false, 'Lua:callContract dataLen > maxDataLen'				\n\
 		end																		\n\
 	end                                                                         \n\
-	return true, strPackData, unpacktable(ret)				                    \n\
+	return true, strPackData, unpack(ret)				                        \n\
 end                                                                             \n";
 
 bool GetPubKey(const MCWallet* pWallet, const MagnaChainAddress& addr, MCPubKey& pubKey)
@@ -403,35 +404,28 @@ std::string static DecompressCode(const std::string& buffer)
 
 bool static PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
-    bool success = false;
     int top = lua_gettop(L);
+
     lua_getglobal(L, "regContract");
-    lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
     lua_pushlstring(L, rawCode.c_str(), rawCode.size());
-    int argc = 3;
+    int argc = 2;
 
-    if (lua_pcall(L, argc, LUA_MULTRET, 0) != 0) {
-        const char* err = lua_tostring(L, -1);
-        ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+    int result = lua_pcall(L, argc, LUA_MULTRET, 0);
+    bool success = ((result == 0) && (lua_toboolean(L, top + 1) != 0));
+    if (success) {
+        size_t dl = 0;
+        const char* temp = lua_tolstring(L, top + 2, &dl);
+        dataout.assign(temp, dl);
+
+        size_t cl = 0;
+        temp = lua_tolstring(L, top + 3, &cl);
+        rawCode.assign(temp, cl);
     }
     else {
-        maxCallNum = L->limit_instruction;
-        success = lua_toboolean(L, top + 1) != 0;
-        if (success) {
-            size_t dl = 0;
-            const char* temp = lua_tolstring(L, top + 2, &dl);
-            dataout.assign(temp, dl);
-
-            size_t cl = 0;
-            temp = lua_tolstring(L, top + 3, &cl);
-            rawCode.assign(temp, cl);
-        }
-        else {
-            const char* err = lua_tostring(L, -1);
-            if (err != nullptr) {
-                ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
-            }
+        const char* err = lua_tostring(L, -1);
+        if (err != nullptr) {
+            ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
         }
     }
 
@@ -463,8 +457,10 @@ bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::s
     std::string data;
     long maxCallNum = MAX_CONTRACT_CALL;
     lua_State* L = sls->GetLuaState(contractAddr);
+    L->limit_instruction = maxCallNum;
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), sls->originAddr.ToString(), 0, sls->timestamp, sls->blockHeight);
     bool success = PublishContract(L, rawCode, maxCallNum, data, ret);
+    maxCallNum = L->limit_instruction;
     if (success) {
         rawCode = CompressCode(rawCode);
         sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
@@ -535,8 +531,8 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
 
     maxCallNum -= GAS_CONTRACT_BYTE;
     int top = lua_gettop(L);
+
     lua_getglobal(L, "callContract");
-    lua_pushnumber(L, maxCallNum);
     lua_pushnumber(L, MAX_DATA_LEN);
     lua_pushlstring(L, code.c_str(), code.size());
     if (data.size() > 0) {
@@ -546,7 +542,7 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
         lua_pushnil(L);
     }
     lua_pushstring(L, strFuncName.c_str());
-    int argc = 5;
+    int argc = 4;
 
     /* other use params */
     for (int i = 0; i < args.size(); ++i) {
@@ -567,9 +563,8 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
         }
         argc++;
     }
-
+    
     int result = lua_pcall(L, argc, LUA_MULTRET, 0);
-    maxCallNum = L->limit_instruction;
     bool success = ((result == 0) && (lua_toboolean(L, top + 1) != 0));
     if (success) {
         size_t dl = 0;
@@ -601,8 +596,10 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
     }
     else {
         const char* err = lua_tostring(L, -1);
-        ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
-        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, err);
+        if (err != nullptr) {
+            ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
+            LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, err);
+        }
     }
 
     lua_settop(L, top);
@@ -627,16 +624,18 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
         throw std::runtime_error(strprintf("%s => contract code size <= 0, contractid is %s", __FUNCTION__, contractAddr.ToString()));
     }
 
-    if (sls->_internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM) {
+    if (sls->internalCallNum >= SmartLuaState::MAX_INTERNAL_CALL_NUM) {
         throw std::runtime_error(strprintf("%s => no more max internal call number", __FUNCTION__));
     }
 
-    sls->_internalCallNum++;
+    sls->internalCallNum++;
     std::string data;
     std::string senderAddr = (sls->contractAddrs.size() > 0 ? sls->contractAddrs[sls->contractAddrs.size() - 1].ToString() : sls->originAddr.ToString());
     lua_State* L = sls->GetLuaState(contractAddr);
+    L->limit_instruction = maxCallNum;
     SetContractMsg(L, contractAddr.ToString(), sls->originAddr.ToString(), senderAddr, amount, sls->timestamp, sls->blockHeight);
     bool success = CallContract(L, contractInfo.code, contractInfo.data, strFuncName, args, maxCallNum, data, ret);
+    maxCallNum = L->limit_instruction;
     if (success) {
         sls->deltaDataLen += std::max(0, (int32_t)(data.size() - contractInfo.data.size()));
 
@@ -647,18 +646,20 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
         }
     }
     sls->ReleaseLuaState(L);
-    sls->_internalCallNum--;
+    sls->internalCallNum--;
 
     return success;
 }
 
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, 
+    const std::string& strFuncName, const UniValue& args, UniValue& ret)
 {
     MCContractID contractID;
     if (!contractAddr.GetContractID(contractID)) {
         return false;
     }
 
+    long maxCallNum = MAX_CONTRACT_CALL;
     bool success = CallContractReal(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret);
     if (success) {
         sls->runningTimes = MAX_CONTRACT_CALL - maxCallNum;
@@ -776,22 +777,22 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, 
     this->blockHeight = blockHeight;
     this->txIndex = txIndex;
     this->originAddr = originAddr;
-    this->_pContractContext = pContractContext;
-    this->_pPrevBlockIndex = pPrevBlockIndex;
+    this->pContractContext = pContractContext;
+    this->pPrevBlockIndex = pPrevBlockIndex;
     this->saveType = saveType;
     this->pCoinAmountCache = pCoinAmountCache;
 
-    if (_pContractContext == nullptr) {
-        _pContractContext = &mpContractDb->contractContext;
+    if (pContractContext == nullptr) {
+        pContractContext = &mpContractDb->contractContext;
     }
 }
 
 lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
 {
     lua_State* L = nullptr;
-    if (_luaStates.size() > 0) {
-        L = _luaStates.back();
-        _luaStates.pop();
+    if (luaStates.size() > 0) {
+        L = luaStates.back();
+        luaStates.pop();
         lua_settop(L, 0);
     }
     else {
@@ -803,7 +804,6 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
 
         luaL_openlibs(L);
         luaopen_cmsgpack(L);
-        //luaopen_cjson(L);
 
         if (luaL_dostring(L, initscript)) {
             error("%s\n", lua_tostring(L, -1));
@@ -816,6 +816,7 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
         lua_setglobal(L, "send");
 
         L->userData = this;
+        L->limit_on = 1;
     }
 
     MCContractID contractId;
@@ -830,7 +831,7 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
 {
     contractAddrs.resize(contractAddrs.size() - 1);
     lua_gc(L, LUA_GCCOLLECT, 0); /* stop collector during initialization */
-    _luaStates.push(L);
+    luaStates.push(L);
 }
 
 void SmartLuaState::Clear()
@@ -843,10 +844,10 @@ void SmartLuaState::Clear()
     runningTimes = 0;
     deltaDataLen = 0;
     codeLen = 0;
-    _internalCallNum = 0;
+    internalCallNum = 0;
     pCoinAmountCache = nullptr;
-    _pContractContext = nullptr;
-    _pPrevBlockIndex = nullptr;
+    pContractContext = nullptr;
+    pPrevBlockIndex = nullptr;
     recipients.clear();
     contractIds.clear();
     contractAddrs.clear();
@@ -855,20 +856,20 @@ void SmartLuaState::Clear()
 
 void SmartLuaState::SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache)
 {
-    LOCK(_contractCS);
+    LOCK(contractCS);
     if (cache)
-        _pContractContext->SetCache(contractId, contractInfo);
+        pContractContext->SetCache(contractId, contractInfo);
     else
-        _pContractContext->SetData(contractId, contractInfo);
+        pContractContext->SetData(contractId, contractInfo);
 }
 
 bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo)
 {
-    LOCK(_contractCS);
+    LOCK(contractCS);
 
     // 直接从快照缓存中读取
-    if (!_pContractContext->GetData(contractId, contractInfo)) {
-        if (mpContractDb->GetContractInfo(contractId, contractInfo, _pPrevBlockIndex) < 0)
+    if (!pContractContext->GetData(contractId, contractInfo)) {
+        if (mpContractDb->GetContractInfo(contractId, contractInfo, pPrevBlockIndex) < 0)
             return false;
     }
 
@@ -902,9 +903,8 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
         UniValue args;
         args.read(tx->pContractData->args);
 
-        long maxCallNum = MAX_CONTRACT_CALL;
         sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
-        if (!CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) || tx->pContractData->amountOut != sls->contractOut)
+        if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut)
             return false;
 
         if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0)
