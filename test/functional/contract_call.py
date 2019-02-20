@@ -118,7 +118,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # cmsgpackTest
         if not SKIP:
-            call_contract("cmsgpackTest", node.getnewaddress(), throw_exception=True)
+            assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'cmsgpack => sc >= LUACMSGPACK_MAX_NESTING')
         self.sync_all()
 
         # # tailLoopTest
