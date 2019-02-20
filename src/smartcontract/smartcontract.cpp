@@ -782,8 +782,8 @@ void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, 
     this->saveType = saveType;
     this->pCoinAmountCache = pCoinAmountCache;
 
-    if (pContractContext == nullptr) {
-        pContractContext = &mpContractDb->contractContext;
+    if (this->pContractContext == nullptr) {
+        this->pContractContext = &mpContractDb->contractContext;
     }
 }
 

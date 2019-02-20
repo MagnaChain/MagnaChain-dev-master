@@ -57,8 +57,8 @@ public:
 
 private:
     mutable MCCriticalSection contractCS;
-    ContractContext* pContractContext;
-    MCBlockIndex* pPrevBlockIndex;
+    ContractContext* pContractContext = nullptr;
+    MCBlockIndex* pPrevBlockIndex = nullptr;
     std::queue<lua_State*> luaStates;
     MCTransactionRef tx;
 
