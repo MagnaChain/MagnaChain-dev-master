@@ -496,7 +496,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
     MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, trimRawCode);
     MagnaChainAddress contractAddr(contractId);
 
-    sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    sls->Initialize(true, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     bool success = PublishContract(sls, contractAddr, trimRawCode, ret, false);
     if (success) {
         MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -672,17 +672,24 @@ bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCA
 int static InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
-    if (sls == nullptr)
+    if (sls == nullptr) {
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
+    }
+
+    if (sls->isPublish) {
+        throw std::runtime_error(strprintf("%s => can't call callcontract when publishcontract", __FUNCTION__));
+    }
 
     std::string strContractAddr = lua_tostring(L, 1);
     MagnaChainAddress contractAddr(strContractAddr);
-    if (!contractAddr.IsValid())
+    if (!contractAddr.IsValid()) {
         throw std::runtime_error(strprintf("%s => contractAddr is invalid", __FUNCTION__));
+    }
 
     std::string strFuncName = lua_tostring(L, 2);
-    if (strFuncName.empty())
+    if (strFuncName.empty()) {
         throw std::runtime_error(strprintf("%s => function name is empty", __FUNCTION__));
+    }
 
     int top = lua_gettop(L);
     UniValue args(UniValue::VType::VARR);
@@ -706,8 +713,9 @@ int static InternalCallContract(lua_State* L)
     long maxCallNum = L->limit_instruction;
     bool success = CallContractReal(sls, contractAddr, 0, strFuncName, args, maxCallNum, ret);
     L->limit_instruction = maxCallNum;
-    if (!success)
+    if (!success) {
         throw std::runtime_error(ret[0].get_str().c_str());
+    }
 
     lua_pushboolean(L, (int)success);
     for (int i = 0; i < ret.size(); ++i) {
@@ -769,10 +777,11 @@ int static SendCoins(lua_State* L)
     return 1;
 }
 
-void SmartLuaState::Initialize(int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& originAddr, ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache)
+void SmartLuaState::Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& originAddr, ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache)
 {
     Clear();
 
+    this->isPublish = isPublish;
     this->timestamp = timestamp;
     this->blockHeight = blockHeight;
     this->txIndex = txIndex;
@@ -894,7 +903,7 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
     UniValue ret(UniValue::VARR);
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx->pContractData->codeOrFunc;
-        sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
+        sls->Initialize(true, blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
         if (!PublishContract(sls, contractAddr, rawCode, ret, true))
             return false;
     }
@@ -903,7 +912,7 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
         UniValue args;
         args.read(tx->pContractData->args);
 
-        sls->Initialize(blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
+        sls->Initialize(false, blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
         if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut)
             return false;
 

@@ -44,6 +44,7 @@ public:
     std::vector<MagnaChainAddress> contractAddrs;   // 以栈形式表示当前调用合约的合约地址
     MagnaChainAddress originAddr;   // 当前调用合约的调用者最原始公钥地址
 
+    bool isPublish;
     int saveType;
     int64_t timestamp;  // 执行时的时间戳
     int blockHeight;    // 执行时的区块高度
@@ -67,7 +68,8 @@ public:
     void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache);
     bool GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
 
-    void Initialize(int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
+    void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, 
+        ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
     lua_State* GetLuaState(MagnaChainAddress& contractAddr);
     void ReleaseLuaState(lua_State* L);
 

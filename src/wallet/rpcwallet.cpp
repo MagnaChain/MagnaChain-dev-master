@@ -535,6 +535,7 @@ UniValue publishcontract(const JSONRPCRequest& request)
 	fseek(file, 0, SEEK_END);
 	long fileLen = ftell(file);
     if (fileLen > MAX_CONTRACT_FILE_LEN) {
+        fclose(file);
         throw std::runtime_error("code is too large");
     }
 
@@ -660,7 +661,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue ret(UniValue::VARR);
-    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    sls.Initialize(true, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
@@ -785,7 +786,7 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    sls.Initialize(false, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
     if (success) {
         UniValue ret(UniValue::VType::VOBJ);
@@ -912,7 +913,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    sls.Initialize(false, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
     bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
 
     UniValue ret(UniValue::VOBJ);
