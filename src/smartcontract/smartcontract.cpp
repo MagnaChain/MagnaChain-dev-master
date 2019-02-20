@@ -750,6 +750,11 @@ int static SendCoins(lua_State* L)
     if (!lua_isnumber(L, 2))
         throw std::runtime_error(strprintf("%s => param2 is not a number", __FUNCTION__));
 
+    MCAmount amount = lua_tonumber(L, 2);
+    if (amount <= 0) {
+        throw std::runtime_error(strprintf("%s => param2 out of range", __FUNCTION__));
+    }
+
     if (sls->pCoinAmountCache == nullptr)
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
@@ -758,7 +763,6 @@ int static SendCoins(lua_State* L)
     if (kDest.IsContractID() || !kDest.IsValid())
         throw std::runtime_error(strprintf("%s => Invalid destination address", __FUNCTION__));
 
-    MCAmount amount = lua_tonumber(L, 2);
 
     MCContractID contractID;
     sls->contractAddrs[0].GetContractID(contractID);
