@@ -443,7 +443,7 @@ bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::s
         throw std::runtime_error("code is empty");
     }
 
-    if (rawCode.size() > 1024 * 60) {
+    if (rawCode.size() > MAX_CONTRACT_FILE_LEN) {
         throw std::runtime_error("code is too large");
     }
 

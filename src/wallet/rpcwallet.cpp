@@ -527,21 +527,22 @@ UniValue publishcontract(const JSONRPCRequest& request)
 	LOCK2(cs_main, pwallet->cs_wallet);
 
 	std::string strFileName = request.params[0].get_str();
-	FILE * fp = fopen(strFileName.c_str(), "rb");
-	if (fp == NULL) {
-		throw std::runtime_error(
-			"publish \"filename\" \n"
-			"\n file open error.\n"
-		);
+	FILE * file = fopen(strFileName.c_str(), "rb");
+	if (file == nullptr) {
+        throw std::runtime_error("can't open file");
 	}
 
-	fseek(fp, 0, SEEK_END);
-	long flen = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
+	fseek(file, 0, SEEK_END);
+	long fileLen = ftell(file);
+    if (fileLen > MAX_CONTRACT_FILE_LEN) {
+        throw std::runtime_error("code is too large");
+    }
+
+	fseek(file, 0L, SEEK_SET);
 	std::string rawCode;
-    rawCode.resize(flen);
-	fread((char*)&rawCode[0], flen, 1, fp);
-	fclose(fp);
+    rawCode.resize(fileLen);
+	fread(&rawCode[0], fileLen, 1, file);
+	fclose(file);
 
     std::string strSenderAddr;
     if (request.params.size() > 1)
@@ -551,6 +552,7 @@ UniValue publishcontract(const JSONRPCRequest& request)
     UniValue ret(UniValue::VARR);
 	if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
+
     return ret;
 }
 
