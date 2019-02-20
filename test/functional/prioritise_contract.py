@@ -17,8 +17,8 @@ from test_framework.util import assert_equal,generate_contract,gen_lots_of_contr
 from test_framework.mininode import COIN, MAX_BLOCK_BASE_SIZE
 
 
-MAX_CONTRACT_NUM = 973  # 一个区块最多可以包含多少个发布合约的交易
-MAX_CONTRACT_CALL_NUM = 50  # 一个区块最多可以包含多少个调用合约的交易
+MAX_CONTRACT_NUM = 487  # 一个区块最多可以包含多少个发布合约的交易
+MAX_CONTRACT_CALL_NUM = 3403  # 一个区块最多可以包含多少个调用合约的交易
 class PrioritiseContractTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
@@ -39,12 +39,16 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         # 测试发布合约的交易
         self.log.info("Test contract publish transaction")
         contract = generate_contract(self.options.tmpdir)
-        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM)
+        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM * 9)
         node0.prioritisetransaction(txid=infos[-1]['txid'], fee_delta=int(3 * base_fee * COIN))
+        print(len(node0.getrawmempool()))
         node0.generate(1)
+        block_txnum = int(node0.getblock(node0.getbestblockhash())['tx_num'])
         mempool = node0.getrawmempool()
+        print(block_txnum, len(node0.getrawmempool()))
         assert infos[-1]['txid'] not in mempool  #should be mined
-        assert infos[-2]['txid'] in mempool
+        node0.generate(8)
+        assert_equal(len(node0.getrawmempool()), 1 * 9)  # can not locate the tx index in infos
         node0.generate(1) #clear mempool
         assert_equal(len(node0.getrawmempool()),0) # make sure mempool is clean
 
@@ -53,10 +57,14 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         # node0_call_contract = caller_factory(self, infos[-1]['address'], node0.getnewaddress())
         txids = [node0.callcontract(True, 0, infos[i]['address'], node0.getnewaddress(), 'payable')['txid'] for i in range(MAX_CONTRACT_CALL_NUM + 1)]
         node0.prioritisetransaction(txid=txids[-1], fee_delta=int(3 * base_fee * COIN))
+        print(len(node0.getrawmempool()))
         node0.generate(1)
+        block_txnum = int(node0.getblock(node0.getbestblockhash())['tx_num'])
+        print(block_txnum, len(node0.getrawmempool()))
         mempool = node0.getrawmempool()
         assert txids[-1] not in mempool  #should be mined
-        assert infos[-2]['txid'] in mempool
+        # assert infos[-2]['txid'] in mempool
+        assert_equal(len(node0.getrawmempool()), 1)  # can not locate the tx index in infos
         node0.generate(1) #clear mempool
         assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
         

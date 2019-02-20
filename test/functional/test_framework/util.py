@@ -711,6 +711,11 @@ def generate_contract(folder, err_type=None):
             --say("send ret:",ret)
         end
 
+        function sendCoinTest2( to )
+            -- body
+            ret = send(to,100000)
+        end
+        
         function dustChangeTest(to)
             -- body
             --dust to this contract
@@ -881,7 +886,7 @@ def generate_contract(folder, err_type=None):
     elif err_type == "trim_code":
         code += "--1" * 10
     elif err_type == "long_string_return":
-        add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2655)
+        add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2500)
         # add_code = "function longReturnTest() return {} '1' end\n".format("'string'," * 248)
         code += add_code
     file_path = os.path.join(folder, "contract.lua")

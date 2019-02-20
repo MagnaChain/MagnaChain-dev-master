@@ -115,10 +115,9 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # doubleSpendTest
         call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
-
         # cmsgpackTest
         if not SKIP:
-            assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'cmsgpack => sc >= LUACMSGPACK_MAX_NESTING')
+            assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'LUACMSGPACK_MAX_NESTING')
         self.sync_all()
 
         # # tailLoopTest
@@ -166,7 +165,9 @@ class ContractCallTest(MagnaChainTestFramework):
         tmp_caller(PAYABLE, amount=Decimal("1"))
         tmp_txid = tmp_caller("sendCoinTest", new_address, 1, amount=Decimal("0"),throw_exception = True)['txid']
         # 利用节点2挖矿，确保节点1的交易可以打包的块
+        self.sync_all()
         node2.generate(nblocks=2)  # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
+        self.sync_all()
         # make sure two transactions not in mempool
         # if assert failed it should be bug here
         assert txid not in node.getrawmempool()
@@ -214,7 +215,6 @@ class ContractCallTest(MagnaChainTestFramework):
         # maxContractCallTest
         call_contract("maxContractCallTest", 15)  # 15 is the limit
         assert_contains(call_contract("maxContractCallTest", 16), "run out of limit instruction")
-
         # callOtherContractTest
         # cycle call
         # step1 create contracts
@@ -281,7 +281,7 @@ class ContractCallTest(MagnaChainTestFramework):
             bal = node.getbalanceof(tmp_id)
             print(bal)
             tmp_sender = node.getnewaddress()
-            assert_equal(isinstance(caller_tmp("sendCoinTest", tmp_sender, 1, amount=Decimal("0.001"),throw_exception = True), dict),
+            assert_equal(isinstance(caller_tmp("sendCoinTest2", tmp_sender,amount=Decimal("0"),throw_exception = True), dict),
                          True)  # 组合所有微交易的找零，应该足够0.001个MGC的
             node.generate(nblocks=2)
             assert_equal(node.getbalanceof(tmp_sender), Decimal("0.001"))
@@ -293,7 +293,7 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             caller_last("reentrancyTest")
             node.generate(nblocks=1)
-            assert_equal(caller_last("get", "this")['return'][0], None)
+            assert_equal(caller_last("get", "this")['return'], [])
 
         # 疲劳测试
         if not SKIP:
