@@ -495,7 +495,7 @@ public:
     bool IsEquivalentTo(const MCWalletTx& tx) const;
 
     bool IsSmartContract() const {
-        return nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION;
+        return tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION;
     }
 
     bool InMempool() const;

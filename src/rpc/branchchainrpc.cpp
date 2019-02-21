@@ -570,16 +570,16 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
-                "makebranchtransaction branchid address amount \n"
-                "\n Send an amount to a branch chain's address.\n"
+                "makebranchtransaction hexstring\n"
+                "\n Send branch transaction to mempool of target block chain.\n"
                 "\nArguments:\n"
                 "1. \"hexdata\"               (string, required) The transaction hex data.\n"
-                "\nReturns the hash of the created branch chain.\n"
+                "\nReturns the hash of transaction.\n"
                 "\nResult:\n"
                 "\"txid\"                  (string) The transaction id.\n"
                 "\nExamples:\n"
-                + HelpExampleCli("makebranchtransaction", "93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e")
-                + HelpExampleRpc("makebranchtransaction", "93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e")
+                + HelpExampleCli("makebranchtransaction", "93ac2c05aebde2ff835f09cc...44dde535b845d852e")
+                + HelpExampleRpc("makebranchtransaction", "93ac2c05aebde2ff835f09cc...44dde535b845d852e")
                 );
 
     const std::string& strTx1HexData = request.params[0].get_str();
@@ -682,8 +682,8 @@ UniValue getbranchchaintransaction(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
-                "getbranchchaintransaction txid amount \n"
-                "\n Send an amount to a branch chain's address.\n"
+                "getbranchchaintransaction txid \n"
+                "\n Get branchchain transaction info by txid.\n"
                 "\nArguments:\n"
                 "1. \"txid\"                  (string, required) The txid.\n"
                 "\nReturns the hash of the created branch chain.\n"

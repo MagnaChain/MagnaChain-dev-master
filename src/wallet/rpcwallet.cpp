@@ -2000,6 +2000,41 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
             }
         }
     }
+
+    //is fee tx for other function.
+    if (listSent.empty() && listReceived.empty() && wtx.tx->vout.size() == 1
+        && (wtx.tx->IsSmartContract() || wtx.tx->IsSyncBranchInfo()))
+    {
+        for (unsigned int i = 0; i < wtx.tx->vout.size(); ++i)
+        {
+            const MCTxOut& txout = wtx.tx->vout[i];
+            MCTxDestination address;
+            if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
+            {
+                //LogPrintf("MCWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",this->GetHash().ToString());
+                address = MCNoDestination();
+            }
+            MCOutputEntry output = { address, txout.nValue, (int)i };
+
+            UniValue entry(UniValue::VOBJ);
+            if (involvesWatchonly || (::IsMine(*pwallet, output.destination) & ISMINE_WATCH_ONLY)) {
+                entry.push_back(Pair("involvesWatchonly", true));
+            }
+            entry.push_back(Pair("account", strSentAccount));
+            MaybePushAddress(entry, output.destination);
+            entry.push_back(Pair("category", "sendfee"));
+            //entry.push_back(Pair("amount", ValueFromAmount(-output.amount)));
+            if (pwallet->mapAddressBook.count(output.destination)) {
+                entry.push_back(Pair("label", pwallet->mapAddressBook[output.destination].name));
+            }
+            entry.push_back(Pair("vout", output.vout));
+            entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
+            if (fLong)
+                WalletTxToJSON(wtx, entry);
+            entry.push_back(Pair("abandoned", wtx.isAbandoned()));
+            ret.push_back(entry);
+        }
+    }
 }
 
 void AcentryToJSON(const MCAccountingEntry& acentry, const std::string& strAccount, UniValue& ret)
@@ -2042,10 +2077,11 @@ UniValue listtransactions(const JSONRPCRequest& request)
             "                                                It will be \"\" for the default account.\n"
             "    \"address\":\"address\",    (string) The magnachain address of the transaction. Not present for \n"
             "                                                move transactions (category = move).\n"
-            "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off blockchain)\n"
+            "    \"category\":\"send|receive|move|sendfee\", (string) The transaction category. 'move' is a local (off blockchain)\n"
             "                                                transaction between accounts, and not associated with an address,\n"
             "                                                transaction id or block. 'send' and 'receive' transactions are \n"
             "                                                associated with an address, transaction id and block details\n"
+            "                                                'sendfee' is for transaction like smartcontract, pay for fee, is not a transfer\n"
             "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the\n"
             "                                         'move' category for moves outbound. It is positive for the 'receive' category,\n"
             "                                         and for the 'move' category for inbound funds.\n"
