@@ -78,7 +78,8 @@ class AbandonConflictTest(MagnaChainTestFramework):
         inputs.append({"txid": txAB1, "vout": nAB})
         inputs.append({"txid": txC, "vout": nC})
         outputs = {}
-        outputs[self.nodes[0].getnewaddress()] = Decimal("19977")
+        addrABC2 = self.nodes[0].getnewaddress()
+        outputs[addrABC2] = Decimal("19977")
         signed2 = self.nodes[0].signrawtransaction(self.nodes[0].createrawtransaction(inputs, outputs))
         txABC2 = self.nodes[0].sendrawtransaction(signed2["hex"])
 
@@ -106,7 +107,8 @@ class AbandonConflictTest(MagnaChainTestFramework):
         unconfbalance = self.nodes[0].getunconfirmedbalance() + self.nodes[0].getbalance()
         assert_equal(unconfbalance, newbalance)
         # Also shouldn't show up in listunspent
-        assert (not txABC2 in [utxo["txid"] for utxo in self.nodes[0].listunspent(0)])
+        x = self.nodes[0].listunspent(1, 9999999, [addrABC2])
+        assert(not txABC2 in [utxo["txid"] for utxo in x])
         balance = newbalance
 
         # Abandon original transaction and verify inputs are available again
