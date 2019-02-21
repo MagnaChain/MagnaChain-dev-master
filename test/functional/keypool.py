@@ -6,6 +6,7 @@
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
+from test_framework.contract import Contract
 
 class KeyPoolTest(MagnaChainTestFramework):
     def set_test_params(self):
@@ -58,7 +59,10 @@ class KeyPoolTest(MagnaChainTestFramework):
         addr.add(nodes[0].getnewaddress())
         assert(len(addr) == 6)
         # the next one should fail
-        assert_raises_rpc_error(-12, "Error: Keypool ran out, please call keypoolrefill first", nodes[0].getnewaddress)
+        try:
+            Contract(nodes[0], self.options.tmpdir)
+        except Exception as e:
+            assert "Keypool ran out" in repr(e)
 
         # refill keypool with three new addresses
         nodes[0].walletpassphrase('test', 1)
