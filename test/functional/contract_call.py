@@ -117,7 +117,7 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
         # cmsgpackTest
         if not SKIP:
-            assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'LUACMSGPACK_MAX_NESTING')
+            assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'cmsgpack => sc >= LUACMSGPACK_MAX_NESTING')
         self.sync_all()
 
         # # tailLoopTest
@@ -157,8 +157,8 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
-        call_contract("sendCoinTest", new_address, 0,throw_exception = True)
-        assert_contains(call_contract("sendCoinTest", new_address, -1), "bad-txns-vout-negative")
+        assert_contains(call_contract("sendCoinTest", new_address, 0), "SendCoins => amount(0) out of range")
+        assert_contains(call_contract("sendCoinTest", new_address, -1), "SendCoins => amount(-100000000) out of range")
         # send all balance
         tmp_id = node.publishcontract(contract)["contractaddress"]
         tmp_caller = caller_factory(self, tmp_id, sender)
@@ -235,6 +235,8 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             caller_b("contractDataTest")  # after called,size should be 127
             assert_equal(caller_b("get", "size")['return'][0], 127)
+            call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "reentrancyTest",
+                          new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest",
                           new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
             node.generate(nblocks=1)
@@ -299,7 +301,7 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             to_list = [node.getnewaddress() for i in range(1000)]
             for to in to_list:
-                caller_last(PAYABLE, amount=2)
+                caller_last(PAYABLE, amount=10)
                 caller_last(CYCLE_CALL, last_id, "contractDataTest",amount=0)
                 caller_last(CYCLE_CALL, last_id, "dustChangeTest",to,amount=0)
                 caller_last(CYCLE_CALL, last_id, "addWithdrawList",to,amount=0)
