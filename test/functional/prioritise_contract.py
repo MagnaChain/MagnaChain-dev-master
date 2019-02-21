@@ -72,7 +72,7 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         node0.prioritisetransaction(txid=txids[-1], fee_delta=int(3 * base_fee * COIN))
         print(len(node0.getrawmempool()))
         node0.generate(1)
-        self.sync_all(timeout=6000, show_max_height=True)
+        self.sync_all(timeout=600, show_max_height=True)
         block_txnum = int(node0.getblock(node0.getbestblockhash())['tx_num'])
         print(block_txnum, len(node0.getrawmempool()))
         mempool = node0.getrawmempool()
