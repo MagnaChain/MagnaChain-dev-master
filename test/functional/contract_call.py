@@ -157,8 +157,8 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
-        call_contract("sendCoinTest", new_address, 0)
-        assert_contains(call_contract("sendCoinTest", new_address, -1))
+        assert_contains(call_contract("sendCoinTest", new_address, 0), "SendCoins => amount(0) out of range")
+        assert_contains(call_contract("sendCoinTest", new_address, -1), "SendCoins => amount(-100000000) out of range")
         # send all balance
         tmp_id = node.publishcontract(contract)["contractaddress"]
         tmp_caller = caller_factory(self, tmp_id, sender)
