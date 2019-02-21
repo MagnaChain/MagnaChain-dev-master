@@ -13,12 +13,12 @@
 """
 
 from test_framework.test_framework import MagnaChainTestFramework
-from test_framework.util import assert_equal,generate_contract,gen_lots_of_contracts
+from test_framework.util import assert_equal,generate_contract,gen_lots_of_contracts,sync_blocks
 from test_framework.mininode import COIN, MAX_BLOCK_BASE_SIZE
 
 
 MAX_CONTRACT_NUM = 487  # 一个区块最多可以包含多少个发布合约的交易
-MAX_CONTRACT_CALL_NUM = 3403  # 一个区块最多可以包含多少个调用合约的交易
+MAX_CONTRACT_CALL_NUM = 3401  # 一个区块最多可以包含多少个调用合约的交易
 class PrioritiseContractTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
@@ -39,26 +39,40 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         # 测试发布合约的交易
         self.log.info("Test contract publish transaction")
         contract = generate_contract(self.options.tmpdir)
-        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM * 9)
+        infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM )
         node0.prioritisetransaction(txid=infos[-1]['txid'], fee_delta=int(3 * base_fee * COIN))
-        print(len(node0.getrawmempool()))
+        mempool_len = len(node0.getrawmempool())
+        print(mempool_len)
+        print(len(node0.getrawmempool()), len(node1.getrawmempool()))
+        self.sync_all()
+        print(len(node0.getrawmempool()), len(node1.getrawmempool()))
         node0.generate(1)
+        sync_blocks(self.nodes)
         block_txnum = int(node0.getblock(node0.getbestblockhash())['tx_num'])
         mempool = node0.getrawmempool()
-        print(block_txnum, len(node0.getrawmempool()))
+        print(block_txnum, len(node0.getrawmempool()),len(node1.getrawmempool()))
         assert infos[-1]['txid'] not in mempool  #should be mined
-        node0.generate(8)
-        assert_equal(len(node0.getrawmempool()), 1 * 9)  # can not locate the tx index in infos
+        assert_equal(len(node0.getrawmempool()), MAX_CONTRACT_NUM - block_txnum + 1)  # can not locate the tx index in infos
         node0.generate(1) #clear mempool
+        sync_blocks(self.nodes,timeout = 600)
         assert_equal(len(node0.getrawmempool()),0) # make sure mempool is clean
 
         # 测试调用合约的交易
         self.log.info("Test call contract transaction")
         # node0_call_contract = caller_factory(self, infos[-1]['address'], node0.getnewaddress())
-        txids = [node0.callcontract(True, 0, infos[i]['address'], node0.getnewaddress(), 'payable')['txid'] for i in range(MAX_CONTRACT_CALL_NUM + 1)]
+        infos = infos + gen_lots_of_contracts(node0, contract, MAX_CONTRACT_CALL_NUM - MAX_CONTRACT_NUM)
+        print("sync all....")
+        self.sync_all(timeout=6000, show_max_height=True)
+        node0.generate(10)
+        print("sync blocks....")
+        sync_blocks(self.nodes, timeout=600)
+        assert_equal(len(node0.getrawmempool()), 0)  # make sure mempool is clean
+        print(len(infos))
+        txids = [node0.callcontract(True, 0, infos[i]['address'], node0.getnewaddress(), 'payable')['txid'] for i in range(MAX_CONTRACT_CALL_NUM)]
         node0.prioritisetransaction(txid=txids[-1], fee_delta=int(3 * base_fee * COIN))
         print(len(node0.getrawmempool()))
         node0.generate(1)
+        self.sync_all(timeout=6000, show_max_height=True)
         block_txnum = int(node0.getblock(node0.getbestblockhash())['tx_num'])
         print(block_txnum, len(node0.getrawmempool()))
         mempool = node0.getrawmempool()
@@ -66,34 +80,34 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         # assert infos[-2]['txid'] in mempool
         assert_equal(len(node0.getrawmempool()), 1)  # can not locate the tx index in infos
         node0.generate(1) #clear mempool
+        sync_blocks(self.nodes, timeout=600)
         assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
+
         
         ''''''
         # 测试有依赖的合约交易的优先级，依赖方式为调用同一合约
         publish_transaction = gen_lots_of_contracts(node0, contract, 1)
         print(publish_transaction)
-        self.sync_all()
         txid = node0.callcontract(True, 0, publish_transaction[0]['address'], node0.getnewaddress(), 'payable')['txid']
-        self.sync_all()
         mempool_old = node0.getrawmempool()
         node0.prioritisetransaction(txid=txid, fee_delta=int(30 * base_fee * COIN))
         mempool_new = node0.getrawmempool()
         # print(mempool_old,mempool_new)
         assert mempool_old == mempool_new #因为有依赖关系，所以内存池顺序应该是一致的
         node0.generate(2)
+        sync_blocks(self.nodes, timeout=600)
 
         to = node0.getnewaddress()
         txid1 = node0.callcontract(True, 1, publish_transaction[0]['address'], node0.getnewaddress(), 'payable')['txid']
         print("txid1:",txid1)
         txid2 = node0.callcontract(True, 0, publish_transaction[0]['address'], node0.getnewaddress(), 'sendCoinTest',to,1)['txid']
         print("txid2:",txid2)
-        self.sync_all()
         mempool_old = node0.getrawmempool()
         node0.prioritisetransaction(txid=txid2, fee_delta=int(30 * base_fee * COIN))
         mempool_new = node0.getrawmempool()
         assert mempool_old == mempool_new  # 因为有依赖关系，所以内存池顺序应该是一致的
-        self.sync_all()
-        assert  mempool_new == node1.getrawmempool()
+        self.sync_all(timeout = 6000,show_max_height = True)
+        assert  mempool_old == node1.getrawmempool() # prioritisetransaction不会影响其他节点交易的优先级
         node0.generate(2)
         assert node0.getbalanceof(to) == 1
 

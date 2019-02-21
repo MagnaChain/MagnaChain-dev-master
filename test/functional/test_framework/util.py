@@ -768,6 +768,9 @@ def generate_contract(folder, err_type=None):
             -- body
             _call(msg.thisaddress,'updateContract','this','')
             _call(msg.thisaddress,'cycleSelf')
+            _call(msg.thisaddress,'updateContract','this','')
+            _call(msg.thisaddress,'cycleSelf')
+            
         end
 
         function rpcSendTest()
@@ -866,7 +869,7 @@ def generate_contract(folder, err_type=None):
         function cycleSelf()
             -- body
             --PersistentData["this"] = PersistentData
-            PersistentData["this"] = PersistentData
+            PersistentData["this"] = {1,2,3,4,5,6,asd = {name = 'weigun',age = 18,7,8,9,infos={{1},{2},k = {n=true}}}}
         end
         
         function setUpHook()
