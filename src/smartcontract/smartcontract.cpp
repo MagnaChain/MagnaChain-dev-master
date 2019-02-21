@@ -752,7 +752,7 @@ int static SendCoins(lua_State* L)
 
     MCAmount amount = lua_tonumber(L, 2);
     if (amount <= 0) {
-        throw std::runtime_error(strprintf("%s => param2 out of range", __FUNCTION__));
+        throw std::runtime_error(strprintf("%s => amount(%d) out of range", __FUNCTION__, amount));
     }
 
     if (sls->pCoinAmountCache == nullptr)
