@@ -1962,6 +1962,25 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
     // Received
     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
     {
+        //merge for generateforbigboom, because bit boom coinbase is split the output to smaller amount, these too many output for bigboom
+        bool fmergeforbigboom = false;
+        MCAmount totalAmount = 0;
+        MCTxDestination firstDestination = listReceived.begin()->destination;
+        if (wtx.IsCoinBase() && pwallet->mapAddressBook.count(firstDestination)
+            && pwallet->mapAddressBook[firstDestination].name == "generateforbigboom")
+        {
+            fmergeforbigboom = true;
+            for (const MCOutputEntry& r : listReceived)
+            {
+                totalAmount += r.amount;
+                if (r.destination != firstDestination)
+                {
+                    fmergeforbigboom = false;
+                    break;
+                }
+            }
+        }
+
         for (const MCOutputEntry& r : listReceived)
         {
             std::string account;
@@ -1989,6 +2008,7 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
                 {
                     entry.push_back(Pair("category", "receive"));
                 }
+
                 entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
                 if (pwallet->mapAddressBook.count(r.destination)) {
                     entry.push_back(Pair("label", account));
@@ -1996,7 +2016,18 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
                 entry.push_back(Pair("vout", r.vout));
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+                
+                if (fmergeforbigboom)
+                {
+                    entry.push_back(Pair("totalamount", ValueFromAmount(totalAmount)));
+                    entry.push_back(Pair("vout_size", (int)listReceived.size()));
+                }
                 ret.push_back(entry);
+
+                if (fmergeforbigboom)
+                {
+                    break;
+                }
             }
         }
     }
