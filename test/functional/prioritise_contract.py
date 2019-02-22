@@ -17,8 +17,8 @@ from test_framework.util import assert_equal,generate_contract,gen_lots_of_contr
 from test_framework.mininode import COIN, MAX_BLOCK_BASE_SIZE
 
 
-MAX_CONTRACT_NUM = 487  # 一个区块最多可以包含多少个发布合约的交易
-MAX_CONTRACT_CALL_NUM = 3401  # 一个区块最多可以包含多少个调用合约的交易
+MAX_CONTRACT_NUM = 231  # 一个区块最多可以包含多少个发布合约的交易
+MAX_CONTRACT_CALL_NUM = 1700  # 一个区块最多可以包含多少个调用合约的交易
 class PrioritiseContractTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
@@ -41,8 +41,6 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         contract = generate_contract(self.options.tmpdir)
         infos = gen_lots_of_contracts(node0, contract, MAX_CONTRACT_NUM )
         node0.prioritisetransaction(txid=infos[-1]['txid'], fee_delta=int(3 * base_fee * COIN))
-        mempool_len = len(node0.getrawmempool())
-        print(mempool_len)
         print(len(node0.getrawmempool()), len(node1.getrawmempool()))
         self.sync_all()
         print(len(node0.getrawmempool()), len(node1.getrawmempool()))
@@ -61,24 +59,26 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         self.log.info("Test call contract transaction")
         # node0_call_contract = caller_factory(self, infos[-1]['address'], node0.getnewaddress())
         infos = infos + gen_lots_of_contracts(node0, contract, MAX_CONTRACT_CALL_NUM - MAX_CONTRACT_NUM)
-        print("sync all....")
+        print(len(node0.getrawmempool()), len(node1.getrawmempool()))
         self.sync_all(timeout=6000, show_max_height=True)
+        print(len(node0.getrawmempool()), len(node1.getrawmempool()))
         node0.generate(10)
         print("sync blocks....")
         sync_blocks(self.nodes, timeout=600)
         assert_equal(len(node0.getrawmempool()), 0)  # make sure mempool is clean
-        print(len(infos))
+        print("info size: %d"%(len(infos)))
         txids = [node0.callcontract(True, 0, infos[i]['address'], node0.getnewaddress(), 'payable')['txid'] for i in range(MAX_CONTRACT_CALL_NUM)]
         node0.prioritisetransaction(txid=txids[-1], fee_delta=int(3 * base_fee * COIN))
-        print(len(node0.getrawmempool()))
+        print("mempool size after change priority: %d"%(len(node0.getrawmempool())))
         node0.generate(1)
+        print("mempool size after generate block: %d"%(len(node0.getrawmempool())))
         self.sync_all(timeout=600, show_max_height=True)
         block_txnum = int(node0.getblock(node0.getbestblockhash())['tx_num'])
         print(block_txnum, len(node0.getrawmempool()))
         mempool = node0.getrawmempool()
         assert txids[-1] not in mempool  #should be mined
         # assert infos[-2]['txid'] in mempool
-        assert_equal(len(node0.getrawmempool()), 1)  # can not locate the tx index in infos
+        assert(len(node0.getrawmempool()) > 0)  # can not locate the tx index in infos
         node0.generate(1) #clear mempool
         sync_blocks(self.nodes, timeout=600)
         assert len(node0.getrawmempool()) == 0 # make sure mempool is clean
