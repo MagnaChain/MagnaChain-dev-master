@@ -6,6 +6,7 @@
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_array_result, assert_raises_rpc_error
+from test_framework.contract import Contract
 
 # TODO 需要加上合约的情况
 class ListSinceBlockTest (MagnaChainTestFramework):
@@ -55,6 +56,29 @@ class ListSinceBlockTest (MagnaChainTestFramework):
             {"lastblock": blockhash,
              "removed": [],
              "transactions": txs})
+
+        # contract test
+        txid = Contract(self.nodes[2]).publish_txid
+        blockhash, = self.nodes[2].generate(1)
+        self.sync_all()
+        txs = self.nodes[0].listtransactions()
+        # assert_array_result(txs, {"txid": txid}, {
+        #     "category": "receive",
+        #     "amount": 1,
+        #     "blockhash": blockhash,
+        #     "confirmations": 1,
+        # })
+        assert_equal(
+            self.nodes[0].listsinceblock(),
+            {"lastblock": blockhash,
+             "removed": [],
+             "transactions": txs})
+        assert_equal(
+            self.nodes[0].listsinceblock(""),
+            {"lastblock": blockhash,
+             "removed": [],
+             "transactions": txs})
+
 
     def test_invalid_blockhash(self):
         assert_raises_rpc_error(-5, "Block not found", self.nodes[0].listsinceblock,
