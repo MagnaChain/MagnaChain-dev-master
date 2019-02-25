@@ -918,6 +918,22 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
         }
     }
     bool fComplete = vErrors.empty();
+    if (fComplete)
+    {
+        // sign with contractSender addr's private key.
+        if (mtx.IsSmartContract())
+        {
+            MCTransaction txNewConst(mtx);
+            MCScript constractSig;
+            if (!SignContract(&keystore, &txNewConst, constractSig))
+            {
+                fComplete = false;
+            }
+            else {
+                mtx.pContractData->signature = constractSig;
+            }
+        }
+    }
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", EncodeHexTx(mtx)));
