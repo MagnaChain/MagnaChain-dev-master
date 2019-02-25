@@ -41,6 +41,7 @@ class MempoolLimitTest(MagnaChainTestFramework):
         assert(txid not in self.nodes[0].getrawmempool())
         txdata = self.nodes[0].gettransaction(txid)
         assert(txdata['confirmations'] ==  0) #confirmation should still be 0
+        # todo 存在依赖关系的合约交易，内存池满时的情况：抛弃交易时，是依赖链全抛弃还是部分抛弃
 
 if __name__ == '__main__':
     MempoolLimitTest().main()
