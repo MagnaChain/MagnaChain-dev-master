@@ -91,6 +91,7 @@ class ContractForkTest(MagnaChainTestFramework):
         pre_transaction = self.node0.prepublishcode(hex_content,coster,sender_pub,amount,changeaddress)
         txhex = pre_transaction['txhex']
         spent_utxo = pre_transaction['coins']
+        print(spent_utxo)
         prevtxs = []
         for ele in spent_utxo:
             info = {}
@@ -101,6 +102,7 @@ class ContractForkTest(MagnaChainTestFramework):
             prevtxs.append(info)
         signed_tx = self.node0.signrawtransaction(txhex,prevtxs,[sender_pri,sender_pri])
         result = self.node0.sendrawtransaction(signed_tx['hex'])
+        print(result)
         txid_a1 = result['txid']
         contract_a1 = result['contractaddress']
         # 第一组节点同步,这是该组链高度应该为11
@@ -111,14 +113,12 @@ class ContractForkTest(MagnaChainTestFramework):
         last_block_hash =  block_a2
 
         # 第二组开始发布合约
-        # coster = self.node2.getnewaddress()
-        # sender_pub = self.node2.validateaddress(coster)['pubkey']
-        # sender_pri = self.node2.dumpprivkey(coster)
-        amount = 0
+        amount = 1
         changeaddress = self.node2.getnewaddress()
         pre_transaction = self.node2.prepublishcode(hex_content, coster, sender_pub, amount, changeaddress)
         txhex = pre_transaction['txhex']
-        # spent_utxo = pre_transaction['coins']
+        spent_utxo = pre_transaction['coins']
+        print(spent_utxo)
         prevtxs = []
         for ele in spent_utxo:
             info = {}
@@ -129,6 +129,7 @@ class ContractForkTest(MagnaChainTestFramework):
             prevtxs.append(info)
         signed_tx = self.node2.signrawtransaction(txhex, prevtxs, [sender_pri, sender_pri])
         result = self.node2.sendrawtransaction(signed_tx['hex'])
+        print(result)
         txid_b1 = result['txid']
         contract_b1 = result['contractaddress']
         # 第二组节点同步,这是该组链高度应该为15
