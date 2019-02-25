@@ -31,6 +31,7 @@ from test_framework.script import CScript
 from test_framework.util import (
     assert_equal,
     assert_greater_than,
+    assert_raises_rpc_error,
     assert_contains,
     generate_contract,
     sync_mempools,
@@ -100,21 +101,24 @@ class ContractForkTest(MagnaChainTestFramework):
             prevtxs.append(info)
         signed_tx = self.node0.signrawtransaction(txhex,prevtxs,[sender_pri,sender_pri])
         result = self.node0.sendrawtransaction(signed_tx['hex'])
+        txid_a1 = result['txid']
         contract_a1 = result['contractaddress']
         # 第一组节点同步,这是该组链高度应该为11
         block_a1,block_a2 = self.node0.generate(2)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         assert_equal(self.node1.getblockcount(),11)
+        assert_equal(self.node1.getbestblockhash(), block_a2)
+        last_block_hash =  block_a2
 
         # 第二组开始发布合约
-        coster = self.node2.getnewaddress()
-        sender_pub = self.node2.validateaddress(coster)['pubkey']
-        sender_pri = self.node2.dumpprivkey(coster)
+        # coster = self.node2.getnewaddress()
+        # sender_pub = self.node2.validateaddress(coster)['pubkey']
+        # sender_pri = self.node2.dumpprivkey(coster)
         amount = 0
         changeaddress = self.node2.getnewaddress()
         pre_transaction = self.node2.prepublishcode(hex_content, coster, sender_pub, amount, changeaddress)
         txhex = pre_transaction['txhex']
-        spent_utxo = pre_transaction['coins']
+        # spent_utxo = pre_transaction['coins']
         prevtxs = []
         for ele in spent_utxo:
             info = {}
@@ -125,12 +129,30 @@ class ContractForkTest(MagnaChainTestFramework):
             prevtxs.append(info)
         signed_tx = self.node2.signrawtransaction(txhex, prevtxs, [sender_pri, sender_pri])
         result = self.node2.sendrawtransaction(signed_tx['hex'])
+        txid_b1 = result['txid']
         contract_b1 = result['contractaddress']
-        # 第二组节点同步,这是该组链高度应该为13
-        block_b1, block_b2,block_b3,block_b4 = self.node0.generate(4)
+        # 第二组节点同步,这是该组链高度应该为15
+        block_b10 = self.node2.generate(10)[9]
         self.sync_all([self.nodes[:2], self.nodes[2:]])
-        assert_equal(self.node1.getblockcount(),13)
-        assert_equal(self.node.getbestblockhash(),block_b4)
+        assert_equal(self.node2.getblockcount(),19)
+        assert_equal(self.node2.getbestblockhash(),block_b10)
+
+        # 合并网络
+        self.join_network()
+        assert_equal(self.node2.getblockcount(), 19)
+        assert_equal(self.node2.getbestblockhash(), block_b10)
+        print(self.node0.gettransaction(txid_a1))
+
+        lsbres = self.nodes[0].listsinceblock(last_block_hash,1)
+        found_b1 = False
+        found_a1 = False
+        for tx in lsbres['transactions']:
+            if tx['txid'] == txid_b1:
+                found_b1 = True
+            if tx['txid'] == txid_a1:
+                found_a1 = True
+        print(found_a1,found_b1)
+        assert found_b1 and not found_a1
 
 
 
