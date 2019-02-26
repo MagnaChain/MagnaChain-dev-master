@@ -3343,7 +3343,7 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
     const unsigned int blockSeriSize = ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
     if (blockSeriSize > MAX_BLOCK_WEIGHT)
-        return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed2");
+        return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, strprintf("size limits %d failed2", blockSeriSize));
 
     // First transaction must be coinbase, the rest must not be
     if (block.vtx.empty() || !block.vtx[0]->IsCoinBase())
