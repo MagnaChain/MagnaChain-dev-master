@@ -20,12 +20,15 @@ class Caller(object):
         self.contract_id = contract_id
         self.sender = sender
 
-    def __call__(self, *args,sender = None,amount = random.randint(1,10000),throw_exception = True,broadcasting = True):
+    def __call__(self, *args,sender = None,amount = random.randint(1,10000),throw_exception = True,broadcasting = True,exec_node = None):
         try:
             if sender:
                 self.sender = sender
             print("%s,%s,%s,%s,%s"%(self.contract_id,self.func,self.sender,amount,args))
-            return self.node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
+            if exec_node:
+                return exec_node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
+            else:
+                return self.node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
         except Exception as e:
             if throw_exception:
                 raise

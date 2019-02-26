@@ -53,6 +53,11 @@ class ContractForkTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 4
+        self.extra_args = [["-powtargetspacing=5"], ["-powtargetspacing=5"], ["-powtargetspacing=5"], ["-powtargetspacing=5"]]
+
+    def setup_nodes(self):
+        self.add_nodes(self.num_nodes, self.extra_args, timewait=900)
+        self.start_nodes()
 
     def run_test(self):
         """Main test logic"""
@@ -67,8 +72,15 @@ class ContractForkTest(MagnaChainTestFramework):
 
         # main test
         self.contract_file = generate_contract(self.options.tmpdir)
+        self.tips_num = 1
+        self.log.info("before test_publish_fork_with_utxo,normal utxo")
         self.test_publish_fork_with_utxo()
-        # self.test_publish_fork_with_utxo(is_contract_output=True)
+        self.log.info("before test_publish_fork_with_utxo,contract utxo")
+        self.test_publish_fork_with_utxo(is_contract_output=True)
+        self.log.info("before test_callcontract_fork,without send")
+        self.test_callcontract_fork()
+        self.log.info("before test_callcontract_fork,with send")
+        # self.test_callcontract_fork(with_send=True)
 
 
     def test_publish_fork_with_utxo(self,is_contract_output = False):
@@ -91,12 +103,14 @@ class ContractForkTest(MagnaChainTestFramework):
         coster = self.node0.getnewaddress()
         if is_contract_output:
             ct = Contract(self.node0)
-            ct.call_payable(amount = 2000)
-            ct.call_sendCoinTest(coster,1000)
+            tmp_tx1 = ct.call_payable(amount = 2000)['txid']
+            tmp_tx2 = ct.call_sendCoinTest(coster,1000)['txid']
+            print(ct.publish_txid,tmp_tx1,tmp_tx2)
         else:
-            self.node0.sendtoaddress(coster, 1000)
+            print(self.node0.sendtoaddress(coster, 1000))
         self.node0.generate(2)
         self.sync_all()
+        blocks_num = self.node1.getblockcount()
         '''
         分割成2个网络，然后各自用同一个utxo发布合约
         '''
@@ -112,7 +126,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # 第一组节点同步,这是该组链高度应该为12
         block_a1,block_a2 = self.node0.generate(2)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
-        assert_equal(self.node1.getblockcount(),12)
+        assert_equal(self.node1.getblockcount(),blocks_num + 2)
         assert_equal(self.node1.getbestblockhash(), block_a2)
         last_block_hash =  block_a2
 
@@ -126,7 +140,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # 第二组节点同步,这是该组链高度应该为22
         block_b13 = self.node2.generate(12)[11]
         self.sync_all([self.nodes[:2], self.nodes[2:]])
-        assert_equal(self.node2.getblockcount(),22)
+        assert_equal(self.node2.getblockcount(),blocks_num + 12)
         assert_equal(self.node2.getbestblockhash(),block_b13)
 
         # 合并网络
@@ -135,18 +149,21 @@ class ContractForkTest(MagnaChainTestFramework):
         self.join_network()
         for i in range(4):
             print(i,self.nodes[i].getblockcount(),int(self.nodes[i].getchaintipwork(), 16) )
-        # 确认存在分叉存在，并且主链为21个区块的
+        # 确认存在分叉存在，并且主链为22个区块的
         tips = self.nodes[0].getchaintips ()
-        assert_equal (len (tips), 2)
-        assert_equal(self.node2.getblockcount(), 22)
+        print(tips)
+        assert_equal (len (tips), self.tips_num + 1)
+        self.tips_num += 1
+        assert_equal(self.node2.getblockcount(), blocks_num + 12)
         assert_equal(self.node2.getbestblockhash(), block_b13)
         print(self.node0.gettransaction(txid_a1))
         # 确认分叉上的合约在主链上不能被调用
         assert_raises_rpc_error(-1, "CallContractReal => GetContractInfo fail, contractid is " + contract_a1,self.node0.callcontract, True,
                                 1, contract_a1, self.node0.getnewaddress(), "payable")
         # 主链合约是可以调用的
-        self.node0.callcontract(True, 1, contract_b1, self.node0.getnewaddress(), "payable")
+        print(self.node0.callcontract(True, 1, contract_b1, self.node0.getnewaddress(), "payable"))
 
+        '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
         assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
@@ -154,6 +171,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # but it should not include 'removed' if include_removed=false
         lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
         assert 'removed' not in lsbres2
+        '''
         '''
 
         lsbres = self.nodes[0].listsinceblock(last_block_hash,1)
@@ -168,9 +186,107 @@ class ContractForkTest(MagnaChainTestFramework):
         assert found_b1 and not found_a1
         '''
 
+    def test_callcontract_fork(self,with_send = False):
+        '''
+        调用同一合约，不含send操作
+        ab0[contract_ab]
+          /         \
+        aa1 [cca1]   bb1 [ccb1]
+         |           |
+        aa2         bb2
+         |           |
+        aa3         bb3
+                     |
+                    bb4
+                     |
+                    ...
+        :param with_send:
+        :return:
+        '''
+        self.sync_all()
+        self.node0.generate(2)
+        assert_equal(self.node0.getrawmempool(),[]) #make sure mempool empty
+        assert_equal(self.node1.getrawmempool(), [])  # make sure mempool empty
+        ct = Contract(self.node1)
+        print(ct.publish_txid)
+        self.sync_all()
+        self.node0.generate(2)
+        self.sync_all()
+        blocks_num = self.node1.getblockcount()
+
+        # split mgc network
+        self.split_network()
+        self.node1.generate(2)  #fork
+        self.node3.generate(8)  # fork
+
+        # in group 1
+        tx_a1 = ct.call_payable(amount = 2000)['txid']
+        tx_a11 = ct.call_contractDataTest()['txid']
+        tx_a12 = ct.call_contractDataTest()['txid']
+        print(tx_a1,tx_a11,tx_a12)
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        last_block_hash = self.node1.generate(2)[-1]
+        assert tx_a1 not in self.node1.getrawmempool()
+        assert tx_a11 not in self.node1.getrawmempool()
+        assert self.node1.getrawmempool() == []
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+
+        # in group 2
+        tx_b1 = ct.call_payable(amount=2000,exec_node = self.node3,sender = self.node3.getnewaddress())['txid']
+        print(tx_b1)
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        self.node3.generate(2)
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        assert tx_b1 not in self.node3.getrawmempool()
+        tx_b11 = ct.call_contractDataTest(exec_node = self.node3,sender = self.node3.getnewaddress())['txid']
+        print(tx_b11)
+        block_b16 = self.node3.generate(6)[-1]
+        assert tx_b11 not in self.node3.getrawmempool()
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+
+        # join network
+        for i in range(4):
+            print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+            print("mempool:",self.nodes[i].getrawmempool())
+        print("join network")
+        try:
+            self.join_network(timeout = 60 * 5)
+        except Exception as e:
+            for i in range(4):
+                # print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+                print("mempool:", self.nodes[i].getrawmempool())
+            raise
+        for i in range(4):
+            print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+
+        tips = self.nodes[0].getchaintips()
+        print(tips)
+        assert_equal(len(tips), self.tips_num + 1)
+        self.tips_num += 1
+        assert_equal(self.node2.getblockcount(), blocks_num + 16)
+        assert_equal(self.node2.getbestblockhash(), block_b16)
+        print(self.node1.gettransaction(tx_a1))
+        print(self.node1.gettransaction(tx_a11))
+
+        # In bestchain,ensure contract data and balance is correct
+        for n in self.nodes:
+            assert n.balanceof(ct.contract_id) == 2000 + self.get_txfee(tx_b11)
+            assert_equal(ct.call_get('counter')['return'],2)
+
+        '''
+        # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
+        lsbres = self.nodes[1].listsinceblock(last_block_hash)
+        assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
+
+        # but it should not include 'removed' if include_removed=false
+        lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
+        assert 'removed' not in lsbres2
+        '''
+
 
     def publish_contract(self,node,hex_content, coster, sender_pub, sender_pri,amount, changeaddress):
         pre_transaction = node.prepublishcode(hex_content, coster, sender_pub, amount, changeaddress)
+        print(pre_transaction)
         txhex = pre_transaction['txhex']
         spent_utxo = pre_transaction['coins']
         print(spent_utxo)
@@ -183,8 +299,12 @@ class ContractForkTest(MagnaChainTestFramework):
             info['scriptPubKey'] = ele['script']
             prevtxs.append(info)
         signed_tx = node.signrawtransaction(txhex, prevtxs, [sender_pri, sender_pri])
+        print(signed_tx)
         return node.sendrawtransaction(signed_tx['hex'])
 
+
+    def get_txfee(self, txid, node_index=0):
+        return Decimal(self.nodes[node_index].gettransaction(txid)['fee'])
 if __name__ == '__main__':
     ContractForkTest().main()
 

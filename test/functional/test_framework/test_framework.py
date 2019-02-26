@@ -308,12 +308,12 @@ class MagnaChainTestFramework(object):
         disconnect_nodes(self.nodes[2], 1)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
-    def join_network(self):
+    def join_network(self,timeout = 60):
         """
         Join the (previously split) network halves together.
         """
         connect_nodes_bi(self.nodes, 1, 2)
-        self.sync_all()
+        self.sync_all(timeout = timeout)
 
     """make a chain have more work than b"""
     def make_more_work_than(self, a, b):
