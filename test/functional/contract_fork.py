@@ -162,7 +162,7 @@ class ContractForkTest(MagnaChainTestFramework):
                                 1, contract_a1, self.node0.getnewaddress(), "payable")
         # 主链合约是可以调用的
         print(self.node0.callcontract(True, 1, contract_b1, self.node0.getnewaddress(), "payable"))
-
+        # 未完成的用例，下面的有问题，先屏蔽
         '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
@@ -273,6 +273,7 @@ class ContractForkTest(MagnaChainTestFramework):
             assert n.balanceof(ct.contract_id) == 2000 + self.get_txfee(tx_b11)
             assert_equal(ct.call_get('counter')['return'],2)
 
+        # 未完成的用例，下面的有问题，先屏蔽
         '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
