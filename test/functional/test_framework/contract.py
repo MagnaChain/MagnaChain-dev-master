@@ -24,6 +24,8 @@ class Caller(object):
         try:
             if sender:
                 self.sender = sender
+            elif exec_node:
+                self.sender = exec_node.getnewaddress()
             print("%s,%s,%s,%s,%s"%(self.contract_id,self.func,self.sender,amount,args))
             if exec_node:
                 return exec_node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
@@ -88,6 +90,12 @@ class Contract(object):
             item = item.replace('call_','',1)
             return Caller(self.bind_node,item,self.contract_id, self.publisher)
         raise AttributeError
+
+
+    def get_balance(self,exce_node = None):
+        if exce_node:
+            return exce_node.getbalanceof(self.contract_id)
+        return self.bind_node.getbalanceof(self.contract_id)
 
 
 
