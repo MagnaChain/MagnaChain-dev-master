@@ -69,14 +69,14 @@ class ContractForkTest(MagnaChainTestFramework):
         # main test
         self.contract_file = generate_contract(self.options.tmpdir)
         self.tips_num = 1
-        self.log.info("before test_publish_fork_with_utxo,normal utxo")
+        self.log.info("start test_publish_fork_with_utxo,normal utxo")
         self.test_publish_fork_with_utxo()
-        self.log.info("before test_publish_fork_with_utxo,contract utxo")
+        self.log.info("start test_publish_fork_with_utxo,contract utxo")
         self.test_publish_fork_with_utxo(is_contract_output=True)
-        self.log.info("before test_callcontract_fork,without send")
+        self.log.info("start test_callcontract_fork,without send")
         self.test_callcontract_fork()
-        self.log.info("before test_callcontract_fork,with send")
-        # self.test_callcontract_fork(with_send=True)
+        self.log.info("start test_callcontract_fork,with send")
+        self.test_callcontract_fork(with_send=True)
 
 
     def test_publish_fork_with_utxo(self,is_contract_output = False):
@@ -162,6 +162,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         # 这里只有node0节点才成功，换成其他节点时失败的，这不应该
+        # '''
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
         assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
 
@@ -185,7 +186,7 @@ class ContractForkTest(MagnaChainTestFramework):
 
     def test_callcontract_fork(self,with_send = False):
         '''
-        调用同一合约，不含send操作
+        调用同一合约，不含send操作与含send操作
         ab0[contract_ab]
           /         \
         aa1 [cca1]   bb1 [ccb1]
@@ -205,6 +206,8 @@ class ContractForkTest(MagnaChainTestFramework):
         assert_equal(self.node0.getrawmempool(),[]) #make sure mempool empty
         assert_equal(self.node1.getrawmempool(), [])  # make sure mempool empty
         ct = Contract(self.node1)
+        ct2 = Contract(self.node1)
+        ct2.call_payable(amount = 1000)
         print(ct.publish_txid)
         self.sync_all()
         self.node0.generate(2)
@@ -221,11 +224,15 @@ class ContractForkTest(MagnaChainTestFramework):
         tx_a1 = ct.call_payable(amount = 2000)['txid']
         tx_a11 = ct.call_contractDataTest(amount = 0)['txid']
         tx_a12 = ct.call_contractDataTest(amount = 0)['txid']
+        if with_send:
+            tmp_ct = Contract(self.node1)
+            tx_a13 = ct.call_callOtherContractTest(ct2.contract_id,'callOtherContractTest',tmp_ct.contract_id,"contractDataTest")
+            print(tx_a13)
         print(tx_a1,tx_a11,tx_a12)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         last_block_hash = self.node1.generate(2)[-1]
-        assert tx_a1 not in self.node1.getrawmempool()
-        assert tx_a11 not in self.node1.getrawmempool()
+        # assert tx_a1 not in self.node1.getrawmempool()
+        # assert tx_a11 not in self.node1.getrawmempool()
         assert self.node1.getrawmempool() == []
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
@@ -237,6 +244,9 @@ class ContractForkTest(MagnaChainTestFramework):
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         assert tx_b1 not in self.node3.getrawmempool()
         tx_b11 = ct.call_contractDataTest(amount = 0,exec_node = self.node3)['txid']
+        if with_send:
+            tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
+                                                   ct.contract_id, "contractDataTest")
         print(tx_b11)
         block_b16 = self.node3.generate(6)[-1]
         assert tx_b11 not in self.node3.getrawmempool()
@@ -253,10 +263,10 @@ class ContractForkTest(MagnaChainTestFramework):
 
         for i in range(4):
             print("mempool:", self.nodes[i].getrawmempool())
-        assert_equal(len(self.node1.getrawmempool()),3) #短链的块内交易必须是打回内存池的，否则可能有bug了
+        assert_equal(len(self.node1.getrawmempool()),5 if with_send else 3) #短链的块内交易必须是打回内存池的，否则可能有bug了
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
-        assert_equal(self.node1.getbalanceof(ct.contract_id), 2000)
-        assert_equal(self.node0.getbalanceof(ct.contract_id), 2000)
+        assert_equal(self.node1.getbalanceof(ct.contract_id), 2000 - 10 if with_send else 2000) #减去合约的send调用
+        assert_equal(self.node0.getbalanceof(ct.contract_id), 2000 - 10 if with_send else 2000)    #减去合约的send调用
         assert_equal(ct.call_get('counter',broadcasting = False)['return'][0], 4)  #因为本节点mempool有合约交易，所以应该为4
         assert_equal(ct.call_get('counter',broadcasting = False,exec_node = self.node2)['return'][0], 2) #该节点内存池中没有交易哦，所以应该为2
 
@@ -276,7 +286,7 @@ class ContractForkTest(MagnaChainTestFramework):
         sync_blocks(self.nodes)
         assert_equal(self.node0.getrawmempool(), [])
         assert_equal(self.node1.getrawmempool(), [])
-        assert_equal(self.node1.getbalanceof(ct.contract_id), 4000)
+        assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 10 if with_send else 4000)
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
 
         # In bestchain,ensure contract data is correct
