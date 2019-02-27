@@ -15,8 +15,8 @@ from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, generate_contract, gen_lots_of_contracts, sync_blocks
 from test_framework.mininode import COIN, MAX_BLOCK_BASE_SIZE
 
-MAX_CONTRACT_NUM = 231  # 一个区块最多可以包含多少个发布合约的交易
-MAX_CONTRACT_CALL_NUM = 1700  # 一个区块最多可以包含多少个调用合约的交易
+MAX_CONTRACT_NUM = 229  # 一个区块最多可以包含多少个发布合约的交易
+MAX_CONTRACT_CALL_NUM = 1682  # 一个区块最多可以包含多少个调用合约的交易
 
 
 class PrioritiseContractTest(MagnaChainTestFramework):
