@@ -744,6 +744,10 @@ int static SendCoins(lua_State* L)
     if (sls == nullptr)
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
 
+    if (sls->isPublish) {
+        throw std::runtime_error(strprintf("%s => can't call send when publishcontract", __FUNCTION__));
+    }
+
     if (!lua_isstring(L, 1))
         throw std::runtime_error(strprintf("%s => param1 is not a string", __FUNCTION__));
 

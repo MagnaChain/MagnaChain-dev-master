@@ -11,6 +11,8 @@
 #include "io/serialize.h"
 #include "coding/uint256.h"
 
+const int MAX_GROUP_NUM = 3;
+
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
  * requirements.  When they solve the proof-of-work, they broadcast the block
@@ -90,7 +92,7 @@ class MCBlock : public MCBlockHeader
 public:
     // network and disk
     std::vector<MCTransactionRef> vtx;
-    std::vector<uint16_t> groupSize;
+    std::vector<uint8_t> groupSize;
     std::vector<ContractPrevData> prevContractData;
 
     // memory only

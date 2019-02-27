@@ -93,7 +93,7 @@ class MagnaChainAddress;
 struct SmartContractThreadData
 {
     int offset;
-    uint16_t groupSize;
+    uint8_t groupSize;
     int blockHeight;
     std::vector<MCAmount> coins;
     ContractContext contractContext;

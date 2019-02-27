@@ -253,6 +253,10 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
         return false;
     }
 
+    if (pBlock->groupSize.size() > MAX_GROUP_NUM) {
+        return false;
+    }
+
     int totalSize = 0;
     for (int i = 0; i < pBlock->groupSize.size(); ++i) {
         totalSize += pBlock->groupSize[i];
