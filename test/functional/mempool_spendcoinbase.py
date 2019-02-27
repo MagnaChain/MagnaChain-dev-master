@@ -18,10 +18,14 @@ from test_framework.util import *
 # Create one-input, one-output, no-fee transaction:
 class MempoolSpendCoinbaseTest(MagnaChainTestFramework):
     def set_test_params(self):
+        self.setup_clean_chain = True
         self.num_nodes = 1
-        self.extra_args = [["-checkmempool"]]
+        self.extra_args = [["-checkmempool","-regtestmaturity=100"]]
 
     def run_test(self):
+        self.log.info("generate 200 blocks")
+        for i in range(20):
+            self.nodes[0].generate(10)
         chain_height = self.nodes[0].getblockcount()
         assert_equal(chain_height, 200)
         node0_address = self.nodes[0].getnewaddress()
@@ -29,9 +33,9 @@ class MempoolSpendCoinbaseTest(MagnaChainTestFramework):
         # Coinbase at height chain_height-100+1 ok in mempool, should
         # get mined. Coinbase at height chain_height-100+2 is
         # is too immature to spend.
-        # b = [ self.nodes[0].getblockhash(n) for n in range(101, 103) ]
+        b = [ self.nodes[0].getblockhash(n) for n in range(101, 103) ]
         # TODO 与mempool re-org一样是签名错误
-        b = [self.nodes[0].getblockhash(n) for n in range(199, 201)]
+        # b = [self.nodes[0].getblockhash(n) for n in range(199, 201)]
         coinbase_txids = [ self.nodes[0].getblock(h,True,1)['tx'][0] for h in b ]
         spends_raw = [ create_tx(self.nodes[0], txid, node0_address, 10000 - 10) for txid in coinbase_txids ]
 
