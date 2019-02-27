@@ -62,6 +62,7 @@ BASE_SCRIPTS= [
     # vv Tests less than 5m vv
     # 'p2p-fullblocktest.py',not work
     'fundrawtransaction.py',#pass
+    'contract_fork.py',
     # 'p2p-compactblocks.py',not test yet
     # 'segwit.py',
     # vv Tests less than 2m vv
