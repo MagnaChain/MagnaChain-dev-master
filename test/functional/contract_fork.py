@@ -26,7 +26,7 @@ from decimal import Decimal
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
-from test_framework.mininode import COIN
+from test_framework.mininode import COIN,MINER_REWARD
 from test_framework.script import CScript
 from test_framework.util import (
     assert_equal,
@@ -37,7 +37,8 @@ from test_framework.util import (
     sync_mempools,
     sync_blocks,
     bytes_to_hex_str,
-    hex_str_to_bytes
+    hex_str_to_bytes,
+    connect_nodes_bi
 )
 from test_framework.contract import Contract
 
@@ -53,11 +54,6 @@ class ContractForkTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 4
-        self.extra_args = [["-powtargetspacing=5"], ["-powtargetspacing=5"], ["-powtargetspacing=5"], ["-powtargetspacing=5"]]
-
-    def setup_nodes(self):
-        self.add_nodes(self.num_nodes, self.extra_args, timewait=900)
-        self.start_nodes()
 
     def run_test(self):
         """Main test logic"""
@@ -163,15 +159,16 @@ class ContractForkTest(MagnaChainTestFramework):
         # 主链合约是可以调用的
         print(self.node0.callcontract(True, 1, contract_b1, self.node0.getnewaddress(), "payable"))
         # 未完成的用例，下面的有问题，先屏蔽
-        '''
+        # '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
+        # 这里只有node0节点才成功，换成其他节点时失败的，这不应该
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
         assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
 
         # but it should not include 'removed' if include_removed=false
         lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
         assert 'removed' not in lsbres2
-        '''
+        # '''
         '''
 
         lsbres = self.nodes[0].listsinceblock(last_block_hash,1)
@@ -220,9 +217,10 @@ class ContractForkTest(MagnaChainTestFramework):
         self.node3.generate(8)  # fork
 
         # in group 1
+        balance = self.node1.getbalance()
         tx_a1 = ct.call_payable(amount = 2000)['txid']
-        tx_a11 = ct.call_contractDataTest()['txid']
-        tx_a12 = ct.call_contractDataTest()['txid']
+        tx_a11 = ct.call_contractDataTest(amount = 0)['txid']
+        tx_a12 = ct.call_contractDataTest(amount = 0)['txid']
         print(tx_a1,tx_a11,tx_a12)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         last_block_hash = self.node1.generate(2)[-1]
@@ -238,7 +236,7 @@ class ContractForkTest(MagnaChainTestFramework):
         self.node3.generate(2)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         assert tx_b1 not in self.node3.getrawmempool()
-        tx_b11 = ct.call_contractDataTest(exec_node = self.node3,sender = self.node3.getnewaddress())['txid']
+        tx_b11 = ct.call_contractDataTest(amount = 0,exec_node = self.node3)['txid']
         print(tx_b11)
         block_b16 = self.node3.generate(6)[-1]
         assert tx_b11 not in self.node3.getrawmempool()
@@ -248,17 +246,22 @@ class ContractForkTest(MagnaChainTestFramework):
         for i in range(4):
             print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
             print("mempool:",self.nodes[i].getrawmempool())
+
         print("join network")
-        try:
-            self.join_network(timeout = 60 * 5)
-        except Exception as e:
-            for i in range(4):
-                # print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
-                print("mempool:", self.nodes[i].getrawmempool())
-            raise
+        connect_nodes_bi(self.nodes, 1, 2)
+        sync_blocks(self.nodes)
+
+        for i in range(4):
+            print("mempool:", self.nodes[i].getrawmempool())
+        assert_equal(len(self.node1.getrawmempool()),3) #短链的块内交易必须是打回内存池的，否则可能有bug了
+        assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
+        assert_equal(self.node1.getbalanceof(ct.contract_id), 2000)
+        assert_equal(self.node0.getbalanceof(ct.contract_id), 2000)
+        assert_equal(ct.call_get('counter',broadcasting = False)['return'][0], 4)  #因为本节点mempool有合约交易，所以应该为4
+        assert_equal(ct.call_get('counter',broadcasting = False,exec_node = self.node2)['return'][0], 2) #该节点内存池中没有交易哦，所以应该为2
+
         for i in range(4):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
-
         tips = self.nodes[0].getchaintips()
         print(tips)
         assert_equal(len(tips), self.tips_num + 1)
@@ -268,21 +271,29 @@ class ContractForkTest(MagnaChainTestFramework):
         print(self.node1.gettransaction(tx_a1))
         print(self.node1.gettransaction(tx_a11))
 
-        # In bestchain,ensure contract data and balance is correct
-        for n in self.nodes:
-            assert n.balanceof(ct.contract_id) == 2000 + self.get_txfee(tx_b11)
-            assert_equal(ct.call_get('counter')['return'],2)
+        #clear node0's and node1's mempool and check balance
+        self.node1.generate(4)
+        sync_blocks(self.nodes)
+        assert_equal(self.node0.getrawmempool(), [])
+        assert_equal(self.node1.getrawmempool(), [])
+        assert_equal(self.node1.getbalanceof(ct.contract_id), 4000)
+        assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
+
+        # In bestchain,ensure contract data is correct
+        for i in range(4):
+            assert_equal(ct.call_get('counter',exec_node = self.nodes[i],sender = self.nodes[i].getnewaddress())['return'][0],4)
 
         # 未完成的用例，下面的有问题，先屏蔽
-        '''
+        # '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
+        # 这里只有node1节点才成功，换成其他节点时失败的，这不应该
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
-        assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
+        assert any(tx['txid'] == tx_a1 for tx in lsbres['transactions'])
 
         # but it should not include 'removed' if include_removed=false
         lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
         assert 'removed' not in lsbres2
-        '''
+        # '''
 
 
     def publish_contract(self,node,hex_content, coster, sender_pub, sender_pri,amount, changeaddress):
