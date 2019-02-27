@@ -20,9 +20,9 @@ class ListSinceBlockTest (MagnaChainTestFramework):
             blockcount = blockcount + str(self.nodes[i].getblockcount()) + ' '
         self.log.info(blockcount)
 
-    def sync_all(self, node_groups=None):
+    def sync_all(self, node_groups=None,timeout = 60):
         self.logblockcount()
-        super(ListSinceBlockTest, self).sync_all(node_groups)
+        super(ListSinceBlockTest, self).sync_all(node_groups,timeout = timeout)
 
     def run_test(self):
         self.nodes[2].generate(51)
