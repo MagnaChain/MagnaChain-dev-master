@@ -572,6 +572,12 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
 // transaction package to work on next.
 void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpdated)
 {
+    //is in generateforbigboom block,need to pre-add coinbase tx weight first, some test will make block out of size.
+    if (nHeight <= chainparams.GetConsensus().BigBoomHeight)
+    {
+        nBlockWeight += 37000;// TODO: coinbase is not init, cannot calc size here. this value get from a true bigboom coinbase tx.
+    }
+
     int offset = pblock->vtx.size();
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
