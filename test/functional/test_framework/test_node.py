@@ -65,7 +65,19 @@ class TestNode():
         self.extra_args = extra_args
         self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest", "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb", "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i, "-powtargetspacing=1","-regtestmaturity=1"]
 
-        self.cli = TestNodeCLI(os.getenv("MAGNACHAINCLI", "magnachain-cli"), self.datadir)
+        cli_binary = os.getenv("MAGNACHAINCLI", "magnachain-cli")
+        if not os.path.exists(cli_binary):
+            cur_dir = os.path.abspath(os.path.dirname(__file__))
+            if sys.platform == 'win32':
+                cli_binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))),
+                                           'build-msvc\\Debug', 'magnachain-cli.exe')
+                if not os.path.exists(cli_binary):
+                    cli_binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
+                                               'magnachain-cli.exe')
+            else:
+                cli_binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
+                                           'magnachain-cli')
+        self.cli = TestNodeCLI(cli_binary, self.datadir)
 
         self.running = False
         self.process = None
