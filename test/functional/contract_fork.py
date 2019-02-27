@@ -162,11 +162,11 @@ class ContractForkTest(MagnaChainTestFramework):
         # '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         # 这里只有node0节点才成功，换成其他节点时失败的，这不应该
-        lsbres = self.nodes[0].listsinceblock(last_block_hash)
+        lsbres = self.nodes[1].listsinceblock(last_block_hash)
         assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
 
         # but it should not include 'removed' if include_removed=false
-        lsbres2 = self.nodes[0].listsinceblock(blockhash=last_block_hash, include_removed=False)
+        lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
         assert 'removed' not in lsbres2
         # '''
         '''
