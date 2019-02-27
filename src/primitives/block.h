@@ -11,7 +11,7 @@
 #include "io/serialize.h"
 #include "coding/uint256.h"
 
-const int MAX_GROUP_NUM = 3;
+const int MAX_GROUP_NUM = 16;
 
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
