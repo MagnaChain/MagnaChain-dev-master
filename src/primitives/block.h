@@ -92,7 +92,7 @@ class MCBlock : public MCBlockHeader
 public:
     // network and disk
     std::vector<MCTransactionRef> vtx;
-    std::vector<uint8_t> groupSize;
+    std::vector<uint16_t> groupSize;
     std::vector<ContractPrevData> prevContractData;
 
     // memory only

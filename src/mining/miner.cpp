@@ -434,7 +434,7 @@ void BlockAssembler::GroupingTransaction(std::vector<const MCTxMemPoolEntry*>& b
             }
 
             assert(iter->second.size() > 0);
-            if (minGroupSize + iter->second.size() > std::numeric_limits<uint8_t>::max()) {
+            if (minGroupSize + iter->second.size() > std::numeric_limits<uint16_t>::max()) {
                 return;
             }
 
@@ -442,8 +442,8 @@ void BlockAssembler::GroupingTransaction(std::vector<const MCTxMemPoolEntry*>& b
                 iter->second.begin(), iter->second.end());
             iter = group2trans.erase(iter);
 
-            int minGroupIndex = 0;
-            int minGroupSize = finalGroup[0]->second.size();
+            minGroupIndex = 0;
+            minGroupSize = finalGroup[0]->second.size();
             for (int i = 1; i < finalGroup.size(); ++i) {
                 size_t sz = finalGroup[i]->second.size();
                 if (sz < minGroupSize) {
@@ -452,25 +452,30 @@ void BlockAssembler::GroupingTransaction(std::vector<const MCTxMemPoolEntry*>& b
                 }
             }
 
-            if (minGroupIndex == -1 || minGroupSize <= 0 || minGroupSize > std::numeric_limits<uint8_t>::max()) {
+            if (minGroupIndex == -1 || minGroupSize <= 0 || minGroupSize > std::numeric_limits<uint16_t>::max()) {
                 return;
             }
         }
     }
 
     // 将分组好的交易重新打入包中
-    for (auto& group : group2trans) {
-        if (group.second.size() > 0) {
-            std::sort(group.second.begin(), group.second.end(), GroupTransactionComparer);
-            for (int i = 0; i < group.second.size(); ++i) {
-                std::pair<uint256, int>& item = group.second[i];
-                pblock->vtx.emplace_back(vtx[item.second]);
-                pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
-                pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
-            }
-            pblock->groupSize.emplace_back(group.second.size());
+    int total = 0;
+    pblock->groupSize.clear();
+    for (int i = 0; i < finalGroup.size(); ++i) {
+        assert(finalGroup[i]->second.size() > 0);
+        total += finalGroup[i]->second.size();
+        std::sort(finalGroup[i]->second.begin(), finalGroup[i]->second.end(), GroupTransactionComparer);
+        for (int j = 0; j < finalGroup[i]->second.size(); ++j) {
+            std::pair<uint256, int>& item = finalGroup[i]->second[j];
+            assert(item.second < std::numeric_limits<int>::max());
+            pblock->vtx.emplace_back(vtx[item.second]);
+            pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
+            pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
         }
+        pblock->groupSize.emplace_back(finalGroup[i]->second.size());
     }
+    LogPrint(BCLog::MINING, "%s:%d %d:%d\n", __FUNCTION__, __LINE__, total, vtx.size());
+    assert(total == vtx.size());
 }
 
 MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)

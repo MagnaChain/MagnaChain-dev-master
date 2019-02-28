@@ -140,7 +140,7 @@ private:
 
     static const int SHORTTXIDS_LENGTH = 6;
 protected:
-    std::vector<uint8_t> groupSize;
+    std::vector<uint16_t> groupSize;
     std::vector<ContractPrevData> prevContractData;
     std::vector<uint64_t> shorttxids;
     std::vector<PrefilledTransaction> prefilledtxn;
@@ -203,7 +203,7 @@ protected:
     MCTxMemPool* pool;
 public:
     MCBlockHeader header;
-    std::vector<uint8_t> groupSize;
+    std::vector<uint16_t> groupSize;
     std::vector<ContractPrevData> prevContractData;
     PartiallyDownloadedBlock(MCTxMemPool* poolIn) : pool(poolIn) {}
 
