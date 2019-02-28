@@ -21,6 +21,7 @@ class Caller(object):
         self.sender = sender
 
     def __call__(self, *args,sender = None,amount = random.randint(1,10000),throw_exception = True,broadcasting = True,exec_node = None):
+        result = CallResult()
         try:
             if sender:
                 self.sender = sender
@@ -28,16 +29,34 @@ class Caller(object):
                 self.sender = exec_node.getnewaddress()
             print("%s,%s,%s,%s,%s"%(self.contract_id,self.func,self.sender,amount,args))
             if exec_node:
-                return exec_node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
+                result.update(exec_node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args))
             else:
-                return self.node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args)
+                result.update(self.node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args))
         except Exception as e:
             if throw_exception:
                 raise
+            reason = repr(e)
+            result.reason = lambda : reason
             print(repr(e))
+        return result
 
 
+class CallResult(dict):
+    '''
+    对合约调用的结果进行封装
+    '''
 
+    def __init__(self,*args,**kwargs):
+        super(CallResult, self).__init__(*args,**kwargs)
+        self.__dict__.update(**kwargs)
+        self.__dict__ = self
+
+    def reason(self):
+        '''
+        失败原因
+        :return:
+        '''
+        pass
 
 class Contract(object):
     """
@@ -96,7 +115,6 @@ class Contract(object):
         if exce_node:
             return exce_node.getbalanceof(self.contract_id)
         return self.bind_node.getbalanceof(self.contract_id)
-
 
 
 

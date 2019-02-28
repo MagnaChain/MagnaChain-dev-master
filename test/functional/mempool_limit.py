@@ -6,6 +6,7 @@
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
+from test_framework.contract import Contract
 
 class MempoolLimitTest(MagnaChainTestFramework):
     def set_test_params(self):
@@ -41,7 +42,23 @@ class MempoolLimitTest(MagnaChainTestFramework):
         assert(txid not in self.nodes[0].getrawmempool())
         txdata = self.nodes[0].gettransaction(txid)
         assert(txdata['confirmations'] ==  0) #confirmation should still be 0
-        # todo 存在依赖关系的合约交易，内存池满时的情况：抛弃交易时，是依赖链全抛弃还是部分抛弃
+        # todo 存在依赖关系的合约交易，内存池满时的情况
+        self.nodes[0].generate(5)
+        assert_equal(self.nodes[0].getrawmempool(),[])
+
+        cts = []
+        for i in range(1600):
+            ct = Contract(self.nodes[0],self.options.tmpdir)
+            cts.append(ct)
+        for ct in cts:
+            ct.call_payable(amount=100)
+        for i in range(2):
+            for ct in cts:
+                # print(self.nodes[0].getmempoolinfo())
+                reason = ct.call_doubleSpendTest(self.nodes[0].getnewaddress(),amount = 0,throw_exception = False).reason()
+                if reason:
+                    # 这里表示mempool满了，把payable的交易都移除了，call_doubleSpendTest里边有send调用，所以没钱
+                    assert_contains(reason,"not enough amount")
 
 if __name__ == '__main__':
     MempoolLimitTest().main()
