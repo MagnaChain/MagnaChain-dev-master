@@ -672,7 +672,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                         *pfMissingInputs = true;
                     }
 				    LogPrint(BCLog::MEMPOOL, "not found vin,HaveCoin return fail.preout %s %d\n", txin.prevout.hash.ToString().c_str(), txin.prevout.n);
-                    return false; // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
+                    return state.Invalid(false, REJECT_INVALID, "vin-not-found"); // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
                 }
             }
 

@@ -965,34 +965,40 @@ extern bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValid
 
 bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (!tx.IsSyncBranchInfo())
-        return false;
+    if (!tx.IsSyncBranchInfo()) {
+        return state.DoS(100, false, REJECT_INVALID, "Sync branch info fail");
+    }
     
     MCBlockHeader blockheader;
     tx.pBranchBlockData->GetBlockHeader(blockheader);
 
-    if (!pBranchChainTxRecordsDb->IsBranchCreated(tx.pBranchBlockData->branchID)){
-        return state.DoS(0, false, REJECT_INVALID, "Branch chain has not created");
+    if (!pBranchChainTxRecordsDb->IsBranchCreated(tx.pBranchBlockData->branchID)) {
+        return state.DoS(100, false, REJECT_INVALID, "Branch chain has not created");
     }
 
     //block signature check
-    if (blockheader.prevoutStake.IsNull() || blockheader.vchBlockSig.size() == 0)
+    if (blockheader.prevoutStake.IsNull() || blockheader.vchBlockSig.size() == 0) {
         return state.DoS(100, false, REJECT_INVALID, "Submit branch chain block header must contain prevoutStake and vchBlockSig");
-    if (!CheckBlockHeaderSignature(blockheader))
+    }
+    if (!CheckBlockHeaderSignature(blockheader)) {
         return state.DoS(100, false, REJECT_INVALID, "Submit branch chain block header sig check fail");
+    }
 
-    if (pBranchCache && pBranchCache->HasInCache(tx))
-        return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
+    if (pBranchCache && pBranchCache->HasInCache(tx)) {
+        return state.DoS(100, false, REJECT_DUPLICATE, "branch block info duplicate");
+    }
 
     BranchData branchdata = pBranchCache->GetBranchData(tx.pBranchBlockData->branchID);
     //ContextualCheckBlockHeader
     const MCChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
-    if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache))
-        return false;
+    if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache)) {
+        return state.DoS(100, false, REJECT_INVALID, "Branch contextual check block header fail");
+    }
 
     //检查工作量
-    if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache))
+    if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache)) {
         return state.DoS(100, false, REJECT_INVALID, "BranchBlockInfo CheckBlockHeaderWork fail");
+    }
     
     return true;
 }
@@ -1153,7 +1159,7 @@ bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, Branc
     {
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
         if (!pBranchCache->HasBranchData(reportedBranchId))
-            return state.DoS(0, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
+            return state.DoS(100, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
         BranchData branchdata = pBranchCache->GetBranchData(reportedBranchId);
 
         if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
@@ -1161,21 +1167,21 @@ bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, Branc
             MCSpvProof spvProof(*tx.pPMT);
             BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
             if (pBlockData == nullptr)
-                return false;
+                return state.DoS(100, false, REJECT_INVALID, "pBlockData == nullptr");
             if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, tx.pReportData->reportedTxHash) < 0)
-                return false;
+                return state.DoS(100, false, REJECT_INVALID, "CheckSpvProof fail");;
             if (!CheckReportTxCommonly(tx, state, branchdata))
-                return false;
+                return state.DoS(100, false, REJECT_INVALID, "CheckReportTxCommonly fail");;
         }
         else if (tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
         {
             if (!CheckReportTxCommonly(tx, state, branchdata))
-                return false;
+                return state.DoS(100, false, REJECT_INVALID, "CheckProveContractData fail");;
         }
         else if (tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA)
         {
             if (!CheckProveContractData(tx, state, pBranchCache))
-                return state.DoS(0, false, REJECT_INVALID, "CheckProveContractData fail");
+                return state.DoS(100, false, REJECT_INVALID, "CheckProveContractData fail");
         }
         else
             return state.DoS(100, false, REJECT_INVALID, "Invalid report type!");
@@ -1211,7 +1217,7 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
         MCSpvProof spvProof(provDataItem.pCSP);
         BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
         if (pBlockData == nullptr)
-            return false;
+            return state.DoS(0, false, REJECT_INVALID, "pBlockData == nullptr");
         if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pTx->GetHash()) < 0)
             return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
 
@@ -1326,11 +1332,11 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
 bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache)
 {
     if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX)
-        return false;
+        return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx param fail");
 
     const uint256 branchId = tx.pProveData->branchId;
     if (!pBranchCache->HasBranchData(branchId))
-        return false;
+        return state.DoS(0, false, REJECT_INVALID, "Branch data missing");
 
     const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
     if (vectProveData.size() < 1)
@@ -1350,7 +1356,7 @@ bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, Branc
     MCSpvProof spvProof(vectProveData[0].pCSP);
     BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
     if (pBlockData == nullptr)
-        return false;
+        return state.DoS(0, false, REJECT_INVALID, "pBlockData == nullptr");
     if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pProveTx->GetHash()) < 0)
         return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
 
@@ -1360,7 +1366,7 @@ bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, Branc
         return false;
 
     if (pProveTx->IsSmartContract() && !CheckProveSmartContract(tx.pProveData, pProveTx, pBlockData))
-        return false;
+        return state.DoS(0, false, REJECT_INVALID, "CheckProveSmartContract fail");
 
     return true;
 }
@@ -1370,7 +1376,7 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
     if (!tx.IsProve() || tx.pProveData == nullptr 
         || !(tx.pProveData->provetype == ReportType::REPORT_COINBASE || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)) 
     {
-        return false;
+        return state.DoS(0, false, REJECT_INVALID, "CheckProveCoinbaseTx param invalid");
     }
 
     const uint256& branchId = tx.pProveData->branchId;
