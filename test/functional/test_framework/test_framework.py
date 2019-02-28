@@ -320,7 +320,7 @@ class MagnaChainTestFramework(object):
         bwork = int(self.nodes[b].getchaintipwork(), 16)
         genblocks=[]
         while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
-            genblocks.append(self.nodes[a].generate(1))
+            genblocks.append(self.nodes[a].generate(1)[0])
         if len(genblocks) > 0:
             self.log.info("make more work by gen %d" %(len(genblocks)))
         return genblocks

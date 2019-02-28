@@ -13,6 +13,7 @@ Smart Contract Testing - softfork test
     1.同一个utxo，分叉引用发布合约
         a.utxo为普通交易输出
         b.utxo为合约输出
+    2.同一个合约交易，在主链与分叉上发布
 调用:
     1.链高度不同
         a.调用同一合约，不含send操作
@@ -73,6 +74,8 @@ class ContractForkTest(MagnaChainTestFramework):
         self.test_publish_fork_with_utxo()
         self.log.info("start test_publish_fork_with_utxo,contract utxo")
         self.test_publish_fork_with_utxo(is_contract_output=True)
+        self.log.info("start double publish on both chain")
+        self.test_double_publish()
         self.log.info("start test_callcontract_fork,without send")
         self.test_callcontract_fork()
         self.log.info("start test_callcontract_fork,with send")
@@ -163,11 +166,11 @@ class ContractForkTest(MagnaChainTestFramework):
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         # 这里只有node0节点才成功，换成其他节点时失败的，这不应该
         # '''
-        lsbres = self.nodes[1].listsinceblock(last_block_hash)
-        assert any(tx['txid'] == txid_a1 for tx in lsbres['removed'])
+        lsbres = self.nodes[0].listsinceblock(last_block_hash)
+        assert any(tx['txid'] == txid_a1 for tx in lsbres['removed']) # 这里只有node0节点才成功，换成其他节点时失败的，这不应该
 
         # but it should not include 'removed' if include_removed=false
-        lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
+        lsbres2 = self.nodes[0].listsinceblock(blockhash=last_block_hash, include_removed=False)
         assert 'removed' not in lsbres2
         # '''
         '''
@@ -183,6 +186,95 @@ class ContractForkTest(MagnaChainTestFramework):
         print(found_a1,found_b1)
         assert found_b1 and not found_a1
         '''
+
+    def test_double_publish(self):
+        '''
+        同一个合约交易，在主链与分叉上发布
+        合并后，确认数为2(bb-bb4),而不是3(a1-a2-a3)
+        txid同时存在于listsinceblock的transactions和removed
+        只消耗一份utxo，合约余额也只有一份
+              ab0
+          /       \
+        aa1 [ca1]   bb1
+         |           |
+        aa2         bb2
+         |           |
+        aa3         bb3 [ca1]
+                     |
+                    bb4
+        :return:
+        '''
+        self.sync_all()
+        self.node0.generate(2)
+        self.sync_all()
+        assert_equal(self.node0.getrawmempool(),[])
+
+        hex_content = get_contract_hex(self.contract_file)
+        coster = self.node0.getnewaddress()
+        sendtx = self.node0.sendtoaddress(coster, 1000)
+        self.node0.generate(1)
+        self.sync_all()
+        sender_pub = self.node0.validateaddress(coster)['pubkey']
+        sender_pri = self.node0.dumpprivkey(coster)
+        amount = 100
+        changeaddress = self.node0.getnewaddress()
+
+        balance = self.node0.getbalance()
+        signed_tx = self.publish_contract(self.node0,hex_content,coster,sender_pub,sender_pri,amount,changeaddress,send_flag=False)
+        blocks_num = self.node0.getblockcount()
+
+        self.split_network()
+
+        txid1 = self.node0.sendrawtransaction(signed_tx['hex'])
+        # generate bb1-bb2 on right side
+        self.node2.generate(2)
+        txid2 = self.node2.sendrawtransaction(signed_tx['hex'])
+        print(txid1,txid2)
+        assert_equal(txid1, txid2)
+
+        lastblockhash = self.node0.generate(3)[-1]
+        block_hash = self.node2.generate(2)[-1]
+        blocks = self.make_more_work_than(2,0)
+        gen_blocks = len(blocks)
+
+        # join network
+        for i in range(4):
+            print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+            print("mempool:",self.nodes[i].getrawmempool())
+
+        print("join network")
+        connect_nodes_bi(self.nodes, 1, 2)
+        sync_blocks(self.nodes)
+
+        for i in range(4):
+            print("mempool:", self.nodes[i].getrawmempool())
+        # 确认存在分叉存在
+        tips = self.nodes[1].getchaintips()
+        print(tips)
+        assert_equal(len(tips), self.tips_num + 1)
+        self.tips_num += 1
+        assert_equal(self.node1.getblockcount(), blocks_num + 4 + gen_blocks)
+        assert_equal(self.node1.getbestblockhash(), blocks[-1] if gen_blocks > 0 else block_hash)
+
+        # assert
+        assert_equal(self.node0.getbalance() - MINER_REWARD + 100 - self.get_txfee(txid1['txid']) + self.get_txfee(sendtx),balance)
+        assert_equal(self.node2.getbalanceof(txid1['contractaddress']),100)
+
+        # listsinceblock(lastblockhash) should now include txid1 in transactions
+        # as well as in removed
+        lsbres = self.node0.listsinceblock(lastblockhash)
+        assert any(tx['txid'] == txid1['txid'] for tx in lsbres['transactions'])
+        assert any(tx['txid'] == txid1['txid'] for tx in lsbres['removed'])
+
+        # find transaction and ensure confirmations is valid
+        for tx in lsbres['transactions']:
+            if tx['txid'] == txid1['txid']:
+                assert_equal(tx['confirmations'], 2+gen_blocks)
+
+        # the same check for the removed array; confirmations should STILL be 2
+        for tx in lsbres['removed']:
+            if tx['txid'] == txid1['txid']:
+                assert_equal(tx['confirmations'], 2+gen_blocks)
 
     def test_callcontract_fork(self,with_send = False):
         '''
@@ -298,7 +390,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
         # 这里只有node1节点才成功，换成其他节点时失败的，这不应该
         lsbres = self.nodes[1].listsinceblock(last_block_hash)
-        assert any(tx['txid'] == tx_a1 for tx in lsbres['transactions'])
+        assert any(tx['txid'] == tx_a1 for tx in lsbres['transactions'])# 这里只有node1节点才成功，换成其他节点时失败的，这不应该
 
         # but it should not include 'removed' if include_removed=false
         lsbres2 = self.nodes[1].listsinceblock(blockhash=last_block_hash, include_removed=False)
@@ -306,7 +398,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # '''
 
 
-    def publish_contract(self,node,hex_content, coster, sender_pub, sender_pri,amount, changeaddress):
+    def publish_contract(self,node,hex_content, coster, sender_pub, sender_pri,amount, changeaddress,send_flag = True):
         pre_transaction = node.prepublishcode(hex_content, coster, sender_pub, amount, changeaddress)
         print(pre_transaction)
         txhex = pre_transaction['txhex']
@@ -322,7 +414,9 @@ class ContractForkTest(MagnaChainTestFramework):
             prevtxs.append(info)
         signed_tx = node.signrawtransaction(txhex, prevtxs, [sender_pri, sender_pri])
         print(signed_tx)
-        return node.sendrawtransaction(signed_tx['hex'])
+        if send_flag:
+            return node.sendrawtransaction(signed_tx['hex'])
+        return signed_tx
 
 
     def get_txfee(self, txid, node_index=0):
