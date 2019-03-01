@@ -1860,7 +1860,7 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
     MCTxDestination kMinerDest;
     ExtractDestination(scriptPubKeyIn, kMinerDest);
     std::string strMineAddr = MagnaChainAddress(kMinerDest).ToString();
-    LogPrint(BCLog::MINING, "CreateNewBlock(): miner address : %s \n", strMineAddr);
+    LogPrint(BCLog::MINING, "MakeCoinbaseTransaction: miner address : %s \n", strMineAddr);
     MCAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     MCAmount kMinReward = kReward;
 
