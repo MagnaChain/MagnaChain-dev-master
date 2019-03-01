@@ -34,7 +34,6 @@ class MempoolSpendCoinbaseTest(MagnaChainTestFramework):
         # get mined. Coinbase at height chain_height-100+2 is
         # is too immature to spend.
         b = [ self.nodes[0].getblockhash(n) for n in range(101, 103) ]
-        # TODO 与mempool re-org一样是签名错误
         # b = [self.nodes[0].getblockhash(n) for n in range(199, 201)]
         coinbase_txids = [ self.nodes[0].getblock(h,True,1)['tx'][0] for h in b ]
         spends_raw = [ create_tx(self.nodes[0], txid, node0_address, 10000 - 10) for txid in coinbase_txids ]

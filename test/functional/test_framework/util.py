@@ -784,19 +784,14 @@ def generate_contract(folder, err_type=None):
             last = -1
             for i=1,10 do
                 j = 0
-                -- note the cmsgpack when first load data from block,ensure iter is sequence
-                --for k,v in next,t do
                 for k,v in pairs(t) do
                     if k == 'b' then
                         if last ~= -1 and last ~= j then
                             --may be doubleSpend here
-                            say(i,"last:",last," j:",j)
                             if j % 2 == 0 then
                                 send(to,1 * cell)
-                                say("one send to ",to)
                             else
                                 send(msg.sender,1 * cell)
-                                say("two send to ",msg.sender)
                             end
                             last = j
                         end
@@ -818,6 +813,14 @@ def generate_contract(folder, err_type=None):
             PersistentData["this1"] = PersistentData
             PersistentData["this2"] = PersistentData
         end        
+        
+        function reorgTest(to)
+            if msg.timestamp % 2 == 0 then
+                send(to,1 * cell)
+            else
+                send(msg.origin,1 * cell)
+            end
+        end
         
         function init()
             mainTest()
@@ -880,7 +883,7 @@ def generate_contract(folder, err_type=None):
         function setNil( ... )
             -- body
             PersistentData = nil
-        end
+        end  
     '''
     if err_type == "syntax_err":
         code += 'syntax_err'

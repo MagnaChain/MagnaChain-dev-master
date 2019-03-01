@@ -15,6 +15,7 @@ Major test call smart contract
 # libraries then local imports).
 from collections import defaultdict
 import random
+import  time
 from decimal import Decimal
 
 # Avoid wildcard * imports if possible
@@ -114,11 +115,14 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
         # doubleSpendTest
+        self.test_double_spend()
         call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
+
         # cmsgpackTest
         if not SKIP:
             assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'cmsgpack => sc >= LUACMSGPACK_MAX_NESTING')
         self.sync_all()
+
 
         # # tailLoopTest
         call_contract("tailLoopTest", 896)  # v452,594 is the limit
@@ -309,6 +313,18 @@ class ContractCallTest(MagnaChainTestFramework):
                 if random.randint(1,100) > 80:
                     node.generate(nblocks=1)
 
+    def test_double_spend(self):
+        self.log.info("test double spend")
+        node = self.nodes[0]
+        ct = Contract(node)
+        ct.call_payable(amount = 1000)
+        addr = node.getnewaddress()
+        for i in range(10):
+            ct.call_reorgTest(addr,amount = 0)
+            time.sleep(random.randint(1,4))
+        node.generate(2)
+        print(ct.get_balance(),node.getbalanceof(addr))
+        self.sync_all()
 
 if __name__ == '__main__':
     ContractCallTest().main()
