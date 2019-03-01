@@ -742,7 +742,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
             LogPrintf("%s:%d %d < %d\n", __FUNCTION__, __LINE__, packageFees, blockMinFeeRate.GetFee(packageSize));
 			// Everything else we might consider has a lower fee rate
-			return;
+			break;
 		}
 
 		if (!TestPackage(iter, packageSize, packageSigOpsCost)) {
