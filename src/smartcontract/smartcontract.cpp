@@ -613,6 +613,10 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
         throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
     }
 
+    if (args.size() > 12){
+        throw std::runtime_error("Too many args in lua function, max num is 12");
+    }
+
     MCContractID contractId;
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
