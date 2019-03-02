@@ -321,7 +321,11 @@ class ContractCallTest(MagnaChainTestFramework):
         addr = node.getnewaddress()
         for i in range(10):
             ct.call_reorgTest(addr,amount = 0)
-            time.sleep(random.randint(1,4))
+            if i % 2 == 0:
+                time.sleep(2)
+            else:
+                time.sleep(1)
+                # time.sleep(random.randint(1,4))
         node.generate(2)
         print(ct.get_balance(),node.getbalanceof(addr))
         self.sync_all()
