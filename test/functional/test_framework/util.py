@@ -784,19 +784,14 @@ def generate_contract(folder, err_type=None):
             last = -1
             for i=1,10 do
                 j = 0
-                -- note the cmsgpack when first load data from block,ensure iter is sequence
-                --for k,v in next,t do
                 for k,v in pairs(t) do
                     if k == 'b' then
                         if last ~= -1 and last ~= j then
                             --may be doubleSpend here
-                            say(i,"last:",last," j:",j)
                             if j % 2 == 0 then
                                 send(to,1 * cell)
-                                say("one send to ",to)
                             else
                                 send(msg.sender,1 * cell)
-                                say("two send to ",msg.sender)
                             end
                             last = j
                         end
@@ -818,6 +813,14 @@ def generate_contract(folder, err_type=None):
             PersistentData["this1"] = PersistentData
             PersistentData["this2"] = PersistentData
         end        
+        
+        function reorgTest(to)
+            if msg.timestamp % 2 == 0 then
+                send(to,1 * cell)
+            else
+                send(msg.origin,1 * cell)
+            end
+        end
         
         function init()
             mainTest()
@@ -880,7 +883,7 @@ def generate_contract(folder, err_type=None):
         function setNil( ... )
             -- body
             PersistentData = nil
-        end
+        end  
     '''
     if err_type == "syntax_err":
         code += 'syntax_err'
@@ -890,6 +893,10 @@ def generate_contract(folder, err_type=None):
         code += "--1" * 10
     elif err_type == "long_string_return":
         add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2500)
+        # add_code = "function longReturnTest() return {}1 end\n".format('{}' * 254)
+        # vals = ["'a',"]
+        # vals.extend(vals * 254)
+        # add_code = add_code.format(*vals)
         # add_code = "function longReturnTest() return {} '1' end\n".format("'string'," * 248)
         code += add_code
     file_path = os.path.join(folder, "contract.lua")
