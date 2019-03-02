@@ -784,6 +784,11 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 5);
 
+    if (args.size() > 8)
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
+    }
+
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
     sls.Initialize(false, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
@@ -910,6 +915,11 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	UniValue args = request.params;
 	std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
+
+    if (args.size() > 8)
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
+    }
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
