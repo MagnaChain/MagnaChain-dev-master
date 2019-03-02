@@ -13,6 +13,7 @@ Test the following RPCs:
 """
 
 from test_framework.test_framework import MagnaChainTestFramework
+from test_framework.contract import Contract
 from test_framework.util import *
 
 # Create one-input, one-output, no-fee transaction:
@@ -48,7 +49,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
         rawtx   = self.nodes[2].signrawtransaction(rawtx)
 
         # This will raise an exception since there are missing inputs
-        assert_raises_rpc_error(-25, "Missing inputs", self.nodes[2].sendrawtransaction, rawtx['hex'])
+        assert_raises_rpc_error(-26, "vin-not-found", self.nodes[2].sendrawtransaction, rawtx['hex'])
 
         #########################
         # RAW TX MULTISIG TESTS #
@@ -223,6 +224,22 @@ class RawTransactionsTest(MagnaChainTestFramework):
         rawtx   = self.nodes[0].createrawtransaction(inputs, outputs)
         decrawtx= self.nodes[0].decoderawtransaction(rawtx)
         assert_equal(decrawtx['vin'][0]['sequence'], 4294967294)
+
+        # 普通交易不能使用合约的UTXO
+        node = self.nodes[0]
+        ct = Contract(node)
+        txid = ct.call_payable(amount = 100).txid
+        vout = node.getrawtransaction(txid, 1)["vout"]
+        nA = next(i for i, vout in enumerate(node.getrawtransaction(txid, 1)["vout"]) if
+                  vout["value"] == Decimal("100"))
+        inputs = []
+        inputs.append({"txid": txid, "vout": nA})
+        outputs = {}
+        addr = self.nodes[0].getnewaddress()
+        outputs[addr] = Decimal("10")
+        signed = self.nodes[0].signrawtransaction(self.nodes[0].createrawtransaction(inputs, outputs))
+        assert_raises_rpc_error(-26, 'mandatory-script-verify-flag-failed (Opcode missing or not understood)',
+                                self.nodes[0].sendrawtransaction, signed["hex"])
 
 if __name__ == '__main__':
     RawTransactionsTest().main()
