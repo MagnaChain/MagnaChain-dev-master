@@ -268,6 +268,8 @@ class MagnaChainTestFramework(object):
 
     def stop_nodes(self):
         """Stop multiple magnachaind test nodes"""
+        if self.num_nodes > 0:
+            return
         for node in self.nodes:
             # Issue RPC to stop nodes
             node.stop_node()
