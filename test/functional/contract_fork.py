@@ -79,7 +79,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # self.log.info("start test_callcontract_fork,without send")
         # self.test_callcontract_fork()
         # self.log.info("start test_callcontract_fork,with send")
-        self.test_callcontract_fork(with_send=True,crash_point=1)
+        #self.test_callcontract_fork(with_send=True,crash_point=1)
         self.test_callcontract_fork(with_send=True, crash_point=2)
 
 
