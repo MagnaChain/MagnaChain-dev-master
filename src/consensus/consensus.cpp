@@ -8,11 +8,11 @@
 
 
 /** The maximum allowed size for a serialized block, in bytes (only for buffer size limits) */
-const unsigned int MAX_BLOCK_SERIALIZED_SIZE = 4000000;
+const unsigned int MAX_BLOCK_SERIALIZED_SIZE = 10000000;
 /** The maximum allowed weight for a block, see BIP 141 (network rule) */
-const unsigned int MAX_BLOCK_WEIGHT = 4000000;
+const unsigned int MAX_BLOCK_WEIGHT = 10000000;
 /** The maximum allowed number of signature check operations in a block (network rule) */
-const int64_t MAX_BLOCK_SIGOPS_COST = 80000;
+const int64_t MAX_BLOCK_SIGOPS_COST = 200000;
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
 int COINBASE_MATURITY = 500; // @note regtest's maturity is 1, modify in init.cpp
 
