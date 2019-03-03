@@ -39,7 +39,8 @@ from test_framework.util import (
     sync_blocks,
     bytes_to_hex_str,
     hex_str_to_bytes,
-    connect_nodes_bi
+    connect_nodes_bi,
+    wait_until,
 )
 from test_framework.contract import Contract
 
@@ -68,19 +69,24 @@ class ContractForkTest(MagnaChainTestFramework):
             self.sync_all()
 
         # main test
-        # self.contract_file = generate_contract(self.options.tmpdir)
-        # self.tips_num = 1
-        # self.log.info("start test_publish_fork_with_utxo,normal utxo")
-        # self.test_publish_fork_with_utxo()
-        # self.log.info("start test_publish_fork_with_utxo,contract utxo")
-        # self.test_publish_fork_with_utxo(is_contract_output=True)
-        # self.log.info("start double publish on both chain")
-        # self.test_double_publish()
-        # self.log.info("start test_callcontract_fork,without send")
-        # self.test_callcontract_fork()
-        # self.log.info("start test_callcontract_fork,with send")
+        self.contract_file = generate_contract(self.options.tmpdir)
+        self.tips_num = 1
+        self.log.info("start test_publish_fork_with_utxo,normal utxo")
+        self.test_publish_fork_with_utxo()
+        self.log.info("start test_publish_fork_with_utxo,contract utxo")
+        self.test_publish_fork_with_utxo(is_contract_output=True)
+        self.log.info("start double publish on both chain")
+        self.test_double_publish()
+        self.log.info("start test_callcontract_fork,without send")
+        self.test_callcontract_fork()
+        self.log.info("start test_callcontract_fork,with send, crash point 1")
         self.test_callcontract_fork(with_send=True,crash_point=1)
+        self.log.info("start test_callcontract_fork,with send,crash point 2")
         self.test_callcontract_fork(with_send=True, crash_point=2)
+        self.log.info("start mix transaction reorg test,no generate")
+        self.test_mix_contract_transaction_fork()
+        self.log.info("start mix transaction reorg test,with generate")
+        self.test_mix_contract_transaction_fork(gen_blocks=True)
 
 
     def test_publish_fork_with_utxo(self,is_contract_output = False):
@@ -174,19 +180,7 @@ class ContractForkTest(MagnaChainTestFramework):
         lsbres2 = self.nodes[0].listsinceblock(blockhash=last_block_hash, include_removed=False)
         assert 'removed' not in lsbres2
         # '''
-        '''
 
-        lsbres = self.nodes[0].listsinceblock(last_block_hash,1)
-        found_b1 = False
-        found_a1 = False
-        for tx in lsbres['transactions']:
-            if tx['txid'] == txid_b1:
-                found_b1 = True
-            if tx['txid'] == txid_a1:
-                found_a1 = True
-        print(found_a1,found_b1)
-        assert found_b1 and not found_a1
-        '''
 
     def test_double_publish(self):
         '''
@@ -314,6 +308,8 @@ class ContractForkTest(MagnaChainTestFramework):
 
         # in group 1
         balance = self.node1.getbalance()
+
+        # tx_ai,tx_a11,tx_a12这3个交易，在合并网络后，应该都会被重新打回内存池中，毕竟是短链
         tx_a1 = ct.call_payable(amount = 2000)['txid']
         tx_a11 = ct.call_contractDataTest(amount = 0)['txid']
         tx_a12 = ct.call_contractDataTest(amount = 0)['txid']
@@ -324,8 +320,6 @@ class ContractForkTest(MagnaChainTestFramework):
         print(tx_a1,tx_a11,tx_a12)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         last_block_hash = self.node1.generate(2)[-1]
-        # assert tx_a1 not in self.node1.getrawmempool()
-        # assert tx_a11 not in self.node1.getrawmempool()
         assert self.node1.getrawmempool() == []
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
@@ -345,7 +339,7 @@ class ContractForkTest(MagnaChainTestFramework):
             else:
                 tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
                                                    ct.contract_id, "contractDataTest")
-            print(tx_b12)
+            print("tx_b12:",tx_b12.txid)
         print(tx_b11)
         block_b16 = self.node3.generate(6)[-1]
         assert_equal(self.node3.getrawmempool(),[])
@@ -367,12 +361,18 @@ class ContractForkTest(MagnaChainTestFramework):
 
         for i in range(4):
             print("mempool:", self.nodes[i].getrawmempool())
-        assert_equal(len(self.node1.getrawmempool()),5 if with_send else 3) #短链的块内交易必须是打回内存池的，否则可能有bug了
+        if with_send:
+            assert_equal(len(self.node1.getrawmempool()),5 if crash_point == 1 else 4) #短链的块内交易必须是打回内存池的，否则可能有bug了
+        else:
+            assert_equal(len(self.node1.getrawmempool()), 3)  # 短链的块内交易必须是打回内存池的，否则可能有bug了
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
         assert_equal(self.node1.getbalanceof(ct.contract_id), 2000 - 10 if with_send else 2000) #减去合约的send调用
         assert_equal(self.node0.getbalanceof(ct.contract_id), 2000 - 10 if with_send else 2000)    #减去合约的send调用
         assert_equal(ct.call_get('counter',broadcasting = False)['return'][0], 4)  #因为本节点mempool有合约交易，所以应该为4
         assert_equal(ct.call_get('counter',broadcasting = False,exec_node = self.node2)['return'][0], 2) #该节点内存池中没有交易哦，所以应该为2
+        assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
 
         for i in range(4):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
@@ -409,6 +409,129 @@ class ContractForkTest(MagnaChainTestFramework):
         assert 'removed' not in lsbres2
         # '''
 
+    def test_mix_contract_transaction_fork(self,gen_blocks = False):
+        '''
+        在2条分叉链中，混合执行各种交易，然后：
+        1.不产生块，合并网络
+        2.产生块，合并网络
+
+        :return:
+        '''
+        self.sync_all()
+        self.node1.generate(2)
+        assert_equal(self.node1.getrawmempool(),[]) #make sure mempool empty
+        assert_equal(self.node0.getrawmempool(), [])  # make sure mempool empty
+        ct = Contract(self.node0)
+        ct2 = Contract(self.node0)
+        ct2.call_payable(amount = 1000)
+        print(ct.publish_txid)
+        self.sync_all()
+        self.node0.generate(2)
+        self.sync_all()
+        blocks_num = self.node0.getblockcount()
+
+        # split mgc network
+        self.split_network()
+        self.node0.generate(2)  #fork
+        self.node2.generate(8)  # fork
+        balances = [n.getbalance() for n in self.nodes]
+
+        # in group 1
+        # normal transaction
+        sendtxs_a = [self.node0.sendtoaddress(self.node3.getnewaddress(),1000) for i in range(10)]
+
+        # publish contract transaction
+        ccontracts_a = [Contract(self.node0) for i in range(10)]
+
+        # call contract transaction
+        call_contract_txs_a = [ct.call_payable(amount = 1000).txid for ct in  ccontracts_a]
+        call_contract_txs_a1 = [ct.call_callOtherContractTest(ccontracts_a[0].contract_id, 'callOtherContractTest',ccontracts_a[-1].contract_id, "contractDataTest").txid for ct in ccontracts_a]
+
+        # long mempool chain transaction
+        call_contract_txs_a2 = []
+        for i in range(30):
+            result = ccontracts_a[1].call_reentrancyTest(throw_exception=False)
+            if result.reason():
+                print(result.reason())
+                break
+            else:
+                call_contract_txs_a2.append(result.txid)
+
+        ccontracts_a[2].call_maxContractCallTest(2).txid
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+
+        #in group 2
+        sendtxs_b = [self.node2.sendtoaddress(self.node1.getnewaddress(),1000) for i in range(10)]
+
+        # publish contract transaction
+        ccontracts_b = [Contract(self.node2) for i in range(10)]
+
+        # call contract transaction
+        call_contract_txs_b = [ct.call_payable(amount = 1000).txid for ct in  ccontracts_b]
+        call_contract_txs_b1 = [ct.call_callOtherContractTest(ccontracts_b[0].contract_id, 'callOtherContractTest',ccontracts_b[-1].contract_id, "contractDataTest").txid for ct in ccontracts_b]
+
+        # long mempool chain transaction
+        call_contract_txs_b2 = []
+        for i in range(30):
+            result = ccontracts_b[1].call_reentrancyTest(throw_exception=False)
+            if result.reason():
+                print(result.reason())
+                break
+            else:
+                call_contract_txs_b2.append(result.txid)
+
+        ccontracts_b[2].call_maxContractCallTest(2).txid
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+
+        # join network
+        if gen_blocks:
+            blocks_a = self.node0.generate(2)
+            blocks_b = self.node2.generate(6)
+            more_work_blocks = self.make_more_work_than(2, 0)
+
+            for i in range(4):
+                print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+                print("mempool:", self.nodes[i].getrawmempool())
+
+        print("join network")
+        connect_nodes_bi(self.nodes, 1, 2)
+        try:
+            print("sync_mempools.......")
+            sync_mempools(self.nodes,timeout = 30)
+            print("sync_mempools done")
+        except Exception as e:
+            print("sync mempool failed,ignore!")
+
+        sync_blocks(self.nodes)
+
+        if gen_blocks:
+            for i in range(4):
+                print("mempool:", self.nodes[i].getrawmempool())
+        for i in range(4):
+            print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+        tips = self.nodes[0].getchaintips()
+        print("tips:",tips)
+        assert_equal(len(tips), self.tips_num + 1)
+        self.tips_num += 1
+
+        # 合并后，节点再次调用合约,该交易应该回被不同组的节点抛弃，因为合约不存在
+        tx1 = ccontracts_a[2].call_reentrancyTest().txid
+        tx2 = ccontracts_b[2].call_reentrancyTest().txid
+        try:
+            sync_mempools(self.nodes, timeout=30)
+        except Exception as e:
+            print("sync_mempools(self.nodes,timeout = 30) not done")
+        wait_until(lambda: tx1 not in self.node2.getrawmempool(), timeout=10)
+        wait_until(lambda: tx1 in self.node1.getrawmempool(), timeout=10)
+        wait_until(lambda: tx2 not in self.node1.getrawmempool(), timeout=10)
+        wait_until(lambda: tx2 in self.node3.getrawmempool(), timeout=10)
+
+        for i,n in enumerate(self.nodes):
+            n.generate(2)
+            print("node{} generate done".format(i))
+            sync_blocks(self.nodes)
+
+
 
     def publish_contract(self,node,hex_content, coster, sender_pub, sender_pri,amount, changeaddress,send_flag = True):
         pre_transaction = node.prepublishcode(hex_content, coster, sender_pub, amount, changeaddress)
@@ -433,6 +556,7 @@ class ContractForkTest(MagnaChainTestFramework):
 
     def get_txfee(self, txid, node_index=0):
         return Decimal(self.nodes[node_index].gettransaction(txid)['fee'])
+
 if __name__ == '__main__':
     ContractForkTest().main()
 
