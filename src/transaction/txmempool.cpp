@@ -1558,32 +1558,45 @@ void MCTxMemPool::ReacceptTransactions()
     for (int i = 0; i < entries.size(); ++i) {
         MCTransactionRef pTx = entries[i]->GetSharedTx();
         if (pTx->IsSmartContract()) {
-            if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
-                vecRemoves.emplace_back(pTx);
-            }
-            else {
-                CheckContract(entries[i], &sls);
-                if (pTx->pContractData != nullptr && pTx->pContractData->amountOut > 0) {
-                    pCoinAmountCache->DecAmount(pTx->pContractData->address, pTx->pContractData->amountOut);
+            try
+            {
+                if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
+                    vecRemoves.emplace_back(pTx);
                 }
+                else {
+                    CheckContract(entries[i], &sls);
+                    if (pTx->pContractData != nullptr && pTx->pContractData->amountOut > 0) {
+                        pCoinAmountCache->DecAmount(pTx->pContractData->address, pTx->pContractData->amountOut);
+                    }
 
-                for (int j = 0; j < pTx->vout.size(); ++j) {
-                    const MCScript& scriptPubKey = pTx->vout[j].scriptPubKey;
-                    if (scriptPubKey.IsContract()) {
-                        opcodetype opcode;
-                        std::vector<unsigned char> vch;
-                        MCScript::const_iterator pc = scriptPubKey.begin();
-                        MCScript::const_iterator end = scriptPubKey.end();
-                        scriptPubKey.GetOp(pc, opcode, vch);
+                    for (int j = 0; j < pTx->vout.size(); ++j) {
+                        const MCScript& scriptPubKey = pTx->vout[j].scriptPubKey;
+                        if (scriptPubKey.IsContract()) {
+                            opcodetype opcode;
+                            std::vector<unsigned char> vch;
+                            MCScript::const_iterator pc = scriptPubKey.begin();
+                            MCScript::const_iterator end = scriptPubKey.end();
+                            scriptPubKey.GetOp(pc, opcode, vch);
 
-                        assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
-                        vch.clear();
-                        vch.assign(pc + 1, end);
-                        uint160 key = uint160(vch);
-                        MCContractID contractId = MCContractID(key);
-                        pCoinAmountCache->IncAmount(contractId, pTx->vout[j].nValue);
+                            assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+                            vch.clear();
+                            vch.assign(pc + 1, end);
+                            uint160 key = uint160(vch);
+                            MCContractID contractId = MCContractID(key);
+                            pCoinAmountCache->IncAmount(contractId, pTx->vout[j].nValue);
+                        }
                     }
                 }
+            }
+            catch (const std::exception& e)
+            {
+                LogPrintf("ReacceptTransactions contract tx exception %s\n", e.what());
+                vecRemoves.emplace_back(pTx);
+            }
+            catch (...)
+            {
+                LogPrintf("ReacceptTransactions contract tx unknow exception\n");
+                vecRemoves.emplace_back(pTx);
             }
         }
     }
