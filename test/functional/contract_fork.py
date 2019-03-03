@@ -530,6 +530,7 @@ class ContractForkTest(MagnaChainTestFramework):
             n.generate(2)
             print("node{} generate done".format(i))
             sync_blocks(self.nodes)
+         # todo more assert
 
 
 
