@@ -68,18 +68,19 @@ class ContractForkTest(MagnaChainTestFramework):
             self.sync_all()
 
         # main test
-        self.contract_file = generate_contract(self.options.tmpdir)
-        self.tips_num = 1
-        self.log.info("start test_publish_fork_with_utxo,normal utxo")
-        self.test_publish_fork_with_utxo()
-        self.log.info("start test_publish_fork_with_utxo,contract utxo")
-        self.test_publish_fork_with_utxo(is_contract_output=True)
-        self.log.info("start double publish on both chain")
-        self.test_double_publish()
-        self.log.info("start test_callcontract_fork,without send")
-        self.test_callcontract_fork()
-        self.log.info("start test_callcontract_fork,with send")
-        self.test_callcontract_fork(with_send=True)
+        # self.contract_file = generate_contract(self.options.tmpdir)
+        # self.tips_num = 1
+        # self.log.info("start test_publish_fork_with_utxo,normal utxo")
+        # self.test_publish_fork_with_utxo()
+        # self.log.info("start test_publish_fork_with_utxo,contract utxo")
+        # self.test_publish_fork_with_utxo(is_contract_output=True)
+        # self.log.info("start double publish on both chain")
+        # self.test_double_publish()
+        # self.log.info("start test_callcontract_fork,without send")
+        # self.test_callcontract_fork()
+        # self.log.info("start test_callcontract_fork,with send")
+        self.test_callcontract_fork(with_send=True,crash_point=1)
+        self.test_callcontract_fork(with_send=True, crash_point=2)
 
 
     def test_publish_fork_with_utxo(self,is_contract_output = False):
@@ -276,7 +277,7 @@ class ContractForkTest(MagnaChainTestFramework):
             if tx['txid'] == txid1['txid']:
                 assert_equal(tx['confirmations'], 2+gen_blocks)
 
-    def test_callcontract_fork(self,with_send = False):
+    def test_callcontract_fork(self,with_send = False,crash_point = 1):
         '''
         调用同一合约，不含send操作与含send操作
         ab0[contract_ab]
@@ -337,14 +338,25 @@ class ContractForkTest(MagnaChainTestFramework):
         assert tx_b1 not in self.node3.getrawmempool()
         tx_b11 = ct.call_contractDataTest(amount = 0,exec_node = self.node3)['txid']
         if with_send:
-            tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
+            # 这里有两个crash point,下面代码分别对应不同的CP
+            if crash_point == 1:
+                tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
+                                                   ct.contract_id, "contractDataTest",exec_node = self.node3)
+            else:
+                tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
                                                    ct.contract_id, "contractDataTest")
+            print(tx_b12)
         print(tx_b11)
         block_b16 = self.node3.generate(6)[-1]
-        assert tx_b11 not in self.node3.getrawmempool()
+        assert_equal(self.node3.getrawmempool(),[])
+        if with_send and crash_point == 1:
+            assert_equal(self.node1.getrawmempool(), [])
+        elif with_send and crash_point == 2:
+            assert_equal(self.node1.getrawmempool(), [tx_b12.txid])
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
         # join network
+        more_work_blocks = self.make_more_work_than(3, 1)
         for i in range(4):
             print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
             print("mempool:",self.nodes[i].getrawmempool())
@@ -368,8 +380,8 @@ class ContractForkTest(MagnaChainTestFramework):
         print(tips)
         assert_equal(len(tips), self.tips_num + 1)
         self.tips_num += 1
-        assert_equal(self.node2.getblockcount(), blocks_num + 16)
-        assert_equal(self.node2.getbestblockhash(), block_b16)
+        assert_equal(self.node2.getblockcount(), blocks_num + 16 + len(more_work_blocks))
+        assert_equal(self.node2.getbestblockhash(), block_b16 if not more_work_blocks else more_work_blocks[-1])
         print(self.node1.gettransaction(tx_a1))
         print(self.node1.gettransaction(tx_a11))
 
