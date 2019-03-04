@@ -14,20 +14,25 @@ class Caller(object):
     """
     合约的实际调用类
     """
-    def __init__(self,node,func,contract_id, sender):
+    def __init__(self,node,func,contract_id, sender,debug = None):
         self.node = node
         self.func = func
         self.contract_id = contract_id
         self.sender = sender
+        self.debug = debug
 
-    def __call__(self, *args,sender = None,amount = random.randint(1,10000),throw_exception = True,broadcasting = True,exec_node = None):
+    def __call__(self, *args,sender = None,amount = random.randint(1,10000),throw_exception = True,broadcasting = True,exec_node = None,debug = None):
         result = CallResult()
         try:
             if sender:
                 self.sender = sender
             elif exec_node:
                 self.sender = exec_node.getnewaddress()
-            print("%s,%s,%s,%s,%s"%(self.contract_id,self.func,self.sender,amount,args))
+            if debug:
+                print("%s,%s,%s,%s,%s"%(self.contract_id,self.func,self.sender,amount,args))
+            else:
+                if self.debug:
+                    print("%s,%s,%s,%s,%s" % (self.contract_id, self.func, self.sender, amount, args))
             if exec_node:
                 result.update(exec_node.callcontract(broadcasting, amount, self.contract_id, self.sender, self.func, *args))
             else:
@@ -64,7 +69,7 @@ class Contract(object):
     封装合约的发布与调用，一个合约对象代表一份合约
     合约实例化时，需要绑定对应的节点实例，当调用时，默认是在绑定的节点调用，或者指定node参数，在某个节点执行档次调用
     """
-    def __init__(self,node,contract_path = None,sender = None,immediate = True):
+    def __init__(self,node,contract_path = None,sender = None,immediate = True,debug = True):
         '''
 
         :param node:
@@ -73,6 +78,7 @@ class Contract(object):
         :param immediate:
         '''
         self.bind_node = node
+        self.debug = debug
         if contract_path is None:
             contract_path = tempfile.mkdtemp(prefix="contract_")
         self.contract_path = generate_contract(contract_path)
@@ -107,7 +113,7 @@ class Contract(object):
             raise Exception("contract not publish,can not be call")
         if item.startswith('call_'):
             item = item.replace('call_','',1)
-            return Caller(self.bind_node,item,self.contract_id, self.publisher)
+            return Caller(self.bind_node,item,self.contract_id, self.publisher,debug = self.debug)
         raise AttributeError
 
 
