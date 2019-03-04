@@ -490,13 +490,13 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
                 ptx = MakeTransactionRef(mtx);
             }
         }
-        if (!fAddToMempool || (*it)->IsCoinBase() || (*it)->IsStake() || (*it)->IsReportReward() // these tx are not accepted in mempool
+        if (!fAddToMempool || ptx->IsCoinBase() || ptx->IsStake() || ptx->IsReportReward() // these tx are not accepted in mempool
             || !AcceptToMemoryPool(mempool, stateDummy, ptx, false, nullptr, nullptr, true)) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
-            mempool.RemoveRecursive(**it, MemPoolRemovalReason::REORG);
-        } else if (mempool.Exists((*it)->GetHash())) {
-            vHashUpdate.push_back((*it)->GetHash());
+            mempool.RemoveRecursive(*ptx, MemPoolRemovalReason::REORG);
+        } else if (mempool.Exists(ptx->GetHash())) {
+            vHashUpdate.push_back(ptx->GetHash());
         }
         ++it;
     }
@@ -985,7 +985,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             if (plTxnReplaced)
                 plTxnReplaced->push_back(it->GetSharedTx());
         }
-        pool.RemoveStaged(allConflicting, false, MemPoolRemovalReason::REPLACED);
+        pool.RemoveStaged(allConflicting, true, MemPoolRemovalReason::REPLACED);
 
         // This transaction should only count for fee estimation if it isn't a
         // BIP 125 replacement transaction (may not be widely supported), the
@@ -2750,6 +2750,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
             // This is likely a fatal error, but keep the mempool consistent,
             // just in case. Only remove from the mempool in this case.
             mempool.ReacceptTransactions();
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
             return false;
         }
@@ -2791,6 +2792,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
                     mempool.ReacceptTransactions();
+                    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
                     UpdateMempoolForReorg(disconnectpool, false);
                     return false;
                 }
@@ -2810,6 +2812,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
     if (fBlocksDisconnected) {
         // If any blocks were disconnected, disconnectpool may be non empty.  Add
         // any disconnected transactions back to the mempool.
+        LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
         UpdateMempoolForReorg(disconnectpool, true);
     }
     mempool.Check(pcoinsTip);
@@ -2977,6 +2980,7 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
             // It's probably hopeless to try to make the mempool consistent
             // here if DisconnectTip failed, but we can try.
             mempool.ReacceptTransactions();
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
             return false;
         }
@@ -3000,6 +3004,7 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
     // DisconnectTip will add transactions to disconnectpool; try to add these
     // back to the mempool.
     mempool.ReacceptTransactions();
+    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
     UpdateMempoolForReorg(disconnectpool, true);
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so
