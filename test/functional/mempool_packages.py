@@ -8,8 +8,8 @@ from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.mininode import COIN
 
-MAX_ANCESTORS = 50
-MAX_DESCENDANTS = 50
+MAX_ANCESTORS = 30
+MAX_DESCENDANTS = 30
 
 class MempoolPackagesTest(MagnaChainTestFramework):
     def set_test_params(self):
