@@ -127,22 +127,28 @@ class TxnMallTest(MagnaChainTestFramework):
         self.log.info('before join the nodes,bestblockhash are:{},{},{},{}'.format(*[self.nodes[i].getbestblockhash() for i in range(4)]))
 
         # Reconnect the split network, and sync chain:
+        gens = self.make_more_work_than(2,0)
         connect_nodes(self.nodes[1], 2)
-        self.nodes[2].generate(1)  # Mine another block to make sure we sync
+        self.log.info('before generate,bestblockhash are:{},{},{},{}'.format(
+            *[self.nodes[i].getbestblockhash() for i in range(4)]))
+        print(self.nodes[2].generate(1))  # Mine another block to make sure we sync
         sync_blocks(self.nodes)
         blocks = [self.nodes[i].getblockcount() for i in range(4)]
         self.log.info('after join the nodes,blocks are:{},{},{},{}'.format(*blocks))
         self.log.info('after join the nodes,bestblockhash are:{},{},{},{}'.format(
             *[self.nodes[i].getbestblockhash() for i in range(4)]))
-        assert_equal(self.nodes[0].gettransaction(doublespend_txid)["confirmations"], 2)
+        if not self.options.mine_block:
+            assert_equal(self.nodes[0].gettransaction(doublespend_txid)["confirmations"], 2 + len(gens))
+        else:
+            assert_equal(self.nodes[0].gettransaction(doublespend_txid)["confirmations"], 2 + len(gens))
 
         # Re-fetch transaction info:
         tx1 = self.nodes[0].gettransaction(txid1)
         tx2 = self.nodes[0].gettransaction(txid2)
 
         # Both transactions should be conflicted
-        assert_equal(tx1["confirmations"], -2)
-        assert_equal(tx2["confirmations"], -2)
+        assert_equal(tx1["confirmations"], -2 - len(gens))
+        assert_equal(tx2["confirmations"], -2- len(gens))
 
         # Node0's total balance should be starting balance, plus 2*$fp_blockreward MGC for
         # two more matured blocks, minus $ndb_spend for the double-spend, plus fees (which are

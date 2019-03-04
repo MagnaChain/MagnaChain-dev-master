@@ -98,7 +98,7 @@ class TxnMallTest(MagnaChainTestFramework):
             expected += 50
         expected += tx1["amount"] + tx1["fee"]
         expected += tx2["amount"] + tx2["fee"]
-        assert_equal(self.nodes[0].getbalance() + 50 if self.options.mine_block else 0, expected)
+        assert_equal(self.nodes[0].getbalance() + 50 if self.options.mine_block else self.nodes[0].getbalance(), expected)
 
         # foo and bar accounts should be debited:
         assert_equal(self.nodes[0].getbalance("foo", 0), 1219)
