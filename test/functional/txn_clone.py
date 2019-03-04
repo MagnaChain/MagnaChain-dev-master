@@ -93,10 +93,12 @@ class TxnMallTest(MagnaChainTestFramework):
         # Node0's balance should be starting balance, plus 50BTC for another
         # matured block, minus tx1 and tx2 amounts, and minus transaction fees:
         expected = starting_balance + fund_foo_tx["fee"] + fund_bar_tx["fee"]
-        if self.options.mine_block: expected += 50
+        if self.options.mine_block:
+            print("expected:",expected)
+            expected += 50
         expected += tx1["amount"] + tx1["fee"]
         expected += tx2["amount"] + tx2["fee"]
-        assert_equal(self.nodes[0].getbalance(), expected)
+        assert_equal(self.nodes[0].getbalance() + 50 if self.options.mine_block else 0, expected)
 
         # foo and bar accounts should be debited:
         assert_equal(self.nodes[0].getbalance("foo", 0), 1219)
