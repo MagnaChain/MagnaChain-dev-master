@@ -248,11 +248,12 @@ void MCRPCConfig::Reset()
 	strUser.clear();
 	strPassword.clear();
     strWallet.clear();
+    strDataDir.clear();
 }
 
 bool MCRPCConfig::IsValid()
 {
-	if (strIp.empty() || iPort == 0)
+	if (!((!strIp.empty() && iPort != 0) || !strDataDir.empty()))
 		return false;
 	return true;
 }
@@ -325,6 +326,11 @@ bool MCBranchChainMan::ParseRpcConfig(const std::string& strCfg, MCRPCConfig& rp
     UniValue uvWallet = find_value(uv, "wallet");
     if (uvWallet.isNull() == false)
         rpccfg.strWallet = uvWallet.get_str();
+
+    UniValue uvDataDir = find_value(uv, "datadir");
+    if (uvDataDir.isNull() == false){
+        rpccfg.strDataDir = uvWallet.get_str();
+    }
 
 	return true;
 }
