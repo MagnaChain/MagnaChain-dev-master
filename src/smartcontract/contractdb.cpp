@@ -138,6 +138,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 
             const MCTransactionRef tx = pBlock->vtx[i];
             if (tx->IsNull()) {
+                LogPrintf("%s:%d => tx is null\n", __FUNCTION__, __LINE__);
                 interrupt = true;
                 return;
             }
@@ -165,6 +166,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                     &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
                 if (!PublishContract(sls, contractAddr, rawCode, ret, true)
                     || tx->pContractData->amountOut != 0 || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => publish contract fail\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
@@ -177,11 +179,13 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 sls->Initialize(false, pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
                     threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
                 if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
 
                 if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0) {
+                    LogPrintf("%s:%d => tx->pContractData->amountOut > 0 && sls->recipients.size() == 0\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
@@ -189,6 +193,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 MCAmount total = 0;
                 for (int j = 0; j < sls->recipients.size(); ++j) {
                     if (!tx->IsExistVout(sls->recipients[j])) {
+                        LogPrintf("%s:%d => vout not exist\n", __FUNCTION__, __LINE__);
                         interrupt = true;
                         return;
                     }
@@ -196,6 +201,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 }
 
                 if (total != tx->pContractData->amountOut || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => amount not match\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
@@ -240,7 +246,8 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
         }
 #ifndef _DEBUG
     }
-    catch (...) {
+    catch (std::exception e) {
+        LogPrintf("%s:%d => unknown exception %s\n", __FUNCTION__, __LINE__, e.what());
         interrupt = true;
     }
 #endif
@@ -250,11 +257,11 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
 {
     auto it = mapBlockIndex.find(pBlock->hashPrevBlock);
     if (it == mapBlockIndex.end()) {
-        return false;
+        throw std::runtime_error(strprintf("%s:%d => it == mapBlockIndex.end()", __FUNCTION__, __LINE__));
     }
 
     if (pBlock->groupSize.size() > MAX_GROUP_NUM) {
-        return false;
+        throw std::runtime_error(strprintf("%s:%d => pBlock->groupSize.size() > MAX_GROUP_NUM", __FUNCTION__, __LINE__));
     }
 
     int totalSize = 0;
@@ -262,7 +269,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
         totalSize += pBlock->groupSize[i];
     }
     if (totalSize == 0 || totalSize != pBlock->vtx.size()) {
-        return false;
+        throw std::runtime_error(strprintf("%s:%d => totalSize not match", __FUNCTION__, __LINE__));
     }
     
     MCBlockIndex* pPrevBlockIndex = it->second;
@@ -288,7 +295,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     threadPool.wait();
 
     if (interrupt) {
-        return false;
+        throw std::runtime_error(strprintf("%s:%d => run contract interrupt", __FUNCTION__, __LINE__));
     }
 
     offset = 0;
@@ -304,7 +311,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
                 finalTransactions.insert(item);
             }
             else {
-                return false;
+                throw std::runtime_error(strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__));
             }
         }
 
@@ -314,7 +321,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
                 pContractContext->SetCache(item.first, item.second);
             }
             else {
-                return false;
+                throw std::runtime_error(strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__));
             }
         }
 
