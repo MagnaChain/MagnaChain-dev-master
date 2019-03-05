@@ -352,6 +352,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
                 "4. \"usrname\"             (string, required) Branch node rpc username.\n"
                 "5. \"password\"            (string, required) Branch node rpc password.\n"
                 "6. \"wallet\"              (string, optional) Rpc wallet\n"
+                "7. \"datadir\"             (string, optional) taget blanch datadir\n"
                 "\nReturns the hash of the created branch chain.\n"
                 "\nResult:\n"
                 "    Ok or fail\n"
@@ -376,6 +377,9 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     rpcconfig.strUser = username;
     rpcconfig.strPassword = password;
     rpcconfig.strWallet = strWallet;
+    if (request.params.size() > 6){
+        rpcconfig.strDataDir = request.params[6].get_str();
+    }
 
     if (branchid != MCBaseChainParams::MAIN && (branchid.length() != 64 || !IsHex(branchid)))
     {

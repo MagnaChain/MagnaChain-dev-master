@@ -25,6 +25,7 @@ public:
 	std::string strUser;
 	std::string strPassword;
     std::string strWallet;
+    std::string strDataDir;
 
 	void Reset();
 	bool IsValid();
@@ -56,7 +57,7 @@ enum branch_script_type
     BST_MORTGAGE_ALL = BST_MORTGAGE_MINE | BST_MORTGAGE_COIN,
 };
 
-UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params,
+UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, const UniValue& datadir = "",
 	const std::string& rpcuser = "", const std::string& rpcpassword = "", const std::string& rpcwallet = "");
 
 UniValue CallRPC(const MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params);

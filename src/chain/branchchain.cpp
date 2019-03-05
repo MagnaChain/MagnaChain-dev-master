@@ -122,9 +122,11 @@ static void http_error_cb(enum evhttp_request_error err, void *ctx)
 }
 #endif
 
-UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params,
+UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, const UniValue& datadir,
 	const std::string& rpcuser/*=""*/, const std::string& rpcpassword/*=""*/, const std::string& rpcwallet/*=""*/)
 {
+    std::string strrpcuser = rpcuser;
+    std::string strrpcpassword = rpcpassword;
 	// Obtain event base
 	raii_event_base base = obtain_event_base();
 
@@ -142,7 +144,33 @@ UniValue CallRPC(const std::string& host, const int port, const std::string& str
 
 	// Get credentials
 	std::string strRPCUserColonPass;
-	strRPCUserColonPass = rpcuser + ":" + rpcpassword;
+    if (!datadir.empty() && strrpcpassword.empty())// load datadir conf first.
+    {
+        ArgsManager args;
+        if (!fs::is_directory(GetDataDir(false))) {
+            throw std::runtime_error("Error: Specified data directory does not exist.");
+        }
+        try {
+            args.ReadConfigFile(args.GetArg("-conf", MAGNACHAIN_CONF_FILENAME));
+        }
+        catch (const std::exception& e) {
+            throw std::runtime_error("Error reading configuration file!\n");
+        }
+        if (args.GetArg("-rpcpassword", "") == "")//get cookie file
+        {
+            if (!GetAuthCookie(&strRPCUserColonPass)) {
+                throw std::runtime_error("Error: No authentication cookie could be found");
+            }
+        }
+        else
+        {
+            strrpcpassword = args.GetArg("-rpcpassword", "");
+            if (args.GetArg("-rpcuser", "") != ""){ // choise parameters in config file first.
+                strrpcuser = args.GetArg("-rpcuser", "");
+            }
+            strRPCUserColonPass = strrpcuser + ":" + strrpcpassword;
+        }
+    }
 
 	struct evkeyvalq* output_headers = evhttp_request_get_output_headers(req.get());
 	assert(output_headers);
