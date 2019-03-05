@@ -316,6 +316,7 @@ class ContractForkTest(MagnaChainTestFramework):
         if with_send:
             tmp_ct = Contract(self.node1)
             tx_a13 = ct.call_callOtherContractTest(ct2.contract_id,'callOtherContractTest',tmp_ct.contract_id,"contractDataTest")
+            print("ct balance:",ct.get_balance())
             print(tx_a13)
         print(tx_a1,tx_a11,tx_a12)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
@@ -331,14 +332,18 @@ class ContractForkTest(MagnaChainTestFramework):
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         assert tx_b1 not in self.node3.getrawmempool()
         tx_b11 = ct.call_contractDataTest(amount = 0,exec_node = self.node3)['txid']
+        print("ct balance:", ct.get_balance(exec_node = self.node3))
         if with_send:
             # 这里有两个crash point,下面代码分别对应不同的CP
             if crash_point == 1:
                 tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
                                                    ct.contract_id, "contractDataTest",exec_node = self.node3)
+                print("ct balance:", ct.get_balance(exec_node=self.node3))
             else:
                 tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
                                                    ct.contract_id, "contractDataTest")
+                print("ct balance:", ct.get_balance(exec_node=self.node1))
+            print("ct balance:", ct.get_balance(exec_node=self.node3))
             print("tx_b12:",tx_b12.txid)
         print(tx_b11)
         block_b16 = self.node3.generate(6)[-1]
@@ -355,14 +360,20 @@ class ContractForkTest(MagnaChainTestFramework):
             print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
             print("mempool:",self.nodes[i].getrawmempool())
 
+        print("ct balance:", ct.get_balance(exec_node=self.node3))
+        print("ct balance:", ct.get_balance(exec_node=self.node1))
         print("join network")
         connect_nodes_bi(self.nodes, 1, 2)
         sync_blocks(self.nodes)
 
+        print("ct balance:", ct.get_balance(exec_node=self.node1))
+        print("ct balance:", ct.get_balance(exec_node=self.node3))
+
+
         for i in range(4):
             print("mempool:", self.nodes[i].getrawmempool())
         if with_send:
-            assert_equal(len(self.node1.getrawmempool()),5 if crash_point == 1 else 4) #短链的块内交易必须是打回内存池的，否则可能有bug了
+            assert_equal(len(self.node1.getrawmempool()),5 if crash_point == 1 else 6) #短链的块内交易必须是打回内存池的，否则可能有bug了
         else:
             assert_equal(len(self.node1.getrawmempool()), 3)  # 短链的块内交易必须是打回内存池的，否则可能有bug了
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
@@ -373,6 +384,7 @@ class ContractForkTest(MagnaChainTestFramework):
         assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
         assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
         assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+
 
         for i in range(4):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
