@@ -162,7 +162,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
             UniValue ret(UniValue::VARR);
             if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
                 std::string rawCode = tx->pContractData->codeOrFunc;
-                sls->Initialize(true, pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, 
+                sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr,
                     &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
                 if (!PublishContract(sls, contractAddr, rawCode, ret, true)
                     || tx->pContractData->amountOut != 0 || tx->pContractData->amountOut != sls->contractOut) {
@@ -176,7 +176,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 UniValue args;
                 args.read(tx->pContractData->args);
 
-                sls->Initialize(false, pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
+                sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
                     threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
                 if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut) {
                     LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);

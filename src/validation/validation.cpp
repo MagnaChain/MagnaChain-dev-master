@@ -399,7 +399,7 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
     UniValue ret(UniValue::VARR);
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx.pContractData->codeOrFunc;
-        sls->Initialize(true, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        sls->Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (PublishContract(sls, contractAddr, rawCode, ret, true)) {
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == 0);
@@ -407,7 +407,7 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
         }
 	}
     else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        sls->Initialize(false, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        sls->Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(sls, contractAddr, amount, strFuncName, args, ret)) {
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == sls->contractOut);

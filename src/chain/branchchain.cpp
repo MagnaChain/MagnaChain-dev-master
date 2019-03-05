@@ -1328,7 +1328,7 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
     return true;
 }
 
-bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData)
+bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData, const BranchBlockData* pPrevBlockData)
 {
     ContractPrevData prevData;
     for (auto item : pProveData->contractData->contractPrevData) {
@@ -1350,7 +1350,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
 
     SmartLuaState sls;
     contractContext.txFinalData.resize(txIndex + 1);
-    if (!ExecuteContract(&sls, proveTx, txIndex, prevData.coins, pBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext)) {
+    if (!ExecuteContract(&sls, proveTx, txIndex, prevData.coins, pPrevBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext)) {
         return false;
     }
 
@@ -1399,8 +1399,12 @@ bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, Branc
     if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, fee, true))
         return false;
 
-    if (pProveTx->IsSmartContract() && !CheckProveSmartContract(tx.pProveData, pProveTx, pBlockData))
-        return state.DoS(0, false, REJECT_INVALID, "CheckProveSmartContract fail");
+    if (pProveTx->IsSmartContract()) {
+        BranchBlockData* pPrevBlockData = branchData.GetBranchBlockData(pBlockData->header.hashPrevBlock);
+        if (!CheckProveSmartContract(tx.pProveData, pProveTx, pBlockData, pPrevBlockData)) {
+            return state.DoS(0, false, REJECT_INVALID, "CheckProveSmartContract fail");
+        }
+    }
 
     return true;
 }
