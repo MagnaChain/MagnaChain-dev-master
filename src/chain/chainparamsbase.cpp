@@ -16,6 +16,9 @@ const std::string MCBaseChainParams::TESTNET = "test";
 const std::string MCBaseChainParams::REGTEST = "regtest";
 const std::string MCBaseChainParams::BRANCH = "branch";
 
+const std::string SUB_TESTNET_DATADIR = "testnet3";
+const std::string SUB_REGTEST_DATADIR = "regtest";
+
 void AppendParamsHelpMessages(std::string& strUsage, bool debugHelp)
 {
     strUsage += HelpMessageGroup(_("Chain selection options:"));
@@ -47,7 +50,7 @@ public:
     MCBaseTestNetParams()
     {
         nRPCPort = 18332;
-        strDataDir = "testnet3";
+        strDataDir = SUB_TESTNET_DATADIR;
     }
 };
 
@@ -60,7 +63,7 @@ public:
     MCBaseRegTestParams()
     {
         nRPCPort = 18332;
-        strDataDir = "regtest";
+        strDataDir = SUB_REGTEST_DATADIR;
     }
 };
 

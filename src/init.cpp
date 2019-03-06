@@ -749,7 +749,7 @@ bool AppInitServers(boost::thread_group& threadGroup)
 void InitParameterInteraction()
 {
     // modify COINBASE_MATURITY for regtest
-    if (Params().NetworkIDString() == MCBaseChainParams::REGTEST)
+    if (gArgs.GetBoolArg("-regtest", false))//Params().NetworkIDString() == MCBaseChainParams::REGTEST , this condition not for branch chain.
     {
         COINBASE_MATURITY = gArgs.GetArg("-regtestmaturity", 1);
         BRANCH_CHAIN_MATURITY = gArgs.GetArg("-regtestbcmaturity", 1);
@@ -835,7 +835,7 @@ std::string ResolveErrMsg(const char * const optname, const std::string& strBind
 
 void InitLogging()
 {
-    fPrintToConsole = gArgs.GetBoolArg("-printtoconsole", false);
+    fPrintToConsole = gArgs.GetBoolArg("-printtoconsole", true);
     fLogTimestamps = gArgs.GetBoolArg("-logtimestamps", DEFAULT_LOGTIMESTAMPS);
     fLogTimeMicros = gArgs.GetBoolArg("-logtimemicros", DEFAULT_LOGTIMEMICROS);
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
@@ -1236,7 +1236,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
         ShrinkDebugFile();
     }
 
-    fPrintToDebugLog = fPrintToConsole ? gArgs.GetBoolArg("-printtodebuglog", false) : true;
+    fPrintToDebugLog = gArgs.GetBoolArg("-printtodebuglog", true);// fPrintToConsole, let's print to console and debug log by default.If you don't want that, disable it manually.
     if (fPrintToDebugLog)
         OpenDebugLog();
 

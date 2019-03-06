@@ -403,7 +403,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     }
 
     //
-    if (!rpcconfig.InitUserColonPass()){
+    if (!rpcconfig.InitUserColonPass(true)){
         throw JSONRPCError(RPC_TYPE_ERROR, std::string("InitUserColonPass fail, passwork or datadir incorrect"));
     }
 

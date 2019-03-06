@@ -193,9 +193,13 @@ UniValue CallRPC(const std::string& host, const int port, const std::string& str
 	return reply;
 }
 
-UniValue CallRPC(const MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params)
+UniValue CallRPC(MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params)
 {
     try {
+        if (rpccfg.strRPCUserColonPass.empty() && rpccfg.getcookiefail > 0){
+            rpccfg.InitUserColonPass(true);
+        }
+
         UniValue ret = CallRPC(rpccfg.strIp, rpccfg.iPort, strMethod, params, rpccfg.strRPCUserColonPass, rpccfg.strWallet);
         return ret;
     }
@@ -212,8 +216,13 @@ UniValue CallRPC(const MCRPCConfig& rpccfg, const std::string& strMethod, const 
     return NullUniValue;
 }
 
+MCRPCConfig::MCRPCConfig() :iPort(0), getcookiefail(0)
+{
+}
+
 void MCRPCConfig::Reset()
 {
+    strBranchId.clear();
 	strIp.clear();
 	iPort = 0;
 	strUser.clear();
@@ -221,16 +230,17 @@ void MCRPCConfig::Reset()
     strWallet.clear();
     strDataDir.clear();
     strRPCUserColonPass.clear();
+    getcookiefail = 0;
 }
 
 bool MCRPCConfig::IsValid()
 {
-	if (strRPCUserColonPass.empty())
+	if ((strRPCUserColonPass.empty() && getcookiefail == 0) || iPort == 0)
 		return false;
 	return true;
 }
 
-bool MCRPCConfig::InitUserColonPass()
+bool MCRPCConfig::InitUserColonPass(bool bthrowexcetion)
 {
     // Get credentials
     if (!strDataDir.empty() && strPassword.empty())// load datadir conf first.
@@ -238,21 +248,37 @@ bool MCRPCConfig::InitUserColonPass()
         ArgsManager args;
         fs::path path = fs::system_complete(strDataDir);
         if (!fs::is_directory(path)) {
-            throw std::runtime_error("Error: Invalid branch rpc config datadir.");
+            if (bthrowexcetion) throw std::runtime_error("Error: Invalid branch rpc config datadir.");
+            error("%s Invalid branch rpc config datadir.\n", __func__, strDataDir);
+            return false;
         }
 
         try {
             std::string configfilepath = (path / MAGNACHAIN_CONF_FILENAME).string();
             args.ReadConfigFile(configfilepath);
         }
-        catch (const std::exception& e) {
-            throw std::runtime_error("Error reading configuration file!\n");
+        catch (const std::exception& e) {// no config file is ok
+            //if (bthrowexcetion) throw std::runtime_error("Error reading configuration file!\n");
+            //return false;
         }
-        if (args.GetArg("-rpcpassword", "") == "")//get cookie file
+        if (args.GetArg("-rpcpassword", "") == "")//get cookie file, the cookie file only exist when branch is running
         {
+            bool fTestNet = gArgs.GetBoolArg("-testnet", false);
+            bool fRegTest = gArgs.GetBoolArg("-regtest", false);
+            
             fs::path cookiepath = path / ".cookie";
+            if (fTestNet || fRegTest){
+                if (strBranchId == MCBaseChainParams::MAIN)//note that main branch datadir for testnet or regtest will be testnet3 or regtest 
+                {
+                    std::string subdir = fTestNet ? SUB_TESTNET_DATADIR : SUB_REGTEST_DATADIR;
+                    cookiepath = path / subdir / ".cookie";
+                }
+            }
+
             if (!GetAuthCookie(&strRPCUserColonPass, &cookiepath)) {
-                throw std::runtime_error("Error: No authentication cookie could be found");
+                getcookiefail++;
+                if (bthrowexcetion) throw std::runtime_error("Error: No authentication cookie could be found");
+                return false;
             }
         }
         else
@@ -285,7 +311,7 @@ void MCBranchChainMan::Init()
 	{
 		std::string strName;
 		MCRPCConfig rpccfg;
-		if (ParseRpcConfig(strMainChainCfg, rpccfg, strName) && rpccfg.IsValid())
+		if ((ParseRpcConfig(strMainChainCfg, rpccfg, strName) && rpccfg.IsValid()) || rpccfg.getcookiefail == 1)// if getcookiefail, we will give a chance for later try again,may the target chain is not running now.
 		{
 			mapRpcConfig[MCBaseChainParams::MAIN] = rpccfg;
 		}
@@ -296,7 +322,7 @@ void MCBranchChainMan::Init()
 	{
 		std::string branchid;
 		MCRPCConfig rpccfg;
-		if (ParseRpcConfig(var, rpccfg, branchid) && rpccfg.IsValid())
+		if ((ParseRpcConfig(var, rpccfg, branchid) && rpccfg.IsValid()) || rpccfg.getcookiefail == 1)
 		{
 			mapRpcConfig[branchid] = rpccfg;
 		}
@@ -310,10 +336,12 @@ bool MCBranchChainMan::ParseRpcConfig(const std::string& strCfg, MCRPCConfig& rp
 		return false;
 
 	UniValue uvBranchid = find_value(uv, "branchid");
-	if (uvBranchid.isNull())
-		branchid.clear();
+	if (uvBranchid.isNull()){
+        branchid = MCBaseChainParams::MAIN;
+    }
 	else
 		branchid = uvBranchid.get_str();
+    rpccfg.strBranchId = branchid;
 
 	UniValue uvIp = find_value(uv, "ip");
 	if (uvIp.isNull())
@@ -344,7 +372,7 @@ bool MCBranchChainMan::ParseRpcConfig(const std::string& strCfg, MCRPCConfig& rp
         rpccfg.strDataDir = uvDataDir.get_str();
     }
 
-    if (!rpccfg.InitUserColonPass()){
+    if (!rpccfg.InitUserColonPass(false)){
         return false;
     }
 

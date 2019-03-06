@@ -20,6 +20,9 @@ class BranchData;
 
 class MCRPCConfig {
 public:
+    MCRPCConfig();
+
+    std::string strBranchId;
 	std::string strIp;
 	uint16_t    iPort;
 	std::string strUser;
@@ -27,11 +30,12 @@ public:
     std::string strWallet;
     std::string strDataDir;
     std::string strRPCUserColonPass;
+    int getcookiefail;
 
 	void Reset();
 	bool IsValid();
 
-    bool InitUserColonPass();
+    bool InitUserColonPass(bool bthrowexcetion = false);
 };
 
 //链配置管理 
@@ -63,7 +67,7 @@ enum branch_script_type
 UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, 
 	const std::string& strRPCUserColonPass, const std::string& rpcwallet = "");
 
-UniValue CallRPC(const MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params);
+UniValue CallRPC(MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params);
 
 void ProcessBlockBranchChain();
 

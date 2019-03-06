@@ -61,4 +61,7 @@ void SelectBaseParams(const std::string& chain);
  */
 std::string ChainNameFromCommandLine();
 
+extern const std::string SUB_TESTNET_DATADIR;
+extern const std::string SUB_REGTEST_DATADIR;
+
 #endif // MAGNACHAIN_CHAINPARAMSBASE_H
