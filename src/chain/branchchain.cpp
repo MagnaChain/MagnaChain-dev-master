@@ -122,11 +122,9 @@ static void http_error_cb(enum evhttp_request_error err, void *ctx)
 }
 #endif
 
-UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, const UniValue& datadir,
-	const std::string& rpcuser/*=""*/, const std::string& rpcpassword/*=""*/, const std::string& rpcwallet/*=""*/)
+UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, 
+	const std::string& strRPCUserColonPass, const std::string& rpcwallet/*=""*/)
 {
-    std::string strrpcuser = rpcuser;
-    std::string strrpcpassword = rpcpassword;
 	// Obtain event base
 	raii_event_base base = obtain_event_base();
 
@@ -141,37 +139,7 @@ UniValue CallRPC(const std::string& host, const int port, const std::string& str
 #if LIBEVENT_VERSION_NUMBER >= 0x02010300
 	evhttp_request_set_error_cb(req.get(), http_error_cb);
 #endif
-
-	// Get credentials
-	std::string strRPCUserColonPass;
-    if (!datadir.empty() && strrpcpassword.empty())// load datadir conf first.
-    {
-        ArgsManager args;
-        if (!fs::is_directory(GetDataDir(false))) {
-            throw std::runtime_error("Error: Specified data directory does not exist.");
-        }
-        try {
-            args.ReadConfigFile(args.GetArg("-conf", MAGNACHAIN_CONF_FILENAME));
-        }
-        catch (const std::exception& e) {
-            throw std::runtime_error("Error reading configuration file!\n");
-        }
-        if (args.GetArg("-rpcpassword", "") == "")//get cookie file
-        {
-            if (!GetAuthCookie(&strRPCUserColonPass)) {
-                throw std::runtime_error("Error: No authentication cookie could be found");
-            }
-        }
-        else
-        {
-            strrpcpassword = args.GetArg("-rpcpassword", "");
-            if (args.GetArg("-rpcuser", "") != ""){ // choise parameters in config file first.
-                strrpcuser = args.GetArg("-rpcuser", "");
-            }
-            strRPCUserColonPass = strrpcuser + ":" + strrpcpassword;
-        }
-    }
-
+    
 	struct evkeyvalq* output_headers = evhttp_request_get_output_headers(req.get());
 	assert(output_headers);
 	evhttp_add_header(output_headers, "Host", host.c_str());
@@ -179,7 +147,7 @@ UniValue CallRPC(const std::string& host, const int port, const std::string& str
 	evhttp_add_header(output_headers, "Authorization", (std::string("Basic ") + EncodeBase64(strRPCUserColonPass)).c_str());
 
 	// Attach request data
-	std::string strRequest = JSONRPCRequestObj(strMethod, params, 1).write() + "\n";
+    std::string strRequest = JSONRPCRequestObj(strMethod, params, 1).write() + "\n";
 	struct evbuffer* output_buffer = evhttp_request_get_output_buffer(req.get());
 	assert(output_buffer);
 	evbuffer_add(output_buffer, strRequest.data(), strRequest.size());
@@ -227,46 +195,21 @@ UniValue CallRPC(const std::string& host, const int port, const std::string& str
 
 UniValue CallRPC(const MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params)
 {
-	if (true)
-	{
-		try {
-			UniValue ret = CallRPC(rpccfg.strIp, rpccfg.iPort, strMethod, params, rpccfg.strUser, rpccfg.strPassword, rpccfg.strWallet);
-			return ret;
-		}
-		catch (const MCConnectionFailed& e)
-		{
-			error("%s: CallRPC excetion , %s", __func__, e.what());
-			return JSONRPCReplyObj(NullUniValue, e.what(), 1);
-		}
-		catch (const std::exception& e)
-		{
-			error("%s: may be CallRPC excetion cannot connect to main chain,%s", __func__, e.what());
-			return JSONRPCReplyObj(NullUniValue, e.what(), 1);
-		}
-		return NullUniValue;
-	}
-
-	// 使用系统调用cli来处理rpc请求 
-//	std::string strCommand;
-//#ifdef  WIN32
-//	strCommand = "cell-cli.exe ";
-//#else
-//	strCommand = "magnachain-cli ";
-//#endif 
-//	strCommand = tfm::format("%s -rpcuser=%s -rpcpassword=%s -rpcconnect=%s -rpcport=%d %s", 
-//		strCommand, rpccfg.strUser, rpccfg.strPassword, rpccfg.strIp, rpccfg.iPort, strMethod);
-//
-//	if (params.getType() == UniValue::VARR)
-//	{
-//		const std::vector<UniValue>& vars = params.getValues();
-//		for (auto p : vars)
-//		{
-//			strCommand += " " + p.getValStr();
-//		}
-//	}
-//
-//	int nErr = ::system(strCommand.c_str());
-//	return "ok";
+    try {
+        UniValue ret = CallRPC(rpccfg.strIp, rpccfg.iPort, strMethod, params, rpccfg.strRPCUserColonPass, rpccfg.strWallet);
+        return ret;
+    }
+    catch (const MCConnectionFailed& e)
+    {
+        error("%s: CallRPC excetion , %s", __func__, e.what());
+        return JSONRPCReplyObj(NullUniValue, e.what(), 1);
+    }
+    catch (const std::exception& e)
+    {
+        error("%s: may be CallRPC excetion cannot connect to main chain,%s", __func__, e.what());
+        return JSONRPCReplyObj(NullUniValue, e.what(), 1);
+    }
+    return NullUniValue;
 }
 
 void MCRPCConfig::Reset()
@@ -277,13 +220,53 @@ void MCRPCConfig::Reset()
 	strPassword.clear();
     strWallet.clear();
     strDataDir.clear();
+    strRPCUserColonPass.clear();
 }
 
 bool MCRPCConfig::IsValid()
 {
-	if (!((!strIp.empty() && iPort != 0) || !strDataDir.empty()))
+	if (strRPCUserColonPass.empty())
 		return false;
 	return true;
+}
+
+bool MCRPCConfig::InitUserColonPass()
+{
+    // Get credentials
+    if (!strDataDir.empty() && strPassword.empty())// load datadir conf first.
+    {
+        ArgsManager args;
+        fs::path path = fs::system_complete(strDataDir);
+        if (!fs::is_directory(path)) {
+            throw std::runtime_error("Error: Invalid branch rpc config datadir.");
+        }
+
+        try {
+            std::string configfilepath = (path / MAGNACHAIN_CONF_FILENAME).string();
+            args.ReadConfigFile(configfilepath);
+        }
+        catch (const std::exception& e) {
+            throw std::runtime_error("Error reading configuration file!\n");
+        }
+        if (args.GetArg("-rpcpassword", "") == "")//get cookie file
+        {
+            fs::path cookiepath = path / ".cookie";
+            if (!GetAuthCookie(&strRPCUserColonPass, &cookiepath)) {
+                throw std::runtime_error("Error: No authentication cookie could be found");
+            }
+        }
+        else
+        {
+            strPassword = args.GetArg("-rpcpassword", "");
+            if (args.GetArg("-rpcuser", "") != "") { // choise parameters in config file first.
+                strUser = args.GetArg("-rpcuser", "");
+            }
+            strRPCUserColonPass = strUser + ":" + strPassword;
+        }
+    }
+    else{
+        strRPCUserColonPass = strUser + ":" + strPassword;
+    }
 }
 
 std::unique_ptr<MCBranchChainMan> g_branchChainMan = nullptr;
@@ -357,7 +340,11 @@ bool MCBranchChainMan::ParseRpcConfig(const std::string& strCfg, MCRPCConfig& rp
 
     UniValue uvDataDir = find_value(uv, "datadir");
     if (uvDataDir.isNull() == false){
-        rpccfg.strDataDir = uvWallet.get_str();
+        rpccfg.strDataDir = uvDataDir.get_str();
+    }
+
+    if (!rpccfg.InitUserColonPass()){
+        return false;
     }
 
 	return true;
