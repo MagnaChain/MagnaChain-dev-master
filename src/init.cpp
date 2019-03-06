@@ -752,6 +752,10 @@ void InitParameterInteraction()
     if (Params().NetworkIDString() == MCBaseChainParams::REGTEST)
     {
         COINBASE_MATURITY = gArgs.GetArg("-regtestmaturity", 1);
+        BRANCH_CHAIN_MATURITY = gArgs.GetArg("-regtestbcmaturity", 1);
+        REDEEM_SAFE_HEIGHT = gArgs.GetArg("-regtestrsheight", 60);
+        REPORT_OUTOF_HEIGHT = gArgs.GetArg("-regtestrooheight", 60);
+        REPORT_LOCK_COIN_HEIGHT = gArgs.GetArg("-regtestrooheight", 30);
     }
 
     // when specifying an explicit binding address, you want to listen on it
