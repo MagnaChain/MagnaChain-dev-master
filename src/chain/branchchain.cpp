@@ -267,7 +267,7 @@ bool MCRPCConfig::InitUserColonPass()
     else{
         strRPCUserColonPass = strUser + ":" + strPassword;
     }
-    return true;
+    return !strRPCUserColonPass.empty();
 }
 
 std::unique_ptr<MCBranchChainMan> g_branchChainMan = nullptr;
