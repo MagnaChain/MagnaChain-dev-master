@@ -238,6 +238,7 @@ class MagnaChainTestFramework(object):
         node.generate(2)
         sidechain_id = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
                                               node.getnewaddress())['branchid']
+        node.generate(1)
         logger("sidechain id is {}".format(sidechain_id))
         # 创建magnachaind的软链接，为了区分主链和侧链
         if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
@@ -252,22 +253,23 @@ class MagnaChainTestFramework(object):
         logger("create sidechain datadir")
         side_datadirs = []
         for i in range(self.num_sidenodes):
-            side_datadirs.append(initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id,mainport = self.nodes[i].rpcport))
+            side_datadirs.append(
+                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[i].rpcport,
+                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(i),'regtest')))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
         # my @ ret = rpcCall($mainData, 'addbranchnode',$sideChainId, '127.0.0.1', "9201",$mainRpcUser,$mainRpcPwd, "wallet1.dat");
         for i in range(self.num_nodes):
-            ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '',side_datadirs[i])
+            ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '','',side_datadirs[i])
             if ret != 'ok':
                 raise Exception(ret)
-            logger("mortgage coin to mainchains")
+            logger("mortgage coins to mainchains")
             for j in range(10):
                 addr = self.nodes[i].getnewaddress()
-                # logger("mortgage {} coin to {}".format(5000,addr))
-                txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']
-            self.nodes[i].generate(8)
-            assert int(self.nodes[i].getmempoolinfo()['size']) > 0
+                txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
+            self.nodes[i].generate(10)
+            assert self.nodes[i].getmempoolinfo()['size'] > 0
 
         return
 
