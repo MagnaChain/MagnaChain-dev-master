@@ -496,7 +496,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
     MCContractID contractId = GenerateContractAddress(pWallet, senderAddr, trimRawCode);
     MagnaChainAddress contractAddr(contractId);
 
-    sls->Initialize(true, GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    sls->Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     bool success = PublishContract(sls, contractAddr, trimRawCode, ret, false);
     if (success) {
         MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
@@ -966,7 +966,7 @@ bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockI
             if (i >= pBlock->prevContractData.size()) {
                 return false;
             }
-            ExecuteContract(sls, tx, i, pBlock->prevContractData[i].coins, pBlock->GetBlockTime(), pPrevBlockIndex->nHeight + 1, pPrevBlockIndex, pContractContext);
+            ExecuteContract(sls, tx, i, pBlock->prevContractData[i].coins, pPrevBlockIndex->GetBlockTime(), pPrevBlockIndex->nHeight + 1, pPrevBlockIndex, pContractContext);
         }
     }
 

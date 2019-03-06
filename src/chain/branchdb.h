@@ -60,7 +60,6 @@ public:
         READWRITE(mBlockHash);
         READWRITE(txHash);
         READWRITE(txIndex);
-
         READWRITE(nChainWork);
         READWRITE(vecSonHashs);
         READWRITE(deadstatus);
