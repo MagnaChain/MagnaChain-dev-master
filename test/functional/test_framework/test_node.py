@@ -37,9 +37,10 @@ class TestNode():
     To make things easier for the test writer, a bit of magic is happening under the covers.
     Any unrecognised messages will be dispatched to the RPC connection."""
 
-    def __init__(self, i, dirname, extra_args, rpchost, timewait, binary, stderr, mocktime, coverage_dir):
+    def __init__(self, i, dirname, extra_args, rpchost, timewait, binary, stderr, mocktime, coverage_dir,sidechain = False):
+        self.is_sidenode = sidechain
         self.index = i
-        self.datadir = os.path.join(dirname, "node" + str(i))
+        self.datadir = os.path.join(dirname, ("sidenode" if sidechain else "node") + str(i))
         self.rpchost = rpchost
         if timewait:
             self.rpc_timeout = timewait
@@ -47,7 +48,7 @@ class TestNode():
             # Wait for up to 60 seconds for the RPC server to respond
             self.rpc_timeout = 60
         if binary is None:
-            self.binary = os.getenv("MAGNACHAIND", "magnachaind")
+            self.binary = os.getenv("MAGNACHAIND"if not sidechain else "MAGNACHAIND_SIDE", "magnachaind" if not sidechain else "magnachaind-side")
             if not os.path.exists(self.binary):
                 cur_dir = os.path.abspath(os.path.dirname(__file__))
                 if sys.platform == 'win32':
@@ -56,7 +57,7 @@ class TestNode():
                         self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
                                                    'magnachaind.exe')
                 else:
-                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind')
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src', "magnachaind" if not sidechain else "magnachaind-side")
         else:
             self.binary = binary
         self.stderr = stderr
@@ -84,7 +85,7 @@ class TestNode():
         self.rpc_connected = False
         self.rpc = None
         self.url = None
-        self.log = logging.getLogger('TestFramework.node%d' % i)
+        self.log = logging.getLogger('TestFramework.{}{}'.format('sidenode' if sidechain else 'node',i))
 
     def __getattr__(self, *args, **kwargs):
         """Dispatches any unrecognised messages to the RPC connection."""
@@ -173,6 +174,10 @@ class TestNode():
         care of cleaning up resources."""
         self.encryptwallet(passphrase)
         self.wait_until_stopped()
+
+    @property
+    def rpcport(self):
+        return self.rpc.auth_service_proxy_instance._AuthServiceProxy__conn.port
 
 class TestNodeCLI():
     """Interface to magnachain-cli for an individual node"""

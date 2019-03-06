@@ -34,14 +34,17 @@ from .util import (
     sync_mempools,
 )
 
+
 class TestStatus(Enum):
     PASSED = 1
     FAILED = 2
     SKIPPED = 3
 
+
 TEST_EXIT_PASSED = 0
 TEST_EXIT_FAILED = 1
 TEST_EXIT_SKIPPED = 77
+
 
 class MagnaChainTestFramework(object):
     """Base class for a magnachain test script.
@@ -63,6 +66,7 @@ class MagnaChainTestFramework(object):
         """Sets test framework defaults. Do not override this method. Instead, override the set_test_params() method"""
         self.setup_clean_chain = False
         self.nodes = []
+        self.sidenodes = []
         self.mocktime = 0
         self.set_test_params()
 
@@ -76,9 +80,11 @@ class MagnaChainTestFramework(object):
                           help="Leave magnachainds and test.* datadir on exit or error")
         parser.add_option("--noshutdown", dest="noshutdown", default=False, action="store_true",
                           help="Don't stop magnachainds after the test execution")
-        parser.add_option("--srcdir", dest="srcdir", default=os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + "/../../../src"),
+        parser.add_option("--srcdir", dest="srcdir",
+                          default=os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + "/../../../src"),
                           help="Source directory containing magnachaind/magnachain-cli (default: %default)")
-        parser.add_option("--cachedir", dest="cachedir", default=os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + "/../../cache"),
+        parser.add_option("--cachedir", dest="cachedir",
+                          default=os.path.normpath(os.path.dirname(os.path.realpath(__file__)) + "/../../cache"),
                           help="Directory for caching pregenerated datadirs")
         parser.add_option("--tmpdir", dest="tmpdir", help="Root directory for datadirs")
         parser.add_option("-l", "--loglevel", dest="loglevel", default="INFO",
@@ -117,6 +123,8 @@ class MagnaChainTestFramework(object):
         try:
             self.setup_chain()
             self.setup_network()
+            if getattr(self, "num_sidenodes", 0) > 0:
+                self.setup_sidechain()
             self.run_test()
             success = TestStatus.PASSED
         except JSONRPCException as e:
@@ -193,24 +201,75 @@ class MagnaChainTestFramework(object):
         else:
             self._initialize_chain()
 
-    def setup_network(self):
+    def setup_network(self, sidechain=False):
         """Override this method to customize test network topology"""
-        self.setup_nodes()
+        self.setup_nodes(sidechain=sidechain)
 
         # Connect the nodes as a "chain".  This allows us
         # to split the network between nodes 1 and 2 to get
         # two halves that can work on competing chains.
-        for i in range(self.num_nodes - 1):
-            connect_nodes_bi(self.nodes, i, i + 1)
-        self.sync_all()
+        node_num = (self.num_nodes if not sidechain else self.num_sidenodes)
+        nodes = self.nodes if not sidechain else self.sidenodes
+        for i in range(node_num - 1):
+            connect_nodes_bi(nodes, i, i + 1)
+        self.sync_all([nodes])
 
-    def setup_nodes(self):
+    def setup_nodes(self, sidechain=False):
         """Override this method to customize test node setup"""
         extra_args = None
-        if hasattr(self, "extra_args"):
-            extra_args = self.extra_args
-        self.add_nodes(self.num_nodes, extra_args)
-        self.start_nodes()
+        if not sidechain:
+            if hasattr(self, "extra_args"):
+                extra_args = self.extra_args
+            self.add_nodes(self.num_nodes, extra_args)
+        else:
+            if hasattr(self, "extra_args"):
+                extra_args = self.side_extra_args
+            self.add_nodes(self.num_sidenodes, extra_args, sidechain=True)
+        self.start_nodes(sidechain=sidechain)
+
+    # 支链相关
+    def setup_sidechain(self):
+        """Override this method to customize test sidenode setup"""
+        self.log.info("setup sidechain")
+        # 创建抵押币
+        # for convince
+        node = self.nodes[0]
+        logger = self.log.info
+        node.generate(2)
+        sidechain_id = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
+                                              node.getnewaddress())['branchid']
+        logger("sidechain id is {}".format(sidechain_id))
+        # 创建magnachaind的软链接，为了区分主链和侧链
+        if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
+            os.system("ln -s {} {}".format(os.path.join(self.options.srcdir, 'magnachaind'),
+                                           os.path.join(self.options.srcdir, 'magnachaind-side')))
+
+        # Set env vars
+        if "MAGNACHAIND_SIDE" not in os.environ:
+            os.environ["MAGNACHAIND_SIDE"] = os.path.join(self.options.srcdir, 'magnachaind-side')
+
+        # 初始化侧链目录
+        logger("create sidechain datadir")
+        side_datadirs = []
+        for i in range(self.num_sidenodes):
+            side_datadirs.append(initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id,mainport = self.nodes[i].rpcport))
+        logger("setup sidechain network and start side nodes")
+        self.setup_network(sidechain=True)
+        logger("sidechain attach to mainchains")
+        # my @ ret = rpcCall($mainData, 'addbranchnode',$sideChainId, '127.0.0.1', "9201",$mainRpcUser,$mainRpcPwd, "wallet1.dat");
+        for i in range(self.num_nodes):
+            ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '',side_datadirs[i])
+            if ret != 'ok':
+                raise Exception(ret)
+            logger("mortgage coin to mainchains")
+            for j in range(10):
+                addr = self.nodes[i].getnewaddress()
+                # logger("mortgage {} coin to {}".format(5000,addr))
+                txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']
+            self.nodes[i].generate(8)
+            assert int(self.nodes[i].getmempoolinfo()['size']) > 0
+
+        return
 
     def run_test(self):
         """Tests must override this method to define test logic"""
@@ -218,7 +277,7 @@ class MagnaChainTestFramework(object):
 
     # Public helper methods. These can be accessed by the subclass test scripts.
 
-    def add_nodes(self, num_nodes, extra_args=None, rpchost=None, timewait=None, binary=None):
+    def add_nodes(self, num_nodes, extra_args=None, rpchost=None, timewait=None, binary=None, sidechain=False):
         """Instantiate TestNode objects"""
 
         if extra_args is None:
@@ -228,7 +287,13 @@ class MagnaChainTestFramework(object):
         assert_equal(len(extra_args), num_nodes)
         assert_equal(len(binary), num_nodes)
         for i in range(num_nodes):
-            self.nodes.append(TestNode(i, self.options.tmpdir, extra_args[i], rpchost, timewait=timewait, binary=binary[i], stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir))
+            n = TestNode(i, self.options.tmpdir, extra_args[i], rpchost, timewait=timewait, binary=binary[i],
+                     stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir,
+                     sidechain=sidechain)
+            if not sidechain:
+                self.nodes.append(n)
+            else:
+                self.sidenodes.append(n)
 
     def start_node(self, i, extra_args=None, stderr=None):
         """Start a magnachaind"""
@@ -241,16 +306,22 @@ class MagnaChainTestFramework(object):
         if self.options.coveragedir is not None:
             coverage.write_all_rpc_commands(self.options.coveragedir, node.rpc)
 
-    def start_nodes(self, extra_args=None):
+    def start_nodes(self, extra_args=None, sidechain=False):
         """Start multiple magnachainds"""
-
+        nodes = []
         if extra_args is None:
-            extra_args = [None] * self.num_nodes
-        assert_equal(len(extra_args), self.num_nodes)
+            if not sidechain:
+                extra_args = [None] * self.num_nodes
+                assert_equal(len(extra_args), self.num_nodes)
+                nodes = self.nodes
+            else:
+                extra_args = [None] * self.num_sidenodes
+                assert_equal(len(extra_args), self.num_sidenodes)
+                nodes = self.sidenodes
         try:
-            for i, node in enumerate(self.nodes):
+            for i, node in enumerate(nodes):
                 node.start(extra_args[i])
-            for node in self.nodes:
+            for node in nodes:
                 node.wait_for_rpc_connection()
         except:
             # If one node failed to start, stop the others
@@ -258,7 +329,7 @@ class MagnaChainTestFramework(object):
             raise
 
         if self.options.coveragedir is not None:
-            for node in self.nodes:
+            for node in nodes:
                 coverage.write_all_rpc_commands(self.options.coveragedir, node.rpc)
 
     def stop_node(self, i):
@@ -268,16 +339,17 @@ class MagnaChainTestFramework(object):
 
     def stop_nodes(self):
         """Stop multiple magnachaind test nodes"""
-        for node in self.nodes:
+        all_nodes = self.nodes + self.sidenodes
+        for node in all_nodes:
             # Issue RPC to stop nodes
             node.stop_node()
 
-        for node in self.nodes:
+        for node in all_nodes:
             # Wait for nodes to stop
             node.wait_until_stopped()
 
     def assert_start_raises_init_error(self, i, extra_args=None, expected_msg=None):
-        with tempfile.SpooledTemporaryFile(max_size=2**16) as log_stderr:
+        with tempfile.SpooledTemporaryFile(max_size=2 ** 16) as log_stderr:
             try:
                 self.start_node(i, extra_args, stderr=log_stderr)
                 self.stop_node(i)
@@ -308,24 +380,25 @@ class MagnaChainTestFramework(object):
         disconnect_nodes(self.nodes[2], 1)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
-    def join_network(self,timeout = 60):
+    def join_network(self, timeout=60):
         """
         Join the (previously split) network halves together.
         """
         connect_nodes_bi(self.nodes, 1, 2)
-        self.sync_all(timeout = timeout)
+        self.sync_all(timeout=timeout)
 
     """make a chain have more work than b"""
+
     def make_more_work_than(self, a, b):
         bwork = int(self.nodes[b].getchaintipwork(), 16)
-        genblocks=[]
+        genblocks = []
         while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
             genblocks.append(self.nodes[a].generate(1)[0])
         if len(genblocks) > 0:
-            self.log.info("make more work by gen %d" %(len(genblocks)))
+            self.log.info("make more work by gen %d" % (len(genblocks)))
         return genblocks
 
-    def sync_all(self, node_groups=None,show_max_height = False,timeout = 60):
+    def sync_all(self, node_groups=None, show_max_height=False, timeout=60):
         if not node_groups:
             node_groups = [self.nodes]
 
@@ -333,8 +406,8 @@ class MagnaChainTestFramework(object):
             self.log.info("syncall group : %s" % (str([len(g) for g in node_groups])))
         for group in node_groups:
             logger = self.log if show_max_height else None
-            sync_blocks(group, logger=logger,timeout = timeout)
-            sync_mempools(group,timeout = timeout)
+            sync_blocks(group, logger=logger, timeout=timeout)
+            sync_mempools(group, timeout=timeout)
 
     def enable_mocktime(self):
         """Enable mocktime for the script.
@@ -366,7 +439,8 @@ class MagnaChainTestFramework(object):
         ll = int(self.options.loglevel) if self.options.loglevel.isdigit() else self.options.loglevel.upper()
         ch.setLevel(ll)
         # Format logs the same as magnachaind's debug.log with microprecision (so log files can be concatenated and sorted)
-        formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d000 %(name)s (%(levelname)s): %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d000 %(name)s (%(levelname)s): %(message)s',
+                                      datefmt='%Y-%m-%d %H:%M:%S')
         formatter.converter = time.gmtime
         fh.setFormatter(formatter)
         ch.setFormatter(formatter)
@@ -405,10 +479,13 @@ class MagnaChainTestFramework(object):
             # Create cache directories, run magnachainds:
             for i in range(MAX_NODES):
                 datadir = initialize_datadir(self.options.cachedir, i)
-                args = [os.getenv("MAGNACHAIND", "magnachaind"), "-server", "-keypool=1", "-datadir=" + datadir, "-discover=0"]
+                args = [os.getenv("MAGNACHAIND", "magnachaind"), "-server", "-keypool=1", "-datadir=" + datadir,
+                        "-discover=0"]
                 if i > 0:
                     args.append("-connect=127.0.0.1:" + str(p2p_port(0)))
-                self.nodes.append(TestNode(i, self.options.cachedir, extra_args=[], rpchost=None, timewait=None, binary=None, stderr=None, mocktime=self.mocktime, coverage_dir=None))
+                self.nodes.append(
+                    TestNode(i, self.options.cachedir, extra_args=[], rpchost=None, timewait=None, binary=None,
+                             stderr=None, mocktime=self.mocktime, coverage_dir=None))
                 self.nodes[i].args = args
                 self.start_node(i)
 
@@ -458,6 +535,7 @@ class MagnaChainTestFramework(object):
         for i in range(self.num_nodes):
             initialize_datadir(self.options.tmpdir, i)
 
+
 class ComparisonTestFramework(MagnaChainTestFramework):
     """Test framework for doing p2p comparison testing
 
@@ -484,10 +562,12 @@ class ComparisonTestFramework(MagnaChainTestFramework):
             extra_args = self.extra_args
         self.add_nodes(self.num_nodes, extra_args,
                        binary=[self.options.testbinary] +
-                       [self.options.refbinary] * (self.num_nodes - 1))
+                              [self.options.refbinary] * (self.num_nodes - 1))
         self.start_nodes()
+
 
 class SkipTest(Exception):
     """This exception is raised to skip a test"""
+
     def __init__(self, message):
         self.message = message

@@ -289,15 +289,22 @@ def rpc_url(datadir, i, rpchost=None):
 # Node functions
 ################
 
-def initialize_datadir(dirname, n):
-    datadir = os.path.join(dirname, "node" + str(n))
+def initialize_datadir(dirname, n,sidechain_id = None,mainport = None):
+    pn = n if not sidechain_id else n + 3
+    datadir = os.path.join(dirname, ("sidenode" if sidechain_id else "node") + str(n))
     if not os.path.isdir(datadir):
         os.makedirs(datadir)
     with open(os.path.join(datadir, "magnachain.conf"), 'w', encoding='utf8') as f:
         f.write("regtest=1\n")
-        f.write("port=" + str(p2p_port(n)) + "\n")
-        f.write("rpcport=" + str(rpc_port(n)) + "\n")
+        f.write("port=" + str(p2p_port(pn)) + "\n")
+        f.write("rpcport=" + str(rpc_port(pn)) + "\n")
+        # print(str(p2p_port(pn)),str(rpc_port(pn)))
         f.write("listenonion=0\n")
+        if sidechain_id:
+            f.write("branchid={}\n".format(sidechain_id))
+            f.write("vseeds=main.test.domain.name\n")
+            f.write("seedspec6=00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8833\n")
+            f.write('mainchaincfg={"ip":"127.0.0.1","port":%s,"user":"","password":""}'%(mainport))
     return datadir
 
 def get_datadir_path(dirname, n):
@@ -647,7 +654,7 @@ def generate_contract(folder, err_type=None):
         end
         
         local function _call(addr,f,...)
-            say("call:",addr,f,...)
+            --say("call:",addr,f,...)
             --showMsg()
             say(callcontract(addr,f,...))
         end
@@ -683,7 +690,7 @@ def generate_contract(folder, err_type=None):
         end
 
         function callOtherContractTest(addr,func,...)
-            say("beCall by ",senderType , ",address is " , msg.sender )
+            --say("beCall by ",senderType , ",address is " , msg.sender )
             --addr = msg.thisaddress
             _call(addr,func,...)
             sendCoinTest(msg.origin,10)
@@ -814,11 +821,13 @@ def generate_contract(folder, err_type=None):
             PersistentData["this2"] = PersistentData
         end        
         
-        function reorgTest(to)
+        function reorgTest(to,to1)
             if msg.timestamp % 2 == 0 then
+                --say('to A',to)
                 send(to,1 * cell)
             else
-                send(msg.origin,1 * cell)
+                --say('to B',to1)
+                send(to1,1 * cell)
             end
         end
         
@@ -945,4 +954,5 @@ def gen_lots_of_contracts(node,contract,num = 500):
         result = node.publishcontract(contract)
         infos.append({'txid': result['txid'],'address' : result['contractaddress']})
     return infos
+
 
