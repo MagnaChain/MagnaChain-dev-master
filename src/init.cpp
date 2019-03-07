@@ -5,7 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "init.h"
@@ -1506,6 +1506,9 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
+                pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
+                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
+
                 // ReplayBlocks is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!ReplayBlocks(chainparams, pcoinsdbview)) {
                     strLoadError = _("Unable to replay blocks. You will need to rebuild the database using -reindex-chainstate.");
@@ -1513,8 +1516,6 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 }
 
                 // The on-disk coinsdb is now in a good state, create the cache
-                pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
-                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
                 pCoinAmountDB = new CoinAmountDB();
                 pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
                 
