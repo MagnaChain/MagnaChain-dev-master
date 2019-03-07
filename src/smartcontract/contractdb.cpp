@@ -145,7 +145,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 
             threadData->associationTransactions.insert(tx->GetHash());
             for (int j = 0; j < tx->vin.size(); ++j) {
-                if (!tx->vin[j].prevout.hash.IsNull()) {
+                if (!tx->vin[j].prevout.hash.IsNull() && !tx->IsStake()) {// branch first block's stake tx's input is from the same block(支链第一个块的stake交易的输入来自同一区块中的交易，其他情况下stake的输入不可能来自同一区块)
                     threadData->associationTransactions.insert(tx->vin[j].prevout.hash);
                 }
             }

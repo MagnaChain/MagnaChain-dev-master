@@ -303,11 +303,16 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         auto& temp = group2trans[groupId];
         for (int i = 0; i < offset; ++i) {
             uint256 hash;
-            if (blockTxEntries[i] != nullptr) {
+            if (blockTxEntries[i] != nullptr) {// the offset has init with nullptr, because coinbase tx and stake tx no relative mempool entry
                 hash = blockTxEntries[i]->GetTx().GetHash();
             }
-            temp.emplace_back(std::make_pair(hash, i));
-            trans2group[hash] = groupId;
+            else if (pblock->vtx[i] != nullptr){// coinbase is not init.
+                hash = pblock->vtx[i]->GetHash();
+            }
+            //if (!hash.IsNull()){ //where to find coinbase hash ?
+                temp.emplace_back(std::make_pair(hash, i));
+                trans2group[hash] = groupId;
+            //}
         }
     }
 
