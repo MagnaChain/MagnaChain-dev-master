@@ -206,7 +206,7 @@ private:
     /** Add a tx to the block */
     void AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 
-    void GroupingTransaction(std::vector<const MCTxMemPoolEntry*>& blockTxEntries);
+    void GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries);
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on feerate including unconfirmed ancestors

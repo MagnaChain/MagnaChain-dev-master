@@ -289,7 +289,7 @@ bool GroupTransactionComparer(const std::pair<uint256, int>& v1, const std::pair
 }
 
 // 按照输入关联及关联合约地址的分组调用智能合约
-void BlockAssembler::GroupingTransaction(std::vector<const MCTxMemPoolEntry*>& blockTxEntries)
+void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries)
 {
     typedef std::map<int, std::vector<std::pair<uint256, int>>> MAPGROUP;
 
@@ -298,12 +298,21 @@ void BlockAssembler::GroupingTransaction(std::vector<const MCTxMemPoolEntry*>& b
     std::map<uint256, int> trans2group;
     std::map<MCContractID, int> contract2group;
 
-    auto& des = group2trans[0];
-    des.emplace_back(std::make_pair(uint256(), 0));
-    trans2group[uint256()] = 0;
+    {
+        int groupId = 0;
+        auto& temp = group2trans[groupId];
+        for (int i = 0; i < offset; ++i) {
+            uint256 hash;
+            if (blockTxEntries[i] != nullptr) {
+                hash = blockTxEntries[i]->GetTx().GetHash();
+            }
+            temp.emplace_back(std::make_pair(hash, i));
+            trans2group[hash] = groupId;
+        }
+    }
 
     int nextGroupId = 1;
-    for (int i = 1; i < pblock->vtx.size(); ++i) {
+    for (int i = offset; i < pblock->vtx.size(); ++i) {
         mergeGroups.clear();
         int groupId = nextGroupId;
         const MCTransactionRef& tx = pblock->vtx[i];
@@ -829,7 +838,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
     // 默认使用分片重新排列交易
     bool grouping = gArgs.GetBoolArg("-grouping", true);
     if (grouping) {
-        GroupingTransaction(blockTxEntries);
+        GroupingTransaction(offset, blockTxEntries);
     }
     else {
         pblock->groupSize.emplace_back(pblock->vtx.size());
