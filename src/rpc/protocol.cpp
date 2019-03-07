@@ -113,11 +113,11 @@ bool GenerateAuthCookie(std::string *cookie_out)
     return true;
 }
 
-bool GetAuthCookie(std::string *cookie_out)
+bool GetAuthCookie(std::string *cookie_out, fs::path* pCookiePath)
 {
     std::ifstream file;
     std::string cookie;
-    fs::path filepath = GetAuthCookieFile();
+    fs::path filepath = pCookiePath != nullptr ? *pCookiePath : GetAuthCookieFile();
     file.open(filepath.string().c_str());
     if (!file.is_open())
         return false;

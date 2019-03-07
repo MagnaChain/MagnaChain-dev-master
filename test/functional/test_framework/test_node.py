@@ -25,6 +25,7 @@ from .authproxy import JSONRPCException
 
 MAGNACHAIND_PROC_WAIT_TIMEOUT = 60
 
+
 class TestNode():
     """A class for representing a magnachaind node under test.
 
@@ -37,9 +38,11 @@ class TestNode():
     To make things easier for the test writer, a bit of magic is happening under the covers.
     Any unrecognised messages will be dispatched to the RPC connection."""
 
-    def __init__(self, i, dirname, extra_args, rpchost, timewait, binary, stderr, mocktime, coverage_dir):
+    def __init__(self, i, dirname, extra_args, rpchost, timewait, binary, stderr, mocktime, coverage_dir,
+                 sidechain=False):
+        self.is_sidenode = sidechain
         self.index = i
-        self.datadir = os.path.join(dirname, "node" + str(i))
+        self.datadir = os.path.join(dirname, ("sidenode" if sidechain else "node") + str(i))
         self.rpchost = rpchost
         if timewait:
             self.rpc_timeout = timewait
@@ -47,36 +50,42 @@ class TestNode():
             # Wait for up to 60 seconds for the RPC server to respond
             self.rpc_timeout = 60
         if binary is None:
-            self.binary = os.getenv("MAGNACHAIND", "magnachaind")
+            self.binary = os.getenv("MAGNACHAIND" if not sidechain else "MAGNACHAIND_SIDE",
+                                    "magnachaind" if not sidechain else "magnachaind-side")
             if not os.path.exists(self.binary):
                 cur_dir = os.path.abspath(os.path.dirname(__file__))
                 if sys.platform == 'win32':
-                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'build-msvc\\Debug','magnachaind.exe')
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))),
+                                               'build-msvc\\Debug', 'magnachaind.exe')
                     if not os.path.exists(self.binary):
                         self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
                                                    'magnachaind.exe')
                 else:
-                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src','magnachaind')
+                    self.binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
+                                               "magnachaind" if not sidechain else "magnachaind-side")
         else:
             self.binary = binary
         self.stderr = stderr
         self.coverage_dir = coverage_dir
         # Most callers will just need to add extra args to the standard list below. For those callers that need more flexibity, they can just set the args property directly.
         self.extra_args = extra_args
-        self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest", "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb", "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i, "-powtargetspacing=1","-regtestmaturity=1"]
+        self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest",
+                     "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb",
+                     "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i, "-powtargetspacing=1",
+                     "-regtestmaturity=1", "-regtestbcmaturity=1"]
 
         cli_binary = os.getenv("MAGNACHAINCLI", "magnachain-cli")
         if not os.path.exists(cli_binary):
             cur_dir = os.path.abspath(os.path.dirname(__file__))
             if sys.platform == 'win32':
                 cli_binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))),
-                                           'build-msvc\\Debug', 'magnachain-cli.exe')
+                                          'build-msvc\\Debug', 'magnachain-cli.exe')
                 if not os.path.exists(cli_binary):
                     cli_binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
-                                               'magnachain-cli.exe')
+                                              'magnachain-cli.exe')
             else:
                 cli_binary = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(cur_dir))), 'src',
-                                           'magnachain-cli')
+                                          'magnachain-cli')
         self.cli = TestNodeCLI(cli_binary, self.datadir)
 
         self.running = False
@@ -84,7 +93,7 @@ class TestNode():
         self.rpc_connected = False
         self.rpc = None
         self.url = None
-        self.log = logging.getLogger('TestFramework.node%d' % i)
+        self.log = logging.getLogger('TestFramework.{}{}'.format('sidenode' if sidechain else 'node', i))
 
     def __getattr__(self, *args, **kwargs):
         """Dispatches any unrecognised messages to the RPC connection."""
@@ -108,7 +117,16 @@ class TestNode():
         for _ in range(poll_per_s * self.rpc_timeout):
             assert self.process.poll() is None, "magnachaind exited with status %i during initialization" % self.process.returncode
             try:
-                self.rpc = get_rpc_proxy(rpc_url(self.datadir, self.index, self.rpchost), self.index, timeout=self.rpc_timeout, coveragedir=self.coverage_dir)
+                '''
+                一般测试开4个节点就足够了
+                这里侧链利用了剩余4个节点的index来分配端口
+                避免和主节点冲突
+                '''
+                index = self.index
+                if self.is_sidenode:
+                    index = index + 3
+                self.rpc = get_rpc_proxy(rpc_url(self.datadir, index, self.rpchost), index, timeout=self.rpc_timeout,
+                                         coveragedir=self.coverage_dir)
                 self.rpc.getblockcount()
                 # If the call to getblockcount() succeeds then the RPC connection is up
                 self.rpc_connected = True
@@ -174,6 +192,11 @@ class TestNode():
         self.encryptwallet(passphrase)
         self.wait_until_stopped()
 
+    @property
+    def rpcport(self):
+        return self.rpc.auth_service_proxy_instance._AuthServiceProxy__conn.port
+
+
 class TestNodeCLI():
     """Interface to magnachain-cli for an individual node"""
 
@@ -192,6 +215,7 @@ class TestNodeCLI():
     def __getattr__(self, command):
         def dispatcher(*args, **kwargs):
             return self.send_cli(command, *args, **kwargs)
+
         return dispatcher
 
     def send_cli(self, command, *args, **kwargs):
@@ -199,12 +223,14 @@ class TestNodeCLI():
 
         pos_args = [str(arg) for arg in args]
         named_args = [str(key) + "=" + str(value) for (key, value) in kwargs.items()]
-        assert not (pos_args and named_args), "Cannot use positional arguments and named arguments in the same magnachain-cli call"
+        assert not (
+                    pos_args and named_args), "Cannot use positional arguments and named arguments in the same magnachain-cli call"
         p_args = [self.binary, "-datadir=" + self.datadir] + self.args
         if named_args:
             p_args += ["-named"]
         p_args += [command] + pos_args + named_args
-        process = subprocess.Popen(p_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        process = subprocess.Popen(p_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   universal_newlines=True)
         cli_stdout, cli_stderr = process.communicate(input=self.input)
         returncode = process.poll()
         if returncode:

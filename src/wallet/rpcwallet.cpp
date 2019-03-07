@@ -4166,16 +4166,6 @@ extern UniValue importprunedfunds(const JSONRPCRequest& request);
 extern UniValue removeprunedfunds(const JSONRPCRequest& request);
 extern UniValue importmulti(const JSONRPCRequest& request);
 
-UniValue startbranch(const JSONRPCRequest& request);
-
-
-UniValue generateforbranch(const JSONRPCRequest& request);
-
-
-UniValue getbranchinfo(const JSONRPCRequest& request);
-UniValue switchbranch(const JSONRPCRequest& request);
-
-
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
     //  --------------------- ------------------------    -----------------------    ----------
