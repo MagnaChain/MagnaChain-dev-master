@@ -8,7 +8,7 @@
 #define MAGNACHAIN_COMPAT_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
 #endif
 
 #ifdef _WIN32

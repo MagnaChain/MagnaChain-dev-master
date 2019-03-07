@@ -94,7 +94,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)/../src/univalue/include;$(SolutionDir)/../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)/../src/univalue/include;$(SolutionDir)/../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
@@ -112,7 +112,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -150,7 +150,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;NDEBUG;_CONSOLE;CPPCONN_LIB_BUILD;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include;$(SolutionDir)../db-4.8.30/build_windows;$(SolutionDir)../src/monitor/mysqlcppconn</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>

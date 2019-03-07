@@ -40,14 +40,15 @@ x64/
 *.tar.gz
 
 *.exe
+src/config/magnachain-config.h
 src/magnachain
 src/magnachaind
 src/magnachain-cli
 src/magnachain-tx
 src/magnachain-monitor
+src/qt/test/test_magnachain-qt
 src/test/test_magnachain
 src/test/test_magnachain_fuzzy
-src/qt/test/test_magnachain-qt
 
 # autoreconf
 Makefile.in

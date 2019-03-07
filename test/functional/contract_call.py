@@ -115,6 +115,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
         # doubleSpendTest
+        self.test_double_spend(mineblock=False)
         self.test_double_spend()
         call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
 
@@ -190,7 +191,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # batchSendTest
         # 12个参数是上限，除去内部调用之后，实际能用的就只有7个参数位，并且不支持数组
-        for to in range(35):
+        for to in range(4):
             to_list = [node.getnewaddress() for i in range(7)]
             call_contract("addWithdrawList", *to_list)
         call_contract("batchSendTest")
@@ -252,8 +253,8 @@ class ContractCallTest(MagnaChainTestFramework):
             cd_id = node.publishcontract(contract)["contractaddress"]
             caller_d = caller_factory(self, cd_id, sender)
             for i in range(2000):
-                caller_d(PAYABLE, amount=Decimal("1"))
-                if i % 50 == 0:
+                caller_d(PAYABLE, amount=Decimal("1"),throw_exception = True)
+                if i % 30 == 0:
                     node.generate(nblocks=1)
             new_address = node.getnewaddress()
             caller_d("sendCoinTest", new_address, 1900, amount=Decimal("0"))
@@ -269,8 +270,8 @@ class ContractCallTest(MagnaChainTestFramework):
             i = 0
             for _ in senders:
                 # 充值101次，每次1个MGC
-                caller_tmp(PAYABLE, amount=1)
-                if i % 50 == 0:
+                caller_tmp(PAYABLE, amount=1,throw_exception = True)
+                if i % 30 == 0:
                     node.generate(1)
                 i += 1
             node.generate(2)
@@ -278,8 +279,8 @@ class ContractCallTest(MagnaChainTestFramework):
             i = 0
             for to in senders:
                 # 向每个地址发送cell - 999(最小单位)，cell = 100000000。这里应该有101个微交易的找零
-                assert_equal(isinstance(caller_tmp("dustChangeTest", to, amount=Decimal("0")), dict), True)
-                if i % 50 == 0:
+                assert_equal(isinstance(caller_tmp("dustChangeTest", to, amount=Decimal("0"),throw_exception = True), dict), True)
+                if i % 30 == 0:
                     node.generate(1)
                 i += 1
             node.generate(nblocks=2)
@@ -304,31 +305,50 @@ class ContractCallTest(MagnaChainTestFramework):
         # 疲劳测试
         if not SKIP:
             to_list = [node.getnewaddress() for i in range(1000)]
-            for to in to_list:
+            for i,to in enumerate(to_list):
                 caller_last(PAYABLE, amount=10)
                 caller_last(CYCLE_CALL, last_id, "contractDataTest",amount=0)
                 caller_last(CYCLE_CALL, last_id, "dustChangeTest",to,amount=0)
                 caller_last(CYCLE_CALL, last_id, "addWithdrawList",to,amount=0)
-                caller_last(CYCLE_CALL, last_id, "batchSendTest",amount=0)
-                if random.randint(1,100) > 80:
+                # caller_last(CYCLE_CALL, last_id, "batchSendTest",amount=0)
+                if random.randint(1,100) > 70:
                     node.generate(nblocks=1)
+                else:
+                    if i % 30 == 0:
+                        node.generate(nblocks=1)
 
-    def test_double_spend(self):
+    def test_double_spend(self,mineblock = True):
         self.log.info("test double spend")
         node = self.nodes[0]
         ct = Contract(node)
-        ct.call_payable(amount = 1000)
-        addr = node.getnewaddress()
-        for i in range(10):
-            ct.call_reorgTest(addr,amount = 0)
-            if i % 2 == 0:
-                time.sleep(2)
-            else:
-                time.sleep(1)
-                # time.sleep(random.randint(1,4))
+        [ct.call_payable(amount = 100) for i in range(10)]
         node.generate(2)
-        print(ct.get_balance(),node.getbalanceof(addr))
         self.sync_all()
+        addr = self.nodes[1].getnewaddress()
+        addr2 = self.nodes[1].getnewaddress()
+        contract_balance = ct.get_balance()
+        for i in range(10):
+            ct.call_reorgTest(addr,addr2,amount = 0,debug = False)
+            # print("before:",ct.get_balance(), node.getbalanceof(addr), node.getbalanceof(addr2))
+            # self.sync_all()
+            if mineblock:
+                self.nodes[1].generate(random.randint(1,4))
+                self.sync_all()
+            # print("after:",ct.get_balance(), node.getbalanceof(addr), node.getbalanceof(addr2))
+        self.sync_all()
+        node.generate(2)
+        self.sync_all()
+        print(ct.get_balance(),node.getbalanceof(addr),node.getbalanceof(addr2))
+        addr_balance = node.getbalanceof(addr)
+        addr2_balance = node.getbalanceof(addr2)
+        if not mineblock:
+            if addr_balance == 0:
+                assert_equal(addr2_balance, 10)
+            else:
+                assert_equal(addr_balance, 10)
+            assert_equal(ct.get_balance(),contract_balance - 10)
+        else:
+            assert_equal(ct.get_balance(), contract_balance - addr_balance - addr2_balance)
 
 if __name__ == '__main__':
     ContractCallTest().main()

@@ -5,7 +5,7 @@
 #include "rpc/branchchainrpc.h"
 
 #if defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "chainparamsbase.h"
