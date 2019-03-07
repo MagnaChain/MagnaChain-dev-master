@@ -255,12 +255,13 @@ class MagnaChainTestFramework(object):
         for i in range(self.num_sidenodes):
             side_datadirs.append(
                 initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[i].rpcport,
-                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(i),'regtest')))
+                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(i))))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
         # my @ ret = rpcCall($mainData, 'addbranchnode',$sideChainId, '127.0.0.1', "9201",$mainRpcUser,$mainRpcPwd, "wallet1.dat");
         for i in range(self.num_nodes):
+            self.nodes[i].generate(2) # make some coins
             ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '','',side_datadirs[i])
             if ret != 'ok':
                 raise Exception(ret)
@@ -269,9 +270,8 @@ class MagnaChainTestFramework(object):
                 addr = self.nodes[i].getnewaddress()
                 txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
             self.nodes[i].generate(10)
-            assert self.nodes[i].getmempoolinfo()['size'] > 0
-
-        return
+            assert self.sidenodes[i].getmempoolinfo()['size'] > 0
+        logger("sidechains setup done")
 
     def run_test(self):
         """Tests must override this method to define test logic"""

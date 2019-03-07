@@ -82,6 +82,11 @@ class ExampleTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 3
+        '''
+        self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
+        and the self.sidenodes like self.nodes
+        '''
+        # self.num_sidenodes = 2
         # Use self.extra_args to change command-line arguments for the nodes
         self.extra_args = [[], ["-logips"], []]
 
