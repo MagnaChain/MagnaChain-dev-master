@@ -267,7 +267,7 @@ class MagnaChainTestFramework(object):
                 raise Exception(ret)
             logger("mortgage coins to mainchains")
             for j in range(10):
-                addr = self.nodes[i].getnewaddress()
+                addr = self.sidenodes[i].getnewaddress()
                 txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
             self.nodes[i].generate(10)
             assert self.sidenodes[i].getmempoolinfo()['size'] > 0
