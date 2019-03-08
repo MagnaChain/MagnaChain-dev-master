@@ -5208,11 +5208,10 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
         MCTxMemPool::setEntries setAncestors;
         bool validForFeeEstimation = false;
         bool ret = pool.AddUnchecked(hash, entry, setAncestors, validForFeeEstimation);
+        if (ret)
+            GetMainSignals().TransactionAddedToMempool(ptx);
         return ret;
     }
-
-    GetMainSignals().TransactionAddedToMempool(ptx);
-
     return true;
 }
 
