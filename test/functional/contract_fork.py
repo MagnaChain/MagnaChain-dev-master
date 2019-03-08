@@ -110,7 +110,7 @@ class ContractForkTest(MagnaChainTestFramework):
         hex_content = get_contract_hex(self.contract_file)
         coster = self.node0.getnewaddress()
         if is_contract_output:
-            ct = Contract(self.node0,debug = False)
+            ct = Contract(self.node0,self.options.tmpdir,debug = False)
             tmp_tx1 = ct.call_payable(amount=2000)['txid']
             tmp_tx2 = ct.call_sendCoinTest(coster, 1000)['txid']
             print(ct.publish_txid, tmp_tx1, tmp_tx2)
@@ -299,8 +299,8 @@ class ContractForkTest(MagnaChainTestFramework):
         self.node0.generate(2)
         assert_equal(self.node0.getrawmempool(), [])  # make sure mempool empty
         assert_equal(self.node1.getrawmempool(), [])  # make sure mempool empty
-        ct = Contract(self.node1, debug=False)
-        ct2 = Contract(self.node1, debug=False)
+        ct = Contract(self.node1,self.options.tmpdir,debug=False)
+        ct2 = Contract(self.node1, self.options.tmpdir,debug=False)
         ct2.call_payable(amount=1000)
         print(ct.publish_txid)
         self.sync_all()
@@ -460,8 +460,8 @@ class ContractForkTest(MagnaChainTestFramework):
         self.node1.generate(2)
         assert_equal(self.node1.getrawmempool(), [])  # make sure mempool empty
         assert_equal(self.node0.getrawmempool(), [])  # make sure mempool empty
-        ct = Contract(self.node0,debug = False)
-        ct2 = Contract(self.node0,debug = False)
+        ct = Contract(self.node0,self.options.tmpdir,debug = False)
+        ct2 = Contract(self.node0,self.options.tmpdir,debug = False)
         ct2.call_payable(amount=1000)
         print(ct.publish_txid)
         self.sync_all()
@@ -480,7 +480,7 @@ class ContractForkTest(MagnaChainTestFramework):
         sendtxs_a = [self.node0.sendtoaddress(self.node3.getnewaddress(), 1000) for i in range(5)]
 
         # publish contract transaction
-        ccontracts_a = [Contract(self.node0,debug = False) for i in range(5)]
+        ccontracts_a = [Contract(self.node0,self.options.tmpdir,debug = False) for i in range(5)]
 
         # call contract transaction
         call_contract_txs_a = [ct.call_payable(amount=1000).txid for ct in ccontracts_a]
@@ -499,7 +499,7 @@ class ContractForkTest(MagnaChainTestFramework):
         sendtxs_b = [self.node2.sendtoaddress(self.node1.getnewaddress(), 1000) for i in range(5)]
 
         # publish contract transaction
-        ccontracts_b = [Contract(self.node2,debug = False) for i in range(5)]
+        ccontracts_b = [Contract(self.node2,self.options.tmpdir,debug = False) for i in range(5)]
 
         # call contract transaction
         call_contract_txs_b = [ct.call_payable(amount=1000).txid for ct in ccontracts_b]
