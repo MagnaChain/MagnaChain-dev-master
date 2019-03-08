@@ -68,6 +68,8 @@ class MagnaChainTestFramework(object):
         self.nodes = []
         self.sidenodes = []
         self.mocktime = 0
+        # mapped，侧链对主链的映射，eg.[[0,1],[2,3]],表示侧链的0,1节点attach在主链的节点0；侧链2,3节点attach在主链的节点1
+        self.mapped = []
         self.set_test_params()
 
         assert hasattr(self, "num_nodes"), "Test must set self.num_nodes in set_test_params()"
@@ -238,6 +240,7 @@ class MagnaChainTestFramework(object):
         node.generate(2)
         sidechain_id = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
                                               node.getnewaddress())['branchid']
+        self.sidechain_id = sidechain_id
         node.generate(1)
         logger("sidechain id is {}".format(sidechain_id))
         # 创建magnachaind的软链接，为了区分主链和侧链
@@ -253,9 +256,18 @@ class MagnaChainTestFramework(object):
         logger("create sidechain datadir")
         side_datadirs = []
         for i in range(self.num_sidenodes):
+            # should mainport=self.nodes[i].rpcport not mainport=self.nodes[0].rpcport
+            attach_index = 0
+            if not self.mapped:
+                #     处理特定的节点映射
+                for index,m in enumerate(self.mapped):
+                    if i in m:
+                        attach_index = index
+                        break
+
             side_datadirs.append(
-                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[i].rpcport,
-                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(i))))
+                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[attach_index].rpcport,
+                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(attach_index))))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
