@@ -1722,7 +1722,7 @@ bool MCWalletTx::RelayWalletTransaction(MCConnman* connman)
     {
         MCValidationState state;
         /* GetDepthInMainChain already catches known conflicts. */
-        if (InMempool() || AcceptToMemoryPool(maxTxFee, state, false)) {
+        if (InMempool() || AcceptToMemoryPool(maxTxFee, state, true)) {
             LogPrint(BCLog::WALLET, "Relaying wtx %s\n", GetHash().ToString());
             if (connman) {
                 MCInv inv(MSG_TX, GetHash());
