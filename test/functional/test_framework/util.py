@@ -709,7 +709,7 @@ def generate_contract(folder, err_type=None):
         local function _call(addr,f,...)
             --say("call:",addr,f,...)
             --showMsg()
-            say(callcontract(addr,f,...))
+            callcontract(addr,f,...)
         end
 
         function mainTest()
@@ -811,10 +811,10 @@ def generate_contract(folder, err_type=None):
 
         glob = 10
         function setGlob(val)
-            say('before set:',glob)
+            --say('before set:',glob)
             glob = val
             PersistentData.decimals = val
-            say('after set:',glob)
+            --say('after set:',glob)
         end
 
         function maxContractCallTest(inum)
