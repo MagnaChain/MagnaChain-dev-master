@@ -517,11 +517,14 @@ UniValue publishcontract(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() < 1 )
 		throw std::runtime_error(
-			"publish \"filename\" \n"
+			"publishcontract \"filename\" \n"
 			"\npublish a contract from a file.\n"
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
 			"1. \"filename\"            (string, required) The file need to publish.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("publishcontract", "\"filepath\"")
+            + HelpExampleRpc("publishcontract", "\"filepath\"")
 		);
 
 	LOCK2(cs_main, pwallet->cs_wallet);
@@ -571,6 +574,9 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
 			"1. \"codedata\"            (string, required) Code data to hex.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("publishcontractcode", "\"code_in_hex_string\"")
+            + HelpExampleRpc("publishcontractcode", "\"code_in_hex_string\"")
 		);
 
 	LOCK2(cs_main, pwallet->cs_wallet);
@@ -735,7 +741,7 @@ UniValue callcontract(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() < 4)
 		throw std::runtime_error(
-			"sendcall \"address\" \n"
+			"callcontract issendcall amount \"contractaddress\" \"senderaddress\" \"contract_fun_name\" \"params\"\n"
 			"\nsend to contract .\n"
 			+ HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
@@ -745,6 +751,9 @@ UniValue callcontract(const JSONRPCRequest& request)
 			"4. \"senderaddress\"       (string, required) The sender address, can be empty,as \"\".\n"
 			"5. \"function\"	        (string, required) The function need to call.\n"
 			"6. \"params\"              (string, optional) The function params.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("callcontract", "true 0 \"2P8DtWVXv3mxPndCVrJaF5HqviLB4rEnpqw\" \"mHi1uojMVdTtksRp563oFe1PKJgeCDPTu7\" testfun p1 p2 p3")
+            + HelpExampleRpc("callcontract", "true 0 \"2P8DtWVXv3mxPndCVrJaF5HqviLB4rEnpqw\" \"mHi1uojMVdTtksRp563oFe1PKJgeCDPTu7\" testfun p1 p2 p3")
 		);
 
     LOCK2(cs_main, pwallet->cs_wallet);
