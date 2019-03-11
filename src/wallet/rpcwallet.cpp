@@ -517,7 +517,7 @@ UniValue publishcontract(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() < 1 )
 		throw std::runtime_error(
-			"publishcontract \"filename\" \n"
+			"publishcontract \"contractfilepath\" \n"
 			"\npublish a contract from a file.\n"
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
