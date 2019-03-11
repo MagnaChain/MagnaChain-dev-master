@@ -3844,7 +3844,7 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     if (!Params().IsMainChain())
         SendBranchBlockHeader(pblock, &strErr);
     if (!strErr.empty())
-        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock");
+        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock: %s", strErr.c_str());
     
     LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n", __FUNCTION__, GetTimeMillis() - start, pindex->nHeight);
     return true;
