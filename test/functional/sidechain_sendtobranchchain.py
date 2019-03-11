@@ -47,7 +47,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         print(self.sidenodes[1].rpcport,self.sidenodes[1].getpeerinfo())
         print(len(self.sidenodes[0].getrawmempool()),self.sidenodes[0].getrawmempool())
         print(len(self.sidenodes[1].getrawmempool()),self.sidenodes[1].getrawmempool())
-        self.sync_all([self.sidenodes])
+        # self.sync_all([self.sidenodes])
         node = self.nodes[0]
         sidechain_id = self.sidechain_id
         saddr = self.sidenodes[0].getnewaddress()
@@ -61,20 +61,39 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(8)
         self.sidenodes[0].generate(2)
         assert_equal(self.sidenodes[0].getrawmempool(), [])
-        mainchain_balance = node.getbalance()
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
         node.generate(8)
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
         # print(self.get_txfee(self.sidenodes[0].getrawmempool()[0],self.sidenodes[0]))
         txfee = self.sidenodes[0].getrawmempool(True)[self.sidenodes[0].getrawmempool()[0]]['fee']
         side_balance = self.sidenodes[0].getbalance()
+        side_balance1 = self.sidenodes[1].getbalance()
         self.sync_all([self.sidenodes])
+        assert_equal(self.sidenodes[0].getrawmempool(), self.sidenodes[1].getrawmempool())
         self.sidenodes[0].generate(2)
         self.sync_all([self.sidenodes])
         assert_equal(self.sidenodes[0].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[0].getbalance(),
                      Decimal(side_balance + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
+        assert_equal(self.sidenodes[1].getbalance(),side_balance1)
+        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+
+        txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
+        node.generate(8)
+        assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
+        txfee = self.sidenodes[0].getrawmempool(True)[self.sidenodes[0].getrawmempool()[0]]['fee']
+        side_balance = self.sidenodes[0].getbalance()
+        side_balance1 = self.sidenodes[1].getbalance()
+        self.sync_all([self.sidenodes])
+        assert_equal(self.sidenodes[0].getrawmempool(), self.sidenodes[1].getrawmempool())
+        self.sidenodes[1].generate(2) #ensure another node generate blocks is work
+        self.sync_all([self.sidenodes])
+        assert_equal(self.sidenodes[0].getbalanceof(saddr), 200.0000000)
+        assert_equal(self.sidenodes[1].getbalanceof(saddr), 200.0000000)
+        assert_equal(self.sidenodes[0].getbalance(),side_balance)
+        assert_equal(self.sidenodes[1].getbalance(),Decimal(side_balance1 + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
+        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
 
         # self.sync_all(self.sidenodes)
 
