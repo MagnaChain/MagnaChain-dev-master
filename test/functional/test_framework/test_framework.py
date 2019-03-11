@@ -213,7 +213,7 @@ class MagnaChainTestFramework(object):
         node_num = (self.num_nodes if not sidechain else self.num_sidenodes)
         nodes = self.nodes if not sidechain else self.sidenodes
         for i in range(node_num - 1):
-            connect_nodes_bi(nodes, i, i + 1)
+            connect_nodes_bi(nodes, i, i + 1,sidechain=sidechain)
         self.sync_all([nodes])
 
     def setup_nodes(self, sidechain=False):
@@ -232,6 +232,8 @@ class MagnaChainTestFramework(object):
     # 支链相关
     def setup_sidechain(self):
         """Override this method to customize test sidenode setup"""
+        # 目前主节点与侧节点只能是1对1关系，不支持1对多
+        assert_equal(self.num_nodes,self.num_sidenodes)
         self.log.info("setup sidechain")
         # 创建抵押币
         # for convince
@@ -242,6 +244,7 @@ class MagnaChainTestFramework(object):
                                               node.getnewaddress())['branchid']
         self.sidechain_id = sidechain_id
         node.generate(1)
+        self.sync_all()
         logger("sidechain id is {}".format(sidechain_id))
         # 创建magnachaind的软链接，为了区分主链和侧链
         if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
@@ -255,25 +258,26 @@ class MagnaChainTestFramework(object):
         # 初始化侧链目录
         logger("create sidechain datadir")
         side_datadirs = []
-        for i in range(self.num_sidenodes):
-            # should mainport=self.nodes[i].rpcport not mainport=self.nodes[0].rpcport
-            attach_index = 0
-            if not self.mapped:
-                #     处理特定的节点映射
-                for index,m in enumerate(self.mapped):
-                    if i in m:
-                        attach_index = index
-                        break
 
+        for i in range(self.num_sidenodes):
+            # attach_index = 0
+            # if not self.mapped:
+            #     #     处理特定的节点映射
+            #     for index,m in enumerate(self.mapped):
+            #         if i in m:
+            #             attach_index = index
+            #             break
+            # logger("sidenode{} attach mainnode{}".format(i,attach_index))
             side_datadirs.append(
-                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[attach_index].rpcport,
-                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(attach_index))))
+                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[i].rpcport,
+                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(i))))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
-        # my @ ret = rpcCall($mainData, 'addbranchnode',$sideChainId, '127.0.0.1', "9201",$mainRpcUser,$mainRpcPwd, "wallet1.dat");
         for i in range(self.num_nodes):
             self.nodes[i].generate(2) # make some coins
+            self.sync_all()
+            # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
             ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '','',side_datadirs[i])
             if ret != 'ok':
                 raise Exception(ret)
@@ -282,7 +286,9 @@ class MagnaChainTestFramework(object):
                 addr = self.sidenodes[i].getnewaddress()
                 txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
             self.nodes[i].generate(10)
+            self.sync_all()
             assert self.sidenodes[i].getmempoolinfo()['size'] > 0
+        self.sync_all()
         logger("sidechains setup done")
 
     def run_test(self):

@@ -394,7 +394,9 @@ def disconnect_nodes(from_connection, node_num):
         raise AssertionError("timed out waiting for disconnect")
 
 
-def connect_nodes(from_connection, node_num):
+def  connect_nodes(from_connection, node_num,sidechain = False):
+    if sidechain:
+        node_num += 3
     ip_port = "127.0.0.1:" + str(p2p_port(node_num))
     from_connection.addnode(ip_port, "onetry")
     # poll until version handshake complete to avoid race conditions
@@ -403,9 +405,9 @@ def connect_nodes(from_connection, node_num):
         time.sleep(0.1)
 
 
-def connect_nodes_bi(nodes, a, b):
-    connect_nodes(nodes[a], b)
-    connect_nodes(nodes[b], a)
+def connect_nodes_bi(nodes, a, b,sidechain = False):
+    connect_nodes(nodes[a], b,sidechain = sidechain)
+    connect_nodes(nodes[b], a,sidechain = sidechain)
 
 
 def sync_blocks(rpc_connections, *, wait=1, timeout=60, logger=None):
