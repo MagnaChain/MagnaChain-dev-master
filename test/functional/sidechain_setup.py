@@ -38,6 +38,7 @@ class SideChainSetupTest(MagnaChainTestFramework):
 
     def run_test(self):
         """Main test logic"""
+        self.sync_all([self.sidenodes])
         for n in self.sidenodes:
             n.generate(1)
 

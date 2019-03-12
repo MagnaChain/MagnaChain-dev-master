@@ -12,7 +12,7 @@ from decimal import Decimal
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
-from test_framework.contract import Contract
+from test_framework.mininode import MINER_REWARD
 from test_framework.util import (
     assert_equal,
     assert_raises_rpc_error,
@@ -31,13 +31,15 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 2
-        self.mapped = [[0],[1]]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
         and the self.sidenodes like self.nodes
         '''
         self.num_sidenodes = 2
+        self.rpc_timewait = 900
+
+
 
     def run_test(self):
         """Main test logic"""
@@ -47,11 +49,18 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         print(self.sidenodes[1].rpcport,self.sidenodes[1].getpeerinfo())
         print(len(self.sidenodes[0].getrawmempool()),self.sidenodes[0].getrawmempool())
         print(len(self.sidenodes[1].getrawmempool()),self.sidenodes[1].getrawmempool())
-        # self.sync_all([self.sidenodes])
+        self.sync_all([self.sidenodes])
         node = self.nodes[0]
         sidechain_id = self.sidechain_id
         saddr = self.sidenodes[0].getnewaddress()
+        assert_raises_rpc_error(-25, "Load transaction sendinfo fail", node.sendtobranchchain,
+                                sidechain_id.replace("1", "2"), saddr, 1)
+        assert_raises_rpc_error(-4, "can not send to this chain", node.sendtobranchchain,
+                                "main", node.getnewaddress(), 1)
+        assert_raises_rpc_error(-4, "can not send to this chain", self.sidenodes[0].sendtobranchchain,
+                                sidechain_id, saddr, 0)
         assert_raises_rpc_error(-3, "Invalid amount", node.sendtobranchchain, sidechain_id, saddr, 10000000000)
+        assert_raises_rpc_error(-6, "Insufficient funds", node.sendtobranchchain, sidechain_id, saddr, 100000000)
         assert_raises_rpc_error(-3, "Amount out of range", node.sendtobranchchain, sidechain_id, saddr, -1)
         txid = node.sendtobranchchain(sidechain_id, saddr, 0)['txid']
         txid1 = node.sendtobranchchain(sidechain_id, saddr, Decimal("0.00000009").quantize(Decimal("0.000000")))['txid']
@@ -61,10 +70,13 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(8)
         self.sidenodes[0].generate(2)
         assert_equal(self.sidenodes[0].getrawmempool(), [])
+
+        # main to side
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
         node.generate(8)
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
-        # print(self.get_txfee(self.sidenodes[0].getrawmempool()[0],self.sidenodes[0]))
+        self.sync_all([self.sidenodes])
+        print(self.get_txfee(self.sidenodes[0].getrawmempool()[0],self.sidenodes[0]))
         txfee = self.sidenodes[0].getrawmempool(True)[self.sidenodes[0].getrawmempool()[0]]['fee']
         side_balance = self.sidenodes[0].getbalance()
         side_balance1 = self.sidenodes[1].getbalance()
@@ -82,6 +94,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
         node.generate(8)
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
+        print(len(self.sidenodes[0].getrawmempool()),self.sidenodes[0].getrawmempool())
+        print(len(self.sidenodes[1].getrawmempool()),self.sidenodes[1].getrawmempool())
+        self.sync_all([self.sidenodes])
         txfee = self.sidenodes[0].getrawmempool(True)[self.sidenodes[0].getrawmempool()[0]]['fee']
         side_balance = self.sidenodes[0].getbalance()
         side_balance1 = self.sidenodes[1].getbalance()
@@ -91,13 +106,74 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all([self.sidenodes])
         assert_equal(self.sidenodes[0].getbalanceof(saddr), 200.0000000)
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 200.0000000)
-        assert_equal(self.sidenodes[0].getbalance(),side_balance)
-        assert_equal(self.sidenodes[1].getbalance(),Decimal(side_balance1 + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
+        assert_equal(self.sidenodes[0].getbalance(),Decimal(side_balance + Decimal(100)).quantize(Decimal("0.000000")))
+        assert_equal(self.sidenodes[1].getbalance(),side_balance1 + Decimal(txfee))
         assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+
+        # side to main
+        node.generate(2)
+        side_balance = self.sidenodes[0].getbalance()
+        balance = node.getbalance()
+        addr = node.getnewaddress()
+        txid = self.sidenodes[0].sendtobranchchain("main", addr, side_balance - 30)['txid']
+        assert txid in self.sidenodes[0].getrawmempool()
+        self.sidenodes[0].generate(7)
+        assert txid not in self.sidenodes[0].getrawmempool()
+        node.generate(2)
+        self.sidenodes[0].generate(1)
+        # 侧链的区块头是一个交易，侧转主的是一个交易，所以主链的内存池会有2个交易
+        assert len(node.getrawmempool()) == 2
+        total_fee = 0
+        txs = node.getrawmempool(True)
+        for txid in txs:
+            if txs[txid]['version'] == 7:
+                # static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// 跨链交易的接收链方
+                total_fee += Decimal(txs[txid]['fee'])
+        node.generate(2)
+        assert_equal(node.getbalanceof(addr),side_balance - 30)
+        assert_equal(node.getbalance(), balance + MINER_REWARD * 4 + side_balance - 30 + total_fee)
+
+        # batch test
+        transaction_num = 5000
+        side_balance = self.sidenodes[0].getbalance()
+        saddrs = [self.sidenodes[0].getnewaddress() for i in range(transaction_num)]
+        for addr in saddrs:
+            node.sendtobranchchain(sidechain_id, addr, 1)
+        node.generate(10)
+        assert_equal(len(self.sidenodes[0].getrawmempool()),transaction_num)
+        total_fee = 0
+        txs = self.sidenodes[0].getrawmempool(True)
+        for txid in txs:
+            total_fee += Decimal(txs[txid]['fee'])
+        self.sidenodes[0].generate(2)
+        assert_equal(len(self.sidenodes[0].getrawmempool()), 0)
+        for addr in saddrs:
+            assert_equal(self.sidenodes[0].getbalanceof(addr),1)
+        assert_equal(self.sidenodes[0].getbalance(), side_balance + transaction_num + total_fee)
+
+        balance = node.getbalance()
+        side_balance = self.sidenodes[0].getbalance()
+        saddrs = [node.getnewaddress() for i in range(transaction_num)]
+        for addr in saddrs:
+            self.sidenodes[0].sendtobranchchain("main", addr, 1)
+        self.sidenodes[0].generate(10)
+        assert_equal(len(node.getrawmempool()),transaction_num + 10)
+        total_fee = 0
+        txs = node.getrawmempool(True)
+        for txid in txs:
+            if txs[txid]['version'] == 7:
+                total_fee += Decimal(txs[txid]['fee'])
+        node.generate(2)
+        assert_equal(len(node.getrawmempool()), 0)
+        for addr in saddrs:
+            assert_equal(node.getbalanceof(addr),1)
+        assert_equal(node.getbalance(), balance + transaction_num + total_fee)
+        assert_equal(self.sidenodes[0].getbalance(), side_balance - transaction_num)
+
 
         # self.sync_all(self.sidenodes)
 
-    def get_txfee(self, txid, node = None):
+    def get_txfee(self, txid, node=None):
         return Decimal(node.gettransaction(txid)['fee'])
 
 

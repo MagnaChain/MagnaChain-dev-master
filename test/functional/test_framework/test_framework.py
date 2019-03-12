@@ -222,11 +222,17 @@ class MagnaChainTestFramework(object):
         if not sidechain:
             if hasattr(self, "extra_args"):
                 extra_args = self.extra_args
-            self.add_nodes(self.num_nodes, extra_args)
+            if not getattr(self, 'rpc_timewait', 0):
+                self.add_nodes(self.num_nodes, extra_args)
+            else:
+                self.add_nodes(self.num_nodes, extra_args,timewait=self.rpc_timewait)
         else:
             if hasattr(self, "extra_args"):
                 extra_args = self.side_extra_args
-            self.add_nodes(self.num_sidenodes, extra_args, sidechain=True)
+            if not getattr(self, 'rpc_timewait', 0):
+                self.add_nodes(self.num_sidenodes, extra_args,sidechain=True)
+            else:
+                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True,timewait=self.rpc_timewait)
         self.start_nodes(sidechain=sidechain)
 
     # 支链相关
@@ -281,6 +287,7 @@ class MagnaChainTestFramework(object):
             ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '','',side_datadirs[i])
             if ret != 'ok':
                 raise Exception(ret)
+        for i in range(self.num_nodes):
             logger("mortgage coins to mainchains")
             for j in range(10):
                 addr = self.sidenodes[i].getnewaddress()
