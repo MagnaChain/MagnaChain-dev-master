@@ -1751,10 +1751,13 @@ std::set<uint256> MCWalletTx::GetConflicts() const
 
 MCAmount MCWalletTx::GetDebit(const isminefilter& filter) const
 {
-    if (tx->vin.empty())
-        return 0;
-
     MCAmount debit = 0;
+    if (tx->IsBranchChainTransStep2()) {
+        debit += tx->inAmount;// TODO: may be 
+    }
+    if (tx->vin.empty())
+        return debit;
+
     if(filter & ISMINE_SPENDABLE)
     {
         if (fDebitCached)
