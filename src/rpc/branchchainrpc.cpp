@@ -672,7 +672,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     }
 
     //broadcast transaction
-    if (!g_connman)
+    if (g_connman)
     {
         MCInv inv(MSG_TX, tx2->GetHash());
         g_connman->ForEachNode([&inv](MCNode* pnode)
