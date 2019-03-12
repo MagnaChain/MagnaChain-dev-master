@@ -1263,7 +1263,7 @@ return nSubsidy;
 }
 */
 
-bool IsInitialBlockDownload()
+bool IsInitialBlockDownload(int* downloadno)
 {
     // Once this function has returned false, it must remain false.
     static std::atomic<bool> latchToFalse{false};
@@ -1274,14 +1274,22 @@ bool IsInitialBlockDownload()
     LOCK(cs_main);
     if (latchToFalse.load(std::memory_order_relaxed))
         return false;
-    if (fImporting || fReindex)
+    if (fImporting || fReindex) {
+        if (downloadno) *downloadno = 1;
         return true;
-    if (chainActive.Tip() == nullptr)
+    }
+    if (chainActive.Tip() == nullptr) {
+        if (downloadno) *downloadno = 2;
         return true;
-    if (chainActive.Tip()->nChainWork < nMinimumChainWork)
+    }
+    if (chainActive.Tip()->nChainWork < nMinimumChainWork) {
+        if (downloadno) *downloadno = 3;
         return true;
-    if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge))
+    }
+    if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge)) {
+        if (downloadno) *downloadno = 4;
         return true;
+    }
     LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
     latchToFalse.store(true, std::memory_order_relaxed);
     return false;

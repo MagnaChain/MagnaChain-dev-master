@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
@@ -284,7 +284,7 @@ void UnloadBlockIndex();
 /** Run an instance of the script checking thread */
 void ThreadScriptCheck();
 /** Check whether we are doing an initial block download (synchronizing from disk or network) */
-bool IsInitialBlockDownload();
+bool IsInitialBlockDownload(int * downloadno = nullptr);
 /** Retrieve a transaction (from memory pool, or from disk, if possible) */
 bool GetTransaction(const uint256& hash, MCTransactionRef& tx, const Consensus::Params& params, uint256& hashBlock, bool fAllowSlow = false);
 class MCOutPoint;
