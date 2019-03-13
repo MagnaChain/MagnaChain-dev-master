@@ -3833,7 +3833,7 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
         CheckBlockIndex(chainparams.GetConsensus());
         if (!ret) {
             GetMainSignals().BlockChecked(*pblock, state);
-            return error("%s: AcceptBlock FAILED. %s", __func__, state.GetRejectReason());
+            return error("%s: AcceptBlock FAILED. %s, %s", __func__, state.GetRejectReason(), state.GetDebugMessage());
         }
     }
 
