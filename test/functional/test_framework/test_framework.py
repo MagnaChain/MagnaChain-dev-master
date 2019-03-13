@@ -227,7 +227,7 @@ class MagnaChainTestFramework(object):
             else:
                 self.add_nodes(self.num_nodes, extra_args,timewait=self.rpc_timewait)
         else:
-            if hasattr(self, "extra_args"):
+            if hasattr(self, "side_extra_args"):
                 extra_args = self.side_extra_args
             if not getattr(self, 'rpc_timewait', 0):
                 self.add_nodes(self.num_sidenodes, extra_args,sidechain=True)
@@ -238,6 +238,7 @@ class MagnaChainTestFramework(object):
     # 支链相关
     def setup_sidechain(self):
         """Override this method to customize test sidenode setup"""
+        # todo 多侧链支持
         # 目前主节点与侧节点只能是1对1关系，不支持1对多
         assert_equal(self.num_nodes,self.num_sidenodes)
         self.log.info("setup sidechain")
