@@ -4,7 +4,7 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """
 测试：
-创建侧链
+testcase for sendtobranchchain rpc
 """
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
@@ -43,12 +43,6 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
     def run_test(self):
         """Main test logic"""
-        for i in range(2):
-            print(self.nodes[i].rpcport)
-        print(self.sidenodes[0].rpcport,self.sidenodes[0].getpeerinfo())
-        print(self.sidenodes[1].rpcport,self.sidenodes[1].getpeerinfo())
-        print(len(self.sidenodes[0].getrawmempool()),self.sidenodes[0].getrawmempool())
-        print(len(self.sidenodes[1].getrawmempool()),self.sidenodes[1].getrawmempool())
         self.sync_all([self.sidenodes])
         node = self.nodes[0]
         sidechain_id = self.sidechain_id
