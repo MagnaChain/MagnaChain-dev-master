@@ -180,7 +180,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
         assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.node0.rebroadcastchaintransaction, txid)
-        self.snode0.generate(2)  #放开注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
+        # self.snode0.generate(2)  #注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
         self.node0.generate(2)
