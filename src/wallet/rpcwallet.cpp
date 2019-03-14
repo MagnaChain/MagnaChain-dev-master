@@ -962,7 +962,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
         }
 	}
     else
-        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
+        throw JSONRPCError(RPC_CONTRACT_ERROR, callRet[0].get_str());
 
 	return ret;
 }
