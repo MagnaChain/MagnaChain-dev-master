@@ -181,6 +181,31 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(node.getbalance(), balance + transaction_num + total_fee)
         assert_equal(self.sidenodes[0].getbalance(), side_balance - transaction_num)
 
+        # delay generate test
+        node.generate(2)
+        self.sync_all()
+        self.sidenodes[0].generate(2)
+        self.sync_all([self.sidenodes])
+        [node.sendtobranchchain(self.sidechain_id,self.sidenodes[0].getnewaddress(),10) for i in range(1000)]
+        self.sync_all()
+        node.generate(8)
+        self.sync_all()
+        [self.sidenodes[0].sendtobranchchain('main', node.getnewaddress(), 1) for i in range(1000)]
+        self.sync_all([self.sidenodes])
+        self.sidenodes[0].generate(7)
+        self.sync_all([self.sidenodes])
+        node.generate(1)
+        self.sync_all()
+        self.sidenodes[0].generate(1)
+        self.sync_all([self.sidenodes])
+        self.sync_all()
+        assert_equal(len(node.getrawmempool()),len(self.nodes[1].getrawmempool()))
+        assert_equal(len(self.sidenodes[0].getrawmempool()), len(self.sidenodes[1].getrawmempool()))
+        assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
+        assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
+
+
+
 
         # self.sync_all(self.sidenodes)
 
