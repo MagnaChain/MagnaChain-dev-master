@@ -395,21 +395,6 @@ static int luaB_xpcall (lua_State *L) {
   return lua_gettop(L);  /* return status + all results */
 }
 
-/* 不支持嵌套调用lpcall,嵌套后最里层起作用 */
-static int luaB_lpcall(lua_State *L) {
-	int status;
-    luaL_checkany(L, 1);
-    long limit = luaL_optlong(L, 1, 0);
-    lua_setlimitinstruction(L, limit);
-    lua_pushboolean(L, 1);
-    lua_insert(L, 2);
-	status = lua_pcall(L, lua_gettop(L) - 3, LUA_MULTRET, 0);
-    lua_stoplimit(L);
-	lua_pushboolean(L, (status == 0));
-	lua_replace(L, 2);
-	return lua_gettop(L) - 1;  /* return status + run times + all results */
-}
-
 static int luaB_tostring (lua_State *L) {
   luaL_checkany(L, 1);
   if (luaL_callmeta(L, 1, "__tostring"))  /* is there a metafield? */
@@ -485,11 +470,7 @@ static const luaL_Reg base_funcs[] = {
   {"tostring", luaB_tostring},
   {"type", luaB_type},
   {"unpack", luaB_unpack},
-  { "unpacktable", luaB_unpack },
   {"xpcall", luaB_xpcall},
-
-//  {"limitinstruction", luaB_limitinstruction },
-  {"lpcall", luaB_lpcall },
   {NULL, NULL}
 };
 

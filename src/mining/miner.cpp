@@ -291,10 +291,30 @@ bool GroupTransactionComparer(const std::pair<uint256, int>& v1, const std::pair
 // 按照输入关联及关联合约地址的分组调用智能合约
 void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries)
 {
+    typedef std::map<int, std::vector<std::pair<uint256, int>>> MAPGROUP;
+
+    MAPGROUP group2trans;
     std::set<int> mergeGroups;
-    std::map<int, std::vector<std::pair<uint256, int>>> group2trans;
     std::map<uint256, int> trans2group;
     std::map<MCContractID, int> contract2group;
+
+    {
+        int groupId = 0;
+        auto& temp = group2trans[groupId];
+        for (int i = 0; i < offset; ++i) {
+            uint256 hash;
+            if (blockTxEntries[i] != nullptr) {// the offset has init with nullptr, because coinbase tx and stake tx no relative mempool entry
+                hash = blockTxEntries[i]->GetTx().GetHash();
+            }
+            else if (pblock->vtx[i] != nullptr){// coinbase is not init.
+                hash = pblock->vtx[i]->GetHash();
+            }
+            //if (!hash.IsNull()){ //where to find coinbase hash ?
+                temp.emplace_back(std::make_pair(hash, i));
+                trans2group[hash] = groupId;
+            //}
+        }
+    }
 
     int nextGroupId = 1;
     for (int i = offset; i < pblock->vtx.size(); ++i) {
@@ -302,23 +322,28 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         int groupId = nextGroupId;
         const MCTransactionRef& tx = pblock->vtx[i];
 
-        if (trans2group.find(tx->GetHash()) != trans2group.end())
+        if (trans2group.find(tx->GetHash()) != trans2group.end()) {
             groupId = trans2group[tx->GetHash()];
+        }
 
         int lastGroupId = -1;
         for (int j = 0; j < tx->vin.size(); ++j) {
             const MCOutPoint& preOutPoint = tx->vin[j].prevout;
-            if (preOutPoint.hash.IsNull())
+            if (preOutPoint.hash.IsNull()) {
                 continue;
+            }
             if (trans2group.find(preOutPoint.hash) != trans2group.end()) {
                 int preTransGroupId = trans2group[preOutPoint.hash];
                 groupId = std::min(preTransGroupId, groupId);
-                if (lastGroupId != -1)
+                if (lastGroupId != -1) {
                     groupId = std::min(groupId, lastGroupId);
-                if (groupId != preTransGroupId)
+                }
+                if (groupId != preTransGroupId) {
                     mergeGroups.insert(preTransGroupId);
-                if (lastGroupId != -1 && groupId != lastGroupId)
+                }
+                if (lastGroupId != -1 && groupId != lastGroupId) {
                     mergeGroups.insert(lastGroupId);
+                }
             }
             else if (lastGroupId == -1 || lastGroupId == groupId) {
                 // 输入不在区块中，标记该交易与当前groupid相同
@@ -328,14 +353,15 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             }
             else {
                 groupId = std::min(lastGroupId, groupId);
-                if (groupId != lastGroupId)
+                if (groupId != lastGroupId) {
                     mergeGroups.insert(lastGroupId);
+                }
             }
             lastGroupId = groupId;
         }
 
         if (tx->IsSmartContract()) {
-            const MCTxMemPoolEntry* entry = blockTxEntries[i - offset + 1];
+            const MCTxMemPoolEntry* entry = blockTxEntries[i];
             int finalGroupId = groupId;
             for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
@@ -375,40 +401,95 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         des.emplace_back(std::make_pair(tx->GetHash(), i));
         trans2group[tx->GetHash()] = groupId;
         if (tx->IsSmartContract()) {
-            if (!tx->pContractData->address.IsNull())
+            if (!tx->pContractData->address.IsNull()) {
                 contract2group[tx->pContractData->address] = groupId;
+            }
         }
 
-        if (groupId == nextGroupId)
+        if (groupId == nextGroupId) {
             nextGroupId++;
+        }
     }
 
     std::vector<MCTransactionRef> vtx(pblock->vtx);
-    pblock->vtx.erase(pblock->vtx.begin() + offset, pblock->vtx.end());
+    pblock->vtx.clear();
     std::vector<MCAmount> vTxFees(pblocktemplate->vTxFees);
-    pblocktemplate->vTxFees.erase(pblocktemplate->vTxFees.begin() + offset, pblocktemplate->vTxFees.end());
+    pblocktemplate->vTxFees.clear();
     std::vector<MCAmount> vTxSigOpsCost(pblocktemplate->vTxSigOpsCost);
-    pblocktemplate->vTxSigOpsCost.erase(pblocktemplate->vTxSigOpsCost.begin() + offset, pblocktemplate->vTxSigOpsCost.end());
+    pblocktemplate->vTxSigOpsCost.clear();
 
-    pblock->groupSize.emplace_back(offset);
-    for (auto& group : group2trans) {
-        if (group.second.size() > 0) {
-            std::sort(group.second.begin(), group.second.end(), GroupTransactionComparer);
-            for (int i = 0; i < group.second.size(); ++i) {
-                std::pair<uint256, int>& item = group.second[i];
-                if (item.second != std::numeric_limits<int>::max()) {
-                    pblock->vtx.emplace_back(vtx[item.second]);
-                    pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
-                    pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
-                }
-                else {
-                    group.second.resize(i);
-                    break;
-                }
+    // 限制了分组的数量
+    std::vector<MAPGROUP::iterator> finalGroup;
+    MAPGROUP::iterator iter = group2trans.begin();
+    for (; iter != group2trans.end(); ++iter) {
+        for (int i = iter->second.size() - 1; i >= 0; --i) {
+            if (iter->second[i].second == std::numeric_limits<int>::max()) {
+                iter->second.erase(iter->second.begin() + i);
             }
-            pblock->groupSize.emplace_back(group.second.size());
+        }
+        
+        assert(iter->second.size() > 0);
+        finalGroup.emplace_back(iter);
+        if (finalGroup.size() >= MAX_GROUP_NUM) {
+            ++iter;
+            break;
         }
     }
+
+    if (iter != group2trans.end()) {
+        // 将超出最大分组数量的分组交易合并到现有的分组中
+        int minGroupIndex = 0;
+        int minGroupSize = iter->second.size();
+        while (iter != group2trans.end()) {
+            for (int i = iter->second.size() - 1; i >= 0; --i) {
+                if (iter->second[i].second == std::numeric_limits<int>::max()) {
+                    iter->second.erase(iter->second.begin() + i);
+                }
+            }
+
+            assert(iter->second.size() > 0);
+            if (minGroupSize + iter->second.size() > std::numeric_limits<uint16_t>::max()) {
+                return;
+            }
+
+            finalGroup[minGroupIndex]->second.insert(finalGroup[minGroupIndex]->second.end(),
+                iter->second.begin(), iter->second.end());
+            iter = group2trans.erase(iter);
+
+            minGroupIndex = 0;
+            minGroupSize = finalGroup[0]->second.size();
+            for (int i = 1; i < finalGroup.size(); ++i) {
+                size_t sz = finalGroup[i]->second.size();
+                if (sz < minGroupSize) {
+                    minGroupSize = sz;
+                    minGroupIndex = i;
+                }
+            }
+
+            if (minGroupIndex == -1 || minGroupSize <= 0 || minGroupSize > std::numeric_limits<uint16_t>::max()) {
+                return;
+            }
+        }
+    }
+
+    // 将分组好的交易重新打入包中
+    int total = 0;
+    pblock->groupSize.clear();
+    for (int i = 0; i < finalGroup.size(); ++i) {
+        assert(finalGroup[i]->second.size() > 0);
+        total += finalGroup[i]->second.size();
+        std::sort(finalGroup[i]->second.begin(), finalGroup[i]->second.end(), GroupTransactionComparer);
+        for (int j = 0; j < finalGroup[i]->second.size(); ++j) {
+            std::pair<uint256, int>& item = finalGroup[i]->second[j];
+            assert(item.second < std::numeric_limits<int>::max());
+            pblock->vtx.emplace_back(vtx[item.second]);
+            pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
+            pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
+        }
+        pblock->groupSize.emplace_back(finalGroup[i]->second.size());
+    }
+    LogPrint(BCLog::MINING, "%s:%d %d:%d\n", __FUNCTION__, __LINE__, total, vtx.size());
+    assert(total == vtx.size());
 }
 
 MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)
@@ -572,6 +653,12 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
 // transaction package to work on next.
 void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpdated)
 {
+    //is in generateforbigboom block,need to pre-add coinbase tx weight first, some test will make block out of size.
+    if (nHeight <= chainparams.GetConsensus().BigBoomHeight)
+    {
+        nBlockWeight += 37000;// TODO: coinbase is not init, cannot calc size here. this value get from a true bigboom coinbase tx.
+    }
+
     int offset = pblock->vtx.size();
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
@@ -666,9 +753,10 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             packageFees = modit->nModFeesWithAncestors;
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
-		if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+        if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+            LogPrintf("%s:%d %d < %d\n", __FUNCTION__, __LINE__, packageFees, blockMinFeeRate.GetFee(packageSize));
 			// Everything else we might consider has a lower fee rate
-			return;
+			break;
 		}
 
 		if (!TestPackage(iter, packageSize, packageSigOpsCost)) {
@@ -753,11 +841,12 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
     }
 
     // 默认使用分片重新排列交易
-    if (gArgs.GetBoolArg("-grouping", true))
-        GroupingTransaction(1, blockTxEntries);
+    bool grouping = gArgs.GetBoolArg("-grouping", true);
+    if (grouping) {
+        GroupingTransaction(offset, blockTxEntries);
+    }
     else {
-        pblock->groupSize.emplace_back(offset);
-        pblock->groupSize.emplace_back(pblock->vtx.size() - offset);
+        pblock->groupSize.emplace_back(pblock->vtx.size());
     }
 }
 
@@ -1785,7 +1874,7 @@ MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFee
     MCTxDestination kMinerDest;
     ExtractDestination(scriptPubKeyIn, kMinerDest);
     std::string strMineAddr = MagnaChainAddress(kMinerDest).ToString();
-    LogPrint(BCLog::MINING, "CreateNewBlock(): miner address : %s \n", strMineAddr);
+    LogPrint(BCLog::MINING, "MakeCoinbaseTransaction: miner address : %s \n", strMineAddr);
     MCAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
     MCAmount kMinReward = kReward;
 
@@ -1970,6 +2059,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
     CoinAmountDB coinAmountDB;
     CoinAmountCache coinAmountCache(&coinAmountDB);
+    LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
     if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
         error("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
         return nullptr;

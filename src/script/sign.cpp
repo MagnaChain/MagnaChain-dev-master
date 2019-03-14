@@ -16,7 +16,8 @@
 
 typedef std::vector<unsigned char> valtype;
 
-TransactionSignatureCreator::TransactionSignatureCreator(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, int nHashTypeIn) : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
+TransactionSignatureCreator::TransactionSignatureCreator(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, int nHashTypeIn) 
+    : BaseSignatureCreator(keystoreIn), txTo(txToIn), nIn(nInIn), nHashType(nHashTypeIn), amount(amountIn), checker(txTo, nIn, amountIn) {}
 
 bool TransactionSignatureCreator::CreateSig(std::vector<unsigned char>& vchSig, const MCKeyID& address, const MCScript& scriptCode, SigVersion sigversion) const
 {

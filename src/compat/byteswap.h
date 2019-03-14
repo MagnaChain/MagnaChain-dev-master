@@ -7,7 +7,7 @@
 #define MAGNACHAIN_COMPAT_BYTESWAP_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include <stdint.h>

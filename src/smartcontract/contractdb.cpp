@@ -138,13 +138,14 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 
             const MCTransactionRef tx = pBlock->vtx[i];
             if (tx->IsNull()) {
+                LogPrintf("%s:%d => tx is null\n", __FUNCTION__, __LINE__);
                 interrupt = true;
                 return;
             }
 
             threadData->associationTransactions.insert(tx->GetHash());
             for (int j = 0; j < tx->vin.size(); ++j) {
-                if (!tx->vin[j].prevout.hash.IsNull()) {
+                if (!tx->vin[j].prevout.hash.IsNull() && !tx->IsStake()) {// branch first block's stake tx's input is from the same block(支链第一个块的stake交易的输入来自同一区块中的交易，其他情况下stake的输入不可能来自同一区块)
                     threadData->associationTransactions.insert(tx->vin[j].prevout.hash);
                 }
             }
@@ -161,10 +162,11 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
             UniValue ret(UniValue::VARR);
             if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
                 std::string rawCode = tx->pContractData->codeOrFunc;
-                sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, 
+                sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr,
                     &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
                 if (!PublishContract(sls, contractAddr, rawCode, ret, true)
                     || tx->pContractData->amountOut != 0 || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => publish contract fail\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
@@ -174,15 +176,16 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 UniValue args;
                 args.read(tx->pContractData->args);
 
-                long maxCallNum = MAX_CONTRACT_CALL;
-                sls->Initialize(pBlock->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
+                sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
                     threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
-                if (!CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret) || tx->pContractData->amountOut != sls->contractOut) {
+                if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
 
                 if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0) {
+                    LogPrintf("%s:%d => tx->pContractData->amountOut > 0 && sls->recipients.size() == 0\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
@@ -190,6 +193,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 MCAmount total = 0;
                 for (int j = 0; j < sls->recipients.size(); ++j) {
                     if (!tx->IsExistVout(sls->recipients[j])) {
+                        LogPrintf("%s:%d => vout not exist\n", __FUNCTION__, __LINE__);
                         interrupt = true;
                         return;
                     }
@@ -197,6 +201,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 }
 
                 if (total != tx->pContractData->amountOut || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => amount not match\n", __FUNCTION__, __LINE__);
                     interrupt = true;
                     return;
                 }
@@ -241,7 +246,8 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
         }
 #ifndef _DEBUG
     }
-    catch (...) {
+    catch (std::exception e) {
+        LogPrintf("%s:%d => unknown exception %s\n", __FUNCTION__, __LINE__, e.what());
         interrupt = true;
     }
 #endif
@@ -250,15 +256,27 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
 {
     auto it = mapBlockIndex.find(pBlock->hashPrevBlock);
-    if (it == mapBlockIndex.end())
-        return false;
+    if (it == mapBlockIndex.end()) {
+        throw std::runtime_error(strprintf("%s:%d => it == mapBlockIndex.end()", __FUNCTION__, __LINE__));
+    }
+
+    if (pBlock->groupSize.size() > MAX_GROUP_NUM) {
+        throw std::runtime_error(strprintf("%s:%d => pBlock->groupSize.size() > MAX_GROUP_NUM", __FUNCTION__, __LINE__));
+    }
+
+    int totalSize = 0;
+    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+        totalSize += pBlock->groupSize[i];
+    }
+    if (totalSize == 0 || totalSize != pBlock->vtx.size()) {
+        throw std::runtime_error(strprintf("%s:%d => totalSize not match", __FUNCTION__, __LINE__));
+    }
     
     MCBlockIndex* pPrevBlockIndex = it->second;
     int blockHeight = pPrevBlockIndex->nHeight + 1;
 
     int offset = 0;
     interrupt = false;
-    LogPrint(BCLog::MINING, "Generate block vtx size:%d, group:%d\n", pBlock->vtx.size(), pBlock->groupSize.size());
     std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
     int size = pBlock->vtx.size();
     bool mainChain = Params().IsMainChain();
@@ -276,8 +294,9 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     }
     threadPool.wait();
 
-    if (interrupt)
-        return false;
+    if (interrupt) {
+        throw std::runtime_error(strprintf("%s:%d => run contract interrupt", __FUNCTION__, __LINE__));
+    }
 
     offset = 0;
     pContractContext->ClearCache();
@@ -288,18 +307,22 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     for (int i = 0; i < threadData.size(); ++i) {
         // 检查是否有关联交易交叉
         for (auto item : threadData[i].associationTransactions) {
-            if (finalTransactions.count(item) == 0)
+            if (finalTransactions.count(item) == 0) {
                 finalTransactions.insert(item);
-            else
-                return false;
+            }
+            else {
+                throw std::runtime_error(strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__));
+            }
         }
 
         // 保存数据，同时检查是否有关联数据交叉
         for (auto item : threadData[i].contractContext.data) {
-            if (pContractContext->cache.count(item.first) == 0)
+            if (pContractContext->cache.count(item.first) == 0) {
                 pContractContext->SetCache(item.first, item.second);
-            else
-                return false;
+            }
+            else {
+                throw std::runtime_error(strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__));
+            }
         }
 
         // 支链保存交易最后的数据以便在需要时提供证明使用
@@ -499,8 +522,9 @@ int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo
     auto di = contractData.find(contractId);
     if (di == contractData.end()) {
         DBContractInfo contractInfo;
-        if (!db.Read(contractId, contractInfo))
+        if (!db.Read(contractId, contractInfo)) {
             return -1;
+        }
         else {
             contractData[contractId] = contractInfo;
             di = contractData.find(contractId);

@@ -101,7 +101,6 @@ void MCCoinsViewCache::AddCoin(const MCOutPoint &outpoint, Coin&& coin, bool pos
 	//}
 }
 
-
 void AddCoins(MCCoinsViewCache& cache, const MCTransaction &tx, int nHeight, bool check) {
 	//LogPrintf("AddCoins tx %s\n", tx.GetHash().ToString().c_str());
     bool fCoinbase = tx.IsCoinBase();
@@ -168,17 +167,20 @@ bool MCCoinsViewCache::Flush()
     return fOk;
 }
 
-uint256 MCCoinsViewCache::GetBestBlock() const {
+uint256 MCCoinsViewCache::GetBestBlock() const
+{
     if (hashBlock.IsNull())
         hashBlock = base->GetBestBlock();
     return hashBlock;
 }
 
-void MCCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn) {
+void MCCoinsViewCache::SetBestBlock(const uint256 &hashBlockIn)
+{
     hashBlock = hashBlockIn;
 }
 
-bool MCCoinsViewCache::BatchWrite(MCCoinsMap &mapCoins, const uint256 &hashBlockIn) {
+bool MCCoinsViewCache::BatchWrite(MCCoinsMap &mapCoins, const uint256 &hashBlockIn)
+{
     for (MCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end();) {
         if (it->second.flags & MCCoinsCacheEntry::DIRTY) { // Ignore non-dirty entries (optimization).
             MCCoinsMap::iterator itUs = cacheCoins.find(it->first);
@@ -234,7 +236,6 @@ bool MCCoinsViewCache::BatchWrite(MCCoinsMap &mapCoins, const uint256 &hashBlock
     return true;
 }
 
-
 void MCCoinsViewCache::Uncache(const MCOutPoint& hash)
 {
     MCCoinsMap::iterator it = cacheCoins.find(hash);
@@ -244,7 +245,8 @@ void MCCoinsViewCache::Uncache(const MCOutPoint& hash)
     }
 }
 
-unsigned int MCCoinsViewCache::GetCacheSize() const {
+unsigned int MCCoinsViewCache::GetCacheSize() const
+{
     return cacheCoins.size();
 }
 

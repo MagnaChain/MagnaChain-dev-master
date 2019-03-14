@@ -151,7 +151,8 @@ bool MCCoinsViewDB::BatchWrite(MCCoinsMap& mapCoins, const uint256& hashBlock)
     }
 
     // write coin list
-    pcoinListDb->Flush();
+    if (pcoinListDb)
+        pcoinListDb->Flush();
 
     // In the last batch, mark the database as consistent with hashBlock again.
     batch.Erase(DB_HEAD_BLOCKS);

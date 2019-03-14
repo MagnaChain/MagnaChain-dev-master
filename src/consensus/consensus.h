@@ -30,11 +30,11 @@ extern const MCAmount CreateBranchChainMortgage;// 创建支链抵押初始值
 extern const uint32_t MaxPowForCreateChainMortgage; // (2^16) * CreateBranchChainMortgage = 655360000 COIN
 
 extern const int32_t BRANCH_CHAIN_CREATE_COIN_MATURITY; // 半年才能赎回, 527040块 * 30s/块 = 183天 . 设定比较长的时间主要防止恶意创建很多支链。
-extern const uint32_t BRANCH_CHAIN_MATURITY;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
+extern uint32_t BRANCH_CHAIN_MATURITY;// 至少需要 2000 块 * 30s/块 = 1000 分钟 = 16.67 hours
 extern const MCAmount MIN_MINE_BRANCH_MORTGAGE; // 抵押挖矿最小值
-extern const uint32_t REDEEM_SAFE_HEIGHT; // 10800 * 8s = 1 day (branch chain block time) 挖矿币安全高度（继续挖矿和赎回需要满足的高度）、举报高度
-extern const uint32_t REPORT_OUTOF_HEIGHT; // 2880 * 30s = 1 day
-extern const uint32_t REPORT_LOCK_COIN_HEIGHT; // 30 * 30s = 15 mins
+extern uint32_t REDEEM_SAFE_HEIGHT; // 10800 * 8s = 1 day (branch chain block time) 挖矿币安全高度（继续挖矿和赎回需要满足的高度）、举报高度
+extern uint32_t REPORT_OUTOF_HEIGHT; // 2880 * 30s = 1 day
+extern uint32_t REPORT_LOCK_COIN_HEIGHT; // 30 * 30s = 15 mins
 
 extern const uint32_t CUSHION_HEIGHT;// 跨连交易需要在 （BRANCH_CHAIN_MATURITY + 这个缓冲值）成熟度后才把step2的交易发送给目标链，加这个缓冲高度是因为网络节点上链的同步需要时间。
 

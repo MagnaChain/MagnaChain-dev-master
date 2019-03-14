@@ -21,8 +21,8 @@
 #include "rpc/branchchainrpc.h"
 
 MCTxMemPoolEntry::MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& _nFee,
-                                 int64_t _nTime, unsigned int _entryHeight,
-                                 bool _spendsCoinbase, int64_t _sigOpsCost, LockPoints lp):
+    int64_t _nTime, unsigned int _entryHeight,
+    bool _spendsCoinbase, int64_t _sigOpsCost, LockPoints lp) :
     tx(_tx), nFee(_nFee), nTime(_nTime), entryHeight(_entryHeight),
     spendsCoinbase(_spendsCoinbase), sigOpCost(_sigOpsCost), lockPoints(lp)
 {
@@ -114,7 +114,8 @@ void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescenda
                 for (const txiter cacheEntry : cacheIt->second) {
                     setAllDescendants.insert(cacheEntry);
                 }
-            } else if (!setAllDescendants.count(childEntry)) {
+            }
+            else if (!setAllDescendants.count(childEntry)) {
                 // Schedule for later processing
                 stageEntries.insert(childEntry);
             }
@@ -257,8 +258,9 @@ bool MCTxMemPool::SearchForParents(const MCTxMemPoolEntry& entry, setEntries& pa
             }
 
             auto links = contractLinksMap.find(contractId);
-            if (links == contractLinksMap.end())
+            if (links == contractLinksMap.end()) {
                 continue;
+            }
 
             auto last = links->second.end();
             for (auto liter = links->second.begin(); liter != links->second.end(); ++liter) {
@@ -294,13 +296,14 @@ bool MCTxMemPool::CalculateMemPoolAncestors(const MCTxMemPoolEntry& entry, std::
     if (fSearchForParents) {
         if (!SearchForParents(entry, parentHashes, exclude, limitAncestorCount, errString))
             return false;
-    } else {
+    }
+    else {
         // If we're not searching for parents, we require this to be an
         // entry in the mempool already.
         txiter it = mapTx.iterator_to(entry);
         parentHashes = GetMemPoolParents(it);
     }
-    
+
     return CalculateMemPoolAncestorsRecursive(entry, parentHashes, setAncestors, limitAncestorCount, limitAncestorSize, limitDescendantCount, limitDescendantSize, errString);
 }
 
@@ -426,9 +429,9 @@ MCTxMemPool::MCTxMemPool(MCBlockPolicyEstimator* estimator) :
 {
     DoClear(); //lock free clear
 
-    // Sanity checks off by default for performance, because otherwise
-    // accepting transactions becomes O(N^2) where N is the number
-    // of transactions in the pool
+   // Sanity checks off by default for performance, because otherwise
+   // accepting transactions becomes O(N^2) where N is the number
+   // of transactions in the pool
     nCheckFrequency = 0;
 }
 
@@ -488,6 +491,7 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
             auto links = contractLinksMap.find(contractId);
             if (links != contractLinksMap.end())
                 setParentTransactions.insert(links->second.back()->GetTx().GetHash());
+
             contractLinksMap[contractId].emplace_back(newit);
         }
     }
@@ -505,6 +509,7 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
             UpdateParent(newit, pit, true);
         }
     }
+
     UpdateAncestorsOf(true, newit, setAncestors);
     UpdateEntryForAncestors(newit, setAncestors);
 
@@ -534,13 +539,16 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
 
     nTransactionsUpdated++;
     totalTxSize += entry.GetTxSize();
-    if (minerPolicyEstimator) {minerPolicyEstimator->ProcessTransaction(entry, validFeeEstimate);}
+    if (minerPolicyEstimator) {
+        minerPolicyEstimator->ProcessTransaction(entry, validFeeEstimate);
+    }
 
     vTxHashes.emplace_back(tx.GetWitnessHash(), newit);
     newit->vTxHashesIdx = vTxHashes.size() - 1;
 
-	if (tx.IsBranchCreate())
-		nCreateBranchTxCount++;
+    if (tx.IsBranchCreate()) {
+        nCreateBranchTxCount++;
+    }
     return true;
 }
 
@@ -599,16 +607,18 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
         vTxHashes.pop_back();
         if (vTxHashes.size() * 2 < vTxHashes.capacity())
             vTxHashes.shrink_to_fit();
-    } else
+    }
+    else {
         vTxHashes.clear();
+    }
 
     totalTxSize -= it->GetTxSize();
     cachedInnerUsage -= it->DynamicMemoryUsage();
     cachedInnerUsage -= memusage::DynamicUsage(mapLinks[it].parents) + memusage::DynamicUsage(mapLinks[it].children);
 
-	if (it->GetTx().IsBranchCreate()) {
-		nCreateBranchTxCount--;
-	}
+    if (it->GetTx().IsBranchCreate()) {
+        nCreateBranchTxCount--;
+    }
 
     // update contract amount
     const std::vector<MCTxOut>& vout = it->GetTx().vout;
@@ -634,7 +644,9 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
     mapLinks.erase(it);
     mapTx.erase(it);
     nTransactionsUpdated++;
-    if (minerPolicyEstimator) {minerPolicyEstimator->RemoveTx(hash, false);}
+    if (minerPolicyEstimator) {
+        minerPolicyEstimator->RemoveTx(hash, false);
+    }
 }
 
 void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
@@ -658,10 +670,34 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
     int64_t newSigOpsCost = titer->GetSigOpCost();
 
     std::string dummy;
-    setEntries ancestors;
-    setEntries descendants;
+    setEntries ancestors, descendants;
+    setEntries otherAncestors, otherDescendants;
+    setEntries tempAncestors, tempDescendants;
     uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
     std::set<MCContractID> exclude;
+
+    // 重新计算旧的有依赖关系的相关父与子交易大小
+    if (resize || newSize != oldSize || newModifiedFee != oldModifiedFee || newSigOpsCost != oldSigOpsCost)
+    {
+        int64_t deltaSize = newSize - oldSize;
+        int64_t deltaModifiedFee = newModifiedFee - oldModifiedFee;
+        int64_t deltaSigOpsCost = newSigOpsCost - oldSigOpsCost;
+
+        ancestors.clear();
+        CalculateMemPoolAncestors(*titer, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+        ancestors.insert(titer);
+        for (const txiter& iter : ancestors) {
+            mapTx.modify(iter, update_descendant_state(deltaSize, deltaModifiedFee, 0));
+        }
+
+        descendants.clear();
+        CalculateDescendants(titer, descendants, true);
+        for (const txiter& iter : descendants) {
+            mapTx.modify(iter, update_ancestor_state(deltaSize, deltaModifiedFee, 0, deltaSigOpsCost));
+        }
+
+        totalTxSize += deltaSize;
+    }
 
     // 移除旧的不再有依赖关系的合约依赖项
     bool contractChanged = (sls->contractIds != titer->contractData->contractAddrs);
@@ -688,35 +724,22 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
                     --piter;
 
                     // 如果存在合约依赖的同时还存在输入依赖，则不移除
-                    bool updateForRemove = true;
                     ancestors.clear();
-                    assert(CalculateMemPoolAncestors(**liter, &exclude, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true));
-                    if (ancestors.count(*piter) > 0) {
-                        updateForRemove = false;
+                    otherAncestors.clear();
+                    assert(CalculateMemPoolAncestors(*titer, &exclude, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true));
+                    if (ancestors.count(*piter) == 0) {
+                        CalculateMemPoolAncestors(**piter, &exclude, otherAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+                        otherAncestors.insert(*piter);
                     }
 
-                    if (updateForRemove) {
+                    if (otherAncestors.size() > 0) {
                         // 断开合约依赖
                         UpdateChild(*piter, *liter, false);
                         UpdateParent(*liter, *piter, false);
 
-                        int64_t deltaCount = 0;
-                        int64_t deltaSize = (*piter)->GetTxSize();
-                        int64_t deltaModifiedFee = (*piter)->GetModifiedFee();
-                        int64_t deltaSigOpsCost = (*piter)->GetSigOpCost();
-                        mapTx.modify(*piter, update_descendant_state(-deltaSize, -deltaModifiedFee, -1));
-                        for (std::list<txiter>::iterator iter = links.begin(); iter != piter; ++iter) {
-                            ancestors.clear();
-                            CalculateDescendants(*iter, ancestors, true);
-                            if (ancestors.count(*liter) == 0) {
-                                deltaCount++;
-                                deltaSize += (*iter)->GetTxSize();
-                                deltaModifiedFee += (*iter)->GetModifiedFee();
-                                deltaSigOpsCost += (*iter)->GetSigOpCost();
-                                mapTx.modify(*iter, update_descendant_state(-oldSize, -oldModifiedFee, -1));
-                            }
+                        for (const txiter aiter : ancestors) {
+                            otherAncestors.erase(aiter);
                         }
-                        mapTx.modify(*liter, update_ancestor_state(-deltaSize, -deltaModifiedFee, -deltaCount, -deltaSigOpsCost));
                     }
                 }
 
@@ -726,66 +749,29 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
                     citer = liter;
                     ++citer;
 
-                    // 遍历链表剩余的交易，更新仅有合约依赖的子交易
-                    setEntries setUpdate;
-                    for (std::list<txiter>::iterator iter = citer; iter != links.end(); ++iter) {
-                        bool updateForRemove = true;
-
-                        MCTransactionRef ptx = (*iter)->GetSharedTx();
-                        for (int i = 0; i < ptx->vin.size(); ++i) {
-                            if (ptx->vin[i].prevout.hash == txHash) {
-                                updateForRemove = false;
-                                break;
-                            }
-                        }
-
-                        if (updateForRemove) {
-                            ancestors.clear();
-                            assert(CalculateMemPoolAncestors(**iter, &exclude, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true));
-                            if (ancestors.count(*liter) > 0) {
-                                updateForRemove = false;
-                            }
-                        }
-
-                        if (updateForRemove) {
-                            setUpdate.insert(*iter);
-                        }
-                        else if (iter == citer) {
-                            break;
+                    // 更新链的下一个子交易，确定是否还存在非该合约的依赖
+                    if (citer != links.end()) {
+                        ancestors.clear();
+                        otherDescendants.clear();
+                        assert(CalculateMemPoolAncestors(**citer, &exclude, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true));
+                        if (ancestors.count(titer) == 0) {
+                            CalculateDescendants(*citer, otherDescendants, true);
                         }
                     }
 
-                    if (citer != links.end() && setUpdate.count(*citer)) {
+                    if (otherDescendants.size() > 0) {
                         // 先断开合约的依赖
-                        mapTx.modify(*citer, update_ancestor_state(-oldSize, -oldModifiedFee, -1, -oldSigOpsCost));
                         UpdateParent(*citer, *liter, false);
                         UpdateChild(*liter, *citer, false);
 
                         // 重新计算断开依赖后的子交易
                         descendants.clear();
-                        CalculateDescendants(*liter, descendants, true);
-
-                        // 递归计算需要更新的子交易的所有子交易
-                        for (const txiter& iter : setUpdate) {
-                            CalculateDescendants(iter, setUpdate, true);
-                        }
+                        CalculateDescendants(titer, descendants, true);
 
                         // 从setUpdate移除myDescendants拥有的交易
-                        for (const txiter& iter : descendants) {
-                            if (setUpdate.count(iter) > 0) {
-                                setUpdate.erase(iter);
-                            }
+                        for (const txiter& diter : descendants) {
+                            otherDescendants.erase(diter);
                         }
-
-                        int64_t deltaSize = 0, deltaModifiedFee = 0, deltaCount = setUpdate.size();
-                        for (const txiter& iter : setUpdate) {
-                            deltaSize += iter->GetTxSize();
-                            deltaModifiedFee += iter->GetModifiedFee();
-                            // 子交易更新父交易数据
-                            mapTx.modify(iter, update_ancestor_state(-oldSize, -oldModifiedFee, -1, -oldSigOpsCost));
-                        }
-                        // 根据移除的子交易数据进行更新
-                        mapTx.modify(*citer, update_descendant_state(-deltaSize, -deltaModifiedFee, -deltaCount));
                     }
                 }
 
@@ -795,37 +781,44 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
                     UpdateChild(*piter, *citer, true);
                 }
 
-                links.erase(liter);
+                citer = links.erase(liter);
                 if (links.size() == 0) {
                     contractLinksMap.erase(contractId);
+                }
+                else {
+                    // 更新父交易
+                    descendants.clear();
+                    CalculateDescendants(titer, descendants, true);
+                    for (const txiter aiter : otherAncestors) {
+                        tempDescendants.clear();
+                        CalculateDescendants(aiter, tempDescendants, true);
+                        for (const txiter diter : descendants) {
+                            if (tempDescendants.count(diter) == 0) {
+                                mapTx.modify(aiter, update_descendant_state(-(int64_t)diter->GetTxSize(), -diter->GetModifiedFee(), -1));
+                                mapTx.modify(diter, update_ancestor_state(-(int64_t)aiter->GetTxSize(), -aiter->GetModifiedFee(), -1, -aiter->GetSigOpCost()));
+                            }
+                        }
+                    }
+
+                    // 更新子交易
+                    ancestors.clear();
+                    CalculateMemPoolAncestors(*titer, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+                    ancestors.insert(titer);
+                    for (const txiter diter : otherDescendants) {
+                        tempAncestors.clear();
+                        CalculateMemPoolAncestors(*diter, nullptr, tempAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+                        for (const txiter aiter : ancestors) {
+                            if (tempAncestors.count(aiter) == 0) {
+                                mapTx.modify(diter, update_ancestor_state(-(int64_t)aiter->GetTxSize(), -aiter->GetModifiedFee(), -1, -aiter->GetSigOpCost()));
+                                mapTx.modify(aiter, update_descendant_state(-(int64_t)diter->GetTxSize(), -diter->GetModifiedFee(), -1));
+                            }
+                        }
+                    }
                 }
 
                 break;
             }
         }
-    }
-
-    // 重新计算旧的有依赖关系的相关父与子交易大小
-    if (resize || newSize != oldSize || newModifiedFee != oldModifiedFee || newSigOpsCost != oldSigOpsCost)
-    {
-        int64_t deltaSize = newSize - oldSize;
-        int64_t deltaModifiedFee = newModifiedFee - oldModifiedFee;
-        int64_t deltaSigOpsCost = newSigOpsCost - oldSigOpsCost;
-
-        ancestors.clear();
-        CalculateMemPoolAncestors(*titer, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
-        ancestors.insert(titer);
-        for (const txiter& iter : ancestors) {
-            mapTx.modify(iter, update_descendant_state(deltaSize, deltaModifiedFee, 0));
-        }
-
-        descendants.clear();
-        CalculateDescendants(titer, descendants, true);
-        for (const txiter& iter : descendants) {
-            mapTx.modify(iter, update_ancestor_state(deltaSize, deltaModifiedFee, 0, deltaSigOpsCost));
-        }
-
-        totalTxSize += deltaSize;
     }
 
     // 插入新的合约依赖项
@@ -854,10 +847,11 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
                 --piter;
             }
 
+            // 处于链的中间位置
             if (citer != links.end() && piter != links.end()) {
-                ancestors.clear();
-                CalculateMemPoolAncestors(**citer, &exclude, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
-                if (ancestors.count(*piter) == 0) {
+                otherAncestors.clear();
+                CalculateMemPoolAncestors(**citer, &exclude, otherAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+                if (otherAncestors.count(*piter) == 0) {
                     // 如果没有其它相关的父子关系则断开直接依赖
                     UpdateChild(*piter, *citer, false);
                     UpdateParent(*citer, *piter, false);
@@ -866,23 +860,20 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
 
             // 连接父交易
             if (piter != links.end()) {
-                ancestors.clear();
-                CalculateMemPoolAncestors(*titer, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
                 if (ancestors.count(*piter) == 0) {
-                    ancestors.insert(*piter);
-                    int64_t deltaSize = 0, deltaModifiedFee = 0, deltaModifiedCount = 0, deltaSigOpsCost = 0;
-                    for (txiter ancestorIt : ancestors) {
-                        descendants.clear();
-                        CalculateDescendants(ancestorIt, descendants, true);
-                        if (descendants.count(titer) == 0) {
-                            ++deltaModifiedCount;
-                            deltaSize += ancestorIt->GetTxSize();
-                            deltaModifiedFee += ancestorIt->GetModifiedFee();
-                            deltaSigOpsCost += ancestorIt->GetSigOpCost();
-                            mapTx.modify(ancestorIt, update_descendant_state(newSize, newModifiedFee, 1));
+                    otherAncestors.clear();
+                    CalculateMemPoolAncestors(**piter, nullptr, otherAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+                    otherAncestors.insert(*piter);
+                    for (txiter aiter : otherAncestors) {
+                        otherDescendants.clear();
+                        CalculateDescendants(aiter, otherDescendants, true);
+                        for (const txiter diter : descendants) {
+                            if (otherDescendants.count(diter) == 0) {
+                                mapTx.modify(aiter, update_descendant_state((int64_t)diter->GetTxSize(), diter->GetModifiedFee(), 1));
+                                mapTx.modify(diter, update_ancestor_state((int64_t)aiter->GetTxSize(), aiter->GetModifiedFee(), 1, aiter->GetSigOpCost()));
+                            }
                         }
                     }
-                    mapTx.modify(titer, update_ancestor_state(deltaSize, deltaModifiedFee, deltaModifiedCount, deltaSigOpsCost));
                 }
 
                 UpdateChild(*piter, titer, true);
@@ -890,26 +881,29 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
             }
 
             if (citer != links.end()) {
-                descendants.clear();
-                CalculateDescendants(titer, descendants, true);
                 if (descendants.count(*citer) == 0) {
-                    int64_t deltaSize = 0, deltaModifiedFee = 0, deltaModifiedCount = 0;
-                    for (txiter descendantIt : descendants) {
-                        ancestors.clear();
-                        CalculateMemPoolAncestors(*descendantIt, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
-                        if (ancestors.count(titer) == 0) {
-                            ++deltaModifiedCount;
-                            deltaSize += descendantIt->GetTxSize();
-                            deltaModifiedFee += descendantIt->GetModifiedFee();
-                            mapTx.modify(descendantIt, update_ancestor_state(newSize, newModifiedFee, 1, newSigOpsCost));
+                    otherDescendants.clear();
+                    CalculateDescendants(*citer, otherDescendants, true);
+                    for (txiter diter : otherDescendants) {
+                        otherAncestors.clear();
+                        CalculateMemPoolAncestors(*diter, nullptr, otherAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+                        for (const txiter aiter : ancestors) {
+                            if (otherDescendants.count(aiter) == 0) {
+                                mapTx.modify(diter, update_ancestor_state((int64_t)aiter->GetTxSize(), aiter->GetModifiedFee(), 1, aiter->GetSigOpCost()));
+                                mapTx.modify(aiter, update_descendant_state((int64_t)diter->GetTxSize(), diter->GetModifiedFee(), 1));
+                            }
                         }
                     }
-                    mapTx.modify(titer, update_descendant_state(deltaSize, deltaModifiedFee, deltaModifiedCount));
                 }
 
                 UpdateChild(titer, *citer, true);
                 UpdateParent(*citer, titer, true);
             }
+
+            ancestors.clear();
+            CalculateMemPoolAncestors(*titer, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, true);
+            descendants.clear();
+            CalculateDescendants(titer, descendants, true);
 
             links.insert(citer, titer);
         }
@@ -1041,7 +1035,8 @@ void MCTxMemPool::RemoveRecursive(const MCTransaction &origTx, MemPoolRemovalRea
         txiter origit = mapTx.find(origTx.GetHash());
         if (origit != mapTx.end()) {
             txToRemove.insert(origit);
-        } else {
+        }
+        else {
             // When recursively removing but origTx isn't in the mempool
             // be sure to remove any children that are in the pool. This can
             // happen during chain re-orgs if origTx isn't re-accepted into
@@ -1060,7 +1055,7 @@ void MCTxMemPool::RemoveRecursive(const MCTransaction &origTx, MemPoolRemovalRea
             CalculateDescendants(it, setAllRemoves, false);
         }
 
-        RemoveStaged(setAllRemoves, false, reason);
+        RemoveStaged(setAllRemoves, true, reason);
     }
 }
 
@@ -1072,12 +1067,13 @@ void MCTxMemPool::RemoveForReorg(const MCCoinsViewCache *pcoins, unsigned int nM
     for (indexed_transaction_set::const_iterator it = mapTx.begin(); it != mapTx.end(); it++) {
         const MCTransaction& tx = it->GetTx();
         LockPoints lp = it->GetLockPoints();
-        bool validLP =  TestLockPointValidity(&lp);
+        bool validLP = TestLockPointValidity(&lp);
         if (!CheckFinalTx(tx, flags) || !CheckSequenceLocks(tx, flags, &lp, validLP)) {
             // Note if CheckSequenceLocks fails the LockPoints may still be invalid
             // So it's critical that we remove the tx and not depend on the LockPoints.
             txToRemove.insert(it);
-        } else if (it->GetSpendsCoinbase()) {
+        }
+        else if (it->GetSpendsCoinbase()) {
             for (const MCTxIn& txin : tx.vin) {
                 indexed_transaction_set::const_iterator it2 = mapTx.find(txin.prevout.hash);
                 if (it2 != mapTx.end())
@@ -1098,7 +1094,7 @@ void MCTxMemPool::RemoveForReorg(const MCCoinsViewCache *pcoins, unsigned int nM
     for (txiter it : txToRemove) {
         CalculateDescendants(it, setAllRemoves, false);
     }
-    RemoveStaged(setAllRemoves, false, MemPoolRemovalReason::REORG);
+    RemoveStaged(setAllRemoves, true, MemPoolRemovalReason::REORG);
 }
 
 void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
@@ -1119,8 +1115,8 @@ void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
 }
 
 /**
- * Called when a block is connected. Removes from mempool and updates the miner fee estimator.
- */
+* Called when a block is connected. Removes from mempool and updates the miner fee estimator.
+*/
 void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight)
 {
     LOCK(cs);
@@ -1327,7 +1323,8 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
             waitingOnDependants.push_back(entry);
             stepsSinceLastRemove++;
             assert(stepsSinceLastRemove < waitingOnDependants.size());
-        } else {
+        }
+        else {
             bool fCheckResult = entry->GetTx().IsCoinBase() ||
                 Consensus::CheckTxInputs(entry->GetTx(), state, mempoolDuplicate, nSpendHeight);
             assert(fCheckResult);
@@ -1363,19 +1360,19 @@ bool MCTxMemPool::CompareDepthAndScore(const uint256& hasha, const uint256& hash
 }
 
 namespace {
-class DepthAndScoreComparator
-{
-public:
-    bool operator()(const MCTxMemPool::indexed_transaction_set::const_iterator& a, const MCTxMemPool::indexed_transaction_set::const_iterator& b)
+    class DepthAndScoreComparator
     {
-        uint64_t counta = a->GetCountWithAncestors();
-        uint64_t countb = b->GetCountWithAncestors();
-        if (counta == countb) {
-            return CompareTxMemPoolEntryByScore()(*a, *b);
+    public:
+        bool operator()(const MCTxMemPool::indexed_transaction_set::const_iterator& a, const MCTxMemPool::indexed_transaction_set::const_iterator& b)
+        {
+            uint64_t counta = a->GetCountWithAncestors();
+            uint64_t countb = b->GetCountWithAncestors();
+            if (counta == countb) {
+                return CompareTxMemPoolEntryByScore()(*a, *b);
+            }
+            return counta < countb;
         }
-        return counta < countb;
-    }
-};
+    };
 } // namespace
 
 std::vector<MCTxMemPool::indexed_transaction_set::iterator> MCTxMemPool::GetSortedDepthAndScore()
@@ -1406,7 +1403,7 @@ void MCTxMemPool::QueryHashes(std::vector<uint256>& vtxid)
 }
 
 static TxMempoolInfo GetInfo(MCTxMemPool::indexed_transaction_set::const_iterator it) {
-    return TxMempoolInfo{it->GetSharedTx(), it->GetTime(), MCFeeRate(it->GetFee(), it->GetTxSize()), it->GetModifiedFee() - it->GetFee()};
+    return TxMempoolInfo{ it->GetSharedTx(), it->GetTime(), MCFeeRate(it->GetFee(), it->GetTxSize()), it->GetModifiedFee() - it->GetFee() };
 }
 
 std::vector<TxMempoolInfo> MCTxMemPool::InfoAll()
@@ -1509,7 +1506,8 @@ bool MCCoinsViewMemPool::GetCoin(const MCOutPoint &outpoint, Coin &coin) const {
             }
             coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
             return true;
-        } else {
+        }
+        else {
             return false;
         }
     }
@@ -1542,7 +1540,7 @@ int MCTxMemPool::Expire(int64_t time) {
     for (txiter removeit : toremove) {
         CalculateDescendants(removeit, stage, false);
     }
-    RemoveStaged(stage, false, MemPoolRemovalReason::EXPIRY);
+    RemoveStaged(stage, true, MemPoolRemovalReason::EXPIRY);
     return stage.size();
 }
 
@@ -1558,32 +1556,45 @@ void MCTxMemPool::ReacceptTransactions()
     for (int i = 0; i < entries.size(); ++i) {
         MCTransactionRef pTx = entries[i]->GetSharedTx();
         if (pTx->IsSmartContract()) {
-            if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
-                vecRemoves.emplace_back(pTx);
-            }
-            else {
-                CheckContract(entries[i], &sls);
-                if (pTx->pContractData != nullptr && pTx->pContractData->amountOut > 0) {
-                    pCoinAmountCache->DecAmount(pTx->pContractData->address, pTx->pContractData->amountOut);
+            try
+            {
+                if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
+                    vecRemoves.emplace_back(pTx);
                 }
+                else {
+                    CheckContract(entries[i], &sls);
+                    if (pTx->pContractData != nullptr && pTx->pContractData->amountOut > 0) {
+                        pCoinAmountCache->DecAmount(pTx->pContractData->address, pTx->pContractData->amountOut);
+                    }
 
-                for (int j = 0; j < pTx->vout.size(); ++j) {
-                    const MCScript& scriptPubKey = pTx->vout[j].scriptPubKey;
-                    if (scriptPubKey.IsContract()) {
-                        opcodetype opcode;
-                        std::vector<unsigned char> vch;
-                        MCScript::const_iterator pc = scriptPubKey.begin();
-                        MCScript::const_iterator end = scriptPubKey.end();
-                        scriptPubKey.GetOp(pc, opcode, vch);
+                    for (int j = 0; j < pTx->vout.size(); ++j) {
+                        const MCScript& scriptPubKey = pTx->vout[j].scriptPubKey;
+                        if (scriptPubKey.IsContract()) {
+                            opcodetype opcode;
+                            std::vector<unsigned char> vch;
+                            MCScript::const_iterator pc = scriptPubKey.begin();
+                            MCScript::const_iterator end = scriptPubKey.end();
+                            scriptPubKey.GetOp(pc, opcode, vch);
 
-                        assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
-                        vch.clear();
-                        vch.assign(pc + 1, end);
-                        uint160 key = uint160(vch);
-                        MCContractID contractId = MCContractID(key);
-                        pCoinAmountCache->IncAmount(contractId, pTx->vout[j].nValue);
+                            assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+                            vch.clear();
+                            vch.assign(pc + 1, end);
+                            uint160 key = uint160(vch);
+                            MCContractID contractId = MCContractID(key);
+                            pCoinAmountCache->IncAmount(contractId, pTx->vout[j].nValue);
+                        }
                     }
                 }
+            }
+            catch (const std::exception& e)
+            {
+                LogPrintf("ReacceptTransactions contract tx exception %s\n", e.what());
+                vecRemoves.emplace_back(pTx);
+            }
+            catch (...)
+            {
+                LogPrintf("ReacceptTransactions contract tx unknow exception\n");
+                vecRemoves.emplace_back(pTx);
             }
         }
     }
@@ -1608,7 +1619,8 @@ void MCTxMemPool::UpdateChild(txiter entry, txiter child, bool add)
     setEntries s;
     if (add && mapLinks[entry].children.insert(child).second) {
         cachedInnerUsage += memusage::IncrementalDynamicUsage(s);
-    } else if (!add && mapLinks[entry].children.erase(child)) {
+    }
+    else if (!add && mapLinks[entry].children.erase(child)) {
         cachedInnerUsage -= memusage::IncrementalDynamicUsage(s);
     }
 }
@@ -1618,14 +1630,15 @@ void MCTxMemPool::UpdateParent(txiter entry, txiter parent, bool add)
     setEntries s;
     if (add && mapLinks[entry].parents.insert(parent).second) {
         cachedInnerUsage += memusage::IncrementalDynamicUsage(s);
-    } else if (!add && mapLinks[entry].parents.erase(parent)) {
+    }
+    else if (!add && mapLinks[entry].parents.erase(parent)) {
         cachedInnerUsage -= memusage::IncrementalDynamicUsage(s);
     }
 }
 
 const MCTxMemPool::setEntries & MCTxMemPool::GetMemPoolParents(txiter entry) const
 {
-    assert (entry != mapTx.end());
+    assert(entry != mapTx.end());
     txlinksMap::const_iterator it = mapLinks.find(entry);
     assert(it != mapLinks.end());
     return it->second.parents;
@@ -1633,7 +1646,7 @@ const MCTxMemPool::setEntries & MCTxMemPool::GetMemPoolParents(txiter entry) con
 
 const MCTxMemPool::setEntries & MCTxMemPool::GetMemPoolChildren(txiter entry) const
 {
-    assert (entry != mapTx.end());
+    assert(entry != mapTx.end());
     txlinksMap::const_iterator it = mapLinks.find(entry);
     assert(it != mapLinks.end());
     return it->second.children;
@@ -1698,7 +1711,7 @@ void MCTxMemPool::TrimToSize(size_t sizelimit, std::vector<MCOutPoint>* pvNoSpen
             for (txiter iter : stage)
                 txn.push_back(iter->GetTx());
         }
-        RemoveStaged(stage, false, MemPoolRemovalReason::SIZELIMIT);
+        RemoveStaged(stage, true, MemPoolRemovalReason::SIZELIMIT);
         if (pvNoSpendsRemaining) {
             for (const MCTransaction& tx : txn) {
                 for (const MCTxIn& txin : tx.vin) {
@@ -1718,7 +1731,7 @@ bool MCTxMemPool::TransactionWithinChainLimit(const uint256& txid, size_t chainL
     LOCK(cs);
     auto it = mapTx.find(txid);
     return it == mapTx.end() || (it->GetCountWithAncestors() < chainLimit &&
-       it->GetCountWithDescendants() < chainLimit);
+        it->GetCountWithDescendants() < chainLimit);
 }
 
 SaltedTxidHasher::SaltedTxidHasher() : k0(GetRand(std::numeric_limits<uint64_t>::max())), k1(GetRand(std::numeric_limits<uint64_t>::max())) {}

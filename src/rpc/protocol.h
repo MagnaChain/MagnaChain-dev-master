@@ -11,6 +11,7 @@
 #include <map>
 #include <stdint.h>
 #include <string>
+#include "io/fs.h"
 
 class UniValue;
 
@@ -95,7 +96,7 @@ UniValue JSONRPCError(int code, const std::string& message);
 /** Generate a new RPC authentication cookie and write it to disk */
 bool GenerateAuthCookie(std::string *cookie_out);
 /** Read the RPC authentication cookie from disk */
-bool GetAuthCookie(std::string *cookie_out);
+bool GetAuthCookie(std::string *cookie_out, fs::path* pCookiePath=nullptr);
 /** Delete RPC authentication cookie from disk */
 void DeleteAuthCookie();
 

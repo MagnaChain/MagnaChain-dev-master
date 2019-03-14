@@ -517,31 +517,36 @@ UniValue publishcontract(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() < 1 )
 		throw std::runtime_error(
-			"publish \"filename\" \n"
+			"publishcontract \"contractfilepath\" \n"
 			"\npublish a contract from a file.\n"
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
 			"1. \"filename\"            (string, required) The file need to publish.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("publishcontract", "\"filepath\"")
+            + HelpExampleRpc("publishcontract", "\"filepath\"")
 		);
 
 	LOCK2(cs_main, pwallet->cs_wallet);
 
 	std::string strFileName = request.params[0].get_str();
-	FILE * fp = fopen(strFileName.c_str(), "rb");
-	if (fp == NULL) {
-		throw std::runtime_error(
-			"publish \"filename\" \n"
-			"\n file open error.\n"
-		);
+	FILE * file = fopen(strFileName.c_str(), "rb");
+	if (file == nullptr) {
+        throw std::runtime_error("can't open file");
 	}
 
-	fseek(fp, 0, SEEK_END);
-	long flen = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
+	fseek(file, 0, SEEK_END);
+	long fileLen = ftell(file);
+    if (fileLen > MAX_CONTRACT_FILE_LEN) {
+        fclose(file);
+        throw std::runtime_error("code is too large");
+    }
+
+	fseek(file, 0L, SEEK_SET);
 	std::string rawCode;
-    rawCode.resize(flen);
-	fread((char*)&rawCode[0], flen, 1, fp);
-	fclose(fp);
+    rawCode.resize(fileLen);
+	fread(&rawCode[0], fileLen, 1, file);
+	fclose(file);
 
     std::string strSenderAddr;
     if (request.params.size() > 1)
@@ -551,6 +556,7 @@ UniValue publishcontract(const JSONRPCRequest& request)
     UniValue ret(UniValue::VARR);
 	if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
+
     return ret;
 }
 
@@ -568,6 +574,9 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
 			"1. \"codedata\"            (string, required) Code data to hex.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("publishcontractcode", "\"code_in_hex_string\"")
+            + HelpExampleRpc("publishcontractcode", "\"code_in_hex_string\"")
 		);
 
 	LOCK2(cs_main, pwallet->cs_wallet);
@@ -658,7 +667,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue ret(UniValue::VARR);
-    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    sls.Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
     if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
@@ -732,7 +741,7 @@ UniValue callcontract(const JSONRPCRequest& request)
 
 	if (request.fHelp || request.params.size() < 4)
 		throw std::runtime_error(
-			"sendcall \"address\" \n"
+			"callcontract issendcall amount \"contractaddress\" \"senderaddress\" \"contract_fun_name\" \"params\"\n"
 			"\nsend to contract .\n"
 			+ HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
@@ -742,6 +751,9 @@ UniValue callcontract(const JSONRPCRequest& request)
 			"4. \"senderaddress\"       (string, required) The sender address, can be empty,as \"\".\n"
 			"5. \"function\"	        (string, required) The function need to call.\n"
 			"6. \"params\"              (string, optional) The function params.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("callcontract", "true 0 \"2P8DtWVXv3mxPndCVrJaF5HqviLB4rEnpqw\" \"mHi1uojMVdTtksRp563oFe1PKJgeCDPTu7\" testfun p1 p2 p3")
+            + HelpExampleRpc("callcontract", "true 0 \"2P8DtWVXv3mxPndCVrJaF5HqviLB4rEnpqw\" \"mHi1uojMVdTtksRp563oFe1PKJgeCDPTu7\" testfun p1 p2 p3")
 		);
 
     LOCK2(cs_main, pwallet->cs_wallet);
@@ -781,11 +793,15 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 5);
 
+    if (args.size() > 8)
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
+    }
+
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    long maxCallNum = MAX_CONTRACT_CALL;
-    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
+    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
     if (success) {
         UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
@@ -909,11 +925,15 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
 
+    if (args.size() > 8)
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
+    }
+
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    long maxCallNum = MAX_CONTRACT_CALL;
-    sls.Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, maxCallNum, callRet);
+    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("return", callRet));
@@ -1961,6 +1981,25 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
     // Received
     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
     {
+        //merge for generateforbigboom, because bit boom coinbase is split the output to smaller amount, these too many output for bigboom
+        bool fmergeforbigboom = false;
+        MCAmount totalAmount = 0;
+        MCTxDestination firstDestination = listReceived.begin()->destination;
+        if (wtx.IsCoinBase() && pwallet->mapAddressBook.count(firstDestination)
+            && pwallet->mapAddressBook[firstDestination].name == "generateforbigboom")
+        {
+            fmergeforbigboom = true;
+            for (const MCOutputEntry& r : listReceived)
+            {
+                totalAmount += r.amount;
+                if (r.destination != firstDestination)
+                {
+                    fmergeforbigboom = false;
+                    break;
+                }
+            }
+        }
+
         for (const MCOutputEntry& r : listReceived)
         {
             std::string account;
@@ -1988,6 +2027,7 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
                 {
                     entry.push_back(Pair("category", "receive"));
                 }
+
                 entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
                 if (pwallet->mapAddressBook.count(r.destination)) {
                     entry.push_back(Pair("label", account));
@@ -1995,8 +2035,54 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
                 entry.push_back(Pair("vout", r.vout));
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+                
+                if (fmergeforbigboom)
+                {
+                    entry.push_back(Pair("totalamount", ValueFromAmount(totalAmount)));
+                    entry.push_back(Pair("vout_size", (int)listReceived.size()));
+                }
                 ret.push_back(entry);
+
+                if (fmergeforbigboom)
+                {
+                    break;
+                }
             }
+        }
+    }
+
+    //is fee tx for other function.
+    if (listSent.empty() && listReceived.empty() && wtx.tx->vout.size() == 1
+        && (wtx.tx->IsSmartContract() || wtx.tx->IsSyncBranchInfo()))
+    {
+        for (unsigned int i = 0; i < wtx.tx->vout.size(); ++i)
+        {
+            const MCTxOut& txout = wtx.tx->vout[i];
+            MCTxDestination address;
+            if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
+            {
+                //LogPrintf("MCWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",this->GetHash().ToString());
+                address = MCNoDestination();
+            }
+            MCOutputEntry output = { address, txout.nValue, (int)i };
+
+            UniValue entry(UniValue::VOBJ);
+            if (involvesWatchonly || (::IsMine(*pwallet, output.destination) & ISMINE_WATCH_ONLY)) {
+                entry.push_back(Pair("involvesWatchonly", true));
+            }
+            entry.push_back(Pair("account", strSentAccount));
+            MaybePushAddress(entry, output.destination);
+            entry.push_back(Pair("category", "sendfee"));
+            //entry.push_back(Pair("amount", ValueFromAmount(-output.amount)));
+            if (pwallet->mapAddressBook.count(output.destination)) {
+                entry.push_back(Pair("label", pwallet->mapAddressBook[output.destination].name));
+            }
+            entry.push_back(Pair("vout", output.vout));
+            entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
+            if (fLong)
+                WalletTxToJSON(wtx, entry);
+            entry.push_back(Pair("abandoned", wtx.isAbandoned()));
+            ret.push_back(entry);
         }
     }
 }
@@ -2041,10 +2127,11 @@ UniValue listtransactions(const JSONRPCRequest& request)
             "                                                It will be \"\" for the default account.\n"
             "    \"address\":\"address\",    (string) The magnachain address of the transaction. Not present for \n"
             "                                                move transactions (category = move).\n"
-            "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off blockchain)\n"
+            "    \"category\":\"send|receive|move|sendfee\", (string) The transaction category. 'move' is a local (off blockchain)\n"
             "                                                transaction between accounts, and not associated with an address,\n"
             "                                                transaction id or block. 'send' and 'receive' transactions are \n"
             "                                                associated with an address, transaction id and block details\n"
+            "                                                'sendfee' is for transaction like smartcontract, pay for fee, is not a transfer\n"
             "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the\n"
             "                                         'move' category for moves outbound. It is positive for the 'receive' category,\n"
             "                                         and for the 'move' category for inbound funds.\n"
@@ -4087,16 +4174,6 @@ extern UniValue importwallet(const JSONRPCRequest& request);
 extern UniValue importprunedfunds(const JSONRPCRequest& request);
 extern UniValue removeprunedfunds(const JSONRPCRequest& request);
 extern UniValue importmulti(const JSONRPCRequest& request);
-
-UniValue startbranch(const JSONRPCRequest& request);
-
-
-UniValue generateforbranch(const JSONRPCRequest& request);
-
-
-UniValue getbranchinfo(const JSONRPCRequest& request);
-UniValue switchbranch(const JSONRPCRequest& request);
-
 
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode

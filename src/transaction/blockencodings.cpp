@@ -18,8 +18,10 @@
 #include <unordered_map>
 
 MCBlockHeaderAndShortTxIDs::MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID) :
-        nonce(GetRand(std::numeric_limits<uint64_t>::max())),
-        shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block) {
+    nonce(GetRand(std::numeric_limits<uint64_t>::max())),
+    shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block),
+    groupSize(block.groupSize), prevContractData(block.prevContractData)
+{
     FillShortTxIDSelector();
     //TODO: Use our mempool prior to block acceptance to predictively fill more than just the coinbase
     prefilledtxn[0] = {0, block.vtx[0]};
@@ -52,9 +54,13 @@ ReadStatus PartiallyDownloadedBlock::InitData(const MCBlockHeaderAndShortTxIDs& 
         return READ_STATUS_INVALID;
     if (cmpctblock.shorttxids.size() + cmpctblock.prefilledtxn.size() > MAX_BLOCK_WEIGHT / MIN_SERIALIZABLE_TRANSACTION_WEIGHT)
         return READ_STATUS_INVALID;
+    if (cmpctblock.groupSize.size() == 0)
+        return READ_STATUS_INVALID;
 
     assert(header.IsNull() && txn_available.empty());
     header = cmpctblock.header;
+    groupSize = cmpctblock.groupSize;
+    prevContractData = cmpctblock.prevContractData;
     txn_available.resize(cmpctblock.BlockTxCount());
 
     int32_t lastprefilledindex = -1;
@@ -180,6 +186,8 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(MCBlock& block, const std::vector
     uint256 hash = header.GetHash();
     block = header;
     block.vtx.resize(txn_available.size());
+    block.groupSize = groupSize;
+    block.prevContractData = prevContractData;
 
     size_t tx_missing_offset = 0;
     for (size_t i = 0; i < txn_available.size(); i++) {

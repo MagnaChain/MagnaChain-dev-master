@@ -1722,7 +1722,7 @@ bool MCWalletTx::RelayWalletTransaction(MCConnman* connman)
     {
         MCValidationState state;
         /* GetDepthInMainChain already catches known conflicts. */
-        if (InMempool() || AcceptToMemoryPool(maxTxFee, state, false)) {
+        if (InMempool() || AcceptToMemoryPool(maxTxFee, state, true)) {
             LogPrint(BCLog::WALLET, "Relaying wtx %s\n", GetHash().ToString());
             if (connman) {
                 MCInv inv(MSG_TX, GetHash());
@@ -1751,10 +1751,13 @@ std::set<uint256> MCWalletTx::GetConflicts() const
 
 MCAmount MCWalletTx::GetDebit(const isminefilter& filter) const
 {
-    if (tx->vin.empty())
-        return 0;
-
     MCAmount debit = 0;
+    if (tx->IsBranchChainTransStep2()) {
+        debit += tx->inAmount;// TODO: may be 
+    }
+    if (tx->vin.empty())
+        return debit;
+
     if(filter & ISMINE_SPENDABLE)
     {
         if (fDebitCached)

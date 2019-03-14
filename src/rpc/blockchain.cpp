@@ -373,6 +373,7 @@ void entryToJSON(UniValue &info, const MCTxMemPoolEntry &e)
 {
     AssertLockHeld(mempool.cs);
 
+    info.push_back(Pair("version", e.GetTx().nVersion));
     info.push_back(Pair("size", (int)e.GetTxSize()));
     info.push_back(Pair("fee", ValueFromAmount(e.GetFee())));
     info.push_back(Pair("modifiedfee", ValueFromAmount(e.GetModifiedFee())));

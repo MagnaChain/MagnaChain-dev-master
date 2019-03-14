@@ -918,6 +918,22 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
         }
     }
     bool fComplete = vErrors.empty();
+    if (fComplete)
+    {
+        // sign with contractSender addr's private key.
+        if (mtx.IsSmartContract())
+        {
+            MCTransaction txNewConst(mtx);
+            MCScript constractSig;
+            if (!SignContract(&keystore, &txNewConst, constractSig))
+            {
+                fComplete = false;
+            }
+            else {
+                mtx.pContractData->signature = constractSig;
+            }
+        }
+    }
 
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hex", EncodeHexTx(mtx)));
@@ -1004,7 +1020,7 @@ UniValue sendrawtransaction(const JSONRPCRequest& request)
 	{
 		UniValue ret(UniValue::VOBJ);
 		ret.push_back(Pair("txid", tx->GetHash().ToString()));
-		ret.push_back(Pair("contractaddress", tx->pContractData->address.ToString()));
+		ret.push_back(Pair("contractaddress", MagnaChainAddress(tx->pContractData->address).ToString()));
 		ret.push_back(Pair("senderaddress", tx->pContractData->sender.GetID().ToString()));
 		return ret;
 	}

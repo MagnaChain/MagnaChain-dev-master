@@ -31,18 +31,16 @@
 #define MAXTAGLOOP	100
 
 
-int luaD_limitinstruction(lua_State *L, long instructions) {
-    if (L->limit_on != 0)/* limit run instruction */
-    {
-        long left = L->limit_instruction - instructions;
-        if (left < 0) {
-            L->limit_instruction = 0;
-            luaG_runerror(L, "run out of limit instruction.");
-        }
-        else
-            L->limit_instruction = left;
+void luaD_limitinstruction(lua_State *L, long instructions) {
+  if (L->limit_on != 0) {
+    long left = L->limit_instruction - instructions;
+    if (left < 0) {
+      L->limit_instruction = -1;
+      luaG_runerror(L, "run out of limit instruction.");
     }
-    return 0;
+    else
+      L->limit_instruction = left;
+  }
 }
 
 
@@ -146,6 +144,13 @@ void luaV_gettable (lua_State *L, const TValue *t, TValue *key, StkId val) {
 
 
 void luaV_settable (lua_State *L, const TValue *t, TValue *key, StkId val) {
+  if (ttistable(key))
+    luaG_runerror(L, "table index is table");
+  else if (ttisfunction(key))
+    luaG_runerror(L, "table index is function");
+  else if (ttisuserdata(key))
+    luaG_runerror(L, "table index is userdata");
+
   int loop;
   TValue temp;
   for (loop = 0; loop < MAXTAGLOOP; loop++) {

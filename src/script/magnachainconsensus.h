@@ -10,7 +10,7 @@
 #include <stdint.h>
 
 #if defined(BUILD_MAGNACHAIN_INTERNAL) && defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
   #if defined(_WIN32)
     #if defined(DLL_EXPORT)
       #if defined(HAVE_FUNC_ATTRIBUTE_DLLEXPORT)

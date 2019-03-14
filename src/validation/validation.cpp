@@ -399,7 +399,7 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
     UniValue ret(UniValue::VARR);
 	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
         std::string rawCode = tx.pContractData->codeOrFunc;
-        sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        sls->Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (PublishContract(sls, contractAddr, rawCode, ret, true)) {
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == 0);
@@ -407,13 +407,12 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
         }
 	}
     else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        long maxCallNum = MAX_CONTRACT_CALL;
-        sls->Initialize(GetTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (CallContract(sls, contractAddr, amount, strFuncName, args, maxCallNum, ret)) {
+        sls->Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
+        if (CallContract(sls, contractAddr, amount, strFuncName, args, ret)) {
             if (CheckContractVinVout(tx, sls)) {
                 return (tx.pContractData->amountOut == sls->contractOut);
             }
-        } 
+        }
 	}
 
 	return false;
@@ -491,13 +490,13 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
                 ptx = MakeTransactionRef(mtx);
             }
         }
-        if (!fAddToMempool || (*it)->IsCoinBase() || (*it)->IsStake() || (*it)->IsReportReward() // these tx are not accepted in mempool
+        if (!fAddToMempool || ptx->IsCoinBase() || ptx->IsStake() || ptx->IsReportReward() // these tx are not accepted in mempool
             || !AcceptToMemoryPool(mempool, stateDummy, ptx, false, nullptr, nullptr, true)) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
-            mempool.RemoveRecursive(**it, MemPoolRemovalReason::REORG);
-        } else if (mempool.Exists((*it)->GetHash())) {
-            vHashUpdate.push_back((*it)->GetHash());
+            mempool.RemoveRecursive(*ptx, MemPoolRemovalReason::REORG);
+        } else if (mempool.Exists(ptx->GetHash())) {
+            vHashUpdate.push_back(ptx->GetHash());
         }
         ++it;
     }
@@ -673,7 +672,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                         *pfMissingInputs = true;
                     }
 				    LogPrint(BCLog::MEMPOOL, "not found vin,HaveCoin return fail.preout %s %d\n", txin.prevout.hash.ToString().c_str(), txin.prevout.n);
-                    return false; // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
+                    return state.Invalid(false, REJECT_INVALID, "vin-not-found"); // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
                 }
             }
 
@@ -986,7 +985,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             if (plTxnReplaced)
                 plTxnReplaced->push_back(it->GetSharedTx());
         }
-        pool.RemoveStaged(allConflicting, false, MemPoolRemovalReason::REPLACED);
+        pool.RemoveStaged(allConflicting, true, MemPoolRemovalReason::REPLACED);
 
         // This transaction should only count for fee estimation if it isn't a
         // BIP 125 replacement transaction (may not be widely supported), the
@@ -1264,7 +1263,7 @@ return nSubsidy;
 }
 */
 
-bool IsInitialBlockDownload()
+bool IsInitialBlockDownload(int* downloadno)
 {
     // Once this function has returned false, it must remain false.
     static std::atomic<bool> latchToFalse{false};
@@ -1275,14 +1274,22 @@ bool IsInitialBlockDownload()
     LOCK(cs_main);
     if (latchToFalse.load(std::memory_order_relaxed))
         return false;
-    if (fImporting || fReindex)
+    if (fImporting || fReindex) {
+        if (downloadno) *downloadno = 1;
         return true;
-    if (chainActive.Tip() == nullptr)
+    }
+    if (chainActive.Tip() == nullptr) {
+        if (downloadno) *downloadno = 2;
         return true;
-    if (chainActive.Tip()->nChainWork < nMinimumChainWork)
+    }
+    if (chainActive.Tip()->nChainWork < nMinimumChainWork) {
+        if (downloadno) *downloadno = 3;
         return true;
-    if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge))
+    }
+    if (chainActive.Tip()->GetBlockTime() < (GetTime() - nMaxTipAge)) {
+        if (downloadno) *downloadno = 4;
         return true;
+    }
     LogPrintf("Leaving InitialBlockDownload (latching to false)\n");
     latchToFalse.store(true, std::memory_order_relaxed);
     return false;
@@ -2751,6 +2758,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
             // This is likely a fatal error, but keep the mempool consistent,
             // just in case. Only remove from the mempool in this case.
             mempool.ReacceptTransactions();
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
             return false;
         }
@@ -2792,6 +2800,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
                     mempool.ReacceptTransactions();
+                    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
                     UpdateMempoolForReorg(disconnectpool, false);
                     return false;
                 }
@@ -2811,6 +2820,7 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
     if (fBlocksDisconnected) {
         // If any blocks were disconnected, disconnectpool may be non empty.  Add
         // any disconnected transactions back to the mempool.
+        LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
         UpdateMempoolForReorg(disconnectpool, true);
     }
     mempool.Check(pcoinsTip);
@@ -2978,6 +2988,7 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
             // It's probably hopeless to try to make the mempool consistent
             // here if DisconnectTip failed, but we can try.
             mempool.ReacceptTransactions();
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
             return false;
         }
@@ -3001,6 +3012,7 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
     // DisconnectTip will add transactions to disconnectpool; try to add these
     // back to the mempool.
     mempool.ReacceptTransactions();
+    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
     UpdateMempoolForReorg(disconnectpool, true);
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so
@@ -3343,8 +3355,10 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
     if (block.vtx.empty() || block.vtx.size() * WITNESS_SCALE_FACTOR > MAX_BLOCK_WEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
     const unsigned int blockSeriSize = ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
-    if (blockSeriSize > MAX_BLOCK_WEIGHT)
-        return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed2");
+    const unsigned int groupSerSize = ::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
+    const unsigned int contractDataSerSize = ::GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
+    if (blockSeriSize - groupSerSize - contractDataSerSize > MAX_BLOCK_WEIGHT)// Exclude the ser size of groupSize and prevContractData
+        return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, strprintf("size limits %d failed2", blockSeriSize));
 
     // First transaction must be coinbase, the rest must not be
     if (block.vtx.empty() || !block.vtx[0]->IsCoinBase())
@@ -3608,7 +3622,12 @@ static bool ContextualCheckBlock(const MCBlock& block, MCValidationState& state,
     // large by filling up the coinbase witness, which doesn't change
     // the block hash, so we couldn't mark the block as permanently
     // failed).
-    if (GetBlockWeight(block) > MAX_BLOCK_WEIGHT) {
+    const unsigned int blockWeight = GetBlockWeight(block);
+    //::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
+    const unsigned int groupSerSize = ::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION);
+    //GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
+    const unsigned int contractDataSerSize = ::GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION);
+    if (blockWeight - groupSerSize - contractDataSerSize > MAX_BLOCK_WEIGHT) {
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-weight", false, strprintf("%s : weight limit failed", __func__));
     }
 
@@ -3757,6 +3776,7 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
     }
 
     if (pindex->nHeight > 0) {
+        LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
         if (!mpContractDb->RunBlockContract(&block, pContractContext, pCoinAmountCache))
             return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
     }
@@ -3820,7 +3840,7 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
         CheckBlockIndex(chainparams.GetConsensus());
         if (!ret) {
             GetMainSignals().BlockChecked(*pblock, state);
-            return error("%s: AcceptBlock FAILED", __func__);
+            return error("%s: AcceptBlock FAILED. %s, %s", __func__, state.GetRejectReason(), state.GetDebugMessage());
         }
     }
 
@@ -3839,9 +3859,9 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     if (!Params().IsMainChain())
         SendBranchBlockHeader(pblock, &strErr);
     if (!strErr.empty())
-        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock");
+        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock: %s", strErr.c_str());
     
-    LogPrintf("%s useTime:%I, height:%d\n", __FUNCTION__, GetTimeMillis() - start, pindex->nHeight);
+    LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n", __FUNCTION__, GetTimeMillis() - start, pindex->nHeight);
     return true;
 }
 
@@ -4604,6 +4624,10 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
 
     int nLoaded = 0;
     try {
+        ContractContext contractContext;
+        CoinAmountDB coinAmountDB;
+        CoinAmountCache coinAmountCache(&coinAmountDB);
+
         // This takes over fileIn and calls fclose() on it in the MCBufferedFile destructor
         MCBufferedFile blkdat(fileIn, 2*MAX_BLOCK_SERIALIZED_SIZE, MAX_BLOCK_SERIALIZED_SIZE+8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
@@ -4655,11 +4679,6 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                 // process in case the block isn't known yet
                 if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0) {
                     LOCK(cs_main);
-
-                    ContractContext contractContext;
-                    CoinAmountDB coinAmountDB;
-                    CoinAmountCache coinAmountCache(&coinAmountDB);
-
                     MCValidationState state;
                     if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr, &contractContext, &coinAmountCache))
                         nLoaded++;
@@ -4694,10 +4713,6 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                             LogPrint(BCLog::REINDEX, "%s: Processing out of order child %s of %s\n", __func__, pblockrecursive->GetHash().ToString(),
                                     head.ToString());
                             LOCK(cs_main);
-
-                            ContractContext contractContext;
-                            CoinAmountDB coinAmountDB;
-                            CoinAmountCache coinAmountCache(&coinAmountDB);
 
                             MCValidationState dummy;
                             if (AcceptBlock(pblockrecursive, dummy, chainparams, nullptr, true, &it->second, nullptr, &contractContext, &coinAmountCache))
@@ -5208,11 +5223,10 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
         MCTxMemPool::setEntries setAncestors;
         bool validForFeeEstimation = false;
         bool ret = pool.AddUnchecked(hash, entry, setAncestors, validForFeeEstimation);
+        if (ret)
+            GetMainSignals().TransactionAddedToMempool(ptx);
         return ret;
     }
-
-    GetMainSignals().TransactionAddedToMempool(ptx);
-
     return true;
 }
 

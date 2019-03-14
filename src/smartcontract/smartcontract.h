@@ -21,6 +21,7 @@ extern "C"
 #include "smartcontract/contractdb.h"
 #include "coding/base58.h"
 
+const int MAX_CONTRACT_FILE_LEN = 65536;
 const int MAX_CONTRACT_CALL = 15000;
 const int MAX_DATA_LEN = 1024 * 1024;
 
@@ -39,34 +40,36 @@ public:
     static const int MAX_INTERNAL_CALL_NUM = 30;
 
     std::vector<MCTxOut> recipients;
-    std::set<MCContractID> contractIds;      // lua执行期间所有调用过的合约
-    std::vector<MagnaChainAddress> contractAddrs;  // 以栈形式表示当前调用合约的合约地址
-    MagnaChainAddress originAddr;    // 当前调用合约的调用者最原始公钥地址
+    std::set<MCContractID> contractIds; // lua执行期间所有调用过的合约
+    std::vector<MagnaChainAddress> contractAddrs;   // 以栈形式表示当前调用合约的合约地址
+    MagnaChainAddress originAddr;   // 当前调用合约的调用者最原始公钥地址
 
+    bool isPublish;
     int saveType;
-    int64_t timestamp;                          // 执行时的时间戳
-    int blockHeight;                            // 执行时的区块高度
+    int64_t timestamp;  // 执行时的时间戳
+    int blockHeight;    // 执行时的区块高度
     int txIndex;
     MCAmount contractOut = 0;
     uint32_t runningTimes = 0;
     uint32_t deltaDataLen = 0;
     uint32_t codeLen = 0;
-    int _internalCallNum = 0;
+    int internalCallNum = 0;
     CoinAmountCache* pCoinAmountCache;
     std::map<MCContractID, ContractInfo> contractDataFrom;
 
 private:
-    mutable MCCriticalSection _contractCS;
-    ContractContext* _pContractContext;
-    MCBlockIndex* _pPrevBlockIndex;
-    std::queue<lua_State*> _luaStates;
+    mutable MCCriticalSection contractCS;
+    ContractContext* pContractContext = nullptr;
+    MCBlockIndex* pPrevBlockIndex = nullptr;
+    std::queue<lua_State*> luaStates;
     MCTransactionRef tx;
 
 public:
     void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache);
     bool GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
 
-    void Initialize(int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
+    void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, 
+        ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
     lua_State* GetLuaState(MagnaChainAddress& contractAddr);
     void ReleaseLuaState(lua_State* L);
 
@@ -95,7 +98,7 @@ std::string TrimCode(const std::string& rawCode);
 
 bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
 bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret, bool decompress);
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret);
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, UniValue& ret);
 
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
 bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);

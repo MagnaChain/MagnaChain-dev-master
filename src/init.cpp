@@ -5,7 +5,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "init.h"
@@ -749,9 +749,13 @@ bool AppInitServers(boost::thread_group& threadGroup)
 void InitParameterInteraction()
 {
     // modify COINBASE_MATURITY for regtest
-    if (Params().NetworkIDString() == MCBaseChainParams::REGTEST)
+    if (gArgs.GetBoolArg("-regtest", false))//Params().NetworkIDString() == MCBaseChainParams::REGTEST , this condition not for branch chain.
     {
         COINBASE_MATURITY = gArgs.GetArg("-regtestmaturity", 1);
+        BRANCH_CHAIN_MATURITY = gArgs.GetArg("-regtestbcmaturity", 1);
+        REDEEM_SAFE_HEIGHT = gArgs.GetArg("-regtestrsheight", 60);
+        REPORT_OUTOF_HEIGHT = gArgs.GetArg("-regtestrooheight", 60);
+        REPORT_LOCK_COIN_HEIGHT = gArgs.GetArg("-regtestrooheight", 30);
     }
 
     // when specifying an explicit binding address, you want to listen on it
@@ -831,7 +835,7 @@ std::string ResolveErrMsg(const char * const optname, const std::string& strBind
 
 void InitLogging()
 {
-    fPrintToConsole = gArgs.GetBoolArg("-printtoconsole", false);
+    fPrintToConsole = gArgs.GetBoolArg("-printtoconsole", true);
     fLogTimestamps = gArgs.GetBoolArg("-logtimestamps", DEFAULT_LOGTIMESTAMPS);
     fLogTimeMicros = gArgs.GetBoolArg("-logtimemicros", DEFAULT_LOGTIMEMICROS);
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
@@ -1232,7 +1236,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
         ShrinkDebugFile();
     }
 
-    fPrintToDebugLog = fPrintToConsole ? gArgs.GetBoolArg("-printtodebuglog", false) : true;
+    fPrintToDebugLog = gArgs.GetBoolArg("-printtodebuglog", true);// fPrintToConsole, let's print to console and debug log by default.If you don't want that, disable it manually.
     if (fPrintToDebugLog)
         OpenDebugLog();
 
@@ -1502,6 +1506,9 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
+                pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
+                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
+
                 // ReplayBlocks is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!ReplayBlocks(chainparams, pcoinsdbview)) {
                     strLoadError = _("Unable to replay blocks. You will need to rebuild the database using -reindex-chainstate.");
@@ -1509,8 +1516,6 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 }
 
                 // The on-disk coinsdb is now in a good state, create the cache
-                pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
-                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
                 pCoinAmountDB = new CoinAmountDB();
                 pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
                 

@@ -341,41 +341,45 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
 //添加分支节点
 UniValue addbranchnode(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 5 || request.params.size() > 6)
+    if (request.fHelp || request.params.size() < 5 || request.params.size() > 7)
         throw std::runtime_error(
-                "addbranchnode branchid ip port username password\n"
-                "\n get a created branch chain info.\n"
-                "\nArguments:\n"
-                "1. \"branchid\"            (string, required) The branch txid.\n"
-                "2. \"ip\"                  (string, required) Branch node ip.\n"
-                "3. \"port\"                (string, required) Branch node rpc port.\n"
-                "4. \"usrname\"             (string, required) Branch node rpc username.\n"
-                "5. \"password\"            (string, required) Branch node rpc password.\n"
-                "6. \"wallet\"              (string, optional) Rpc wallet\n"
-                "\nReturns the hash of the created branch chain.\n"
-                "\nResult:\n"
-                "    Ok or fail\n"
-                "\nExamples:\n"
-                + HelpExampleCli("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
-                + HelpExampleRpc("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
-                );
+            "addbranchnode branchid ip port username password\n"
+            "\n get a created branch chain info.\n"
+            "\nArguments:\n"
+            "1. \"branchid\"            (string, required) The branch txid.\n"
+            "2. \"ip\"                  (string, required) Branch node ip.\n"
+            "3. \"port\"                (string, required) Branch node rpc port.\n"
+            "4. \"usrname\"             (string, required) Branch node rpc username.\n"
+            "5. \"password\"            (string, required) Branch node rpc password.\n"
+            "6. \"wallet\"              (string, optional) Rpc wallet\n"
+            "7. \"datadir\"             (string, optional) taget blanch datadir\n"
 
-    std::string branchid = request.params[0].get_str();
-    std::string ip = request.params[1].get_str();
-    std::string port = request.params[2].get_str();
-    std::string username = request.params[3].get_str();
-    std::string password = request.params[4].get_str();
-    std::string strWallet;
-    if (request.params.size() > 5){
-        strWallet = request.params[5].get_str();
-    }
+            "\nReturns the hash of the created branch chain.\n"
+            "\nResult:\n"
+            "    Ok or fail\n"
+            "\nExamples:\n"
+            + HelpExampleCli("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
+            + HelpExampleRpc("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
+        );
 
     MCRPCConfig rpcconfig;
-    rpcconfig.strIp = ip;
-    rpcconfig.iPort = atoi(port);
-    rpcconfig.strUser = username;
-    rpcconfig.strPassword = password;
-    rpcconfig.strWallet = strWallet;
+
+    std::string branchid = request.params[0].get_str();
+    rpcconfig.strIp = request.params[1].get_str();
+    if (request.params[2].isNum()){
+        rpcconfig.iPort = request.params[2].get_int();
+    }
+    else {
+        rpcconfig.iPort = atoi(request.params[2].get_str());
+    }
+    rpcconfig.strUser = request.params[3].get_str();
+    rpcconfig.strPassword = request.params[4].get_str();
+    if (request.params.size() > 5){
+        rpcconfig.strWallet = request.params[5].get_str();
+    }
+    if (request.params.size() > 6){
+        rpcconfig.strDataDir = request.params[6].get_str();
+    }
 
     if (branchid != MCBaseChainParams::MAIN && (branchid.length() != 64 || !IsHex(branchid)))
     {
@@ -398,7 +402,10 @@ UniValue addbranchnode(const JSONRPCRequest& request)
         }
     }
 
-    g_branchChainMan->ReplaceRpcConfig(branchid, rpcconfig);
+    //
+    if (!rpcconfig.InitUserColonPass(true)){
+        throw JSONRPCError(RPC_TYPE_ERROR, std::string("InitUserColonPass fail, passwork or datadir incorrect"));
+    }
 
     //test connect
     UniValue params(UniValue::VARR);
@@ -409,6 +416,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
         return errorVal.write();
     }
 
+    g_branchChainMan->ReplaceRpcConfig(branchid, rpcconfig);
     return "ok";
 }
 
@@ -570,16 +578,16 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
-                "makebranchtransaction branchid address amount \n"
-                "\n Send an amount to a branch chain's address.\n"
+                "makebranchtransaction hexstring\n"
+                "\n Send branch transaction to mempool of target block chain.\n"
                 "\nArguments:\n"
                 "1. \"hexdata\"               (string, required) The transaction hex data.\n"
-                "\nReturns the hash of the created branch chain.\n"
+                "\nReturns the hash of transaction.\n"
                 "\nResult:\n"
                 "\"txid\"                  (string) The transaction id.\n"
                 "\nExamples:\n"
-                + HelpExampleCli("makebranchtransaction", "93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e")
-                + HelpExampleRpc("makebranchtransaction", "93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e")
+                + HelpExampleCli("makebranchtransaction", "93ac2c05aebde2ff835f09cc...44dde535b845d852e")
+                + HelpExampleRpc("makebranchtransaction", "93ac2c05aebde2ff835f09cc...44dde535b845d852e")
                 );
 
     const std::string& strTx1HexData = request.params[0].get_str();
@@ -664,7 +672,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     }
 
     //broadcast transaction
-    if (!g_connman)
+    if (g_connman)
     {
         MCInv inv(MSG_TX, tx2->GetHash());
         g_connman->ForEachNode([&inv](MCNode* pnode)
@@ -682,8 +690,8 @@ UniValue getbranchchaintransaction(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
-                "getbranchchaintransaction txid amount \n"
-                "\n Send an amount to a branch chain's address.\n"
+                "getbranchchaintransaction txid \n"
+                "\n Get branchchain transaction info by txid.\n"
                 "\nArguments:\n"
                 "1. \"txid\"                  (string, required) The txid.\n"
                 "\nReturns the hash of the created branch chain.\n"
