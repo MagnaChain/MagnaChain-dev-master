@@ -307,6 +307,13 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
 	//	entry.pushKV("fromTx", tx.fromTx);
 		entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
 	}
+    if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO){
+        entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());
+        entry.pushKV("branchblockheight", tx.pBranchBlockData->blockHeight);
+        MCBlockHeader block;
+        tx.pBranchBlockData->GetBlockHeader(block);
+        entry.pushKV("branchblockhash", block.GetHash().GetHex());
+    }
 
     if (include_hex) {
         entry.pushKV("hex", EncodeHexTx(tx, serialize_flags)); // the hex-encoded transaction. used the name "hex" to be consistent with the verbose output of "getrawtransaction".
