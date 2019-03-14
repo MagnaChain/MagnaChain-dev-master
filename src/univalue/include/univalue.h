@@ -148,6 +148,7 @@ public:
 	std::vector< UniValue>& getMutableValues();
 
     bool get_bool() const;
+    bool get_any_bool() const; // normal bool, other type string "1" or "true" or type number non-zero will return true.
     const std::string& get_str() const;
     int get_int() const;
     int64_t get_int64() const;

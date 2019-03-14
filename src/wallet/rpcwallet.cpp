@@ -758,12 +758,7 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    bool sendCall = false;
-    UniValue uvSendCall = request.params[0];
-    if (uvSendCall.isBool())
-        sendCall = uvSendCall.getBool();
-    if (uvSendCall.isStr() && (uvSendCall.get_str() == "1" || uvSendCall.get_str() == "true"))
-        sendCall = true;
+    bool sendCall = request.params[0].get_any_bool();
 
     MCAmount amount = AmountFromValue(request.params[1]);
     if (amount < 0)
@@ -910,12 +905,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	if (!changeAddr.IsValid())
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address for change");
 
-	bool bSendCall = false;
-	UniValue uvIsSendCall = request.params[5];
-	if (uvIsSendCall.isBool())
-		bSendCall = uvIsSendCall.getBool();
-	if (uvIsSendCall.isStr() && (uvIsSendCall.get_str() == "1" || uvIsSendCall.get_str() == "true"))
-		bSendCall = true;
+	bool bSendCall = request.params[5].get_any_bool();
 
 	std::string strFuncName = request.params[6].get_str();
 	if (strFuncName.empty())
@@ -3760,12 +3750,8 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
     }
 
     bool fwithscript = false;
-    if (request.params.size() >= 2)
-    {
-        if (request.params[1].isBool())
-            fwithscript = request.params[1].get_bool();
-        else if (request.params[1].isStr() && (request.params[1].get_str() == "true" || request.params[1].get_str() == "1"))
-            fwithscript = true;
+    if (request.params.size() >= 2){
+        fwithscript = request.params[1].get_any_bool();
     }
 
 	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
