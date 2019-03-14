@@ -64,10 +64,15 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(8)
         self.sidenodes[0].generate(2)
         assert_equal(self.sidenodes[0].getrawmempool(), [])
+        self.sync_all([self.sidenodes])
+        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        self.sync_all()
+        assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
 
         # main to side
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
         node.generate(8)
+        self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
         self.sync_all([self.sidenodes])
         print(self.get_txfee(self.sidenodes[0].getrawmempool()[0],self.sidenodes[0]))
@@ -84,9 +89,16 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                      Decimal(side_balance + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
         assert_equal(self.sidenodes[1].getbalance(),side_balance1)
         assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        self.sidenodes[0].generate(2)
+        assert_equal(self.sidenodes[0].getrawmempool(), [])
+        self.sync_all([self.sidenodes])
+        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        self.sync_all()
+        assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
 
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
         node.generate(8)
+        self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
         print(len(self.sidenodes[0].getrawmempool()),self.sidenodes[0].getrawmempool())
         print(len(self.sidenodes[1].getrawmempool()),self.sidenodes[1].getrawmempool())
@@ -106,6 +118,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
         # side to main
         node.generate(2)
+        self.sync_all()
         side_balance = self.sidenodes[0].getbalance()
         balance = node.getbalance()
         addr = node.getnewaddress()
@@ -114,6 +127,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sidenodes[0].generate(7)
         assert txid not in self.sidenodes[0].getrawmempool()
         node.generate(2)
+        self.sync_all()
         self.sidenodes[0].generate(1)
         # 侧链的区块头是一个交易，侧转主的是一个交易，所以主链的内存池会有2个交易
         assert len(node.getrawmempool()) == 2
@@ -124,6 +138,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                 # static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// 跨链交易的接收链方
                 total_fee += Decimal(txs[txid]['fee'])
         node.generate(2)
+        self.sync_all()
         assert_equal(node.getbalanceof(addr),side_balance - 30)
         assert_equal(node.getbalance(), balance + MINER_REWARD * 4 + side_balance - 30 + total_fee)
 
@@ -134,6 +149,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for addr in saddrs:
             node.sendtobranchchain(sidechain_id, addr, 1)
         node.generate(10)
+        self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()),transaction_num)
         total_fee = 0
         txs = self.sidenodes[0].getrawmempool(True)
@@ -158,6 +174,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
             if txs[txid]['version'] == 7:
                 total_fee += Decimal(txs[txid]['fee'])
         node.generate(2)
+        self.sync_all()
         assert_equal(len(node.getrawmempool()), 0)
         for addr in saddrs:
             assert_equal(node.getbalanceof(addr),1)
