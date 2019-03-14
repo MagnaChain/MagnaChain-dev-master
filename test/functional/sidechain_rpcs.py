@@ -12,7 +12,7 @@ from decimal import Decimal
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
-from test_framework.mininode import MINER_REWARD
+from test_framework.mininode import MINER_REWARD,CTransaction
 from test_framework.contract import Contract
 from test_framework.util import (
     assert_equal,
@@ -62,14 +62,16 @@ class SendToBranchchainTest(MagnaChainTestFramework):
             # print(self.node0.getrawmempool(), self.node1.getrawmempool(True))
             # self.sync_all()  #放开注释，这里会主链的内存池会同步失败，因为branch block info duplicate
 
-        # self.test_getblockchaininfo()
-        # self.test_getallbranchinfo()
-        # self.test_getbranchchainheight()
-        # self.test_getbranchchaininfo()
-        # self.test_getbranchchaintransaction()
-        # self.test_makebranchtransaction()
-        # self.test_mortgageminebranch()
+        self.test_getblockchaininfo()
+        self.test_getallbranchinfo()
+        self.test_getbranchchainheight()
+        self.test_getbranchchaininfo()
+        self.test_getbranchchaintransaction()
+        self.test_makebranchtransaction()
+        self.test_mortgageminebranch()
         self.test_rebroadcastchaintransaction()
+        self.test_resendbranchchainblockinfo()
+        self.test_submitbranchblockinfo()
 
     def test_getblockchaininfo(self):
         ret = self.snode0.getblockchaininfo()
@@ -170,6 +172,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-25, 'Load transaction sendinfo fail.',
                                 self.snode0.rebroadcastchaintransaction, txid)
         self.snode0.generate(1)
+        assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)['txid']
         self.node0.generate(1)
         assert_raises_rpc_error(-25, 'can not broadcast because no enough confirmations',
@@ -180,7 +183,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
         assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.node0.rebroadcastchaintransaction, txid)
-        # self.snode0.generate(2)  #注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
+        self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
         self.node0.generate(2)
@@ -194,7 +197,46 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.snode0.generate(1)
         assert_equal(len(self.node0.getrawmempool()), 2)  # here we are,one for header,one for transaction
         assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.snode0.rebroadcastchaintransaction, txid)
+        self.node0.generate(1)
+        assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid)
 
+    def test_resendbranchchainblockinfo(self):
+        '''
+        Resend branch chain block info by height
+        :return:
+        '''
+        self.node0.generate(1)
+        assert_equal(self.node0.getrawmempool(), [])
+        assert_raises_rpc_error(-32603, 'Can not call this RPC in main chain', self.node0.resendbranchchainblockinfo,
+                                1)
+        assert_raises_rpc_error(-32603, 'Params[0] is a invalid number', self.snode0.resendbranchchainblockinfo,
+                                "number")
+        # assert_raises_rpc_error(-32603, 'Params[0] is a invalid number', self.snode0.resendbranchchainblockinfo,
+        #                         -1)
+        assert_raises_rpc_error(-32603, 'Request height larger than chain height',
+                                self.snode0.resendbranchchainblockinfo,
+                                self.snode0.getblockcount() + 1)
+        assert "block vtx size error" in self.snode0.resendbranchchainblockinfo(0)
+        assert 'blockheader info has include before' in self.snode0.resendbranchchainblockinfo(
+            self.snode0.getblockcount())
+        assert_equal(len(self.node0.getrawmempool()), 0)  # 因为之前已经提交过了，所以节点会拒绝该侧链头
+
+    def test_submitbranchblockinfo(self):
+        '''
+        submitbranchblockinfo "CTransaction hex data"
+        Include branch block data to a transaction, then send to main chain
+        :return:
+        '''
+        txid = self.node0.sendtoaddress(self.node0.getnewaddress(),1)
+        tx_hex = self.node0.getrawtransaction(txid)
+        assert_raises_rpc_error(-32602, 'Invalid transaction data',self.node0.submitbranchblockinfo,tx_hex)
+        assert_raises_rpc_error(-32602, 'This rpc api can not be called in branch chain',
+                                self.snode0.submitbranchblockinfo, tx_hex)
+        tx = CTransaction()
+        tx.nVersion = 9
+        tx.rehash()
+        assert_raises_rpc_error(-4, 'DecodeHexTx tx hex fail',
+                                self.node0.submitbranchblockinfo, tx.hash)
 
 if __name__ == '__main__':
     SendToBranchchainTest().main()
