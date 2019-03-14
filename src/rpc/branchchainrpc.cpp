@@ -956,7 +956,7 @@ UniValue submitbranchblockinfo(const JSONRPCRequest& request)
                 );
 
     if (!Params().IsMainChain())
-        throw JSONRPCError(RPC_INVALID_PARAMS, "This rpc api only be called in branch chain");
+        throw JSONRPCError(RPC_INVALID_PARAMS, "This rpc api can not be called in branch chain");
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
