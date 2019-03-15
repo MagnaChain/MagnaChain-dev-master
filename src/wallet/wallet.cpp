@@ -50,6 +50,17 @@ bool fWalletRbf = DEFAULT_WALLET_RBF;
 const char * DEFAULT_WALLET_DAT = "wallet.dat";
 const uint32_t BIP32_HARDENED_KEY_LIMIT = 0x80000000;
 
+bool IsMineForAllWallets(const MCKeyID& keyid)
+{
+    for (MCWallet* pwallet : vpwallets) {
+        if (pwallet->HaveKey(keyid))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 #include "chain/branchchain.h"
 
 /**

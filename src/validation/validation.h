@@ -249,7 +249,7 @@ bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
  * @param[out]  fNewBlock A boolean which is set to indicate if the block was first received via this call
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock);
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool ismining = false);
 
 /**
  * Process incoming block headers.
