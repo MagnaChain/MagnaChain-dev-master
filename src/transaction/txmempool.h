@@ -117,6 +117,7 @@ public:
 
     const uint64_t GetOrder() const { return this->entryOrder; }
     const MCTransaction& GetTx() const { return *this->tx; }
+    const MCTransactionRef& GetPtrTx() const { return this->tx; }
     MCTransactionRef GetSharedTx() const { return this->tx; }
     const MCAmount& GetFee() const { return nFee; }
     size_t GetTxSize() const;
@@ -551,6 +552,7 @@ public:
     void RemoveForReorg(const MCCoinsViewCache* pcoins, unsigned int nMemPoolHeight, int flags);
     void RemoveConflicts(const MCTransaction& tx);
     void RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight);
+    void RemoveForVector(const std::vector<MCTransactionRef>& vtx);
 
     void Clear();
     void DoClear(); //lock free
