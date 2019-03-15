@@ -1073,8 +1073,8 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Params[0] is a invalid number\n");
     }
 
-    if (blockheight > chainActive.Height())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Request height larger than chain height\n");
+    if (blockheight > chainActive.Height() || blockheight <= 0)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid block height\n");
 
     LOCK(cs_main);
     MCBlock block;
