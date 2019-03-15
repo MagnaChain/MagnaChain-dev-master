@@ -213,12 +213,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                                 1)
         assert_raises_rpc_error(-32603, 'Params[0] is a invalid number', self.snode0.resendbranchchainblockinfo,
                                 "number")
-        # assert_raises_rpc_error(-32603, 'Params[0] is a invalid number', self.snode0.resendbranchchainblockinfo,
-        #                         -1)
-        assert_raises_rpc_error(-32603, 'Request height larger than chain height',
+        assert_raises_rpc_error(-32603, 'Invalid block height', self.snode0.resendbranchchainblockinfo,
+                                -1)
+        assert_raises_rpc_error(-32603, 'Invalid block height',
                                 self.snode0.resendbranchchainblockinfo,
                                 self.snode0.getblockcount() + 1)
-        assert "block vtx size error" in self.snode0.resendbranchchainblockinfo(0)
         assert 'blockheader info has include before' in self.snode0.resendbranchchainblockinfo(
             self.snode0.getblockcount())
         assert_equal(len(self.node0.getrawmempool()), 0)  # 因为之前已经提交过了，所以节点会拒绝该侧链头
