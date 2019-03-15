@@ -67,11 +67,12 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.test_getbranchchainheight()
         self.test_getbranchchaininfo()
         self.test_getbranchchaintransaction()
-        self.test_makebranchtransaction()
+        # self.test_makebranchtransaction()
         self.test_mortgageminebranch()
-        self.test_rebroadcastchaintransaction()
+        #self.test_rebroadcastchaintransaction()
         self.test_resendbranchchainblockinfo()
         self.test_submitbranchblockinfo()
+        self.test_invalidateblock()
 
     def test_getblockchaininfo(self):
         ret = self.snode0.getblockchaininfo()
@@ -87,8 +88,8 @@ class SendToBranchchainTest(MagnaChainTestFramework):
     def test_getbranchchainheight(self):
         ret = self.node0.getbranchchainheight(self.sidechain_id)
         print(ret)
-        assert_equal(ret['blockhash'], self.snode0.getbestblockhash())
         assert_equal(ret['height'], self.snode0.getblockcount())
+        assert_equal(ret['blockhash'], self.snode0.getbestblockhash())
 
     def test_getbranchchaininfo(self):
         tmp = ret = self.node0.getallbranchinfo()[0]
@@ -160,6 +161,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-5, 'Invalid magnachain keyid',
                                 self.node0.mortgageminebranch, self.sidechain_id, 10000, ct.contract_id)
         self.node0.mortgageminebranch(self.sidechain_id, 10000, self.snode0.getnewaddress())
+        
 
     def test_rebroadcastchaintransaction(self):
         # to sidechain
@@ -237,6 +239,43 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         tx.rehash()
         assert_raises_rpc_error(-4, 'DecodeHexTx tx hex fail',
                                 self.node0.submitbranchblockinfo, tx.hash)
+
+    def test_invalidateblock(self):
+        '''
+        侧链某个区块被标记为失效时，再重新打包
+        :return:
+        '''
+        self.snode0.generate(1)
+        assert_equal(self.snode0.getrawmempool(),[])
+        hash = self.snode0.getbestblockhash()
+        block_height = self.snode0.getblockcount()
+        self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
+        addr = self.snode0.getnewaddress()
+        txid1 = self.snode0.sendtoaddress(addr,10)
+        txid2 = self.snode0.sendtobranchchain('main',self.node0.getnewaddress(),10)['txid']
+        self.snode0.generate(7)
+        self.node0.generate(1)
+        self.snode0.generate(3)
+        bad_hash = self.snode0.getblockhash(block_height + 1)
+        self.snode0.invalidateblock(bad_hash)
+        self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
+        new_height = self.snode0.getblockcount()
+        new_hash = self.snode0.getbestblockhash()
+        if (new_height != block_height or new_hash != hash):
+            raise AssertionError("Wrong tip for snode0, hash %s, height %d"%(new_hash,new_height))
+        assert txid1 in self.snode0.getrawmempool()
+        assert txid2 in self.snode0.getrawmempool()
+        assert len(self.snode0.getrawmempool()) == 2
+        self.snode0.generate(7)
+        self.node0.generate(1)
+        # self.snode0.rebroadcastchaintransaction(txid2)
+        self.snode0.generate(8)
+        self.node0.generate(1)
+        self.test_getbranchchainheight()
+        self.snode0.rebroadcastchaintransaction(txid2)
+        self.test_getbranchchainheight()
+
+
 
 if __name__ == '__main__':
     SendToBranchchainTest().main()
