@@ -3814,7 +3814,7 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
     return true;
 }
 
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock)
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool *fNewBlock, bool ismining)
 {
     int64_t start = GetTimeMillis();
 
@@ -3856,8 +3856,8 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
 
     // check and remove invalid contract transaction
     std::string strErr;
-    if (!Params().IsMainChain())
-        SendBranchBlockHeader(pblock, &strErr, true);
+    if (!Params().IsMainChain() && ismining)
+        SendBranchBlockHeader(pblock, &strErr, false);// when is ismining, that identify this block is mining by myself, so send it's block header nnconditionally
     if (!strErr.empty())
         LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock: %s", strErr.c_str());
     
