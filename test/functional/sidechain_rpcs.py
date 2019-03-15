@@ -161,6 +161,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-5, 'Invalid magnachain keyid',
                                 self.node0.mortgageminebranch, self.sidechain_id, 10000, ct.contract_id)
         self.node0.mortgageminebranch(self.sidechain_id, 10000, self.snode0.getnewaddress())
+        
 
     def test_rebroadcastchaintransaction(self):
         # to sidechain
