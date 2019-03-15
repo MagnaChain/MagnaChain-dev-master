@@ -3857,7 +3857,7 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     // check and remove invalid contract transaction
     std::string strErr;
     if (!Params().IsMainChain() && ismining)
-        SendBranchBlockHeader(pblock, &strErr, false);// when is ismining, that identify this block is mining by myself, so send it's block header nnconditionally
+        SendBranchBlockHeader(pblock, &strErr, false);// when is ismining, that identify this block is mining by myself, so send it's block header unconditionally
     if (!strErr.empty())
         LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock: %s", strErr.c_str());
     
