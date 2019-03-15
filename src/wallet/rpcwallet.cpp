@@ -1982,7 +1982,7 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
             for (const MCOutputEntry& r : listReceived)
             {
                 totalAmount += r.amount;
-                if (r.destination != firstDestination)
+                if (!(r.destination == firstDestination))//r.destination != firstDestination (centos make error: no match for ‘operator!=’, but msvc ubuntu work!, actually MCNoDestination didnot define an operator !=)
                 {
                     fmergeforbigboom = false;
                     break;
