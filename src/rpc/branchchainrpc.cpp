@@ -409,7 +409,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
 
     //test connect
     UniValue params(UniValue::VARR);
-    UniValue reply = CallRPC(rpcconfig, "getbalance", params);
+    UniValue reply = CallRPC(rpcconfig, "getblockcount", params);
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()){
@@ -675,10 +675,9 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     if (g_connman)
     {
         MCInv inv(MSG_TX, tx2->GetHash());
-        g_connman->ForEachNode([&inv](MCNode* pnode)
-                {
+        g_connman->ForEachNode([&inv](MCNode* pnode){
                 pnode->PushInventory(inv);
-                });
+            });
     }
 
     return "ok";
@@ -1085,7 +1084,7 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
 
     std::shared_ptr<const MCBlock> shared_pblock = std::make_shared<const MCBlock>(block);
     std::string strErr;
-    if (!SendBranchBlockHeader(shared_pblock, &strErr))
+    if (!SendBranchBlockHeader(shared_pblock, &strErr, false))//TODO: is onlySendMy necessary to be a option by rpc parameter.
     {
         return "Fail:" + strErr;
     }
