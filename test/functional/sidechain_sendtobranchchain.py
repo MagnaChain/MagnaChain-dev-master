@@ -39,8 +39,6 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.num_sidenodes = 2
         self.rpc_timewait = 900
 
-
-
     def run_test(self):
         """Main test logic"""
         self.sync_all([self.sidenodes])
@@ -65,7 +63,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sidenodes[0].generate(2)
         assert_equal(self.sidenodes[0].getrawmempool(), [])
         self.sync_all([self.sidenodes])
-        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
         self.sync_all()
         assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
 
@@ -75,7 +73,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
         self.sync_all([self.sidenodes])
-        print(self.get_txfee(self.sidenodes[0].getrawmempool()[0],self.sidenodes[0]))
+        print(self.get_txfee(self.sidenodes[0].getrawmempool()[0], self.sidenodes[0]))
         txfee = self.sidenodes[0].getrawmempool(True)[self.sidenodes[0].getrawmempool()[0]]['fee']
         side_balance = self.sidenodes[0].getbalance()
         side_balance1 = self.sidenodes[1].getbalance()
@@ -87,12 +85,12 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[0].getbalance(),
                      Decimal(side_balance + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
-        assert_equal(self.sidenodes[1].getbalance(),side_balance1)
-        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        assert_equal(self.sidenodes[1].getbalance(), side_balance1)
+        assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
         self.sidenodes[0].generate(2)
         assert_equal(self.sidenodes[0].getrawmempool(), [])
         self.sync_all([self.sidenodes])
-        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
         self.sync_all()
         assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
 
@@ -100,21 +98,21 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(8)
         self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
-        print(len(self.sidenodes[0].getrawmempool()),self.sidenodes[0].getrawmempool())
-        print(len(self.sidenodes[1].getrawmempool()),self.sidenodes[1].getrawmempool())
+        print(len(self.sidenodes[0].getrawmempool()), self.sidenodes[0].getrawmempool())
+        print(len(self.sidenodes[1].getrawmempool()), self.sidenodes[1].getrawmempool())
         self.sync_all([self.sidenodes])
         txfee = self.sidenodes[0].getrawmempool(True)[self.sidenodes[0].getrawmempool()[0]]['fee']
         side_balance = self.sidenodes[0].getbalance()
         side_balance1 = self.sidenodes[1].getbalance()
         self.sync_all([self.sidenodes])
         assert_equal(self.sidenodes[0].getrawmempool(), self.sidenodes[1].getrawmempool())
-        self.sidenodes[1].generate(2) #ensure another node generate blocks is work
+        self.sidenodes[1].generate(2)  # ensure another node generate blocks is work
         self.sync_all([self.sidenodes])
         assert_equal(self.sidenodes[0].getbalanceof(saddr), 200.0000000)
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 200.0000000)
-        assert_equal(self.sidenodes[0].getbalance(),Decimal(side_balance + Decimal(100)).quantize(Decimal("0.000000")))
-        assert_equal(self.sidenodes[1].getbalance(),side_balance1 + Decimal(txfee))
-        assert_equal(self.sidenodes[0].getbestblockhash(),self.sidenodes[1].getbestblockhash())
+        assert_equal(self.sidenodes[0].getbalance(), Decimal(side_balance + Decimal(100)).quantize(Decimal("0.000000")))
+        assert_equal(self.sidenodes[1].getbalance(), side_balance1 + Decimal(txfee))
+        assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
 
         # side to main
         node.generate(2)
@@ -139,7 +137,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                 total_fee += Decimal(txs[txid]['fee'])
         node.generate(2)
         self.sync_all()
-        assert_equal(node.getbalanceof(addr),side_balance - 30)
+        assert_equal(node.getbalanceof(addr), side_balance - 30)
         assert_equal(node.getbalance(), balance + MINER_REWARD * 4 + side_balance - 30 + total_fee)
 
         # batch test
@@ -147,10 +145,10 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         side_balance = self.sidenodes[0].getbalance()
         saddrs = [self.sidenodes[0].getnewaddress() for i in range(transaction_num)]
         for addr in saddrs:
-            node.sendtobranchchain(sidechain_id, addr, 1)
+            node.sendtobranchchain(sidechain_id, addr, 2)
         node.generate(10)
         self.sync_all()
-        assert_equal(len(self.sidenodes[0].getrawmempool()),transaction_num)
+        assert_equal(len(self.sidenodes[0].getrawmempool()), transaction_num)
         total_fee = 0
         txs = self.sidenodes[0].getrawmempool(True)
         for txid in txs:
@@ -158,7 +156,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sidenodes[0].generate(2)
         assert_equal(len(self.sidenodes[0].getrawmempool()), 0)
         for addr in saddrs:
-            assert_equal(self.sidenodes[0].getbalanceof(addr),1)
+            assert_equal(self.sidenodes[0].getbalanceof(addr), 2)
         assert_equal(self.sidenodes[0].getbalance(), side_balance + transaction_num + total_fee)
 
         balance = node.getbalance()
@@ -167,7 +165,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for addr in saddrs:
             self.sidenodes[0].sendtobranchchain("main", addr, 1)
         self.sidenodes[0].generate(10)
-        assert_equal(len(node.getrawmempool()),transaction_num + 10)
+        assert_equal(len(node.getrawmempool()), transaction_num + 10)
         total_fee = 0
         txs = node.getrawmempool(True)
         for txid in txs:
@@ -177,7 +175,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all()
         assert_equal(len(node.getrawmempool()), 0)
         for addr in saddrs:
-            assert_equal(node.getbalanceof(addr),1)
+            assert_equal(node.getbalanceof(addr), 1)
         assert_equal(node.getbalance(), balance + transaction_num + total_fee)
         assert_equal(self.sidenodes[0].getbalance(), side_balance - transaction_num)
 
@@ -186,7 +184,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all()
         self.sidenodes[0].generate(2)
         self.sync_all([self.sidenodes])
-        [node.sendtobranchchain(self.sidechain_id,self.sidenodes[0].getnewaddress(),10) for i in range(1000)]
+        [node.sendtobranchchain(self.sidechain_id, self.sidenodes[0].getnewaddress(), 10) for i in range(1000)]
         self.sync_all()
         node.generate(8)
         self.sync_all()
@@ -199,13 +197,31 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sidenodes[0].generate(1)
         self.sync_all([self.sidenodes])
         self.sync_all()
-        assert_equal(len(node.getrawmempool()),len(self.nodes[1].getrawmempool()))
+        assert_equal(len(node.getrawmempool()), len(self.nodes[1].getrawmempool()))
         assert_equal(len(self.sidenodes[0].getrawmempool()), len(self.sidenodes[1].getrawmempool()))
         assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
         assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
 
-
-
+        '''
+        todo: 
+        need to add lots of contract transactions to block,then sendtobranch
+        because contract's vin is dynamic
+        '''
+        for ct in (Contract(self.sidenodes[0], self.options.tmpdir) for i in range(1000)):
+            ct.call_payable(amount=2)
+            ct.call_callOtherContractTest(ct.contract_id, 'callOtherContractTest', ct.contract_id, "contractDataTest",
+                                          amount=0)
+        self.sync_all([self.sidenodes])
+        self.sidenodes[0].sendtobranchchain('main',node.getnewaddress(),self.sidenodes[0].getbalance() - 233)
+        self.sync_all([self.sidenodes])
+        self.sidenodes[0].generate(7)
+        self.sync_all([self.sidenodes])
+        assert_equal(len(self.sidenodes[0].getrawmempool()),0)
+        assert_equal(len(self.sidenodes[1].getrawmempool()), 0)
+        node.generate(2)
+        self.sidenodes[0].generate(7)
+        self.sync_all([self.sidenodes])
+        node.generate(8)
 
         # self.sync_all(self.sidenodes)
 

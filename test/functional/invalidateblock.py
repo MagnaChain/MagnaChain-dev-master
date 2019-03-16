@@ -89,5 +89,7 @@ class InvalidateTest(MagnaChainTestFramework):
         # Should be back at the tip by now
         assert_equal(self.nodes[1].getbestblockhash(), blocks[-1])
 
+        #todo: need to add lots of contract transactions to block,then invalidateblock
+
 if __name__ == '__main__':
     InvalidateTest().main()

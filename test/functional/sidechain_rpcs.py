@@ -287,6 +287,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.test_getbranchchainheight()
         self.snode0.rebroadcastchaintransaction(txid2)
         self.test_getbranchchainheight()
+        # todo: we need reconsiderblock previous tip
 
 
 

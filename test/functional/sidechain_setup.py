@@ -41,6 +41,7 @@ class SideChainSetupTest(MagnaChainTestFramework):
         self.sync_all([self.sidenodes])
         for n in self.sidenodes:
             n.generate(1)
+            self.sync_all([self.sidenodes])
 
 if __name__ == '__main__':
     SideChainSetupTest().main()
