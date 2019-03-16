@@ -1145,7 +1145,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     if (coin.IsSpent())
         throw JSONRPCError(RPC_WALLET_ERROR, "Coin is spent!");
     if (chainActive.Height() - coin.nHeight < REDEEM_SAFE_HEIGHT)// 挖矿币需要满足一定高度后才能赎回,给别人举报有时间窗口
-        throw JSONRPCError(RPC_INVALID_REQUEST, strprintf(std::string("Coin need %d confirmation"), REDEEM_SAFE_HEIGHT)));
+        throw JSONRPCError(RPC_INVALID_REQUEST, strprintf(std::string("Coin need %d confirmation"), REDEEM_SAFE_HEIGHT));
 
     uint256 fromtxid;
     MCKeyID keyid;
