@@ -694,7 +694,6 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         // Now that mi is not stale, determine which transaction to evaluate:
         // the next entry from mapTx, or the best from mapModifiedTx?
         bool fUsingModified = false;
-        bool mipp = false;
         modtxscoreiter modit = mapModifiedTx.get<ancestor_score>().begin();
         if (mi == mempool.mapTx.get<ancestor_score>().end()) {
             // We're out of entries in mapTx; use the entry from mapModifiedTx
@@ -716,28 +715,38 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
                 // Either no entry in mapModifiedTx, or it's worse than mapTx.
                 // Increment mi for the next loop iteration.
                 ++mi;
-                mipp = true;
             }
         }
 
+        // the SyncBranchInfo tx has two type ancestors and descendants: 1 coins relation. 2 branch block connect relation.
         // OP: can we move to ancestors?
         const MCTransactionRef& iterTx = iter->GetSharedTx();
         if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
             std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
+            bool hasAncestorFailed = false;
             for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
                 MCTxMemPool::txiter it = mempool.mapTx.find(*rit);
                 if (it == mempool.mapTx.end())
                     continue;//error
-                if (SkipMapTxEntry(it, mapModifiedTx, failedTx)) {
+                if (inBlock.count(it)) {// don't skip mapModifiedTx //original code SkipMapTxEntry(it, mapModifiedTx, failedTx)
                     continue;
                 }
-                iter = it;
-                if (fUsingModified){
-                    fUsingModified = mapModifiedTx.count(it);
+                if (failedTx.count(it)){// ancestors is fail, so cur
+                    hasAncestorFailed = true;
+                    break;// fail
                 }
-                else if (mipp)
-                    --mi;//back to pre-iterator
-                break;
+                if (!fUsingModified)
+                    --mi;
+                fUsingModified = mapModifiedTx.count(it);
+                iter = it;
+                break;// ok
+            }
+            if (hasAncestorFailed){
+                if (fUsingModified){
+                    mapModifiedTx.get<ancestor_score>().erase(modit);
+                    failedTx.insert(iter);
+                }
+                continue;
             }
         }
 
