@@ -70,7 +70,7 @@ class MagnaChainTestFramework(object):
         self.mocktime = 0
         # mapped，侧链对主链的映射，eg.[[0,1],[2,3]],表示侧链的0,1节点attach在主链的节点0；侧链2,3节点attach在主链的节点1
         self.mapped = []
-        self.mortgage_coins = [] #抵押币的txid，赎回抵押币时会用到
+        # self.mortgage_coins = [] #抵押币的txid，赎回抵押币时会用到
         self.set_test_params()
 
         assert hasattr(self, "num_nodes"), "Test must set self.num_nodes in set_test_params()"
@@ -294,7 +294,7 @@ class MagnaChainTestFramework(object):
             for j in range(10):
                 addr = self.sidenodes[i].getnewaddress()
                 txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
-                self.mortgage_coins.append(txid)
+                # self.mortgage_coins.append(txid)
             self.nodes[i].generate(10)
             self.sync_all()
             assert self.sidenodes[i].getmempoolinfo()['size'] > 0

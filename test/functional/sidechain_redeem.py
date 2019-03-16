@@ -5,6 +5,12 @@
 """
 测试：
 赎回挖矿币
+//赎回挖矿币, 步骤
+// 1).侧链提起赎回请求.(侧链先销毁挖矿币,防止继续挖矿)
+// 2).主链收到,创造新的交易,抵押币作为输入,赎回到正常地址,需要指定来自那个侧链请求
+// 如果是主链先发起请求的,而且是先拿回抵押币的话,可能侧链还在继续挖矿.
+// 这个交易和前面跨链交易不一样,原先"转到"侧链成为挖矿币的输入并没有销毁,可以作为转入s2时的输入.
+// 赎回挖矿币, 步骤1
 """
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
@@ -32,16 +38,15 @@ class RedeemMortgageTest(MagnaChainTestFramework):
 
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
-        self.num_nodes = 1  #todo should be 2 nodes
-        self.extra_args = [['-txindex']]
-        self.side_extra_args = [['-txindex']]
+        self.num_nodes = 2  #todo should be 2 nodes
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
         and the self.sidenodes like self.nodes
         '''
-        self.num_sidenodes = 1
-        # self.rpc_timewait = 900
+        self.num_sidenodes = 2
+        self.side_extra_args = [["-regtestrsheight=10"],["-regtestrsheight=10"]]
+        self.rpc_timewait = 900
 
     def run_test(self):
         """Main test logic"""
@@ -54,13 +59,33 @@ class RedeemMortgageTest(MagnaChainTestFramework):
             # for convenient
             setattr(self, 'snode' + str(i), node)
 
-        for i in range(1):
+        for i in range(self.num_nodes):
             self.sidenodes[i].generate(2)
-            # self.sync_all([self.sidenodes])
-            # print(self.node0.getrawmempool(True),self.node1.getrawmempool())
+            assert_equal(len(self.sidenodes[i].getrawmempool()),0)
+            self.sync_all([self.sidenodes])
             self.nodes[i].generate(2)
-            # print(self.node0.getrawmempool(), self.node1.getrawmempool(True))
-            # self.sync_all()  #放开注释，这里会主链的内存池会同步失败，因为branch block info duplicate
+            self.sync_all()
+            # // 赎回挖矿币, 步骤
+            # // 1).侧链提起赎回请求.(侧链先销毁挖矿币, 防止继续挖矿)
+            #       // 2).主链收到, 创造新的交易, 抵押币作为输入, 赎回到正常地址, 需要指定来自那个侧链请求
+            #             // 如果是主链先发起请求的, 而且是先拿回抵押币的话, 可能侧链还在继续挖矿.
+            #             // 这个交易和前面跨链交易不一样, 原先
+            # "转到"
+            # 侧链成为挖矿币的输入并没有销毁, 可以作为转入s2时的输入.
+            # // 赎回挖矿币, 步骤1
+
+        # 原来抵押的总额
+        origin_mortgage = 50000
+        start_balance = self.snode0.getbalance()
+        start_balance1 = self.snode1.getbalance()
+        mortgage_txs = self.snode0.listmortgagecoins()
+        assert_raises_rpc_error(-32600,'Coin need 10 confirmation',self.snode0.redeemmortgagecoinstatement,mortgage_txs[0]['txid'])
+        self.snode0.generate(7)  #使REDEEM_SAFE_HEIGHT满足
+        # 确认抵押交易的确认数正确,这里的所有确认数应该为4 + 7 = 11
+        assert all([ item['confirmations'] == 11 for item in mortgage_txs])
+        print(self.snode0.listmortgagecoins())
+        print(self.snode0.redeemmortgagecoinstatement(mortgage_txs[0]['txid']))
+
 
 if __name__ == '__main__':
     RedeemMortgageTest().main()

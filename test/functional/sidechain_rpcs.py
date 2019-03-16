@@ -9,6 +9,7 @@
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
 from decimal import Decimal
+import sys
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
@@ -32,15 +33,15 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
-        self.num_nodes = 1
-        self.extra_args = [['-txindex']]
-        self.side_extra_args = [['-txindex']]
+        self.num_nodes = 2
+        # self.extra_args = [['-txindex']]
+        # self.side_extra_args = [['-txindex']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
         and the self.sidenodes like self.nodes
         '''
-        self.num_sidenodes = 1
+        self.num_sidenodes = 2
         # self.rpc_timewait = 900
 
     def run_test(self):
@@ -54,13 +55,13 @@ class SendToBranchchainTest(MagnaChainTestFramework):
             # for convenient
             setattr(self, 'snode' + str(i), node)
 
-        for i in range(1):
+        for i in range(2):
             self.sidenodes[i].generate(2)
-            # self.sync_all([self.sidenodes])
-            # print(self.node0.getrawmempool(True),self.node1.getrawmempool())
+            self.sync_all([self.sidenodes])
+            print(self.node0.getrawmempool(True),self.node1.getrawmempool())
             self.nodes[i].generate(2)
-            # print(self.node0.getrawmempool(), self.node1.getrawmempool(True))
-            # self.sync_all()  #放开注释，这里会主链的内存池会同步失败，因为branch block info duplicate
+            print(self.node0.getrawmempool(), self.node1.getrawmempool(True))
+            self.sync_all()  #放开注释，这里会主链的内存池会同步失败，因为branch block info duplicate
 
         self.test_getblockchaininfo()
         self.test_getallbranchinfo()
@@ -75,23 +76,27 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.test_invalidateblock()
 
     def test_getblockchaininfo(self):
+        self.log.info(sys._getframe().f_code.co_name)
         ret = self.snode0.getblockchaininfo()
         assert_equal(ret['chain'], 'branch')
         assert_equal(ret['branchid'], self.sidechain_id)
 
     def test_getallbranchinfo(self):
+        self.log.info(sys._getframe().f_code.co_name)
         ret = self.node0.getallbranchinfo()[0]
         print(ret)
         assert_equal(ret['ismaturity'], True)
-        assert_equal(ret['confirmations'], 15)
+        assert_equal(ret['confirmations'], 29)
 
     def test_getbranchchainheight(self):
+        self.log.info(sys._getframe().f_code.co_name)
         ret = self.node0.getbranchchainheight(self.sidechain_id)
         print(ret)
         assert_equal(ret['height'], self.snode0.getblockcount())
         assert_equal(ret['blockhash'], self.snode0.getbestblockhash())
 
     def test_getbranchchaininfo(self):
+        self.log.info(sys._getframe().f_code.co_name)
         tmp = ret = self.node0.getallbranchinfo()[0]
         ret = self.node0.getbranchchaininfo(self.sidechain_id)
         print(ret)
@@ -100,6 +105,8 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(tmp['seedspec6'], ret['seedspec6'])
 
     def test_getbranchchaintransaction(self):
+        self.log.info(sys._getframe().f_code.co_name)
+        self.log.info(sys._getframe().f_code.co_name)
         txid = self.node0.getbranchchaininfo(self.sidechain_id)['txid']
         assert_raises_rpc_error(-25, "Invalid branch transaction.", self.node0.getbranchchaintransaction, txid)
         txid = self.snode0.sendtoaddress(self.snode0.getnewaddress(), 1)
@@ -121,6 +128,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(ret['confirmations'], 8)
 
     def test_makebranchtransaction(self):
+        self.log.info(sys._getframe().f_code.co_name)
         fake_hexdata = "718af6082213655da6910d7272afd1d87755c66b155729491d6f5cb79ddee612"
         assert_raises_rpc_error(-4, "DecodeHexTx tx hex fail.", self.node0.makebranchtransaction, fake_hexdata)
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(), 1)
@@ -155,6 +163,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                                 hex_data)
 
     def test_mortgageminebranch(self):
+        self.log.info(sys._getframe().f_code.co_name)
         ct = Contract(self.snode0, self.options.tmpdir)
         assert_raises_rpc_error(-25, 'Only in main chain can mortgage coin for mining branch!',
                                 self.snode0.mortgageminebranch, self.sidechain_id, 10000, self.snode0.getnewaddress())
@@ -165,6 +174,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
     def test_rebroadcastchaintransaction(self):
         # to sidechain
+        self.log.info(sys._getframe().f_code.co_name)
         self.snode0.generate(2)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(), 1)
@@ -207,6 +217,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         Resend branch chain block info by height
         :return:
         '''
+        self.log.info(sys._getframe().f_code.co_name)
         self.node0.generate(1)
         assert_equal(self.node0.getrawmempool(), [])
         assert_raises_rpc_error(-32603, 'Can not call this RPC in main chain', self.node0.resendbranchchainblockinfo,
@@ -228,6 +239,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         Include branch block data to a transaction, then send to main chain
         :return:
         '''
+        self.log.info(sys._getframe().f_code.co_name)
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(),1)
         tx_hex = self.node0.getrawtransaction(txid)
         assert_raises_rpc_error(-32602, 'Invalid transaction data',self.node0.submitbranchblockinfo,tx_hex)
@@ -244,6 +256,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         侧链某个区块被标记为失效时，再重新打包
         :return:
         '''
+        self.log.info(sys._getframe().f_code.co_name)
         self.snode0.generate(1)
         assert_equal(self.snode0.getrawmempool(),[])
         hash = self.snode0.getbestblockhash()
@@ -274,6 +287,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.test_getbranchchainheight()
         self.snode0.rebroadcastchaintransaction(txid2)
         self.test_getbranchchainheight()
+        # todo: we need reconsiderblock previous tip
 
 
 
