@@ -2160,7 +2160,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
     return ret;
 }
 
-// 解锁挖矿币
+// 
 UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 {
     if (gArgs.GetBoolArg("-disablewallet", false))
@@ -2204,9 +2204,9 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;// 举报交易txid
+    wtx.reporttxid = reporttxid;
     wtx.coinpreouthash = coinprevouthash;
-    wtx.provetxid = provetxid;//证明交易txid
+    wtx.provetxid = provetxid;
     wtx.isDataTransaction = true;
 
     bool fSubtractFeeFromAmount = false;
@@ -2242,7 +2242,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
     return ret;
 }
 
-//获取举报交易数据
+//
 UniValue getprovetxdata(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
