@@ -2326,7 +2326,7 @@ static const CRPCCommand commands[] =
     { "branchchain",        "reportcontractdata",          &reportcontractdata,        false,{ "reportedblockhash", "reportedtxid", "proveblockhash", "provetxid" } },
     { "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
     { "branchchain",        "reportbranchchainblockmerkle",&reportbranchchainblockmerkle, false, {"branchid","blockhash"},},
-    // 证明交易数据还需要修改和完善
+    // prove relate
     { "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
     { "branchchain",        "sendmerkleprovetomain",     &sendmerkleprovetomain,       false, {"blockhash"}},
     { "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},
