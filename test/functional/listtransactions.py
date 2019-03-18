@@ -7,6 +7,7 @@
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.mininode import CTransaction, COIN
+from test_framework.contract import Contract
 from io import BytesIO
 
 def txFromHex(hexstring):
@@ -104,19 +105,15 @@ class ListTransactionsTest(MagnaChainTestFramework):
 
         # add contract test
         print( self.nodes[0].getbalance())
-        contract = generate_contract(self.options.tmpdir)
-        result = self.nodes[0].publishcontract(contract)
-        txid, contract_id = result["txid"],result["contractaddress"]
+        co = Contract(self.nodes[0],self.options.tmpdir)
+        txid, contract_id = co.publish_txid,co.contract_id
+        co.call_payable()
         self.sync_all()
         array0 = [o for i, o in enumerate(self.nodes[0].listtransactions()) if o["txid"] == txid]
-        array1 = [o for i, o in enumerate(self.nodes[1].listtransactions()) if o["txid"] == txid]
-        assert  array0 != [] and array1 != []
-        # assert_array_result(array0,
-        #                    {"txid":txid},
-        #                    {"category":"send","account":"","amount":Decimal("-10"),"confirmations":0})
-        # assert_array_result(array1,
-        #                    {"txid":txid},
-        #                    {"category":"send","account":"","amount":Decimal("-10"),"confirmatio
+        assert  array0 != []
+        txid = co.call_sendCoinTest(self.nodes[1].getnewaddress(), 1)['txid']
+        self.sync_all()
+        assert [o for i, o in enumerate(self.nodes[1].listtransactions()) if o["txid"] == txid]  != []
 
 
     # Check that the opt-in-rbf flag works properly, for sent and received

@@ -21,13 +21,13 @@ from .authproxy import AuthServiceProxy, JSONRPCException
 
 logger = logging.getLogger("TestFramework.utils")
 
+
 # Assert functions
 ##################
 
-def assert_contains(string,sub_string):
+def assert_contains(string, sub_string):
     if sub_string not in string:
-        raise AssertionError("(%s) not in (%s)" %(sub_string,string))
-
+        raise AssertionError("(%s) not in (%s)" % (sub_string, string))
 
 
 def assert_fee_amount(fee, tx_size, fee_per_kB):
@@ -39,20 +39,25 @@ def assert_fee_amount(fee, tx_size, fee_per_kB):
     if fee > (tx_size + 2) * fee_per_kB / 1000:
         raise AssertionError("Fee of %s MGC too high! (Should be %s MGC)" % (str(fee), str(target_fee)))
 
+
 def assert_equal(thing1, thing2, *args):
     if thing1 != thing2 or any(thing1 != arg for arg in args):
         raise AssertionError("not(%s)" % " == ".join(str(arg) for arg in (thing1, thing2) + args))
+
 
 def assert_greater_than(thing1, thing2):
     if thing1 <= thing2:
         raise AssertionError("%s <= %s" % (str(thing1), str(thing2)))
 
+
 def assert_greater_than_or_equal(thing1, thing2):
     if thing1 < thing2:
         raise AssertionError("%s < %s" % (str(thing1), str(thing2)))
 
+
 def assert_raises(exc, fun, *args, **kwds):
     assert_raises_message(exc, None, fun, *args, **kwds)
+
 
 def assert_raises_message(exc, message, fun, *args, **kwds):
     try:
@@ -66,6 +71,7 @@ def assert_raises_message(exc, message, fun, *args, **kwds):
         raise AssertionError("Unexpected exception raised: " + type(e).__name__)
     else:
         raise AssertionError("No exception raised")
+
 
 def assert_raises_process_error(returncode, output, fun, *args, **kwds):
     """Execute a process and asserts the process return code and output.
@@ -91,6 +97,7 @@ def assert_raises_process_error(returncode, output, fun, *args, **kwds):
     else:
         raise AssertionError("No exception raised")
 
+
 def assert_raises_rpc_error(code, message, fun, *args, **kwds):
     """Run an RPC and verify that a specific JSONRPC exception code and message is raised.
 
@@ -108,6 +115,7 @@ def assert_raises_rpc_error(code, message, fun, *args, **kwds):
         kwds**: named arguments for the function.
     """
     assert try_rpc(code, message, fun, *args, **kwds), "No exception raised"
+
 
 def try_rpc(code, message, fun, *args, **kwds):
     """Tries to run an rpc command.
@@ -128,12 +136,14 @@ def try_rpc(code, message, fun, *args, **kwds):
     else:
         return False
 
+
 def assert_is_hex_string(string):
     try:
         int(string, 16)
     except Exception as e:
         raise AssertionError(
             "Couldn't interpret %r as hexadecimal; raised: %s" % (string, e))
+
 
 def assert_is_hash_string(string, length=64):
     if not isinstance(string, str):
@@ -144,6 +154,7 @@ def assert_is_hash_string(string, length=64):
     elif not re.match('[abcdef0-9]+$', string):
         raise AssertionError(
             "String %r contains invalid characters for a hash." % string)
+
 
 def assert_array_result(object_array, to_match, expected, should_not_find=False):
     """
@@ -174,6 +185,7 @@ def assert_array_result(object_array, to_match, expected, should_not_find=False)
     if num_matched > 0 and should_not_find:
         raise AssertionError("Objects were found %s" % (str(to_match)))
 
+
 # Utility functions
 ###################
 
@@ -184,11 +196,14 @@ def check_json_precision():
     if satoshis != 2000000000000003:
         raise RuntimeError("JSON encode/decode loses precision")
 
+
 def count_bytes(hex_string):
     return len(bytearray.fromhex(hex_string))
 
+
 def bytes_to_hex_str(byte_str):
     return hexlify(byte_str).decode('ascii')
+
 
 def hash256(byte_str):
     sha256 = hashlib.sha256()
@@ -197,14 +212,18 @@ def hash256(byte_str):
     sha256d.update(sha256.digest())
     return sha256d.digest()[::-1]
 
+
 def hex_str_to_bytes(hex_str):
     return unhexlify(hex_str.encode('ascii'))
+
 
 def str_to_b64str(string):
     return b64encode(string.encode('utf-8')).decode('ascii')
 
+
 def satoshi_round(amount):
     return Decimal(amount).quantize(Decimal('0.00000001'), rounding=ROUND_DOWN)
+
 
 def wait_until(predicate, *, attempts=float('inf'), timeout=float('inf'), lock=None):
     if attempts == float('inf') and timeout == float('inf'):
@@ -228,6 +247,7 @@ def wait_until(predicate, *, attempts=float('inf'), timeout=float('inf'), lock=N
     assert_greater_than(timeout, time.time())
     raise RuntimeError('Unreachable')
 
+
 # RPC/P2P connection constants and functions
 ############################################
 
@@ -238,9 +258,11 @@ PORT_MIN = 11000
 # The number of ports to "reserve" for p2p and rpc, each
 PORT_RANGE = 5000
 
+
 class PortSeed:
     # Must be initialized with a unique integer for each process
     n = None
+
 
 def get_rpc_proxy(url, node_number, timeout=None, coveragedir=None):
     """
@@ -267,12 +289,15 @@ def get_rpc_proxy(url, node_number, timeout=None, coveragedir=None):
 
     return coverage.AuthServiceProxyWrapper(proxy, coverage_logfile)
 
+
 def p2p_port(n):
-    assert(n <= MAX_NODES)
+    assert (n <= MAX_NODES)
     return PORT_MIN + n + (MAX_NODES * PortSeed.n) % (PORT_RANGE - 1 - MAX_NODES)
+
 
 def rpc_port(n):
     return PORT_MIN + PORT_RANGE + n + (MAX_NODES * PortSeed.n) % (PORT_RANGE - 1 - MAX_NODES)
+
 
 def rpc_url(datadir, i, rpchost=None):
     rpc_u, rpc_p = get_auth_cookie(datadir)
@@ -286,22 +311,32 @@ def rpc_url(datadir, i, rpchost=None):
             host = rpchost
     return "http://%s:%s@%s:%d" % (rpc_u, rpc_p, host, int(port))
 
+
 # Node functions
 ################
 
-def initialize_datadir(dirname, n):
-    datadir = os.path.join(dirname, "node" + str(n))
+def initialize_datadir(dirname, n, sidechain_id=None, mainport=None,main_datadir = None):
+    pn = n if not sidechain_id else n + 3
+    datadir = os.path.join(dirname, ("sidenode" if sidechain_id else "node") + str(n))
     if not os.path.isdir(datadir):
         os.makedirs(datadir)
     with open(os.path.join(datadir, "magnachain.conf"), 'w', encoding='utf8') as f:
         f.write("regtest=1\n")
-        f.write("port=" + str(p2p_port(n)) + "\n")
-        f.write("rpcport=" + str(rpc_port(n)) + "\n")
+        f.write("port=" + str(p2p_port(pn)) + "\n")
+        f.write("rpcport=" + str(rpc_port(pn)) + "\n")
+        # print(str(p2p_port(pn)),str(rpc_port(pn)))
         f.write("listenonion=0\n")
+        if sidechain_id:
+            f.write("branchid={}\n".format(sidechain_id))
+            f.write("vseeds=main.test.domain.name\n")
+            f.write("seedspec6=00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8833\n")
+            f.write('mainchaincfg={"ip":"127.0.0.1","port":%s,"datadir":"%s"}' % (mainport,main_datadir))
     return datadir
+
 
 def get_datadir_path(dirname, n):
     return os.path.join(dirname, "node" + str(n))
+
 
 def get_auth_cookie(datadir):
     user = None
@@ -315,26 +350,37 @@ def get_auth_cookie(datadir):
                 if line.startswith("rpcpassword="):
                     assert password is None  # Ensure that there is only one rpcpassword line
                     password = line.split("=")[1].strip("\n")
-    if os.path.isfile(os.path.join(datadir, "regtest", ".cookie")):
-        with open(os.path.join(datadir, "regtest", ".cookie"), 'r') as f:
-            userpass = f.read()
-            split_userpass = userpass.split(':')
-            user = split_userpass[0]
-            password = split_userpass[1]
+        if os.path.isfile(os.path.join(datadir, "regtest", ".cookie")):
+            with open(os.path.join(datadir, "regtest", ".cookie"), 'r') as f:
+                userpass = f.read()
+                split_userpass = userpass.split(':')
+                user = split_userpass[0]
+                password = split_userpass[1]
+        else:
+            if os.path.isfile(os.path.join(datadir,".cookie")):
+                with open(os.path.join(datadir, ".cookie"), 'r') as f:
+                    userpass = f.read()
+                    split_userpass = userpass.split(':')
+                    user = split_userpass[0]
+                    password = split_userpass[1]
     if user is None or password is None:
         raise ValueError("No RPC credentials")
     return user, password
 
+
 def log_filename(dirname, n_node, logname):
     return os.path.join(dirname, "node" + str(n_node), "regtest", logname)
+
 
 def get_bip9_status(node, key):
     info = node.getblockchaininfo()
     return info['bip9_softforks'][key]
 
+
 def set_node_times(nodes, t):
     for node in nodes:
         node.setmocktime(t)
+
 
 def disconnect_nodes(from_connection, node_num):
     for peer_id in [peer['id'] for peer in from_connection.getpeerinfo() if "testnode%d" % node_num in peer['subver']]:
@@ -347,7 +393,10 @@ def disconnect_nodes(from_connection, node_num):
     else:
         raise AssertionError("timed out waiting for disconnect")
 
-def connect_nodes(from_connection, node_num):
+
+def  connect_nodes(from_connection, node_num,sidechain = False):
+    if sidechain:
+        node_num += 3
     ip_port = "127.0.0.1:" + str(p2p_port(node_num))
     from_connection.addnode(ip_port, "onetry")
     # poll until version handshake complete to avoid race conditions
@@ -355,9 +404,11 @@ def connect_nodes(from_connection, node_num):
     while any(peer['version'] == 0 for peer in from_connection.getpeerinfo()):
         time.sleep(0.1)
 
-def connect_nodes_bi(nodes, a, b):
-    connect_nodes(nodes[a], b)
-    connect_nodes(nodes[b], a)
+
+def connect_nodes_bi(nodes, a, b,sidechain = False):
+    connect_nodes(nodes[a], b,sidechain = sidechain)
+    connect_nodes(nodes[b], a,sidechain = sidechain)
+
 
 def sync_blocks(rpc_connections, *, wait=1, timeout=60, logger=None):
     """
@@ -381,10 +432,11 @@ def sync_blocks(rpc_connections, *, wait=1, timeout=60, logger=None):
             if all(t["hash"] == tips[0]["hash"] for t in tips):
                 return
             raise AssertionError("Block sync failed, mismatched block hashes:{}".format(
-                                 "".join("\n  {!r}".format(tip) for tip in tips)))
+                "".join("\n  {!r}".format(tip) for tip in tips)))
         cur_time = time.time()
     raise AssertionError("Block sync to height {} timed out:{}".format(
-                         maxheight, "".join("\n  {!r}".format(tip) for tip in tips)))
+        maxheight, "".join("\n  {!r}".format(tip) for tip in tips)))
+
 
 def sync_chain(rpc_connections, *, wait=1, timeout=60):
     """
@@ -397,6 +449,7 @@ def sync_chain(rpc_connections, *, wait=1, timeout=60):
         time.sleep(wait)
         timeout -= wait
     raise AssertionError("Chain sync failed: Best block hashes don't match")
+
 
 def sync_mempools(rpc_connections, *, wait=1, timeout=60):
     """
@@ -415,6 +468,7 @@ def sync_mempools(rpc_connections, *, wait=1, timeout=60):
         timeout -= wait
     raise AssertionError("Mempool sync failed")
 
+
 # Transaction/Block functions
 #############################
 
@@ -429,11 +483,12 @@ def find_output(node, txid, amount):
             return i
     raise RuntimeError("find_output txid %s : %s not found" % (txid, str(amount)))
 
+
 def gather_inputs(from_node, amount_needed, confirmations_required=1):
     """
     Return a random set of unspent txouts that are enough to pay amount_needed
     """
-    assert(confirmations_required >= 0)
+    assert (confirmations_required >= 0)
     utxo = from_node.listunspent(confirmations_required)
     random.shuffle(utxo)
     inputs = []
@@ -445,6 +500,7 @@ def gather_inputs(from_node, amount_needed, confirmations_required=1):
     if total_in < amount_needed:
         raise RuntimeError("Insufficient funds: need %d, have %d" % (amount_needed, total_in))
     return (total_in, inputs)
+
 
 def make_change(from_node, amount_in, amount_out, fee):
     """
@@ -462,6 +518,7 @@ def make_change(from_node, amount_in, amount_out, fee):
     if change > 0:
         outputs[from_node.getnewaddress()] = change
     return outputs
+
 
 def random_transaction(nodes, amount, min_fee, fee_increment, fee_variants):
     """
@@ -481,6 +538,7 @@ def random_transaction(nodes, amount, min_fee, fee_increment, fee_variants):
     txid = from_node.sendrawtransaction(signresult["hex"], True)
 
     return (txid, signresult["hex"], fee)
+
 
 # Helper to create at least "count" utxos
 # Pass in a fee that is sufficient for relay and mining new transactions.
@@ -512,8 +570,9 @@ def create_confirmed_utxos(fee, node, count):
         node.generate(1)
 
     utxos = node.listunspent()
-    assert(len(utxos) >= count)
+    assert (len(utxos) >= count)
     return utxos
+
 
 # Create large OP_RETURN txouts that can be appended to a transaction
 # to make it large (helper for constructing large transactions).
@@ -535,6 +594,7 @@ def gen_return_txouts():
         txouts = txouts + script_pubkey
     return txouts
 
+
 def create_tx(node, coinbase, to_address, amount):
     inputs = [{"txid": coinbase, "vout": 0}]
     outputs = {to_address: amount}
@@ -542,6 +602,7 @@ def create_tx(node, coinbase, to_address, amount):
     signresult = node.signrawtransaction(rawtx)
     assert_equal(signresult["complete"], True)
     return signresult["hex"]
+
 
 # Create a spend of each passed-in utxo, splicing in "txouts" to each raw
 # transaction to make it large.  See gen_return_txouts() above.
@@ -563,6 +624,7 @@ def create_lots_of_big_transactions(node, txouts, utxos, num, fee):
         txids.append(txid)
     return txids
 
+
 def mine_large_block(node, utxos=None):
     # generate a 66k transaction,
     # and 14 of them is close to the 1MB block limit
@@ -576,7 +638,8 @@ def mine_large_block(node, utxos=None):
     create_lots_of_big_transactions(node, txouts, utxos, num, fee=fee)
     node.generate(1)
 
-def mine_large_block_with_mocktime(node, utxos=None,mocktime = None):
+
+def mine_large_block_with_mocktime(node, utxos=None, mocktime=None):
     # generate a 66k transaction,
     # and 14 of them is close to the 1MB block limit
     num = 14
@@ -587,10 +650,9 @@ def mine_large_block_with_mocktime(node, utxos=None,mocktime = None):
         utxos.extend(node.listunspent())
     fee = 100 * node.getnetworkinfo()["relayfee"]
     create_lots_of_big_transactions(node, txouts, utxos, num, fee=fee)
-    print("mocktime:",mocktime)
+    print("mocktime:", mocktime)
     node.setmocktime(mocktime)
     node.generate(1)
-
 
 
 ###############################
@@ -647,9 +709,9 @@ def generate_contract(folder, err_type=None):
         end
         
         local function _call(addr,f,...)
-            say("call:",addr,f,...)
+            --say("call:",addr,f,...)
             --showMsg()
-            say(callcontract(addr,f,...))
+            callcontract(addr,f,...)
         end
 
         function mainTest()
@@ -683,7 +745,7 @@ def generate_contract(folder, err_type=None):
         end
 
         function callOtherContractTest(addr,func,...)
-            say("beCall by ",senderType , ",address is " , msg.sender )
+            --say("beCall by ",senderType , ",address is " , msg.sender )
             --addr = msg.thisaddress
             _call(addr,func,...)
             sendCoinTest(msg.origin,10)
@@ -711,6 +773,11 @@ def generate_contract(folder, err_type=None):
             --say("send ret:",ret)
         end
 
+        function sendCoinTest2( to )
+            -- body
+            ret = send(to,100000)
+        end
+        
         function dustChangeTest(to)
             -- body
             --dust to this contract
@@ -746,10 +813,10 @@ def generate_contract(folder, err_type=None):
 
         glob = 10
         function setGlob(val)
-            say('before set:',glob)
+            --say('before set:',glob)
             glob = val
             PersistentData.decimals = val
-            say('after set:',glob)
+            --say('after set:',glob)
         end
 
         function maxContractCallTest(inum)
@@ -763,6 +830,9 @@ def generate_contract(folder, err_type=None):
             -- body
             _call(msg.thisaddress,'updateContract','this','')
             _call(msg.thisaddress,'cycleSelf')
+            _call(msg.thisaddress,'updateContract','this','')
+            _call(msg.thisaddress,'cycleSelf')
+            
         end
 
         function rpcSendTest()
@@ -770,9 +840,53 @@ def generate_contract(folder, err_type=None):
             _call(msg.thisaddress,'send',msg.sender,10)
         end
 
+        function doubleSpendTest(to)
+            -- body
+            t={a=1121212,c=121212,b=3,d=4,e=5,f=6,g=7,h=8,i=9,a0 = 12,243546,565,6,6,}
+            last = -1
+            for i=1,10 do
+                j = 0
+                for k,v in pairs(t) do
+                    if k == 'b' then
+                        if last ~= -1 and last ~= j then
+                            --may be doubleSpend here
+                            if j % 2 == 0 then
+                                send(to,1 * cell)
+                            else
+                                send(msg.sender,1 * cell)
+                            end
+                            last = j
+                        end
+                        if last == -1 then
+                            last = j
+                        end
+                    end
+                    j = j + 1
+                end
+                index = {1,2,3}
+                t[tostring(i)] = index
+                table.insert(t,i)
+            end
+        end
 
+        function cmsgpackTest( ... )
+            -- body
+            PersistentData["this"] = PersistentData
+            PersistentData["this1"] = PersistentData
+            PersistentData["this2"] = PersistentData
+        end        
+        
+        function reorgTest(to,to1)
+            if msg.timestamp % 2 == 0 then
+                --say('to A',to)
+                send(to,1 * cell)
+            else
+                --say('to B',to1)
+                send(to1,1 * cell)
+            end
+        end
+        
         function init()
-            --loop(3)
             mainTest()
             PersistentData = {}
             PersistentData.name = "RMB"
@@ -795,7 +909,9 @@ def generate_contract(folder, err_type=None):
                     say(k,v)
                 end
             end
-
+            if longReturnTest then
+                return longReturnTest()
+            end
         end
 
 
@@ -820,7 +936,7 @@ def generate_contract(folder, err_type=None):
         function cycleSelf()
             -- body
             --PersistentData["this"] = PersistentData
-            PersistentData["this"] = PersistentData
+            PersistentData["this"] = {1,2,3,4,5,6,asd = {name = 'weigun',age = 18,7,8,9,infos={{1},{2},k = {n=true}}}}
         end
         
         function setUpHook()
@@ -831,7 +947,7 @@ def generate_contract(folder, err_type=None):
         function setNil( ... )
             -- body
             PersistentData = nil
-        end
+        end  
     '''
     if err_type == "syntax_err":
         code += 'syntax_err'
@@ -839,12 +955,21 @@ def generate_contract(folder, err_type=None):
         code += "local a = [==[\n" + "a" * (int(2147483647 / 30)) + "\n]==]"
     elif err_type == "trim_code":
         code += "--1" * 10
+    elif err_type == "long_string_return":
+        add_code = "function longReturnTest() return \"{}\" end\n".format('long long long ago ' * 2500)
+        # add_code = "function longReturnTest() return {}1 end\n".format('{}' * 254)
+        # vals = ["'a',"]
+        # vals.extend(vals * 254)
+        # add_code = add_code.format(*vals)
+        # add_code = "function longReturnTest() return {} '1' end\n".format("'string'," * 248)
+        code += add_code
     file_path = os.path.join(folder, "contract.lua")
     with open(file_path, "w") as fh:
         fh.write(code)
     return file_path
 
-def caller_factory(mgr,contract_id,sender):
+
+def caller_factory(mgr, contract_id, sender):
     '''
 
     :param mgr: the test_framework obj
@@ -856,12 +981,13 @@ def caller_factory(mgr,contract_id,sender):
     contract_id = contract_id
     sender = sender
 
-    def _call_contract(func,*args,amount = random.randint(1, 10000),throw_exception = False):
-        mgr.log.info("%s,%s,%s,%s,%s"%(contract_id,func,sender,amount,args))
+    def _call_contract(func, *args, amount=random.randint(1, 10000), throw_exception=False):
+        mgr.log.info("%s,%s,%s,%s,%s" % (contract_id, func, sender, amount, args))
         balance = node.getbalance()
         try:
-            result = node.callcontract(True, amount, contract_id, sender, func,*args)
-            mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s"%(balance,node.getbalance(),amount,balance - node.getbalance() - amount))
+            result = node.callcontract(True, amount, contract_id, sender, func, *args)
+            mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s" % (
+            balance, node.getbalance(), amount, balance - node.getbalance() - amount))
             return result
         except Exception as e:
             if throw_exception:
@@ -869,10 +995,11 @@ def caller_factory(mgr,contract_id,sender):
             print(e)
             assert all(re.findall('-\d\)$', repr(e)))
             return repr(e)
+
     return _call_contract
 
 
-def gen_lots_of_contracts(node,contract,num = 500):
+def gen_lots_of_contracts(node, contract, num=500):
     """
     发布很多合约交易，用于构造需要大量合约交易的情况
     返回{txid:xxxxx,address:xxx}集合
@@ -883,6 +1010,5 @@ def gen_lots_of_contracts(node,contract,num = 500):
     infos = []
     for i in range(num):
         result = node.publishcontract(contract)
-        infos.append({'txid': result['txid'],'address' : result['contractaddress']})
+        infos.append({'txid': result['txid'], 'address': result['contractaddress']})
     return infos
-

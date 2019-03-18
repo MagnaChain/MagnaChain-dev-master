@@ -19,15 +19,20 @@ class ReindexTest(MagnaChainTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 1
 
-    def reindex(self, justchainstate=False,with_contract = False):
+    def reindex(self, justchainstate=False,with_contract = False,with_sendcoin = False):
         self.nodes[0].generate(3)
 
         if with_contract:
             # make some contract transactions
             cid = self.nodes[0].publishcontract(generate_contract(self.options.tmpdir))['contractaddress']
-            self.nodes[0].callcontract(True, 10, cid, self.nodes[0].getnewaddress(), 'payable')
+            self.nodes[0].callcontract(True, 100, cid, self.nodes[0].getnewaddress(), 'payable')
             for i in range(10):
-                self.nodes[0].callcontract(True,0,cid,self.nodes[0].getnewaddress(),'dustChangeTest',self.nodes[0].getnewaddress())
+                if not with_sendcoin:
+                    # first it works!
+                    self.nodes[0].callcontract(True, 10, cid, self.nodes[0].getnewaddress(), 'payable')
+                else:
+                    # next it failed!
+                    self.nodes[0].callcontract(True,0,cid,self.nodes[0].getnewaddress(),'sendCoinTest',self.nodes[0].getnewaddress(),1)
         self.nodes[0].sendtoaddress(self.nodes[0].getnewaddress(),1)
         self.nodes[0].generate(2)
 
@@ -45,15 +50,23 @@ class ReindexTest(MagnaChainTestFramework):
         self.log.info("Success")
 
     def run_test(self):
+        self.log.info("without contract test")
         self.reindex(False)
         self.reindex(True)
         self.reindex(False)
         self.reindex(True)
 
+        self.log.info("with contract,but without sendcoin test")
         self.reindex(False,with_contract = True)
         self.reindex(True,with_contract = True)
         self.reindex(False,with_contract = True)
         self.reindex(True,with_contract = True)
+
+        self.log.info("with contract, with sendcoin test")
+        self.reindex(False,with_contract = True,with_sendcoin = True)
+        self.reindex(True,with_contract = True,with_sendcoin = True)
+        self.reindex(False,with_contract = True,with_sendcoin = True)
+        self.reindex(True,with_contract = True,with_sendcoin = True)
 
 if __name__ == '__main__':
     ReindexTest().main()

@@ -161,11 +161,67 @@ void ScriptPubKeyToUniv(const MCScript& scriptPubKey,
     out.pushKV("addresses", a);
 }
 
+// desc transaction functional
+void TxVersionToString(const int32_t nVersion, UniValue& entry)
+{
+    switch (nVersion)
+    {
+    case MCTransaction::PUBLISH_CONTRACT_VERSION:
+        entry.pushKV("versionType", "publishContract");
+        break;
+    case MCTransaction::CALL_CONTRACT_VERSION:
+        entry.pushKV("versionType", "callContract");
+        break;
+    case MCTransaction::CREATE_BRANCH_VERSION:
+        entry.pushKV("versionType", "createBranch");
+        break;
+    case MCTransaction::TRANS_BRANCH_VERSION_S1:
+        entry.pushKV("versionType", "transBranchStep1");
+        break;
+    case MCTransaction::TRANS_BRANCH_VERSION_S2:
+        entry.pushKV("versionType", "transBranchStep2");
+        break;
+    case MCTransaction::MINE_BRANCH_MORTGAGE:
+        entry.pushKV("versionType", "mineBranchMortgage");
+        break;
+    case MCTransaction::SYNC_BRANCH_INFO:
+        entry.pushKV("versionType", "syncBranchInfo");
+        break;
+    case MCTransaction::REPORT_CHEAT:
+        entry.pushKV("versionType", "reportCheat");
+        break;
+    case MCTransaction::PROVE:
+        entry.pushKV("versionType", "prove");
+        break;
+    case MCTransaction::REDEEM_MORTGAGE_STATEMENT:
+        entry.pushKV("versionType", "redeemMortgageStatement");
+        break;
+    case MCTransaction::REDEEM_MORTGAGE:
+        entry.pushKV("versionType", "redeemMortgage");
+        break;
+    case MCTransaction::STAKE:
+        entry.pushKV("versionType", "stake");
+        break;
+    case MCTransaction::REPORT_REWARD:
+        entry.pushKV("versionType", "reportReward");
+        break;
+    case MCTransaction::LOCK_MORTGAGE_MINE_COIN:
+        entry.pushKV("versionType", "lockMortgageMineCoin");
+        break;
+    case MCTransaction::UNLOCK_MORTGAGE_MINE_COIN:
+        entry.pushKV("versionType", "unlockMortgageMineCoin");
+        break;
+    default:
+        break;
+    }
+}
+
 void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry, bool include_hex, int serialize_flags)
 {
     entry.pushKV("txid", tx.GetHash().GetHex());
     entry.pushKV("hash", tx.GetWitnessHash().GetHex());
     entry.pushKV("version", tx.nVersion);
+    TxVersionToString(tx.nVersion, entry);
     entry.pushKV("size", (int)::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION));
     entry.pushKV("vsize", (GetTransactionWeight(tx) + WITNESS_SCALE_FACTOR - 1) / WITNESS_SCALE_FACTOR);
     entry.pushKV("locktime", (int64_t)tx.nLockTime);
@@ -251,6 +307,13 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
 	//	entry.pushKV("fromTx", tx.fromTx);
 		entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
 	}
+    if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO){
+        entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());
+        entry.pushKV("branchblockheight", tx.pBranchBlockData->blockHeight);
+        MCBlockHeader block;
+        tx.pBranchBlockData->GetBlockHeader(block);
+        entry.pushKV("branchblockhash", block.GetHash().GetHex());
+    }
 
     if (include_hex) {
         entry.pushKV("hex", EncodeHexTx(tx, serialize_flags)); // the hex-encoded transaction. used the name "hex" to be consistent with the verbose output of "getrawtransaction".

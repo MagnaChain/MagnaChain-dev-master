@@ -314,6 +314,21 @@ bool UniValue::get_bool() const
     return getBool();
 }
 
+bool UniValue::get_any_bool() const
+{
+    if (isBool())
+        return get_bool();
+    if (isStr()){
+        const std::string& str = get_str();
+        return str == "1" || str == "true";
+    }
+    if (isNum()){
+        int n = get_int();
+        return n != 0;
+    }
+    return false;
+}
+
 const std::string& UniValue::get_str() const
 {
     if (typ != VSTR)

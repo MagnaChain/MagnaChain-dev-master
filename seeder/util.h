@@ -103,4 +103,5 @@ std::string DecodeBase32(const std::string& str);
 std::string EncodeBase32(const unsigned char* pch, size_t len);
 std::string EncodeBase32(const std::string& str);
 
+void RenameThread(const char* name);
 #endif

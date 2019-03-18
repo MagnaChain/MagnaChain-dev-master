@@ -69,7 +69,6 @@ class ContractPublishTest(MagnaChainTestFramework):
             assert 'expected near' in repr(e)
 
         # 超大合约
-        # 当前会crash，先skip bigfile
         contract = generate_contract(self.options.tmpdir,err_type = "bigfile") # should be bigfile
         try:
             result = node.publishcontract(contract)
@@ -170,7 +169,7 @@ class ContractPublishTest(MagnaChainTestFramework):
         node.walletpassphrase("test", 1)
         time.sleep(2) # wait for timeout
         assert_raises_rpc_error(-13,'Please enter the wallet passphrase with walletpassphrase first',node.publishcontract,contract)
-        node.walletpassphrase("test", 100)
+        node.walletpassphrase("test", 300)
         payfee = node.getinfo()['paytxfee']
         relayfee = node.getinfo()['relayfee']
         txid = node.publishcontract(contract)['txid']

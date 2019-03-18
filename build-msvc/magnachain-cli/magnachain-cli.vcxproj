@@ -94,8 +94,9 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/../src;$(SolutionDir)/../src/univalue/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -110,7 +111,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -128,7 +129,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -148,7 +149,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NOMINMAX;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;HAVE_CONFIG_H;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)/src;$(SolutionDir)/src/config;$(SolutionDir)/src/univalue/include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)../src;$(SolutionDir)../src/config/msvc;$(SolutionDir)../src/univalue/include</AdditionalIncludeDirectories>
       <TreatSpecificWarningsAsErrors>4717</TreatSpecificWarningsAsErrors>
     </ClCompile>
     <Link>
@@ -215,8 +216,6 @@
     <Import Project="..\packages\boost-vc140.1.63.0.0\build\native\boost-vc140.targets" Condition="Exists('..\packages\boost-vc140.1.63.0.0\build\native\boost-vc140.targets')" />
     <Import Project="..\packages\leveldb-vc140.1.16.0.5\build\native\leveldb-vc140.targets" Condition="Exists('..\packages\leveldb-vc140.1.16.0.5\build\native\leveldb-vc140.targets')" />
     <Import Project="..\packages\libevent2-vc140.2.1.8\build\native\libevent2-vc140.targets" Condition="Exists('..\packages\libevent2-vc140.2.1.8\build\native\libevent2-vc140.targets')" />
-    <Import Project="..\packages\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.targets" Condition="Exists('..\packages\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.targets')" />
-    <Import Project="..\packages\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.targets" Condition="Exists('..\packages\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.targets')" />
     <Import Project="..\packages\miniupnpc-vc140.2.0.0.1\build\native\miniupnpc-vc140.targets" Condition="Exists('..\packages\miniupnpc-vc140.2.0.0.1\build\native\miniupnpc-vc140.targets')" />
     <Import Project="..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets" Condition="Exists('..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets')" />
     <Import Project="..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets" Condition="Exists('..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets')" />
@@ -267,8 +266,6 @@
     <Error Condition="!Exists('..\packages\boost-vc140.1.63.0.0\build\native\boost-vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\boost-vc140.1.63.0.0\build\native\boost-vc140.targets'))" />
     <Error Condition="!Exists('..\packages\leveldb-vc140.1.16.0.5\build\native\leveldb-vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\leveldb-vc140.1.16.0.5\build\native\leveldb-vc140.targets'))" />
     <Error Condition="!Exists('..\packages\libevent2-vc140.2.1.8\build\native\libevent2-vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\libevent2-vc140.2.1.8\build\native\libevent2-vc140.targets'))" />
-    <Error Condition="!Exists('..\packages\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v120.windesktop.msvcstl.dyn.rt-dyn.targets'))" />
-    <Error Condition="!Exists('..\packages\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.1.2.8.8\build\native\zlib.v140.windesktop.msvcstl.dyn.rt-dyn.targets'))" />
     <Error Condition="!Exists('..\packages\miniupnpc-vc140.2.0.0.1\build\native\miniupnpc-vc140.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\miniupnpc-vc140.2.0.0.1\build\native\miniupnpc-vc140.targets'))" />
     <Error Condition="!Exists('..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\openssl-vc141.1.1.0\build\native\openssl-vc141.targets'))" />
     <Error Condition="!Exists('..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\secp256k1-vc141.0.1.0.15\build\native\secp256k1-vc141.targets'))" />

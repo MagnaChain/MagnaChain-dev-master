@@ -15,8 +15,7 @@ Major test call smart contract
 # libraries then local imports).
 from collections import defaultdict
 import random
-import re
-from functools import wraps
+import  time
 from decimal import Decimal
 
 # Avoid wildcard * imports if possible
@@ -31,6 +30,7 @@ from test_framework.util import (
     sync_mempools,
     sync_blocks,
 )
+from test_framework.contract import Contract
 
 # TODO SKIP should be set False
 SKIP = False
@@ -71,7 +71,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert_contains(call_contract(PAYABLE, amount=10000000), "Insufficient funds")
 
         # # 非法的入参
-        for amount in [10000000000, -1, 0, Decimal("0.000009").quantize(Decimal("0.000000"))]:
+        for amount in [10000000000, -1, 0, Decimal("0.00000009").quantize(Decimal("0.000000"))]:
             call_contract(PAYABLE, amount=amount)
 
         # 非法sender
@@ -92,9 +92,9 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # send不能被裸调用
         # bug被修复前，暂时跳过
-        # if not SKIP:
-        #     assert_contains(call_contract("send",sender,0),'can not find function')
-        #     assert_contains(call_contract("rpcSendTest"), 'can not find function')
+        if not SKIP:
+            assert_contains(call_contract("send",sender,0),'can not call lua internal function directly')
+            assert_contains(call_contract("rpcSendTest"), 'can not call lua internal function directly')
 
         # when not commit transaction, make sure contract tx is not in mempool
         if not SKIP:
@@ -114,6 +114,17 @@ class ContractCallTest(MagnaChainTestFramework):
         assert txid not in node2.getrawmempool()
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
+        # doubleSpendTest
+        self.test_double_spend(mineblock=False)
+        self.test_double_spend()
+        call_contract("doubleSpendTest", node.getnewaddress(),throw_exception = True)
+
+        # cmsgpackTest
+        if not SKIP:
+            assert_contains(call_contract("cmsgpackTest", node.getnewaddress(), 0), 'cmsgpack => sc >= LUACMSGPACK_MAX_NESTING')
+        self.sync_all()
+
+
         # # tailLoopTest
         call_contract("tailLoopTest", 896)  # v452,594 is the limit
         assert_contains(call_contract("tailLoopTest", 897), "run out of limit instruction")
@@ -130,10 +141,19 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             assert_contains(call_contract("localFuncTest"), "can not find function")
 
+        # longReturnTest
+        if not SKIP:
+            c = generate_contract(self.options.tmpdir, err_type="long_string_return")
+            addre = node.publishcontract(c)['contractaddress']
+            node.callcontract(True,1,addre,sender,'longReturnTest')
+
         # contractDataTest
         call_contract("contractDataTest")
         assert_equal(call_contract("get", "size")['return'][0], 127)
 
+        # make sure node1 mempool is empty
+        node.generate(nblocks=2)
+        assert_equal([], node.getrawmempool())
         # sendCoinTest
         # send to mgc address
         new_address = node.getnewaddress()
@@ -142,18 +162,24 @@ class ContractCallTest(MagnaChainTestFramework):
         call_contract("sendCoinTest", new_address, "1e-3")
         assert_contains(call_contract("sendCoinTest", new_address, 2 ** 31 - 1), "not enough amount ")
         assert_contains(call_contract("sendCoinTest", new_address, 0.1), "JSON integer out of range")
-        assert_contains(call_contract("sendCoinTest", new_address, 0), "Dust amount")
-        assert_contains(call_contract("sendCoinTest", new_address, -1), "Dust amount")
+        assert_contains(call_contract("sendCoinTest", new_address, 0), "SendCoins => amount(0) out of range")
+        assert_contains(call_contract("sendCoinTest", new_address, -1), "SendCoins => amount(-100000000) out of range")
         # send all balance
         tmp_id = node.publishcontract(contract)["contractaddress"]
         tmp_caller = caller_factory(self, tmp_id, sender)
         tmp_caller(PAYABLE, amount=Decimal("1"))
-        tmp_caller("sendCoinTest", new_address, 1, amount=Decimal("0"))
+        tmp_txid = tmp_caller("sendCoinTest", new_address, 1, amount=Decimal("0"),throw_exception = True)['txid']
         # 利用节点2挖矿，确保节点1的交易可以打包的块
+        self.sync_all()
         node2.generate(nblocks=2)  # 这里需要挖2个，因为send的输出需要达到成熟度才可以使用
         self.sync_all()
-        assert_equal(node.getbalanceof(new_address), 2)
+        # make sure two transactions not in mempool
+        # if assert failed it should be bug here
+        assert txid not in node.getrawmempool()
+        assert tmp_txid not in node.getrawmempool()
+        self.sync_all()
         assert_equal(node.getbalanceof(tmp_id), 0)
+        assert_equal(node.getbalanceof(new_address), 2)
         assert_equal(node2.getbalanceof(new_address), 2)
         assert_equal(node2.getbalanceof(tmp_id), 0)
         assert_contains(tmp_caller("sendCoinTest", new_address, 1), "not enough amount ")
@@ -165,7 +191,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # batchSendTest
         # 12个参数是上限，除去内部调用之后，实际能用的就只有7个参数位，并且不支持数组
-        for to in range(35):
+        for to in range(4):
             to_list = [node.getnewaddress() for i in range(7)]
             call_contract("addWithdrawList", *to_list)
         call_contract("batchSendTest")
@@ -194,7 +220,6 @@ class ContractCallTest(MagnaChainTestFramework):
         # maxContractCallTest
         call_contract("maxContractCallTest", 15)  # 15 is the limit
         assert_contains(call_contract("maxContractCallTest", 16), "run out of limit instruction")
-
         # callOtherContractTest
         # cycle call
         # step1 create contracts
@@ -206,15 +231,17 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # step2  a->b->c->a(send will be call in last a)
         new_address = node.getnewaddress()
-        if  SKIP:
+        if not SKIP:
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, ca_id, "sendCoinTest", new_address,throw_exception = True)
             node.generate(nblocks=1)
             assert_equal(node.getbalanceof(new_address), 1)
 
         # step3 a->b->c->b,modify PersistentData
-        if  SKIP:
+        if not SKIP:
             caller_b("contractDataTest")  # after called,size should be 127
             assert_equal(caller_b("get", "size")['return'][0], 127)
+            call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "reentrancyTest",
+                          new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest",
                           new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
             node.generate(nblocks=1)
@@ -222,12 +249,12 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # lots of dust vin in contract's send transaction
         # TODO:maybe  need to set payfee param in magnachaind
-        if  SKIP:
+        if not SKIP:
             cd_id = node.publishcontract(contract)["contractaddress"]
             caller_d = caller_factory(self, cd_id, sender)
             for i in range(2000):
-                caller_d(PAYABLE, amount=Decimal("1"))
-                if i % 50 == 0:
+                caller_d(PAYABLE, amount=Decimal("1"),throw_exception = True)
+                if i % 30 == 0:
                     node.generate(nblocks=1)
             new_address = node.getnewaddress()
             caller_d("sendCoinTest", new_address, 1900, amount=Decimal("0"))
@@ -243,8 +270,8 @@ class ContractCallTest(MagnaChainTestFramework):
             i = 0
             for _ in senders:
                 # 充值101次，每次1个MGC
-                caller_tmp(PAYABLE, amount=1)
-                if i % 50 == 0:
+                caller_tmp(PAYABLE, amount=1,throw_exception = True)
+                if i % 30 == 0:
                     node.generate(1)
                 i += 1
             node.generate(2)
@@ -252,8 +279,8 @@ class ContractCallTest(MagnaChainTestFramework):
             i = 0
             for to in senders:
                 # 向每个地址发送cell - 999(最小单位)，cell = 100000000。这里应该有101个微交易的找零
-                assert_equal(isinstance(caller_tmp("dustChangeTest", to, amount=Decimal("0")), dict), True)
-                if i % 50 == 0:
+                assert_equal(isinstance(caller_tmp("dustChangeTest", to, amount=Decimal("0"),throw_exception = True), dict), True)
+                if i % 30 == 0:
                     node.generate(1)
                 i += 1
             node.generate(nblocks=2)
@@ -261,7 +288,7 @@ class ContractCallTest(MagnaChainTestFramework):
             bal = node.getbalanceof(tmp_id)
             print(bal)
             tmp_sender = node.getnewaddress()
-            assert_equal(isinstance(caller_tmp("sendCoinTest", tmp_sender, 1, amount=Decimal("0.001"),throw_exception = True), dict),
+            assert_equal(isinstance(caller_tmp("sendCoinTest2", tmp_sender,amount=Decimal("0"),throw_exception = True), dict),
                          True)  # 组合所有微交易的找零，应该足够0.001个MGC的
             node.generate(nblocks=2)
             assert_equal(node.getbalanceof(tmp_sender), Decimal("0.001"))
@@ -273,20 +300,55 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             caller_last("reentrancyTest")
             node.generate(nblocks=1)
-            assert_equal(caller_last("get", "this")['return'][0], None)
+            assert_equal(caller_last("get", "this")['return'], [])
 
         # 疲劳测试
         if not SKIP:
             to_list = [node.getnewaddress() for i in range(1000)]
-            for to in to_list:
-                caller_last(PAYABLE, amount=2)
+            for i,to in enumerate(to_list):
+                caller_last(PAYABLE, amount=10)
                 caller_last(CYCLE_CALL, last_id, "contractDataTest",amount=0)
                 caller_last(CYCLE_CALL, last_id, "dustChangeTest",to,amount=0)
                 caller_last(CYCLE_CALL, last_id, "addWithdrawList",to,amount=0)
-                caller_last(CYCLE_CALL, last_id, "batchSendTest",amount=0)
-                if random.randint(1,100) > 80:
+                # caller_last(CYCLE_CALL, last_id, "batchSendTest",amount=0)
+                if random.randint(1,100) > 70:
                     node.generate(nblocks=1)
+                else:
+                    if i % 30 == 0:
+                        node.generate(nblocks=1)
 
+    def test_double_spend(self,mineblock = True):
+        self.log.info("test double spend")
+        node = self.nodes[0]
+        ct = Contract(node)
+        [ct.call_payable(amount = 100) for i in range(10)]
+        node.generate(2)
+        self.sync_all()
+        addr = self.nodes[1].getnewaddress()
+        addr2 = self.nodes[1].getnewaddress()
+        contract_balance = ct.get_balance()
+        for i in range(10):
+            ct.call_reorgTest(addr,addr2,amount = 0,debug = False)
+            # print("before:",ct.get_balance(), node.getbalanceof(addr), node.getbalanceof(addr2))
+            # self.sync_all()
+            if mineblock:
+                self.nodes[1].generate(random.randint(1,4))
+                self.sync_all()
+            # print("after:",ct.get_balance(), node.getbalanceof(addr), node.getbalanceof(addr2))
+        self.sync_all()
+        node.generate(2)
+        self.sync_all()
+        print(ct.get_balance(),node.getbalanceof(addr),node.getbalanceof(addr2))
+        addr_balance = node.getbalanceof(addr)
+        addr2_balance = node.getbalanceof(addr2)
+        if not mineblock:
+            if addr_balance == 0:
+                assert_equal(addr2_balance, 10)
+            else:
+                assert_equal(addr_balance, 10)
+            assert_equal(ct.get_balance(),contract_balance - 10)
+        else:
+            assert_equal(ct.get_balance(), contract_balance - addr_balance - addr2_balance)
 
 if __name__ == '__main__':
     ContractCallTest().main()

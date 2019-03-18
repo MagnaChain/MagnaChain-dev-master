@@ -29,9 +29,6 @@ enum Network
     NET_MAX,
 };
 
-extern int nConnectTimeout;
-extern bool fNameLookup;
-
 /** IP address (IPv6, or IPv4 using mapped IPv6 range (::FFFF:0:0/96)) */
 class MCNetAddr
 {

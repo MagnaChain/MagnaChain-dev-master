@@ -19,6 +19,7 @@
 #include "utils/utilmoneystr.h"
 #include "utils/utiltime.h"
 #include "rpc/branchchainrpc.h"
+#include "chain/branchdb.h"
 
 MCTxMemPoolEntry::MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& _nFee,
     int64_t _nTime, unsigned int _entryHeight,
@@ -1114,23 +1115,8 @@ void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
     }
 }
 
-/**
-* Called when a block is connected. Removes from mempool and updates the miner fee estimator.
-*/
-void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight)
+void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx)
 {
-    LOCK(cs);
-    std::vector<const MCTxMemPoolEntry*> entries;
-    for (const auto& tx : vtx)
-    {
-        uint256 hash = GetOriTxHash(*tx);
-
-        indexed_transaction_set::iterator i = mapTx.find(hash);
-        if (i != mapTx.end())
-            entries.push_back(&*i);
-    }
-    // Before the txs in the new block have been removed from the mempool, update policy estimates
-    if (minerPolicyEstimator) { minerPolicyEstimator->ProcessBlock(nBlockHeight, entries); }
     for (const auto& tx : vtx)
     {
         uint256 txid = GetOriTxHash(*tx);// remove Transaction that has be modified, as IsBranchChainTransStep2
@@ -1143,6 +1129,60 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
         RemoveConflicts(*tx);
         ClearPrioritisation(txid);
     }
+}
+/**
+* Called when a block is connected. Removes from mempool and updates the miner fee estimator.
+*/
+void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight)
+{
+    LOCK(cs);
+    std::vector<const MCTxMemPoolEntry*> entries;
+    // remove all duplicate branch block header info tx.
+    std::set<uint256> setHeaderMixHash;// collect be mined branch block hash
+    bool bIsMainChain = Params().IsMainChain();
+
+    for (const auto& tx : vtx)
+    {
+        uint256 hash = GetOriTxHash(*tx);
+
+        indexed_transaction_set::iterator i = mapTx.find(hash);
+        if (i != mapTx.end())
+            entries.push_back(&*i);
+        if (bIsMainChain && tx->IsSyncBranchInfo()){//record
+            BranchBlockData blockData;
+            blockData.InitDataFromTx(*tx);
+            const uint256 blockHash = blockData.header.GetHash();
+            const uint256& branchHash = tx->pBranchBlockData->branchID;
+            uint256 mixhash = blockHash | branchHash;
+            setHeaderMixHash.insert(mixhash);
+        }
+    }
+
+    // Before the txs in the new block have been removed from the mempool, update policy estimates
+    if (minerPolicyEstimator) { minerPolicyEstimator->ProcessBlock(nBlockHeight, entries); }
+    RemoveForVector(vtx);
+
+    // remove all duplicate branch block header info tx.
+    if (bIsMainChain && !setHeaderMixHash.empty())
+    {
+        std::vector<MCTransactionRef> vRemove;
+        for (const auto& it : mapTx) {
+            const MCTransactionRef& ptx = it.GetPtrTx();
+            BranchBlockData blockData;
+            blockData.InitDataFromTx(*ptx);
+            const uint256 blockHash = blockData.header.GetHash();
+            const uint256& branchHash = ptx->pBranchBlockData->branchID;
+            uint256 mixhash = blockHash | branchHash;
+            if (setHeaderMixHash.count(mixhash)) {
+                vRemove.push_back(ptx);
+
+                uint256 txid = ptx->GetHash();
+                LogPrintf("remove duplicate syncbranchheaderinfo tx from mempool %s\n", txid.GetHex());
+            }
+        }
+        RemoveForVector(vRemove);
+    }
+
     lastRollingFeeUpdate = GetTime();
     blockSinceLastRollingFeeBump = true;
     mapFinalTx2OriTx.clear();

@@ -16,12 +16,9 @@ class SignMessagesTest(MagnaChainTestFramework):
         message = 'This is just a test message'
 
         self.log.info('test signing with priv_key')
-        priv_key = 'cUeKHd5orzT3mz8P9pxyREHfsWtVfgsfDjiZZBcjUBAaGk1BTj7N'
-        address = 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB'
-        expected_signature = 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='
-        priv_key = 'L2KKHnjnh3rjDhBFGynbZZpxX7Q6mQbT4QqWk7xVNBp4imBN6kgW'
-        address = 'XT7FPqV3ZfidDzX5mtQz9nFbkeC6q7dyZB'
-        expected_signature = 'H4GtJ4s9J2FmgqYxpP5woRKh2QHVZq+w+Al15vZQHu6MfMYt/EALuZbW25Bx4LlQ8S6YuOmG5Q2bimMkxVZ+Tk4='
+        priv_key = 'cSwCGuP1FTZDn7wtWdVEzp3xGjS7KS9iLpNk5x1652UpDew8DVWZ'
+        address = 'mPYnawiCUDRVggES7R4mLLAQbMnMyKJDNK'
+        expected_signature = 'IDnH6mUh8xjFVAQ2lAhALjeUEu4N6EctcHQq+LvUXVCZEXqE6+eFuHjrqsDx+onNRpRIGYrJ379a/3KLSRiNkJU='
         signature = self.nodes[0].signmessagewithprivkey(priv_key, message)
         assert_equal(expected_signature, signature)
         assert(self.nodes[0].verifymessage(address, signature, message))

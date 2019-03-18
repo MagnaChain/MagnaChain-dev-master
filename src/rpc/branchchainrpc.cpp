@@ -409,7 +409,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
 
     //test connect
     UniValue params(UniValue::VARR);
-    UniValue reply = CallRPC(rpcconfig, "getbalance", params);
+    UniValue reply = CallRPC(rpcconfig, "getblockcount", params);
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()){
@@ -675,10 +675,9 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     if (g_connman)
     {
         MCInv inv(MSG_TX, tx2->GetHash());
-        g_connman->ForEachNode([&inv](MCNode* pnode)
-                {
+        g_connman->ForEachNode([&inv](MCNode* pnode){
                 pnode->PushInventory(inv);
-                });
+            });
     }
 
     return "ok";
@@ -956,7 +955,7 @@ UniValue submitbranchblockinfo(const JSONRPCRequest& request)
                 );
 
     if (!Params().IsMainChain())
-        throw JSONRPCError(RPC_INVALID_PARAMS, "This rpc api only be called in branch chain");
+        throw JSONRPCError(RPC_INVALID_PARAMS, "This rpc api can not be called in branch chain");
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
@@ -1074,8 +1073,8 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Params[0] is a invalid number\n");
     }
 
-    if (blockheight > chainActive.Height())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Request height larger than chain height\n");
+    if (blockheight > chainActive.Height() || blockheight <= 0)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid block height\n");
 
     LOCK(cs_main);
     MCBlock block;
@@ -1085,7 +1084,7 @@ UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
 
     std::shared_ptr<const MCBlock> shared_pblock = std::make_shared<const MCBlock>(block);
     std::string strErr;
-    if (!SendBranchBlockHeader(shared_pblock, &strErr))
+    if (!SendBranchBlockHeader(shared_pblock, &strErr, false))//TODO: is onlySendMy necessary to be a option by rpc parameter.
     {
         return "Fail:" + strErr;
     }
@@ -1146,7 +1145,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     if (coin.IsSpent())
         throw JSONRPCError(RPC_WALLET_ERROR, "Coin is spent!");
     if (chainActive.Height() - coin.nHeight < REDEEM_SAFE_HEIGHT)// 挖矿币需要满足一定高度后才能赎回,给别人举报有时间窗口
-        throw JSONRPCError(RPC_INVALID_REQUEST, strprintf(std::string("Coin need %s confirmation", REDEEM_SAFE_HEIGHT)));
+        throw JSONRPCError(RPC_INVALID_REQUEST, strprintf(std::string("Coin need %d confirmation"), REDEEM_SAFE_HEIGHT));
 
     uint256 fromtxid;
     MCKeyID keyid;

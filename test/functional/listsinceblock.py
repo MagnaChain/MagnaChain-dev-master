@@ -6,6 +6,7 @@
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_array_result, assert_raises_rpc_error
+from test_framework.contract import Contract
 
 # TODO 需要加上合约的情况
 class ListSinceBlockTest (MagnaChainTestFramework):
@@ -19,9 +20,9 @@ class ListSinceBlockTest (MagnaChainTestFramework):
             blockcount = blockcount + str(self.nodes[i].getblockcount()) + ' '
         self.log.info(blockcount)
 
-    def sync_all(self, node_groups=None):
+    def sync_all(self, node_groups=None,timeout = 60):
         self.logblockcount()
-        super(ListSinceBlockTest, self).sync_all(node_groups)
+        super(ListSinceBlockTest, self).sync_all(node_groups,timeout = timeout)
 
     def run_test(self):
         self.nodes[2].generate(51)
@@ -55,6 +56,37 @@ class ListSinceBlockTest (MagnaChainTestFramework):
             {"lastblock": blockhash,
              "removed": [],
              "transactions": txs})
+
+        # contract test
+        co = Contract(self.nodes[2])
+        co.call_payable()
+        txid = co.call_sendCoinTest(self.nodes[0].getnewaddress(),1)['txid']
+        self.sync_all()
+        assert txid in self.nodes[0].getrawmempool()
+        blockhash, = self.nodes[2].generate(1)
+        blockhash, = self.nodes[2].generate(1)
+        assert txid not in self.nodes[2].getrawmempool()
+        assert txid not in self.nodes[0].getrawmempool()
+        self.sync_all()
+        txs = self.nodes[0].listtransactions()
+        # 因为合约的send会改变输出，所以最终的txid会发生变化，故这里的测试是不可能通过的
+        # assert_array_result(txs, {"txid": txid}, {
+        #     "category": "receive",
+        #     "amount": 1,
+        #     "blockhash": blockhash,
+        #     "confirmations": 1,
+        # })
+        # assert_equal(
+        #     self.nodes[0].listsinceblock(),
+        #     {"lastblock": blockhash,
+        #      "removed": [],
+        #      "transactions": txs})
+        # assert_equal(
+        #     self.nodes[0].listsinceblock(""),
+        #     {"lastblock": blockhash,
+        #      "removed": [],
+        #      "transactions": txs})
+
 
     def test_invalid_blockhash(self):
         assert_raises_rpc_error(-5, "Block not found", self.nodes[0].listsinceblock,

@@ -84,5 +84,8 @@ class MempoolPersistTest(MagnaChainTestFramework):
         self.start_node(0)
         wait_until(lambda: len(self.nodes[0].getrawmempool()) == 10)
 
+        self.nodes[0].callcontract(True, 10, contract_id, self.nodes[0].getnewaddress(), 'payable')
+        wait_until(lambda: len(self.nodes[0].getrawmempool()) == 11)
+
 if __name__ == '__main__':
     MempoolPersistTest().main()

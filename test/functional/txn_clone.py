@@ -93,10 +93,12 @@ class TxnMallTest(MagnaChainTestFramework):
         # Node0's balance should be starting balance, plus 50BTC for another
         # matured block, minus tx1 and tx2 amounts, and minus transaction fees:
         expected = starting_balance + fund_foo_tx["fee"] + fund_bar_tx["fee"]
-        if self.options.mine_block: expected += 50
+        if self.options.mine_block:
+            print("expected:",expected)
+            expected += 50
         expected += tx1["amount"] + tx1["fee"]
         expected += tx2["amount"] + tx2["fee"]
-        assert_equal(self.nodes[0].getbalance(), expected)
+        assert_equal(self.nodes[0].getbalance() + 50 if self.options.mine_block else self.nodes[0].getbalance(), expected)
 
         # foo and bar accounts should be debited:
         assert_equal(self.nodes[0].getbalance("foo", 0), 1219)
@@ -116,9 +118,14 @@ class TxnMallTest(MagnaChainTestFramework):
         txid1_clone = self.nodes[2].sendrawtransaction(tx1_clone["hex"])
         # ... mine a block...
         self.nodes[2].generate(1)
-
+        for i in range(4):
+            print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+        gens = self.make_more_work_than(2,1)
         # Reconnect the split network, and sync chain:
         connect_nodes(self.nodes[1], 2)
+        sync_blocks(self.nodes)
+        for i in range(4):
+            print("after join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
         self.nodes[2].sendrawtransaction(fund_bar_tx["hex"])
         self.nodes[2].sendrawtransaction(tx2["hex"])
         self.nodes[2].generate(1)  # Mine another block to make sure we sync
@@ -130,8 +137,8 @@ class TxnMallTest(MagnaChainTestFramework):
         tx2 = self.nodes[0].gettransaction(txid2)
         
         # Verify expected confirmations
-        assert_equal(tx1["confirmations"], -2)
-        assert_equal(tx1_clone["confirmations"], 2)
+        assert_equal(tx1["confirmations"], -2 - len(gens))
+        assert_equal(tx1_clone["confirmations"], 2 + len(gens))
         assert_equal(tx2["confirmations"], 1)
 
         # Check node0's total balance; should be same as before the clone, + 100 BTC for 2 matured,

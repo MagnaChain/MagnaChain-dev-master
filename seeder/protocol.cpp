@@ -16,8 +16,6 @@
 # include <arpa/inet.h>
 #endif
 
-std::string gBranchId;
-
 static const char* ppszTypeName[] =
 {
     "ERROR",
@@ -25,20 +23,28 @@ static const char* ppszTypeName[] =
     "block",
 };
 
-unsigned char pchMessageStart[4] = { 0xce, 0x11, 0x16, 0x89 };
-
-MCMessageHeader::MCMessageHeader()
+MCMessageHeader::MCMessageHeader(unsigned char* pchMsgStart)
 {
-    memcpy(pchMessageStart, ::pchMessageStart, sizeof(pchMessageStart));
+    //memcpy(pchMessageStart, pchMessageStart, sizeof(pchMessageStart));
+    pchMessageStart[0] = pchMsgStart[0];
+    pchMessageStart[1] = pchMsgStart[1];
+    pchMessageStart[2] = pchMsgStart[2];
+    pchMessageStart[3] = pchMsgStart[3];
+
     memset(pchCommand, 0, sizeof(pchCommand));
     pchCommand[1] = 1;
     nMessageSize = -1;
     nChecksum = 0;
 }
 
-MCMessageHeader::MCMessageHeader(const char* pszCommand, unsigned int nMessageSizeIn)
+MCMessageHeader::MCMessageHeader(const char* pszCommand, unsigned int nMessageSizeIn, unsigned char* pchMsgStart)
 {
-    memcpy(pchMessageStart, ::pchMessageStart, sizeof(pchMessageStart));
+    //memcpy(pchMessageStart, pchMessageStart, sizeof(pchMessageStart));
+    pchMessageStart[0] = pchMsgStart[0];
+    pchMessageStart[1] = pchMsgStart[1];
+    pchMessageStart[2] = pchMsgStart[2];
+    pchMessageStart[3] = pchMsgStart[3];
+
     strncpy(pchCommand, pszCommand, COMMAND_SIZE);
     nMessageSize = nMessageSizeIn;
     nChecksum = 0;
@@ -55,7 +61,7 @@ std::string MCMessageHeader::GetCommand() const
 bool MCMessageHeader::IsValid() const
 {
     // Check start string
-    if (memcmp(pchMessageStart, ::pchMessageStart, sizeof(pchMessageStart)) != 0)
+    if (memcmp(pchMessageStart, pchMessageStart, sizeof(pchMessageStart)) != 0)
         return false;
 
     // Check the command string for errors

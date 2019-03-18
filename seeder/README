@@ -33,10 +33,7 @@ dnsseed.example.com.   86400    IN      NS     vps.example.com.
 
 On the system vps.example.com, you can now run dnsseed:
 
-First, configure your config.lua,dnsseed will read running directory for 
-config.lua by default, also you can use parameter as -f=your_config_file 
-to you custom file.
-./dnsseed
+./dnsseed -h dnsseed.example.com -n vps.example.com
 
 If you want the DNS server to report SOA records, please provide an
 e-mail address (with the @ part replaced by .) using -m.

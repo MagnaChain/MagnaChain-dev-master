@@ -938,7 +938,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
 #define SetStrErr(strMsg) {if (pStrErr) *pStrErr = (strMsg);}
 //提交侧链区块头
 //call in branch chain
-bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::string *pStrErr)
+bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::string *pStrErr, bool onlySendMy)
 {
     SetStrErr("Unknow error\n");
     if (Params().IsMainChain() || pBlock == nullptr) {
@@ -953,6 +953,27 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
     if (pBlockIndex == nullptr){
         SetStrErr("get block index fail\n");
         return false;
+    }
+
+    if (onlySendMy)
+    {
+        //get block pubkey
+        std::vector<unsigned char> vchPubKey;
+        MCScript::const_iterator pc = pBlock->vchBlockSig.begin();
+        opcodetype opcode;
+        if (!pBlock->vchBlockSig.GetOp2(pc, opcode, &vchPubKey))
+        {
+            SetStrErr("get block block signature pubkey fail\n");
+            return false;
+        }
+
+        MCPubKey pubKey(vchPubKey);
+        MCKeyID keyid = pubKey.GetID();
+        extern bool IsMineForAllWallets(const MCKeyID& keyid);
+        if (!IsMineForAllWallets(keyid)){
+            SetStrErr("I don't care others block's info\n");
+            return false;
+        }
     }
 
     MCMutableTransaction mtx;

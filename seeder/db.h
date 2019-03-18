@@ -10,13 +10,20 @@
 #include "protocol.h"
 #include "util.h"
 
+#include "mcdnsseedopts.h"
+
 #define MIN_RETRY 1000
 
 #define REQUIRE_VERSION 70001
 
+//TODO: 主网和测试网络的主链、支链（不同的支链也不同）,so is need to modify the GetRequireHeight func.
+#define MAIN_NET_REQ_HEIGHT 200 //bitcoin 500000
+#define TEST_NET_REQ_HEIGHT 0 //bitcoin 350000
+
+extern bool fTestNet;
 static inline int GetRequireHeight(const bool testnet = fTestNet)
 {
-    return testnet ? 500000 : 350000;
+    return testnet ? TEST_NET_REQ_HEIGHT : MAIN_NET_REQ_HEIGHT;
 }
 
 std::string static inline ToString(const MCService &ip) {
@@ -34,7 +41,7 @@ public:
   MCAddrStat() : weight(0), count(0), reliability(0) {}
 
   void Update(bool good, int64 age, double tau) {
-    double f =  exp(-age/tau);
+    double f = exp(-age/tau);
     reliability = reliability * f + (good ? (1.0-f) : 0);
     count = count * f + 1;
     weight = weight * f + (1.0-f);
@@ -80,8 +87,11 @@ private:
   int total;
   int success;
   std::string clientSubVersion;
+
+  unsigned short defaultport;//config default mgc node port(diff chain diff port)
 public:
-  MCAddrInfo() : services(0), lastTry(0), ourLastTry(0), ourLastSuccess(0), ignoreTill(0), clientVersion(0), blocks(0), total(0), success(0) {}
+  MCAddrInfo() : services(0), lastTry(0), ourLastTry(0), ourLastSuccess(0), 
+      ignoreTill(0), clientVersion(0), blocks(0), total(0), success(0), defaultport(0){}
   
   MCAddrReport GetReport() const {
     MCAddrReport ret;
@@ -101,11 +111,26 @@ public:
   }
   
   bool IsGood() const {
-    if (ip.GetPort() != GetDefaultPort()) return false;
-    if (!(services & NODE_NETWORK)) return false;
-    if (!ip.IsRoutable()) return false;
-    if (clientVersion && clientVersion < REQUIRE_VERSION) return false;
-    if (blocks && blocks < GetRequireHeight()) return false;
+    if (ip.GetPort() != defaultport){
+        //printf("not good for default port\n");
+        return false;
+    }
+    if (!(services & NODE_NETWORK)) {
+        printf("not good for node services type\n");
+        return false;
+    }
+    if (!ip.IsRoutable()) {
+        printf("not good for ip is not routable\n");
+        return false;
+    }
+    if (clientVersion && clientVersion < REQUIRE_VERSION) {
+        printf("not good for client version %d\n", clientVersion);
+        return false;
+    }
+    if (blocks && blocks < GetRequireHeight()) {
+        printf("not good for require height %d\n", blocks);
+        return false;
+    }
 
     if (total <= 3 && success * 2 >= total) return true;
 
@@ -115,6 +140,7 @@ public:
     if (stat1W.reliability > 0.45 && stat1W.count > 16) return true;
     if (stat1M.reliability > 0.35 && stat1M.count > 32) return true;
     
+    printf("not good for fucking stat parameters\n");
     return false;
   }
   int GetBanTime() const {
@@ -160,6 +186,7 @@ public:
               *((MCAddrStat*)(&stat1M)) = stat1W;
       READWRITE(total);
       READWRITE(success);
+      //READWRITE(defaultport);//write to db
       READWRITE(clientVersion);
       if (version >= 2)
           READWRITE(clientSubVersion);
@@ -200,6 +227,9 @@ struct MCServiceResult {
 //     (d) good nodes   (c) non-good nodes 
 
 class MCAddrDB {
+public:
+    MCAddrDB() :pOpts(nullptr), nId(0), nDirty(0){}// ? why these nId,nDirty member didn't need to init?
+    MCAddrDB(MCDnsSeedOpts* pOptions):pOpts(pOptions), nId(0), nDirty(0){}
 private:
   mutable MCCriticalSection cs;
   int nId; // number of address id's
@@ -209,7 +239,8 @@ private:
   std::set<int> unkId; // set of nodes not yet tried (b)
   std::set<int> goodId; // set of good nodes  (d, good e)
   int nDirty;
-  
+public:
+  MCDnsSeedOpts* pOpts;//MCDnsSeedOpts
 protected:
   // internal routines that assume proper locks are acquired
   void Add_(const MCAddress &addr, bool force);   // add an address
@@ -231,7 +262,13 @@ public:
       stats.nTracked = ourId.size();
       stats.nGood = goodId.size();
       stats.nNew = unkId.size();
-      stats.nAge = time(NULL) - idToInfo[ourId[0]].ourLastTry;
+      if (ourId.size()>0)//TODO: why luareader config 
+      {
+          stats.nAge = time(NULL) - idToInfo[ourId[0]].ourLastTry;
+      }
+      else {
+          printf("ourId size is zero\n");
+      }
     }
   }
 
@@ -285,6 +322,7 @@ public:
         READWRITE(n);
         for (int i=0; i<n; i++) {
           MCAddrInfo info;
+          info.defaultport = db->pOpts->defaultport;
           READWRITE(info);
           if (!info.GetBanTime()) {
             int id = db->nId++;
@@ -355,4 +393,7 @@ public:
     SHARED_CRITICAL_BLOCK(cs)
       GetIPs_(ips, requestedFlags, max, nets);
   }
+  public:
+  void LoadDBData();
+  void SaveDBData();
 };
