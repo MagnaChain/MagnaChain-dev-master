@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <boost/bind.hpp>
@@ -10,18 +10,19 @@
 #include "transaction/txmempool.h"
 #include "validation/validation.h"
 #include "smartcontract/smartcontract.h"
+#include "consensus/consensus.h"
 
 ContractDataDB* mpContractDb = nullptr;
 
-CellAmount GetTxContractOut(const CellTransaction& tx)
+MCAmount GetTxContractOut(const MCTransaction& tx)
 {
-    CellAmount out = 0;
+    MCAmount out = 0;
     for (auto kOut : tx.vout) {
         opcodetype opcode;
         std::vector<unsigned char> vch;
-        CellScript::const_iterator pc1 = kOut.scriptPubKey.begin();
+        MCScript::const_iterator pc1 = kOut.scriptPubKey.begin();
         kOut.scriptPubKey.GetOp(pc1, opcode, vch);
-        if (opcode == OP_PUB_CONTRACT || opcode == OP_TRANS_CONTRACT) {
+        if (opcode == OP_CONTRACT) {
             out += kOut.nValue;
             break;
         }
@@ -38,31 +39,29 @@ struct CmpByBlockHeight {
     }
 };
 
-static std::map<CellKeyID, ContractInfo> cache;    //  ˝æ›ª∫¥Ê£¨±„”⁄ªÿπˆ
-
-void ContractContext:: SetCache(const CellKeyID& key, ContractInfo& contractInfo)
+void ContractContext::SetCache(const MCContractID& contractId, ContractInfo& contractInfo)
 {
-    cache[key] = std::move(contractInfo);
+    cache[contractId] = std::move(contractInfo);
 }
 
-void ContractContext::SetData(const CellKeyID& key, ContractInfo& contractInfo)
+void ContractContext::SetData(const MCContractID& contractId, ContractInfo& contractInfo)
 {
-    _data[key] = std::move(contractInfo);
+    data[contractId] = std::move(contractInfo);
 }
 
-bool ContractContext::GetData(const CellKeyID& key, ContractInfo& contractInfo)
+bool ContractContext::GetData(const MCContractID& contractId, ContractInfo& contractInfo)
 {
     if (cache.size() > 0) {
-        auto it = cache.find(key);
-        if (it == cache.end()) {
+        auto it = cache.find(contractId);
+        if (it != cache.end()) {
             contractInfo.code = it->second.code;
             contractInfo.data = it->second.data;
             return true;
         }
     }
 
-    auto it = _data.find(key);
-    if (it != _data.end()) {
+    auto it = data.find(contractId);
+    if (it != data.end()) {
         contractInfo.code = it->second.code;
         contractInfo.data = it->second.data;
         return true;
@@ -74,7 +73,7 @@ bool ContractContext::GetData(const CellKeyID& key, ContractInfo& contractInfo)
 void ContractContext::Commit()
 {
     for (auto it : cache)
-        _data[it.first] = std::move(it.second);
+        data[it.first] = std::move(it.second);
     ClearCache();
 }
 
@@ -85,7 +84,7 @@ void ContractContext::ClearCache()
 
 void ContractContext::ClearData()
 {
-    _data.clear();
+    data.clear();
 }
 
 void ContractContext::ClearAll()
@@ -95,240 +94,472 @@ void ContractContext::ClearAll()
 }
 
 ContractDataDB::ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe)
-    : db(path, nCacheSize, fMemory, fWipe, true), threadPool(boost::thread::hardware_concurrency())
+    : db(path, nCacheSize, fMemory, fWipe, true), writeBatch(db), removeBatch(db), threadPool(boost::thread::hardware_concurrency())
 {
-    for (int i = 0; i < threadPool.size(); ++i)
+    for (int i = 0; i < threadPool.size(); ++i) {
         threadPool.schedule(boost::bind(InitializeThread, this));
+    }
 }
 
 void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
 {
-    contractDB->threadId2SmartLuaState.insert(std::make_pair(boost::this_thread::get_id(), new SmartLuaState()));
+    {
+        LOCK(contractDB->cs_cache);
+        contractDB->threadId2SmartLuaState.insert(std::make_pair(boost::this_thread::get_id(), new SmartLuaState()));
+    }
     boost::this_thread::sleep(boost::posix_time::milliseconds(200));
 }
 
-void ContractDataDB::ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock>& pblock,
-    int offset, int size, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrefBlockIndex, bool* interrupt)
+void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData)
 {
-    auto it = contractDB->threadId2SmartLuaState.find(boost::this_thread::get_id());
-    if (it == contractDB->threadId2SmartLuaState.end()) {
-        LogPrintf("%s sls == nullptr\n", __FUNCTION__);
-        return;
+    auto it = threadId2SmartLuaState.find(boost::this_thread::get_id());
+    if (it == threadId2SmartLuaState.end()) {
+        throw std::runtime_error(strprintf("%s:%d it == threadId2SmartLuaState.end()\n", __FUNCTION__, __LINE__));
     }
 
-    if (contractDB != nullptr)
-        contractDB->ExecutiveTransactionContract(it->second, pblock, offset, size, blockHeight, pContractContext, pPrefBlockIndex, interrupt);
-}
-
-void ContractDataDB::ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock>& pBlock,
-    int offset, int size, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrefBlockIndex, bool* interrupt)
-{
-    for (int i = offset; i < offset + size; ++i) {
-        if (*interrupt)
-            break;
-
-        const CellTransactionRef& tx = pBlock->vtx[i];
-        if (tx->IsNull() || !tx->IsSmartContract())
-            continue;
-
-        CellKeyID contractKey = tx->contractAddrs[0];
-        CellLinkAddress contractAddrs(contractKey);
-        CellLinkAddress senderAddr(tx->contractSender.GetID());
-        CellAmount amount = GetTxContractOut(*tx);
-
-        if (tx->nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION) {
-            std::string code;
-            std::string rawCode = tx->contractCode;
-            SmartContractRet scr;
-            sls->Initialize(pBlock->GetBlockTime(), blockHeight, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            int result = PublishContract(sls, amount, contractAddrs, senderAddr, rawCode, code, scr);
-            if (result != 0)
-                *interrupt = true;
-        }
-        else if (tx->nVersion == CellTransaction::CALL_CONTRACT_VERSION) {
-            std::string strFuncName = tx->contractFun;
-            UniValue args;
-            args.read(tx->contractParams);
-
-            SmartContractRet scr;
-            long callNum = MAX_CONTRACT_CALL;
-            sls->Initialize(pBlock->GetBlockTime(), blockHeight, pContractContext, pPrefBlockIndex, SmartLuaState::SAVE_TYPE_DATA);
-            int result = CallContract(sls, callNum, amount, contractAddrs, senderAddr, strFuncName, args, scr);
-            if (result != 0)
-                *interrupt = true;
-        }
+    SmartLuaState* sls = it->second;
+    if (sls == nullptr) {
+        throw std::runtime_error(strprintf("%s:%d sls == nullptr\n", __FUNCTION__, __LINE__));
     }
+
+#ifndef _DEBUG
+    try {
+#endif
+        bool mainChain = Params().IsMainChain();
+        if (!mainChain) {
+            threadData->contractContext.txFinalData.resize(threadData->groupSize);
+        }
+
+        std::map<MCContractID, uint256> contract2txid;
+        for (int i = threadData->offset; i < threadData->offset + threadData->groupSize; ++i) {
+            if (interrupt) {
+                return;
+            }
+
+            const MCTransactionRef tx = pBlock->vtx[i];
+            if (tx->IsNull()) {
+                LogPrintf("%s:%d => tx is null\n", __FUNCTION__, __LINE__);
+                interrupt = true;
+                return;
+            }
+
+            threadData->associationTransactions.insert(tx->GetHash());
+            for (int j = 0; j < tx->vin.size(); ++j) {
+                if (!tx->vin[j].prevout.hash.IsNull() && !tx->IsStake()) {// branch first block's stake tx's input is from the same block(ÊîØÈìæÁ¨¨‰∏Ä‰∏™ÂùóÁöÑstake‰∫§ÊòìÁöÑËæìÂÖ•Êù•Ëá™Âêå‰∏ÄÂå∫Âùó‰∏≠ÁöÑ‰∫§ÊòìÔºåÂÖ∂‰ªñÊÉÖÂÜµ‰∏ãstakeÁöÑËæìÂÖ•‰∏çÂèØËÉΩÊù•Ëá™Âêå‰∏ÄÂå∫Âùó)
+                    threadData->associationTransactions.insert(tx->vin[j].prevout.hash);
+                }
+            }
+
+            if (!tx->IsSmartContract()) {
+                continue;
+            }
+
+            MCContractID contractId = tx->pContractData->address;
+            MagnaChainAddress contractAddr(contractId);
+            MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
+            MCAmount amount = GetTxContractOut(*tx);
+
+            UniValue ret(UniValue::VARR);
+            if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
+                std::string rawCode = tx->pContractData->codeOrFunc;
+                sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr,
+                    &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
+                if (!PublishContract(sls, contractAddr, rawCode, ret, true)
+                    || tx->pContractData->amountOut != 0 || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => publish contract fail\n", __FUNCTION__, __LINE__);
+                    interrupt = true;
+                    return;
+                }
+            }
+            else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+                const std::string& strFuncName = tx->pContractData->codeOrFunc;
+                UniValue args;
+                args.read(tx->pContractData->args);
+
+                sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
+                    threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
+                if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);
+                    interrupt = true;
+                    return;
+                }
+
+                if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0) {
+                    LogPrintf("%s:%d => tx->pContractData->amountOut > 0 && sls->recipients.size() == 0\n", __FUNCTION__, __LINE__);
+                    interrupt = true;
+                    return;
+                }
+
+                MCAmount total = 0;
+                for (int j = 0; j < sls->recipients.size(); ++j) {
+                    if (!tx->IsExistVout(sls->recipients[j])) {
+                        LogPrintf("%s:%d => vout not exist\n", __FUNCTION__, __LINE__);
+                        interrupt = true;
+                        return;
+                    }
+                    total += sls->recipients[j].nValue;
+                }
+
+                if (total != tx->pContractData->amountOut || tx->pContractData->amountOut != sls->contractOut) {
+                    LogPrintf("%s:%d => amount not match\n", __FUNCTION__, __LINE__);
+                    interrupt = true;
+                    return;
+                }
+
+                if (!mainChain) {
+                    threadData->contractContext.txFinalData[i].coins = threadData->pCoinAmountCache->GetAmount(contractId);
+                }
+                
+                if (tx->pContractData->amountOut > 0) {
+                    threadData->pCoinAmountCache->DecAmount(tx->pContractData->address, tx->pContractData->amountOut);
+                }
+
+                const std::vector<MCTxOut>& vout = tx->vout;
+                for (int i = 0; i < vout.size(); ++i) {
+                    const MCScript& scriptPubKey = vout[i].scriptPubKey;
+                    if (scriptPubKey.IsContract()) {
+                        opcodetype opcode;
+                        std::vector<unsigned char> vch;
+                        MCScript::const_iterator pc = scriptPubKey.begin();
+                        MCScript::const_iterator end = scriptPubKey.end();
+                        scriptPubKey.GetOp(pc, opcode, vch);
+
+                        assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+                        vch.clear();
+                        vch.assign(pc + 1, end);
+                        uint160 key = uint160(vch);
+                        MCContractID contractId = MCContractID(key);
+                        threadData->pCoinAmountCache->IncAmount(contractId, vout[i].nValue);
+                    }
+                }
+            }
+
+            if (!mainChain) {
+                for (auto it : sls->contractDataFrom) {
+                    pBlock->prevContractData[i].items[it.first].blockHash = it.second.blockHash;
+                    pBlock->prevContractData[i].items[it.first].txIndex = it.second.txIndex;
+                }
+                threadData->contractContext.txFinalData[i - threadData->offset].data = threadData->contractContext.cache;
+            }
+            threadData->contractContext.Commit();
+            sls->contractDataFrom.clear();
+        }
+#ifndef _DEBUG
+    }
+    catch (std::exception e) {
+        LogPrintf("%s:%d => unknown exception %s\n", __FUNCTION__, __LINE__, e.what());
+        interrupt = true;
+    }
+#endif
 }
 
-bool ContractDataDB::RunBlockContract(const std::shared_ptr<const CellBlock> pblock, ContractContext* pContractContext)
+bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
 {
-    auto it = mapBlockIndex.find(pblock->hashPrevBlock);
-    if (it == mapBlockIndex.end())
-        return false;
+    auto it = mapBlockIndex.find(pBlock->hashPrevBlock);
+    if (it == mapBlockIndex.end()) {
+        throw std::runtime_error(strprintf("%s:%d => it == mapBlockIndex.end()", __FUNCTION__, __LINE__));
+    }
+
+    if (pBlock->groupSize.size() > MAX_GROUP_NUM) {
+        throw std::runtime_error(strprintf("%s:%d => pBlock->groupSize.size() > MAX_GROUP_NUM", __FUNCTION__, __LINE__));
+    }
+
+    int totalSize = 0;
+    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+        totalSize += pBlock->groupSize[i];
+    }
+    if (totalSize == 0 || totalSize != pBlock->vtx.size()) {
+        throw std::runtime_error(strprintf("%s:%d => totalSize not match", __FUNCTION__, __LINE__));
+    }
     
-    CellBlockIndex* prevBlockInex = it->second;
-    int blockHeight = prevBlockInex->nHeight + 1;
+    MCBlockIndex* pPrevBlockIndex = it->second;
+    int blockHeight = pPrevBlockIndex->nHeight + 1;
 
     int offset = 0;
-    bool interrupt = false;
-    printf("Generate block vtx size:%d, group:%d\n", pblock->vtx.size(), pblock->groupSize.size());
-    std::vector<std::set<uint256>> groupTransaction;
-    for (int i = 0; i < pblock->groupSize.size(); ++i) {
-        threadPool.schedule(boost::bind(ExecutiveTransactionContractThread, this, pblock, offset, pblock->groupSize[i], blockHeight, pContractContext, prevBlockInex, &interrupt));
-        offset += pblock->groupSize[i];
+    interrupt = false;
+    std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
+    int size = pBlock->vtx.size();
+    bool mainChain = Params().IsMainChain();
+    if (!mainChain) {
+        pBlock->prevContractData.resize(size);
+    }
+    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+        threadData[i].offset = offset;
+        threadData[i].groupSize = pBlock->groupSize[i];
+        threadData[i].blockHeight = blockHeight;
+        threadData[i].pPrevBlockIndex = pPrevBlockIndex;
+        threadData[i].pCoinAmountCache = pCoinAmountCache;
+        threadPool.schedule(boost::bind(&ContractDataDB::ExecutiveTransactionContract, this, pBlock, &threadData[i]));
+        offset += pBlock->groupSize[i];
     }
     threadPool.wait();
 
-    if (interrupt)
-        return false;
+    if (interrupt) {
+        throw std::runtime_error(strprintf("%s:%d => run contract interrupt", __FUNCTION__, __LINE__));
+    }
 
-    std::set<uint256> checker;
-    for (int i = 0; i < groupTransaction.size(); ++i) {
-        for (auto item : groupTransaction[i]) {
-            if (checker.find(item) == checker.end())
-                checker.insert(item);
-            else
+    offset = 0;
+    pContractContext->ClearCache();
+    if (!mainChain) {
+        pContractContext->txFinalData.resize(pBlock->vtx.size());
+    }
+    std::set<uint256> finalTransactions;
+    for (int i = 0; i < threadData.size(); ++i) {
+        // Ê£ÄÊü•ÊòØÂê¶ÊúâÂÖ≥ËÅî‰∫§Êòì‰∫§Âèâ
+        for (auto item : threadData[i].associationTransactions) {
+            if (finalTransactions.count(item) == 0) {
+                finalTransactions.insert(item);
+            }
+            else {
+                throw std::runtime_error(strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__));
+            }
+        }
+
+        // ‰øùÂ≠òÊï∞ÊçÆÔºåÂêåÊó∂Ê£ÄÊü•ÊòØÂê¶ÊúâÂÖ≥ËÅîÊï∞ÊçÆ‰∫§Âèâ
+        for (auto item : threadData[i].contractContext.data) {
+            if (pContractContext->cache.count(item.first) == 0) {
+                pContractContext->SetCache(item.first, item.second);
+            }
+            else {
+                throw std::runtime_error(strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__));
+            }
+        }
+
+        // ÊîØÈìæ‰øùÂ≠ò‰∫§ÊòìÊúÄÂêéÁöÑÊï∞ÊçÆ‰ª•‰æøÂú®ÈúÄË¶ÅÊó∂Êèê‰æõËØÅÊòé‰ΩøÁî®
+        if (!mainChain) {
+            for (int j = offset; j < offset + pBlock->groupSize[i]; ++j) {
+                pContractContext->txFinalData[j].coins = threadData[i].contractContext.txFinalData[j - offset].coins;
+                pContractContext->txFinalData[j].data = std::move(threadData[i].contractContext.txFinalData[j - offset].data);
+            }
+        }
+        offset += pBlock->groupSize[i];
+    }
+    pContractContext->Commit();
+
+    return true;
+}
+
+bool ContractDataDB::WriteBatch(MCDBBatch& batch) {
+    if (!CheckDiskSpace(batch.SizeEstimate() - nMinDiskSpace))
+        return false;
+    LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+    db.WriteBatch(batch);
+    batch.Clear();
+    return true;
+}
+
+bool ContractDataDB::WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* pContractContext)
+{
+    assert(pBlockIndex != nullptr);
+    LOCK(cs_cache);
+
+    MCDBBatch writeBatch(db);
+    size_t maxBatchSize = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
+    for (auto ci : pContractContext->data) {
+        DBContractInfo& contractInfo = contractData[ci.first];
+        if (contractInfo.code.empty())
+            contractInfo.code = ci.second.code;
+        ci.second.blockHash = pBlockIndex->GetBlockHash();
+
+        // Â∞ÜÂå∫ÂùóÊèíÂÖ•ÂØπÂ∫îÁöÑÁªìÁÇπ‰∏≠
+        auto insertPoint = contractInfo.items.end();
+        for (auto it = contractInfo.items.begin(); it != contractInfo.items.end(); ++it) {
+            if (pBlockIndex->nHeight < it->blockHeight) {
+                insertPoint = contractInfo.items.insert(it, DBContractInfoByHeight());
+                insertPoint->blockHeight = pBlockIndex->nHeight;
+                break;
+            }
+            else if (pBlockIndex->nHeight == it->blockHeight) {
+                insertPoint = it;
+                break;
+            }
+        }
+
+        if (insertPoint == contractInfo.items.end()) {
+            insertPoint = contractInfo.items.insert(insertPoint, DBContractInfoByHeight());
+            insertPoint->blockHeight = pBlockIndex->nHeight;
+        }
+
+        for (int i = 0; i < insertPoint->vecBlockHash.size(); ++i) {
+            if (insertPoint->vecBlockHash[i] == ci.second.blockHash) {
+                insertPoint->vecBlockHash.erase(insertPoint->vecBlockHash.begin() + i);
+                insertPoint->vecBlockContractData.erase(insertPoint->vecBlockContractData.begin() + i);
+                break;
+            }
+        }
+
+        // ÂæÖÂ≠òÁõòÁöÑÂêàÁ∫¶Êï∞ÊçÆ
+        insertPoint->dirty = true;
+        insertPoint->vecBlockHash.emplace_back(ci.second.blockHash);
+        insertPoint->vecBlockContractData.emplace_back(ci.second.data);
+
+        // Êï∞ÊçÆÂ≠òÁõò
+        MCHashWriter keyHash(SER_GETHASH, 0);
+        keyHash << ci.first << ci.second.blockHash;
+        writeBatch.Write(keyHash.GetHash(), ci.second.data);
+        if (writeBatch.SizeEstimate() > maxBatchSize) {
+            if (!WriteBatch(writeBatch))
                 return false;
         }
+    }
+
+    if (writeBatch.SizeEstimate() > 0) {
+        if (!WriteBatch(writeBatch))
+            return false;
     }
 
     return true;
 }
 
-void ContractDataDB::UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* pContractContext)
+bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
 {
-    if (pBlockIndex == nullptr)
-        return;
+    assert(pBlockIndex != nullptr);
+    LOCK(cs_cache);
 
     int blockHeight = pBlockIndex->nHeight;
-    int confirmBlockHeight = blockHeight - DEFAULT_CHECKBLOCKS;
+    int checkDepth = gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS) / Params().GetConsensus().nPowTargetSpacing;
+    int confirmBlockHeight = blockHeight - checkDepth;
+    int removeBlockHeight = confirmBlockHeight - REDEEM_SAFE_HEIGHT - checkDepth;
+    size_t maxBatchSize = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
 
-    if (confirmBlockHeight > 0) {
-        // ±È¿˙ª∫¥Êµƒ∫œ‘º ˝æ›£¨«Â¿Ì√˜»∑ «Œﬁ–ß∑÷≤Êµƒ ˝æ›
-        CellBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
-        for (auto ci : _contractData) {
-            DBBlockContractInfo& dbBlockContractInfo = ci.second;
+    // ÈÅçÂéÜÁºìÂ≠òÁöÑÂêàÁ∫¶Êï∞ÊçÆÔºåÊ∏ÖÁêÜÊòéÁ°ÆÊòØÊó†ÊïàÂàÜÂèâÁöÑÊï∞ÊçÆ
+    removes.clear();
+    removeBatch.Clear();
+    MCDBBatch writeBatch(db);
+    MCBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
+    for (auto& ci : contractData) {
+        auto& contractInfo = ci.second;
+        auto saveIt = contractInfo.items.end();
 
-            DBContractList::iterator saveIt = dbBlockContractInfo.data.end();
-            for (DBContractList::iterator it = dbBlockContractInfo.data.begin(); it != dbBlockContractInfo.data.end();) {
-                if (it->blockHeight <= confirmBlockHeight) {
-                    BlockMap::iterator bi = mapBlockIndex.find(it->blockHash);
-                    // Ω´–°”⁄»∑»œ«¯øÈ“‘œ¬µƒ≤ª Ù”⁄∏√¡¥µƒ«¯øÈ ˝æ›“∆≥˝µÙ
-                    if (bi == mapBlockIndex.end() || newConfirmBlock->GetAncestor(it->blockHeight)->GetBlockHash() != it->blockHash) {
-                        DBContractList::iterator temp = it++;
-                        dbBlockContractInfo.data.erase(temp);
+        for (auto heightIt = contractInfo.items.begin(); heightIt != contractInfo.items.end();) {
+            // Â∞ÜÂ∞è‰∫éÁ°ÆËÆ§Âå∫Âùó‰ª•‰∏ãÁöÑ‰∏çÂ±û‰∫éËØ•ÈìæÁöÑÂå∫ÂùóÊï∞ÊçÆÁßªÈô§Êéâ
+            if (heightIt->blockHeight <= confirmBlockHeight) {
+                for (int i = 0; i < heightIt->vecBlockHash.size();) {
+                    BlockMap::iterator bi = mapBlockIndex.find(heightIt->vecBlockHash[i]);
+                    if (bi == mapBlockIndex.end() || 
+                        newConfirmBlock->GetAncestor(heightIt->blockHeight)->GetBlockHash() != heightIt->vecBlockHash[i]) {
+                        MCHashWriter keyHash(SER_GETHASH, 0);
+                        keyHash << ci.first << heightIt->vecBlockHash[i];
+                        removeBatch.Erase(keyHash.GetHash());
+
+                        heightIt->dirty = true;
+                        heightIt->vecBlockHash.erase(heightIt->vecBlockHash.begin() + i);
+                        heightIt->vecBlockContractData.erase(heightIt->vecBlockContractData.begin() + i);
                         continue;
                     }
-                    if (it->blockHeight < confirmBlockHeight) {
-                        // ±£¡Ùµ±«∞»∑»œøÈ“‘œ¬µƒ◊ÓΩ¸“ª±  ˝æ›£¨∑¿÷π≥Ã–ÚÕÀ≥ˆ ±«¯øÈ¡¥±£¥Ê–≈œ¢≤ªÕÍ’˚µº÷¬º”‘ÿµΩ¥ÌŒÛ ˝æ›
-                        if (saveIt != dbBlockContractInfo.data.end())
-                            dbBlockContractInfo.data.erase(saveIt);
-                        saveIt = it;
+                    else {
+                        ++i;
                     }
-                    ++it;
                 }
-                else
-                    break;
+                assert(heightIt->vecBlockHash.size() == 1 && heightIt->vecBlockContractData.size() == 1);
             }
-        }
-    }
 
-    // Ω´«¯øÈ≤Â»Î∂‘”¶µƒΩ·µ„÷–
-    for (auto ci : pContractContext->_data) {
-        DBContractInfo dbContractInfo;
-        dbContractInfo.blockHash = pBlockIndex->GetBlockHash();
-        dbContractInfo.blockHeight = pBlockIndex->nHeight;
-        dbContractInfo.data = ci.second.data;
+            if (heightIt->blockHeight < removeBlockHeight) {
+                // ‰øùÁïôÂΩìÂâçÂç≥Â∞ÜÁßªÈô§Âùó‰ª•‰∏ãÁöÑÊúÄËøë‰∏ÄÁ¨îÊï∞ÊçÆÔºåÈò≤Ê≠¢Á®ãÂ∫èÈÄÄÂá∫Êó∂Âå∫ÂùóÈìæ‰øùÂ≠ò‰ø°ÊÅØ‰∏çÂÆåÊï¥ÂØºËá¥Âä†ËΩΩÂà∞ÈîôËØØÊï∞ÊçÆ
+                if (saveIt != contractInfo.items.end()) {
+                    // ÁßªÈô§Â≠òÁõòÊï∞ÊçÆ
+                    assert(saveIt->vecBlockHash.size() == 1);
+                    MCHashWriter keyBlockHash(SER_GETHASH, 0);
+                    keyBlockHash << ci.first << *saveIt->vecBlockHash.begin();
+                    removeBatch.Erase(keyBlockHash.GetHash());
 
-        // ∞¥∏ﬂ∂»—∞’“≤Â»Îµ„
-        DBBlockContractInfo& blockContractInfo = _contractData[ci.first];
-        if (blockContractInfo.code.empty())
-            blockContractInfo.code = ci.second.code;
-        DBContractList::iterator insertPoint = blockContractInfo.data.end();
-        for (DBContractList::iterator it = blockContractInfo.data.begin(); it != blockContractInfo.data.end(); ++it) {
-            if (blockHeight < it->blockHeight) {
-                insertPoint = it;
-                break;
+                    MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                    keyHeightHash << ci.first << saveIt->blockHeight;
+                    removeBatch.Erase(keyHeightHash.GetHash());
+                    contractInfo.items.erase(saveIt);
+                }
+                saveIt = heightIt;
+
+                if (contractInfo.items.size() == 1)
+                    removes.emplace_back(ci.first);
             }
-        }
-        blockContractInfo.data.insert(insertPoint, dbContractInfo);
-    }
-    pContractContext->ClearData();
-}
 
-void ContractDataDB::Flush()
-{
-    LOCK(cs_cache);
-    LogPrint(BCLog::COINDB, "flush contract data to db");
+            if (heightIt->dirty) {
+                heightIt->dirty = false;
+                MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                keyHeightHash << ci.first << heightIt->blockHeight;
+                writeBatch.Write(keyHeightHash.GetHash(), heightIt->vecBlockHash);
+                if (writeBatch.SizeEstimate() > maxBatchSize) {
+                    if (!WriteBatch(writeBatch))
+                        return false;
+                }
+            }
 
-    int confirmBlockHeight = chainActive.Height() - DEFAULT_CHECKBLOCKS;
-
-    std::vector<uint160> removes;
-    CellDBBatch batch(db);
-    size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
-    for (auto it : _contractData) {
-        DBBlockContractInfo& dbBlockContractInfo = it.second;
-        if (dbBlockContractInfo.data.size() == 0) {
-            // ∏√∫œ‘º√ª”–”––ßµƒ ˝æ›£¨‘Ú≈–∂®Œ™∑÷≤Ê∫ÛŒﬁ–ßµƒ ˝æ›£¨“∆≥˝÷Æ
-            batch.Erase(it.first);
-            removes.emplace_back(it.first);
-        }
-        else
-            batch.Write(it.first, it.second);
-
-        // ∏√«¯øÈ“—≤ªø…ƒÊ«“÷ª £œ¬“ª±  ˝æ›£¨‘Ú¥Ê≈Ã∫Û¥”ƒ⁄¥Ê“∆≥˝
-        if (dbBlockContractInfo.data.size() == 1) {
-            BlockMap::iterator mi = mapBlockIndex.find(dbBlockContractInfo.data.begin()->blockHash);
-            if (mi != mapBlockIndex.end() && mi->second->nHeight < confirmBlockHeight)
-                removes.emplace_back(it.first);
+            ++heightIt;
         }
 
-        if (batch.SizeEstimate() > batch_size) {
-            LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
-            db.WriteBatch(batch);
-            batch.Clear();
+        writeBatch.Write(ci.first, ci.second);
+        if (writeBatch.SizeEstimate() > maxBatchSize) {
+            if (!WriteBatch(writeBatch))
+                return false;
         }
     }
-    db.WriteBatch(batch);
-    batch.Clear();
 
-    for (uint160& contractKey : removes)
-        _contractData.erase(contractKey);
-}
-
-bool ContractDataDB::GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex)
-{
-    LOCK(cs_cache);
-
-    // ºÏ≤È «∑Ò‘⁄ª∫¥Ê÷–£¨≤ª¥Ê‘⁄‘Ú≥¢ ‘º”‘ÿ
-    DBContractMap::iterator di = _contractData.find(contractKey);
-    if (di == _contractData.end()) {
-        DBBlockContractInfo dbBlockContractInfo;
-        if (!db.Read(contractKey, dbBlockContractInfo))
+    if (writeBatch.SizeEstimate() > 0) {
+        if (!WriteBatch(writeBatch))
             return false;
+    }
+
+    return true;
+}
+
+void ContractDataDB::PruneContractInfo()
+{
+    LOCK(cs_cache);
+    if (removeBatch.SizeEstimate() > 0)
+        WriteBatch(removeBatch);
+
+    for (uint160& contractId : removes)
+        contractData.erase(contractId);
+    removes.clear();
+}
+
+int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* prevBlockIndex)
+{
+    LOCK(cs_cache);
+
+    // Ê£ÄÊü•ÊòØÂê¶Âú®ÁºìÂ≠ò‰∏≠Ôºå‰∏çÂ≠òÂú®ÂàôÂ∞ùËØïÂä†ËΩΩ
+    auto di = contractData.find(contractId);
+    if (di == contractData.end()) {
+        DBContractInfo contractInfo;
+        if (!db.Read(contractId, contractInfo)) {
+            return -1;
+        }
         else {
-            _contractData[contractKey] = dbBlockContractInfo;
-            di = _contractData.find(contractKey);
+            contractData[contractId] = contractInfo;
+            di = contractData.find(contractId);
         }
     }
 
-    // ±È¿˙ªÒ»°œ‡”¶Ω⁄µ„µƒ ˝æ›
-    CellBlockIndex* prevBlock = (currentPrevBlockIndex ? currentPrevBlockIndex : chainActive.Tip());
-    int blockHeight = prevBlock->nHeight;
-    // ¡¥±Ì◊Óƒ©Œ≤¥Ê¥¢◊Ó∏ﬂµƒ«¯øÈ
-    for (DBContractList::reverse_iterator it = di->second.data.rbegin(); it != di->second.data.rend(); ++it) {
-        if (it->blockHeight <= blockHeight) {
-            BlockMap::iterator bi = mapBlockIndex.find(it->blockHash);
-            assert(bi != mapBlockIndex.end());
-            CellBlockIndex* checkBlockIndex = prevBlock->GetAncestor(it->blockHeight);
-            // ’“µΩÕ¨“ª∑÷≤Ê ±
-            if (checkBlockIndex == bi->second) {
-                contractInfo.code = di->second.code;
-                contractInfo.data = it->data;
-                return true;
+    // ÈÅçÂéÜËé∑ÂèñÁõ∏Â∫îËäÇÁÇπÁöÑÊï∞ÊçÆ
+    MCBlockIndex* prevBlock = (prevBlockIndex ? prevBlockIndex : chainActive.Tip());
+    // ÈìæË°®ÊúÄÊú´Â∞æÂ≠òÂÇ®ÊúÄÈ´òÁöÑÂå∫Âùó
+    for (auto it = di->second.items.rbegin(); it != di->second.items.rend(); ++it) {
+        if (prevBlock->nHeight >= it->blockHeight) {
+            MCBlockIndex* targetBlockIndex = prevBlock->GetAncestor(it->blockHeight);
+            if (it->vecBlockHash.size() == 0) {
+                MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                keyHeightHash << contractId << it->blockHeight;
+                db.Read(keyHeightHash.GetHash(), it->vecBlockHash);
+                it->vecBlockContractData.resize(it->vecBlockHash.size());
+            }
+            for (int i = 0; i < it->vecBlockHash.size(); ++i) {
+                if (it->vecBlockHash[i] == targetBlockIndex->GetBlockHash()) {
+                    if (it->vecBlockContractData[i].empty()) {
+                        MCHashWriter keyHash(SER_GETHASH, 0);
+                        keyHash << contractId << it->vecBlockHash[i];
+                        db.Read(keyHash.GetHash(), it->vecBlockContractData[i]);
+                    }
+
+                    contractInfo.txIndex = 0;
+                    contractInfo.code = di->second.code;
+                    contractInfo.blockHash = it->vecBlockHash[i];
+                    contractInfo.data = it->vecBlockContractData[i];
+                    return it->blockHeight;
+                }
             }
         }
     }
 
-    return false;
+    return -1;
 }

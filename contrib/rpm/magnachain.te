@@ -1,0 +1,81 @@
+policy_module(magnachain, 1.100.1)
+
+########################################
+#
+# Declarations
+#
+
+type magnachain_t;
+type magnachain_exec_t;
+init_daemon_domain(magnachain_t, magnachain_exec_t)
+
+permissive magnachain_t;
+
+type magnachain_initrc_exec_t;
+init_script_file(magnachain_initrc_exec_t)
+
+type magnachain_conf_t;
+files_type(magnachain_conf_t)
+
+type magnachain_var_lib_t;
+files_type(magnachain_var_lib_t)
+
+type magnachain_var_run_t;
+files_type(magnachain_var_run_t)
+
+type magnachain_port_t;
+corenet_port(magnachain_port_t)
+
+########################################
+#
+# magnachain local policy
+#
+allow magnachain_t self:process { fork };
+
+allow magnachain_t self:fifo_file rw_fifo_file_perms;
+allow magnachain_t self:unix_stream_socket create_stream_socket_perms;
+
+manage_dirs_pattern(magnachain_t, magnachain_conf_t, magnachain_conf_t)
+manage_files_pattern(magnachain_t, magnachain_conf_t, magnachain_conf_t)
+
+manage_dirs_pattern(magnachain_t, magnachain_var_lib_t, magnachain_var_lib_t)
+manage_files_pattern(magnachain_t, magnachain_var_lib_t, magnachain_var_lib_t)
+files_var_lib_filetrans(magnachain_t, magnachain_var_lib_t, { dir file })
+
+manage_dirs_pattern(magnachain_t, magnachain_var_run_t, magnachain_var_run_t)
+manage_files_pattern(magnachain_t, magnachain_var_run_t, magnachain_var_run_t)
+
+sysnet_dns_name_resolve(magnachain_t)
+corenet_all_recvfrom_unlabeled(magnachain_t)
+
+allow magnachain_t self:tcp_socket create_stream_socket_perms;
+corenet_tcp_sendrecv_generic_if(magnachain_t)
+corenet_tcp_sendrecv_generic_node(magnachain_t)
+corenet_tcp_sendrecv_all_ports(magnachain_t)
+corenet_tcp_bind_generic_node(magnachain_t)
+
+gen_require(`
+    type magnachain_port_t;
+')
+allow magnachain_t magnachain_port_t:tcp_socket name_bind;
+
+gen_require(`
+    type magnachain_port_t;
+')
+allow magnachain_t magnachain_port_t:tcp_socket name_connect;
+
+domain_use_interactive_fds(magnachain_t)
+
+files_read_etc_files(magnachain_t)
+
+miscfiles_read_localization(magnachain_t)
+
+sysnet_dns_name_resolve(magnachain_t)
+
+allow magnachain_t magnachain_exec_t:file execute_no_trans;
+allow magnachain_t self:process setsched;
+corecmd_exec_ls(magnachain_t)
+corenet_tcp_connect_http_port(magnachain_t)
+dev_read_urand(magnachain_t)
+fs_getattr_xattr_fs(magnachain_t)
+kernel_read_system_state(magnachain_t)

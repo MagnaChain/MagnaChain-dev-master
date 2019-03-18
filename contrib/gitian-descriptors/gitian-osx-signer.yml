@@ -1,5 +1,5 @@
 ---
-name: "celllink-dmg-signer"
+name: "magnachain-dmg-signer"
 suites:
 - "trusty"
 architectures:
@@ -7,10 +7,10 @@ architectures:
 packages:
 - "faketime"
 remotes:
-- "url": "https://github.com/bitcoin-core/celllink-detached-sigs.git"
+- "url": "https://github.com/magnachain-core/magnachain-detached-sigs.git"
   "dir": "signature"
 files:
-- "celllink-osx-unsigned.tar.gz"
+- "magnachain-osx-unsigned.tar.gz"
 script: |
   WRAP_DIR=$HOME/wrapped
   mkdir -p ${WRAP_DIR}
@@ -27,8 +27,8 @@ script: |
     chmod +x ${WRAP_DIR}/${prog}
   done
 
-  UNSIGNED=celllink-osx-unsigned.tar.gz
-  SIGNED=celllink-osx-signed.dmg
+  UNSIGNED=magnachain-osx-unsigned.tar.gz
+  SIGNED=magnachain-osx-signed.dmg
 
   tar -xf ${UNSIGNED}
   OSX_VOLNAME="$(cat osx_volname)"

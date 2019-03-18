@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -41,14 +41,14 @@ static const struct {
       {RF_JSON, "json"},
 };
 
-struct CellCoin {
+struct MCCoin {
     uint32_t nHeight;
-    CellTxOut out;
+    MCTxOut out;
 
     ADD_SERIALIZE_METHODS;
 
-    CellCoin() : nHeight(0) {}
-    CellCoin(Coin&& in) : nHeight(in.nHeight), out(std::move(in.out)) {}
+    MCCoin() : nHeight(0) {}
+    MCCoin(Coin&& in) : nHeight(in.nHeight), out(std::move(in.out)) {}
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
@@ -143,12 +143,12 @@ static bool rest_headers(HTTPRequest* req,
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    std::vector<const CellBlockIndex *> headers;
+    std::vector<const MCBlockIndex *> headers;
     headers.reserve(count);
     {
         LOCK(cs_main);
         BlockMap::const_iterator it = mapBlockIndex.find(hash);
-        const CellBlockIndex *pindex = (it != mapBlockIndex.end()) ? it->second : nullptr;
+        const MCBlockIndex *pindex = (it != mapBlockIndex.end()) ? it->second : nullptr;
         while (pindex != nullptr && chainActive.Contains(pindex)) {
             headers.push_back(pindex);
             if (headers.size() == (unsigned long)count)
@@ -157,8 +157,8 @@ static bool rest_headers(HTTPRequest* req,
         }
     }
 
-    CellDataStream ssHeader(SER_NETWORK, PROTOCOL_VERSION);
-    for (const CellBlockIndex *pindex : headers) {
+    MCDataStream ssHeader(SER_NETWORK, PROTOCOL_VERSION);
+    for (const MCBlockIndex *pindex : headers) {
         ssHeader << pindex->GetBlockHeader();
     }
 
@@ -178,7 +178,7 @@ static bool rest_headers(HTTPRequest* req,
     }
     case RF_JSON: {
         UniValue jsonHeaders(UniValue::VARR);
-        for (const CellBlockIndex *pindex : headers) {
+        for (const MCBlockIndex *pindex : headers) {
             jsonHeaders.push_back(blockheaderToJSON(pindex));
         }
         std::string strJSON = jsonHeaders.write() + "\n";
@@ -208,8 +208,8 @@ static bool rest_block(HTTPRequest* req,
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    CellBlock block;
-    CellBlockIndex* pblockindex = nullptr;
+    MCBlock block;
+    MCBlockIndex* pblockindex = nullptr;
     {
         LOCK(cs_main);
         if (mapBlockIndex.count(hash) == 0)
@@ -223,7 +223,7 @@ static bool rest_block(HTTPRequest* req,
             return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
     }
 
-    CellDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
+    MCDataStream ssBlock(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
     ssBlock << block;
 
     switch (rf) {
@@ -358,12 +358,12 @@ static bool rest_tx(HTTPRequest* req, const std::string& strURIPart)
     if (!ParseHashStr(hashStr, hash))
         return RESTERR(req, HTTP_BAD_REQUEST, "Invalid hash: " + hashStr);
 
-    CellTransactionRef tx;
+    MCTransactionRef tx;
     uint256 hashBlock = uint256();
     if (!GetTransaction(hash, tx, Params().GetConsensus(), hashBlock, true))
         return RESTERR(req, HTTP_NOT_FOUND, hashStr + " not found");
 
-    CellDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
+    MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
     ssTx << tx;
 
     switch (rf) {
@@ -420,17 +420,15 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 
     bool fInputParsed = false;
     bool fCheckMemPool = false;
-    std::vector<CellOutPoint> vOutPoints;
+    std::vector<MCOutPoint> vOutPoints;
 
     // parse/deserialize input
     // input-format = output-format, rest/getutxos/bin requires binary input, gives binary output, ...
 
     if (uriParts.size() > 0)
     {
-
         //inputs is sent over URI scheme (/rest/getutxos/checkmempool/txid1-n/txid2-n/...)
-        if (uriParts.size() > 0 && uriParts[0] == "checkmempool")
-            fCheckMemPool = true;
+        if (uriParts[0] == "checkmempool") fCheckMemPool = true;
 
         for (size_t i = (fCheckMemPool) ? 1 : 0; i < uriParts.size(); i++)
         {
@@ -443,7 +441,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
                 return RESTERR(req, HTTP_BAD_REQUEST, "Parse error");
 
             txid.SetHex(strTxid);
-            vOutPoints.push_back(CellOutPoint(txid, (uint32_t)nOutput));
+            vOutPoints.push_back(MCOutPoint(txid, (uint32_t)nOutput));
         }
 
         if (vOutPoints.size() > 0)
@@ -467,7 +465,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
                 if (fInputParsed) //don't allow sending input over URI and HTTP RAW DATA
                     return RESTERR(req, HTTP_BAD_REQUEST, "Combination of URI scheme inputs and raw post data is not allowed");
 
-                CellDataStream oss(SER_NETWORK, PROTOCOL_VERSION);
+                MCDataStream oss(SER_NETWORK, PROTOCOL_VERSION);
                 oss << strRequestMutable;
                 oss >> fCheckMemPool;
                 oss >> vOutPoints;
@@ -495,31 +493,34 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
 
     // check spentness and form a bitmap (as well as a JSON capable human-readable string representation)
     std::vector<unsigned char> bitmap;
-    std::vector<CellCoin> outs;
+    std::vector<MCCoin> outs;
     std::string bitmapStringRepresentation;
     std::vector<bool> hits;
     bitmap.resize((vOutPoints.size() + 7) / 8);
     {
-        LOCK2(cs_main, mempool.cs);
-
-        CellCoinsView viewDummy;
-        CellCoinsViewCache view(&viewDummy);
-
-        CellCoinsViewCache& viewChain = *pcoinsTip;
-        CellCoinsViewMemPool viewMempool(&viewChain, mempool);
-
-        if (fCheckMemPool)
-            view.SetBackend(viewMempool); // switch cache backend to db+mempool in case user likes to query mempool
-
-        for (size_t i = 0; i < vOutPoints.size(); i++) {
-            bool hit = false;
-            Coin coin;
-            if (view.GetCoin(vOutPoints[i], coin) && !mempool.isSpent(vOutPoints[i])) {
-                hit = true;
-                outs.emplace_back(std::move(coin));
+        auto process_utxos = [&vOutPoints, &outs, &hits](const MCCoinsView& view, const MCTxMemPool& mempool) {
+            for (const MCOutPoint& vOutPoint : vOutPoints) {
+                Coin coin;
+                bool hit = !mempool.IsSpent(vOutPoint) && view.GetCoin(vOutPoint, coin);
+                hits.push_back(hit);
+                if (hit) outs.emplace_back(std::move(coin));
             }
+        };
 
-            hits.push_back(hit);
+        if (fCheckMemPool) {
+            // use db+mempool as cache backend in case user likes to query mempool
+            LOCK2(cs_main, mempool.cs);
+            MCCoinsViewCache& viewChain = *pcoinsTip;
+            MCCoinsViewMemPool viewMempool(&viewChain, mempool);
+            process_utxos(viewMempool, mempool);
+        }
+        else {
+            LOCK(cs_main);  // no need to lock mempool!
+            process_utxos(*pcoinsTip, MCTxMemPool());
+        }
+
+        for (size_t i = 0; i < hits.size(); ++i) {
+            const bool hit = hits[i];
             bitmapStringRepresentation.append(hit ? "1" : "0"); // form a binary string representation (human-readable for json output)
             bitmap[i / 8] |= ((uint8_t)hit) << (i % 8);
         }
@@ -529,7 +530,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     case RF_BINARY: {
         // serialize data
         // use exact same output as mentioned in Bip64
-        CellDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
         ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
         std::string ssGetUTXOResponseString = ssGetUTXOResponse.str();
 
@@ -539,7 +540,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
     }
 
     case RF_HEX: {
-        CellDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream ssGetUTXOResponse(SER_NETWORK, PROTOCOL_VERSION);
         ssGetUTXOResponse << chainActive.Height() << chainActive.Tip()->GetBlockHash() << bitmap << outs;
         std::string strHex = HexStr(ssGetUTXOResponse.begin(), ssGetUTXOResponse.end()) + "\n";
 
@@ -558,7 +559,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
         objGetUTXOResponse.push_back(Pair("bitmap", bitmapStringRepresentation));
 
         UniValue utxos(UniValue::VARR);
-        for (const CellCoin& coin : outs) {
+        for (const MCCoin& coin : outs) {
             UniValue utxo(UniValue::VOBJ);
             utxo.push_back(Pair("height", (int32_t)coin.nHeight));
             utxo.push_back(Pair("value", ValueFromAmount(coin.out.nValue)));

@@ -1,11 +1,11 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "recentrequeststablemodel.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 
@@ -13,7 +13,7 @@
 #include "io/streams.h"
 
 
-RecentRequestsTableModel::RecentRequestsTableModel(CellWallet *wallet, WalletModel *parent) :
+RecentRequestsTableModel::RecentRequestsTableModel(MCWallet *wallet, WalletModel *parent) :
     QAbstractTableModel(parent), walletModel(parent)
 {
     Q_UNUSED(wallet);
@@ -84,9 +84,9 @@ QVariant RecentRequestsTableModel::data(const QModelIndex &index, int role) cons
             if (rec->recipient.amount == 0 && role == Qt::DisplayRole)
                 return tr("(no amount requested)");
             else if (role == Qt::EditRole)
-                return CellLinkUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount, false, CellLinkUnits::separatorNever);
+                return MagnaChainUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount, false, MagnaChainUnits::separatorNever);
             else
-                return CellLinkUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount);
+                return MagnaChainUnits::format(walletModel->getOptionsModel()->getDisplayUnit(), rec->recipient.amount);
         }
     }
     else if (role == Qt::TextAlignmentRole)
@@ -124,7 +124,7 @@ void RecentRequestsTableModel::updateAmountColumnTitle()
 /** Gets title for amount column including current display unit if optionsModel reference available. */
 QString RecentRequestsTableModel::getAmountTitle()
 {
-    return (this->walletModel->getOptionsModel() != nullptr) ? tr("Requested") + " ("+CellLinkUnits::name(this->walletModel->getOptionsModel()->getDisplayUnit()) + ")" : "";
+    return (this->walletModel->getOptionsModel() != nullptr) ? tr("Requested") + " ("+MagnaChainUnits::name(this->walletModel->getOptionsModel()->getDisplayUnit()) + ")" : "";
 }
 
 QModelIndex RecentRequestsTableModel::index(int row, int column, const QModelIndex &parent) const
@@ -170,7 +170,7 @@ void RecentRequestsTableModel::addNewRequest(const SendCoinsRecipient &recipient
     newEntry.date = QDateTime::currentDateTime();
     newEntry.recipient = recipient;
 
-    CellDataStream ss(SER_DISK, CLIENT_VERSION);
+    MCDataStream ss(SER_DISK, CLIENT_VERSION);
     ss << newEntry;
 
     if (!walletModel->saveReceiveRequest(recipient.address.toStdString(), newEntry.id, ss.str()))
@@ -183,7 +183,7 @@ void RecentRequestsTableModel::addNewRequest(const SendCoinsRecipient &recipient
 void RecentRequestsTableModel::addNewRequest(const std::string &recipient)
 {
     std::vector<char> data(recipient.begin(), recipient.end());
-    CellDataStream ss(data, SER_DISK, CLIENT_VERSION);
+    MCDataStream ss(data, SER_DISK, CLIENT_VERSION);
 
     RecentRequestEntry entry;
     ss >> entry;

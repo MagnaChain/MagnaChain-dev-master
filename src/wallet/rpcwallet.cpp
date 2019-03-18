@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -43,10 +43,10 @@
 
 static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellLinkAddress &toaddress, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls = nullptr);
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellScript &toScript, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls = nullptr);
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls = nullptr);
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls = nullptr);
 
-CellWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request)
+MCWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request)
 {
     if (request.URI.substr(0, WALLET_ENDPOINT_BASE.size()) == WALLET_ENDPOINT_BASE) {
         // wallet endpoint was used
@@ -61,14 +61,14 @@ CellWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request)
     return ::vpwallets.size() == 1 || (request.fHelp && ::vpwallets.size() > 0) ? ::vpwallets[0] : nullptr;
 }
 
-std::string HelpRequiringPassphrase(CellWallet * const pwallet)
+std::string HelpRequiringPassphrase(MCWallet * const pwallet)
 {
     return pwallet && pwallet->IsCrypted()
         ? "\nRequires wallet passphrase to be set with walletpassphrase call."
         : "";
 }
 
-bool EnsureWalletIsAvailable(CellWallet * const pwallet, bool avoidException)
+bool EnsureWalletIsAvailable(MCWallet * const pwallet, bool avoidException)
 {
     if (pwallet) return true;
     if (avoidException) return false;
@@ -85,14 +85,14 @@ bool EnsureWalletIsAvailable(CellWallet * const pwallet, bool avoidException)
         "Wallet file not specified (must request wallet RPC through /wallet/<filename> uri-path).");
 }
 
-void EnsureWalletIsUnlocked(CellWallet * const pwallet)
+void EnsureWalletIsUnlocked(MCWallet * const pwallet)
 {
     if (pwallet->IsLocked()) {
         throw JSONRPCError(RPC_WALLET_UNLOCK_NEEDED, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     }
 }
 
-void WalletTxToJSON(const CellWalletTx& wtx, UniValue& entry)
+void WalletTxToJSON(const MCWalletTx& wtx, UniValue& entry)
 {
     int confirms = wtx.GetDepthInMainChain();
     entry.push_back(Pair("confirmations", confirms));
@@ -141,7 +141,7 @@ std::string AccountFromValue(const UniValue& value)
 
 UniValue getnewaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -149,13 +149,13 @@ UniValue getnewaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 1)
         throw std::runtime_error(
             "getnewaddress ( \"account\" )\n"
-            "\nReturns a new CellLink address for receiving payments.\n"
+            "\nReturns a new MagnaChain address for receiving payments.\n"
             "If 'account' is specified (DEPRECATED), it is added to the address book \n"
             "so payments received with the address will be credited to 'account'.\n"
             "\nArguments:\n"
             "1. \"account\"        (string, optional) DEPRECATED. The account name for the address to be linked to. If not provided, the default account \"\" is used. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created if there is no account by the given name.\n"
             "\nResult:\n"
-            "\"address\"    (string) The new celllink address\n"
+            "\"address\"    (string) The new magnachain address\n"
             "\nExamples:\n"
             + HelpExampleCli("getnewaddress", "")
             + HelpExampleRpc("getnewaddress", "")
@@ -173,30 +173,30 @@ UniValue getnewaddress(const JSONRPCRequest& request)
     }
 
     // Generate a new key that is added to wallet
-    CellPubKey newKey;
+    MCPubKey newKey;
     if (!pwallet->GetKeyFromPool(newKey)) {
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
     }
-    CellKeyID keyID = newKey.GetID();
+    MCKeyID keyID = newKey.GetID();
 
     pwallet->SetAddressBook(keyID, strAccount, "receive");
 
-    return CellLinkAddress(keyID).ToString();
+    return MagnaChainAddress(keyID).ToString();
 }
 
-CellLinkAddress GetAccountAddress(CellWallet* const pwallet, std::string strAccount, bool bForceNew=false)
+MagnaChainAddress GetAccountAddress(MCWallet* const pwallet, std::string strAccount, bool bForceNew=false)
 {
-    CellPubKey pubKey;
+    MCPubKey pubKey;
     if (!pwallet->GetAccountPubkey(pubKey, strAccount, bForceNew)) {
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
     }
 
-    return CellLinkAddress(pubKey.GetID());
+    return MagnaChainAddress(pubKey.GetID());
 }
 
 UniValue getaccountaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -204,11 +204,11 @@ UniValue getaccountaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() != 1)
         throw std::runtime_error(
             "getaccountaddress \"account\"\n"
-            "\nDEPRECATED. Returns the current CellLink address for receiving payments to this account.\n"
+            "\nDEPRECATED. Returns the current MagnaChain address for receiving payments to this account.\n"
             "\nArguments:\n"
             "1. \"account\"       (string, required) The account name for the address. It can also be set to the empty string \"\" to represent the default account. The account does not need to exist, it will be created and a new address created  if there is no account by the given name.\n"
             "\nResult:\n"
-            "\"address\"          (string) The account celllink address\n"
+            "\"address\"          (string) The account magnachain address\n"
             "\nExamples:\n"
             + HelpExampleCli("getaccountaddress", "")
             + HelpExampleCli("getaccountaddress", "\"\"")
@@ -229,7 +229,7 @@ UniValue getaccountaddress(const JSONRPCRequest& request)
 
 UniValue getrawchangeaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -237,7 +237,7 @@ UniValue getrawchangeaddress(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() > 0)
         throw std::runtime_error(
             "getrawchangeaddress\n"
-            "\nReturns a new CellLink address, for receiving change.\n"
+            "\nReturns a new MagnaChain address, for receiving change.\n"
             "This is for use with raw transactions, NOT normal use.\n"
             "\nResult:\n"
             "\"address\"    (string) The address\n"
@@ -252,21 +252,21 @@ UniValue getrawchangeaddress(const JSONRPCRequest& request)
         pwallet->TopUpKeyPool();
     }
 
-    CellReserveKey reservekey(pwallet);
-    CellPubKey vchPubKey;
+    MCReserveKey reservekey(pwallet);
+    MCPubKey vchPubKey;
     if (!reservekey.GetReservedKey(vchPubKey, true))
         throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
     reservekey.KeepKey();
 
-    CellKeyID keyID = vchPubKey.GetID();
+    MCKeyID keyID = vchPubKey.GetID();
 
-    return CellLinkAddress(keyID).ToString();
+    return MagnaChainAddress(keyID).ToString();
 }
 
 UniValue setaccount(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -276,7 +276,7 @@ UniValue setaccount(const JSONRPCRequest& request)
             "setaccount \"address\" \"account\"\n"
             "\nDEPRECATED. Sets the account associated with the given address.\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address to be associated with an account.\n"
+            "1. \"address\"         (string, required) The magnachain address to be associated with an account.\n"
             "2. \"account\"         (string, required) The account to assign the address to.\n"
             "\nExamples:\n"
             + HelpExampleCli("setaccount", "\"1D1ZrZNe3JUo7ZycKEYQQiQAWd9y54F4XX\" \"tabby\"")
@@ -285,9 +285,9 @@ UniValue setaccount(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
     std::string strAccount;
     if (request.params.size() > 1)
@@ -312,7 +312,7 @@ UniValue setaccount(const JSONRPCRequest& request)
 
 UniValue getaccount(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -322,7 +322,7 @@ UniValue getaccount(const JSONRPCRequest& request)
             "getaccount \"address\"\n"
             "\nDEPRECATED. Returns the account associated with the given address.\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address for account lookup.\n"
+            "1. \"address\"         (string, required) The magnachain address for account lookup.\n"
             "\nResult:\n"
             "\"accountname\"        (string) the account address\n"
             "\nExamples:\n"
@@ -332,12 +332,12 @@ UniValue getaccount(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
     std::string strAccount;
-    std::map<CellTxDestination, CellAddressBookData>::iterator mi = pwallet->mapAddressBook.find(address.Get());
+    std::map<MCTxDestination, MCAddressBookData>::iterator mi = pwallet->mapAddressBook.find(address.Get());
     if (mi != pwallet->mapAddressBook.end() && !(*mi).second.name.empty()) {
         strAccount = (*mi).second.name;
     }
@@ -346,7 +346,7 @@ UniValue getaccount(const JSONRPCRequest& request)
 
 UniValue getaddressesbyaccount(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -359,7 +359,7 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
             "1. \"account\"        (string, required) The account name.\n"
             "\nResult:\n"
             "[                     (json array of string)\n"
-            "  \"address\"         (string) a celllink address associated with the given account\n"
+            "  \"address\"         (string) a magnachain address associated with the given account\n"
             "  ,...\n"
             "]\n"
             "\nExamples:\n"
@@ -373,8 +373,8 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
 
     // Find all addresses that have the given account
     UniValue ret(UniValue::VARR);
-    for (const std::pair<CellLinkAddress, CellAddressBookData>& item : pwallet->mapAddressBook) {
-        const CellLinkAddress& address = item.first;
+    for (const std::pair<MagnaChainAddress, MCAddressBookData>& item : pwallet->mapAddressBook) {
+        const MagnaChainAddress& address = item.first;
         const std::string& strName = item.second.name;
         if (strName == strAccount)
             ret.push_back(address.ToString());
@@ -382,12 +382,12 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellAmount nValue, bool fSubtractFeeFromAmount, CellWalletTx& wtxNew, const CellCoinControl& coin_control, SmartLuaState* sls)
+void SendMoney(MCWallet * const pwallet, const MCScript &scriptPubKey, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coin_control, SmartLuaState* sls)
 {
-	CellAmount curBalance = pwallet->GetBalance();
+	MCAmount curBalance = pwallet->GetBalance();
 
 	// Check amount
-	if (nValue <= 0)
+	if (nValue < 0)
 		throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
 
 	if (nValue > curBalance)
@@ -397,36 +397,37 @@ void SendMoney(CellWallet * const pwallet, const CellScript &scriptPubKey, CellA
 		throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
 	// Create and send the transaction
-	CellReserveKey reservekey(pwallet);
-	CellAmount nFeeRequired;
+	MCReserveKey reservekey(pwallet);
+	MCAmount nFeeRequired;
 	std::string strError;
-	std::vector<CellRecipient> vecSend;
-	int nChangePosRet = -1;
-	CellRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
-	vecSend.push_back(recipient);
+	std::vector<MCRecipient> vecSend;
+    if (nValue > 0) {
+        MCRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
+        vecSend.push_back(recipient);
+    }
+    int nChangePosRet = -1;
 	if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true, sls)) {
 		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
 			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
 		throw JSONRPCError(RPC_WALLET_ERROR, strError);
 	}
 
-	CellValidationState state;
+	MCValidationState state;
 	if (!pwallet->CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
 		strError = strprintf("Error: The transaction was rejected! Reason given: %s. txid %s, you can call abandontransaction to remove it", state.GetRejectReason(), wtxNew.tx->GetHash().GetHex());
 		throw JSONRPCError(RPC_WALLET_ERROR, strError);
 	}
 }
 
-static void SendMoney(CellWallet * const pwallet, const CellTxDestination &address, CellAmount nValue, bool fSubtractFeeFromAmount, CellWalletTx& wtxNew, const CellCoinControl& coin_control)
+void SendMoney(MCWallet * const pwallet, const MCTxDestination &address, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coin_control)
 {
-	// Parse CellLink address
-	CellScript scriptPubKey = GetScriptForDestination(address);
+	MCScript scriptPubKey = GetScriptForDestination(address);
 	SendMoney(pwallet, scriptPubKey, nValue, fSubtractFeeFromAmount, wtxNew, coin_control);
 }
 
 UniValue sendtoaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -437,7 +438,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
             "\nSend an amount to a given address.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
-            "1. \"address\"            (string, required) The celllink address to send to.\n"
+            "1. \"address\"            (string, required) The magnachain address to send to.\n"
             "2. \"amount\"             (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
             "3. \"comment\"            (string, optional) A comment used to store what the transaction is for. \n"
             "                             This is not part of the transaction, just kept in your wallet.\n"
@@ -463,17 +464,19 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
+    if (address.IsContractID())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "MagnaChain address can't be contract id");
 
     // Amount
-    CellAmount nAmount = AmountFromValue(request.params[1]);
+    MCAmount nAmount = AmountFromValue(request.params[1]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     // Wallet comments
-    CellWalletTx wtx;
+    MCWalletTx wtx;
     if (request.params.size() > 2 && !request.params[2].isNull() && !request.params[2].get_str().empty())
         wtx.mapValue["comment"] = request.params[2].get_str();
     if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[3].get_str().empty())
@@ -484,7 +487,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         fSubtractFeeFromAmount = request.params[4].get_bool();
     }
 
-    CellCoinControl coin_control;
+    MCCoinControl coin_control;
     if (request.params.size() > 5 && !request.params[5].isNull()) {
         coin_control.signalRbf = request.params[5].get_bool();
     }
@@ -499,9 +502,7 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         }
     }
 
-
     EnsureWalletIsUnlocked(pwallet);
-
     SendMoney(pwallet, address.Get(), nAmount, fSubtractFeeFromAmount, wtx, coin_control);
 
     return wtx.GetHash().GetHex();
@@ -509,56 +510,59 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
 
 UniValue publishcontract(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
 	}
 
 	if (request.fHelp || request.params.size() < 1 )
 		throw std::runtime_error(
-			"publish \"filename\" \n"
+			"publishcontract \"contractfilepath\" \n"
 			"\npublish a contract from a file.\n"
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
 			"1. \"filename\"            (string, required) The file need to publish.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("publishcontract", "\"filepath\"")
+            + HelpExampleRpc("publishcontract", "\"filepath\"")
 		);
 
 	LOCK2(cs_main, pwallet->cs_wallet);
 
 	std::string strFileName = request.params[0].get_str();
-	FILE * fp = fopen(strFileName.c_str(), "rb");
-	if (fp == NULL) {
-		throw std::runtime_error(
-			"publish \"filename\" \n"
-			"\n file open error.\n"
-		);
+	FILE * file = fopen(strFileName.c_str(), "rb");
+	if (file == nullptr) {
+        throw std::runtime_error("can't open file");
 	}
 
-	fseek(fp, 0, SEEK_END);
-	long flen = ftell(fp);
-	fseek(fp, 0L, SEEK_SET);
-	std::string rawCode;
-    rawCode.resize(flen);
-	fread((char*)&rawCode[0], flen, 1, fp);
-	fclose(fp);
+	fseek(file, 0, SEEK_END);
+	long fileLen = ftell(file);
+    if (fileLen > MAX_CONTRACT_FILE_LEN) {
+        fclose(file);
+        throw std::runtime_error("code is too large");
+    }
 
-    CellAmount amount = 100000;
-    if (request.params.size() > 1)
-        amount = AmountFromValue(request.params[1]);
+	fseek(file, 0L, SEEK_SET);
+	std::string rawCode;
+    rawCode.resize(fileLen);
+	fread(&rawCode[0], fileLen, 1, file);
+	fclose(file);
 
     std::string strSenderAddr;
-    if (request.params.size() > 2)
-        strSenderAddr = request.params[2].get_str();
+    if (request.params.size() > 1)
+        strSenderAddr = request.params[1].get_str();
 
-    UniValue ret;
-    std::string code;
-	int result = PublishContract(&RPCSLS, pwallet, amount, strSenderAddr, rawCode, code, ret);
+    SmartLuaState sls;
+    UniValue ret(UniValue::VARR);
+	if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
+
     return ret;
 }
 
 UniValue publishcontractcode(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
 	}
@@ -570,6 +574,9 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
 			+ HelpRequiringPassphrase(pwallet) +
 			"\nArguments:\n"
 			"1. \"codedata\"            (string, required) Code data to hex.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("publishcontractcode", "\"code_in_hex_string\"")
+            + HelpExampleRpc("publishcontractcode", "\"code_in_hex_string\"")
 		);
 
 	LOCK2(cs_main, pwallet->cs_wallet);
@@ -583,23 +590,18 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
 	}
 
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
-	std::string rawCode(vCode.begin(), vCode.end());
-
-    CellAmount amount = 100000;
-    if (request.params.size() > 1)
-        amount = AmountFromValue(request.params[1]);
+    std::string rawCode(vCode.begin(), vCode.end());
 
     std::string strSenderAddr;
-    if (request.params.size() > 2)
-        strSenderAddr = request.params[2].get_str();
+    if (request.params.size() > 1)
+        strSenderAddr = request.params[1].get_str();
 
-    UniValue ret;
-    std::string code;
-    int result = PublishContract(&RPCSLS, pwallet, amount, strSenderAddr, rawCode, code, ret);
+    SmartLuaState sls;
+    UniValue ret(UniValue::VARR);
+    if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
     return ret;
 }
-
-SmartLuaState RPCSLS;
 
 //sdk调用，编译代码，预先生成交易
 UniValue prepublishcode(const JSONRPCRequest& request)
@@ -610,7 +612,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 			"\n rebroadcast the branch chain transaction by txid, in case that transction has not be send to the target chain .\n"
 			"\nArguments:\n"
 			"1. \"code\"                         (string, required) The compiled code in hex format\n"
-			"2. \"fundaddress\"                  (string, required) The celllink address owns coins to use\n"
+			"2. \"fundaddress\"                  (string, required) The magnachain address owns coins to use\n"
 			"3. \"senderaddress\"                (string, required) The hex pubkey of address as constact caller address\n"
 			"4. \"amount\"                       (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send to constact. eg 0.1\n"
 			"5. \"changeaddress\"                (string, required) The address for change may be\n"
@@ -633,59 +635,89 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	}
 
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
-	std::string rawCode(vCode.begin(), vCode.end());
+    std::string rawCode(vCode.begin(), vCode.end());
+    std::string trimRawCode = TrimCode(rawCode);
 
-	CellLinkAddress fundAddr(request.params[1].get_str());
+	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink fund address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain fund address");
 	
 	std::vector<unsigned char> data(ParseHex(request.params[2].get_str()));
-	CellPubKey senderPubKey(data.begin(), data.end());
-	CellLinkAddress senderAddr(senderPubKey.GetID());
+	MCPubKey senderPubKey(data.begin(), data.end());
+	MagnaChainAddress senderAddr(senderPubKey.GetID());
 	if (!senderAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink sender address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain sender address");
 
-	CellAmount amount = AmountFromValue(request.params[3]);
-	if (amount <= 0)
+	MCAmount amount = AmountFromValue(request.params[3]);
+	if (amount < 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-	CellLinkAddress changeAddr;
+	MagnaChainAddress changeAddr;
 	if (request.params.size() > 4)
 	{
         changeAddr.SetString(request.params[4].get_str());
 		if (!changeAddr.IsValid())
-			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink change address");
+			throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain change address");
 	}
 	else
         changeAddr = fundAddr;
 
-	CellKeyID contractKey = GenerateTempContractAddress(senderAddr, rawCode);
-	CellLinkAddress contractAddr(contractKey);
+    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, trimRawCode);
+	MagnaChainAddress contractAddr(contractId);
 
-    std::string code;
-    SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
-    int result = PublishContract(&RPCSLS, amount, contractAddr, senderAddr, rawCode, code, scr);
-    if (result != 0)
-        throw JSONRPCError(RPC_MISC_ERROR, scr.result[0].get_str());
+    SmartLuaState sls;
+    UniValue ret(UniValue::VARR);
+    sls.Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
-    CellScript contractScript;
-    CellTxDestination contractDest = contractAddr.Get();
-    boost::apply_visitor(CellContractPublishScriptVisitor(&contractScript), contractDest);
+    MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-    RPCSLS.contractKeys.erase(contractKey);
-    CellWalletTx wtx;
-    wtx.transaction_version = CellTransaction::PUBLISH_CONTRACT_VERSION;
-    wtx.contractCode = code;
-    wtx.contractSenderKey = senderPubKey;
-    wtx.contractAddrs.emplace_back(contractKey);
-    wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractKeys.begin(), RPCSLS.contractKeys.end());
-    SendFromToOther(wtx, fundAddr, contractScript, changeAddr, amount, 0, &RPCSLS);
+    sls.contractIds.erase(contractId);
+    MCWalletTx wtx;
+    wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
+    wtx.pContractData.reset(new ContractData);
+    wtx.pContractData->codeOrFunc = trimRawCode;
+    wtx.pContractData->sender = senderPubKey;
+    wtx.pContractData->address = contractId;
+    wtx.pContractData->amountOut = 0;
+    SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
 
-    UniValue ret(UniValue::VOBJ);
+    ret.setObject();
     ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
+    
+    //for debug
+    //UniValue objTx(UniValue::VOBJ);
+    //uint256 blocktemp;
+    //TxToUniv(*wtx.tx, blocktemp, objTx);
+    //ret.push_back(Pair("txobj", objTx));
+
+    //check
+    //const MCTransaction& tx = *wtx.tx;
+    //MCContractID contractAddrtt = GenerateContractAddressByTx(tx);
+    //if (contractAddrtt != tx.pContractData->address)
+    //    throw JSONRPCError(RPC_CONTRACT_ERROR,"contract address error");
+    //MCAmount nValueOut = 0;
+    //MCAmount nContractAmountChange = 0;
+    //for (const auto& tx_out : tx.vout) {
+    //    nValueOut += tx_out.nValue;
+    //    if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
+    //        throw JSONRPCError(RPC_CONTRACT_ERROR, "outvalue error");
+
+    //    if (tx_out.scriptPubKey.IsContract()) {
+    //        MCContractID contractId;
+    //        if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
+    //            throw JSONRPCError(RPC_CONTRACT_ERROR, "out contract id error");
+    //        if (tx_out.scriptPubKey.IsContractChange()) {
+    //            if (nContractAmountChange > 0)
+    //                throw JSONRPCError(RPC_CONTRACT_ERROR, "multi contract recharge error");
+    //            nContractAmountChange += tx_out.nValue;
+    //        }
+    //    }
+    //}
+
     UniValue uvalCoins(UniValue::VARR);
-    for (CellTxIn txin : wtx.tx->vin)
+    for (MCTxIn txin : wtx.tx->vin)
     {
         const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
         UniValue uvalCoin((UniValue::VOBJ));
@@ -700,54 +732,16 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	return ret;
 }
 
-/*static void SearchContractTransaction(const std::string& strContractAddr, std::vector<CellTransactionRef>& vecTrans)
-{
-	CellScript script;
-	CellLinkAddress kAddr(strContractAddr);
-	CellTxDestination kDest = kAddr.Get();
-	boost::apply_visitor(CellContractPublishScriptVisitor(&script), kDest);
-	mempool.SearchContractTransaction(script, vecTrans);
-
-	boost::apply_visitor(CellContractCallScriptVisitor(&script), kDest);
-	mempool.SearchContractTransaction(script, vecTrans);
-}*/
-
-static void SearchContractTransaction(const CellKeyID& kContractKey, std::vector<CellTransactionRef>& vecTrans)
-{
-	mempool.SearchContractTransaction(kContractKey, vecTrans);
-}
-
-static bool ExtractContractSender(const CellTxOut& txo, CellKeyID& keyId, opcodetype& opcode )
-{
-	std::vector<unsigned char> vch;
-	CellScript::const_iterator pc1 = txo.scriptPubKey.begin();
-	txo.scriptPubKey.GetOp(pc1, opcode, vch);
-	if (opcode == OP_PUB_CONTRACT ) {
-		vch.clear();
-	//	vch.assign(txo.contractInfo.begin(), txo.contractInfo.begin() + 20);
-		keyId = CellKeyID(uint160(vch));
-		return true;
-	}
-	else if( opcode == OP_TRANS_CONTRACT ){
-		std::vector< std::string > vecStr;
-		std::string strSpt("\n");
-		CellLinkAddress kAddr(vecStr[0]);
-		kAddr.GetKeyID(keyId);
-		return true;
-	}
-	return false;
-}
-
 UniValue callcontract(const JSONRPCRequest& request)
 {
-	CellWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
 	}
 
 	if (request.fHelp || request.params.size() < 4)
 		throw std::runtime_error(
-			"sendcall \"address\" \n"
+			"callcontract issendcall amount \"contractaddress\" \"senderaddress\" \"contract_fun_name\" \"params\"\n"
 			"\nsend to contract .\n"
 			+ HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
@@ -757,6 +751,9 @@ UniValue callcontract(const JSONRPCRequest& request)
 			"4. \"senderaddress\"       (string, required) The sender address, can be empty,as \"\".\n"
 			"5. \"function\"	        (string, required) The function need to call.\n"
 			"6. \"params\"              (string, optional) The function params.\n"
+            "\nExamples:\n"
+            + HelpExampleCli("callcontract", "true 0 \"2P8DtWVXv3mxPndCVrJaF5HqviLB4rEnpqw\" \"mHi1uojMVdTtksRp563oFe1PKJgeCDPTu7\" testfun p1 p2 p3")
+            + HelpExampleRpc("callcontract", "true 0 \"2P8DtWVXv3mxPndCVrJaF5HqviLB4rEnpqw\" \"mHi1uojMVdTtksRp563oFe1PKJgeCDPTu7\" testfun p1 p2 p3")
 		);
 
     LOCK2(cs_main, pwallet->cs_wallet);
@@ -768,22 +765,25 @@ UniValue callcontract(const JSONRPCRequest& request)
     if (uvSendCall.isStr() && (uvSendCall.get_str() == "1" || uvSendCall.get_str() == "true"))
         sendCall = true;
 
-    CellAmount amount = AmountFromValue(request.params[1]);
+    MCAmount amount = AmountFromValue(request.params[1]);
+    if (amount < 0)
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     std::string strContractAddr = request.params[2].get_str();
-    CellLinkAddress contractAddr(strContractAddr);
+    MagnaChainAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address");
 
     std::string strSenderAddr = request.params[3].get_str();
-    CellLinkAddress senderAddr;
+    MagnaChainAddress senderAddr;
     if (!GetSenderAddr(pwallet, strSenderAddr, senderAddr))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
-    CellKeyID senderKey;
-    CellPubKey senderPubKey;
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address, which is not in this wallet.");
+
+    MCKeyID senderKey;
+    MCPubKey senderPubKey;
     senderAddr.GetKeyID(senderKey);
     if (!pwallet->GetPubKey(senderKey, senderPubKey))
-        throw JSONRPCError(RPC_TYPE_ERROR, "Get sender public key fail.");
+        throw JSONRPCError(RPC_TYPE_ERROR, "Get sender public key fail");
 
     std::string strFuncName = request.params[4].get_str();
     if (strFuncName.empty())
@@ -793,47 +793,50 @@ UniValue callcontract(const JSONRPCRequest& request)
     std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 5);
 
-    UniValue ret(UniValue::VType::VOBJ);
-    SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
-    long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, senderAddr, strFuncName, args, scr);
-    if (result == 0) {
-        RPCSLS.runningTimes = MAX_CONTRACT_CALL - callNum;
-        RPCSLS.codeLen = 0;
-
-        if (sendCall) {
-            CellScript scriptContract;
-            CellTxDestination contractDest = contractAddr.Get();
-            boost::apply_visitor(CellContractCallScriptVisitor(&scriptContract), contractDest);
-
-            CellKeyID contractKey;
-            contractAddr.GetKeyID(contractKey);
-
-            RPCSLS.contractKeys.erase(contractKey);
-            CellWalletTx wtx;
-            wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
-            wtx.contractSenderKey = senderPubKey;
-            wtx.contractCode = strFuncName;
-            wtx.contractParams = args.write();
-            wtx.contractAddrs.emplace_back(contractKey);
-            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractKeys.begin(), RPCSLS.contractKeys.end());
-
-            bool subtractFeeFromAmount = false;
-            CellCoinControl coinCtrl;
-            EnsureWalletIsUnlocked(pwallet);
-            SendMoney(pwallet, scriptContract, amount, subtractFeeFromAmount, wtx, coinCtrl, &RPCSLS);
-            ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
-        }
+    if (args.size() > 8)
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
     }
 
-    ret.push_back(Pair("return", scr.result));
-    return ret;
+    SmartLuaState sls;
+    UniValue callRet(UniValue::VARR);
+    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
+    if (success) {
+        UniValue ret(UniValue::VType::VOBJ);
+        if (sendCall) {
+            MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
+
+            MCContractID contractId;
+            contractAddr.GetContractID(contractId);
+
+            MCWalletTx wtx;
+            wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
+            wtx.pContractData.reset(new ContractData);
+            wtx.pContractData->sender = senderPubKey;
+            wtx.pContractData->codeOrFunc = strFuncName;
+            wtx.pContractData->args = args.write();
+            wtx.pContractData->address = contractId;
+            wtx.pContractData->amountOut = sls.contractOut;
+
+            bool subtractFeeFromAmount = false;
+            MCCoinControl coinCtrl;
+            EnsureWalletIsUnlocked(pwallet);
+            SendMoney(pwallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, &sls);
+            ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
+        }
+        ret.push_back(Pair("return", callRet));
+        return ret;
+    }
+    else
+        throw JSONRPCError(RPC_CONTRACT_ERROR, callRet[0].get_str());
+
+    return NullUniValue;
 }
 
 UniValue getcontractcode(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
 	}
@@ -861,7 +864,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 			"\nsend to contract .\n"
 			"\nArguments:\n"
 			"1. \"contractaddress\"       (string, required) The contract address need to send\n"
-			"2. \"fundaddress\"	          (string, required) The celllink address of fund to be used\n"
+			"2. \"fundaddress\"	          (string, required) The magnachain address of fund to be used\n"
 			"3. \"amount\"	              (number, required) The amount need to be send to contract\n"
 			"4. \"senderpubkey\"          (string, required) The hex pubkey of address of sender\n"
 			"5. \"changeaddress\"         (string, required) The address for change may be\n"
@@ -879,29 +882,33 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
 	LOCK(cs_main);
 
-    CellLinkAddress contractAddr(request.params[0].get_str());
+    MagnaChainAddress contractAddr(request.params[0].get_str());
 	if (!contractAddr.IsValid())
-		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address for send");
+		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address to call");
 
-	CellLinkAddress fundAddr(request.params[1].get_str());
+    MCContractID contractID;
+    if (!contractAddr.GetContractID(contractID))
+        throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address");
+
+	MagnaChainAddress fundAddr(request.params[1].get_str());
 	if (!fundAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink fund address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain fund address");
 
 	// Amount
-	CellAmount amount = AmountFromValue(request.params[2]);
-	if (amount <= 0)
+	MCAmount amount = AmountFromValue(request.params[2]);
+	if (amount < 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
 	std::vector<unsigned char> data(ParseHex(request.params[3].get_str()));
-	CellPubKey senderPubKey(data.begin(), data.end());
-	CellKeyID keyID = senderPubKey.GetID();
-	CellLinkAddress senderAddr(keyID);
+	MCPubKey senderPubKey(data.begin(), data.end());
+	MCKeyID senderKey = senderPubKey.GetID();
+	MagnaChainAddress senderAddr(senderKey);
 	if (!senderAddr.IsValid())
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
 
-	CellLinkAddress changeAddr(request.params[4].get_str());
+	MagnaChainAddress changeAddr(request.params[4].get_str());
 	if (!changeAddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address for change");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address for change");
 
 	bool bSendCall = false;
 	UniValue uvIsSendCall = request.params[5];
@@ -918,35 +925,39 @@ UniValue precallcontract(const JSONRPCRequest& request)
 	std::vector<UniValue>& vecArgs = args.getMutableValues();
     vecArgs.erase(vecArgs.begin(), vecArgs.begin() + 7);
 
-    SmartContractRet scr;
-    RPCSLS.Initialize(GetTime(), chainActive.Height() + 1, nullptr, nullptr, 0);
-    long callNum = MAX_CONTRACT_CALL;
-    int result = CallContract(&RPCSLS, callNum, amount, contractAddr, senderAddr, strFuncName, args, scr);
+    if (args.size() > 8)
+    {
+        throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
+    }
+
+    SmartLuaState sls;
+    UniValue callRet(UniValue::VARR);
+    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("call_return", scr.result));
-    if (result == 0) {
+    ret.push_back(Pair("return", callRet));
+    if (success) {
         if (bSendCall) {
-            CellKeyID contractKey;
-            contractAddr.GetKeyID(contractKey);
+            //MCKeyID contractId;
+            //contractAddr.GetKeyID(contractId);
 
-            CellScript contractScript;
-            CellTxDestination contractDest = contractAddr.Get();
-            boost::apply_visitor(CellContractCallScriptVisitor(&contractScript), contractDest);
+            MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
 
-            RPCSLS.contractKeys.erase(contractKey);
-            CellWalletTx wtx;
-            wtx.transaction_version = CellTransaction::CALL_CONTRACT_VERSION;
-            wtx.contractSenderKey = senderPubKey;
-            wtx.contractCode = strFuncName;
-            wtx.contractParams = args.write();
-            wtx.contractAddrs.emplace_back(contractKey);
-            wtx.contractAddrs.insert(wtx.contractAddrs.end(), RPCSLS.contractKeys.begin(), RPCSLS.contractKeys.end());
-            SendFromToOther(wtx, fundAddr, contractScript, changeAddr, amount, 0, &RPCSLS);
+            sls.contractIds.erase(contractID);
+            MCWalletTx wtx;
+            wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
+            wtx.pContractData.reset(new ContractData);
+            wtx.pContractData->sender = senderPubKey;
+            wtx.pContractData->codeOrFunc = strFuncName;
+            wtx.pContractData->args = args.write();
+            wtx.pContractData->address = contractID;
+            wtx.pContractData->amountOut = sls.contractOut;
+            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
             UniValue coins(UniValue::VARR);
-            for (CellTxIn txin : wtx.tx->vin)
+            for (MCTxIn txin : wtx.tx->vin)
             {
                 const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
 
@@ -960,13 +971,15 @@ UniValue precallcontract(const JSONRPCRequest& request)
             ret.push_back(Pair("coins", coins));
         }
 	}
+    else
+        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
 	return ret;
 }
 
 UniValue listaddressgroupings(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -981,7 +994,7 @@ UniValue listaddressgroupings(const JSONRPCRequest& request)
             "[\n"
             "  [\n"
             "    [\n"
-            "      \"address\",            (string) The celllink address\n"
+            "      \"address\",            (string) The magnachain address\n"
             "      amount,                 (numeric) The amount in " + CURRENCY_UNIT + "\n"
             "      \"account\"             (string, optional) DEPRECATED. The account\n"
             "    ]\n"
@@ -997,17 +1010,17 @@ UniValue listaddressgroupings(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     UniValue jsonGroupings(UniValue::VARR);
-    std::map<CellTxDestination, CellAmount> balances = pwallet->GetAddressBalances();
-    for (std::set<CellTxDestination> grouping : pwallet->GetAddressGroupings()) {
+    std::map<MCTxDestination, MCAmount> balances = pwallet->GetAddressBalances();
+    for (std::set<MCTxDestination> grouping : pwallet->GetAddressGroupings()) {
         UniValue jsonGrouping(UniValue::VARR);
-        for (CellTxDestination address : grouping)
+        for (MCTxDestination address : grouping)
         {
             UniValue addressInfo(UniValue::VARR);
-            addressInfo.push_back(CellLinkAddress(address).ToString());
+            addressInfo.push_back(MagnaChainAddress(address).ToString());
             addressInfo.push_back(ValueFromAmount(balances[address]));
             {
-                if (pwallet->mapAddressBook.find(CellLinkAddress(address).Get()) != pwallet->mapAddressBook.end()) {
-                    addressInfo.push_back(pwallet->mapAddressBook.find(CellLinkAddress(address).Get())->second.name);
+                if (pwallet->mapAddressBook.find(MagnaChainAddress(address).Get()) != pwallet->mapAddressBook.end()) {
+                    addressInfo.push_back(pwallet->mapAddressBook.find(MagnaChainAddress(address).Get())->second.name);
                 }
             }
             jsonGrouping.push_back(addressInfo);
@@ -1019,7 +1032,7 @@ UniValue listaddressgroupings(const JSONRPCRequest& request)
 
 UniValue signmessage(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1030,7 +1043,7 @@ UniValue signmessage(const JSONRPCRequest& request)
             "\nSign a message with the private key of an address"
             + HelpRequiringPassphrase(pwallet) + "\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address to use for the private key.\n"
+            "1. \"address\"         (string, required) The magnachain address to use for the private key.\n"
             "2. \"message\"         (string, required) The message to create a signature of.\n"
             "\nResult:\n"
             "\"signature\"          (string) The signature of the message encoded in base 64\n"
@@ -1052,20 +1065,20 @@ UniValue signmessage(const JSONRPCRequest& request)
     std::string strAddress = request.params[0].get_str();
     std::string strMessage = request.params[1].get_str();
 
-    CellLinkAddress addr(strAddress);
+    MagnaChainAddress addr(strAddress);
     if (!addr.IsValid())
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid address");
 
-    CellKeyID keyID;
+    MCKeyID keyID;
     if (!addr.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to key");
 
-    CellKey key;
+    MCKey key;
     if (!pwallet->GetKey(keyID, key)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key not available");
     }
 
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << strMessage;
 
@@ -1078,7 +1091,7 @@ UniValue signmessage(const JSONRPCRequest& request)
 
 UniValue getreceivedbyaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1088,7 +1101,7 @@ UniValue getreceivedbyaddress(const JSONRPCRequest& request)
             "getreceivedbyaddress \"address\" ( minconf )\n"
             "\nReturns the total amount received by the given address in transactions with at least minconf confirmations.\n"
             "\nArguments:\n"
-            "1. \"address\"         (string, required) The celllink address for transactions.\n"
+            "1. \"address\"         (string, required) The magnachain address for transactions.\n"
             "2. minconf             (numeric, optional, default=1) Only include transactions confirmed at least this many times.\n"
             "\nResult:\n"
             "amount   (numeric) The total amount in " + CURRENCY_UNIT + " received at this address.\n"
@@ -1105,11 +1118,11 @@ UniValue getreceivedbyaddress(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    // CellLink address
-    CellLinkAddress address = CellLinkAddress(request.params[0].get_str());
+    // MagnaChain address
+    MagnaChainAddress address = MagnaChainAddress(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
-    CellScript scriptPubKey = GetScriptForDestination(address.Get());
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
+    MCScript scriptPubKey = GetScriptForDestination(address.Get());
     if (!IsMine(*pwallet, scriptPubKey)) {
         return ValueFromAmount(0);
     }
@@ -1120,13 +1133,13 @@ UniValue getreceivedbyaddress(const JSONRPCRequest& request)
         nMinDepth = request.params[1].get_int();
 
     // Tally
-    CellAmount nAmount = 0;
-    for (const std::pair<uint256, CellWalletTx>& pairWtx : pwallet->mapWallet) {
-        const CellWalletTx& wtx = pairWtx.second;
+    MCAmount nAmount = 0;
+    for (const std::pair<uint256, MCWalletTx>& pairWtx : pwallet->mapWallet) {
+        const MCWalletTx& wtx = pairWtx.second;
         if (wtx.IsCoinBase() || !CheckFinalTx(*wtx.tx))
             continue;
 
-        for (const CellTxOut& txout : wtx.tx->vout)
+        for (const MCTxOut& txout : wtx.tx->vout)
             if (txout.scriptPubKey == scriptPubKey)
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
@@ -1137,7 +1150,7 @@ UniValue getreceivedbyaddress(const JSONRPCRequest& request)
 
 UniValue getreceivedbyaccount(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1171,18 +1184,18 @@ UniValue getreceivedbyaccount(const JSONRPCRequest& request)
 
     // Get the set of pub keys assigned to account
     std::string strAccount = AccountFromValue(request.params[0]);
-    std::set<CellTxDestination> setAddress = pwallet->GetAccountAddresses(strAccount);
+    std::set<MCTxDestination> setAddress = pwallet->GetAccountAddresses(strAccount);
 
     // Tally
-    CellAmount nAmount = 0;
-    for (const std::pair<uint256, CellWalletTx>& pairWtx : pwallet->mapWallet) {
-        const CellWalletTx& wtx = pairWtx.second;
+    MCAmount nAmount = 0;
+    for (const std::pair<uint256, MCWalletTx>& pairWtx : pwallet->mapWallet) {
+        const MCWalletTx& wtx = pairWtx.second;
         if (wtx.IsCoinBase() || !CheckFinalTx(*wtx.tx))
             continue;
 
-        for (const CellTxOut& txout : wtx.tx->vout)
+        for (const MCTxOut& txout : wtx.tx->vout)
         {
-            CellTxDestination address;
+            MCTxDestination address;
             if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*pwallet, address) && setAddress.count(address)) {
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
@@ -1195,7 +1208,7 @@ UniValue getreceivedbyaccount(const JSONRPCRequest& request)
 
 UniValue getbalance(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1254,7 +1267,7 @@ UniValue getbalance(const JSONRPCRequest& request)
 
 UniValue getunconfirmedbalance(const JSONRPCRequest &request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1271,7 +1284,7 @@ UniValue getunconfirmedbalance(const JSONRPCRequest &request)
 
 UniValue movecmd(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1301,7 +1314,7 @@ UniValue movecmd(const JSONRPCRequest& request)
 
     std::string strFrom = AccountFromValue(request.params[0]);
     std::string strTo = AccountFromValue(request.params[1]);
-    CellAmount nAmount = AmountFromValue(request.params[2]);
+    MCAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
     if (request.params.size() > 3)
@@ -1320,7 +1333,7 @@ UniValue movecmd(const JSONRPCRequest& request)
 
 UniValue sendfrom(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1328,14 +1341,14 @@ UniValue sendfrom(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 3 || request.params.size() > 6)
         throw std::runtime_error(
             "sendfrom \"fromaccount\" \"toaddress\" amount ( minconf \"comment\" \"comment_to\" )\n"
-            "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a celllink address."
+            "\nDEPRECATED (use sendtoaddress). Sent an amount from an account to a magnachain address."
             + HelpRequiringPassphrase(pwallet) + "\n"
             "\nArguments:\n"
             "1. \"fromaccount\"       (string, required) The name of the account to send funds from. May be the default account using \"\".\n"
             "                       Specifying an account does not influence coin selection, but it does associate the newly created\n"
             "                       transaction with the account, so the account's balance computation and transaction history can reflect\n"
             "                       the spend.\n"
-            "2. \"toaddress\"         (string, required) The celllink address to send funds to.\n"
+            "2. \"toaddress\"         (string, required) The magnachain address to send funds to.\n"
             "3. amount                (numeric or string, required) The amount in " + CURRENCY_UNIT + " (transaction fee is added on top).\n"
             "4. minconf               (numeric, optional, default=1) Only use funds with at least this many confirmations.\n"
             "5. \"comment\"           (string, optional) A comment used to store what the transaction is for. \n"
@@ -1357,17 +1370,22 @@ UniValue sendfrom(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     std::string strAccount = AccountFromValue(request.params[0]);
-    CellLinkAddress address(request.params[1].get_str());
+
+    MagnaChainAddress address(request.params[1].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
-    CellAmount nAmount = AmountFromValue(request.params[2]);
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
+    if (address.IsContractID())
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "MagnaChain address can't be contract id");
+
+    MCAmount nAmount = AmountFromValue(request.params[2]);
     if (nAmount <= 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
+
     int nMinDepth = 1;
     if (request.params.size() > 3)
         nMinDepth = request.params[3].get_int();
 
-    CellWalletTx wtx;
+    MCWalletTx wtx;
     wtx.strFromAccount = strAccount;
     if (request.params.size() > 4 && !request.params[4].isNull() && !request.params[4].get_str().empty())
         wtx.mapValue["comment"] = request.params[4].get_str();
@@ -1377,11 +1395,11 @@ UniValue sendfrom(const JSONRPCRequest& request)
     EnsureWalletIsUnlocked(pwallet);
 
     // Check funds
-    CellAmount nBalance = pwallet->GetLegacyBalance(ISMINE_SPENDABLE, nMinDepth, &strAccount);
+    MCAmount nBalance = pwallet->GetLegacyBalance(ISMINE_SPENDABLE, nMinDepth, &strAccount);
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
-    CellCoinControl no_coin_control; // This is a deprecated API
+    MCCoinControl no_coin_control; // This is a deprecated API
     SendMoney(pwallet, address.Get(), nAmount, false, wtx, no_coin_control);
 
     return wtx.GetHash().GetHex();
@@ -1389,7 +1407,7 @@ UniValue sendfrom(const JSONRPCRequest& request)
 
 UniValue sendmany(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1403,7 +1421,7 @@ UniValue sendmany(const JSONRPCRequest& request)
             "1. \"fromaccount\"         (string, required) DEPRECATED. The account to send the funds from. Should be \"\" for the default account\n"
             "2. \"amounts\"             (string, required) A json object with addresses and amounts\n"
             "    {\n"
-            "      \"address\":amount   (numeric or string) The celllink address is the key, the numeric amount (can be string) in " + CURRENCY_UNIT + " is the value\n"
+            "      \"address\":amount   (numeric or string) The magnachain address is the key, the numeric amount (can be string) in " + CURRENCY_UNIT + " is the value\n"
             "      ,...\n"
             "    }\n"
             "3. minconf                 (numeric, optional, default=1) Only use the balance confirmed at least this many times.\n"
@@ -1448,7 +1466,7 @@ UniValue sendmany(const JSONRPCRequest& request)
     if (!request.params[2].isNull())
         nMinDepth = request.params[2].get_int();
 
-    CellWalletTx wtx;
+    MCWalletTx wtx;
     wtx.strFromAccount = strAccount;
     if (request.params.size() > 3 && !request.params[3].isNull() && !request.params[3].get_str().empty())
         wtx.mapValue["comment"] = request.params[3].get_str();
@@ -1457,7 +1475,7 @@ UniValue sendmany(const JSONRPCRequest& request)
     if (request.params.size() > 4 && !request.params[4].isNull())
         subtractFeeFromAmount = request.params[4].get_array();
 
-    CellCoinControl coin_control;
+    MCCoinControl coin_control;
     if (request.params.size() > 5 && !request.params[5].isNull()) {
         coin_control.signalRbf = request.params[5].get_bool();
     }
@@ -1472,23 +1490,26 @@ UniValue sendmany(const JSONRPCRequest& request)
         }
     }
 
-    std::set<CellLinkAddress> setAddress;
-    std::vector<CellRecipient> vecSend;
+    std::set<MagnaChainAddress> setAddress;
+    std::vector<MCRecipient> vecSend;
 
-    CellAmount totalAmount = 0;
+    MCAmount totalAmount = 0;
     std::vector<std::string> keys = sendTo.getKeys();
     for (const std::string& name_ : keys)
     {
-        CellLinkAddress address(name_);
+        MagnaChainAddress address(name_);
         if (!address.IsValid())
-            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid CellLink address: ")+name_);
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid MagnaChain address: ") + name_);
+
+        if (address.IsContractID())
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("MagnaChain address can't be contract id: ") + name_);
 
         if (setAddress.count(address))
-            throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+name_);
+            throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ") + name_);
         setAddress.insert(address);
 
-        CellScript scriptPubKey = GetScriptForDestination(address.Get());
-        CellAmount nAmount = AmountFromValue(sendTo[name_]);
+        MCScript scriptPubKey = GetScriptForDestination(address.Get());
+        MCAmount nAmount = AmountFromValue(sendTo[name_]);
         if (nAmount <= 0)
             throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
         totalAmount += nAmount;
@@ -1500,26 +1521,26 @@ UniValue sendmany(const JSONRPCRequest& request)
                 fSubtractFeeFromAmount = true;
         }
 
-        CellRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
+        MCRecipient recipient = {scriptPubKey, nAmount, fSubtractFeeFromAmount};
         vecSend.push_back(recipient);
     }
 
     EnsureWalletIsUnlocked(pwallet);
 
     // Check funds
-    CellAmount nBalance = pwallet->GetLegacyBalance(ISMINE_SPENDABLE, nMinDepth, &strAccount);
+    MCAmount nBalance = pwallet->GetLegacyBalance(ISMINE_SPENDABLE, nMinDepth, &strAccount);
     if (totalAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
     // Send
-    CellReserveKey keyChange(pwallet);
-    CellAmount nFeeRequired = 0;
+    MCReserveKey keyChange(pwallet);
+    MCAmount nFeeRequired = 0;
     int nChangePosRet = -1;
     std::string strFailReason;
     bool fCreated = pwallet->CreateTransaction(vecSend, wtx, keyChange, nFeeRequired, nChangePosRet, strFailReason, coin_control);
     if (!fCreated)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, strFailReason);
-    CellValidationState state;
+    MCValidationState state;
     if (!pwallet->CommitTransaction(wtx, keyChange, g_connman.get(), state)) {
         strFailReason = strprintf("Transaction commit failed:: %s", state.GetRejectReason());
         throw JSONRPCError(RPC_WALLET_ERROR, strFailReason);
@@ -1529,11 +1550,11 @@ UniValue sendmany(const JSONRPCRequest& request)
 }
 
 // Defined in rpc/misc.cpp
-extern CellScript _createmultisig_redeemScript(CellWallet * const pwallet, const UniValue& params);
+extern MCScript _createmultisig_redeemScript(MCWallet * const pwallet, const UniValue& params);
 
 UniValue addmultisigaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1542,20 +1563,20 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
     {
         std::string msg = "addmultisigaddress nrequired [\"key\",...] ( \"account\" )\n"
             "\nAdd a nrequired-to-sign multisignature address to the wallet.\n"
-            "Each key is a CellLink address or hex-encoded public key.\n"
+            "Each key is a MagnaChain address or hex-encoded public key.\n"
             "If 'account' is specified (DEPRECATED), assign address to that account.\n"
 
             "\nArguments:\n"
             "1. nrequired        (numeric, required) The number of required signatures out of the n keys or addresses.\n"
-            "2. \"keys\"         (string, required) A json array of celllink addresses or hex-encoded public keys\n"
+            "2. \"keys\"         (string, required) A json array of magnachain addresses or hex-encoded public keys\n"
             "     [\n"
-            "       \"address\"  (string) celllink address or hex-encoded public key\n"
+            "       \"address\"  (string) magnachain address or hex-encoded public key\n"
             "       ...,\n"
             "     ]\n"
             "3. \"account\"      (string, optional) DEPRECATED. An account to assign the addresses to.\n"
 
             "\nResult:\n"
-            "\"address\"         (string) A celllink address associated with the keys.\n"
+            "\"address\"         (string) A magnachain address associated with the keys.\n"
 
             "\nExamples:\n"
             "\nAdd a multisig address from 2 addresses\n"
@@ -1573,28 +1594,33 @@ UniValue addmultisigaddress(const JSONRPCRequest& request)
         strAccount = AccountFromValue(request.params[2]);
 
     // Construct using pay-to-script-hash:
-    CellScript inner = _createmultisig_redeemScript(pwallet, request.params);
-    CellScriptID innerID(inner);
+    MCScript inner = _createmultisig_redeemScript(pwallet, request.params);
+    MCScriptID innerID(inner);
     pwallet->AddCScript(inner);
 
     pwallet->SetAddressBook(innerID, strAccount, "send");
-    return CellLinkAddress(innerID).ToString();
+    return MagnaChainAddress(innerID).ToString();
 }
 
 class Witnessifier : public boost::static_visitor<bool>
 {
 public:
-    CellWallet * const pwallet;
-    CellScriptID result;
+    MCWallet * const pwallet;
+    MCScriptID result;
 
-    Witnessifier(CellWallet *_pwallet) : pwallet(_pwallet) {}
+    Witnessifier(MCWallet *_pwallet) : pwallet(_pwallet) {}
 
-    bool operator()(const CellNoDestination &dest) const { return false; }
+    bool operator()(const MCNoDestination &dest) const { return false; }
 
-    bool operator()(const CellKeyID &keyID) {
+    bool operator()(const MCContractID &contractID) {
+        // TODO: fill logic
+        return false;
+    }
+
+    bool operator()(const MCKeyID &keyID) {
         if (pwallet) {
-            CellScript basescript = GetScriptForDestination(keyID);
-            CellScript witscript = GetScriptForWitness(basescript);
+            MCScript basescript = GetScriptForDestination(keyID);
+            MCScript witscript = GetScriptForWitness(basescript);
             SignatureData sigs;
             // This check is to make sure that the script we created can actually be solved for and signed by us
             // if we were to have the private keys. This is just to make sure that the script is valid and that,
@@ -1604,14 +1630,14 @@ public:
                 return false;
             }
             pwallet->AddCScript(witscript);
-            result = CellScriptID(witscript);
+            result = MCScriptID(witscript);
             return true;
         }
         return false;
     }
 
-    bool operator()(const CellScriptID &scriptID) {
-        CellScript subscript;
+    bool operator()(const MCScriptID &scriptID) {
+        MCScript subscript;
         if (pwallet && pwallet->GetCScript(scriptID, subscript)) {
             int witnessversion;
             std::vector<unsigned char> witprog;
@@ -1619,7 +1645,7 @@ public:
                 result = scriptID;
                 return true;
             }
-            CellScript witscript = GetScriptForWitness(subscript);
+            MCScript witscript = GetScriptForWitness(subscript);
             SignatureData sigs;
             // This check is to make sure that the script we created can actually be solved for and signed by us
             // if we were to have the private keys. This is just to make sure that the script is valid and that,
@@ -1629,7 +1655,7 @@ public:
                 return false;
             }
             pwallet->AddCScript(witscript);
-            result = CellScriptID(witscript);
+            result = MCScriptID(witscript);
             return true;
         }
         return false;
@@ -1638,7 +1664,7 @@ public:
 
 UniValue addwitnessaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1666,12 +1692,12 @@ UniValue addwitnessaddress(const JSONRPCRequest& request)
         }
     }
 
-    CellLinkAddress address(request.params[0].get_str());
+    MagnaChainAddress address(request.params[0].get_str());
     if (!address.IsValid())
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address");
 
     Witnessifier w(pwallet);
-    CellTxDestination dest = address.Get();
+    MCTxDestination dest = address.Get();
     bool ret = boost::apply_visitor(w, dest);
     if (!ret) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Public key or redeemscript not known to wallet, or the key is uncompressed");
@@ -1679,12 +1705,12 @@ UniValue addwitnessaddress(const JSONRPCRequest& request)
 
     pwallet->SetAddressBook(w.result, "", "receive");
 
-    return CellLinkAddress(w.result).ToString();
+    return MagnaChainAddress(w.result).ToString();
 }
 
 struct tallyitem
 {
-    CellAmount nAmount;
+    MCAmount nAmount;
     int nConf;
     std::vector<uint256> txids;
     bool fIsWatchonly;
@@ -1696,7 +1722,7 @@ struct tallyitem
     }
 };
 
-UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool fByAccounts)
+UniValue ListReceived(MCWallet * const pwallet, const UniValue& params, bool fByAccounts)
 {
     // Minimum confirmations
     int nMinDepth = 1;
@@ -1714,9 +1740,9 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
             filter = filter | ISMINE_WATCH_ONLY;
 
     // Tally
-    std::map<CellLinkAddress, tallyitem> mapTally;
-    for (const std::pair<uint256, CellWalletTx>& pairWtx : pwallet->mapWallet) {
-        const CellWalletTx& wtx = pairWtx.second;
+    std::map<MagnaChainAddress, tallyitem> mapTally;
+    for (const std::pair<uint256, MCWalletTx>& pairWtx : pwallet->mapWallet) {
+        const MCWalletTx& wtx = pairWtx.second;
 
         if (wtx.IsCoinBase() || !CheckFinalTx(*wtx.tx))
             continue;
@@ -1725,9 +1751,9 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
         if (nDepth < nMinDepth)
             continue;
 
-        for (const CellTxOut& txout : wtx.tx->vout)
+        for (const MCTxOut& txout : wtx.tx->vout)
         {
-            CellTxDestination address;
+            MCTxDestination address;
             if (!ExtractDestination(txout.scriptPubKey, address))
                 continue;
 
@@ -1747,14 +1773,14 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
     // Reply
     UniValue ret(UniValue::VARR);
     std::map<std::string, tallyitem> mapAccountTally;
-    for (const std::pair<CellLinkAddress, CellAddressBookData>& item : pwallet->mapAddressBook) {
-        const CellLinkAddress& address = item.first;
+    for (const std::pair<MagnaChainAddress, MCAddressBookData>& item : pwallet->mapAddressBook) {
+        const MagnaChainAddress& address = item.first;
         const std::string& strAccount = item.second.name;
-        std::map<CellLinkAddress, tallyitem>::iterator it = mapTally.find(address);
+        std::map<MagnaChainAddress, tallyitem>::iterator it = mapTally.find(address);
         if (it == mapTally.end() && !fIncludeEmpty)
             continue;
 
-        CellAmount nAmount = 0;
+        MCAmount nAmount = 0;
         int nConf = std::numeric_limits<int>::max();
         bool fIsWatchonly = false;
         if (it != mapTally.end())
@@ -1799,7 +1825,7 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
     {
         for (std::map<std::string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
         {
-            CellAmount nAmount = (*it).second.nAmount;
+            MCAmount nAmount = (*it).second.nAmount;
             int nConf = (*it).second.nConf;
             UniValue obj(UniValue::VOBJ);
             if((*it).second.fIsWatchonly)
@@ -1816,7 +1842,7 @@ UniValue ListReceived(CellWallet * const pwallet, const UniValue& params, bool f
 
 UniValue listreceivedbyaddress(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1860,7 +1886,7 @@ UniValue listreceivedbyaddress(const JSONRPCRequest& request)
 
 UniValue listreceivedbyaccount(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -1897,9 +1923,9 @@ UniValue listreceivedbyaccount(const JSONRPCRequest& request)
     return ListReceived(pwallet, request.params, true);
 }
 
-static void MaybePushAddress(UniValue & entry, const CellTxDestination &dest)
+static void MaybePushAddress(UniValue & entry, const MCTxDestination &dest)
 {
-    CellLinkAddress addr;
+    MagnaChainAddress addr;
     if (addr.Set(dest))
         entry.push_back(Pair("address", addr.ToString()));
 }
@@ -1915,12 +1941,12 @@ static void MaybePushAddress(UniValue & entry, const CellTxDestination &dest)
  * @param  ret        The UniValue into which the result is stored.
  * @param  filter     The "is mine" filter bool.
  */
-void ListTransactions(CellWallet* const pwallet, const CellWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminefilter& filter)
+void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, UniValue& ret, const isminefilter& filter)
 {
-    CellAmount nFee;
+    MCAmount nFee;
     std::string strSentAccount;
-    std::list<CellOutputEntry> listReceived;
-    std::list<CellOutputEntry> listSent;
+    std::list<MCOutputEntry> listReceived;
+    std::list<MCOutputEntry> listSent;
 
     wtx.GetAmounts(listReceived, listSent, nFee, strSentAccount, filter);
 
@@ -1930,7 +1956,7 @@ void ListTransactions(CellWallet* const pwallet, const CellWalletTx& wtx, const 
     // Sent
     if ((!listSent.empty() || nFee != 0) && (fAllAccounts || strAccount == strSentAccount))
     {
-        for (const CellOutputEntry& s : listSent)
+        for (const MCOutputEntry& s : listSent)
         {
             UniValue entry(UniValue::VOBJ);
             if (involvesWatchonly || (::IsMine(*pwallet, s.destination) & ISMINE_WATCH_ONLY)) {
@@ -1955,7 +1981,26 @@ void ListTransactions(CellWallet* const pwallet, const CellWalletTx& wtx, const 
     // Received
     if (listReceived.size() > 0 && wtx.GetDepthInMainChain() >= nMinDepth)
     {
-        for (const CellOutputEntry& r : listReceived)
+        //merge for generateforbigboom, because bit boom coinbase is split the output to smaller amount, these too many output for bigboom
+        bool fmergeforbigboom = false;
+        MCAmount totalAmount = 0;
+        MCTxDestination firstDestination = listReceived.begin()->destination;
+        if (wtx.IsCoinBase() && pwallet->mapAddressBook.count(firstDestination)
+            && pwallet->mapAddressBook[firstDestination].name == "generateforbigboom")
+        {
+            fmergeforbigboom = true;
+            for (const MCOutputEntry& r : listReceived)
+            {
+                totalAmount += r.amount;
+                if (r.destination != firstDestination)
+                {
+                    fmergeforbigboom = false;
+                    break;
+                }
+            }
+        }
+
+        for (const MCOutputEntry& r : listReceived)
         {
             std::string account;
             if (pwallet->mapAddressBook.count(r.destination)) {
@@ -1982,6 +2027,7 @@ void ListTransactions(CellWallet* const pwallet, const CellWalletTx& wtx, const 
                 {
                     entry.push_back(Pair("category", "receive"));
                 }
+
                 entry.push_back(Pair("amount", ValueFromAmount(r.amount)));
                 if (pwallet->mapAddressBook.count(r.destination)) {
                     entry.push_back(Pair("label", account));
@@ -1989,13 +2035,59 @@ void ListTransactions(CellWallet* const pwallet, const CellWalletTx& wtx, const 
                 entry.push_back(Pair("vout", r.vout));
                 if (fLong)
                     WalletTxToJSON(wtx, entry);
+                
+                if (fmergeforbigboom)
+                {
+                    entry.push_back(Pair("totalamount", ValueFromAmount(totalAmount)));
+                    entry.push_back(Pair("vout_size", (int)listReceived.size()));
+                }
                 ret.push_back(entry);
+
+                if (fmergeforbigboom)
+                {
+                    break;
+                }
             }
+        }
+    }
+
+    //is fee tx for other function.
+    if (listSent.empty() && listReceived.empty() && wtx.tx->vout.size() == 1
+        && (wtx.tx->IsSmartContract() || wtx.tx->IsSyncBranchInfo()))
+    {
+        for (unsigned int i = 0; i < wtx.tx->vout.size(); ++i)
+        {
+            const MCTxOut& txout = wtx.tx->vout[i];
+            MCTxDestination address;
+            if (!ExtractDestination(txout.scriptPubKey, address) && !txout.scriptPubKey.IsUnspendable())
+            {
+                //LogPrintf("MCWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",this->GetHash().ToString());
+                address = MCNoDestination();
+            }
+            MCOutputEntry output = { address, txout.nValue, (int)i };
+
+            UniValue entry(UniValue::VOBJ);
+            if (involvesWatchonly || (::IsMine(*pwallet, output.destination) & ISMINE_WATCH_ONLY)) {
+                entry.push_back(Pair("involvesWatchonly", true));
+            }
+            entry.push_back(Pair("account", strSentAccount));
+            MaybePushAddress(entry, output.destination);
+            entry.push_back(Pair("category", "sendfee"));
+            //entry.push_back(Pair("amount", ValueFromAmount(-output.amount)));
+            if (pwallet->mapAddressBook.count(output.destination)) {
+                entry.push_back(Pair("label", pwallet->mapAddressBook[output.destination].name));
+            }
+            entry.push_back(Pair("vout", output.vout));
+            entry.push_back(Pair("fee", ValueFromAmount(-nFee)));
+            if (fLong)
+                WalletTxToJSON(wtx, entry);
+            entry.push_back(Pair("abandoned", wtx.isAbandoned()));
+            ret.push_back(entry);
         }
     }
 }
 
-void AcentryToJSON(const CellAccountingEntry& acentry, const std::string& strAccount, UniValue& ret)
+void AcentryToJSON(const MCAccountingEntry& acentry, const std::string& strAccount, UniValue& ret)
 {
     bool fAllAccounts = (strAccount == std::string("*"));
 
@@ -2014,7 +2106,7 @@ void AcentryToJSON(const CellAccountingEntry& acentry, const std::string& strAcc
 
 UniValue listtransactions(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2033,12 +2125,13 @@ UniValue listtransactions(const JSONRPCRequest& request)
             "  {\n"
             "    \"account\":\"accountname\",       (string) DEPRECATED. The account name associated with the transaction. \n"
             "                                                It will be \"\" for the default account.\n"
-            "    \"address\":\"address\",    (string) The celllink address of the transaction. Not present for \n"
+            "    \"address\":\"address\",    (string) The magnachain address of the transaction. Not present for \n"
             "                                                move transactions (category = move).\n"
-            "    \"category\":\"send|receive|move\", (string) The transaction category. 'move' is a local (off blockchain)\n"
+            "    \"category\":\"send|receive|move|sendfee\", (string) The transaction category. 'move' is a local (off blockchain)\n"
             "                                                transaction between accounts, and not associated with an address,\n"
             "                                                transaction id or block. 'send' and 'receive' transactions are \n"
             "                                                associated with an address, transaction id and block details\n"
+            "                                                'sendfee' is for transaction like smartcontract, pay for fee, is not a transfer\n"
             "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the\n"
             "                                         'move' category for moves outbound. It is positive for the 'receive' category,\n"
             "                                         and for the 'move' category for inbound funds.\n"
@@ -2102,15 +2195,15 @@ UniValue listtransactions(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VARR);
 
-    const CellWallet::TxItems & txOrdered = pwallet->wtxOrdered;
+    const MCWallet::TxItems & txOrdered = pwallet->wtxOrdered;
 
     // iterate backwards until we have nCount items to return:
-    for (CellWallet::TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
+    for (MCWallet::TxItems::const_reverse_iterator it = txOrdered.rbegin(); it != txOrdered.rend(); ++it)
     {
-        CellWalletTx *const pwtx = (*it).second.first;
+        MCWalletTx *const pwtx = (*it).second.first;
         if (pwtx != 0)
             ListTransactions(pwallet, *pwtx, strAccount, 0, true, ret, filter);
-        CellAccountingEntry *const pacentry = (*it).second.second;
+        MCAccountingEntry *const pacentry = (*it).second.second;
         if (pacentry != 0)
             AcentryToJSON(*pacentry, strAccount, ret);
 
@@ -2144,7 +2237,7 @@ UniValue listtransactions(const JSONRPCRequest& request)
 
 UniValue listaccounts(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2182,29 +2275,29 @@ UniValue listaccounts(const JSONRPCRequest& request)
         if(request.params[1].get_bool())
             includeWatchonly = includeWatchonly | ISMINE_WATCH_ONLY;
 
-    std::map<std::string, CellAmount> mapAccountBalances;
-    for (const std::pair<CellTxDestination, CellAddressBookData>& entry : pwallet->mapAddressBook) {
+    std::map<std::string, MCAmount> mapAccountBalances;
+    for (const std::pair<MCTxDestination, MCAddressBookData>& entry : pwallet->mapAddressBook) {
         if (IsMine(*pwallet, entry.first) & includeWatchonly) {  // This address belongs to me
             mapAccountBalances[entry.second.name] = 0;
         }
     }
 
-    for (const std::pair<uint256, CellWalletTx>& pairWtx : pwallet->mapWallet) {
-        const CellWalletTx& wtx = pairWtx.second;
-        CellAmount nFee;
+    for (const std::pair<uint256, MCWalletTx>& pairWtx : pwallet->mapWallet) {
+        const MCWalletTx& wtx = pairWtx.second;
+        MCAmount nFee;
         std::string strSentAccount;
-        std::list<CellOutputEntry> listReceived;
-        std::list<CellOutputEntry> listSent;
+        std::list<MCOutputEntry> listReceived;
+        std::list<MCOutputEntry> listSent;
         int nDepth = wtx.GetDepthInMainChain();
         if (wtx.GetBlocksToMaturity() > 0 || nDepth < 0)
             continue;
         wtx.GetAmounts(listReceived, listSent, nFee, strSentAccount, includeWatchonly);
         mapAccountBalances[strSentAccount] -= nFee;
-        for (const CellOutputEntry& s : listSent)
+        for (const MCOutputEntry& s : listSent)
             mapAccountBalances[strSentAccount] -= s.amount;
         if (nDepth >= nMinDepth)
         {
-            for (const CellOutputEntry& r : listReceived)
+            for (const MCOutputEntry& r : listReceived)
                 if (pwallet->mapAddressBook.count(r.destination)) {
                     mapAccountBalances[pwallet->mapAddressBook[r.destination].name] += r.amount;
                 }
@@ -2213,12 +2306,12 @@ UniValue listaccounts(const JSONRPCRequest& request)
         }
     }
 
-    const std::list<CellAccountingEntry>& acentries = pwallet->laccentries;
-    for (const CellAccountingEntry& entry : acentries)
+    const std::list<MCAccountingEntry>& acentries = pwallet->laccentries;
+    for (const MCAccountingEntry& entry : acentries)
         mapAccountBalances[entry.strAccount] += entry.nCreditDebit;
 
     UniValue ret(UniValue::VOBJ);
-    for (const std::pair<std::string, CellAmount>& accountBalance : mapAccountBalances) {
+    for (const std::pair<std::string, MCAmount>& accountBalance : mapAccountBalances) {
         ret.push_back(Pair(accountBalance.first, ValueFromAmount(accountBalance.second)));
     }
     return ret;
@@ -2226,7 +2319,7 @@ UniValue listaccounts(const JSONRPCRequest& request)
 
 UniValue listsinceblock(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2247,7 +2340,7 @@ UniValue listsinceblock(const JSONRPCRequest& request)
             "{\n"
             "  \"transactions\": [\n"
             "    \"account\":\"accountname\",       (string) DEPRECATED. The account name associated with the transaction. Will be \"\" for the default account.\n"
-            "    \"address\":\"address\",    (string) The celllink address of the transaction. Not present for move transactions (category = move).\n"
+            "    \"address\":\"address\",    (string) The magnachain address of the transaction. Not present for move transactions (category = move).\n"
             "    \"category\":\"send|receive\",     (string) The transaction category. 'send' has negative amounts, 'receive' has positive amounts.\n"
             "    \"amount\": x.xxx,          (numeric) The amount in " + CURRENCY_UNIT + ". This is negative for the 'send' category, and for the 'move' category for moves \n"
             "                                          outbound. It is positive for the 'receive' category, and for the 'move' category for inbound funds.\n"
@@ -2282,8 +2375,8 @@ UniValue listsinceblock(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    const CellBlockIndex* pindex = nullptr;    // Block index of the specified block or the common ancestor, if the block provided was in a deactivated chain.
-    const CellBlockIndex* paltindex = nullptr; // Block index of the specified block, even if it's in a deactivated chain.
+    const MCBlockIndex* pindex = nullptr;    // Block index of the specified block or the common ancestor, if the block provided was in a deactivated chain.
+    const MCBlockIndex* paltindex = nullptr; // Block index of the specified block, even if it's in a deactivated chain.
     int target_confirms = 1;
     isminefilter filter = ISMINE_SPENDABLE;
 
@@ -2322,8 +2415,8 @@ UniValue listsinceblock(const JSONRPCRequest& request)
 
     UniValue transactions(UniValue::VARR);
 
-    for (const std::pair<uint256, CellWalletTx>& pairWtx : pwallet->mapWallet) {
-        CellWalletTx tx = pairWtx.second;
+    for (const std::pair<uint256, MCWalletTx>& pairWtx : pwallet->mapWallet) {
+        MCWalletTx tx = pairWtx.second;
 
         if (depth == -1 || tx.GetDepthInMainChain() < depth) {
             ListTransactions(pwallet, tx, "*", 0, true, transactions, filter);
@@ -2334,11 +2427,11 @@ UniValue listsinceblock(const JSONRPCRequest& request)
     // in the blocks of the chain that was detached
     UniValue removed(UniValue::VARR);
     while (include_removed && paltindex && paltindex != pindex) {
-        CellBlock block;
+        MCBlock block;
         if (!ReadBlockFromDisk(block, paltindex, Params().GetConsensus())) {
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
         }
-        for (const CellTransactionRef& tx : block.vtx) {
+        for (const MCTransactionRef& tx : block.vtx) {
             if (pwallet->mapWallet.count(tx->GetHash()) > 0) {
                 // We want all transactions regardless of confirmation count to appear here,
                 // even negative confirmation ones, hence the big negative.
@@ -2348,7 +2441,7 @@ UniValue listsinceblock(const JSONRPCRequest& request)
         paltindex = paltindex->pprev;
     }
 
-    CellBlockIndex *pblockLast = chainActive[chainActive.Height() + 1 - target_confirms];
+    MCBlockIndex *pblockLast = chainActive[chainActive.Height() + 1 - target_confirms];
     uint256 lastblock = pblockLast ? pblockLast->GetBlockHash() : uint256();
 
     UniValue ret(UniValue::VOBJ);
@@ -2361,7 +2454,7 @@ UniValue listsinceblock(const JSONRPCRequest& request)
 
 UniValue gettransaction(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2390,7 +2483,7 @@ UniValue gettransaction(const JSONRPCRequest& request)
             "  \"details\" : [\n"
             "    {\n"
             "      \"account\" : \"accountname\",      (string) DEPRECATED. The account name involved in the transaction, can be \"\" for the default account.\n"
-            "      \"address\" : \"address\",          (string) The celllink address involved in the transaction\n"
+            "      \"address\" : \"address\",          (string) The magnachain address involved in the transaction\n"
             "      \"category\" : \"send|receive\",    (string) The category, either 'send' or 'receive'\n"
             "      \"amount\" : x.xxx,                 (numeric) The amount in " + CURRENCY_UNIT + "\n"
             "      \"label\" : \"label\",              (string) A comment for the address/transaction, if any\n"
@@ -2425,12 +2518,12 @@ UniValue gettransaction(const JSONRPCRequest& request)
     if (!pwallet->mapWallet.count(hash)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid or non-wallet transaction id");
     }
-    const CellWalletTx& wtx = pwallet->mapWallet[hash];
+    const MCWalletTx& wtx = pwallet->mapWallet[hash];
 
-    CellAmount nCredit = wtx.GetCredit(filter);
-    CellAmount nDebit = wtx.GetDebit(filter);
-    CellAmount nNet = nCredit - nDebit;
-    CellAmount nFee = (wtx.IsFromMe(filter) ? wtx.tx->GetValueOut() - nDebit : 0);
+    MCAmount nCredit = wtx.GetCredit(filter);
+    MCAmount nDebit = wtx.GetDebit(filter);
+    MCAmount nNet = nCredit - nDebit;
+    MCAmount nFee = (wtx.IsFromMe(filter) ? wtx.tx->GetValueOut() - nDebit : 0);
 
     entry.push_back(Pair("amount", ValueFromAmount(nNet - nFee)));
     if (wtx.IsFromMe(filter))
@@ -2442,7 +2535,7 @@ UniValue gettransaction(const JSONRPCRequest& request)
     ListTransactions(pwallet, wtx, "*", 0, false, details, filter);
     entry.push_back(Pair("details", details));
 
-    std::string strHex = EncodeHexTx(static_cast<CellTransaction>(wtx), RPCSerializationFlags());
+    std::string strHex = EncodeHexTx(static_cast<MCTransaction>(wtx), RPCSerializationFlags());
     entry.push_back(Pair("hex", strHex));
 
     return entry;
@@ -2450,7 +2543,7 @@ UniValue gettransaction(const JSONRPCRequest& request)
 
 UniValue abandontransaction(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2488,7 +2581,7 @@ UniValue abandontransaction(const JSONRPCRequest& request)
 
 UniValue backupwallet(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2516,7 +2609,7 @@ UniValue backupwallet(const JSONRPCRequest& request)
 
 UniValue keypoolrefill(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2553,7 +2646,7 @@ UniValue keypoolrefill(const JSONRPCRequest& request)
     return NullUniValue;
 }
 
-static void LockWallet(CellWallet* pWallet)
+static void LockWallet(MCWallet* pWallet)
 {
     LOCK(pWallet->cs_wallet);
     pWallet->nRelockTime = 0;
@@ -2562,7 +2655,7 @@ static void LockWallet(CellWallet* pWallet)
 
 UniValue walletpassphrase(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2625,7 +2718,7 @@ UniValue walletpassphrase(const JSONRPCRequest& request)
 
 UniValue walletpassphrasechange(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2675,7 +2768,7 @@ UniValue walletpassphrasechange(const JSONRPCRequest& request)
 
 UniValue walletlock(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2714,7 +2807,7 @@ UniValue walletlock(const JSONRPCRequest& request)
 
 UniValue encryptwallet(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2771,12 +2864,12 @@ UniValue encryptwallet(const JSONRPCRequest& request)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys. So:
     StartShutdown();
-    return "wallet encrypted; Celllink server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
+    return "wallet encrypted; Magnachain server stopping, restart to run with encrypted wallet. The keypool has been flushed and a new HD seed was generated (if you are using HD). You need to make a new backup.";
 }
 
 UniValue lockunspent(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2854,7 +2947,7 @@ UniValue lockunspent(const JSONRPCRequest& request)
         if (nOutput < 0)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter, vout must be positive");
 
-        CellOutPoint outpt(uint256S(txid), nOutput);
+        MCOutPoint outpt(uint256S(txid), nOutput);
 
         if (fUnlock)
             pwallet->UnlockCoin(outpt);
@@ -2867,7 +2960,7 @@ UniValue lockunspent(const JSONRPCRequest& request)
 
 UniValue listlockunspent(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2900,12 +2993,12 @@ UniValue listlockunspent(const JSONRPCRequest& request)
 
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    std::vector<CellOutPoint> vOutpts;
+    std::vector<MCOutPoint> vOutpts;
     pwallet->ListLockedCoins(vOutpts);
 
     UniValue ret(UniValue::VARR);
 
-    for (CellOutPoint &outpt : vOutpts) {
+    for (MCOutPoint &outpt : vOutpts) {
         UniValue o(UniValue::VOBJ);
 
         o.push_back(Pair("txid", outpt.hash.GetHex()));
@@ -2918,7 +3011,7 @@ UniValue listlockunspent(const JSONRPCRequest& request)
 
 UniValue settxfee(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2939,15 +3032,15 @@ UniValue settxfee(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     // Amount
-    CellAmount nAmount = AmountFromValue(request.params[0]);
+    MCAmount nAmount = AmountFromValue(request.params[0]);
 
-    payTxFee = CellFeeRate(nAmount, 1000);
+    payTxFee = MCFeeRate(nAmount, 1000);
     return true;
 }
 
 UniValue getwalletinfo(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -2989,7 +3082,7 @@ UniValue getwalletinfo(const JSONRPCRequest& request)
     obj.push_back(Pair("txcount",       (int)pwallet->mapWallet.size()));
     obj.push_back(Pair("keypoololdest", pwallet->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize", (int64_t)kpExternalSize));
-    CellKeyID masterKeyID = pwallet->GetHDChain().masterKeyID;
+    MCKeyID masterKeyID = pwallet->GetHDChain().masterKeyID;
     if (!masterKeyID.IsNull() && pwallet->CanSupportFeature(FEATURE_HD_SPLIT)) {
         obj.push_back(Pair("keypoolsize_hd_internal",   (int64_t)(pwallet->GetKeyPoolSize() - kpExternalSize)));
     }
@@ -3037,7 +3130,7 @@ UniValue listwallets(const JSONRPCRequest& request)
 
 UniValue resendwallettransactions(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -3072,7 +3165,7 @@ UniValue resendwallettransactions(const JSONRPCRequest& request)
 
 UniValue listunspent(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -3086,9 +3179,9 @@ UniValue listunspent(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. minconf          (numeric, optional, default=1) The minimum confirmations to filter\n"
             "2. maxconf          (numeric, optional, default=9999999) The maximum confirmations to filter\n"
-            "3. \"addresses\"      (string) A json array of celllink addresses to filter\n"
+            "3. \"addresses\"      (string) A json array of magnachain addresses to filter\n"
             "    [\n"
-            "      \"address\"     (string) celllink address\n"
+            "      \"address\"     (string) magnachain address\n"
             "      ,...\n"
             "    ]\n"
             "4. include_unsafe (bool, optional, default=true) Include outputs that are not safe to spend\n"
@@ -3105,7 +3198,7 @@ UniValue listunspent(const JSONRPCRequest& request)
             "  {\n"
             "    \"txid\" : \"txid\",          (string) the transaction id \n"
             "    \"vout\" : n,               (numeric) the vout value\n"
-            "    \"address\" : \"address\",    (string) the celllink address\n"
+            "    \"address\" : \"address\",    (string) the magnachain address\n"
             "    \"account\" : \"account\",    (string) DEPRECATED. The associated account, or \"\" for the default account\n"
             "    \"scriptPubKey\" : \"key\",   (string) the script key\n"
             "    \"amount\" : x.xxx,         (numeric) the transaction output amount in " + CURRENCY_UNIT + "\n"
@@ -3140,15 +3233,15 @@ UniValue listunspent(const JSONRPCRequest& request)
         nMaxDepth = request.params[1].get_int();
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     if (request.params.size() > 2 && !request.params[2].isNull()) {
         RPCTypeCheckArgument(request.params[2], UniValue::VARR);
         UniValue inputs = request.params[2].get_array();
         for (unsigned int idx = 0; idx < inputs.size(); idx++) {
             const UniValue& input = inputs[idx];
-            CellLinkAddress address(input.get_str());
+            MagnaChainAddress address(input.get_str());
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid CellLink address: ")+input.get_str());
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid MagnaChain address: ")+input.get_str());
             if (setAddress.count(address))
                 throw JSONRPCError(RPC_INVALID_PARAMETER, std::string("Invalid parameter, duplicated address: ")+input.get_str());
            setAddress.insert(address);
@@ -3161,9 +3254,9 @@ UniValue listunspent(const JSONRPCRequest& request)
         include_unsafe = request.params[3].get_bool();
     }
 
-    CellAmount nMinimumAmount = 0;
-    CellAmount nMaximumAmount = MAX_MONEY;
-    CellAmount nMinimumSumAmount = MAX_MONEY;
+    MCAmount nMinimumAmount = 0;
+    MCAmount nMaximumAmount = MAX_MONEY;
+    MCAmount nMinimumSumAmount = MAX_MONEY;
     uint64_t nMaximumCount = 0;
 
     if (!request.params[4].isNull()) {
@@ -3183,14 +3276,14 @@ UniValue listunspent(const JSONRPCRequest& request)
     }
 
     UniValue results(UniValue::VARR);
-    std::vector<CellOutput> vecOutputs;
+    std::vector<MCOutput> vecOutputs;
     assert(pwallet != nullptr);
     LOCK2(cs_main, pwallet->cs_wallet);
 
-    pwallet->AvailableCoins(vecOutputs, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
-    for (const CellOutput& out : vecOutputs) {
-        CellTxDestination address;
-        const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+    pwallet->AvailableCoins(vecOutputs, nullptr, !include_unsafe, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
+    for (const MCOutput& out : vecOutputs) {
+        MCTxDestination address;
+        const MCScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
         bool fValidAddress = ExtractDestination(scriptPubKey, address);
 
         if (setAddress.size() && (!fValidAddress || !setAddress.count(address)))
@@ -3201,15 +3294,15 @@ UniValue listunspent(const JSONRPCRequest& request)
         entry.push_back(Pair("vout", out.i));
 
         if (fValidAddress) {
-            entry.push_back(Pair("address", CellLinkAddress(address).ToString()));
+            entry.push_back(Pair("address", MagnaChainAddress(address).ToString()));
 
             if (pwallet->mapAddressBook.count(address)) {
                 entry.push_back(Pair("account", pwallet->mapAddressBook[address].name));
             }
 
             if (scriptPubKey.IsPayToScriptHash()) {
-                const CellScriptID& hash = boost::get<CellScriptID>(address);
-                CellScript redeemScript;
+                const MCScriptID& hash = boost::get<MCScriptID>(address);
+                MCScript redeemScript;
                 if (pwallet->GetCScript(hash, redeemScript)) {
                     entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
                 }
@@ -3230,14 +3323,14 @@ UniValue listunspent(const JSONRPCRequest& request)
 
 UniValue getbalanceof(const JSONRPCRequest& request)
 {
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
 		return NullUniValue;
 	}
 
 	if (request.fHelp || request.params.size() > 3)
 		throw std::runtime_error(
-			"getbalance ( \"account\" minconf include_watchonly )\n"
+			"getbalanceof ( \"account\" minconf include_watchonly )\n"
 			"\nIf account is not specified, returns the server's total available balance.\n"
 			"If account is specified (DEPRECATED), returns the balance in the account.\n"
 			"Note that the account \"\" is not the same as leaving the parameter out.\n"
@@ -3270,36 +3363,36 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 
 	LOCK2(cs_main, pwallet->cs_wallet);
 
-	if (request.params.size() == 0)
-		return  ValueFromAmount(pwallet->GetBalance());
+    if (request.params.size() == 0) {
+        return  ValueFromAmount(pwallet->GetBalance());
+    }
 
 	const std::string& account_param = request.params[0].get_str();
 	const std::string* account = account_param != "*" ? &account_param : nullptr;
 
 	int nMinDepth = 1;
-	if (!request.params[1].isNull())
-		nMinDepth = request.params[1].get_int();
+    if (!request.params[1].isNull()) {
+        nMinDepth = request.params[1].get_int();
+    }
+
 	isminefilter filter = ISMINE_SPENDABLE;
-	if (!request.params[2].isNull())
-		if (request.params[2].get_bool())
-			filter = filter | ISMINE_WATCH_ONLY;
+    if (!request.params[2].isNull()) {
+        if (request.params[2].get_bool()) {
+            filter = filter | ISMINE_WATCH_ONLY;
+        }
+    }
 
-	CellLinkAddress btcaddr(account_param);
-	if (!btcaddr.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink address");
-
-	if (btcaddr.Get().type() != typeid(CellKeyID))
-	{
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+	MagnaChainAddress addr(account_param);
+	if (!addr.IsKeyID() && !addr.IsContractID()) {
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 	}
 
-	const CellKeyID& kAddr = boost::get<CellKeyID>(btcaddr.Get());
-	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kAddr);
-	//LogPrintf("Send contract address %s\n", addr.ToString());
+    const uint160& key = GetUint160(addr.Get());
 
-	CellAmount nValue = 0;
+    MCAmount nValue = 0;
+	CoinListPtr plist = pcoinListDb->GetList(key);
 	if (plist != nullptr) {
-		BOOST_FOREACH(const CellOutPoint& outpoint, plist->coins) {
+		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
 			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
 			if (coin.IsSpent()) {
 				continue;
@@ -3311,12 +3404,11 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 		}
 	}
 	return ValueFromAmount(nValue);
-	//return ValueFromAmount(pwallet->GetLegacyBalance(filter, nMinDepth, account));
 }
 
 UniValue fundrawtransaction(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -3338,7 +3430,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
                             "1. \"hexstring\"           (string, required) The hex string of the raw transaction\n"
                             "2. options                 (object, optional)\n"
                             "   {\n"
-                            "     \"changeAddress\"          (string, optional, default pool address) The celllink address to receive the change\n"
+                            "     \"changeAddress\"          (string, optional, default pool address) The magnachain address to receive the change\n"
                             "     \"changePosition\"         (numeric, optional, default random) The index of the change output\n"
                             "     \"includeWatching\"        (boolean, optional, default false) Also select inputs which are watch only\n"
                             "     \"lockUnspents\"           (boolean, optional, default false) Lock selected unspent outputs\n"
@@ -3377,7 +3469,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
 
     RPCTypeCheck(request.params, {UniValue::VSTR});
 
-    CellCoinControl coinControl;
+    MCCoinControl coinControl;
     int changePosition = -1;
     bool lockUnspents = false;
     UniValue subtractFeeFromOutputs;
@@ -3409,10 +3501,10 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
             true, true);
 
         if (options.exists("changeAddress")) {
-            CellLinkAddress address(options["changeAddress"].get_str());
+            MagnaChainAddress address(options["changeAddress"].get_str());
 
             if (!address.IsValid())
-                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "changeAddress must be a valid celllink address");
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "changeAddress must be a valid magnachain address");
 
             coinControl.destChange = address.Get();
         }
@@ -3428,7 +3520,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
 
         if (options.exists("feeRate"))
         {
-            coinControl.m_feerate = CellFeeRate(AmountFromValue(options["feeRate"]));
+            coinControl.m_feerate = MCFeeRate(AmountFromValue(options["feeRate"]));
             coinControl.fOverrideFeeRate = true;
         }
 
@@ -3456,7 +3548,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
     }
 
     // parse hex string from parameter
-    CellMutableTransaction tx;
+    MCMutableTransaction tx;
     if (!DecodeHexTx(tx, request.params[0].get_str(), true))
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "TX decode failed");
 
@@ -3477,7 +3569,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
         setSubtractFeeFromOutputs.insert(pos);
     }
 
-    CellAmount nFeeOut;
+    MCAmount nFeeOut;
     std::string strFailReason;
 
     if (!pwallet->FundTransaction(tx, nFeeOut, changePosition, strFailReason, lockUnspents, setSubtractFeeFromOutputs, coinControl)) {
@@ -3494,7 +3586,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
 
 UniValue bumpfee(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
 
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp))
         return NullUniValue;
@@ -3551,8 +3643,8 @@ UniValue bumpfee(const JSONRPCRequest& request)
     hash.SetHex(request.params[0].get_str());
 
     // optional parameters
-    CellAmount totalFee = 0;
-    CellCoinControl coin_control;
+    MCAmount totalFee = 0;
+    MCCoinControl coin_control;
     coin_control.signalRbf = true;
     if (!request.params[1].isNull()) {
         UniValue options = request.params[1];
@@ -3589,7 +3681,7 @@ UniValue bumpfee(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
     EnsureWalletIsUnlocked(pwallet);
 
-    CFeeBumper feeBump(pwallet, hash, coin_control, totalFee);
+    MCFeeBumper feeBump(pwallet, hash, coin_control, totalFee);
     BumpFeeResult res = feeBump.getResult();
     if (res != BumpFeeResult::OK)
     {
@@ -3632,158 +3724,12 @@ UniValue bumpfee(const JSONRPCRequest& request)
     return result;
 }
 
-UniValue generate(const JSONRPCRequest& request)
-{
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
-
-    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
-        return NullUniValue;
-    }
-
-    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
-        throw std::runtime_error(
-            "generate nblocks ( maxtries )\n"
-            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
-            "\nArguments:\n"
-            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
-            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
-            "\nResult:\n"
-            "[ blockhashes ]     (array) hashes of blocks generated\n"
-            "\nExamples:\n"
-            "\nGenerate 11 blocks\n"
-            + HelpExampleCli("generate", "11")
-        );
-    }
-
-    int num_generate = request.params[0].get_int();
-    uint64_t max_tries = 1000000;
-    if (request.params.size() > 1 && !request.params[1].isNull()) {
-        max_tries = request.params[1].get_int();
-    }
-
-	/*
-    std::shared_ptr<CReserveScript> coinbase_script;
-    pwallet->GetScriptForMining(coinbase_script);
-
-    // If the keypool is exhausted, no script is returned at all.  Catch this.
-    if (!coinbase_script) {
-        throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-    }
-
-    //throw an error if no script was provided
-    if (coinbase_script->reserveScript.empty()) {
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "No coinbase script available");
-    }
-
-    return generateBlocks(coinbase_script, num_generate, max_tries, true);
-	*/
-	/// modified
-	std::set<CellTxDestination> setAddress;
-	std::vector<CellOutput> vecOutputs;
-	{
-		assert(pwallet != nullptr);
-
-		LOCK2(cs_main, pwallet->cs_wallet);
-		EnsureWalletIsUnlocked(pwallet);
-
-        if (Params().IsMainChain())
-            pwallet->AvailableCoins(vecOutputs, false);
-        else
-            pwallet->AvailableMortgageCoins(vecOutputs, false);
-		/*
-		for (const CellOutput& out : vecOutputs) {
-			CellTxDestination address;
-			const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-			bool fValidAddress = ExtractDestination(scriptPubKey, address);
-
-			if ( setAddress.count(address))
-				continue;
-
-			if (fValidAddress) {
-				if (!scriptPubKey.IsPayToScriptHash()) {
-					setAddress.insert(address);
-				}
-			}
-		}
-		*/
-	}
-	/*
-	std::vector< CellScript> vecScript;
-	BOOST_FOREACH( const CellTxDestination& addr, setAddress) {
-		vecScript.push_back(GetScriptForDestination( addr ));
-	}
-	*/
-	return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
-}
-
-UniValue generateforbigboom(const JSONRPCRequest& request)
-{
-	CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
-
-	if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
-		return NullUniValue;
-	}
-
-	if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
-		throw std::runtime_error(
-			"generateforbigboom nblocks ( maxtries )\n"
-			"\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
-			"\nArguments:\n"
-			"1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
-			"2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
-			"\nResult:\n"
-			"[ blockhashes ]     (array) hashes of blocks generated\n"
-			"\nExamples:\n"
-			"\nGenerate 11 blocks\n"
-			+ HelpExampleCli("generate", "11")
-		);
-	}
-
-    if (chainActive.Height() >= Params().GetConsensus().BigBoomHeight){
-        throw JSONRPCError(RPC_INVALID_REQUEST, "Can not use this rpc, instead of using generate");
-    }
-
-	int num_generate = request.params[0].get_int();
-	uint64_t max_tries = 1000000;
-	if (request.params.size() > 1 && !request.params[1].isNull()) {
-		max_tries = request.params[1].get_int();
-	}
-
-	std::vector< CellScript > vecScript;
-	{
-		LOCK2(cs_main, pwallet->cs_wallet);
-
-		EnsureWalletIsUnlocked(pwallet);
-		pwallet->TopUpKeyPool(num_generate);
-
-		//for (int i = 0; i < num_generate; ++i)
-		//{
-		//	// Generate a new key that is added to wallet
-		//	CellPubKey newKey;
-		//	if (!pwallet->GetKeyFromPool(newKey)) {
-		//		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-		//	}
-		//	CellKeyID keyID = newKey.GetID();
-
-		//	pwallet->SetAddressBook(keyID, "", "receive");
-
-		//	CellTxDestination kDest(keyID);
-		//	CellScript kScript = GetScriptForDestination(kDest);
-		//	vecScript.push_back(kScript);
-		//}
-	} 
-	std::vector< CellOutput> vecOutputs;
-	CellOutput dummyOut( nullptr, 0,0,false,false,false);
-	vecOutputs.push_back(dummyOut);
-	return generateBlocks( pwallet, vecOutputs, num_generate, max_tries, true);
-}
-
 UniValue getaddresscoins(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() < 1 || request.params.size() > 5)
 		throw std::runtime_error(
 			"getaddresscoins fromaddress\n"
-			"\nGet coins by celllink address\n"
+			"\nGet coins by magnachain address\n"
 			"\nArguments:\n"
 			"1. \"address\"                      (string, required) The address for input coins\n"
             "2. \"withscript\"                   (bool, optional) Option for return script or not, default false.\n"
@@ -3792,7 +3738,7 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
 			"[                   (array of json object)\n"
 			"  {\n"
 			"    \"txhash\" : xxx,            (string) The txid in hex\n"
-			"    \"outn\" : xxx,              (string) The output index of vout array,number of CELL\n"
+			"    \"outn\" : xxx,              (string) The output index of vout array,number of " + CURRENCY_UNIT + "\n"
 			"    \"value\" : xxx,             (string) The amount of output\n"
 			"    \"script\" : xxx,            (string) The scriptPubKey in hex format\n"
             "    \"confirmations\" : xxx,     (number) The coin height\n"
@@ -3804,27 +3750,30 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
 			+ HelpExampleRpc("getaddresscoins", "XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj")
 		);
 
-	CellLinkAddress fromaddress(request.params[0].get_str());
+	MagnaChainAddress fromaddress(request.params[0].get_str());
 	if (!fromaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink from address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain from address");
 
-	CellKeyID kFromKeyId;
+	MCKeyID kFromKeyId;
     if (!fromaddress.GetKeyID(kFromKeyId)){
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
     }
 
     bool fwithscript = false;
     if (request.params.size() >= 2)
     {
-        fwithscript = request.params[1].get_bool();
+        if (request.params[1].isBool())
+            fwithscript = request.params[1].get_bool();
+        else if (request.params[1].isStr() && (request.params[1].get_str() == "true" || request.params[1].get_str() == "1"))
+            fwithscript = true;
     }
 
 	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
 
 	UniValue uvalCoins(UniValue::VARR);
-	CellAmount nValue = 0;
+	MCAmount nValue = 0;
 	if (plist != nullptr) {
-		BOOST_FOREACH(const CellOutPoint& outpoint, plist->coins) {
+		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
 			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
 			if (coin.IsSpent()) {
 				continue;
@@ -3853,17 +3802,17 @@ UniValue getaddresscoins(const JSONRPCRequest& request)
 //test code
 UniValue posttransaction(const std::string& strHexTx)
 {
-	CellMutableTransaction mtx;
+	MCMutableTransaction mtx;
 	if (!DecodeHexTx(mtx, strHexTx))
 	{
 		return "";
 	}
-	CellTransaction txNewConst(mtx);
+	MCTransaction txNewConst(mtx);
 	for (int i = 0; i < mtx.vin.size(); i++)
 	{
-		CellTxIn in = mtx.vin[i];
+		MCTxIn in = mtx.vin[i];
 		Coin coin = pcoinsTip->AccessCoin(in.prevout);
-		const CellScript& scriptPubKey = coin.out.scriptPubKey;
+		const MCScript& scriptPubKey = coin.out.scriptPubKey;
 		SignatureData sigdata;
 
 		if (!ProduceSignature(TransactionSignatureCreator(::vpwallets[0], &txNewConst, i, coin.out.nValue, SIGHASH_ALL), scriptPubKey, sigdata))
@@ -3875,40 +3824,40 @@ UniValue posttransaction(const std::string& strHexTx)
 		}
 	}
 
-	CellTransactionRef tx = MakeTransactionRef(std::move(mtx));
-	CellValidationState state;
-	CellAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
+	MCTransactionRef tx = MakeTransactionRef(std::move(mtx));
+	MCValidationState state;
+	MCAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
 	bool ret = AcceptToMemoryPool(mempool, state, tx, true, nullptr, nullptr, false, maxTxFee);
 
 	return "";
 }
 
 //构造一个交易，从一个地址上的转币到另外一个地址，尚未签名 
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellLinkAddress &toaddress, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls)
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls)
 {
-	CellScript scriptPubKey = GetScriptForDestination(toaddress.Get());
+	MCScript scriptPubKey = GetScriptForDestination(toaddress.Get());
 	SendFromToOther(wtxNew, fromaddress, scriptPubKey, changeaddress, nAmount, nUserFee, sls);
 }
 
-void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, const CellScript &toScript, const CellLinkAddress &changeaddress, const CellAmount nAmount, const CellAmount nUserFee, SmartLuaState* sls)
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls)
 {
-//	if (fromaddress.Get().type() != typeid(CellKeyID))
+//	if (fromaddress.Get().type() != typeid(MCKeyID))
 //	{
-//		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+//		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 //	}
 
-    CellKeyID kFromKeyId;
+    MCKeyID kFromKeyId;
     if (!fromaddress.GetKeyID(kFromKeyId)){
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink public key address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
     }
 
 	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
 
-	std::set<CellOutPoint> setInOutPoints;
+	std::set<MCOutPoint> setInOutPoints;
 	std::vector<Coin> vCoin;
-	CellAmount nValue = 0;
+	MCAmount nValue = 0;
 	if (plist != nullptr) {
-		BOOST_FOREACH(const CellOutPoint& outpoint, plist->coins) {
+		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
 			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
 			if (coin.IsSpent()) {
 				continue;
@@ -3932,23 +3881,27 @@ void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, c
 		throw JSONRPCError(RPC_VERIFY_REJECTED, "Not enough spendable coin for send and fee");
 	}
 
-	CellAmount curBalance = nValue;
+	MCAmount curBalance = nValue;
 	bool fSubtractFeeFromAmount = false;
-	CellRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
-	std::vector<CellRecipient> vecSend;
-	vecSend.push_back(recip);
+	
+	std::vector<MCRecipient> vecSend;
+    if (nAmount > 0)
+    {
+        MCRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
+        vecSend.push_back(recip);
+    }
 
-	CellFakeWallet fakeWallet;
+	MCFakeWallet fakeWallet;
 	fakeWallet.m_ownKeys.insert(kFromKeyId);
 
-	CellCoinControl coin_control;
+	MCCoinControl coin_control;
 	coin_control.destChange = changeaddress.Get();
 	coin_control.fAllowOtherInputs = false;
-	for (CellOutPoint outpoint : setInOutPoints)
+	for (MCOutPoint outpoint : setInOutPoints)
 	{
-		coin_control.Select(outpoint);//select by CellWallet later ,AvailableCoins 有问题 
-		CellWalletTx wtxIn;
-		CellTransactionRef txOutpoint;
+		//coin_control.Select(outpoint);//select by MCWallet later ,AvailableCoins 有问题 
+		MCWalletTx wtxIn;
+		MCTransactionRef txOutpoint;
 		uint256 hash = outpoint.hash;
 		uint256 hashBlock;
 		if (GetTransaction(hash, txOutpoint, Params().GetConsensus(), hashBlock, true))
@@ -3957,13 +3910,13 @@ void SendFromToOther(CellWalletTx &wtxNew, const CellLinkAddress &fromaddress, c
 			wtxIn.hashBlock = hashBlock;
 			wtxIn.nIndex = 0;//just for cheat //wtxIn.SetMerkleBranch();
 			wtxIn.BindWallet(&fakeWallet);
-			std::pair<std::map<uint256, CellWalletTx>::iterator, bool> ret = fakeWallet.mapWallet.insert(std::make_pair(hash, wtxIn));
+			std::pair<std::map<uint256, MCWalletTx>::iterator, bool> ret = fakeWallet.mapWallet.insert(std::make_pair(hash, wtxIn));
 		}
 	}
 
-	CellReserveKey reservekey(&fakeWallet);
+	MCReserveKey reservekey(&fakeWallet);
 	int nChangePosRet = -1;
-	CellAmount nFeeRequired;
+	MCAmount nFeeRequired;
 	std::string strError;
 	if (!fakeWallet.CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, false, sls)) {
 		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
@@ -3977,14 +3930,14 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 	if (request.fHelp || request.params.size() < 4 || request.params.size() > 5)
 		throw std::runtime_error(
 			"premaketransaction fromaddress toaddress changeaddress amount \n"
-			"\n rebroadcast the branch chain transaction by txid, in case that transction has not be send to the target chain .\n"
+			"\n SDK interface, make a transaction no sign \n"
 			"\nArguments:\n"
 			"1. \"fromaddress\"                  (string, required) The address for input coins\n"
 			"2. \"toaddress\"                    (string, required) Send to address\n"
 			"3. \"changeaddress\"                (string, required) The address for change coins\n"
 			"4. \"amount\"                       (numeric or string, required) The amount in " + CURRENCY_UNIT + " to send. eg 0.1\n"
 			"5. \"fee\"                          (numeric or string, optional) The amount in " + CURRENCY_UNIT + " to for fee eg 0.0001, default 0 and will calc fee by system\n"
-			"\nReturns the hash of the created branch chain.\n"
+			"\nReturns transaction data \n"
 			"\nResult:\n"
 			"{\n"
 			"  \"txhex\" : xxx,            (string) The transaction hex data\n"
@@ -4003,30 +3956,30 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 			+ HelpExampleRpc("premaketransaction", "XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPX XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPi XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj 1 ")
 		);
 
-	CellLinkAddress fromaddress(request.params[0].get_str());
+	MagnaChainAddress fromaddress(request.params[0].get_str());
 	if (!fromaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink from address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain from address");
 
-	CellLinkAddress toaddress(request.params[1].get_str());
+	MagnaChainAddress toaddress(request.params[1].get_str());
 	if (!toaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink to address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain to address");
 
-	CellLinkAddress changeaddress(request.params[2].get_str());
+	MagnaChainAddress changeaddress(request.params[2].get_str());
 	if (!changeaddress.IsValid())
-		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid CellLink change address");
+		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain change address");
 
 	// Amount
-	CellAmount nAmount = AmountFromValue(request.params[3]);
+	MCAmount nAmount = AmountFromValue(request.params[3]);
 	if (nAmount <= 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
-	CellAmount nUserFee = 0;
+	MCAmount nUserFee = 0;
 	if (request.params.size() > 4)
 	{
 		nUserFee = AmountFromValue(request.params[4]);
 	}
 
-	CellWalletTx wtxNew;
+	MCWalletTx wtxNew;
 	///////////////////////////////////////////////////////
 	SendFromToOther(wtxNew, fromaddress, toaddress, changeaddress, nAmount, nUserFee);
 	
@@ -4034,7 +3987,7 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 	ret.push_back(Pair("txhex", EncodeHexTx(*wtxNew.tx, RPCSerializationFlags())));
 	//return coins info
 	UniValue uvalCoins(UniValue::VARR);
-	for (CellTxIn txin : wtxNew.tx->vin)
+	for (MCTxIn txin : wtxNew.tx->vin)
 	{
 		const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
 		
@@ -4054,7 +4007,7 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 //获取当期挖矿币 copy from `listunspent` and modify
 UniValue listmortgagecoins(const JSONRPCRequest& request)
 {
-    CellWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
     if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
         return NullUniValue;
     }
@@ -4122,13 +4075,13 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
         nMaxDepth = request.params[1].get_int();
     }
 
-    std::set<CellLinkAddress> setAddress;
+    std::set<MagnaChainAddress> setAddress;
     if (request.params.size() > 2 && !request.params[2].isNull()) {
         RPCTypeCheckArgument(request.params[2], UniValue::VARR);
         UniValue inputs = request.params[2].get_array();
         for (unsigned int idx = 0; idx < inputs.size(); idx++) {
             const UniValue& input = inputs[idx];
-            CellLinkAddress address(input.get_str());
+            MagnaChainAddress address(input.get_str());
             if (!address.IsValid())
                 throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, std::string("Invalid Bitcoin address: ") + input.get_str());
             if (setAddress.count(address))
@@ -4143,9 +4096,9 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
         include_unsafe = request.params[3].get_bool();
     }
 
-    CellAmount nMinimumAmount = 0;
-    CellAmount nMaximumAmount = MAX_MONEY;
-    CellAmount nMinimumSumAmount = MAX_MONEY;
+    MCAmount nMinimumAmount = 0;
+    MCAmount nMaximumAmount = MAX_MONEY;
+    MCAmount nMinimumSumAmount = MAX_MONEY;
     uint64_t nMaximumCount = 0;
 
     if (!request.params[4].isNull()) {
@@ -4165,14 +4118,14 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
     }
 
     UniValue results(UniValue::VARR);
-    std::vector<CellOutput> vecOutputs;
+    std::vector<MCOutput> vecOutputs;
     assert(pwallet != nullptr);
     LOCK2(cs_main, pwallet->cs_wallet);
 
     pwallet->AvailableMortgageCoins(vecOutputs, !include_unsafe, BST_MORTGAGE_ALL, nullptr, nMinimumAmount, nMaximumAmount, nMinimumSumAmount, nMaximumCount, nMinDepth, nMaxDepth);
-    for (const CellOutput& out : vecOutputs) {
-        CellTxDestination address;
-        const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+    for (const MCOutput& out : vecOutputs) {
+        MCTxDestination address;
+        const MCScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
         bool fValidAddress = ExtractDestination(scriptPubKey, address);
 
         if (setAddress.size() && (!fValidAddress || !setAddress.count(address)))
@@ -4183,15 +4136,15 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
         entry.push_back(Pair("vout", out.i));
 
         if (fValidAddress) {
-            entry.push_back(Pair("address", CellLinkAddress(address).ToString()));
+            entry.push_back(Pair("address", MagnaChainAddress(address).ToString()));
 
             if (pwallet->mapAddressBook.count(address)) {
                 entry.push_back(Pair("account", pwallet->mapAddressBook[address].name));
             }
 
             if (scriptPubKey.IsPayToScriptHash()) {
-                const CellScriptID& hash = boost::get<CellScriptID>(address);
-                CellScript redeemScript;
+                const MCScriptID& hash = boost::get<MCScriptID>(address);
+                MCScript redeemScript;
                 if (pwallet->GetCScript(hash, redeemScript)) {
                     entry.push_back(Pair("redeemScript", HexStr(redeemScript.begin(), redeemScript.end())));
                 }
@@ -4221,16 +4174,6 @@ extern UniValue importwallet(const JSONRPCRequest& request);
 extern UniValue importprunedfunds(const JSONRPCRequest& request);
 extern UniValue removeprunedfunds(const JSONRPCRequest& request);
 extern UniValue importmulti(const JSONRPCRequest& request);
-
-UniValue startbranch(const JSONRPCRequest& request);
-
-
-UniValue generateforbranch(const JSONRPCRequest& request);
-
-
-UniValue getbranchinfo(const JSONRPCRequest& request);
-UniValue switchbranch(const JSONRPCRequest& request);
-
 
 static const CRPCCommand commands[] =
 { //  category              name                        actor (function)           okSafeMode
@@ -4291,9 +4234,6 @@ static const CRPCCommand commands[] =
     { "wallet",             "walletpassphrasechange",   &walletpassphrasechange,   true,   {"oldpassphrase","newpassphrase"} },
     { "wallet",             "walletpassphrase",         &walletpassphrase,         true,   {"passphrase","timeout"} },
     { "wallet",             "removeprunedfunds",        &removeprunedfunds,        true,   {"txid"} },
-
-    { "generating",         "generate",                 &generate,                 true,   {"nblocks","maxtries"} },
-	{ "generating",         "generateforbigboom",       &generateforbigboom,	   true,   {"nblocks","maxtries" } },
 
     { "wallet",             "getaddresscoins",          &getaddresscoins,          true,  { "address", "withscript",} },
     { "wallet",             "premaketransaction",       &premaketransaction,       false,  { "fromaddress","toaddress","changeaddress", "amount" } },

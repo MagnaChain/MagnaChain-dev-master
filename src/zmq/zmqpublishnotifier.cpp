@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -147,7 +147,7 @@ bool CZMQAbstractPublishNotifier::SendMessage(const char *command, const void* d
     return true;
 }
 
-bool CZMQPublishHashBlockNotifier::NotifyBlock(const CellBlockIndex *pindex)
+bool CZMQPublishHashBlockNotifier::NotifyBlock(const MCBlockIndex *pindex)
 {
     uint256 hash = pindex->GetBlockHash();
     LogPrint(BCLog::ZMQ, "zmq: Publish hashblock %s\n", hash.GetHex());
@@ -157,7 +157,7 @@ bool CZMQPublishHashBlockNotifier::NotifyBlock(const CellBlockIndex *pindex)
     return SendMessage(MSG_HASHBLOCK, data, 32);
 }
 
-bool CZMQPublishHashTransactionNotifier::NotifyTransaction(const CellTransaction &transaction)
+bool CZMQPublishHashTransactionNotifier::NotifyTransaction(const MCTransaction &transaction)
 {
     uint256 hash = transaction.GetHash();
     LogPrint(BCLog::ZMQ, "zmq: Publish hashtx %s\n", hash.GetHex());
@@ -167,15 +167,15 @@ bool CZMQPublishHashTransactionNotifier::NotifyTransaction(const CellTransaction
     return SendMessage(MSG_HASHTX, data, 32);
 }
 
-bool CZMQPublishRawBlockNotifier::NotifyBlock(const CellBlockIndex *pindex)
+bool CZMQPublishRawBlockNotifier::NotifyBlock(const MCBlockIndex *pindex)
 {
     LogPrint(BCLog::ZMQ, "zmq: Publish rawblock %s\n", pindex->GetBlockHash().GetHex());
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
-    CellDataStream ss(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
+    MCDataStream ss(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
     {
         LOCK(cs_main);
-        CellBlock block;
+        MCBlock block;
         if(!ReadBlockFromDisk(block, pindex, consensusParams))
         {
             zmqError("Can't read block from disk");
@@ -188,11 +188,11 @@ bool CZMQPublishRawBlockNotifier::NotifyBlock(const CellBlockIndex *pindex)
     return SendMessage(MSG_RAWBLOCK, &(*ss.begin()), ss.size());
 }
 
-bool CZMQPublishRawTransactionNotifier::NotifyTransaction(const CellTransaction &transaction)
+bool CZMQPublishRawTransactionNotifier::NotifyTransaction(const MCTransaction &transaction)
 {
     uint256 hash = transaction.GetHash();
     LogPrint(BCLog::ZMQ, "zmq: Publish rawtx %s\n", hash.GetHex());
-    CellDataStream ss(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
+    MCDataStream ss(SER_NETWORK, PROTOCOL_VERSION | RPCSerializationFlags());
     ss << transaction;
     return SendMessage(MSG_RAWTX, &(*ss.begin()), ss.size());
 }

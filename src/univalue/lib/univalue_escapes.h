@@ -1,6 +1,6 @@
 // Automatically generated file. Do not modify.
-#ifndef CELLLINK_UNIVALUE_UNIVALUE_ESCAPES_H
-#define CELLLINK_UNIVALUE_UNIVALUE_ESCAPES_H
+#ifndef MAGNACHAIN_UNIVALUE_UNIVALUE_ESCAPES_H
+#define MAGNACHAIN_UNIVALUE_UNIVALUE_ESCAPES_H
 static const char *escapes[256] = {
 	"\\u0000",
 	"\\u0001",
@@ -259,4 +259,4 @@ static const char *escapes[256] = {
 	NULL,
 	NULL,
 };
-#endif // CELLLINK_UNIVALUE_UNIVALUE_ESCAPES_H
+#endif // MAGNACHAIN_UNIVALUE_UNIVALUE_ESCAPES_H

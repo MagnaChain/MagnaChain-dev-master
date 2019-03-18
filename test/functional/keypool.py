@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the wallet keypool and interaction with wallet encryption/locking."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
-class KeyPoolTest(BitcoinTestFramework):
+class KeyPoolTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
 
@@ -69,10 +69,9 @@ class KeyPoolTest(BitcoinTestFramework):
         assert_equal(nodes[0].getwalletinfo()["unlocked_until"], 0)
 
         # drain them by mining
-        nodes[0].generate(1)
-        nodes[0].generate(1)
-        nodes[0].generate(1)
-        assert_raises_rpc_error(-12, "Keypool ran out", nodes[0].generate, 1)
+        for _ in range(3):
+            nodes[0].getnewaddress()
+        assert_raises_rpc_error(-12, "Keypool ran out", nodes[0].getnewaddress)
 
         nodes[0].walletpassphrase('test', 100)
         nodes[0].keypoolrefill(100)

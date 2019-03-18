@@ -1,82 +1,86 @@
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef CONTRACT_DB_H
 #define CONTRACT_DB_H
 
 #include "transaction/txdb.h"
-
 #include <boost/threadpool.hpp>
 
-// Ö´ĞĞÖÇÄÜºÏÔ¼Ê±µÄÉÏÏÂÎÄÊı¾İ
-struct ContractInfo
-{
-public:
-    std::string code;
-    std::string data;
-};
-
-// ÖÇÄÜºÏÔ¼µÄ´æÅÌÊı¾İ
-class DBContractInfo
+// åˆçº¦æŸé«˜åº¦å­˜ç›˜æ•°æ®é¡¹
+class ContractDataSave
 {
 public:
     uint256 blockHash;
-    uint32_t blockHeight;
-    std::string data;
+    boost::optional<std::string> data;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
+    inline void SerializationOp(Stream& s, Operation ser_action)
+    {
         READWRITE(blockHash);
-        READWRITE(blockHeight);
         READWRITE(data);
     }
 };
 
-// Çø¿é¹ØÁªµÄÖÇÄÜºÏÔ¼´æÅÌÊı¾İ
-typedef std::list<DBContractInfo> DBContractList;
-class DBBlockContractInfo
+// åˆçº¦æŸé«˜åº¦å­˜ç›˜æ•°æ®
+class DBContractInfoByHeight
+{
+public:
+    bool dirty = false;
+    int32_t blockHeight;
+    std::vector<uint256> vecBlockHash;
+    std::vector<std::string> vecBlockContractData;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(blockHeight);
+    }
+};
+
+// åŒºå—å…³è”çš„æ™ºèƒ½åˆçº¦å­˜ç›˜æ•°æ®
+class DBContractInfo
 {
 public:
     std::string code;
-    DBContractList data;
+    std::list<DBContractInfoByHeight> items;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(code);
-        if (ser_action.ForRead()) {
-            uint64_t size;
-            READWRITE(size);
-            for (int i = 0; i < size; ++i) {
-                DBContractInfo dbContractInfo;
-                READWRITE(dbContractInfo);
-                data.emplace_back(dbContractInfo);
-            }
-        }
-        else {
-            uint64_t size = data.size();
-            READWRITE(size);
-            for (DBContractList::iterator it = data.begin(); it != data.end(); ++it) {
-                READWRITE(*it);
-            }
-        }
-        
+        READWRITE(items);
     }
 };
-typedef std::map<uint160, DBBlockContractInfo> DBContractMap;
+
+class MCContractID;
+typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
+
+class ContractTxFinalData
+{
+public:
+    MCAmount coins;
+    CONTRACT_DATA data;
+
+public:
+    ContractTxFinalData() : coins(0) {}
+};
 
 class ContractContext
 {
     friend class ContractDataDB;
 
-private:
-    std::map<CellKeyID, ContractInfo> _data;
+public:
+    CONTRACT_DATA cache;    // æ•°æ®ç¼“å­˜ï¼Œç”¨äºå›æ»š
+    CONTRACT_DATA data;
+    CONTRACT_DATA prevData;
+    std::vector<ContractTxFinalData> txFinalData;
 
 public:
-    void SetCache(const CellKeyID& key, ContractInfo& contractInfo);
-    void SetData(const CellKeyID& key, ContractInfo& contractInfo);
-    bool GetData(const CellKeyID& key, ContractInfo& contractInfo);
+    void SetCache(const MCContractID& contractId, ContractInfo& contractInfo);
+    void SetData(const MCContractID& contractId, ContractInfo& contractInfo);
+    bool GetData(const MCContractID& contractId, ContractInfo& contractInfo);
     void Commit();
     void ClearCache();
     void ClearData();
@@ -84,38 +88,60 @@ public:
 };
 
 class SmartLuaState;
+class MagnaChainAddress;
 
+struct SmartContractThreadData
+{
+    int offset;
+    uint16_t groupSize;
+    int blockHeight;
+    std::vector<MCAmount> coins;
+    ContractContext contractContext;
+    MCBlockIndex* pPrevBlockIndex;
+    CoinAmountCache* pCoinAmountCache;
+    std::set<uint256> associationTransactions;
+};
+
+typedef std::map<uint256, std::vector<std::map<MCContractID, ContractInfo>>> BLOCK_CONTRACT_DATA;
 class ContractDataDB
 {
 private:
-    CellDBWrapper db;
+    std::atomic<bool> interrupt;
+    MCDBWrapper db;
+    MCDBBatch writeBatch;
+    MCDBBatch removeBatch;
+    std::vector<uint160> removes;
     boost::threadpool::pool threadPool;
     std::map<boost::thread::id, SmartLuaState*> threadId2SmartLuaState;
-    mutable CellCriticalSection cs_cache;
+    mutable MCCriticalSection cs_cache;
 
-    // ºÏÔ¼»º´æ£¬Í¬Ê±°üº¬¶à¸öºÏÔ¼¶ÔÓ¦µÄ¶à¸ö¿éºÏÔ¼Êı¾İ¿ìÕÕ
-    DBContractMap _contractData;
+    // åˆçº¦ç¼“å­˜ï¼ŒåŒæ—¶åŒ…å«å¤šä¸ªåˆçº¦å¯¹åº”çš„å¤šä¸ªå—åˆçº¦æ•°æ®å¿«ç…§
+    std::map<MCContractID, DBContractInfo> contractData;
+    BLOCK_CONTRACT_DATA blockContractData;
+    std::map<int, std::vector<std::pair<uint256, bool>>> mapHeightHash;
 
 public:
-    ContractContext _contractContext;
+    ContractContext contractContext;
 
 public:
+    ContractDataDB() = delete;
+    ContractDataDB(const ContractDataDB&) = delete;
+    ContractDataDB& operator=(const ContractDataDB&) = delete;
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
     static void InitializeThread(ContractDataDB* contractDB);
 
-    bool GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, CellBlockIndex* currentPrevBlockIndex);
+    int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex);
 
-    bool RunBlockContract(const std::shared_ptr<const CellBlock> pblock, ContractContext* contractContext);
-    static void ExecutiveTransactionContractThread(ContractDataDB* contractDB, const std::shared_ptr<const CellBlock>& pblock,
-        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, bool* interrupt);
-    void ExecutiveTransactionContract(SmartLuaState* sls, const std::shared_ptr<const CellBlock>& pblock,
-        int offset, int size, int blockHeight, ContractContext* contractContext, CellBlockIndex* prefBlockIndex, bool* interrupt);
+    bool RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
+    void ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData);
 
-    void UpdateBlockContractInfo(CellBlockIndex* pBlockIndex, ContractContext* contractContext);
-    void Flush();
+    bool WriteBatch(MCDBBatch& batch);
+    bool WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* contractContext);
+    bool UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex);
+    void PruneContractInfo();
 };
 extern ContractDataDB* mpContractDb;
 
-extern CellAmount GetTxContractOut(const CellTransaction& tx);
+extern MCAmount GetTxContractOut(const MCTransaction& tx);
 
 #endif

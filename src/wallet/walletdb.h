@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WALLET_WALLETDB_H
-#define CELLLINK_WALLET_WALLETDB_H
+#ifndef MAGNACHAIN_WALLET_WALLETDB_H
+#define MAGNACHAIN_WALLET_WALLETDB_H
 
 #include "misc/amount.h"
 #include "primitives/transaction.h"
@@ -21,28 +21,28 @@
 /**
  * Overview of wallet database classes:
  *
- * - CellDBEnv is an environment in which the database exists (has no analog in dbwrapper.h)
- * - CellWalletDBWrapper represents a wallet database (similar to CellDBWrapper in dbwrapper.h)
- * - CellDB is a low-level database transaction (similar to CellDBBatch in dbwrapper.h)
+ * - MCDBEnv is an environment in which the database exists (has no analog in dbwrapper.h)
+ * - MCWalletDBWrapper represents a wallet database (similar to MCDBWrapper in dbwrapper.h)
+ * - MCDB is a low-level database transaction (similar to MCDBBatch in dbwrapper.h)
  * - CWalletDB is a modifier object for the wallet, and encapsulates a database
  *   transaction as well as methods to act on the database (no analog in
  *   dbwrapper.h)
  *
- * The latter two are named confusingly, in contrast to what the names CellDB
+ * The latter two are named confusingly, in contrast to what the names MCDB
  * and CWalletDB suggest they are transient transaction objects and don't
  * represent the database itself.
  */
 
 static const bool DEFAULT_FLUSHWALLET = true;
 
-class CellAccount;
-class CellAccountingEntry;
-struct CellBlockLocator;
-class CellKeyPool;
-class CellMasterKey;
-class CellScript;
-class CellWallet;
-class CellWalletTx;
+class MCAccount;
+class MCAccountingEntry;
+struct MCBlockLocator;
+class MCKeyPool;
+class MCMasterKey;
+class MCScript;
+class MCWallet;
+class MCWalletTx;
 class uint160;
 class uint256;
 
@@ -63,7 +63,7 @@ class CHDChain
 public:
     uint32_t nExternalChainCounter;
     uint32_t nInternalChainCounter;
-    CellKeyID masterKeyID; //!< master key hash160
+    MCKeyID masterKeyID; //!< master key hash160
 
     static const int VERSION_HD_BASE        = 1;
     static const int VERSION_HD_CHAIN_SPLIT = 2;
@@ -100,7 +100,7 @@ public:
     int nVersion;
     int64_t nCreateTime; // 0 means unknown
     std::string hdKeypath; //optional HD/bip32 keypath
-    CellKeyID hdMasterKeyID; //id of the HD masterkey used to derive this key
+    MCKeyID hdMasterKeyID; //id of the HD masterkey used to derive this key
 
     CKeyMetadata()
     {
@@ -163,7 +163,7 @@ private:
     }
 
 public:
-    CWalletDB(CellWalletDBWrapper& dbw, const char* pszMode = "r+", bool _fFlushOnClose = true) :
+    CWalletDB(MCWalletDBWrapper& dbw, const char* pszMode = "r+", bool _fFlushOnClose = true) :
         batch(dbw, pszMode, _fFlushOnClose),
         m_dbw(dbw)
     {
@@ -175,55 +175,55 @@ public:
     bool WritePurpose(const std::string& strAddress, const std::string& purpose);
     bool ErasePurpose(const std::string& strAddress);
 
-    bool WriteTx(const CellWalletTx& wtx);
+    bool WriteTx(const MCWalletTx& wtx);
     bool EraseTx(uint256 hash);
 
-    bool WriteKey(const CellPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta);
-    bool WriteCryptedKey(const CellPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, const CKeyMetadata &keyMeta);
-    bool WriteMasterKey(unsigned int nID, const CellMasterKey& kMasterKey);
+    bool WriteKey(const MCPubKey& vchPubKey, const CPrivKey& vchPrivKey, const CKeyMetadata &keyMeta);
+    bool WriteCryptedKey(const MCPubKey& vchPubKey, const std::vector<unsigned char>& vchCryptedSecret, const CKeyMetadata &keyMeta);
+    bool WriteMasterKey(unsigned int nID, const MCMasterKey& kMasterKey);
 
-    bool WriteCScript(const uint160& hash, const CellScript& redeemScript);
+    bool WriteCScript(const uint160& hash, const MCScript& redeemScript);
 
-    bool WriteWatchOnly(const CellScript &script, const CKeyMetadata &keymeta);
-    bool EraseWatchOnly(const CellScript &script);
+    bool WriteWatchOnly(const MCScript &script, const CKeyMetadata &keymeta);
+    bool EraseWatchOnly(const MCScript &script);
 
-    bool WriteBestBlock(const CellBlockLocator& locator);
-    bool ReadBestBlock(CellBlockLocator& locator);
+    bool WriteBestBlock(const MCBlockLocator& locator);
+    bool ReadBestBlock(MCBlockLocator& locator);
 
     bool WriteOrderPosNext(int64_t nOrderPosNext);
 
-    bool WriteDefaultKey(const CellPubKey& vchPubKey);
+    bool WriteDefaultKey(const MCPubKey& vchPubKey);
 
-    bool ReadPool(int64_t nPool, CellKeyPool& keypool);
-    bool WritePool(int64_t nPool, const CellKeyPool& keypool);
+    bool ReadPool(int64_t nPool, MCKeyPool& keypool);
+    bool WritePool(int64_t nPool, const MCKeyPool& keypool);
     bool ErasePool(int64_t nPool);
 
     bool WriteMinVersion(int nVersion);
 
-    /// This writes directly to the database, and will not update the CellWallet's cached accounting entries!
+    /// This writes directly to the database, and will not update the MCWallet's cached accounting entries!
     /// Use wallet.AddAccountingEntry instead, to write *and* update its caches.
-    bool WriteAccountingEntry(const uint64_t nAccEntryNum, const CellAccountingEntry& acentry);
-    bool ReadAccount(const std::string& strAccount, CellAccount& account);
-    bool WriteAccount(const std::string& strAccount, const CellAccount& account);
+    bool WriteAccountingEntry(const uint64_t nAccEntryNum, const MCAccountingEntry& acentry);
+    bool ReadAccount(const std::string& strAccount, MCAccount& account);
+    bool WriteAccount(const std::string& strAccount, const MCAccount& account);
 
     /// Write destination data key,value tuple to database
     bool WriteDestData(const std::string &address, const std::string &key, const std::string &value);
     /// Erase destination data tuple from wallet database
     bool EraseDestData(const std::string &address, const std::string &key);
 
-    CellAmount GetAccountCreditDebit(const std::string& strAccount);
-    void ListAccountCreditDebit(const std::string& strAccount, std::list<CellAccountingEntry>& acentries);
+    MCAmount GetAccountCreditDebit(const std::string& strAccount);
+    void ListAccountCreditDebit(const std::string& strAccount, std::list<MCAccountingEntry>& acentries);
 
-    DBErrors LoadWallet(CellWallet* pwallet);
-    DBErrors FindWalletTx(std::vector<uint256>& vTxHash, std::vector<CellWalletTx>& vWtx);
-    DBErrors ZapWalletTx(std::vector<CellWalletTx>& vWtx);
+    DBErrors LoadWallet(MCWallet* pwallet);
+    DBErrors FindWalletTx(std::vector<uint256>& vTxHash, std::vector<MCWalletTx>& vWtx);
+    DBErrors ZapWalletTx(std::vector<MCWalletTx>& vWtx);
     DBErrors ZapSelectTx(std::vector<uint256>& vHashIn, std::vector<uint256>& vHashOut);
     /* Try to (very carefully!) recover wallet database (with a possible key type filter) */
-    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, CellDataStream ssKey, CellDataStream ssValue), std::string& out_backup_filename);
+    static bool Recover(const std::string& filename, void *callbackDataIn, bool (*recoverKVcallback)(void* callbackData, MCDataStream ssKey, MCDataStream ssValue), std::string& out_backup_filename);
     /* Recover convenience-function to bypass the key filter callback, called when verify fails, recovers everything */
     static bool Recover(const std::string& filename, std::string& out_backup_filename);
     /* Recover filter (used as callback), will only let keys (cryptographical keys) as KV/key-type pass through */
-    static bool RecoverKeysOnlyFilter(void *callbackData, CellDataStream ssKey, CellDataStream ssValue);
+    static bool RecoverKeysOnlyFilter(void *callbackData, MCDataStream ssKey, MCDataStream ssValue);
     /* Function to determine if a certain KV/key-type is a key (cryptographical key) type */
     static bool IsKeyType(const std::string& strType);
     /* verifies the database environment */
@@ -245,8 +245,8 @@ public:
     //! Write wallet version
     bool WriteVersion(int nVersion);
 private:
-    CellDB batch;
-    CellWalletDBWrapper& m_dbw;
+    MCDB batch;
+    MCWalletDBWrapper& m_dbw;
 
     CWalletDB(const CWalletDB&);
     void operator=(const CWalletDB&);
@@ -255,4 +255,4 @@ private:
 //! Compacts BDB state so that wallet.dat is self-contained (if there are changes)
 void MaybeCompactWalletDB();
 
-#endif // CELLLINK_WALLET_WALLETDB_H
+#endif // MAGNACHAIN_WALLET_WALLETDB_H

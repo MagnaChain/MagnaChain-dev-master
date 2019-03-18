@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-# Copyright (c) 2016 The Bitcoin Core developers
+# Copyright (c) 2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test Hierarchical Deterministic wallet function."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import (
     assert_equal,
     connect_nodes_bi,
 )
 import shutil
 
-class WalletHDTest(BitcoinTestFramework):
+class WalletHDTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 2
@@ -45,7 +45,7 @@ class WalletHDTest(BitcoinTestFramework):
 
         # Derive some HD addresses and remember the last
         # Also send funds to each add
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(2)
         hd_add = None
         num_hd_adds = 300
         for i in range(num_hd_adds):

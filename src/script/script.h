@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_SCRIPT_H
-#define CELLLINK_SCRIPT_SCRIPT_H
+#ifndef MAGNACHAIN_SCRIPT_SCRIPT_H
+#define MAGNACHAIN_SCRIPT_SCRIPT_H
 
 #include "crypto/common.h"
 #include "misc/prevector.h"
@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-class CellKeyID;
+class MCContractID;
 // Maximum number of bytes pushable to the stack
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520;
 
@@ -184,15 +184,16 @@ enum opcodetype
     OP_NOP10 = 0xb9,
 
 	// smart contract
-	OP_PUB_CONTRACT = 0xc0,
-	OP_TRANS_CONTRACT = 0xc1,
+    OP_CONTRACT_ADDR = 0xc0,
+	OP_CONTRACT = 0xc1,
+    OP_CONTRACT_CHANGE = 0xc2,
 
 	OP_CREATE_BRANCH = 0xd0,
-	OP_TRANS_BRANCH = 0xd1, // ¿çÁ´½»Ò×
+	OP_TRANS_BRANCH = 0xd1,
 	
-	OP_MINE_BRANCH_MORTGAGE = 0xd2, // Ö÷Á´µÖÑºÍÚ¿ó
-    OP_MINE_BRANCH_COIN = 0xd3, // ²àÁ´ÍÚ¿ó±Ò
-    OP_REDEEM_MORTGAGE = 0xd4, // Êê»ØµÖÑº
+	OP_MINE_BRANCH_MORTGAGE = 0xd2, //
+    OP_MINE_BRANCH_COIN = 0xd3, //
+    OP_REDEEM_MORTGAGE = 0xd4, // 
 
     // template matching params
     OP_HASH256_DATA = 0xf4,
@@ -396,13 +397,13 @@ private:
     int64_t m_value;
 };
 
-typedef prevector<28, unsigned char> CScriptBase;
+typedef prevector<28, unsigned char> MCScriptBase;
 
 /** Serialized script, used inside transaction inputs and outputs */
-class CellScript : public CScriptBase
+class MCScript : public MCScriptBase
 {
 protected:
-    CellScript& push_int64(int64_t n)
+    MCScript& push_int64(int64_t n)
     {
         if (n == -1 || (n >= 1 && n <= 16))
         {
@@ -419,55 +420,55 @@ protected:
         return *this;
     }
 public:
-    CellScript() { }
-    CellScript(const_iterator pbegin, const_iterator pend) : CScriptBase(pbegin, pend) { }
-    CellScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : CScriptBase(pbegin, pend) { }
-    CellScript(const unsigned char* pbegin, const unsigned char* pend) : CScriptBase(pbegin, pend) { }
+    MCScript() { }
+    MCScript(const_iterator pbegin, const_iterator pend) : MCScriptBase(pbegin, pend) { }
+    MCScript(std::vector<unsigned char>::const_iterator pbegin, std::vector<unsigned char>::const_iterator pend) : MCScriptBase(pbegin, pend) { }
+    MCScript(const unsigned char* pbegin, const unsigned char* pend) : MCScriptBase(pbegin, pend) { }
 
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(static_cast<CScriptBase&>(*this));
+        READWRITE(static_cast<MCScriptBase&>(*this));
     }
 
-    CellScript& operator+=(const CellScript& b)
+    MCScript& operator+=(const MCScript& b)
     {
         insert(end(), b.begin(), b.end());
         return *this;
     }
 
-    friend CellScript operator+(const CellScript& a, const CellScript& b)
+    friend MCScript operator+(const MCScript& a, const MCScript& b)
     {
-        CellScript ret = a;
+        MCScript ret = a;
         ret += b;
         return ret;
     }
 
-    CellScript(int64_t b)        { operator<<(b); }
+    MCScript(int64_t b)        { operator<<(b); }
 
-    explicit CellScript(opcodetype b)     { operator<<(b); }
-    explicit CellScript(const CScriptNum& b) { operator<<(b); }
-    explicit CellScript(const std::vector<unsigned char>& b) { operator<<(b); }
+    explicit MCScript(opcodetype b)     { operator<<(b); }
+    explicit MCScript(const CScriptNum& b) { operator<<(b); }
+    explicit MCScript(const std::vector<unsigned char>& b) { operator<<(b); }
 
 
-    CellScript& operator<<(int64_t b) { return push_int64(b); }
+    MCScript& operator<<(int64_t b) { return push_int64(b); }
 
-    CellScript& operator<<(opcodetype opcode)
+    MCScript& operator<<(opcodetype opcode)
     {
         if (opcode < 0 || opcode > 0xff)
-            throw std::runtime_error("CellScript::operator<<(): invalid opcode");
+            throw std::runtime_error("MCScript::operator<<(): invalid opcode");
         insert(end(), (unsigned char)opcode);
         return *this;
     }
 
-    CellScript& operator<<(const CScriptNum& b)
+    MCScript& operator<<(const CScriptNum& b)
     {
         *this << b.getvch();
         return *this;
     }
 
-    CellScript& operator<<(const std::vector<unsigned char>& b)
+    MCScript& operator<<(const std::vector<unsigned char>& b)
     {
         if (b.size() < OP_PUSHDATA1)
         {
@@ -496,11 +497,11 @@ public:
         return *this;
     }
 
-    CellScript& operator<<(const CellScript& b)
+    MCScript& operator<<(const MCScript& b)
     {
         // I'm not sure if this should push the script or concatenate scripts.
         // If there's ever a use for pushing a script onto a script, delete this member fn
-        assert(!"Warning: Pushing a CellScript onto a CellScript with << is probably not intended, use + to concatenate!");
+        assert(!"Warning: Pushing a MCScript onto a MCScript with << is probably not intended, use + to concatenate!");
         return *this;
     }
 
@@ -600,12 +601,12 @@ public:
         return (opcodetype)(OP_1+n-1);
     }
 
-    int FindAndDelete(const CellScript& b)
+    int FindAndDelete(const MCScript& b)
     {
         int nFound = 0;
         if (b.empty())
             return nFound;
-        CellScript result;
+        MCScript result;
         iterator pc = begin(), pc2 = begin();
         opcodetype opcode;
         do
@@ -638,7 +639,7 @@ public:
     }
 
     /**
-     * Pre-version-0.6, CellLink always counted CHECKMULTISIGs
+     * Pre-version-0.6, MagnaChain always counted CHECKMULTISIGs
      * as 20 sigops. With pay-to-script-hash, that changed:
      * CHECKMULTISIGs serialized in scriptSigs are
      * counted more accurately, assuming they are of the form
@@ -650,7 +651,7 @@ public:
      * Accurately count sigOps, including sigOps in
      * pay-to-script-hash transactions:
      */
-    unsigned int GetSigOpCount(const CellScript& scriptSig) const;
+    unsigned int GetSigOpCount(const MCScript& scriptSig) const;
 
     bool IsPayToScriptHash() const;
     bool IsPayToWitnessScriptHash() const;
@@ -676,17 +677,21 @@ public:
     void clear()
     {
         // The default prevector::clear() does not release memory
-        CScriptBase::clear();
+        MCScriptBase::clear();
         shrink_to_fit();
     }
 
-	bool GetContractAddr(CellKeyID& keyDest) const;
+    bool IsContract() const;
+    bool IsContractChange() const;
+	bool GetContractAddr(MCContractID& contractId) const;
 };
+
+int64_t GetScriptInt64(opcodetype opcode, const std::vector<unsigned char>& vch);
 
 struct CScriptWitness
 {
     // Note that this encodes the data elements being pushed, rather than
-    // encoding them as a CellScript that pushes them.
+    // encoding them as a MCScript that pushes them.
     std::vector<std::vector<unsigned char> > stack;
 
     // Some compilers complain without a default constructor
@@ -702,10 +707,10 @@ struct CScriptWitness
 class CReserveScript
 {
 public:
-    CellScript reserveScript;
+    MCScript reserveScript;
     virtual void KeepScript() {}
     CReserveScript() {}
     virtual ~CReserveScript() {}
 };
 
-#endif // CELLLINK_SCRIPT_SCRIPT_H
+#endif // MAGNACHAIN_SCRIPT_SCRIPT_H

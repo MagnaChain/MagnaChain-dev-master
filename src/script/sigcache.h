@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_SIGCACHE_H
-#define CELLLINK_SCRIPT_SIGCACHE_H
+#ifndef MAGNACHAIN_SCRIPT_SIGCACHE_H
+#define MAGNACHAIN_SCRIPT_SIGCACHE_H
 
 #include "script/interpreter.h"
 
@@ -18,7 +18,7 @@ static const unsigned int DEFAULT_MAX_SIG_CACHE_SIZE = 32;
 // Maximum sig cache size allowed
 static const int64_t MAX_MAX_SIG_CACHE_SIZE = 16384;
 
-class CellPubKey;
+class MCPubKey;
 
 /**
  * We're hashing a nonce into the entries themselves, so we don't need extra
@@ -47,11 +47,11 @@ private:
     bool store;
 
 public:
-    CachingTransactionSignatureChecker(const CellTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn, bool storeIn, PrecomputedTransactionData& txdataIn) : TransactionSignatureChecker(txToIn, nInIn, amountIn, txdataIn), store(storeIn) {}
+    CachingTransactionSignatureChecker(const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, bool storeIn, PrecomputedTransactionData& txdataIn) : TransactionSignatureChecker(txToIn, nInIn, amountIn, txdataIn), store(storeIn) {}
 
-    bool VerifySignature(const std::vector<unsigned char>& vchSig, const CellPubKey& vchPubKey, const uint256& sighash) const override;
+    bool VerifySignature(const std::vector<unsigned char>& vchSig, const MCPubKey& vchPubKey, const uint256& sighash) const override;
 };
 
 void InitSignatureCache();
 
-#endif // CELLLINK_SCRIPT_SIGCACHE_H
+#endif // MAGNACHAIN_SCRIPT_SIGCACHE_H

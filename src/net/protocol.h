@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -8,8 +8,8 @@
 #error This header can only be compiled as C++.
 #endif
 
-#ifndef CELLLINK_PROTOCOL_H
-#define CELLLINK_PROTOCOL_H
+#ifndef MAGNACHAIN_PROTOCOL_H
+#define MAGNACHAIN_PROTOCOL_H
 
 #include "net/netaddress.h"
 #include "io/serialize.h"
@@ -25,7 +25,7 @@
  * (4) size.
  * (4) checksum.
  */
-class CellMessageHeader
+class MCMessageHeader
 {
 public:
     enum {
@@ -40,8 +40,8 @@ public:
     };
     typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
 
-    CellMessageHeader(const MessageStartChars& pchMessageStartIn);
-    CellMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
+    MCMessageHeader(const MessageStartChars& pchMessageStartIn);
+    MCMessageHeader(const MessageStartChars& pchMessageStartIn, const char* pszCommand, unsigned int nMessageSizeIn);
 
     std::string GetCommand() const;
     bool IsValid(const MessageStartChars& messageStart) const;
@@ -64,7 +64,7 @@ public:
 };
 
 /**
- * CellLink protocol message types. When adding new message types, don't forget
+ * MagnaChain protocol message types. When adding new message types, don't forget
  * to update allNetMessageTypes in protocol.cpp.
  */
 namespace NetMsgType {
@@ -224,7 +224,7 @@ extern const char *FEEFILTER;
  */
 extern const char *SENDCMPCT;
 /**
- * Contains a CellBlockHeaderAndShortTxIDs object - providing a header and
+ * Contains a MCBlockHeaderAndShortTxIDs object - providing a header and
  * list of "short txids".
  * @since protocol version 70014 as described by BIP 152
  */
@@ -251,15 +251,15 @@ enum ServiceFlags : uint64_t {
     // Nothing
     NODE_NONE = 0,
     // NODE_NETWORK means that the node is capable of serving the block chain. It is currently
-    // set by all CellLink Core nodes, and is unset by SPV clients or other peers that just want
+    // set by all MagnaChain Core nodes, and is unset by SPV clients or other peers that just want
     // network services but don't provide them.
     NODE_NETWORK = (1 << 0),
     // NODE_GETUTXO means the node is capable of responding to the getutxo protocol request.
-    // CellLink Core does not support this but a patch set called Bitcoin XT does.
+    // MagnaChain Core does not support this but a patch set called Bitcoin XT does.
     // See BIP 64 for details on how this is implemented.
     NODE_GETUTXO = (1 << 1),
     // NODE_BLOOM means the node is capable and willing to handle bloom-filtered connections.
-    // CellLink Core nodes used to support this by default, without advertising this bit,
+    // MagnaChain Core nodes used to support this by default, without advertising this bit,
     // but no longer do as of protocol version 70011 (= NO_BLOOM_VERSION)
     NODE_BLOOM = (1 << 2),
     // NODE_WITNESS indicates that a node can be asked for blocks and transactions including
@@ -271,19 +271,19 @@ enum ServiceFlags : uint64_t {
 
     // Bits 24-31 are reserved for temporary experiments. Just pick a bit that
     // isn't getting used, or one not being used much, and notify the
-    // celllink-development mailing list. Remember that service bits are just
+    // magnachain-development mailing list. Remember that service bits are just
     // unauthenticated advertisements, so your code must be robust against
     // collisions and other cases where nodes may be advertising a service they
     // do not actually support. Other service bits should be allocated via the
     // BIP process.
 };
 
-/** A CellService with information about it as peer */
-class CellAddress : public CellService
+/** A MCService with information about it as peer */
+class MCAddress : public MCService
 {
 public:
-    CellAddress();
-    explicit CellAddress(CellService ipIn, ServiceFlags nServicesIn);
+    MCAddress();
+    explicit MCAddress(MCService ipIn, ServiceFlags nServicesIn);
 
     void Init();
 
@@ -303,7 +303,7 @@ public:
         uint64_t nServicesInt = nServices;
         READWRITE(nServicesInt);
         nServices = (ServiceFlags)nServicesInt;
-        READWRITE(*(CellService*)this);
+        READWRITE(*(MCService*)this);
     }
 
     // TODO: make private (improves encapsulation)
@@ -336,11 +336,11 @@ enum GetDataMsg
 };
 
 /** inv message data */
-class CellInv
+class MCInv
 {
 public:
-    CellInv();
-    CellInv(int typeIn, const uint256& hashIn);
+    MCInv();
+    MCInv(int typeIn, const uint256& hashIn);
 
     ADD_SERIALIZE_METHODS;
 
@@ -351,7 +351,7 @@ public:
         READWRITE(hash);
     }
 
-    friend bool operator<(const CellInv& a, const CellInv& b);
+    friend bool operator<(const MCInv& a, const MCInv& b);
 
     std::string GetCommand() const;
     std::string ToString() const;
@@ -362,4 +362,4 @@ public:
     uint256 hash;
 };
 
-#endif // CELLLINK_PROTOCOL_H
+#endif // MAGNACHAIN_PROTOCOL_H

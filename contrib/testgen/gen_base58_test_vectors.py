@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright (c) 2012-2016 The CellLink Core developers
+# Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 '''
@@ -18,10 +18,10 @@ import random
 from binascii import b2a_hex
 
 # key types
-PUBKEY_ADDRESS = 0
-SCRIPT_ADDRESS = 5
-PUBKEY_ADDRESS_TEST = 111
-SCRIPT_ADDRESS_TEST = 196
+PUBKEY_ADDRESS = 75
+SCRIPT_ADDRESS = 62
+PUBKEY_ADDRESS_TEST = 110
+SCRIPT_ADDRESS_TEST = 195
 PRIVKEY = 128
 PRIVKEY_TEST = 239
 

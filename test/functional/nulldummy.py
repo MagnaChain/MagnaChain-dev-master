@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2016 The Bitcoin Core developers
+# Copyright (c) 2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test NULLDUMMY softfork.
@@ -13,7 +13,7 @@ Generate 427 more blocks.
 [Policy/Consensus] Check that the new NULLDUMMY rules are enforced on the 432nd block.
 """
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.mininode import CTransaction, NetworkThread
 from test_framework.blocktools import create_coinbase, create_block, add_witness_commitment
@@ -35,7 +35,7 @@ def trueDummy(tx):
     tx.vin[0].scriptSig = CScript(newscript)
     tx.rehash()
 
-class NULLDUMMYTest(BitcoinTestFramework):
+class NULLDUMMYTest(MagnaChainTestFramework):
 
     def set_test_params(self):
         self.num_nodes = 1
@@ -52,8 +52,8 @@ class NULLDUMMYTest(BitcoinTestFramework):
         self.coinbase_blocks = self.nodes[0].generate(2) # Block 2
         coinbase_txid = []
         for i in self.coinbase_blocks:
-            coinbase_txid.append(self.nodes[0].getblock(i)['tx'][0])
-        self.nodes[0].generate(427) # Block 429
+            coinbase_txid.append(self.nodes[0].getblock(i,True,1)['tx'][0])
+        self.nodes[0].generate(57) # Block 429
         self.lastblockhash = self.nodes[0].getbestblockhash()
         self.tip = int("0x" + self.lastblockhash, 0)
         self.lastblockheight = 429
@@ -117,7 +117,7 @@ class NULLDUMMYTest(BitcoinTestFramework):
         witness and add_witness_commitment(block)
         block.rehash()
         block.solve()
-        node.submitblock(bytes_to_hex_str(block.serialize(True)))
+        assert "CheckBlockWork fail" not in node.submitblock(bytes_to_hex_str(block.serialize(True)))
         if (accept):
             assert_equal(node.getbestblockhash(), block.hash)
             self.tip = block.sha256

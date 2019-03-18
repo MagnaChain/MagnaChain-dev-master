@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test spending coinbase transactions.
@@ -12,11 +12,11 @@ in the next block are accepted into the memory pool,
 but less mature coinbase spends are NOT.
 """
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
 # Create one-input, one-output, no-fee transaction:
-class MempoolSpendCoinbaseTest(BitcoinTestFramework):
+class MempoolSpendCoinbaseTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
         self.extra_args = [["-checkmempool"]]
@@ -29,9 +29,11 @@ class MempoolSpendCoinbaseTest(BitcoinTestFramework):
         # Coinbase at height chain_height-100+1 ok in mempool, should
         # get mined. Coinbase at height chain_height-100+2 is
         # is too immature to spend.
-        b = [ self.nodes[0].getblockhash(n) for n in range(101, 103) ]
-        coinbase_txids = [ self.nodes[0].getblock(h)['tx'][0] for h in b ]
-        spends_raw = [ create_tx(self.nodes[0], txid, node0_address, 49.99) for txid in coinbase_txids ]
+        # b = [ self.nodes[0].getblockhash(n) for n in range(101, 103) ]
+        # TODO 与mempool re-org一样是签名错误
+        b = [self.nodes[0].getblockhash(n) for n in range(199, 201)]
+        coinbase_txids = [ self.nodes[0].getblock(h,True,1)['tx'][0] for h in b ]
+        spends_raw = [ create_tx(self.nodes[0], txid, node0_address, 10000 - 10) for txid in coinbase_txids ]
 
         spend_101_id = self.nodes[0].sendrawtransaction(spends_raw[0])
 
@@ -51,3 +53,4 @@ class MempoolSpendCoinbaseTest(BitcoinTestFramework):
 
 if __name__ == '__main__':
     MempoolSpendCoinbaseTest().main()
+

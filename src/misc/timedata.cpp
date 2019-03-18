@@ -1,10 +1,10 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "misc/timedata.h"
@@ -17,7 +17,7 @@
 #include "misc/warnings.h"
 
 
-static CellCriticalSection cs_nTimeOffset;
+static MCCriticalSection cs_nTimeOffset;
 static int64_t nTimeOffset = 0;
 
 /**
@@ -43,20 +43,20 @@ static int64_t abs64(int64_t n)
     return (n >= 0 ? n : -n);
 }
 
-#define CELLLINK_TIMEDATA_MAX_SAMPLES 200
+#define MAGNACHAIN_TIMEDATA_MAX_SAMPLES 200
 
-void AddTimeData(const CellNetAddr& ip, int64_t nOffsetSample)
+void AddTimeData(const MCNetAddr& ip, int64_t nOffsetSample)
 {
     LOCK(cs_nTimeOffset);
     // Ignore duplicates
-    static std::set<CellNetAddr> setKnown;
-    if (setKnown.size() == CELLLINK_TIMEDATA_MAX_SAMPLES)
+    static std::set<MCNetAddr> setKnown;
+    if (setKnown.size() == MAGNACHAIN_TIMEDATA_MAX_SAMPLES)
         return;
     if (!setKnown.insert(ip).second)
         return;
 
     // Add data
-    static CMedianFilter<int64_t> vTimeOffsets(CELLLINK_TIMEDATA_MAX_SAMPLES, 0);
+    static CMedianFilter<int64_t> vTimeOffsets(MAGNACHAIN_TIMEDATA_MAX_SAMPLES, 0);
     vTimeOffsets.input(nOffsetSample);
     LogPrint(BCLog::NET,"added time data, samples %d, offset %+d (%+d minutes)\n", vTimeOffsets.size(), nOffsetSample, nOffsetSample/60);
 
@@ -104,7 +104,7 @@ void AddTimeData(const CellNetAddr& ip, int64_t nOffsetSample)
                     fDone = true;
                     std::string strMessage = strprintf(_("Please check that your computer's date and time are correct! If your clock is wrong, %s will not work properly."), _(PACKAGE_NAME));
                     SetMiscWarning(strMessage);
-                    uiInterface.ThreadSafeMessageBox(strMessage, "", CellClientUIInterface::MSG_WARNING);
+                    uiInterface.ThreadSafeMessageBox(strMessage, "", MCClientUIInterface::MSG_WARNING);
                 }
             }
         }

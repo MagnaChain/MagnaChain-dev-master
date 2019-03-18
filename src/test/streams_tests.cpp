@@ -1,11 +1,11 @@
 // Copyright (c) 2012-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "io/streams.h"
 #include "support/allocators/zeroafterfree.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/assign/std/vector.hpp> // for 'operator+=()'
 #include <boost/test/unit_test.hpp>
@@ -25,49 +25,49 @@ BOOST_AUTO_TEST_CASE(streams_vector_writer)
     // point should yield the same results, even if the first test grew the
     // vector.
 
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{1, 2}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{1, 2}}));
     vch.clear();
 
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 1, 2}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 1, 2}}));
     vch.clear();
 
     vch.resize(5, 0);
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 1, 2, 0}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 1, 2, 0}}));
     vch.clear();
 
     vch.resize(4, 0);
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 3, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 3, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 0, 1, 2}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 3, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 3, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 0, 1, 2}}));
     vch.clear();
 
     vch.resize(4, 0);
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 4, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 4, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 0, 0, 1, 2}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 4, a, b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 4, a, b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{0, 0, 0, 0, 1, 2}}));
     vch.clear();
 
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, FLATDATA(bytes));
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, FLATDATA(bytes));
     BOOST_CHECK((vch == std::vector<unsigned char>{{3, 4, 5, 6}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, FLATDATA(bytes));
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 0, FLATDATA(bytes));
     BOOST_CHECK((vch == std::vector<unsigned char>{{3, 4, 5, 6}}));
     vch.clear();
 
     vch.resize(4, 8);
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, FLATDATA(bytes), b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, FLATDATA(bytes), b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{8, 8, 1, 3, 4, 5, 6, 2}}));
-    CellVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, FLATDATA(bytes), b);
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, vch, 2, a, FLATDATA(bytes), b);
     BOOST_CHECK((vch == std::vector<unsigned char>{{8, 8, 1, 3, 4, 5, 6, 2}}));
     vch.clear();
 }
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(streams_serializedata_xor)
     std::vector<char> in;
     std::vector<char> expected_xor;
     std::vector<unsigned char> key;
-    CellDataStream ds(in, 0, 0);
+    MCDataStream ds(in, 0, 0);
 
     // Degenerate case
     

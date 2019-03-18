@@ -170,13 +170,21 @@ static int str_dump (lua_State *L) {
 typedef struct MatchState {
   const char *src_init;  /* init of source string */
   const char *src_end;  /* end (`\0') of source string */
+  const char *p_end;  /* end ('\0') of pattern */
   lua_State *L;
+  int matchdepth;  /* control for recursive depth (to avoid C stack overflow) */
   int level;  /* total number of captures (finished or unfinished) */
   struct {
     const char *init;
     ptrdiff_t len;
   } capture[LUA_MAXCAPTURES];
 } MatchState;
+
+
+/* maximum recursion depth for 'match' */
+#if !defined(MAXCCALLS)
+#define MAXCCALLS	200
+#endif
 
 
 #define L_ESC		'%'
@@ -492,46 +500,78 @@ static int push_captures (MatchState *ms, const char *s, const char *e) {
 }
 
 
-static int str_find_aux (lua_State *L, int find) {
-  size_t l1, l2;
-  const char *s = luaL_checklstring(L, 1, &l1);
-  const char *p = luaL_checklstring(L, 2, &l2);
-  ptrdiff_t init = posrelat(luaL_optinteger(L, 3, 1), l1) - 1;
-  if (init < 0) init = 0;
-  else if ((size_t)(init) > l1) init = (ptrdiff_t)l1;
-  if (find && (lua_toboolean(L, 4) ||  /* explicit request? */
-      strpbrk(p, SPECIALS) == NULL)) {  /* or no special characters? */
-    /* do a plain search */
-    const char *s2 = lmemfind(s+init, l1-init, p, l2);
-    if (s2) {
-      lua_pushinteger(L, s2-s+1);
-      lua_pushinteger(L, s2-s+l2);
-      return 2;
-    }
-  }
-  else {
-    MatchState ms;
-    int anchor = (*p == '^') ? (p++, 1) : 0;
-    const char *s1=s+init;
-    ms.L = L;
-    ms.src_init = s;
-    ms.src_end = s+l1;
+/* check whether pattern has no special characters */
+static int nospecials(const char *p, size_t l) {
+    size_t upto = 0;
     do {
-      const char *res;
-      ms.level = 0;
-      if ((res=match(&ms, s1, p)) != NULL) {
-        if (find) {
-          lua_pushinteger(L, s1-s+1);  /* start */
-          lua_pushinteger(L, res-s);   /* end */
-          return push_captures(&ms, NULL, 0) + 2;
+        if (strpbrk(p + upto, SPECIALS))
+            return 0;  /* pattern has a special character */
+        upto += strlen(p + upto) + 1;  /* may have more after \0 */
+    } while (upto <= l);
+    return 1;  /* no special chars found */
+}
+
+
+static void prepstate(MatchState *ms, lua_State *L,
+    const char *s, size_t ls, const char *p, size_t lp) {
+    ms->L = L;
+    ms->matchdepth = MAXCCALLS;
+    ms->src_init = s;
+    ms->src_end = s + ls;
+    ms->p_end = p + lp;
+}
+
+
+static void reprepstate(MatchState *ms) {
+    ms->level = 0;
+    lua_assert(ms->matchdepth == MAXCCALLS);
+}
+
+
+static int str_find_aux(lua_State *L, int find) {
+    size_t ls, lp;
+    const char *s = luaL_checklstring(L, 1, &ls);
+    const char *p = luaL_checklstring(L, 2, &lp);
+    lua_Integer init = posrelat(luaL_optinteger(L, 3, 1), ls);
+    if (init < 1) init = 1;
+    else if (init > (lua_Integer)ls + 1) {  /* start after string's end? */
+        lua_pushnil(L);  /* cannot find anything */
+        return 1;
+    }
+    /* explicit request or no special characters? */
+    if (find && (lua_toboolean(L, 4) || nospecials(p, lp))) {
+        /* do a plain search */
+        const char *s2 = lmemfind(s + init - 1, ls - (size_t)init + 1, p, lp);
+        if (s2) {
+            lua_pushinteger(L, (s2 - s) + 1);
+            lua_pushinteger(L, (s2 - s) + lp);
+            return 2;
         }
-        else
-          return push_captures(&ms, s1, res);
-      }
-    } while (s1++ < ms.src_end && !anchor);
-  }
-  lua_pushnil(L);  /* not found */
-  return 1;
+    }
+    else {
+        MatchState ms;
+        const char *s1 = s + init - 1;
+        int anchor = (*p == '^');
+        if (anchor) {
+            p++; lp--;  /* skip anchor character */
+        }
+        prepstate(&ms, L, s, ls, p, lp);
+        do {
+            const char *res;
+            reprepstate(&ms);
+            if ((res = match(&ms, s1, p)) != NULL) {
+                if (find) {
+                    lua_pushinteger(L, (s1 - s) + 1);  /* start */
+                    lua_pushinteger(L, res - s);   /* end */
+                    return push_captures(&ms, NULL, 0) + 2;
+                }
+                else
+                    return push_captures(&ms, s1, res);
+            }
+        } while (s1++ < ms.src_end && !anchor);
+    }
+    lua_pushnil(L);  /* not found */
+    return 1;
 }
 
 
@@ -774,22 +814,22 @@ static int str_format (lua_State *L) {
       strfrmt = scanformat(L, strfrmt, form);
       switch (*strfrmt++) {
         case 'c': {
-          sprintf(buff, form, (int)luaL_checknumber(L, arg));
+          snprintf(buff, sizeof(buff), form, (int)luaL_checknumber(L, arg));
           break;
         }
         case 'd':  case 'i': {
           addintlen(form);
-          sprintf(buff, form, (LUA_INTFRM_T)luaL_checknumber(L, arg));
+          snprintf(buff, sizeof(buff), form, (LUA_INTFRM_T)luaL_checknumber(L, arg));
           break;
         }
         case 'o':  case 'u':  case 'x':  case 'X': {
           addintlen(form);
-          sprintf(buff, form, (unsigned LUA_INTFRM_T)luaL_checknumber(L, arg));
+          snprintf(buff, sizeof(buff), form, (unsigned LUA_INTFRM_T)luaL_checknumber(L, arg));
           break;
         }
         case 'e':  case 'E': case 'f':
         case 'g': case 'G': {
-          sprintf(buff, form, (double)luaL_checknumber(L, arg));
+          snprintf(buff, sizeof(buff), form, (double)luaL_checknumber(L, arg));
           break;
         }
         case 'q': {
@@ -807,7 +847,7 @@ static int str_format (lua_State *L) {
             continue;  /* skip the `addsize' at the end */
           }
           else {
-            sprintf(buff, form, s);
+            snprintf(buff, sizeof(buff), form, s);
             break;
           }
         }

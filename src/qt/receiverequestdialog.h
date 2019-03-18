@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_RECEIVEREQUESTDIALOG_H
-#define CELLLINK_QT_RECEIVEREQUESTDIALOG_H
+#ifndef MAGNACHAIN_QT_RECEIVEREQUESTDIALOG_H
+#define MAGNACHAIN_QT_RECEIVEREQUESTDIALOG_H
 
 #include "walletmodel.h"
 
@@ -69,4 +69,4 @@ private:
     SendCoinsRecipient info;
 };
 
-#endif // CELLLINK_QT_RECEIVEREQUESTDIALOG_H
+#endif // MAGNACHAIN_QT_RECEIVEREQUESTDIALOG_H

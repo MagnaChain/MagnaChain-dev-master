@@ -82,7 +82,7 @@ __ham_open(dbp, ip, txn, name, base_pgno, flags)
 
 	/*
 	 * Get a cursor.  If DB_CREATE is specified, we may be creating
-	 * pages, and to do that safely in CellDB we need a write cursor.
+	 * pages, and to do that safely in MCDB we need a write cursor.
 	 * In STD_LOCKING mode, we'll synchronize using the meta page
 	 * lock instead.
 	 */

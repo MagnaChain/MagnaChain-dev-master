@@ -432,7 +432,7 @@
 ** arbitrary; its only purpose is to stop infinite recursion before
 ** exhausting memory.
 */
-#define LUAI_MAXCALLS	20000
+#define LUAI_MAXCALLS	3000
 
 
 /*
@@ -520,7 +520,7 @@
 */
 #define LUA_NUMBER_SCAN		"%lf"
 #define LUA_NUMBER_FMT		"%lld"
-#define lua_number2str(s,n)	sprintf((s), LUA_NUMBER_FMT, (n))
+#define lua_number2str(s,n)	snprintf((s), sizeof((s)), LUA_NUMBER_FMT, (n))
 #define LUAI_MAXNUMBER2STR	32 /* 16 digits, sign, point, and \0 */
 #define lua_str2number(s,p)	strtod((s), (p))
 

@@ -19,19 +19,19 @@ static inline int GetRequireHeight(const bool testnet = fTestNet)
     return testnet ? 500000 : 350000;
 }
 
-std::string static inline ToString(const CellService &ip) {
+std::string static inline ToString(const MCService &ip) {
   std::string str = ip.ToString();
   while (str.size() < 22) str += ' ';
   return str;
 }
 
-class CellAddrStat {
+class MCAddrStat {
 private:
   float weight;
   float count;
   float reliability;
 public:
-  CellAddrStat() : weight(0), count(0), reliability(0) {}
+  MCAddrStat() : weight(0), count(0), reliability(0) {}
 
   void Update(bool good, int64 age, double tau) {
     double f =  exp(-age/tau);
@@ -46,12 +46,12 @@ public:
     READWRITE(reliability);
   )
 
-  friend class CellAddrInfo;
+  friend class MCAddrInfo;
 };
 
-class CellAddrReport {
+class MCAddrReport {
 public:
-  CellService ip;
+  MCService ip;
   int clientVersion;
   int blocks;
   double uptime[5];
@@ -62,29 +62,29 @@ public:
 };
 
 
-class CellAddrInfo {
+class MCAddrInfo {
 private:
-  CellService ip;
+  MCService ip;
   uint64_t services;
   int64 lastTry;
   int64 ourLastTry;
   int64 ourLastSuccess;
   int64 ignoreTill;
-  CellAddrStat stat2H;
-  CellAddrStat stat8H;
-  CellAddrStat stat1D;
-  CellAddrStat stat1W;
-  CellAddrStat stat1M;
+  MCAddrStat stat2H;
+  MCAddrStat stat8H;
+  MCAddrStat stat1D;
+  MCAddrStat stat1W;
+  MCAddrStat stat1M;
   int clientVersion;
   int blocks;
   int total;
   int success;
   std::string clientSubVersion;
 public:
-  CellAddrInfo() : services(0), lastTry(0), ourLastTry(0), ourLastSuccess(0), ignoreTill(0), clientVersion(0), blocks(0), total(0), success(0) {}
+  MCAddrInfo() : services(0), lastTry(0), ourLastTry(0), ourLastSuccess(0), ignoreTill(0), clientVersion(0), blocks(0), total(0), success(0) {}
   
-  CellAddrReport GetReport() const {
-    CellAddrReport ret;
+  MCAddrReport GetReport() const {
+    MCAddrReport ret;
     ret.ip = ip;
     ret.clientVersion = clientVersion;
     ret.clientSubVersion = clientSubVersion;
@@ -136,7 +136,7 @@ public:
   
   void Update(bool good);
   
-  friend class CellAddrDB;
+  friend class MCAddrDB;
   
   IMPLEMENT_SERIALIZE (
     unsigned char version = 4;
@@ -157,7 +157,7 @@ public:
           READWRITE(stat1M);
       else
           if (!fWrite)
-              *((CellAddrStat*)(&stat1M)) = stat1W;
+              *((MCAddrStat*)(&stat1M)) = stat1W;
       READWRITE(total);
       READWRITE(success);
       READWRITE(clientVersion);
@@ -171,7 +171,7 @@ public:
   )
 };
 
-class CellAddrDBStats {
+class MCAddrDBStats {
 public:
   int nBanned;
   int nAvail;
@@ -181,8 +181,8 @@ public:
   int nAge;
 };
 
-struct CellServiceResult {
-    CellService service;
+struct MCServiceResult {
+    MCService service;
     bool fGood;
     int nBanTime;
     int nHeight;
@@ -199,12 +199,12 @@ struct CellServiceResult {
 //              /           \
 //     (d) good nodes   (c) non-good nodes 
 
-class CellAddrDB {
+class MCAddrDB {
 private:
-  mutable CellCriticalSection cs;
+  mutable MCCriticalSection cs;
   int nId; // number of address id's
-  std::map<int, CellAddrInfo> idToInfo; // map address id to address info (b,c,d,e)
-  std::map<CellService, int> ipToId; // map ip to id (b,c,d,e)
+  std::map<int, MCAddrInfo> idToInfo; // map address id to address info (b,c,d,e)
+  std::map<MCService, int> ipToId; // map ip to id (b,c,d,e)
   std::deque<int> ourId; // sequence of tried nodes, in order we have tried connecting to them (c,d)
   std::set<int> unkId; // set of nodes not yet tried (b)
   std::set<int> goodId; // set of good nodes  (d, good e)
@@ -212,19 +212,19 @@ private:
   
 protected:
   // internal routines that assume proper locks are acquired
-  void Add_(const CellAddress &addr, bool force);   // add an address
-  bool Get_(CellServiceResult &ip, int& wait);      // get an IP to test (must call Good_, Bad_, or Skipped_ on result afterwards)
-  bool GetMany_(std::vector<CellServiceResult> &ips, int max, int& wait);
-  void Good_(const CellService &ip, int clientV, std::string clientSV, int blocks); // mark an IP as good (must have been returned by Get_)
-  void Bad_(const CellService &ip, int ban);  // mark an IP as bad (and optionally ban it) (must have been returned by Get_)
-  void Skipped_(const CellService &ip);       // mark an IP as skipped (must have been returned by Get_)
-  int Lookup_(const CellService &ip);         // look up id of an IP
-  void GetIPs_(std::set<CellNetAddr>& ips, uint64_t requestedFlags, int max, const bool *nets); // get a random set of IPs (shared lock only)
+  void Add_(const MCAddress &addr, bool force);   // add an address
+  bool Get_(MCServiceResult &ip, int& wait);      // get an IP to test (must call Good_, Bad_, or Skipped_ on result afterwards)
+  bool GetMany_(std::vector<MCServiceResult> &ips, int max, int& wait);
+  void Good_(const MCService &ip, int clientV, std::string clientSV, int blocks); // mark an IP as good (must have been returned by Get_)
+  void Bad_(const MCService &ip, int ban);  // mark an IP as bad (and optionally ban it) (must have been returned by Get_)
+  void Skipped_(const MCService &ip);       // mark an IP as skipped (must have been returned by Get_)
+  int Lookup_(const MCService &ip);         // look up id of an IP
+  void GetIPs_(std::set<MCNetAddr>& ips, uint64_t requestedFlags, int max, const bool *nets); // get a random set of IPs (shared lock only)
 
 public:
-  std::map<CellService, time_t> banned; // nodes that are banned, with their unban time (a)
+  std::map<MCService, time_t> banned; // nodes that are banned, with their unban time (a)
 
-  void GetStats(CellAddrDBStats &stats) {
+  void GetStats(MCAddrDBStats &stats) {
     SHARED_CRITICAL_BLOCK(cs) {
       stats.nBanned = banned.size();
       stats.nAvail = idToInfo.size();
@@ -236,16 +236,16 @@ public:
   }
 
   void ResetIgnores() {
-      for (std::map<int, CellAddrInfo>::iterator it = idToInfo.begin(); it != idToInfo.end(); it++) {
+      for (std::map<int, MCAddrInfo>::iterator it = idToInfo.begin(); it != idToInfo.end(); it++) {
            (*it).second.ignoreTill = 0;
       }
   }
   
-  std::vector<CellAddrReport> GetAll() {
-    std::vector<CellAddrReport> ret;
+  std::vector<MCAddrReport> GetAll() {
+    std::vector<MCAddrReport> ret;
     SHARED_CRITICAL_BLOCK(cs) {
       for (std::deque<int>::const_iterator it = ourId.begin(); it != ourId.end(); it++) {
-        const CellAddrInfo &info = idToInfo[*it];
+        const MCAddrInfo &info = idToInfo[*it];
         if (info.success > 0) {
           ret.push_back(info.GetReport());
         }
@@ -258,7 +258,7 @@ public:
   // format:
   //   nVersion (0 for now)
   //   n (number of ips in (b,c,d))
-  //   CellAddrInfo[n]
+  //   MCAddrInfo[n]
   //   banned
   // acquires a shared lock (this does not suffice for read mode, but we assume that only happens at startup, single-threaded)
   // this way, dumping does not interfere with GetIPs_, which is called from the DNS thread
@@ -267,24 +267,24 @@ public:
     READWRITE(nVersion);
     SHARED_CRITICAL_BLOCK(cs) {
       if (fWrite) {
-        CellAddrDB *db = const_cast<CellAddrDB*>(this);
+        MCAddrDB *db = const_cast<MCAddrDB*>(this);
         int n = ourId.size() + unkId.size();
         READWRITE(n);
         for (std::deque<int>::const_iterator it = ourId.begin(); it != ourId.end(); it++) {
-          std::map<int, CellAddrInfo>::iterator ci = db->idToInfo.find(*it);
+          std::map<int, MCAddrInfo>::iterator ci = db->idToInfo.find(*it);
           READWRITE((*ci).second);
         }
         for (std::set<int>::const_iterator it = unkId.begin(); it != unkId.end(); it++) {
-          std::map<int, CellAddrInfo>::iterator ci = db->idToInfo.find(*it);
+          std::map<int, MCAddrInfo>::iterator ci = db->idToInfo.find(*it);
           READWRITE((*ci).second);
         }
       } else {
-        CellAddrDB *db = const_cast<CellAddrDB*>(this);
+        MCAddrDB *db = const_cast<MCAddrDB*>(this);
         db->nId = 0;
         int n;
         READWRITE(n);
         for (int i=0; i<n; i++) {
-          CellAddrInfo info;
+          MCAddrInfo info;
           READWRITE(info);
           if (!info.GetBanTime()) {
             int id = db->nId++;
@@ -304,35 +304,35 @@ public:
     }
   });)
 
-  void Add(const CellAddress &addr, bool fForce = false) {
+  void Add(const MCAddress &addr, bool fForce = false) {
     CRITICAL_BLOCK(cs)
       Add_(addr, fForce);
   }
-  void Add(const std::vector<CellAddress> &vAddr, bool fForce = false) {
+  void Add(const std::vector<MCAddress> &vAddr, bool fForce = false) {
     CRITICAL_BLOCK(cs)
       for (int i=0; i<vAddr.size(); i++)
         Add_(vAddr[i], fForce);
   }
-  void Good(const CellService &addr, int clientVersion, std::string clientSubVersion, int blocks) {
+  void Good(const MCService &addr, int clientVersion, std::string clientSubVersion, int blocks) {
     CRITICAL_BLOCK(cs)
       Good_(addr, clientVersion, clientSubVersion, blocks);
   }
-  void Skipped(const CellService &addr) {
+  void Skipped(const MCService &addr) {
     CRITICAL_BLOCK(cs)
       Skipped_(addr);
   }
-  void Bad(const CellService &addr, int ban = 0) {
+  void Bad(const MCService &addr, int ban = 0) {
     CRITICAL_BLOCK(cs)
       Bad_(addr, ban);
   }
-  bool Get(CellServiceResult &ip, int& wait) {
+  bool Get(MCServiceResult &ip, int& wait) {
     CRITICAL_BLOCK(cs)
       return Get_(ip, wait);
   }
-  void GetMany(std::vector<CellServiceResult> &ips, int max, int& wait) {
+  void GetMany(std::vector<MCServiceResult> &ips, int max, int& wait) {
     CRITICAL_BLOCK(cs) {
       while (max > 0) {
-          CellServiceResult ip = {};
+          MCServiceResult ip = {};
           if (!Get_(ip, wait))
               return;
           ips.push_back(ip);
@@ -340,7 +340,7 @@ public:
       }
     }
   }
-  void ResultMany(const std::vector<CellServiceResult> &ips) {
+  void ResultMany(const std::vector<MCServiceResult> &ips) {
     CRITICAL_BLOCK(cs) {
       for (int i=0; i<ips.size(); i++) {
         if (ips[i].fGood) {
@@ -351,7 +351,7 @@ public:
       }
     }
   }
-  void GetIPs(std::set<CellNetAddr>& ips, uint64_t requestedFlags, int max, const bool *nets) {
+  void GetIPs(std::set<MCNetAddr>& ips, uint64_t requestedFlags, int max, const bool *nets) {
     SHARED_CRITICAL_BLOCK(cs)
       GetIPs_(ips, requestedFlags, max, nets);
   }

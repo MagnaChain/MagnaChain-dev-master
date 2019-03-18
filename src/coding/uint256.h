@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_UINT256_H
-#define CELLLINK_UINT256_H
+#ifndef MAGNACHAIN_UINT256_H
+#define MAGNACHAIN_UINT256_H
 
 #include <assert.h>
 #include <cstring>
@@ -159,4 +159,4 @@ inline uint256 uint256S(const std::string& str)
     return rv;
 }
 
-#endif // CELLLINK_UINT256_H
+#endif // MAGNACHAIN_UINT256_H

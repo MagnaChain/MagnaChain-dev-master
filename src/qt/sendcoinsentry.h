@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_SENDCOINSENTRY_H
-#define CELLLINK_QT_SENDCOINSENTRY_H
+#ifndef MAGNACHAIN_QT_SENDCOINSENTRY_H
+#define MAGNACHAIN_QT_SENDCOINSENTRY_H
 
 #include "walletmodel.h"
 
@@ -18,7 +18,7 @@ namespace Ui {
 }
 
 /**
- * A single entry in the dialog for sending celllinks.
+ * A single entry in the dialog for sending magnachains.
  * Stacked widget, with different UIs for payment requests
  * with a strong payee identity.
  */
@@ -71,4 +71,4 @@ private:
     bool updateLabel(const QString &address);
 };
 
-#endif // CELLLINK_QT_SENDCOINSENTRY_H
+#endif // MAGNACHAIN_QT_SENDCOINSENTRY_H

@@ -1,13 +1,13 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_PAYMENTSERVER_H
-#define CELLLINK_QT_PAYMENTSERVER_H
+#ifndef MAGNACHAIN_QT_PAYMENTSERVER_H
+#define MAGNACHAIN_QT_PAYMENTSERVER_H
 
 // This class handles payment requests from clicking on
-// celllink: URIs
+// magnachain: URIs
 //
 // This is somewhat tricky, because we have to deal with
 // the situation where the user clicks on a link during
@@ -41,7 +41,7 @@
 
 class OptionsModel;
 
-class CellWallet;
+class MCWallet;
 
 QT_BEGIN_NAMESPACE
 class QApplication;
@@ -96,7 +96,7 @@ public:
     // Verify the payment request size is valid as per BIP70
     static bool verifySize(qint64 requestSize);
     // Verify the payment request amount is valid
-    static bool verifyAmount(const CellAmount& requestAmount);
+    static bool verifyAmount(const MCAmount& requestAmount);
 
 Q_SIGNALS:
     // Fired when a valid payment request is received
@@ -114,7 +114,7 @@ public Q_SLOTS:
     void uiReady();
 
     // Submit Payment message to a merchant, get back PaymentACK:
-    void fetchPaymentACK(CellWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
+    void fetchPaymentACK(MCWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
 
     // Handle an incoming URI, URI with local file scheme or file
     void handleURIOrFile(const QString& s);
@@ -146,4 +146,4 @@ private:
     OptionsModel *optionsModel;
 };
 
-#endif // CELLLINK_QT_PAYMENTSERVER_H
+#endif // MAGNACHAIN_QT_PAYMENTSERVER_H

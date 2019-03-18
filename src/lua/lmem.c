@@ -69,7 +69,7 @@ void *luaM_toobig (lua_State *L) {
 }
 
 
-
+lu_mem MAX_LUA_ALLOC_SIZE = 1024 * 1024;
 /*
 ** generic allocation routine.
 */
@@ -81,6 +81,8 @@ void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
     luaD_throw(L, LUA_ERRMEM);
   lua_assert((nsize == 0) == (block == NULL));
   g->totalbytes = (g->totalbytes - osize) + nsize;
+  if (osize == 0 && nsize > 0 && g->totalbytes > MAX_LUA_ALLOC_SIZE)
+    luaD_throw(L, LUA_ERRMEM);
   return block;
 }
 

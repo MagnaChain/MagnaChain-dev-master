@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,7 +9,7 @@
 #include "utils/util.h"
 #include "misc/warnings.h"
 
-CellCriticalSection cs_warnings;
+MCCriticalSection cs_warnings;
 std::string strMiscWarning;
 bool fLargeWorkForkFound = false;
 bool fLargeWorkInvalidChainFound = false;

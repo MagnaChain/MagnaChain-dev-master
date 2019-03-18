@@ -1,11 +1,11 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_RPCCLIENT_H
-#define CELLLINK_RPCCLIENT_H
+#ifndef MAGNACHAIN_RPCCLIENT_H
+#define MAGNACHAIN_RPCCLIENT_H
 
 #include <string>
 #include <vector>
@@ -23,4 +23,4 @@ UniValue RPCConvertNamedValues(const std::string& strMethod, const std::vector<s
  */
 UniValue ParseNonRFCJSONValue(const std::string& strVal);
 
-#endif // CELLLINK_RPCCLIENT_H
+#endif // MAGNACHAIN_RPCCLIENT_H

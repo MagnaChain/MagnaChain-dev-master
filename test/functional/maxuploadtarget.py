@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2015-2016 The Bitcoin Core developers
+# Copyright (c) 2015-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test behavior of -maxuploadtarget.
@@ -14,7 +14,7 @@ from collections import defaultdict
 import time
 
 from test_framework.mininode import *
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
 class TestNode(NodeConnCB):
@@ -29,7 +29,18 @@ class TestNode(NodeConnCB):
         message.block.calc_sha256()
         self.block_receive_map[message.block.sha256] += 1
 
-class MaxUploadTest(BitcoinTestFramework):
+class Mocktime(object):
+
+    def __init__(self,start_time):
+        self.start_time = start_time
+
+    def __call__(self, *args, **kwargs):
+        self.start_time += 1
+        return self.start_time
+
+
+
+class MaxUploadTest(MagnaChainTestFramework):
  
     def set_test_params(self):
         self.setup_clean_chain = True
@@ -39,15 +50,24 @@ class MaxUploadTest(BitcoinTestFramework):
         # Cache for utxos, as the listunspent may take a long time later in the test
         self.utxo_cache = []
 
+    def setup_network(self):
+        # Need a bit of extra time for the nodes to start up for this test
+        self.add_nodes(self.num_nodes, extra_args=self.extra_args, timewait=7200)
+        self.start_nodes()
+
     def run_test(self):
         # Before we connect anything, we first set the time on the node
         # to be in the past, otherwise things break because the CNode
         # time counters can't be reset backward after initialization
-        old_time = int(time.time() - 2*60*60*24*7)
-        self.nodes[0].setmocktime(old_time)
+        old_time = int(time.time() - 2*60*60*24*7 - 131)
+        get_mocktime = Mocktime(old_time)
 
         # Generate some old blocks
-        self.nodes[0].generate(130)
+        for i in range(130):
+            self.nodes[0].setmocktime(get_mocktime())
+            self.nodes[0].generate(1)
+            print(get_mocktime(),self.nodes[0].getblockcount())
+        print("Generate some old blocks done")
 
         # test_nodes[0] will only request old blocks
         # test_nodes[1] will only request new blocks
@@ -66,7 +86,8 @@ class MaxUploadTest(BitcoinTestFramework):
         # Test logic begins here
 
         # Now mine a big block
-        mine_large_block(self.nodes[0], self.utxo_cache)
+        print("mining  a big block")
+        mine_large_block_with_mocktime(self.nodes[0], self.utxo_cache,get_mocktime())
 
         # Store the hash; we'll request this later
         big_old_block = self.nodes[0].getbestblockhash()
@@ -77,7 +98,9 @@ class MaxUploadTest(BitcoinTestFramework):
         self.nodes[0].setmocktime(int(time.time()) - 2*60*60*24)
 
         # Mine one more block, so that the prior block looks old
-        mine_large_block(self.nodes[0], self.utxo_cache)
+        print("Mine one more block, so that the prior block looks old")
+        # mine_large_block(self.nodes[0], self.utxo_cache)
+        mine_large_block_with_mocktime(self.nodes[0], self.utxo_cache, get_mocktime())
 
         # We'll be requesting this new block too
         big_new_block = self.nodes[0].getbestblockhash()

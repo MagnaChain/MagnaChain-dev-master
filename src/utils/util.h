@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -8,11 +8,11 @@
  * Server/client environment: argument handling, config file parsing,
  * logging, thread wrappers, startup time
  */
-#ifndef CELLLINK_UTIL_H
-#define CELLLINK_UTIL_H
+#ifndef MAGNACHAIN_UTIL_H
+#define MAGNACHAIN_UTIL_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "net/compat.h"
@@ -54,8 +54,8 @@ extern bool fLogIPs;
 extern std::atomic<bool> fReopenDebugLog;
 extern CTranslationInterface translationInterface;
 
-extern const char * const CELLLINK_CONF_FILENAME;
-extern const char * const CELLLINK_PID_FILENAME;
+extern const char * const MAGNACHAIN_CONF_FILENAME;
+extern const char * const MAGNACHAIN_PID_FILENAME;
 
 extern std::atomic<uint32_t> logCategories;
 
@@ -104,13 +104,16 @@ namespace BCLog {
         LEVELDB     = (1 << 20),
 		BRANCH      = (1 << 21),
 		MINING      = (1 << 22),
+        TRANSACTION = (1 << 23),
+        WALLET      = (1 << 24),
         ALL         = ~(uint32_t)0,
     };
 }
 /** Return true if log accepts specified category */
 static inline bool LogAcceptCategory(uint32_t category)
 {
-    return (logCategories.load(std::memory_order_relaxed) & category) != 0;
+    uint32_t value = logCategories.load(std::memory_order_relaxed);
+    return (value & category) != 0;
 }
 
 /** Returns a string with the log categories. */
@@ -164,6 +167,19 @@ bool error(const char* fmt, const Args&... args)
     return false;
 }
 
+template<typename... Args>
+bool error_ex1(std::string *pStrMsg/*get error msg*/, const char* fmt, const Args&... args)
+{
+    if (pStrMsg != nullptr)
+    {
+        *pStrMsg = "ERROR: " + tfm::format(fmt, args...) + "\n";
+        LogPrintStr(*pStrMsg);
+    }
+    else
+        LogPrintStr("ERROR: " + tfm::format(fmt, args...) + "\n");
+    return false;
+}
+
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void FileCommit(FILE *file);
 bool TruncateFile(FILE *file, unsigned int length);
@@ -198,7 +214,7 @@ inline bool IsSwitchChar(char c)
 class ArgsManager
 {
 protected:
-    CellCriticalSection cs_args;
+    MCCriticalSection cs_args;
     std::map<std::string, std::string> mapArgs;
     std::map<std::string, std::vector<std::string> > mapMultiArgs;
 public:
@@ -297,7 +313,7 @@ void RenameThread(const char* name);
  */
 template <typename Callable> void TraceThread(const char* name,  Callable func)
 {
-    std::string s = strprintf("celllink-%s", name);
+    std::string s = strprintf("magnachain-%s", name);
     RenameThread(s.c_str());
     try
     {
@@ -337,4 +353,4 @@ void BeginSampler(std::string name);
 void EndSampler(std::string name);
 int64_t GetSamplerTotalTime(std::string name);
 
-#endif // CELLLINK_UTIL_H
+#endif // MAGNACHAIN_UTIL_H

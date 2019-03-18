@@ -1,7 +1,10 @@
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "branchtxdb.h"
+#include "rpc/branchchainrpc.h"
+#include "transaction/txmempool.h"
+#include "validation/validation.h"
 
 namespace {
     class MineCoinEntry {
@@ -29,9 +32,9 @@ namespace {
 
 BranchChainTxRecordsDb* pBranchChainTxRecordsDb = nullptr;
 
-void BranchChainTxRecordsCache::AddBranchChainTxRecord(const CellTransactionRef& tx, const uint256& blockhash, uint32_t txindex)
+void BranchChainTxRecordsCache::AddBranchChainTxRecord(const MCTransactionRef& tx, const uint256& blockhash, uint32_t txindex)
 {
-    if (tx->IsPregnantTx() == false)
+    if (!tx->IsPregnantTx() && !tx->IsBranchCreate())
         return;
 
     BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_TX_DATA);
@@ -48,9 +51,9 @@ void BranchChainTxRecordsCache::AddBranchChainTxRecord(const CellTransactionRef&
     sendinfo.flags = DbDataFlag::eADD;
 }
 
-void BranchChainTxRecordsCache::DelBranchChainTxRecord(const CellTransactionRef& tx)
+void BranchChainTxRecordsCache::DelBranchChainTxRecord(const MCTransactionRef& tx)
 {
-    if (tx->IsPregnantTx() == false)
+    if (!tx->IsPregnantTx() && !tx->IsBranchCreate())
         return;
 
     BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_TX_DATA); // may be delete one entry which not in m_mapChainTxInfos any more
@@ -63,31 +66,33 @@ void BranchChainTxRecordsCache::DelBranchChainTxRecord(const CellTransactionRef&
     sendinfo.flags = DbDataFlag::eDELETE;
 }
 
-void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const CellTransactionRef& tx, const uint256& blockhash)
+void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const MCTransactionRef& tx, const uint256& blockhash)
 {
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_RECV_TX_DATA);
+    uint256 txid = mempool.GetOriTxHash(*tx);
+    BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.blockhash = blockhash;
     data.flags = DbDataFlag::eADD;
 }
 
-void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const CellTransactionRef& tx)
+void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRef& tx)
 {
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    BranchChainTxEntry key(tx->GetHash(), DB_BRANCH_CHAIN_RECV_TX_DATA);
+    uint256 txid = mempool.GetOriTxHash(*tx);
+    BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
 }
 
-void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx, bool fBlockConnect)
+void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect)
 {
     if (fBlockConnect){
-        if (ptx->IsLockMortgageMineCoin()) { // 锁定
+        if (ptx->IsLockMortgageMineCoin()) { // 閿佸畾
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -98,7 +103,7 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx
             }
             vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
         }
-        if (ptx->IsUnLockMortgageMineCoin()) { // 解锁
+        if (ptx->IsUnLockMortgageMineCoin()) { // 瑙ｉ攣
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -111,7 +116,7 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx
         }
     }
     else{// block disconnect
-        if (ptx->IsLockMortgageMineCoin()) {// 锁定回滚
+        if (ptx->IsLockMortgageMineCoin()) {// 閿佸畾鍥炴粴
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -122,7 +127,7 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const CellTransactionRef& ptx
             }
             vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
         }
-        if (ptx->IsUnLockMortgageMineCoin()) {// 解锁回滚
+        if (ptx->IsUnLockMortgageMineCoin()) {// 瑙ｉ攣鍥炴粴
             std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
@@ -156,17 +161,18 @@ BranchChainTxInfo BranchChainTxRecordsDb::GetBranchChainTxInfo(const uint256& tx
 
 //param tx
 //param pBlock which block contain tx
-bool BranchChainTxRecordsDb::IsTxRecvRepeat(const CellTransaction& tx, const CellBlock* pBlock /*=nullptr*/)
+bool BranchChainTxRecordsDb::IsTxRecvRepeat(const MCTransaction& tx, const MCBlock* pBlock /*=nullptr*/)
 {
     if (tx.IsBranchChainTransStep2() == false)
         return false;
 
-    BranchChainTxEntry keyentry(tx.GetHash(), DB_BRANCH_CHAIN_RECV_TX_DATA);
+    uint256 txid = mempool.GetOriTxHash(tx);
+    BranchChainTxEntry keyentry(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo recvInfo;
     if (!m_db.Read(keyentry, recvInfo))
         return false;
 
-    if (pBlock && pBlock->GetHash() == recvInfo.blockhash) {
+    if (pBlock && pBlock->GetHash() == recvInfo.blockhash) {//same block is not duplicate
         return false;
     }
 
@@ -176,7 +182,7 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const CellTransaction& tx, const Cel
 void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
 {
     LogPrint(BCLog::COINDB, "flush branch chain tx data to db");
-    CellDBBatch batch(m_db);
+    MCDBBatch batch(m_db);
     size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
     bool bCreatedChainTxChanged = false;
     for (auto mit = cache.m_mapChainTxInfos.begin(); mit != cache.m_mapChainTxInfos.end(); mit++) {
@@ -188,12 +194,12 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             batch.Erase(keyentry);
 
         if (batch.SizeEstimate() > batch_size) {
-            LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+            LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 0, Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
             m_db.WriteBatch(batch);
             batch.Clear();
         }
         //update create branch chain vector
-        if (txinfo.txnVersion == CellTransaction::CREATE_BRANCH_VERSION) {
+        if (txinfo.txnVersion == MCTransaction::CREATE_BRANCH_VERSION) {
             if (txinfo.flags == DbDataFlag::eADD) {
                 // add before then (del and add) in same case
                 if (std::find(m_vCreatedBranchTxs.begin(), m_vCreatedBranchTxs.end(), txinfo.createchaininfo) == m_vCreatedBranchTxs.end()) {
@@ -214,6 +220,10 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
     }
     cache.m_mapChainTxInfos.clear();
 
+    LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 0, Writing final batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+    m_db.WriteBatch(batch);
+    batch.Clear();
+
     for (auto mit = cache.m_mapRecvRecord.begin(); mit != cache.m_mapRecvRecord.end(); mit++) {
         const BranchChainTxEntry& keyentry = mit->first;
         const BranchChainTxRecvInfo& txinfo = mit->second;
@@ -223,7 +233,7 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             batch.Erase(keyentry);
 
         if (batch.SizeEstimate() > batch_size) {
-            LogPrint(BCLog::COINDB, "Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+            LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
             m_db.WriteBatch(batch);
             batch.Clear();
         }
@@ -233,7 +243,9 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
         batch.Write(DB_BRANCH_CHAIN_LIST, m_vCreatedBranchTxs);
     }
 
-    bool ret = m_db.WriteBatch(batch);
+    LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing final batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
+    bool ret = m_db.WriteBatch(batch);// final batch
+    batch.Clear();
     cache.m_mapRecvRecord.clear();
 
     for (auto mit = cache.m_mapCoinBeReport.begin(); mit != cache.m_mapCoinBeReport.end(); mit++)

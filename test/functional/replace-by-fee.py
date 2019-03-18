@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the RBF code."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.script import *
 from test_framework.mininode import *
@@ -59,7 +59,7 @@ def make_utxo(node, amount, confirmed=True, scriptPubKey=CScript([1])):
 
     return COutPoint(int(txid, 16), 0)
 
-class ReplaceByFeeTest(BitcoinTestFramework):
+class ReplaceByFeeTest(MagnaChainTestFramework):
 
     def set_test_params(self):
         self.num_nodes = 2
@@ -208,7 +208,7 @@ class ReplaceByFeeTest(BitcoinTestFramework):
         initial_nValue = 50*COIN
         tx0_outpoint = make_utxo(self.nodes[0], initial_nValue)
 
-        def branch(prevout, initial_value, max_txs, tree_width=5, fee=0.0001*COIN, _total_txs=None):
+        def branch(prevout, initial_value, max_txs, tree_width=5, fee=0.01*COIN, _total_txs=None):
             if _total_txs is None:
                 _total_txs = [0]
             if _total_txs[0] >= max_txs:
@@ -239,7 +239,7 @@ class ReplaceByFeeTest(BitcoinTestFramework):
                                   _total_txs=_total_txs):
                     yield x
 
-        fee = int(0.0001*COIN)
+        fee = int(0.01*COIN)
         n = MAX_REPLACEMENT_LIMIT
         tree_txs = list(branch(tx0_outpoint, initial_nValue, n, fee=fee))
         assert_equal(len(tree_txs), n)
@@ -268,7 +268,7 @@ class ReplaceByFeeTest(BitcoinTestFramework):
         # Try again, but with more total transactions than the "max txs
         # double-spent at once" anti-DoS limit.
         for n in (MAX_REPLACEMENT_LIMIT+1, MAX_REPLACEMENT_LIMIT*2):
-            fee = int(0.0001*COIN)
+            fee = int(0.01*COIN)
             tx0_outpoint = make_utxo(self.nodes[0], initial_nValue)
             tree_txs = list(branch(tx0_outpoint, initial_nValue, n, fee=fee))
             assert_equal(len(tree_txs), n)
@@ -369,9 +369,9 @@ class ReplaceByFeeTest(BitcoinTestFramework):
         # transactions
 
         # Start by creating a single transaction with many outputs
-        initial_nValue = 10*COIN
+        initial_nValue = 1000*COIN
         utxo = make_utxo(self.nodes[0], initial_nValue)
-        fee = int(0.0001*COIN)
+        fee = int(0.01*COIN)
         split_value = int((initial_nValue-fee)/(MAX_REPLACEMENT_LIMIT+1))
 
         outputs = []

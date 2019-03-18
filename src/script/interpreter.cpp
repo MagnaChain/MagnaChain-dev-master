@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -176,7 +176,7 @@ bool static IsLowDERSignature(const valtype &vchSig, ScriptError* serror) {
         return set_error(serror, SCRIPT_ERR_SIG_DER);
     }
     std::vector<unsigned char> vchSigCopy(vchSig.begin(), vchSig.begin() + vchSig.size() - 1);
-    if (!CellPubKey::CheckLowS(vchSigCopy)) {
+    if (!MCPubKey::CheckLowS(vchSigCopy)) {
         return set_error(serror, SCRIPT_ERR_SIG_HIGH_S);
     }
     return true;
@@ -244,7 +244,7 @@ bool static CheckMinimalPush(const valtype& data, opcodetype opcode) {
     return true;
 }
 
-bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror)
+bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const MCScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* serror)
 {
     static const CScriptNum bnZero(0);
     static const CScriptNum bnOne(1);
@@ -254,9 +254,9 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
     // static const valtype vchZero(0);
     static const valtype vchTrue(1, 1);
 
-    CellScript::const_iterator pc = script.begin();
-    CellScript::const_iterator pend = script.end();
-    CellScript::const_iterator pbegincodehash = script.begin();
+    MCScript::const_iterator pc = script.begin();
+    MCScript::const_iterator pend = script.end();
+    MCScript::const_iterator pbegincodehash = script.begin();
     opcodetype opcode;
     valtype vchPushValue;
     std::vector<bool> vfExec;
@@ -415,7 +415,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
                     // To provide for future soft-fork extensibility, if the
                     // operand has the disabled lock-time flag set,
                     // CHECKSEQUENCEVERIFY behaves as a NOP.
-                    if ((nSequence & CellTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG) != 0)
+                    if ((nSequence & MCTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG) != 0)
                         break;
 
                     // Compare the specified sequence number with the input.
@@ -887,11 +887,11 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
                     valtype& vchPubKey = stacktop(-1);
 
                     // Subset of script starting at the most recent codeseparator
-                    CellScript scriptCode(pbegincodehash, pend);
+                    MCScript scriptCode(pbegincodehash, pend);
 
                     // Drop the signature in pre-segwit scripts but not segwit scripts
                     if (sigversion == SIGVERSION_BASE) {
-                        scriptCode.FindAndDelete(CellScript(vchSig));
+                        scriptCode.FindAndDelete(MCScript(vchSig));
                     }
 
                     if (!CheckSignatureEncoding(vchSig, flags, serror) || !CheckPubKeyEncoding(vchPubKey, flags, sigversion, serror)) {
@@ -948,14 +948,14 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
                         return set_error(serror, SCRIPT_ERR_INVALID_STACK_OPERATION);
 
                     // Subset of script starting at the most recent codeseparator
-                    CellScript scriptCode(pbegincodehash, pend);
+                    MCScript scriptCode(pbegincodehash, pend);
 
                     // Drop the signature in pre-segwit scripts but not segwit scripts
                     for (int k = 0; k < nSigsCount; k++)
                     {
                         valtype& vchSig = stacktop(-isig-k);
                         if (sigversion == SIGVERSION_BASE) {
-                            scriptCode.FindAndDelete(CellScript(vchSig));
+                            scriptCode.FindAndDelete(MCScript(vchSig));
                         }
                     }
 
@@ -1023,6 +1023,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
                     }
                 }
                 break;
+                case OP_CREATE_BRANCH:
                 case OP_MINE_BRANCH_MORTGAGE:
                 case OP_MINE_BRANCH_COIN:
                 {
@@ -1050,62 +1051,66 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScrip
 
 namespace {
 template<typename S>
-void TransactionExtraFields(S &s, const CellTransaction& txTo){
-	if (txTo.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION)//TODO: check this
+void TransactionExtraFields(S &s, const MCTransaction& txTo){
+	if (txTo.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
     {
-        ::Serialize(s, txTo.contractAddrs);
-		::Serialize(s, txTo.contractCode);
-        ::Serialize(s, txTo.contractSender);
+        //TODO: check this
+        ::Serialize(s, txTo.pContractData->address);
+        ::Serialize(s, txTo.pContractData->sender);
+        ::Serialize(s, txTo.pContractData->codeOrFunc);
+        ::Serialize(s, txTo.pContractData->args);
+        ::Serialize(s, txTo.pContractData->amountOut);
 	}
-	else if (txTo.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
-    {
-        ::Serialize(s, txTo.contractAddrs);
-		::Serialize(s, txTo.contractSender);
-		::Serialize(s, txTo.contractFun);
-        ::Serialize(s, txTo.contractParams);
-	}
-    else if (txTo.nVersion == CellTransaction::CREATE_BRANCH_VERSION)
+    else if (txTo.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
     {
         ::Serialize(s, txTo.branchVSeeds);
         ::Serialize(s, txTo.branchSeedSpec6);
-        ::Serialize(s, txTo.sendToTxHexData);
     }
-    else if (txTo.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1)
+    else if (txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1)
     {
         ::Serialize(s, txTo.sendToBranchid);
         ::Serialize(s, txTo.sendToTxHexData);
     }
-    else if (txTo.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2)
+    else if (txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
     {
         ::Serialize(s, txTo.fromBranchId);
         ::Serialize(s, txTo.fromTx);
         ::Serialize(s, txTo.inAmount);
     }
-    else if (txTo.nVersion == CellTransaction::MINE_BRANCH_MORTGAGE)
+    else if (txTo.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE)
     {
         ::Serialize(s, txTo.sendToBranchid);
         ::Serialize(s, txTo.sendToTxHexData);
     }
-    else if (txTo.nVersion == CellTransaction::SYNC_BRANCH_INFO)
+    else if (txTo.nVersion == MCTransaction::SYNC_BRANCH_INFO)
     {
         ::Serialize(s, txTo.pBranchBlockData);
     }
-    else if (txTo.nVersion == CellTransaction::REDEEM_MORTGAGE)
+    else if (txTo.nVersion == MCTransaction::REPORT_CHEAT)
+    {
+        ::Serialize(s, txTo.pReportData);
+        ::Serialize(s, txTo.pPMT);
+    }
+    else if (txTo.nVersion == MCTransaction::PROVE)
+    {
+        ::Serialize(s, txTo.pProveData);
+    }
+    else if (txTo.nVersion == MCTransaction::REDEEM_MORTGAGE)
     {
         ::Serialize(s, txTo.fromBranchId);
         ::Serialize(s, txTo.fromTx);
         ::Serialize(s, txTo.pPMT);
     }
-    else if (txTo.nVersion == CellTransaction::REPORT_REWARD)
+    else if (txTo.nVersion == MCTransaction::REPORT_REWARD)
     {
         ::Serialize(s, txTo.reporttxid);
     }
-    else if (txTo.nVersion == CellTransaction::LOCK_MORTGAGE_MINE_COIN)
+    else if (txTo.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
     {
         ::Serialize(s, txTo.reporttxid);
         ::Serialize(s, txTo.coinpreouthash);
     }
-    else if (txTo.nVersion == CellTransaction::UNLOCK_MORTGAGE_MINE_COIN)
+    else if (txTo.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
     {
         ::Serialize(s, txTo.reporttxid);
         ::Serialize(s, txTo.coinpreouthash);
@@ -1114,20 +1119,20 @@ void TransactionExtraFields(S &s, const CellTransaction& txTo){
 }
 
 /**
- * Wrapper that serializes like CellTransaction, but with the modifications
+ * Wrapper that serializes like MCTransaction, but with the modifications
  *  required for the signature hash done in-place
  */
-class CellTransactionSignatureSerializer {
+class MCTransactionSignatureSerializer {
 private:
-    const CellTransaction& txTo;  //!< reference to the spending transaction (the one being serialized)
-    const CellScript& scriptCode; //!< output script being consumed
+    const MCTransaction& txTo;  //!< reference to the spending transaction (the one being serialized)
+    const MCScript& scriptCode; //!< output script being consumed
     const unsigned int nIn;    //!< input index of txTo being signed
     const bool fAnyoneCanPay;  //!< whether the hashtype has the SIGHASH_ANYONECANPAY flag set
     const bool fHashSingle;    //!< whether the hashtype is SIGHASH_SINGLE
     const bool fHashNone;      //!< whether the hashtype is SIGHASH_NONE
 
 public:
-    CellTransactionSignatureSerializer(const CellTransaction &txToIn, const CellScript &scriptCodeIn, unsigned int nInIn, int nHashTypeIn) :
+    MCTransactionSignatureSerializer(const MCTransaction &txToIn, const MCScript &scriptCodeIn, unsigned int nInIn, int nHashTypeIn) :
         txTo(txToIn), scriptCode(scriptCodeIn), nIn(nInIn),
         fAnyoneCanPay(!!(nHashTypeIn & SIGHASH_ANYONECANPAY)),
         fHashSingle((nHashTypeIn & 0x1f) == SIGHASH_SINGLE),
@@ -1136,8 +1141,8 @@ public:
     /** Serialize the passed scriptCode, skipping OP_CODESEPARATORs */
     template<typename S>
     void SerializeScriptCode(S &s) const {
-        CellScript::const_iterator it = scriptCode.begin();
-        CellScript::const_iterator itBegin = it;
+        MCScript::const_iterator it = scriptCode.begin();
+        MCScript::const_iterator itBegin = it;
         opcodetype opcode;
         unsigned int nCodeSeparators = 0;
         while (scriptCode.GetOp(it, opcode)) {
@@ -1159,6 +1164,8 @@ public:
     /** Serialize an input of txTo */
     template<typename S>
     void SerializeInput(S &s, unsigned int nInput) const {
+        if (txTo.vin[nInput].scriptSig.IsContract())
+            return;
         // In case of SIGHASH_ANYONECANPAY, only the input being signed is serialized
         if (fAnyoneCanPay)
             nInput = nIn;
@@ -1167,7 +1174,7 @@ public:
         // Serialize the script
         if (nInput != nIn)
             // Blank out other inputs' signatures
-            ::Serialize(s, CellScript());
+            ::Serialize(s, MCScript());
         else
             SerializeScriptCode(s);
         // Serialize the nSequence
@@ -1181,9 +1188,11 @@ public:
     /** Serialize an output of txTo */
     template<typename S>
     void SerializeOutput(S &s, unsigned int nOutput) const {
+        if (txTo.vout[nOutput].scriptPubKey.IsContractChange())
+            return;
         if (fHashSingle && nOutput != nIn)
             // Do not lock-in the txout payee at other indices as txin
-            ::Serialize(s, CellTxOut());
+            ::Serialize(s, MCTxOut());
         else
             ::Serialize(s, txTo.vout[nOutput]);
     }
@@ -1192,15 +1201,23 @@ public:
     template<typename S>
     void Serialize(S &s) const {
         // Serialize nVersion
-        //::Serialize(s, txTo.nVersion); change for diff from celllink
+        //::Serialize(s, txTo.nVersion); change for diff from magnachain
         // Serialize vin
         unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
-        ::WriteCompactSize(s, nInputs);
+        unsigned int nRealInputs = 0;
         for (unsigned int nInput = 0; nInput < nInputs; nInput++)
-             SerializeInput(s, nInput);
+            if (!txTo.vin[nInput].scriptSig.IsContract())
+                nRealInputs++;
+        ::WriteCompactSize(s, nRealInputs);
+        for (unsigned int nInput = 0; nInput < nInputs; nInput++)
+            SerializeInput(s, nInput);
         // Serialize vout
-        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn+1 : txTo.vout.size());
-        ::WriteCompactSize(s, nOutputs);
+        unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn + 1 : txTo.vout.size());
+        unsigned int nRealOutputs = 0;
+        for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
+            if (!txTo.vout[nOutput].scriptPubKey.IsContractChange())
+                nRealOutputs++;
+        ::WriteCompactSize(s, nRealOutputs);
         for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
              SerializeOutput(s, nOutput);
         // Serialize nLockTime
@@ -1211,40 +1228,43 @@ public:
     }
 };
 
-uint256 GetPrevoutHash(const CellTransaction& txTo) {
-    CellHashWriter ss(SER_GETHASH, 0);
+uint256 GetPrevoutHash(const MCTransaction& txTo) {
+    MCHashWriter ss(SER_GETHASH, 0);
     for (const auto& txin : txTo.vin) {
-        ss << txin.prevout;
+        if (!txin.scriptSig.IsContract())
+            ss << txin.prevout;
     }
     return ss.GetHash();
 }
 
-uint256 GetSequenceHash(const CellTransaction& txTo) {
-    CellHashWriter ss(SER_GETHASH, 0);
+uint256 GetSequenceHash(const MCTransaction& txTo) {
+    MCHashWriter ss(SER_GETHASH, 0);
     for (const auto& txin : txTo.vin) {
-        ss << txin.nSequence;
+        if (!txin.scriptSig.IsContract())
+            ss << txin.nSequence;
     }
     return ss.GetHash();
 }
 
-uint256 GetOutputsHash(const CellTransaction& txTo) {
-    CellHashWriter ss(SER_GETHASH, 0);
+uint256 GetOutputsHash(const MCTransaction& txTo) {
+    MCHashWriter ss(SER_GETHASH, 0);
     for (const auto& txout : txTo.vout) {
-        ss << txout;
+        if (!txout.scriptPubKey.IsContractChange())
+            ss << txout;
     }
     return ss.GetHash();
 }
 
 } // namespace
 
-PrecomputedTransactionData::PrecomputedTransactionData(const CellTransaction& txTo)
+PrecomputedTransactionData::PrecomputedTransactionData(const MCTransaction& txTo)
 {
     hashPrevouts = GetPrevoutHash(txTo);
     hashSequence = GetSequenceHash(txTo);
     hashOutputs = GetOutputsHash(txTo);
 }
 
-uint256 SignatureHash(const CellScript& scriptCode, const CellTransaction& txTo, unsigned int nIn, int nHashType, const CellAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
+uint256 SignatureHash(const MCScript& scriptCode, const MCTransaction& txTo, unsigned int nIn, int nHashType, const MCAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache)
 {
     if (sigversion == SIGVERSION_WITNESS_V0) {
         uint256 hashPrevouts;
@@ -1263,12 +1283,12 @@ uint256 SignatureHash(const CellScript& scriptCode, const CellTransaction& txTo,
         if ((nHashType & 0x1f) != SIGHASH_SINGLE && (nHashType & 0x1f) != SIGHASH_NONE) {
             hashOutputs = cache ? cache->hashOutputs : GetOutputsHash(txTo);
         } else if ((nHashType & 0x1f) == SIGHASH_SINGLE && nIn < txTo.vout.size()) {
-            CellHashWriter ss(SER_GETHASH, 0);
+            MCHashWriter ss(SER_GETHASH, 0);
             ss << txTo.vout[nIn];
             hashOutputs = ss.GetHash();
         }
 
-        CellHashWriter ss(SER_GETHASH, 0);
+        MCHashWriter ss(SER_GETHASH, 0);
         // Input prevouts/nSequence (none/all, depending on flags)
         ss << hashPrevouts;
 		// Version
@@ -1309,22 +1329,22 @@ uint256 SignatureHash(const CellScript& scriptCode, const CellTransaction& txTo,
     }
 
     // Wrapper to serialize only the necessary parts of the transaction being signed
-    CellTransactionSignatureSerializer txTmp(txTo, scriptCode, nIn, nHashType);
+    MCTransactionSignatureSerializer txTmp(txTo, scriptCode, nIn, nHashType);
 
     // Serialize and hash
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << txTmp << nHashType;
     return ss.GetHash();
 }
 
-bool TransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const CellPubKey& pubkey, const uint256& sighash) const
+bool TransactionSignatureChecker::VerifySignature(const std::vector<unsigned char>& vchSig, const MCPubKey& pubkey, const uint256& sighash) const
 {
     return pubkey.Verify(sighash, vchSig);
 }
 
-bool TransactionSignatureChecker::CheckSig(const std::vector<unsigned char>& vchSigIn, const std::vector<unsigned char>& vchPubKey, const CellScript& scriptCode, SigVersion sigversion) const
+bool TransactionSignatureChecker::CheckSig(const std::vector<unsigned char>& vchSigIn, const std::vector<unsigned char>& vchPubKey, const MCScript& scriptCode, SigVersion sigversion) const
 {
-    CellPubKey pubkey(vchPubKey);
+    MCPubKey pubkey(vchPubKey);
     if (!pubkey.IsValid())
         return false;
 
@@ -1373,7 +1393,7 @@ bool TransactionSignatureChecker::CheckLockTime(const CScriptNum& nLockTime) con
     // prevent this condition. Alternatively we could test all
     // inputs, but testing just this input minimizes the data
     // required to prove correct CHECKLOCKTIMEVERIFY execution.
-    if (CellTxIn::SEQUENCE_FINAL == txTo->vin[nIn].nSequence)
+    if (MCTxIn::SEQUENCE_FINAL == txTo->vin[nIn].nSequence)
         return false;
 
     return true;
@@ -1394,25 +1414,25 @@ bool TransactionSignatureChecker::CheckSequence(const CScriptNum& nSequence) con
     // consensus constrained. Testing that the transaction's sequence
     // number do not have this bit set prevents using this property
     // to get around a CHECKSEQUENCEVERIFY check.
-    if (txToSequence & CellTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG)
+    if (txToSequence & MCTxIn::SEQUENCE_LOCKTIME_DISABLE_FLAG)
         return false;
 
     // Mask off any bits that do not have consensus-enforced meaning
     // before doing the integer comparisons
-    const uint32_t nLockTimeMask = CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | CellTxIn::SEQUENCE_LOCKTIME_MASK;
+    const uint32_t nLockTimeMask = MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG | MCTxIn::SEQUENCE_LOCKTIME_MASK;
     const int64_t txToSequenceMasked = txToSequence & nLockTimeMask;
     const CScriptNum nSequenceMasked = nSequence & nLockTimeMask;
 
     // There are two kinds of nSequence: lock-by-blockheight
     // and lock-by-blocktime, distinguished by whether
-    // nSequenceMasked < CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG.
+    // nSequenceMasked < MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG.
     //
     // We want to compare apples to apples, so fail the script
     // unless the type of nSequenceMasked being tested is the same as
     // the nSequenceMasked in the transaction.
     if (!(
-        (txToSequenceMasked <  CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG && nSequenceMasked <  CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG) ||
-        (txToSequenceMasked >= CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG && nSequenceMasked >= CellTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG)
+        (txToSequenceMasked <  MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG && nSequenceMasked <  MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG) ||
+        (txToSequenceMasked >= MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG && nSequenceMasked >= MCTxIn::SEQUENCE_LOCKTIME_TYPE_FLAG)
     )) {
         return false;
     }
@@ -1428,15 +1448,15 @@ bool TransactionSignatureChecker::CheckSequence(const CScriptNum& nSequence) con
 static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, const std::vector<unsigned char>& program, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
     std::vector<std::vector<unsigned char> > stack;
-    CellScript scriptPubKey;
+    MCScript scriptPubKey;
 
     if (witversion == 0) {
         if (program.size() == 32) {
-            // Version 0 segregated witness program: SHA256(CellScript) inside the program, CellScript + inputs in witness
+            // Version 0 segregated witness program: SHA256(MCScript) inside the program, MCScript + inputs in witness
             if (witness.stack.size() == 0) {
                 return set_error(serror, SCRIPT_ERR_WITNESS_PROGRAM_WITNESS_EMPTY);
             }
-            scriptPubKey = CellScript(witness.stack.back().begin(), witness.stack.back().end());
+            scriptPubKey = MCScript(witness.stack.back().begin(), witness.stack.back().end());
             stack = std::vector<std::vector<unsigned char> >(witness.stack.begin(), witness.stack.end() - 1);
             uint256 hashScriptPubKey;
             CSHA256().Write(&scriptPubKey[0], scriptPubKey.size()).Finalize(hashScriptPubKey.begin());
@@ -1478,7 +1498,7 @@ static bool VerifyWitnessProgram(const CScriptWitness& witness, int witversion, 
     return true;
 }
 
-bool VerifyScript(const CellScript& scriptSig, const CellScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
+bool VerifyScript(const MCScript& scriptSig, const MCScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror)
 {
     static const CScriptWitness emptyWitness;
     if (witness == nullptr) {
@@ -1513,7 +1533,7 @@ bool VerifyScript(const CellScript& scriptSig, const CellScript& scriptPubKey, c
         if (scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram)) {
             hadWitness = true;
             if (scriptSig.size() != 0) {
-                // The scriptSig must be _exactly_ CellScript(), otherwise we reintroduce malleability.
+                // The scriptSig must be _exactly_ MCScript(), otherwise we reintroduce malleability.
                 return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED);
             }
             if (!VerifyWitnessProgram(*witness, witnessversion, witnessprogram, flags, checker, serror)) {
@@ -1541,7 +1561,7 @@ bool VerifyScript(const CellScript& scriptSig, const CellScript& scriptPubKey, c
         assert(!stack.empty());
 
         const valtype& pubKeySerialized = stack.back();
-        CellScript pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
+        MCScript pubKey2(pubKeySerialized.begin(), pubKeySerialized.end());
         popstack(stack);
 
         if (!EvalScript(stack, pubKey2, flags, checker, SIGVERSION_BASE, serror))
@@ -1556,7 +1576,7 @@ bool VerifyScript(const CellScript& scriptSig, const CellScript& scriptPubKey, c
         if (flags & SCRIPT_VERIFY_WITNESS) {
             if (pubKey2.IsWitnessProgram(witnessversion, witnessprogram)) {
                 hadWitness = true;
-                if (scriptSig != CellScript() << std::vector<unsigned char>(pubKey2.begin(), pubKey2.end())) {
+                if (scriptSig != MCScript() << std::vector<unsigned char>(pubKey2.begin(), pubKey2.end())) {
                     // The scriptSig must be _exactly_ a single push of the redeemScript. Otherwise we
                     // reintroduce malleability.
                     return set_error(serror, SCRIPT_ERR_WITNESS_MALLEATED_P2SH);
@@ -1604,7 +1624,7 @@ size_t static WitnessSigOps(int witversion, const std::vector<unsigned char>& wi
             return 1;
 
         if (witprogram.size() == 32 && witness.stack.size() > 0) {
-            CellScript subscript(witness.stack.back().begin(), witness.stack.back().end());
+            MCScript subscript(witness.stack.back().begin(), witness.stack.back().end());
             return subscript.GetSigOpCount(true);
         }
     }
@@ -1613,7 +1633,7 @@ size_t static WitnessSigOps(int witversion, const std::vector<unsigned char>& wi
     return 0;
 }
 
-size_t CountWitnessSigOps(const CellScript& scriptSig, const CellScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags)
+size_t CountWitnessSigOps(const MCScript& scriptSig, const MCScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags)
 {
     static const CScriptWitness witnessEmpty;
 
@@ -1629,13 +1649,13 @@ size_t CountWitnessSigOps(const CellScript& scriptSig, const CellScript& scriptP
     }
 
     if (scriptPubKey.IsPayToScriptHash() && scriptSig.IsPushOnly()) {
-        CellScript::const_iterator pc = scriptSig.begin();
+        MCScript::const_iterator pc = scriptSig.begin();
         std::vector<unsigned char> data;
         while (pc < scriptSig.end()) {
             opcodetype opcode;
             scriptSig.GetOp(pc, opcode, data);
         }
-        CellScript subscript(data.begin(), data.end());
+        MCScript subscript(data.begin(), data.end());
         if (subscript.IsWitnessProgram(witnessversion, witnessprogram)) {
             return WitnessSigOps(witnessversion, witnessprogram, witness ? *witness : witnessEmpty, flags);
         }

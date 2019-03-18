@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -179,7 +179,7 @@ std::vector<HTTPPathHandler> pathHandlers;
 std::vector<evhttp_bound_socket *> boundSockets;
 
 /** Check if a network address is allowed to access the HTTP server */
-static bool ClientAllowed(const CellNetAddr& netaddr)
+static bool ClientAllowed(const MCNetAddr& netaddr)
 {
 	if (gArgs.GetArg("-rpcallowall", "no") == "yes")
 		return true;
@@ -195,8 +195,8 @@ static bool ClientAllowed(const CellNetAddr& netaddr)
 static bool InitHTTPAllowList()
 {
     rpc_allow_subnets.clear();
-    CellNetAddr localv4;
-    CellNetAddr localv6;
+    MCNetAddr localv4;
+    MCNetAddr localv6;
     LookupHost("127.0.0.1", localv4, false);
     LookupHost("::1", localv6, false);
     rpc_allow_subnets.push_back(CSubNet(localv4, 8));      // always allow IPv4 local subnet
@@ -207,7 +207,7 @@ static bool InitHTTPAllowList()
         if (!subnet.IsValid()) {
             uiInterface.ThreadSafeMessageBox(
                 strprintf("Invalid -rpcallowip subnet specification: %s. Valid are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24).", strAllow),
-                "", CellClientUIInterface::MSG_ERROR);
+                "", MCClientUIInterface::MSG_ERROR);
             return false;
         }
         rpc_allow_subnets.push_back(subnet);
@@ -312,7 +312,7 @@ static void http_reject_request_cb(struct evhttp_request* req, void*)
 /** Event dispatcher thread */
 static bool ThreadHTTP(struct event_base* base, struct evhttp* http)
 {
-    RenameThread("celllink-http");
+    RenameThread("magnachain-http");
     LogPrint(BCLog::HTTP, "Entering http event loop\n");
     event_base_dispatch(base);
     // Event loop will be interrupted by InterruptHTTPServer()
@@ -361,7 +361,7 @@ static bool HTTPBindAddresses(struct evhttp* http)
 /** Simple wrapper to set thread name and run work queue */
 static void HTTPWorkQueueRun(WorkQueue<HTTPClosure>* queue)
 {
-    RenameThread("celllink-httpworker");
+    RenameThread("magnachain-httpworker");
     queue->Run();
 }
 
@@ -386,7 +386,7 @@ bool InitHTTPServer()
     if (gArgs.GetBoolArg("-rpcssl", false)) {
         uiInterface.ThreadSafeMessageBox(
             "SSL mode for RPC (-rpcssl) is no longer supported.",
-            "", CellClientUIInterface::MSG_ERROR);
+            "", MCClientUIInterface::MSG_ERROR);
         return false;
     }
 
@@ -633,10 +633,10 @@ void HTTPRequest::WriteReply(int nStatus, const std::string& strReply)
     req = nullptr; // transferred back to main thread
 }
 
-CellService HTTPRequest::GetPeer()
+MCService HTTPRequest::GetPeer()
 {
     evhttp_connection* con = evhttp_request_get_connection(req);
-    CellService peer;
+    MCService peer;
     if (con) {
         // evhttp retains ownership over returned address string
         const char* address = "";

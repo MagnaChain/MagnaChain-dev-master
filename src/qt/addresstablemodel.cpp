@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -69,11 +69,11 @@ static AddressTableEntry::Type translateTransactionType(const QString &strPurpos
 class AddressTablePriv
 {
 public:
-    CellWallet *wallet;
+    MCWallet *wallet;
     QList<AddressTableEntry> cachedAddressTable;
     AddressTableModel *parent;
 
-    AddressTablePriv(CellWallet *_wallet, AddressTableModel *_parent):
+    AddressTablePriv(MCWallet *_wallet, AddressTableModel *_parent):
         wallet(_wallet), parent(_parent) {}
 
     void refreshAddressTable()
@@ -81,9 +81,9 @@ public:
         cachedAddressTable.clear();
         {
             LOCK(wallet->cs_wallet);
-            for (const std::pair<CellTxDestination, CellAddressBookData>& item : wallet->mapAddressBook)
+            for (const std::pair<MCTxDestination, MCAddressBookData>& item : wallet->mapAddressBook)
             {
-                const CellLinkAddress& address = item.first;
+                const MagnaChainAddress& address = item.first;
                 bool fMine = IsMine(*wallet, address.Get());
                 AddressTableEntry::Type addressType = translateTransactionType(
                         QString::fromStdString(item.second.purpose), fMine);
@@ -164,7 +164,7 @@ public:
     }
 };
 
-AddressTableModel::AddressTableModel(CellWallet *_wallet, WalletModel *parent) :
+AddressTableModel::AddressTableModel(MCWallet *_wallet, WalletModel *parent) :
     QAbstractTableModel(parent),walletModel(parent),wallet(_wallet),priv(0)
 {
     columns << tr("Label") << tr("Address");
@@ -247,7 +247,7 @@ bool AddressTableModel::setData(const QModelIndex &index, const QVariant &value,
     if(role == Qt::EditRole)
     {
         LOCK(wallet->cs_wallet); /* For SetAddressBook / DelAddressBook */
-        CellTxDestination curAddress = CellLinkAddress(rec->address.toStdString()).Get();
+        MCTxDestination curAddress = MagnaChainAddress(rec->address.toStdString()).Get();
         if(index.column() == Label)
         {
             // Do nothing, if old label == new label
@@ -258,9 +258,9 @@ bool AddressTableModel::setData(const QModelIndex &index, const QVariant &value,
             }
             wallet->SetAddressBook(curAddress, value.toString().toStdString(), strPurpose);
         } else if(index.column() == Address) {
-            CellTxDestination newAddress = CellLinkAddress(value.toString().toStdString()).Get();
+            MCTxDestination newAddress = MagnaChainAddress(value.toString().toStdString()).Get();
             // Refuse to set invalid address, set error status and return false
-            if(boost::get<CellNoDestination>(&newAddress))
+            if(boost::get<MCNoDestination>(&newAddress))
             {
                 editStatus = INVALID_ADDRESS;
                 return false;
@@ -338,7 +338,7 @@ QModelIndex AddressTableModel::index(int row, int column, const QModelIndex &par
 void AddressTableModel::updateEntry(const QString &address,
         const QString &label, bool isMine, const QString &purpose, int status)
 {
-    // Update address book model from CellLink core
+    // Update address book model from MagnaChain core
     priv->updateEntry(address, label, isMine, purpose, status);
 }
 
@@ -359,7 +359,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
         // Check for duplicate addresses
         {
             LOCK(wallet->cs_wallet);
-            if(wallet->mapAddressBook.count(CellLinkAddress(strAddress).Get()))
+            if(wallet->mapAddressBook.count(MagnaChainAddress(strAddress).Get()))
             {
                 editStatus = DUPLICATE_ADDRESS;
                 return QString();
@@ -369,7 +369,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     else if(type == Receive)
     {
         // Generate a new address to associate with given label
-        CellPubKey newKey;
+        MCPubKey newKey;
         if(!wallet->GetKeyFromPool(newKey))
         {
             WalletModel::UnlockContext ctx(walletModel->requestUnlock());
@@ -385,7 +385,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
                 return QString();
             }
         }
-        strAddress = CellLinkAddress(newKey.GetID()).ToString();
+        strAddress = MagnaChainAddress(newKey.GetID()).ToString();
     }
     else
     {
@@ -395,7 +395,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     // Add entry
     {
         LOCK(wallet->cs_wallet);
-        wallet->SetAddressBook(CellLinkAddress(strAddress).Get(), strLabel,
+        wallet->SetAddressBook(MagnaChainAddress(strAddress).Get(), strLabel,
                                (type == Send ? "send" : "receive"));
     }
     return QString::fromStdString(strAddress);
@@ -413,7 +413,7 @@ bool AddressTableModel::removeRows(int row, int count, const QModelIndex &parent
     }
     {
         LOCK(wallet->cs_wallet);
-        wallet->DelAddressBook(CellLinkAddress(rec->address.toStdString()).Get());
+        wallet->DelAddressBook(MagnaChainAddress(rec->address.toStdString()).Get());
     }
     return true;
 }
@@ -424,8 +424,8 @@ QString AddressTableModel::labelForAddress(const QString &address) const
 {
     {
         LOCK(wallet->cs_wallet);
-        CellLinkAddress address_parsed(address.toStdString());
-        std::map<CellTxDestination, CellAddressBookData>::iterator mi = wallet->mapAddressBook.find(address_parsed.Get());
+        MagnaChainAddress address_parsed(address.toStdString());
+        std::map<MCTxDestination, MCAddressBookData>::iterator mi = wallet->mapAddressBook.find(address_parsed.Get());
         if (mi != wallet->mapAddressBook.end())
         {
             return QString::fromStdString(mi->second.name);

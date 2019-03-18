@@ -1,15 +1,15 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_WALLETFRAME_H
-#define CELLLINK_QT_WALLETFRAME_H
+#ifndef MAGNACHAIN_QT_WALLETFRAME_H
+#define MAGNACHAIN_QT_WALLETFRAME_H
 
 #include <QFrame>
 #include <QMap>
 
-class CellLinkGUI;
+class MagnaChainGUI;
 class ClientModel;
 class PlatformStyle;
 class SendCoinsRecipient;
@@ -22,9 +22,9 @@ QT_END_NAMESPACE
 
 /**
  * A container for embedding all wallet-related
- * controls into CellLinkGUI. The purpose of this class is to allow future
+ * controls into MagnaChainGUI. The purpose of this class is to allow future
  * refinements of the wallet controls with minimal need for further
- * modifications to CellLinkGUI, thus greatly simplifying merges while
+ * modifications to MagnaChainGUI, thus greatly simplifying merges while
  * reducing the risk of breaking top-level stuff.
  */
 class WalletFrame : public QFrame
@@ -32,7 +32,7 @@ class WalletFrame : public QFrame
     Q_OBJECT
 
 public:
-    explicit WalletFrame(const PlatformStyle *platformStyle, CellLinkGUI *_gui = 0);
+    explicit WalletFrame(const PlatformStyle *platformStyle, MagnaChainGUI *_gui = 0);
     ~WalletFrame();
 
     void setClientModel(ClientModel *clientModel);
@@ -52,7 +52,7 @@ Q_SIGNALS:
 
 private:
     QStackedWidget *walletStack;
-    CellLinkGUI *gui;
+    MagnaChainGUI *gui;
     ClientModel *clientModel;
     QMap<QString, WalletView*> mapWalletViews;
 
@@ -94,4 +94,4 @@ public Q_SLOTS:
     void outOfSyncWarningClicked();
 };
 
-#endif // CELLLINK_QT_WALLETFRAME_H
+#endif // MAGNACHAIN_QT_WALLETFRAME_H

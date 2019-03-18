@@ -1,11 +1,11 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "paymentserver.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 
@@ -47,15 +47,15 @@
 #include <QUrlQuery>
 #endif
 
-const int CELLLINK_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
-const QString CELLLINK_IPC_PREFIX("celllink:");
+const int MAGNACHAIN_IPC_CONNECT_TIMEOUT = 1000; // milliseconds
+const QString MAGNACHAIN_IPC_PREFIX("magnachain:");
 // BIP70 payment protocol messages
 const char* BIP70_MESSAGE_PAYMENTACK = "PaymentACK";
 const char* BIP70_MESSAGE_PAYMENTREQUEST = "PaymentRequest";
 // BIP71 payment protocol media types
-const char* BIP71_MIMETYPE_PAYMENT = "application/celllink-payment";
-const char* BIP71_MIMETYPE_PAYMENTACK = "application/celllink-paymentack";
-const char* BIP71_MIMETYPE_PAYMENTREQUEST = "application/celllink-paymentrequest";
+const char* BIP71_MIMETYPE_PAYMENT = "application/magnachain-payment";
+const char* BIP71_MIMETYPE_PAYMENTACK = "application/magnachain-paymentack";
+const char* BIP71_MIMETYPE_PAYMENTREQUEST = "application/magnachain-paymentrequest";
 
 struct X509StoreDeleter {
       void operator()(X509_STORE* b) {
@@ -79,7 +79,7 @@ namespace // Anon namespace
 //
 static QString ipcServerName()
 {
-    QString name("CellLinkQt");
+    QString name("MagnaChainQt");
 
     // Append a simple hash of the datadir
     // Note that GetDataDir(true) returns a different path
@@ -208,28 +208,28 @@ void PaymentServer::ipcParseCommandLine(int argc, char* argv[])
         if (arg.startsWith("-"))
             continue;
 
-        // If the celllink: URI contains a payment request, we are not able to detect the
+        // If the magnachain: URI contains a payment request, we are not able to detect the
         // network as that would require fetching and parsing the payment request.
         // That means clicking such an URI which contains a testnet payment request
         // will start a mainnet instance and throw a "wrong network" error.
-        if (arg.startsWith(CELLLINK_IPC_PREFIX, Qt::CaseInsensitive)) // celllink: URI
+        if (arg.startsWith(MAGNACHAIN_IPC_PREFIX, Qt::CaseInsensitive)) // magnachain: URI
         {
             savedPaymentRequests.append(arg);
 
             SendCoinsRecipient r;
-            if (GUIUtil::parseCellLinkURI(arg, &r) && !r.address.isEmpty())
+            if (GUIUtil::parseMagnaChainURI(arg, &r) && !r.address.isEmpty())
             {
-                CellLinkAddress address(r.address.toStdString());
-                auto tempCellChainParams = CreateChainParams(CellBaseChainParams::MAIN);
+                MagnaChainAddress address(r.address.toStdString());
+                auto tempMCChainParams = CreateChainParams(MCBaseChainParams::MAIN);
 
-                if (address.IsValid(*tempCellChainParams))
+                if (address.IsValid(*tempMCChainParams))
                 {
-                    SelectParams(CellBaseChainParams::MAIN);
+                    SelectParams(MCBaseChainParams::MAIN);
                 }
                 else {
-                    tempCellChainParams = CreateChainParams(CellBaseChainParams::TESTNET);
-                    if (address.IsValid(*tempCellChainParams))
-                        SelectParams(CellBaseChainParams::TESTNET);
+                    tempMCChainParams = CreateChainParams(MCBaseChainParams::TESTNET);
+                    if (address.IsValid(*tempMCChainParams))
+                        SelectParams(MCBaseChainParams::TESTNET);
                 }
             }
         }
@@ -242,11 +242,11 @@ void PaymentServer::ipcParseCommandLine(int argc, char* argv[])
             {
                 if (request.getDetails().network() == "main")
                 {
-                    SelectParams(CellBaseChainParams::MAIN);
+                    SelectParams(MCBaseChainParams::MAIN);
                 }
                 else if (request.getDetails().network() == "test")
                 {
-                    SelectParams(CellBaseChainParams::TESTNET);
+                    SelectParams(MCBaseChainParams::TESTNET);
                 }
             }
         }
@@ -272,7 +272,7 @@ bool PaymentServer::ipcSendCommandLine()
     {
         QLocalSocket* socket = new QLocalSocket();
         socket->connectToServer(ipcServerName(), QIODevice::WriteOnly);
-        if (!socket->waitForConnected(CELLLINK_IPC_CONNECT_TIMEOUT))
+        if (!socket->waitForConnected(MAGNACHAIN_IPC_CONNECT_TIMEOUT))
         {
             delete socket;
             socket = nullptr;
@@ -287,7 +287,7 @@ bool PaymentServer::ipcSendCommandLine()
 
         socket->write(block);
         socket->flush();
-        socket->waitForBytesWritten(CELLLINK_IPC_CONNECT_TIMEOUT);
+        socket->waitForBytesWritten(MAGNACHAIN_IPC_CONNECT_TIMEOUT);
         socket->disconnectFromServer();
 
         delete socket;
@@ -310,7 +310,7 @@ PaymentServer::PaymentServer(QObject* parent, bool startLocalServer) :
     GOOGLE_PROTOBUF_VERIFY_VERSION;
 
     // Install global event filter to catch QFileOpenEvents
-    // on Mac: sent when you click celllink: links
+    // on Mac: sent when you click magnachain: links
     // other OSes: helpful when dealing with payment request files
     if (parent)
         parent->installEventFilter(this);
@@ -327,7 +327,7 @@ PaymentServer::PaymentServer(QObject* parent, bool startLocalServer) :
         if (!uriServer->listen(name)) {
             // constructor is called early in init, so don't use "Q_EMIT message()" here
             QMessageBox::critical(0, tr("Payment request error"),
-                tr("Cannot start celllink: click-to-pay handler"));
+                tr("Cannot start magnachain: click-to-pay handler"));
         }
         else {
             connect(uriServer, SIGNAL(newConnection()), this, SLOT(handleURIConnection()));
@@ -342,7 +342,7 @@ PaymentServer::~PaymentServer()
 }
 
 //
-// OSX-specific way of handling celllink: URIs and PaymentRequest mime types.
+// OSX-specific way of handling magnachain: URIs and PaymentRequest mime types.
 // Also used by paymentservertests.cpp and when opening a payment request file
 // via "Open URI..." menu entry.
 //
@@ -368,7 +368,7 @@ void PaymentServer::initNetManager()
     if (netManager != nullptr)
         delete netManager;
 
-    // netManager is used to fetch paymentrequests given in celllink: URIs
+    // netManager is used to fetch paymentrequests given in magnachain: URIs
     netManager = new QNetworkAccessManager(this);
 
     QNetworkProxy proxy;
@@ -408,7 +408,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
         return;
     }
 
-    if (s.startsWith(CELLLINK_IPC_PREFIX, Qt::CaseInsensitive)) // celllink: URI
+    if (s.startsWith(MAGNACHAIN_IPC_PREFIX, Qt::CaseInsensitive)) // magnachain: URI
     {
 #if QT_VERSION < 0x050000
         QUrl uri(s);
@@ -432,7 +432,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
                 qWarning() << "PaymentServer::handleURIOrFile: Invalid URL: " << fetchUrl;
                 Q_EMIT message(tr("URI handling"),
                     tr("Payment request fetch URL is invalid: %1").arg(fetchUrl.toString()),
-                    CellClientUIInterface::ICON_WARNING);
+                    MCClientUIInterface::ICON_WARNING);
             }
 
             return;
@@ -440,20 +440,20 @@ void PaymentServer::handleURIOrFile(const QString& s)
         else // normal URI
         {
             SendCoinsRecipient recipient;
-            if (GUIUtil::parseCellLinkURI(s, &recipient))
+            if (GUIUtil::parseMagnaChainURI(s, &recipient))
             {
-                CellLinkAddress address(recipient.address.toStdString());
+                MagnaChainAddress address(recipient.address.toStdString());
                 if (!address.IsValid()) {
                     Q_EMIT message(tr("URI handling"), tr("Invalid payment address %1").arg(recipient.address),
-                        CellClientUIInterface::MSG_ERROR);
+                        MCClientUIInterface::MSG_ERROR);
                 }
                 else
                     Q_EMIT receivedPaymentRequest(recipient);
             }
             else
                 Q_EMIT message(tr("URI handling"),
-                    tr("URI cannot be parsed! This can be caused by an invalid CellLink address or malformed URI parameters."),
-                    CellClientUIInterface::ICON_WARNING);
+                    tr("URI cannot be parsed! This can be caused by an invalid MagnaChain address or malformed URI parameters."),
+                    MCClientUIInterface::ICON_WARNING);
 
             return;
         }
@@ -467,7 +467,7 @@ void PaymentServer::handleURIOrFile(const QString& s)
         {
             Q_EMIT message(tr("Payment request file handling"),
                 tr("Payment request file cannot be read! This can be caused by an invalid payment request file."),
-                CellClientUIInterface::ICON_WARNING);
+                MCClientUIInterface::ICON_WARNING);
         }
         else if (processPaymentRequest(request, recipient))
             Q_EMIT receivedPaymentRequest(recipient);
@@ -528,7 +528,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         // Payment request network matches client network?
         if (!verifyNetwork(request.getDetails())) {
             Q_EMIT message(tr("Payment request rejected"), tr("Payment request network doesn't match client network."),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
 
             return false;
         }
@@ -537,13 +537,13 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         // This is re-checked just before sending coins in WalletModel::sendCoins().
         if (verifyExpired(request.getDetails())) {
             Q_EMIT message(tr("Payment request rejected"), tr("Payment request expired."),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
 
             return false;
         }
     } else {
         Q_EMIT message(tr("Payment request error"), tr("Payment request is not initialized."),
-            CellClientUIInterface::MSG_ERROR);
+            MCClientUIInterface::MSG_ERROR);
 
         return false;
     }
@@ -553,40 +553,40 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
 
     request.getMerchant(certStore.get(), recipient.authenticatedMerchant);
 
-    QList<std::pair<CellScript, CellAmount> > sendingTos = request.getPayTo();
+    QList<std::pair<MCScript, MCAmount> > sendingTos = request.getPayTo();
     QStringList addresses;
 
-    for (const std::pair<CellScript, CellAmount>& sendingTo : sendingTos) {
+    for (const std::pair<MCScript, MCAmount>& sendingTo : sendingTos) {
         // Extract and check destination addresses
-        CellTxDestination dest;
+        MCTxDestination dest;
         if (ExtractDestination(sendingTo.first, dest)) {
             // Append destination address
-            addresses.append(QString::fromStdString(CellLinkAddress(dest).ToString()));
+            addresses.append(QString::fromStdString(MagnaChainAddress(dest).ToString()));
         }
         else if (!recipient.authenticatedMerchant.isEmpty()) {
-            // Unauthenticated payment requests to custom celllink addresses are not supported
+            // Unauthenticated payment requests to custom magnachain addresses are not supported
             // (there is no good way to tell the user where they are paying in a way they'd
             // have a chance of understanding).
             Q_EMIT message(tr("Payment request rejected"),
                 tr("Unverified payment requests to custom payment scripts are unsupported."),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
             return false;
         }
 
-        // CellLink amounts are stored as (optional) uint64 in the protobuf messages (see paymentrequest.proto),
-        // but CellAmount is defined as int64_t. Because of that we need to verify that amounts are in a valid range
+        // MagnaChain amounts are stored as (optional) uint64 in the protobuf messages (see paymentrequest.proto),
+        // but MCAmount is defined as int64_t. Because of that we need to verify that amounts are in a valid range
         // and no overflow has happened.
         if (!verifyAmount(sendingTo.second)) {
-            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), CellClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), MCClientUIInterface::MSG_ERROR);
             return false;
         }
 
         // Extract and check amounts
-        CellTxOut txOut(sendingTo.second, sendingTo.first);
+        MCTxOut txOut(sendingTo.second, sendingTo.first);
         if (IsDust(txOut, ::dustRelayFee)) {
             Q_EMIT message(tr("Payment request error"), tr("Requested payment amount of %1 is too small (considered dust).")
-                .arg(CellLinkUnits::formatWithUnit(optionsModel->getDisplayUnit(), sendingTo.second)),
-                CellClientUIInterface::MSG_ERROR);
+                .arg(MagnaChainUnits::formatWithUnit(optionsModel->getDisplayUnit(), sendingTo.second)),
+                MCClientUIInterface::MSG_ERROR);
 
             return false;
         }
@@ -594,7 +594,7 @@ bool PaymentServer::processPaymentRequest(const PaymentRequestPlus& request, Sen
         recipient.amount += sendingTo.second;
         // Also verify that the final amount is still in a valid range after adding additional amounts.
         if (!verifyAmount(recipient.amount)) {
-            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), CellClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Payment request rejected"), tr("Invalid payment request."), MCClientUIInterface::MSG_ERROR);
             return false;
         }
     }
@@ -621,7 +621,7 @@ void PaymentServer::fetchRequest(const QUrl& url)
     netManager->get(netRequest);
 }
 
-void PaymentServer::fetchPaymentACK(CellWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction)
+void PaymentServer::fetchPaymentACK(MCWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction)
 {
     const payments::PaymentDetails& details = recipient.paymentRequest.getDetails();
     if (!details.has_payment_url())
@@ -641,19 +641,19 @@ void PaymentServer::fetchPaymentACK(CellWallet* wallet, SendCoinsRecipient recip
     // Create a new refund address, or re-use:
     QString account = tr("Refund from %1").arg(recipient.authenticatedMerchant);
     std::string strAccount = account.toStdString();
-    std::set<CellTxDestination> refundAddresses = wallet->GetAccountAddresses(strAccount);
+    std::set<MCTxDestination> refundAddresses = wallet->GetAccountAddresses(strAccount);
     if (!refundAddresses.empty()) {
-        CellScript s = GetScriptForDestination(*refundAddresses.begin());
+        MCScript s = GetScriptForDestination(*refundAddresses.begin());
         payments::Output* refund_to = payment.add_refund_to();
         refund_to->set_script(&s[0], s.size());
     }
     else {
-        CellPubKey newKey;
+        MCPubKey newKey;
         if (wallet->GetKeyFromPool(newKey)) {
-            CellKeyID keyID = newKey.GetID();
+            MCKeyID keyID = newKey.GetID();
             wallet->SetAddressBook(keyID, strAccount, "refund");
 
-            CellScript s = GetScriptForDestination(keyID);
+            MCScript s = GetScriptForDestination(keyID);
             payments::Output* refund_to = payment.add_refund_to();
             refund_to->set_script(&s[0], s.size());
         }
@@ -687,7 +687,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
                 .arg(reply->request().url().toString())
                 .arg(reply->size())
                 .arg(BIP70_MAX_PAYMENTREQUEST_SIZE),
-            CellClientUIInterface::MSG_ERROR);
+            MCClientUIInterface::MSG_ERROR);
         return;
     }
 
@@ -697,7 +697,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
             .arg(reply->errorString());
 
         qWarning() << "PaymentServer::netRequestFinished: " << msg;
-        Q_EMIT message(tr("Payment request error"), msg, CellClientUIInterface::MSG_ERROR);
+        Q_EMIT message(tr("Payment request error"), msg, MCClientUIInterface::MSG_ERROR);
         return;
     }
 
@@ -713,7 +713,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
             qWarning() << "PaymentServer::netRequestFinished: Error parsing payment request";
             Q_EMIT message(tr("Payment request error"),
                 tr("Payment request cannot be parsed!"),
-                CellClientUIInterface::MSG_ERROR);
+                MCClientUIInterface::MSG_ERROR);
         }
         else if (processPaymentRequest(request, recipient))
             Q_EMIT receivedPaymentRequest(recipient);
@@ -729,7 +729,7 @@ void PaymentServer::netRequestFinished(QNetworkReply* reply)
                 .arg(reply->request().url().toString());
 
             qWarning() << "PaymentServer::netRequestFinished: " << msg;
-            Q_EMIT message(tr("Payment request error"), msg, CellClientUIInterface::MSG_ERROR);
+            Q_EMIT message(tr("Payment request error"), msg, MCClientUIInterface::MSG_ERROR);
         }
         else
         {
@@ -747,7 +747,7 @@ void PaymentServer::reportSslErrors(QNetworkReply* reply, const QList<QSslError>
         qWarning() << "PaymentServer::reportSslErrors: " << err;
         errString += err.errorString() + "\n";
     }
-    Q_EMIT message(tr("Network request error"), errString, CellClientUIInterface::MSG_ERROR);
+    Q_EMIT message(tr("Network request error"), errString, MCClientUIInterface::MSG_ERROR);
 }
 
 void PaymentServer::setOptionsModel(OptionsModel *_optionsModel)
@@ -758,7 +758,7 @@ void PaymentServer::setOptionsModel(OptionsModel *_optionsModel)
 void PaymentServer::handlePaymentACK(const QString& paymentACKMsg)
 {
     // currently we don't further process or store the paymentACK message
-    Q_EMIT message(tr("Payment acknowledged"), paymentACKMsg, CellClientUIInterface::ICON_INFORMATION | CellClientUIInterface::MODAL);
+    Q_EMIT message(tr("Payment acknowledged"), paymentACKMsg, MCClientUIInterface::ICON_INFORMATION | MCClientUIInterface::MODAL);
 }
 
 bool PaymentServer::verifyNetwork(const payments::PaymentDetails& requestDetails)
@@ -797,7 +797,7 @@ bool PaymentServer::verifySize(qint64 requestSize)
     return fVerified;
 }
 
-bool PaymentServer::verifyAmount(const CellAmount& requestAmount)
+bool PaymentServer::verifyAmount(const MCAmount& requestAmount)
 {
     bool fVerified = MoneyRange(requestAmount);
     if (!fVerified) {

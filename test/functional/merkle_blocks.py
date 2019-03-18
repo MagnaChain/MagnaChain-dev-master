@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test gettxoutproof and verifytxoutproof RPCs."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
-class MerkleBlockTest(BitcoinTestFramework):
+class MerkleBlockTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
         self.setup_clean_chain = True
@@ -15,7 +15,9 @@ class MerkleBlockTest(BitcoinTestFramework):
         self.extra_args = [[], [], [], ["-txindex"]]
 
     def setup_network(self):
-        self.setup_nodes()
+        # self.setup_nodes()
+        self.add_nodes(self.num_nodes, extra_args=self.extra_args, timewait=900)
+        self.start_nodes()
         connect_nodes(self.nodes[0], 1)
         connect_nodes(self.nodes[0], 2)
         connect_nodes(self.nodes[0], 3)
@@ -24,18 +26,18 @@ class MerkleBlockTest(BitcoinTestFramework):
 
     def run_test(self):
         self.log.info("Mining blocks...")
-        self.nodes[0].generate(105)
+        self.nodes[0].generate(55)
         self.sync_all()
 
         chain_height = self.nodes[1].getblockcount()
-        assert_equal(chain_height, 105)
+        assert_equal(chain_height, 55)
         assert_equal(self.nodes[1].getbalance(), 0)
         assert_equal(self.nodes[2].getbalance(), 0)
 
         node0utxos = self.nodes[0].listunspent(1)
-        tx1 = self.nodes[0].createrawtransaction([node0utxos.pop()], {self.nodes[1].getnewaddress(): 49.99})
+        tx1 = self.nodes[0].createrawtransaction([node0utxos.pop()], {self.nodes[1].getnewaddress(): 10000 - 10})
         txid1 = self.nodes[0].sendrawtransaction(self.nodes[0].signrawtransaction(tx1)["hex"])
-        tx2 = self.nodes[0].createrawtransaction([node0utxos.pop()], {self.nodes[1].getnewaddress(): 49.99})
+        tx2 = self.nodes[0].createrawtransaction([node0utxos.pop()], {self.nodes[1].getnewaddress(): 10000 - 10})
         txid2 = self.nodes[0].sendrawtransaction(self.nodes[0].signrawtransaction(tx2)["hex"])
         # This will raise an exception because the transaction is not yet in a block
         assert_raises_rpc_error(-5, "Transaction not yet in block", self.nodes[0].gettxoutproof, [txid1])
@@ -45,7 +47,7 @@ class MerkleBlockTest(BitcoinTestFramework):
         self.sync_all()
 
         txlist = []
-        blocktxn = self.nodes[0].getblock(blockhash, True)["tx"]
+        blocktxn = self.nodes[0].getblock(blockhash, True,1)["tx"]
         txlist.append(blocktxn[1])
         txlist.append(blocktxn[2])
 
@@ -54,7 +56,7 @@ class MerkleBlockTest(BitcoinTestFramework):
         assert_equal(self.nodes[2].verifytxoutproof(self.nodes[2].gettxoutproof([txid1, txid2], blockhash)), txlist)
 
         txin_spent = self.nodes[1].listunspent(1).pop()
-        tx3 = self.nodes[1].createrawtransaction([txin_spent], {self.nodes[0].getnewaddress(): 49.98})
+        tx3 = self.nodes[1].createrawtransaction([txin_spent], {self.nodes[0].getnewaddress(): 10000 - 100})
         txid3 = self.nodes[0].sendrawtransaction(self.nodes[1].signrawtransaction(tx3)["hex"])
         self.nodes[0].generate(1)
         self.sync_all()

@@ -1,0 +1,10 @@
+version: '2.1'
+
+services:
+  src:
+    image: src
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8332:8332

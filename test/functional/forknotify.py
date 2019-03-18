@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the -alertnotify option."""
 import os
 import time
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 
-class ForkNotifyTest(BitcoinTestFramework):
+class ForkNotifyTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
 
@@ -22,7 +22,8 @@ class ForkNotifyTest(BitcoinTestFramework):
 
     def run_test(self):
         # Mine 51 up-version blocks
-        self.nodes[1].generate(51)
+        for i in range(5):
+            self.nodes[1].generate(10)
         self.sync_all()
         # -alertnotify should trigger on the 51'st,
         # but mine and sync another to give
@@ -30,7 +31,7 @@ class ForkNotifyTest(BitcoinTestFramework):
         self.nodes[1].generate(1)
         self.sync_all()
 
-        # Give bitcoind 10 seconds to write the alert notification
+        # Give magnachaind 10 seconds to write the alert notification
         timeout = 10.0
         while timeout > 0:
             if os.path.exists(self.alert_filename) and os.path.getsize(self.alert_filename):

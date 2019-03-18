@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "splashscreen.h"
@@ -43,9 +43,9 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
 #endif
 
     // define text to place
-    QString titleText       = QApplication::translate("celllink-core", PACKAGE_NAME);
+    QString titleText       = QApplication::translate("magnachain-core", PACKAGE_NAME);
     QString versionText     = QString("Version %1").arg(QString::fromStdString(FormatFullVersion()));
-    QString copyrightText   = QString::fromUtf8(CopyrightHolders(strprintf("\xc2\xA9 %u-%u ", 2009, COPYRIGHT_YEAR)).c_str());
+    QString copyrightText   = QString::fromUtf8(CopyrightHolders(strprintf("\xc2\xA9 %u-%u ", 2016, COPYRIGHT_YEAR)).c_str());
     QString titleAddText    = networkStyle->getTitleAddText();
 
     QString font            = QApplication::font().toString();
@@ -69,7 +69,7 @@ SplashScreen::SplashScreen(Qt::WindowFlags f, const NetworkStyle *networkStyle) 
     QRect rGradient(QPoint(0,0), splashSize);
     pixPaint.fillRect(rGradient, gradient);
 
-    // draw the celllink icon, expected size of PNG: 1024x1024
+    // draw the magnachain icon, expected size of PNG: 1024x1024
     QRect rectIcon(QPoint(-150,-122), QSize(430,430));
 
     const QSize requiredSize(1024,1024);
@@ -189,7 +189,7 @@ static void SetProgressBreakAction(SplashScreen *splash, const std::function<voi
 }
 
 #ifdef ENABLE_WALLET
-void SplashScreen::ConnectWallet(CellWallet* wallet)
+void SplashScreen::ConnectWallet(MCWallet* wallet)
 {
     wallet->ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
     connectedWallets.push_back(wallet);
@@ -213,7 +213,7 @@ void SplashScreen::unsubscribeFromCoreSignals()
     uiInterface.InitMessage.disconnect(boost::bind(InitMessage, this, _1));
     uiInterface.ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
 #ifdef ENABLE_WALLET
-    for (CellWallet* const & pwallet : connectedWallets) {
+    for (MCWallet* const & pwallet : connectedWallets) {
         pwallet->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
     }
 #endif

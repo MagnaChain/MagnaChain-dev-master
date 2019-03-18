@@ -1,13 +1,13 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_COMPAT_ENDIAN_H
-#define CELLLINK_COMPAT_ENDIAN_H
+#ifndef MAGNACHAIN_COMPAT_ENDIAN_H
+#define MAGNACHAIN_COMPAT_ENDIAN_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include <stdint.h>
@@ -194,4 +194,4 @@ inline uint64_t le64toh(uint64_t little_endian_64bits)
 
 #endif // WORDS_BIGENDIAN
 
-#endif // CELLLINK_COMPAT_ENDIAN_H
+#endif // MAGNACHAIN_COMPAT_ENDIAN_H

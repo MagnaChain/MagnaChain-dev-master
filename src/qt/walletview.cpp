@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,7 +7,7 @@
 
 #include "addressbookpage.h"
 #include "askpassphrasedialog.h"
-#include "celllinkgui.h"
+#include "magnachaingui.h"
 #include "clientmodel.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
@@ -85,7 +85,7 @@ WalletView::~WalletView()
 {
 }
 
-void WalletView::setCellLinkGUI(CellLinkGUI *gui)
+void WalletView::setMagnaChainGUI(MagnaChainGUI *gui)
 {
     if (gui)
     {
@@ -99,7 +99,7 @@ void WalletView::setCellLinkGUI(CellLinkGUI *gui)
         connect(this, SIGNAL(encryptionStatusChanged(int)), gui, SLOT(setEncryptionStatus(int)));
 
         // Pass through transaction notifications
-        connect(this, SIGNAL(incomingTransaction(QString,int,CellAmount,QString,QString,QString)), gui, SLOT(incomingTransaction(QString,int,CellAmount,QString,QString,QString)));
+        connect(this, SIGNAL(incomingTransaction(QString,int,MCAmount,QString,QString,QString)), gui, SLOT(incomingTransaction(QString,int,MCAmount,QString,QString,QString)));
 
         // Connect HD enabled state signal 
         connect(this, SIGNAL(hdEnabledStatusChanged(int)), gui, SLOT(setHDStatus(int)));
@@ -254,11 +254,11 @@ void WalletView::backupWallet()
 
     if (!walletModel->backupWallet(filename)) {
         Q_EMIT message(tr("Backup Failed"), tr("There was an error trying to save the wallet data to %1.").arg(filename),
-            CellClientUIInterface::MSG_ERROR);
+            MCClientUIInterface::MSG_ERROR);
         }
     else {
         Q_EMIT message(tr("Backup Successful"), tr("The wallet data was successfully saved to %1.").arg(filename),
-            CellClientUIInterface::MSG_INFORMATION);
+            MCClientUIInterface::MSG_INFORMATION);
     }
 }
 

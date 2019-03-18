@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,7 +11,7 @@
 #define BOOST_TEST_MODULE maintest
 #endif 
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/signals2/signal.hpp>
 #include <boost/test/unit_test.hpp>
@@ -21,13 +21,13 @@ BOOST_FIXTURE_TEST_SUITE(main_tests, TestingSetup)
 static void TestBlockSubsidyHalvings(const Consensus::Params& consensusParams)
 {
     int maxHalvings = 64;
-    CellAmount nInitialSubsidy = 178 * COIN;
+    MCAmount nInitialSubsidy = 85 * COIN;
 
-    CellAmount nPreviousSubsidy = nInitialSubsidy * 2; // for height == 0
+    MCAmount nPreviousSubsidy = nInitialSubsidy * 2; // for height == 0
     BOOST_CHECK_EQUAL(nPreviousSubsidy, nInitialSubsidy * 2);
     for (int nHalvings = 0; nHalvings < maxHalvings; nHalvings++) {
         int nHeight = nHalvings * consensusParams.nSubsidyHalvingInterval;
-        CellAmount nSubsidy = GetBlockSubsidy(nHeight, consensusParams);
+        MCAmount nSubsidy = GetBlockSubsidy(nHeight, consensusParams);
 		if (consensusParams.BigBoomHeight >= nHeight)
 		{
 			BOOST_CHECK(nSubsidy <= nInitialSubsidy + consensusParams.BigBoomValue);
@@ -53,7 +53,7 @@ static void TestBlockSubsidyHalvings(int nSubsidyHalvingInterval)
 BOOST_AUTO_TEST_CASE(block_subsidy_test)
 {
 	ECC_Stop();
-    const auto chainParams = CreateChainParams(CellBaseChainParams::MAIN);
+    const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
 	ECC_Start();
     TestBlockSubsidyHalvings(chainParams->GetConsensus()); // As in main
     TestBlockSubsidyHalvings(150); // As in regtest
@@ -62,15 +62,23 @@ BOOST_AUTO_TEST_CASE(block_subsidy_test)
 
 BOOST_AUTO_TEST_CASE(subsidy_limit_test)
 {
-    const auto chainParams = CreateChainParams(CellBaseChainParams::MAIN);
-    CellAmount nSum = 0;
-    for (int nHeight = 0; nHeight < 14000000; nHeight += 1000) {
-        CellAmount nSubsidy = GetBlockSubsidy(nHeight, chainParams->GetConsensus());
-        BOOST_CHECK(nSubsidy <= 50 * COIN);
-        nSum += nSubsidy * 1000;
+    const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
+    const Consensus::Params& consensus = chainParams->GetConsensus();
+    MCAmount nSum = 0; 
+    for (int nHeight = 0; nHeight < 560000000; nHeight += 10000) {
+        MCAmount nSubsidy = GetBlockSubsidy(nHeight, consensus);
+        MCAmount nTargetSubsidy = 85 * COIN;
+        if (nHeight <= consensus.BigBoomHeight) {// next nHeight jump out of BigBoomHeight
+            nTargetSubsidy += consensus.BigBoomValue;
+            nSum += (nSubsidy- consensus.BigBoomValue) * 10000 + consensus.BigBoomValue * consensus.BigBoomHeight;// same as interval
+        }
+        else{
+            nSum += nSubsidy * 10000;// same as interval
+        }
+        BOOST_CHECK(nSubsidy <= nTargetSubsidy);
         BOOST_CHECK(MoneyRange(nSum));
     }
-    BOOST_CHECK_EQUAL(nSum, 2099999997690000ULL);
+    BOOST_CHECK_EQUAL(nSum, 402799999865600000ULL);
 }
 
 bool ReturnFalse() { return false; }

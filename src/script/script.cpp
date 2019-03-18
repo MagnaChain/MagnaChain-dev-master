@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -142,8 +142,8 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP9                   : return "OP_NOP9";
     case OP_NOP10                  : return "OP_NOP10";
 
-    case OP_PUB_CONTRACT           : return "OP_PUB_CONTRACT";
-    case OP_TRANS_CONTRACT         : return "OP_TRANS_CONTRACT";
+    case OP_CONTRACT               : return "OP_CONTRACT";
+    case OP_CONTRACT_CHANGE        : return "OP_CONTRACT_CHANGE";
     case OP_CREATE_BRANCH          : return "OP_CREATE_BRANCH";
     case OP_TRANS_BRANCH           : return "OP_TRANS_BRANCH";
     case OP_MINE_BRANCH_MORTGAGE   : return "OP_MINE_BRANCH_MORTGAGE";
@@ -162,25 +162,43 @@ const char* GetOpName(opcodetype opcode)
     }
 }
 
+bool MCScript::IsContract() const
+{
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    MCScript::const_iterator pc1 = begin();
+    GetOp(pc1, opcode, vch);
+    return (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+}
 
-bool CellScript::GetContractAddr(CellKeyID& keyDest) const
+bool MCScript::IsContractChange() const
+{
+    opcodetype opcode;
+    std::vector<unsigned char> vch;
+    MCScript::const_iterator pc1 = begin();
+    GetOp(pc1, opcode, vch);
+    return (opcode == OP_CONTRACT_CHANGE);
+}
+
+
+bool MCScript::GetContractAddr(MCContractID& contractId) const
 {
 	opcodetype opcode;
 	std::vector<unsigned char> vch;
-	CellScript::const_iterator pc1 = begin();
+	MCScript::const_iterator pc1 = begin();
 	GetOp(pc1, opcode, vch);
 
-	if (opcode != OP_PUB_CONTRACT && opcode != OP_TRANS_CONTRACT) {
+	if (opcode != OP_CONTRACT && opcode != OP_CONTRACT_CHANGE)
 		return false;
-	}
+
 	vch.clear();
 	vch.assign(pc1 + 1, end());
-	keyDest = CellKeyID(uint160(vch));
+    contractId = MCContractID(uint160(vch));
 	return true;
 }
 
 
-unsigned int CellScript::GetSigOpCount(bool fAccurate) const
+unsigned int MCScript::GetSigOpCount(bool fAccurate) const
 {
     unsigned int n = 0;
     const_iterator pc = begin();
@@ -204,7 +222,7 @@ unsigned int CellScript::GetSigOpCount(bool fAccurate) const
     return n;
 }
 
-unsigned int CellScript::GetSigOpCount(const CellScript& scriptSig) const
+unsigned int MCScript::GetSigOpCount(const MCScript& scriptSig) const
 {
     if (!IsPayToScriptHash())
         return GetSigOpCount(true);
@@ -224,11 +242,11 @@ unsigned int CellScript::GetSigOpCount(const CellScript& scriptSig) const
     }
 
     /// ... and return its opcount:
-    CellScript subscript(vData.begin(), vData.end());
+    MCScript subscript(vData.begin(), vData.end());
     return subscript.GetSigOpCount(true);
 }
 
-bool CellScript::IsPayToScriptHash() const
+bool MCScript::IsPayToScriptHash() const
 {
     // Extra-fast test for pay-to-script-hash CScripts:
     return (this->size() == 23 &&
@@ -237,7 +255,7 @@ bool CellScript::IsPayToScriptHash() const
             (*this)[22] == OP_EQUAL);
 }
 
-bool CellScript::IsPayToWitnessScriptHash() const
+bool MCScript::IsPayToWitnessScriptHash() const
 {
     // Extra-fast test for pay-to-witness-script-hash CScripts:
     return (this->size() == 34 &&
@@ -245,9 +263,9 @@ bool CellScript::IsPayToWitnessScriptHash() const
             (*this)[1] == 0x20);
 }
 
-// A witness program is any valid CellScript that consists of a 1-byte push opcode
+// A witness program is any valid MCScript that consists of a 1-byte push opcode
 // followed by a data push between 2 and 40 bytes.
-bool CellScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program) const
+bool MCScript::IsWitnessProgram(int& version, std::vector<unsigned char>& program) const
 {
     if (this->size() < 4 || this->size() > 42) {
         return false;
@@ -263,7 +281,7 @@ bool CellScript::IsWitnessProgram(int& version, std::vector<unsigned char>& prog
     return false;
 }
 
-bool CellScript::IsPushOnly(const_iterator pc) const
+bool MCScript::IsPushOnly(const_iterator pc) const
 {
     while (pc < end())
     {
@@ -280,7 +298,7 @@ bool CellScript::IsPushOnly(const_iterator pc) const
     return true;
 }
 
-bool CellScript::IsPushOnly() const
+bool MCScript::IsPushOnly() const
 {
     return this->IsPushOnly(begin());
 }
@@ -297,9 +315,9 @@ std::string CScriptWitness::ToString() const
     return ret + ")";
 }
 
-bool CellScript::HasValidOps() const
+bool MCScript::HasValidOps() const
 {
-    CellScript::const_iterator it = begin();
+    MCScript::const_iterator it = begin();
     while (it < end()) {
         opcodetype opcode;
         std::vector<unsigned char> item;
@@ -308,4 +326,20 @@ bool CellScript::HasValidOps() const
         }
     }
     return true;
+}
+
+int64_t GetScriptInt64(opcodetype opcode, const std::vector<unsigned char>& vch)
+{
+    if (opcode == OP_0)
+    {
+        return 0;
+    }
+    if (opcode == OP_1NEGATE || (opcode >= OP_1 && opcode <= OP_16))
+    {
+        CScriptNum temp((int)opcode - (int)(OP_1 - 1));
+        return temp.getint64();
+    }
+    CScriptNum temp(vch, false, 5);
+    return temp.getint64();
+    //throw scriptnum_error("script number error");
 }

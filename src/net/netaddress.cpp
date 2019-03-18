@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifdef HAVE_CONFIG_H
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "net/netaddress.h"
@@ -16,21 +16,21 @@
 static const unsigned char pchIPv4[12] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xff, 0xff };
 static const unsigned char pchOnionCat[] = {0xFD,0x87,0xD8,0x7E,0xEB,0x43};
 
-// 0xFD + sha256("celllink")[0:5]
+// 0xFD + sha256("magnachain")[0:5]
 static const unsigned char g_internal_prefix[] = { 0xFD, 0x6B, 0x88, 0xC0, 0x87, 0x24 };
 
-void CellNetAddr::Init()
+void MCNetAddr::Init()
 {
     memset(ip, 0, sizeof(ip));
     scopeId = 0;
 }
 
-void CellNetAddr::SetIP(const CellNetAddr& ipIn)
+void MCNetAddr::SetIP(const MCNetAddr& ipIn)
 {
     memcpy(ip, ipIn.ip, sizeof(ip));
 }
 
-void CellNetAddr::SetRaw(Network network, const uint8_t *ip_in)
+void MCNetAddr::SetRaw(Network network, const uint8_t *ip_in)
 {
     switch(network)
     {
@@ -46,7 +46,7 @@ void CellNetAddr::SetRaw(Network network, const uint8_t *ip_in)
     }
 }
 
-bool CellNetAddr::SetInternal(const std::string &name)
+bool MCNetAddr::SetInternal(const std::string &name)
 {
     if (name.empty()) {
         return false;
@@ -58,7 +58,7 @@ bool CellNetAddr::SetInternal(const std::string &name)
     return true;
 }
 
-bool CellNetAddr::SetSpecial(const std::string &strName)
+bool MCNetAddr::SetSpecial(const std::string &strName)
 {
     if (strName.size()>6 && strName.substr(strName.size() - 6, 6) == ".onion") {
         std::vector<unsigned char> vchAddr = DecodeBase32(strName.substr(0, strName.size() - 6).c_str());
@@ -72,38 +72,38 @@ bool CellNetAddr::SetSpecial(const std::string &strName)
     return false;
 }
 
-CellNetAddr::CellNetAddr()
+MCNetAddr::MCNetAddr()
 {
     Init();
 }
 
-CellNetAddr::CellNetAddr(const struct in_addr& ipv4Addr)
+MCNetAddr::MCNetAddr(const struct in_addr& ipv4Addr)
 {
     SetRaw(NET_IPV4, (const uint8_t*)&ipv4Addr);
 }
 
-CellNetAddr::CellNetAddr(const struct in6_addr& ipv6Addr, const uint32_t scope)
+MCNetAddr::MCNetAddr(const struct in6_addr& ipv6Addr, const uint32_t scope)
 {
     SetRaw(NET_IPV6, (const uint8_t*)&ipv6Addr);
     scopeId = scope;
 }
 
-unsigned int CellNetAddr::GetByte(int n) const
+unsigned int MCNetAddr::GetByte(int n) const
 {
     return ip[15-n];
 }
 
-bool CellNetAddr::IsIPv4() const
+bool MCNetAddr::IsIPv4() const
 {
     return (memcmp(ip, pchIPv4, sizeof(pchIPv4)) == 0);
 }
 
-bool CellNetAddr::IsIPv6() const
+bool MCNetAddr::IsIPv6() const
 {
     return (!IsIPv4() && !IsTor() && !IsInternal());
 }
 
-bool CellNetAddr::IsRFC1918() const
+bool MCNetAddr::IsRFC1918() const
 {
     return IsIPv4() && (
         GetByte(3) == 10 ||
@@ -111,77 +111,77 @@ bool CellNetAddr::IsRFC1918() const
         (GetByte(3) == 172 && (GetByte(2) >= 16 && GetByte(2) <= 31)));
 }
 
-bool CellNetAddr::IsRFC2544() const
+bool MCNetAddr::IsRFC2544() const
 {
     return IsIPv4() && GetByte(3) == 198 && (GetByte(2) == 18 || GetByte(2) == 19);
 }
 
-bool CellNetAddr::IsRFC3927() const
+bool MCNetAddr::IsRFC3927() const
 {
     return IsIPv4() && (GetByte(3) == 169 && GetByte(2) == 254);
 }
 
-bool CellNetAddr::IsRFC6598() const
+bool MCNetAddr::IsRFC6598() const
 {
     return IsIPv4() && GetByte(3) == 100 && GetByte(2) >= 64 && GetByte(2) <= 127;
 }
 
-bool CellNetAddr::IsRFC5737() const
+bool MCNetAddr::IsRFC5737() const
 {
     return IsIPv4() && ((GetByte(3) == 192 && GetByte(2) == 0 && GetByte(1) == 2) ||
         (GetByte(3) == 198 && GetByte(2) == 51 && GetByte(1) == 100) ||
         (GetByte(3) == 203 && GetByte(2) == 0 && GetByte(1) == 113));
 }
 
-bool CellNetAddr::IsRFC3849() const
+bool MCNetAddr::IsRFC3849() const
 {
     return GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x0D && GetByte(12) == 0xB8;
 }
 
-bool CellNetAddr::IsRFC3964() const
+bool MCNetAddr::IsRFC3964() const
 {
     return (GetByte(15) == 0x20 && GetByte(14) == 0x02);
 }
 
-bool CellNetAddr::IsRFC6052() const
+bool MCNetAddr::IsRFC6052() const
 {
     static const unsigned char pchRFC6052[] = {0,0x64,0xFF,0x9B,0,0,0,0,0,0,0,0};
     return (memcmp(ip, pchRFC6052, sizeof(pchRFC6052)) == 0);
 }
 
-bool CellNetAddr::IsRFC4380() const
+bool MCNetAddr::IsRFC4380() const
 {
     return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0 && GetByte(12) == 0);
 }
 
-bool CellNetAddr::IsRFC4862() const
+bool MCNetAddr::IsRFC4862() const
 {
     static const unsigned char pchRFC4862[] = {0xFE,0x80,0,0,0,0,0,0};
     return (memcmp(ip, pchRFC4862, sizeof(pchRFC4862)) == 0);
 }
 
-bool CellNetAddr::IsRFC4193() const
+bool MCNetAddr::IsRFC4193() const
 {
     return ((GetByte(15) & 0xFE) == 0xFC);
 }
 
-bool CellNetAddr::IsRFC6145() const
+bool MCNetAddr::IsRFC6145() const
 {
     static const unsigned char pchRFC6145[] = {0,0,0,0,0,0,0,0,0xFF,0xFF,0,0};
     return (memcmp(ip, pchRFC6145, sizeof(pchRFC6145)) == 0);
 }
 
-bool CellNetAddr::IsRFC4843() const
+bool MCNetAddr::IsRFC4843() const
 {
     return (GetByte(15) == 0x20 && GetByte(14) == 0x01 && GetByte(13) == 0x00 && (GetByte(12) & 0xF0) == 0x10);
 }
 
-bool CellNetAddr::IsTor() const
+bool MCNetAddr::IsTor() const
 {
     return (memcmp(ip, pchOnionCat, sizeof(pchOnionCat)) == 0);
 }
 
-bool CellNetAddr::IsLocal() const
+bool MCNetAddr::IsLocal() const
 {
     // IPv4 loopback
    if (IsIPv4() && (GetByte(3) == 127 || GetByte(3) == 0))
@@ -195,7 +195,7 @@ bool CellNetAddr::IsLocal() const
    return false;
 }
 
-bool CellNetAddr::IsValid() const
+bool MCNetAddr::IsValid() const
 {
     // Cleanup 3-byte shifted addresses caused by garbage in size field
     // of addr messages from versions before 0.2.9 checksum.
@@ -234,17 +234,17 @@ bool CellNetAddr::IsValid() const
     return true;
 }
 
-bool CellNetAddr::IsRoutable() const
+bool MCNetAddr::IsRoutable() const
 {
     return IsValid() && !(IsRFC1918() || IsRFC2544() || IsRFC3927() || IsRFC4862() || IsRFC6598() || IsRFC5737() || (IsRFC4193() && !IsTor()) || IsRFC4843() || IsLocal() || IsInternal());
 }
 
-bool CellNetAddr::IsInternal() const
+bool MCNetAddr::IsInternal() const
 {
    return memcmp(ip, g_internal_prefix, sizeof(g_internal_prefix)) == 0;
 }
 
-enum Network CellNetAddr::GetNetwork() const
+enum Network MCNetAddr::GetNetwork() const
 {
     if (IsInternal())
         return NET_INTERNAL;
@@ -261,13 +261,13 @@ enum Network CellNetAddr::GetNetwork() const
     return NET_IPV6;
 }
 
-std::string CellNetAddr::ToStringIP() const
+std::string MCNetAddr::ToStringIP() const
 {
     if (IsTor())
         return EncodeBase32(&ip[6], 10) + ".onion";
     if (IsInternal())
         return EncodeBase32(ip + sizeof(g_internal_prefix), sizeof(ip) - sizeof(g_internal_prefix)) + ".internal";
-    CellService serv(*this, 0);
+    MCService serv(*this, 0);
     struct sockaddr_storage sockaddr;
     socklen_t socklen = sizeof(sockaddr);
     if (serv.GetSockAddr((struct sockaddr*)&sockaddr, &socklen)) {
@@ -285,27 +285,27 @@ std::string CellNetAddr::ToStringIP() const
                          GetByte(3) << 8 | GetByte(2), GetByte(1) << 8 | GetByte(0));
 }
 
-std::string CellNetAddr::ToString() const
+std::string MCNetAddr::ToString() const
 {
     return ToStringIP();
 }
 
-bool operator==(const CellNetAddr& a, const CellNetAddr& b)
+bool operator==(const MCNetAddr& a, const MCNetAddr& b)
 {
     return (memcmp(a.ip, b.ip, 16) == 0);
 }
 
-bool operator!=(const CellNetAddr& a, const CellNetAddr& b)
+bool operator!=(const MCNetAddr& a, const MCNetAddr& b)
 {
     return (memcmp(a.ip, b.ip, 16) != 0);
 }
 
-bool operator<(const CellNetAddr& a, const CellNetAddr& b)
+bool operator<(const MCNetAddr& a, const MCNetAddr& b)
 {
     return (memcmp(a.ip, b.ip, 16) < 0);
 }
 
-bool CellNetAddr::GetInAddr(struct in_addr* pipv4Addr) const
+bool MCNetAddr::GetInAddr(struct in_addr* pipv4Addr) const
 {
     if (!IsIPv4())
         return false;
@@ -313,7 +313,7 @@ bool CellNetAddr::GetInAddr(struct in_addr* pipv4Addr) const
     return true;
 }
 
-bool CellNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
+bool MCNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
 {
     memcpy(pipv6Addr, ip, 16);
     return true;
@@ -321,7 +321,7 @@ bool CellNetAddr::GetIn6Addr(struct in6_addr* pipv6Addr) const
 
 // get canonical identifier of an address' group
 // no two connections will be attempted to addresses with the same group
-std::vector<unsigned char> CellNetAddr::GetGroup() const
+std::vector<unsigned char> MCNetAddr::GetGroup() const
 {
     std::vector<unsigned char> vchRet;
     int nClass = NET_IPV6;
@@ -394,7 +394,7 @@ std::vector<unsigned char> CellNetAddr::GetGroup() const
     return vchRet;
 }
 
-uint64_t CellNetAddr::GetHash() const
+uint64_t MCNetAddr::GetHash() const
 {
     uint256 hash = Hash(&ip[0], &ip[16]);
     uint64_t nRet;
@@ -406,7 +406,7 @@ uint64_t CellNetAddr::GetHash() const
 // and only used in GetReachabilityFrom
 static const int NET_UNKNOWN = NET_MAX + 0;
 static const int NET_TEREDO  = NET_MAX + 1;
-int static GetExtNetwork(const CellNetAddr *addr)
+int static GetExtNetwork(const MCNetAddr *addr)
 {
     if (addr == nullptr)
         return NET_UNKNOWN;
@@ -416,7 +416,7 @@ int static GetExtNetwork(const CellNetAddr *addr)
 }
 
 /** Calculates a metric for how reachable (*this) is from a given partner */
-int CellNetAddr::GetReachabilityFrom(const CellNetAddr *paddrPartner) const
+int MCNetAddr::GetReachabilityFrom(const MCNetAddr *paddrPartner) const
 {
     enum Reachability {
         REACH_UNREACHABLE,
@@ -474,73 +474,73 @@ int CellNetAddr::GetReachabilityFrom(const CellNetAddr *paddrPartner) const
     }
 }
 
-void CellService::Init()
+void MCService::Init()
 {
     port = 0;
 }
 
-CellService::CellService()
+MCService::MCService()
 {
     Init();
 }
 
-CellService::CellService(const CellNetAddr& cip, unsigned short portIn) : CellNetAddr(cip), port(portIn)
+MCService::MCService(const MCNetAddr& cip, unsigned short portIn) : MCNetAddr(cip), port(portIn)
 {
 }
 
-CellService::CellService(const struct in_addr& ipv4Addr, unsigned short portIn) : CellNetAddr(ipv4Addr), port(portIn)
+MCService::MCService(const struct in_addr& ipv4Addr, unsigned short portIn) : MCNetAddr(ipv4Addr), port(portIn)
 {
 }
 
-CellService::CellService(const struct in6_addr& ipv6Addr, unsigned short portIn) : CellNetAddr(ipv6Addr), port(portIn)
+MCService::MCService(const struct in6_addr& ipv6Addr, unsigned short portIn) : MCNetAddr(ipv6Addr), port(portIn)
 {
 }
 
-CellService::CellService(const struct sockaddr_in& addr) : CellNetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
+MCService::MCService(const struct sockaddr_in& addr) : MCNetAddr(addr.sin_addr), port(ntohs(addr.sin_port))
 {
     assert(addr.sin_family == AF_INET);
 }
 
-CellService::CellService(const struct sockaddr_in6 &addr) : CellNetAddr(addr.sin6_addr, addr.sin6_scope_id), port(ntohs(addr.sin6_port))
+MCService::MCService(const struct sockaddr_in6 &addr) : MCNetAddr(addr.sin6_addr, addr.sin6_scope_id), port(ntohs(addr.sin6_port))
 {
    assert(addr.sin6_family == AF_INET6);
 }
 
-bool CellService::SetSockAddr(const struct sockaddr *paddr)
+bool MCService::SetSockAddr(const struct sockaddr *paddr)
 {
     switch (paddr->sa_family) {
     case AF_INET:
-        *this = CellService(*(const struct sockaddr_in*)paddr);
+        *this = MCService(*(const struct sockaddr_in*)paddr);
         return true;
     case AF_INET6:
-        *this = CellService(*(const struct sockaddr_in6*)paddr);
+        *this = MCService(*(const struct sockaddr_in6*)paddr);
         return true;
     default:
         return false;
     }
 }
 
-unsigned short CellService::GetPort() const
+unsigned short MCService::GetPort() const
 {
     return port;
 }
 
-bool operator==(const CellService& a, const CellService& b)
+bool operator==(const MCService& a, const MCService& b)
 {
-    return (CellNetAddr)a == (CellNetAddr)b && a.port == b.port;
+    return (MCNetAddr)a == (MCNetAddr)b && a.port == b.port;
 }
 
-bool operator!=(const CellService& a, const CellService& b)
+bool operator!=(const MCService& a, const MCService& b)
 {
-    return (CellNetAddr)a != (CellNetAddr)b || a.port != b.port;
+    return (MCNetAddr)a != (MCNetAddr)b || a.port != b.port;
 }
 
-bool operator<(const CellService& a, const CellService& b)
+bool operator<(const MCService& a, const MCService& b)
 {
-    return (CellNetAddr)a < (CellNetAddr)b || ((CellNetAddr)a == (CellNetAddr)b && a.port < b.port);
+    return (MCNetAddr)a < (MCNetAddr)b || ((MCNetAddr)a == (MCNetAddr)b && a.port < b.port);
 }
 
-bool CellService::GetSockAddr(struct sockaddr* paddr, socklen_t *addrlen) const
+bool MCService::GetSockAddr(struct sockaddr* paddr, socklen_t *addrlen) const
 {
     if (IsIPv4()) {
         if (*addrlen < (socklen_t)sizeof(struct sockaddr_in))
@@ -570,7 +570,7 @@ bool CellService::GetSockAddr(struct sockaddr* paddr, socklen_t *addrlen) const
     return false;
 }
 
-std::vector<unsigned char> CellService::GetKey() const
+std::vector<unsigned char> MCService::GetKey() const
 {
      std::vector<unsigned char> vKey;
      vKey.resize(18);
@@ -580,12 +580,12 @@ std::vector<unsigned char> CellService::GetKey() const
      return vKey;
 }
 
-std::string CellService::ToStringPort() const
+std::string MCService::ToStringPort() const
 {
     return strprintf("%u", port);
 }
 
-std::string CellService::ToStringIPPort() const
+std::string MCService::ToStringIPPort() const
 {
     if (IsIPv4() || IsTor() || IsInternal()) {
         return ToStringIP() + ":" + ToStringPort();
@@ -594,7 +594,7 @@ std::string CellService::ToStringIPPort() const
     }
 }
 
-std::string CellService::ToString() const
+std::string MCService::ToString() const
 {
     return ToStringIPPort();
 }
@@ -605,7 +605,7 @@ CSubNet::CSubNet():
     memset(netmask, 0, sizeof(netmask));
 }
 
-CSubNet::CSubNet(const CellNetAddr &addr, int32_t mask)
+CSubNet::CSubNet(const MCNetAddr &addr, int32_t mask)
 {
     valid = true;
     network = addr;
@@ -630,7 +630,7 @@ CSubNet::CSubNet(const CellNetAddr &addr, int32_t mask)
         network.ip[x] &= netmask[x];
 }
 
-CSubNet::CSubNet(const CellNetAddr &addr, const CellNetAddr &mask)
+CSubNet::CSubNet(const MCNetAddr &addr, const MCNetAddr &mask)
 {
     valid = true;
     network = addr;
@@ -648,14 +648,14 @@ CSubNet::CSubNet(const CellNetAddr &addr, const CellNetAddr &mask)
         network.ip[x] &= netmask[x];
 }
 
-CSubNet::CSubNet(const CellNetAddr &addr):
+CSubNet::CSubNet(const MCNetAddr &addr):
     valid(addr.IsValid())
 {
     memset(netmask, 255, sizeof(netmask));
     network = addr;
 }
 
-bool CSubNet::Match(const CellNetAddr &addr) const
+bool CSubNet::Match(const MCNetAddr &addr) const
 {
     if (!valid || !addr.IsValid())
         return false;

@@ -1,6 +1,6 @@
-﻿// Copyright (c) 2009-2010 Satoshi Nakamoto
+// Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -44,6 +44,7 @@
 #include "mining/mining.h"
 #include "transaction/txdb.h"
 #include "rpc/server.h"
+#include "policy/rbf.h"
 
 #include <assert.h>
 #include <algorithm>
@@ -61,8 +62,15 @@ typedef base_uint<512> uint512;
 
 //////////////////////////////////////////////////////////////////////////////
 //
-// BitcoinMiner
+// MagnachainMiner
 //
+
+// Define reserve size use in addPackageTxs, to avoid bad-blk-length failure.
+// Because some tx will add more data to transaction after add to block(after addPackageTxs),
+// that will increase block final size.
+uint64_t ReservePubContractBlockDataSize = 100;
+uint64_t ReserveCallContractBlockDataSize = 1000;
+uint64_t ReserveBranchTxBlockDataSize = 100;
 
 //
 // Unconfirmed transactions in the memory pool often depend on other
@@ -73,7 +81,7 @@ typedef base_uint<512> uint512;
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockWeight = 0;
 
-int64_t UpdateTime(CellBlockHeader* pblock, const Consensus::Params& consensusParams, const CellBlockIndex* pindexPrev)
+int64_t UpdateTime(MCBlockHeader* pblock, const Consensus::Params& consensusParams, const MCBlockIndex* pindexPrev)
 {
     int64_t nOldTime = pblock->nTime;
     int64_t nNewTime = std::max(pindexPrev->GetMedianTimePast() + 1, GetAdjustedTime());
@@ -89,11 +97,11 @@ int64_t UpdateTime(CellBlockHeader* pblock, const Consensus::Params& consensusPa
 }
 
 BlockAssembler::Options::Options() {
-    blockMinFeeRate = CellFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
+    blockMinFeeRate = MCFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
     nBlockMaxWeight = DEFAULT_BLOCK_MAX_WEIGHT;
 }
 
-BlockAssembler::BlockAssembler(const CellChainParams& params, const Options& options) : chainparams(params)
+BlockAssembler::BlockAssembler(const MCChainParams& params, const Options& options) : chainparams(params)
 {
     blockMinFeeRate = options.blockMinFeeRate;
     // Limit weight to between 4K and MAX_BLOCK_WEIGHT-4K for sanity:
@@ -101,7 +109,7 @@ BlockAssembler::BlockAssembler(const CellChainParams& params, const Options& opt
 	outpoint = options.outpoint;
 }
 
-BlockAssembler::Options BlockAssembler::DefaultOptions(const CellChainParams& params)
+BlockAssembler::Options BlockAssembler::DefaultOptions(const MCChainParams& params)
 {
     // Block resource limits
     // If neither -blockmaxsize or -blockmaxweight is given, limit to DEFAULT_BLOCK_MAX_*
@@ -110,16 +118,16 @@ BlockAssembler::Options BlockAssembler::DefaultOptions(const CellChainParams& pa
     BlockAssembler::Options options;
     options.nBlockMaxWeight = gArgs.GetArg("-blockmaxweight", DEFAULT_BLOCK_MAX_WEIGHT);
     if (gArgs.IsArgSet("-blockmintxfee")) {
-        CellAmount n = 0;
+        MCAmount n = 0;
         ParseMoney(gArgs.GetArg("-blockmintxfee", ""), n);
-        options.blockMinFeeRate = CellFeeRate(n);
+        options.blockMinFeeRate = MCFeeRate(n);
     } else {
-        options.blockMinFeeRate = CellFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
+        options.blockMinFeeRate = MCFeeRate(DEFAULT_BLOCK_MIN_TX_FEE);
     }
     return options;
 }
 
-BlockAssembler::BlockAssembler(const CellChainParams& params) : BlockAssembler(params, DefaultOptions(params)) {}
+BlockAssembler::BlockAssembler(const MCChainParams& params) : BlockAssembler(params, DefaultOptions(params)) {}
 
 void BlockAssembler::resetBlock()
 {
@@ -135,94 +143,9 @@ void BlockAssembler::resetBlock()
     nFees = 0;
 }
 
-/*
-std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock(const CellScript& scriptPubKeyIn, bool fMineWitnessTx)
+void BlockAssembler::onlyUnconfirmed(MCTxMemPool::setEntries& testSet)
 {
-    int64_t nTimeStart = GetTimeMicros();
-
-    resetBlock();
-
-    pblocktemplate.reset(new CellBlockTemplate());
-
-    if(!pblocktemplate.get())
-        return nullptr;
-    pblock = &pblocktemplate->block; // pointer for convenience
-
-    // Add dummy coinbase tx as first transaction
-    pblock->vtx.emplace_back();
-    pblocktemplate->vTxFees.push_back(-1); // updated at end
-    pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-
-    LOCK2(cs_main, mempool.cs);
-    CellBlockIndex* pindexPrev = chainActive.Tip();
-    nHeight = pindexPrev->nHeight + 1;
-
-    pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
-    // -regtest only: allow overriding block.nVersion with
-    // -blockversion=N to test forking scenarios
-    if (chainparams.MineBlocksOnDemand())
-        pblock->nVersion = gArgs.GetArg("-blockversion", pblock->nVersion);
-
-    pblock->nTime = GetAdjustedTime();
-    const int64_t nMedianTimePast = pindexPrev->GetMedianTimePast();
-
-    nLockTimeCutoff = (STANDARD_LOCKTIME_VERIFY_FLAGS & LOCKTIME_MEDIAN_TIME_PAST)
-                       ? nMedianTimePast
-                       : pblock->GetBlockTime();
-
-    // Decide whether to include witness transactions
-    // This is only needed in case the witness softfork activation is reverted
-    // (which would require a very deep reorganization) or when
-    // -promiscuousmempoolflags is used.
-    // TODO: replace this with a call to main to assess validity of a mempool
-    // transaction (which in most cases can be a no-op).
-    fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
-
-    int nPackagesSelected = 0;
-    int nDescendantsUpdated = 0;
-    addPackageTxs(nPackagesSelected, nDescendantsUpdated);
-
-    int64_t nTime1 = GetTimeMicros();
-
-    nLastBlockTx = nBlockTx;
-    nLastBlockWeight = nBlockWeight;
-
-    // Create coinbase transaction.
-    CellMutableTransaction coinbaseTx;
-    coinbaseTx.vin.resize(1);
-    coinbaseTx.vin[0].prevout.SetNull();
-    coinbaseTx.vout.resize(1);
-    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-    coinbaseTx.vin[0].scriptSig = CellScript() << nHeight << OP_0;
-    pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
-    pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
-    pblocktemplate->vTxFees[0] = -nFees;
-
-    LogPrintf("CreateNewBlock(): block weight: %u txs: %u fees: %ld sigops %d\n", GetBlockWeight(*pblock), nBlockTx, nFees, nBlockSigOpsCost);
-
-    // Fill in header
-    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
-    UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev);
-    pblock->nBits          = GetNextWorkRequired(pindexPrev, pblock, chainparams.GetConsensus());
-    pblock->nNonce         = 0;
-    pblocktemplate->vTxSigOpsCost[0] = WITNESS_SCALE_FACTOR * GetLegacySigOpCount(*pblock->vtx[0]);
-
-    CellValidationState state;
-    if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-    }
-    int64_t nTime2 = GetTimeMicros();
-
-    LogPrint(BCLog::BENCH, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
-
-    return std::move(pblocktemplate);
-}
-*/
-
-void BlockAssembler::onlyUnconfirmed(CellTxMemPool::setEntries& testSet)
-{
-    for (CellTxMemPool::setEntries::iterator iit = testSet.begin(); iit != testSet.end();) {
+    for (MCTxMemPool::setEntries::iterator iit = testSet.begin(); iit != testSet.end();) {
         // Only test txs not already in the block
         if (inBlock.count(*iit)) {
             testSet.erase(iit++);
@@ -232,8 +155,26 @@ void BlockAssembler::onlyUnconfirmed(CellTxMemPool::setEntries& testSet)
     }
 }
 
-bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost)
+uint64_t BlockAssembler::GetTxReserveBlockSize(const MCTransaction& tx)
 {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
+        return ReservePubContractBlockDataSize;
+    }
+    else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+        return ReserveCallContractBlockDataSize;
+    }
+    else if (tx.IsBranchChainTransStep2()) {
+        if (chainparams.IsMainChain()) {
+            return ReserveBranchTxBlockDataSize;
+        }
+    }
+    return 0;
+}
+
+bool BlockAssembler::TestPackage(MCTxMemPool::txiter iter, uint64_t packageSize, int64_t packageSigOpsCost)
+{
+    packageSize += GetTxReserveBlockSize(iter->GetTx()) * std::max<uint64_t>( 1, iter->GetCountWithAncestors());
+
     // TODO: switch to weight-based accounting for packages instead of vsize-based accounting.
     if (nBlockWeight + WITNESS_SCALE_FACTOR * packageSize >= nBlockMaxWeight)
         return false;
@@ -246,9 +187,9 @@ bool BlockAssembler::TestPackage(uint64_t packageSize, int64_t packageSigOpsCost
 // - transaction finality (locktime)
 // - premature witness (in case segwit transactions are added to mempool before
 //   segwit activation)
-bool BlockAssembler::TestPackageTransactions(const CellTxMemPool::setEntries& package)
+bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& package)
 {
-    for (const CellTxMemPool::txiter it : package) {
+    for (const MCTxMemPool::txiter it : package) {
         if (!IsFinalTx(it->GetTx(), nHeight, nLockTimeCutoff))
             return false;
         if (!fIncludeWitness && it->GetTx().HasWitness())
@@ -257,12 +198,20 @@ bool BlockAssembler::TestPackageTransactions(const CellTxMemPool::setEntries& pa
     return true;
 }
 
-void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter)
+void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
-    pblock->vtx.emplace_back(iter->GetSharedTx());
+    MCTransactionRef tx = iter->GetSharedTx();
+    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->amountOut > 0)) {
+        if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
+            throw std::runtime_error("utxo make did not make target transaction");
+        pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
+    }
+    else
+        pblock->vtx.emplace_back(tx);
+
     pblocktemplate->vTxFees.push_back(iter->GetFee());
     pblocktemplate->vTxSigOpsCost.push_back(iter->GetSigOpCost());
-    nBlockWeight += iter->GetTxWeight();
+    nBlockWeight += iter->GetTxWeight() + GetTxReserveBlockSize(iter->GetTx()); // append reserve block size
     ++nBlockTx;
     nBlockSigOpsCost += iter->GetSigOpCost();
     nFees += iter->GetFee();
@@ -271,26 +220,26 @@ void BlockAssembler::AddToBlock(CellTxMemPool::txiter iter)
     bool fPrintPriority = gArgs.GetBoolArg("-printpriority", DEFAULT_PRINTPRIORITY);
     if (fPrintPriority) {
         LogPrintf("fee %s txid %s\n",
-            CellFeeRate(iter->GetModifiedFee(), iter->GetTxSize()).ToString(),
+            MCFeeRate(iter->GetModifiedFee(), iter->GetTxSize()).ToString(),
                   iter->GetTx().GetHash().ToString());
     }
 }
 
-int BlockAssembler::UpdatePackagesForAdded(const CellTxMemPool::setEntries& alreadyAdded,
+int BlockAssembler::UpdatePackagesForAdded(const MCTxMemPool::setEntries& alreadyAdded,
     indexed_modified_transaction_set& mapModifiedTx)
 {
     int nDescendantsUpdated = 0;
-    for (const CellTxMemPool::txiter it : alreadyAdded) {
-        CellTxMemPool::setEntries descendants;
-        mempool.CalculateDescendants(it, descendants);
+    for (const MCTxMemPool::txiter it : alreadyAdded) {
+        MCTxMemPool::setEntries descendants;
+        mempool.CalculateDescendants(it, descendants, true);
         // Insert all descendants (not yet in block) into the modified set
-        for (CellTxMemPool::txiter desc : descendants) {
+        for (MCTxMemPool::txiter desc : descendants) {
             if (alreadyAdded.count(desc))
                 continue;
             ++nDescendantsUpdated;
             modtxiter mit = mapModifiedTx.find(desc);
             if (mit == mapModifiedTx.end()) {
-                CellTxMemPoolModifiedEntry modEntry(desc);
+                MCTxMemPoolModifiedEntry modEntry(desc);
                 modEntry.nSizeWithAncestors -= it->GetTxSize();
                 modEntry.nModFeesWithAncestors -= it->GetModifiedFee();
                 modEntry.nSigOpCostWithAncestors -= it->GetSigOpCost();
@@ -312,13 +261,13 @@ int BlockAssembler::UpdatePackagesForAdded(const CellTxMemPool::setEntries& alre
 // guaranteed to fail again, but as a belt-and-suspenders check we put it in
 // failedTx and avoid re-evaluation, since the re-evaluation would be using
 // cached size/sigops/fee values that are not actually correct.
-bool BlockAssembler::SkipMapTxEntry(CellTxMemPool::txiter it, indexed_modified_transaction_set& mapModifiedTx, CellTxMemPool::setEntries& failedTx)
+bool BlockAssembler::SkipMapTxEntry(MCTxMemPool::txiter it, indexed_modified_transaction_set& mapModifiedTx, MCTxMemPool::setEntries& failedTx)
 {
     assert(it != mempool.mapTx.end());
     return mapModifiedTx.count(it) || inBlock.count(it) || failedTx.count(it);
 }
 
-void BlockAssembler::SortForBlock(const CellTxMemPool::setEntries& package, CellTxMemPool::txiter entry, std::vector<CellTxMemPool::txiter>& sortedEntries)
+void BlockAssembler::SortForBlock(const MCTxMemPool::setEntries& package, MCTxMemPool::txiter entry, std::vector<MCTxMemPool::txiter>& sortedEntries)
 {
     // Sort package by ancestor count
     // If a transaction A depends on transaction B, then A's ancestor count
@@ -340,31 +289,61 @@ bool GroupTransactionComparer(const std::pair<uint256, int>& v1, const std::pair
 }
 
 // 按照输入关联及关联合约地址的分组调用智能合约
-void BlockAssembler::GroupingTransaction(int offset)
+void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries)
 {
+    typedef std::map<int, std::vector<std::pair<uint256, int>>> MAPGROUP;
+
+    MAPGROUP group2trans;
     std::set<int> mergeGroups;
-    std::map<int, std::vector<std::pair<uint256, int>>> group2trans;
     std::map<uint256, int> trans2group;
-    std::map<uint160, int> contract2group;
+    std::map<MCContractID, int> contract2group;
+
+    {
+        int groupId = 0;
+        auto& temp = group2trans[groupId];
+        for (int i = 0; i < offset; ++i) {
+            uint256 hash;
+            if (blockTxEntries[i] != nullptr) {// the offset has init with nullptr, because coinbase tx and stake tx no relative mempool entry
+                hash = blockTxEntries[i]->GetTx().GetHash();
+            }
+            else if (pblock->vtx[i] != nullptr){// coinbase is not init.
+                hash = pblock->vtx[i]->GetHash();
+            }
+            //if (!hash.IsNull()){ //where to find coinbase hash ?
+                temp.emplace_back(std::make_pair(hash, i));
+                trans2group[hash] = groupId;
+            //}
+        }
+    }
 
     int nextGroupId = 1;
     for (int i = offset; i < pblock->vtx.size(); ++i) {
         mergeGroups.clear();
         int groupId = nextGroupId;
-        const CellTransactionRef& tx = pblock->vtx[i];
+        const MCTransactionRef& tx = pblock->vtx[i];
+
+        if (trans2group.find(tx->GetHash()) != trans2group.end()) {
+            groupId = trans2group[tx->GetHash()];
+        }
 
         int lastGroupId = -1;
         for (int j = 0; j < tx->vin.size(); ++j) {
-            const CellOutPoint& preOutPoint = tx->vin[j].prevout;
+            const MCOutPoint& preOutPoint = tx->vin[j].prevout;
+            if (preOutPoint.hash.IsNull()) {
+                continue;
+            }
             if (trans2group.find(preOutPoint.hash) != trans2group.end()) {
                 int preTransGroupId = trans2group[preOutPoint.hash];
                 groupId = std::min(preTransGroupId, groupId);
-                if (lastGroupId != -1)
+                if (lastGroupId != -1) {
                     groupId = std::min(groupId, lastGroupId);
-                if (groupId != preTransGroupId)
+                }
+                if (groupId != preTransGroupId) {
                     mergeGroups.insert(preTransGroupId);
-                if (lastGroupId != -1 && groupId != lastGroupId)
+                }
+                if (lastGroupId != -1 && groupId != lastGroupId) {
                     mergeGroups.insert(lastGroupId);
+                }
             }
             else if (lastGroupId == -1 || lastGroupId == groupId) {
                 // 输入不在区块中，标记该交易与当前groupid相同
@@ -374,20 +353,23 @@ void BlockAssembler::GroupingTransaction(int offset)
             }
             else {
                 groupId = std::min(lastGroupId, groupId);
-                if (groupId != lastGroupId)
+                if (groupId != lastGroupId) {
                     mergeGroups.insert(lastGroupId);
+                }
             }
             lastGroupId = groupId;
         }
 
         if (tx->IsSmartContract()) {
+            const MCTxMemPoolEntry* entry = blockTxEntries[i];
             int finalGroupId = groupId;
-            for (int k = 0; k < tx->contractAddrs.size(); ++k) {
-                const CellKeyID& contractAddr = tx->contractAddrs[k];
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     finalGroupId = std::min(contractGroupId, finalGroupId);
                 }
+                else
+                    contract2group[contractAddr] = groupId;
             }
 
             if (finalGroupId != groupId) {
@@ -395,8 +377,7 @@ void BlockAssembler::GroupingTransaction(int offset)
                 groupId = finalGroupId;
             }
 
-            for (int k = 0; k < tx->contractAddrs.size(); ++k) {
-                const CellKeyID& contractAddr = tx->contractAddrs[k];
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     int contractGroupId = contract2group[contractAddr];
                     if (finalGroupId != contractGroupId) {
@@ -419,41 +400,246 @@ void BlockAssembler::GroupingTransaction(int offset)
 
         des.emplace_back(std::make_pair(tx->GetHash(), i));
         trans2group[tx->GetHash()] = groupId;
-        if (tx->contractAddrs.size() > 0)
-            contract2group[tx->contractAddrs[0]] = groupId;
-
-        if (groupId == nextGroupId)
-            nextGroupId++;
-    }
-
-    std::vector<CellTransactionRef> vtx(pblock->vtx);
-    pblock->vtx.erase(pblock->vtx.begin() + offset, pblock->vtx.end());
-    std::vector<CellAmount> vTxFees(pblocktemplate->vTxFees);
-    pblocktemplate->vTxFees.erase(pblocktemplate->vTxFees.begin() + offset, pblocktemplate->vTxFees.end());
-    std::vector<CellAmount> vTxSigOpsCost(pblocktemplate->vTxSigOpsCost);
-    pblocktemplate->vTxSigOpsCost.erase(pblocktemplate->vTxSigOpsCost.begin() + offset, pblocktemplate->vTxSigOpsCost.end());
-
-    pblock->groupSize.emplace_back(offset);
-    for (auto& group : group2trans) {
-        if (group.second.size() > 0) {
-            std::sort(group.second.begin(), group.second.end(), GroupTransactionComparer);
-            for (int i = 0; i < group.second.size(); ++i) {
-                std::pair<uint256, int>& item = group.second[i];
-                if (item.second != std::numeric_limits<int>::max()) {
-                    pblock->vtx.emplace_back(vtx[item.second]);
-                    pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
-                    pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
-                }
-                else {
-                    group.second.resize(i);
-                    break;
-                }
+        if (tx->IsSmartContract()) {
+            if (!tx->pContractData->address.IsNull()) {
+                contract2group[tx->pContractData->address] = groupId;
             }
-            pblock->groupSize.emplace_back(group.second.size());
+        }
+
+        if (groupId == nextGroupId) {
+            nextGroupId++;
         }
     }
+
+    std::vector<MCTransactionRef> vtx(pblock->vtx);
+    pblock->vtx.clear();
+    std::vector<MCAmount> vTxFees(pblocktemplate->vTxFees);
+    pblocktemplate->vTxFees.clear();
+    std::vector<MCAmount> vTxSigOpsCost(pblocktemplate->vTxSigOpsCost);
+    pblocktemplate->vTxSigOpsCost.clear();
+
+    // 限制了分组的数量
+    std::vector<MAPGROUP::iterator> finalGroup;
+    MAPGROUP::iterator iter = group2trans.begin();
+    for (; iter != group2trans.end(); ++iter) {
+        for (int i = iter->second.size() - 1; i >= 0; --i) {
+            if (iter->second[i].second == std::numeric_limits<int>::max()) {
+                iter->second.erase(iter->second.begin() + i);
+            }
+        }
+        
+        assert(iter->second.size() > 0);
+        finalGroup.emplace_back(iter);
+        if (finalGroup.size() >= MAX_GROUP_NUM) {
+            ++iter;
+            break;
+        }
+    }
+
+    if (iter != group2trans.end()) {
+        // 将超出最大分组数量的分组交易合并到现有的分组中
+        int minGroupIndex = 0;
+        int minGroupSize = iter->second.size();
+        while (iter != group2trans.end()) {
+            for (int i = iter->second.size() - 1; i >= 0; --i) {
+                if (iter->second[i].second == std::numeric_limits<int>::max()) {
+                    iter->second.erase(iter->second.begin() + i);
+                }
+            }
+
+            assert(iter->second.size() > 0);
+            if (minGroupSize + iter->second.size() > std::numeric_limits<uint16_t>::max()) {
+                return;
+            }
+
+            finalGroup[minGroupIndex]->second.insert(finalGroup[minGroupIndex]->second.end(),
+                iter->second.begin(), iter->second.end());
+            iter = group2trans.erase(iter);
+
+            minGroupIndex = 0;
+            minGroupSize = finalGroup[0]->second.size();
+            for (int i = 1; i < finalGroup.size(); ++i) {
+                size_t sz = finalGroup[i]->second.size();
+                if (sz < minGroupSize) {
+                    minGroupSize = sz;
+                    minGroupIndex = i;
+                }
+            }
+
+            if (minGroupIndex == -1 || minGroupSize <= 0 || minGroupSize > std::numeric_limits<uint16_t>::max()) {
+                return;
+            }
+        }
+    }
+
+    // 将分组好的交易重新打入包中
+    int total = 0;
+    pblock->groupSize.clear();
+    for (int i = 0; i < finalGroup.size(); ++i) {
+        assert(finalGroup[i]->second.size() > 0);
+        total += finalGroup[i]->second.size();
+        std::sort(finalGroup[i]->second.begin(), finalGroup[i]->second.end(), GroupTransactionComparer);
+        for (int j = 0; j < finalGroup[i]->second.size(); ++j) {
+            std::pair<uint256, int>& item = finalGroup[i]->second[j];
+            assert(item.second < std::numeric_limits<int>::max());
+            pblock->vtx.emplace_back(vtx[item.second]);
+            pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
+            pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
+        }
+        pblock->groupSize.emplace_back(finalGroup[i]->second.size());
+    }
+    LogPrint(BCLog::MINING, "%s:%d %d:%d\n", __FUNCTION__, __LINE__, total, vtx.size());
+    assert(total == vtx.size());
 }
 
+MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)
+{
+    if (mapBranchCoins.count(key) == 0) {
+        CoinListPtr pcoinlist = pcoinListDb->GetList(key);
+
+        BranchUTXOCache cache;
+        if (pcoinlist != nullptr)
+            cache.coinlist = *pcoinlist;// copy
+        mapBranchCoins.insert(std::make_pair(key, cache));
+    }
+    BranchUTXOCache& utxoCache = mapBranchCoins[key];
+
+    MCAmount nValue = 0;
+    std::vector<int> usedIndex;//用来删除已使用的币
+    //first get from db list
+    //优先使用较老的币
+    for (int i = 0; i < utxoCache.coinlist.coins.size(); i++) {
+        const MCOutPoint& outpoint = utxoCache.coinlist.coins[i];
+        const Coin& coin = pcoinsTip->AccessCoin(outpoint);// MCCoinsViewCache
+        if (coin.IsSpent())
+            continue;
+        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
+            continue;
+
+        nValue += coin.out.nValue;
+        vInOutPoints.push_back(outpoint);
+        usedIndex.push_back(i);
+        if (nValue >= nAmount)
+            break;
+    }
+
+    // 2nd from cache output
+    if (nValue < nAmount) {
+        for (BranchUTXOCache::MAP_CACHE_COIN::iterator mit = utxoCache.mapCacheCoin.begin();
+            mit != utxoCache.mapCacheCoin.end(); mit++) {
+            const MCOutPoint& outpoint = mit->first;
+            const MCTxOut& out = mit->second;
+
+            nValue += out.nValue;
+            vInOutPoints.push_back(outpoint);
+            if (nValue >= nAmount)
+                break;
+        }
+    }
+
+    if (nValue < nAmount) {
+        vInOutPoints.clear();
+        return 0;
+    }
+
+    //从后面往前删除
+    for (std::vector<int>::reverse_iterator rit = usedIndex.rbegin(); rit != usedIndex.rend(); rit++)
+    {
+        utxoCache.coinlist.coins.erase(utxoCache.coinlist.coins.begin() + *rit);
+    }
+
+    // from back to front, erase from vector(utxoCahce.coinlist.coins)
+    for (auto rit = vInOutPoints.rbegin(); rit != vInOutPoints.rend(); rit++) {
+        const MCOutPoint& outpoint = *rit;
+
+        //spend utxoCahce
+        //for (std::vector<MCOutPoint>::reverse_iterator ritc = utxoCache.coinlist.coins.rbegin();// for back end to remove fast.
+        //    ritc != utxoCache.coinlist.coins.rend(); ritc++) {
+        //    if (*ritc == outpoint)
+        //    {
+        //        utxoCache.coinlist.coins.erase(std::next(ritc).base());
+        //        break;
+        //    }
+        //}
+
+        utxoCache.mapCacheCoin.erase(outpoint);
+    }
+
+    return nValue;
+}
+
+bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey)
+{
+    std::vector<MCOutPoint> vInOutPoints;
+    MCAmount nValue = UseUTXO(key, nAmount, vInOutPoints);
+    if (nValue < nAmount)
+        return false;
+
+    MCCoinControl coin_control;
+    const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (MCTxIn::SEQUENCE_FINAL - 1);
+
+    for (std::vector<MCOutPoint>::iterator it = vInOutPoints.begin();// from back to front, erase from vector(utxoCahce.coinlist.coins)
+        it != vInOutPoints.end(); it++) {
+        const MCOutPoint& outpoint = *it;
+
+        //add to vin
+        tx.vin.push_back(MCTxIn(outpoint, scriptSig, nSequence));
+    }
+
+    //recharge
+    if (nValue > nAmount)
+    {
+        MCTxOut tmpOut;
+        tmpOut.scriptPubKey = changeScriptPubKey;
+        tmpOut.nValue = nValue - nAmount;
+        tx.vout.push_back(tmpOut);
+    }
+
+    return true;
+}
+
+bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
+{
+    MCMutableTransaction newTx(*iter->GetSharedTx());
+    uint256 oldHash = newTx.GetHash();
+
+    bool success = true;
+    int vOutSize = newTx.vout.size();
+    std::vector<uint160> keys;
+    if (chainparams.IsMainChain() && newTx.IsBranchChainTransStep2()) {
+        const std::string strFromChain = iter->GetSharedTx()->fromBranchId;
+        uint256 branchhash;
+        branchhash.SetHex(strFromChain);
+        uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
+
+        MCScript scriptPubKey;
+        scriptPubKey << OP_TRANS_BRANCH << ToByteVector(branchhash);
+
+        MCScript scriptSig = MCScript();
+        newTx.vin.clear();
+        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
+        keys.push_back(branchcoinaddress);
+    }
+    if (newTx.IsSmartContract() && newTx.pContractData->amountOut > 0) {
+        MCContractID& contractId = newTx.pContractData->address;
+        MCScript contractScript = GetScriptForDestination(contractId);
+        MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
+
+        success = utxoMaker.MakeTxUTXO(newTx, contractId, newTx.pContractData->amountOut, contractScript, contractChangeScript);
+        keys.push_back(contractId);
+    }
+
+    if (success) {
+        uint256 newHash = newTx.GetHash();
+        for (int i = vOutSize; i < newTx.vout.size(); ++i) {
+            BranchUTXOCache& utxoCache = utxoMaker.mapBranchCoins[keys[i - vOutSize]];
+            utxoCache.mapCacheCoin.insert(std::make_pair(MCOutPoint(newHash, i), newTx.vout[i]));
+        }
+        utxoMaker.mapCache.insert(std::make_pair(oldHash, MakeTransactionRef(newTx)));
+    }
+
+    return success;
+}
 
 // This transaction selection algorithm orders the mempool based
 // on feerate of a transaction including all unconfirmed ancestors.
@@ -467,19 +653,27 @@ void BlockAssembler::GroupingTransaction(int offset)
 // transaction package to work on next.
 void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpdated)
 {
+    //is in generateforbigboom block,need to pre-add coinbase tx weight first, some test will make block out of size.
+    if (nHeight <= chainparams.GetConsensus().BigBoomHeight)
+    {
+        nBlockWeight += 37000;// TODO: coinbase is not init, cannot calc size here. this value get from a true bigboom coinbase tx.
+    }
+
     int offset = pblock->vtx.size();
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
     indexed_modified_transaction_set mapModifiedTx;
     // Keep track of entries that failed inclusion, to avoid duplicate work
-    CellTxMemPool::setEntries failedTx;
+    MCTxMemPool::setEntries failedTx;
 
     // Start by adding all descendants of previously added txs to mapModifiedTx
     // and modifying them for their already included ancestors
     UpdatePackagesForAdded(inBlock, mapModifiedTx);
 
-    CellTxMemPool::indexed_transaction_set::index<ancestor_score>::type::iterator mi = mempool.mapTx.get<ancestor_score>().begin();
-    CellTxMemPool::txiter iter;
+    MakeBranchTxUTXO makeBTxHelper;
+
+    MCTxMemPool::indexed_transaction_set::index<ancestor_score>::type::iterator mi = mempool.mapTx.get<ancestor_score>().begin();
+    MCTxMemPool::txiter iter;
 
     // Limit the number of attempts to add transactions to the block when it is
     // close to full; this is just a simple heuristic to finish quickly if the
@@ -487,6 +681,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
     const int64_t MAX_CONSECUTIVE_FAILURES = 1000;
     int64_t nConsecutiveFailed = 0;
 
+    std::vector<const MCTxMemPoolEntry*> blockTxEntries;
+    blockTxEntries.insert(blockTxEntries.end(), offset, nullptr);
     while (mi != mempool.mapTx.get<ancestor_score>().end() || !mapModifiedTx.empty()) {
         // First try to find a new transaction in mapTx to evaluate.
         if (mi != mempool.mapTx.get<ancestor_score>().end() &&
@@ -509,7 +705,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             // Try to compare the mapTx entry to the mapModifiedTx entry
             iter = mempool.mapTx.project<0>(mi);
             if (modit != mapModifiedTx.get<ancestor_score>().end() &&
-                CompareModifiedEntry()(*modit, CellTxMemPoolModifiedEntry(iter))) {
+                CompareModifiedEntry()(*modit, MCTxMemPoolModifiedEntry(iter))) {
                 // The best entry in mapModifiedTx has higher score
                 // than the one from mapTx
                 // Switch which transaction (package) to consider
@@ -524,11 +720,12 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             }
         }
 
-        CellTransactionRef iterTx = iter->GetSharedTx();
+        // OP: can we move to ancestors?
+        const MCTransactionRef& iterTx = iter->GetSharedTx();
         if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
-            std::vector<uint256> ancestors = branchDataMemCache.GetAncestorsBlocksHash(*iterTx);
+            std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
             for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
-                CellTxMemPool::txiter it = mempool.mapTx.find(*rit);
+                MCTxMemPool::txiter it = mempool.mapTx.find(*rit);
                 if (it == mempool.mapTx.end())
                     continue;//error
                 if (SkipMapTxEntry(it, mapModifiedTx, failedTx)) {
@@ -549,20 +746,20 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         assert(!inBlock.count(iter));
 
         uint64_t packageSize = iter->GetSizeWithAncestors();
-        CellAmount packageFees = iter->GetModFeesWithAncestors();
+        MCAmount packageFees = iter->GetModFeesWithAncestors();
         int64_t packageSigOpsCost = iter->GetSigOpCostWithAncestors();
         if (fUsingModified) {
             packageSize = modit->nSizeWithAncestors;
             packageFees = modit->nModFeesWithAncestors;
             packageSigOpsCost = modit->nSigOpCostWithAncestors;
         }
-        bool fNeedFeeTx = !(iter->GetTx().IsSyncBranchInfo());//TODO
-		if (packageFees < blockMinFeeRate.GetFee(packageSize) /*&& fNeedFeeTx*/) {
+        if (packageFees < blockMinFeeRate.GetFee(packageSize)) {
+            LogPrintf("%s:%d %d < %d\n", __FUNCTION__, __LINE__, packageFees, blockMinFeeRate.GetFee(packageSize));
 			// Everything else we might consider has a lower fee rate
-			return;
+			break;
 		}
 
-		if (!TestPackage(packageSize, packageSigOpsCost)) {
+		if (!TestPackage(iter, packageSize, packageSigOpsCost)) {
 			if (fUsingModified) {
 				// Since we always look at the best entry in mapModifiedTx,
 				// we must erase failed entries so that we can consider the
@@ -573,18 +770,17 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
 			++nConsecutiveFailed;
 
-			if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight >
-				nBlockMaxWeight - 4000) {
+			if (nConsecutiveFailed > MAX_CONSECUTIVE_FAILURES && nBlockWeight > nBlockMaxWeight - 4000) {
 				// Give up if we're close to full and haven't succeeded in a while
 				break;
 			}
 			continue;
 		}
 
-        CellTxMemPool::setEntries ancestors;
+        MCTxMemPool::setEntries ancestors;
 		uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
 		std::string dummy;
-		mempool.CalculateMemPoolAncestors(*iter, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
+		mempool.CalculateMemPoolAncestors(*iter, nullptr, ancestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy, false);
 
 		onlyUnconfirmed(ancestors);
 		ancestors.insert(iter);
@@ -602,31 +798,59 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 		nConsecutiveFailed = 0;
 
 		// Package can be added. Sort the entries in a valid order.
-        std::vector<CellTxMemPool::txiter> sortedEntries;
+        std::vector<MCTxMemPool::txiter> sortedEntries;
 		SortForBlock(ancestors, iter, sortedEntries);
 
-		for (size_t i = 0; i < sortedEntries.size(); ++i) {
-			AddToBlock(sortedEntries[i]);
+        bool fail = false;
+        for (size_t i = 0; i < sortedEntries.size(); ++i) {
+            MCTxMemPool::txiter entry = sortedEntries[i];
+            const MCTransactionRef& entryTx = entry->GetSharedTx();
+
+            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
+                (entryTx->IsSmartContract() && entryTx->pContractData->amountOut > 0)) {
+                if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
+                    //++mi;
+                    if (fUsingModified) {
+                        mapModifiedTx.get<ancestor_score>().erase(modit);
+                        failedTx.insert(entry);
+                    }
+                    fail = true;
+                    break;//next
+                }
+            }
+        }
+
+        if (fail)
+            continue;
+
+        for (size_t i = 0; i < sortedEntries.size(); ++i) {
+			AddToBlock(sortedEntries[i], makeBTxHelper);
 			// Erase from the modified set, if present
 			mapModifiedTx.erase(sortedEntries[i]);
+            blockTxEntries.emplace_back(&*sortedEntries[i]);
 		}
 
 		++nPackagesSelected;
 
 		// Update transactions that depend on each of these
 		nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
+
+        if (pblock->vtx.size() >= gArgs.GetArg("-maxtxnuminblock", std::numeric_limits<int64_t>::max())) {
+            break;
+        }
     }
 
     // 默认使用分片重新排列交易
-    if (gArgs.GetBoolArg("-grouping", true))
-        GroupingTransaction(offset);
+    bool grouping = gArgs.GetBoolArg("-grouping", true);
+    if (grouping) {
+        GroupingTransaction(offset, blockTxEntries);
+    }
     else {
-        pblock->groupSize.emplace_back(offset);
-        pblock->groupSize.emplace_back(pblock->vtx.size() - offset);
+        pblock->groupSize.emplace_back(pblock->vtx.size());
     }
 }
 
-void IncrementExtraNonce(CellBlock* pblock, const CellBlockIndex* pindexPrev, unsigned int& nExtraNonce)
+void IncrementExtraNonce(MCBlock* pblock, const MCBlockIndex* pindexPrev, unsigned int& nExtraNonce)
 {
     // Update nExtraNonce
     static uint256 hashPrevBlock;
@@ -636,8 +860,8 @@ void IncrementExtraNonce(CellBlock* pblock, const CellBlockIndex* pindexPrev, un
     }
     ++nExtraNonce;
     //unsigned int nHeight = pindexPrev->nHeight+1; // Height first in coinbase required for block.version=2
-    //CellMutableTransaction txCoinbase(*pblock->vtx[0]);
-    //txCoinbase.vin[0].scriptSig = (CellScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
+    //MCMutableTransaction txCoinbase(*pblock->vtx[0]);
+    //txCoinbase.vin[0].scriptSig = (MCScript() << nHeight << CScriptNum(nExtraNonce)) + COINBASE_FLAGS;
     //assert(txCoinbase.vin[0].scriptSig.size() <= 100);
 
     //pblock->vtx[0] = MakeTransactionRef(std::move(txCoinbase));
@@ -652,31 +876,31 @@ void static GenerateSleep()
 	boost::this_thread::interruption_point();
 }
 
-void static CellLinkMiner(const CellChainParams& chainparams)
+void static MagnaChainMiner(const MCChainParams& chainparams)
 {
-    LogPrintf("CellLinkMiner started\n");
-	RenameThread("celllink-miner");
+    LogPrintf("MagnaChainMiner started\n");
+	RenameThread("magnachain-miner");
 
 	unsigned int nExtraNonce = 0;
 
-    CellWallet* const pwallet = ::vpwallets[0];
+    MCWallet* const pwallet = ::vpwallets[0];
 
 	while (!ShutdownRequested()) {
 		try {
-            std::set<CellTxDestination> setAddress;
-            std::vector<CellOutput> vecOutputs;
+            std::set<MCTxDestination> setAddress;
+            std::vector<MCOutput> vecOutputs;
 			{
 				assert(pwallet != nullptr);
 
 				LOCK2(cs_main, pwallet->cs_wallet);
 
                 if (Params().IsMainChain())
-                    pwallet->AvailableCoins(vecOutputs, false);
+                    pwallet->AvailableCoins(vecOutputs, nullptr, false);
                 else
                     pwallet->AvailableMortgageCoins(vecOutputs, false);
-				//for (const CellOutput& out : vecOutputs) {
-				//	CellTxDestination address;
-				//	const CellScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+				//for (const MCOutput& out : vecOutputs) {
+				//	MCTxDestination address;
+				//	const MCScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
 				//	bool fValidAddress = ExtractDestination(scriptPubKey, address);
 
 				//	if (setAddress.count(address))
@@ -690,8 +914,8 @@ void static CellLinkMiner(const CellChainParams& chainparams)
 				//}
 
 			}
-            //std::vector< CellScript> vecScript;
-            //BOOST_FOREACH(const CellTxDestination& addr, setAddress) {
+            //std::vector< MCScript> vecScript;
+            //BOOST_FOREACH(const MCTxDestination& addr, setAddress) {
 			//	vecScript.push_back(GetScriptForDestination(addr));
 			//}
 			generateBlocks(pwallet, vecOutputs, vecOutputs.size(), vecOutputs.size(), true, GenerateSleep);
@@ -706,23 +930,23 @@ void static CellLinkMiner(const CellChainParams& chainparams)
 		}
 		catch (const boost::thread_interrupted &e)
 		{
-			LogPrintf("CellLinkMiner terminated for boost::thread_interrupted\n");
+			LogPrintf("MagnaChainMiner terminated for boost::thread_interrupted\n");
             //throw;
 		}
 		catch (const std::runtime_error &e)
 		{
-			LogPrintf("CellLinkMiner runtime error: %s\n", e.what());
+			LogPrintf("MagnaChainMiner runtime error: %s\n", e.what());
 			//return;
 		}
 		catch (const std::exception& e)
 		{
-			LogPrintf("CellLinkMiner std::exception error: %s\n", e.what());
+			LogPrintf("MagnaChainMiner std::exception error: %s\n", e.what());
 			//return;
 		}
 	}
 }
 
-void GenerateCells(bool fGenerate, int nThreads, const CellChainParams& chainparams)
+void GenerateMCs(bool fGenerate, int nThreads, const MCChainParams& chainparams)
 {
 	static boost::thread_group* minerThreads = NULL;
 
@@ -741,7 +965,7 @@ void GenerateCells(bool fGenerate, int nThreads, const CellChainParams& chainpar
 
 	minerThreads = new boost::thread_group();
 	for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&CellLinkMiner, boost::cref(chainparams)));
+        minerThreads->create_thread(boost::bind(&MagnaChainMiner, boost::cref(chainparams)));
 }
 
 
@@ -768,11 +992,11 @@ namespace BlockExplorer
         //static bool ScanBlocks(bool fNeedUnmatue, std::vector< const Coin*>& vecOutputs, std::string strAddr, bool fOnlyConfirmed = true)
         //{
         //	int iChainHeight = chainActive.Height();
-        //	CellScript kScript = GetScriptForDestination(CellLinkAddress(strAddr).Get());
+        //	MCScript kScript = GetScriptForDestination(MagnaChainAddress(strAddr).Get());
 
         //	pcoinsTip->BatchLoad();
-        //	CellCoinsMap& mapCoins = pcoinsTip->GetCacheCoins();
-        //	for (CellCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ++it ) {
+        //	MCCoinsMap& mapCoins = pcoinsTip->GetCacheCoins();
+        //	for (MCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ++it ) {
         //		const Coin& coin = it->second.coin;
         //		if (FastCheckCoin(coin, iChainHeight, fNeedUnmatue)) {
         //			if( coin.out.scriptPubKey == kScript )
@@ -782,39 +1006,39 @@ namespace BlockExplorer
         //	return true;
         //}
 
-        //static void GetAvailableCoins(bool fNeedUnmature, std::vector<const CellOutPoint>& vecOutputs, std::string strAddr, bool fOnlyConfirmed = true)
+        //static void GetAvailableCoins(bool fNeedUnmature, std::vector<const MCOutPoint>& vecOutputs, std::string strAddr, bool fOnlyConfirmed = true)
         //{
         //	ScanBlocks(fNeedUnmature, vecOutputs, strAddr, fOnlyConfirmed);
         //}
-        static inline CoinListPtr GetCoinList(const CellTxDestination& kDest)
+        static inline CoinListPtr GetCoinList(const MCTxDestination& kDest)
         {
-            const CellKeyID& kChild = boost::get<CellKeyID>(kDest);
+            const MCKeyID& kChild = boost::get<MCKeyID>(kDest);
             return pcoinListDb->GetList((const uint160&)kChild);
         }
 
         static inline CoinListPtr GetCoinList(const std::string& strAddr)
         {
-            CellLinkAddress kAddr(strAddr);
-            CellTxDestination kDest = kAddr.Get();
+            MagnaChainAddress kAddr(strAddr);
+            MCTxDestination kDest = kAddr.Get();
             return GetCoinList(kDest);
         }
 
-        static CellAmount CountAmount(CoinList& kList, bool fNeedUnmature)
+        static MCAmount CountAmount(CoinList& kList, bool fNeedUnmature)
         {
-            CellAmount total = 0;
+            MCAmount total = 0;
             int iChainHeight = chainActive.Height();
 
-            BOOST_FOREACH (const CellOutPoint& op, kList.coins) {
+            BOOST_FOREACH (const MCOutPoint& op, kList.coins) {
                 const Coin& coin = pcoinsTip->AccessCoin(op);
                 if (FastCheckCoin(coin, iChainHeight, fNeedUnmature)) {
-                    CellAmount v = coin.out.nValue;
+                    MCAmount v = coin.out.nValue;
                     total += v;
                 }
             }
             return total;
         }
 
-        static CellAmount GetUnspent(const uint160& kAddr)
+        static MCAmount GetUnspent(const uint160& kAddr)
         {
             CoinListPtr pList = pcoinListDb->GetList(kAddr);
             if (pList == nullptr)
@@ -822,7 +1046,7 @@ namespace BlockExplorer
             return CountAmount(*pList, true);
         }
 
-        static CellAmount GetUnspent(const std::string& strAddr)
+        static MCAmount GetUnspent(const std::string& strAddr)
         {
             CoinListPtr pList = GetCoinList(strAddr);
             if (pList == nullptr)
@@ -836,7 +1060,7 @@ using namespace BlockExplorer;
 const uint32_t iMaxWorkBits = 17760256;
 
 
-CellAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
+MCAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
 	if (!Params().IsMainChain())
 	{
@@ -849,11 +1073,11 @@ CellAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams
         return 0;
 
     //178*COIN * nSubsidyHalvingInterval = 1.495199999454e+17
-    CellAmount nSubsidy = 178 * COIN; // 50 * COIN;
+    MCAmount nSubsidy = 85 * (COIN); // 50 * COIN;
     // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
     nSubsidy >>= halvings;
 
-    if (consensusParams.BigBoomHeight >= nHeight) {
+    if (nHeight <= consensusParams.BigBoomHeight) {
         nSubsidy += consensusParams.BigBoomValue;
     }
     return nSubsidy;
@@ -865,7 +1089,7 @@ class TestMiner
 public:
 	TestMiner()
 	{
-		CellAmount total = 0;
+		MCAmount total = 0;
 		Consensus::Params consensus;
 		consensus.nSubsidyHalvingInterval = 210000 * 5;
 		consensus.BigBoomHeight = 1000;
@@ -904,7 +1128,7 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 static uint256 guMaxWork = uint256S("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // 如有修改,同时也需修改 GetBlockHeaderWork
-uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& block_hash)
+uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash)
 {
 	block_hash  = guMaxWork;
 	BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
@@ -912,55 +1136,18 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 	{
 		return 0;
 	}
-    CellBlockIndex* pPreIndex = mi->second;
+    MCBlockIndex* pPreIndex = mi->second;
 	const int iPrevHeight = pPreIndex->nHeight;
 	//const int iTop = chainActive.Height();
 
 	const bool isBigBoom = iPrevHeight < Params().GetConsensus().BigBoomHeight;
 
 	const int iMatureDepth = COINBASE_MATURITY - 1;
-    CellAmount total = 0;
+    MCAmount total = 0;
 
 	// 取得矿工当前可用的UTXO
-    CellTxDestination kDest;
+    MCTxDestination kDest;
 	ExtractDestination(block.vtx[0]->vout[0].scriptPubKey, kDest);
-
-	/*
-
-	// 获取最近一次挖矿的块
-	CoinListPtr pList = Explorer::GetCoinList(kDest);
-	if (pList == nullptr)
-		return 0;
-	int iLastMineBlock = 0;
-	BOOST_FOREACH(const CellOutPoint& op, pList->coins) {
-		const Coin& coin = pcoinsTip->AccessCoin(op);
-		if ( coin.IsCoinBase() )
-		{
-			int iHeight = coin.nHeight;
-			if ( iHeight > iLastMineBlock) {
-				iLastMineBlock = iHeight;
-			}
-		}
-	}
-
-	const int iMineDelay = 30;
-	CellAmount total = 0;
-	BOOST_FOREACH(const CellOutPoint& op, pList->coins) {
-		const Coin& coin = pcoinsTip->AccessCoin(op);
-
-		CellAmount v = coin.out.nValue;
-		// 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
-		int iHeight = coin.nHeight;
-		iHeight += iMatureDepth;
-		if (iHeight < iLastMineBlock){
-			iHeight = iLastMineBlock + iMineDelay;
-		}
-		int iRun = iPrevHeight - iHeight;
-		if ( iRun > 0 ){
-			total += (v / COIN) * iRun;
-		}
-	}
-	*/
 
 	if ( isBigBoom )
 		total = 0;
@@ -968,8 +1155,8 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
     {
         if (block.vtx.size() <= 2)
             return 0;
-        const CellTransaction& tx = *block.vtx[1];
-        std::vector<CellTransactionRef>::const_iterator itFound = std::find_if(block.vtx.begin(), block.vtx.end(), [&tx](const CellTransactionRef& ptx) { return ptx->GetHash() == tx.vin[0].prevout.hash; });
+        const MCTransaction& tx = *block.vtx[1];
+        std::vector<MCTransactionRef>::const_iterator itFound = std::find_if(block.vtx.begin(), block.vtx.end(), [&tx](const MCTransactionRef& ptx) { return ptx->GetHash() == tx.vin[0].prevout.hash; });
         if (itFound != block.vtx.end()){
             int iRun = 1;
             total = ((*itFound)->vout[0].nValue / COIN) * iRun;
@@ -980,7 +1167,7 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 	else {
 		Coin coin;
 		if (pcoinsTip->GetCoin(out, coin)) {
-            CellAmount v = coin.out.nValue;
+            MCAmount v = coin.out.nValue;
 			// 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
 			int iHeight = coin.nHeight;
 			iHeight += iMatureDepth;
@@ -1001,8 +1188,8 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 
 	// 计算前100个区块的平均值
 	{
-		CellAmount iAvg = 0;
-		CellBlockIndex *ptest = pPreIndex;
+		MCAmount iAvg = 0;
+		MCBlockIndex *ptest = pPreIndex;
 		int i = 0;
 		for ( ;i < 100; ++i)
 		{
@@ -1025,12 +1212,12 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 
 	int nType = SER_GETHASH;
 	int nVersion = PROTOCOL_VERSION;
-    CellHashWriter sheader(nType, nVersion);
-    CellHashWriter snum(nType, nVersion);
+    MCHashWriter sheader(nType, nVersion);
+    MCHashWriter snum(nType, nVersion);
 
 	int iCheck2 = 2;
 	int iCheck3 = 3;
-    CellBlockIndex* pNextIndex = pPreIndex;
+    MCBlockIndex* pNextIndex = pPreIndex;
 	for (int i = 0; i < 1000; ++i)
 	{
 		if (pNextIndex == NULL)
@@ -1050,7 +1237,13 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 
         pNextIndex = pNextIndex->pprev;
 	}
-    CellKeyID kKey = boost::get<CellKeyID>(kDest);
+
+    if (kDest.type() != typeid(MCKeyID))
+    {
+        LogPrintf("%s: Mine out key type invalid \n", __func__);
+        return 0;
+    }
+    MCKeyID kKey = boost::get<MCKeyID>(kDest);
 	sheader << (uint160)kKey;
 	sheader << out.hash;
 	sheader << out.n;
@@ -1061,7 +1254,7 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 
 	// percent 
 	uint64_t iPercent = num_hash.GetCheapHash() % 100;
-    CellAmount iMount = total * iPercent / 100;
+    MCAmount iMount = total * iPercent / 100;
 	//LogPrintf("%s: before change work %s \n", __func__, block_hash.GetHex());
 
 	arith_uint256 iTmp = UintToArith256(block_hash);
@@ -1090,10 +1283,10 @@ uint32_t GetBlockWork(const CellBlock& block, const CellOutPoint& out, uint256& 
 	return total;
 }
 
-bool CheckBlockWork(const CellBlock& block, CellValidationState& state, const Consensus::Params& consensusParams)
+bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iAmount = GetBlockWork(block, block.prevoutStake, hash);
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash);
 
 	// check
 	bool fNegative;
@@ -1104,13 +1297,22 @@ bool CheckBlockWork(const CellBlock& block, CellValidationState& state, const Co
 
 	//// Check range
 	if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256( consensusParams.powLimit))
-		return false;
+		return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, bnTarget error");
 
-	if (UintToArith256(hash) > bnTarget)
-		return false;
+    if (UintToArith256(hash) > bnTarget) {
+        // only for -reindex, -reindexchainstate
+        if (mapBlockIndex.size() == 1 && mapBlockIndex.count(block.GetHash()) > 0 && block.GetHash() == Params().GenesisBlock().GetHash()) {
+            return true;
+        }
+        else {
+            return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, UintToArith256(hash) > bnTarget");
+        }
+    }
 
-	if (iAmount != block.nNonce)
-		return false;
+    if (iBlockWork != block.nNonce) {
+        return state.DoS(0, false, REJECT_INVALID, "CheckBlockWork fail, iBlockWork != block.nNonce");;
+    }
+
 	return true;
 }
 
@@ -1126,27 +1328,27 @@ inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const u
 ////---------------------------------------------------------
 //主链获取侧链头工作量
 //核心算法需要和 GetBlockWork 一致
-uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_hash, const CellChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
+uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
 {
     ///// get and check data
-    const CellOutPoint& out = block.prevoutStake;
-    CellDataStream cds(block.vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
-    CellTransactionRef ptx;
+    const MCOutPoint& out = block.prevoutStake;
+    MCDataStream cds(block.vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
+    MCTransactionRef ptx;
     cds >> ptx;
-    CellKeyID kKey;
+    MCKeyID kKey;
     uint256 fromTxHash;
     int64_t iPreCoinHeigh;
     if (!GetMortgageCoinData(ptx->vout[0].scriptPubKey, &fromTxHash, &kKey, &iPreCoinHeigh))
         return 0;
-    const CellAmount coinValue = ptx->vout[0].nValue;
+    const MCAmount coinValue = ptx->vout[0].nValue;
 
     //挖矿币-找出抵押币并作相应验证
-    const Coin& fromCoin = pcoinsTip->AccessCoin(CellOutPoint(fromTxHash, 0));
+    const Coin& fromCoin = pcoinsTip->AccessCoin(MCOutPoint(fromTxHash, 0));
     {
         if (fromCoin.IsSpent() || coinValue != fromCoin.out.nValue) 
             return 0;
 
-        CellKeyID kKeyId;
+        MCKeyID kKeyId;
         uint256 branchid;
         int64_t presetHeight;
         if (!GetMortgageMineData(fromCoin.out.scriptPubKey, &branchid, &kKeyId, &presetHeight))
@@ -1171,7 +1373,7 @@ uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_has
     const bool isBigBoom = iPrevHeight < params.GetConsensus().BigBoomHeight;
 
     const int iMatureDepth = COINBASE_MATURITY - 1;
-    CellAmount total = 0;
+    MCAmount total = 0;
 
     if (isBigBoom)
         total = 0;
@@ -1181,7 +1383,7 @@ uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_has
         total = (coinValue / COIN) * iRun;
     }
     else {
-        CellAmount v = coinValue;
+        MCAmount v = coinValue;
         // 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
         int iHeight = iPreCoinHeigh;
         iHeight += iMatureDepth;
@@ -1200,7 +1402,7 @@ uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_has
 
     // 计算前100个区块的平均值
     {
-        CellAmount iAvg = 0;
+        MCAmount iAvg = 0;
         const BranchBlockData* ptest = pPreIndex;
         int i = 0;
         for (; i < 100; ++i)
@@ -1222,8 +1424,8 @@ uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_has
     // 计算HASH
     int nType = SER_GETHASH;
     int nVersion = PROTOCOL_VERSION;
-    CellHashWriter sheader(nType, nVersion);
-    CellHashWriter snum(nType, nVersion);
+    MCHashWriter sheader(nType, nVersion);
+    MCHashWriter snum(nType, nVersion);
 
     int iCheck2 = 2;
     int iCheck3 = 3;
@@ -1258,7 +1460,7 @@ uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_has
 
     // percent 
     uint64_t iPercent = num_hash.GetCheapHash() % 100;
-    CellAmount iMount = total * iPercent / 100;
+    MCAmount iMount = total * iPercent / 100;
     arith_uint256 iTmp = UintToArith256(block_hash);
 
     // 计算经过币龄加权之后的HASH
@@ -1285,7 +1487,7 @@ uint32_t GetBlockHeaderWork(const CellBranchBlockInfo& block, uint256& block_has
 ////---------------------------------------------------------
 //主链检查侧链头工作量
 //核心和 CheckBlockWork 相同
-bool CheckBlockHeaderWork(const CellBranchBlockInfo& block, CellValidationState& state, const CellChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
+bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
 {
     const Consensus::Params& consensusParams = params.GetConsensus();
 
@@ -1311,7 +1513,7 @@ bool CheckBlockHeaderWork(const CellBranchBlockInfo& block, CellValidationState&
     return true;
 }
 
-bool ContextualCheckBlockHeader(const CellBlockHeader& block, CellValidationState& state, const CellChainParams& params, const CellBlockIndex* pindexPrev, int64_t nAdjustedTime)
+bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, const MCBlockIndex* pindexPrev, int64_t nAdjustedTime)
 {
 	assert(pindexPrev != nullptr);
 	const int nHeight = pindexPrev->nHeight + 1;
@@ -1341,9 +1543,14 @@ bool ContextualCheckBlockHeader(const CellBlockHeader& block, CellValidationStat
 		// Don't accept any forks from the main chain prior to last checkpoint.
 		// GetLastCheckpoint finds the last checkpoint in MapCheckpoints that's in our
 		// MapBlockIndex.
-        CellBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(params.Checkpoints());
+        MCBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(params.Checkpoints());
 		if (pcheckpoint && nHeight < pcheckpoint->nHeight)
 			return state.DoS(100, error("%s: forked chain older than last checkpoint (height %d)", __func__, nHeight), REJECT_CHECKPOINT, "bad-fork-prior-to-checkpoint");
+        const uint256* pcheckhash = params.GetCheckpointHeightHash(nHeight);
+        if (pcheckhash && block.GetHash() != *pcheckhash)
+        {
+            return state.DoS(100, error("%s: forked chain older than last checkpoint2 (height %d)", __func__, nHeight), REJECT_CHECKPOINT, "bad-fork-prior-to-checkpoint2");
+        }
 	}
 
 	// Check timestamp against prev
@@ -1365,7 +1572,7 @@ bool ContextualCheckBlockHeader(const CellBlockHeader& block, CellValidationStat
 	return true;
 }
 
-unsigned int GetNextWorkRequired(const CellBlockIndex* pindexLast, const CellBlockHeader* pblock, const Consensus::Params& params)
+unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHeader* pblock, const Consensus::Params& params)
 {
 	unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
 
@@ -1429,7 +1636,7 @@ unsigned int GetNextWorkRequired(const CellBlockIndex* pindexLast, const CellBlo
 }
 ////---------------------------------------------------------
 //主链上获取侧链的nextwork
-unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const CellBlockHeader* pblock, const CellChainParams& params, BranchData &branchdata, BranchCache *pBranchCache)
+unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const MCBlockHeader* pblock, const MCChainParams& params, BranchData &branchdata, BranchCache *pBranchCache)
 {
     const Consensus::Params& consensusParams = params.GetConsensus();
     unsigned int nProofOfWorkLimit = UintToArith256(consensusParams.powLimit).GetCompact();
@@ -1489,12 +1696,12 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
 }
 ////---------------------------------------------------------
 //主链上验证侧链
-bool BranchContextualCheckBlockHeader(const CellBlockHeader& block, CellValidationState& state, const CellChainParams& params, BranchData &branchdata, 
+bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData &branchdata, 
     int64_t nAdjustedTime, BranchCache *pBranchCache)
 {
     const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
     if (pindexPrev == nullptr)
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");
 
     // Check proof of work
     arith_uint256 nBlockWork;
@@ -1502,15 +1709,15 @@ bool BranchContextualCheckBlockHeader(const CellBlockHeader& block, CellValidati
     bool fOverflow;
     nBlockWork.SetCompact(block.nBits, &fNegative, &fOverflow);
     if (fNegative || fOverflow || nBlockWork == 0)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work", false, "incorrect proof of work");
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, nBlockWork error!");
 
     arith_uint256 nWorkdRequired;
     nWorkdRequired.SetCompact(GetBranchNextWorkRequired(pindexPrev, &block, params, branchdata, pBranchCache), &fNegative, &fOverflow);
     if (fNegative || fOverflow || nWorkdRequired == 0)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of required work", false, "incorrect proof of work");
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of required work, nWorkedRequired error!");
 
     if (nBlockWork > nWorkdRequired) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
+        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits, incorrect proof of work");
     }
 
     // Check against checkpoints
@@ -1547,7 +1754,7 @@ bool BranchContextualCheckBlockHeader(const CellBlockHeader& block, CellValidati
 }
 
 ////---------------------------------------------------------
-bool SignatureCoinbaseTransaction(int nHeight, const CellKeyStore* keystoreIn, CellMutableTransaction& txNew, CellAmount nValue, const CellScript& scriptPubKey)
+bool SignatureCoinbaseTransaction(int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& txNew, MCAmount nValue, const MCScript& scriptPubKey)
 {
     if (keystoreIn == nullptr)
         return false;
@@ -1555,9 +1762,9 @@ bool SignatureCoinbaseTransaction(int nHeight, const CellKeyStore* keystoreIn, C
     int nIn = 0;
     SignatureData sigdata;
 
-    txNew.vin[0].scriptSig = CellScript() << nHeight << OP_0;
+    txNew.vin[0].scriptSig = MCScript() << nHeight << OP_0;
 
-    CellTransaction txNewConst(txNew);
+    MCTransaction txNewConst(txNew);
     if (!ProduceSignature(TransactionSignatureCreator(keystoreIn, &txNewConst, 0, nValue, SIGHASH_ALL), scriptPubKey, sigdata)) {
         return false;
     } else {
@@ -1567,24 +1774,24 @@ bool SignatureCoinbaseTransaction(int nHeight, const CellKeyStore* keystoreIn, C
 }
 
 
-bool CheckCoinbaseSignature(int nHeight, const CellTransaction& t)
+bool CheckCoinbaseSignature(int nHeight, const MCTransaction& t)
 {
     if (t.vout.size() == 0)
         return false;
-    CellMutableTransaction tx(t);
-    CellScript kScriptPubKey = tx.vout[0].scriptPubKey;
+    MCMutableTransaction tx(t);
+    MCScript kScriptPubKey = tx.vout[0].scriptPubKey;
 
-    CellAmount total = 0;
+    MCAmount total = 0;
     for (size_t i = 0; i < tx.vout.size(); ++i) {
         total += tx.vout[i].nValue;
     }
     CScriptWitness kDummyScript;
 
-    CellScript scriptSig = tx.vin[0].scriptSig;
-    CellScript kScriptHead = CellScript() << nHeight << OP_0;
+    MCScript scriptSig = tx.vin[0].scriptSig;
+    MCScript kScriptHead = MCScript() << nHeight << OP_0;
     scriptSig.FindAndDelete(kScriptHead);
     tx.vin[0].scriptSig = kScriptHead;
-    CellTransaction newTx(tx);
+    MCTransaction newTx(tx);
     TransactionSignatureChecker kCheck(&newTx, 0, total);
 
     bool bRet = VerifyScript(scriptSig, kScriptPubKey, &kDummyScript, STANDARD_SCRIPT_VERIFY_FLAGS, kCheck);
@@ -1592,14 +1799,14 @@ bool CheckCoinbaseSignature(int nHeight, const CellTransaction& t)
 }
 
 /*
-static CellLinkAddress kdevAddrs[] = {
+static MagnaChainAddress kdevAddrs[] = {
     "XCNW2QxKePZieDEhC549sX819Tf3PXi54A",
     "XBuJzqnbNtispDyANSi6v6N7TD4RTk7W8F",
     "XCKSDkWueBHiREeu22v6Ct8e3qjFrtRc8u",
 };
 */
 
-bool MakeStakeTransaction(const CellKeyStore& keystore, CellMutableTransaction& mtx, CellOutPoint& preout, CellCoinsViewCache *pcoinsCache, const int blockheight)
+bool MakeStakeTransaction(const MCKeyStore& keystore, MCMutableTransaction& mtx, MCOutPoint& preout, MCCoinsViewCache *pcoinsCache, const int blockheight)
 {
     if (pcoinsCache == nullptr)
     {
@@ -1622,25 +1829,25 @@ bool MakeStakeTransaction(const CellKeyStore& keystore, CellMutableTransaction& 
 
 	// Sign what we can:
 	for (unsigned int i = 0; i < mtx.vin.size(); i++) {
-        CellTxIn& txin = mtx.vin[i];
+        MCTxIn& txin = mtx.vin[i];
 		const Coin& coin = pcoinsCache->AccessCoin(txin.prevout);
 		if (coin.IsSpent()) {
 			return false;
 		}
 
-        const CellScript& prevPubKey = coin.out.scriptPubKey;
+        const MCScript& prevPubKey = coin.out.scriptPubKey;
         if (!Params().IsMainChain())// 侧链使用挖矿币,挖矿币脚本记录挖矿币相关数据
         {
             uint256 fromtxid;
-            CellKeyID keyid;
+            MCKeyID keyid;
             int64_t precoinheight;
             if (!GetMortgageCoinData(prevPubKey, &fromtxid, &keyid, &precoinheight))
                 return false;
-            mtx.vout[0].scriptPubKey = CellScript() << OP_MINE_BRANCH_COIN << ToByteVector(fromtxid) << coin.nHeight << OP_2DROP << OP_DUP << OP_HASH160 << ToByteVector(keyid) << OP_EQUALVERIFY << OP_CHECKSIG;
+            mtx.vout[0].scriptPubKey = MCScript() << OP_MINE_BRANCH_COIN << ToByteVector(fromtxid) << coin.nHeight << OP_2DROP << OP_DUP << OP_HASH160 << ToByteVector(keyid) << OP_EQUALVERIFY << OP_CHECKSIG;
         }
-		const CellAmount& amount = coin.out.nValue;
+		const MCAmount& amount = coin.out.nValue;
         
-        const CellTransaction txConst(mtx);
+        const MCTransaction txConst(mtx);
 
 		SignatureData sigdata;
 		// Only sign SIGHASH_SINGLE if there's a corresponding output:
@@ -1659,145 +1866,66 @@ bool MakeStakeTransaction(const CellKeyStore& keystore, CellMutableTransaction& 
 	return true;
 }
 
-CellAmount MakeCoinbaseTransaction(CellMutableTransaction& coinbaseTx, CellAmount nFees, CellBlockIndex* pindexPrev, const CellScript& scriptPubKeyIn, const CellChainParams& chainparams)
+MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmount nFees, MCBlockIndex* pindexPrev, const MCScript& scriptPubKeyIn, const MCChainParams& chainparams)
 {
     int nHeight = pindexPrev->nHeight + 1;
 
     // calc mining reward
-    CellTxDestination kMinerDest;
+    MCTxDestination kMinerDest;
     ExtractDestination(scriptPubKeyIn, kMinerDest);
-    std::string strMineAddr = CellLinkAddress(kMinerDest).ToString();
-    LogPrint(BCLog::MINING, "CreateNewBlock(): miner address : %s \n", strMineAddr);
-    CellAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
-    CellAmount kMinReward = kReward;
-
-    /*
-	Explorer kTempWallet;
-	CellAmount kUnspent = kTempWallet.GetUnspent(strMineAddr);
-	CellAmount kMinReward = kReward * 0.7;
-
-
-	// get parent
-	std::string strParent;
-	CellAmount kParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strMineAddr, strParent, kParentBalance);
-	CellAmount kParentReward = 0;
-	if (kParentBalance > 0)
-	{
-		double fRate = std::min((double)kParentBalance / (double)kUnspent, 1.0);
-		kParentReward = kReward * 0.2 * fRate;
-	}
-
-	//get g parent
-	std::string strGParent;
-	CellAmount kGParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strParent, strGParent, kGParentBalance);
-	CellAmount kGParentReward = 0;
-	if (kGParentBalance > 0)
-	{
-		kGParentReward = kReward * 0.26 - kParentReward;
-		double fRate = std::min((double)kGParentBalance / (double)kUnspent, 1.0);
-		kGParentReward = kGParentReward * fRate;
-		if (kGParentReward > kReward * 0.2)
-			kGParentReward = kReward * 0.2;
-	}
-
-	//get g g parent
-	std::string strG2Parent;
-	CellAmount kG2ParentBalance = 0;
-	GetMinerParentEx(pindexPrev, strGParent, strG2Parent, kG2ParentBalance);
-	CellAmount kG2ParentReward = 0;
-	if (kG2ParentBalance > 0)
-	{
-		kG2ParentReward = kReward * 0.3 - kParentReward - kGParentReward;
-		double fRate = std::min((double)kG2ParentBalance / (double)kUnspent, 1.0);
-		kG2ParentReward = kG2ParentReward * fRate;
-		if (kG2ParentReward > kReward * 0.2)
-			kG2ParentReward = kReward * 0.2;
-	}
-
-	//dev reward
-	assert(kReward >= kMinReward + kParentReward + kGParentReward + kG2ParentReward );
-	CellAmount kDevReward = kReward - kMinReward - kParentReward - kGParentReward - kG2ParentReward;
-	*/
+    std::string strMineAddr = MagnaChainAddress(kMinerDest).ToString();
+    LogPrint(BCLog::MINING, "MakeCoinbaseTransaction: miner address : %s \n", strMineAddr);
+    MCAmount kReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    MCAmount kMinReward = kReward;
 
     // Create coinbase transaction.
     coinbaseTx.vin.resize(1);
     coinbaseTx.vin[0].prevout.SetNull();
-    coinbaseTx.vin[0].scriptSig = CellScript() << nHeight << OP_0;
+    coinbaseTx.vin[0].scriptSig = MCScript() << nHeight << OP_0;
 
-    coinbaseTx.vout.resize(1);
-    coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
-    coinbaseTx.vout[0].nValue = nFees + kMinReward; //nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    // split output when outcoin too large, this use for big boom stage
+    // because big boom coin well make block work too big
+    // 在gen big boom的时候，把大额的币分成小份
+    if (chainparams.IsMainChain() && nHeight <= chainparams.GetConsensus().BigBoomHeight)
+    {
+        const MCAmount minAmount = (10000 * COIN);
+        MCAmount total = nFees + kMinReward;
+        int splitsize = total / minAmount;
+        splitsize = std::max(splitsize, 1);
+        coinbaseTx.vout.resize(splitsize);
+        for (int i=0; i< splitsize; i++)
+        {
+            coinbaseTx.vout[i].scriptPubKey = scriptPubKeyIn;
+            if (i == splitsize - 1){
+                coinbaseTx.vout[i].nValue = total - minAmount * (splitsize - 1);
+            }
+            else {
+                coinbaseTx.vout[i].nValue = minAmount;
+            }
+        }
+    }
+    else{
+        coinbaseTx.vout.resize(1);
+        coinbaseTx.vout[0].scriptPubKey = scriptPubKeyIn;
+        coinbaseTx.vout[0].nValue = nFees + kMinReward; //nFees + GetBlockSubsidy(nHeight, chainparams.GetConsensus());
+    }
 
-    /*
-	if (kParentReward > 0)
-	{
-		CellTxOut kOut;
-		CellLinkAddress kRewardAddr(strParent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kGParentReward > 0)
-	{
-		CellTxOut kOut;
-		CellLinkAddress kRewardAddr(strGParent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kGParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kG2ParentReward > 0)
-	{
-		CellTxOut kOut;
-		CellLinkAddress kRewardAddr(strG2Parent);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kG2ParentReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-
-	if (kDevReward > 0)
-	{
-		CellTxOut kOut;
-		uint64_t iMax = 0;
-		CellLinkAddress* pkAddr = nullptr;
-		// get a definite dev addr
-		for (int i = 0; i < sizeof(kdevAddrs)/ sizeof(kdevAddrs[0]); ++i) {
-			CellLinkAddress& kAddr = kdevAddrs[i];
-			const CellKeyID& kMinerKeyId = boost::get< const CellKeyID&>(kMinerDest);
-			CellKeyID kTestKeyId;
-			kAddr.GetKeyID(kTestKeyId);
-			uint64_t iTest =  kTestKeyId.GetUint64(0) ^ kMinerKeyId.GetUint64(0);
-			if (iTest > iMax) {
-				iMax = iTest;
-				pkAddr = &kAddr;
-			}
-		}
-
-		CellLinkAddress kRewardAddr(*pkAddr);
-		kOut.scriptPubKey = GetScriptForDestination(kRewardAddr.Get());
-		kOut.nValue = kDevReward;
-		coinbaseTx.vout.push_back(kOut);
-	}
-	*/
     return kReward + nFees;
 }
 
 
-bool CheckCoinbaseTx(const CellBlock& block, CellBlockIndex* pindex, CellAmount nFees, const CellChainParams& chainparams)
+bool CheckCoinbaseTx(const MCBlock& block, MCBlockIndex* pindex, MCAmount nFees, const MCChainParams& chainparams)
 {
-    CellBlock kStub(block);
-    const CellTransaction& tx = *kStub.vtx[0];
+    MCBlock kStub(block);
+    const MCTransaction& tx = *kStub.vtx[0];
     if (tx.vout.size() == 0)
         return false;
-    CellMutableTransaction coinbaseTx;
+    MCMutableTransaction coinbaseTx;
     MakeCoinbaseTransaction(coinbaseTx, nFees, pindex->pprev, tx.vout[0].scriptPubKey, chainparams);
     kStub.vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
     GenerateCoinbaseCommitment(kStub, pindex->pprev, chainparams.GetConsensus());
 
-    const CellTransaction& checkTx = *kStub.vtx[0];
+    const MCTransaction& checkTx = *kStub.vtx[0];
     if (checkTx.vout.size() != tx.vout.size()) {
         LogPrintf("%s : chech vout size:%d tx vout size: %d", __func__, checkTx.vout.size(), tx.vout.size());
         return false;
@@ -1816,7 +1944,7 @@ bool CheckCoinbaseTx(const CellBlock& block, CellBlockIndex* pindex, CellAmount 
 }
 
 
-std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScript& scriptPubKeyIn, bool fMineWitnessTx, const CellKeyStore* keystoreIn, CellCoinsViewCache *pcoinsCache)
+std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx, const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache)
 {
     if (pcoinsCache == nullptr)
     {
@@ -1826,7 +1954,7 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
 
 	resetBlock();
 
-	pblocktemplate.reset(new CellBlockTemplate());
+	pblocktemplate.reset(new MCBlockTemplate());
 
 	if (!pblocktemplate.get())
 		return nullptr;
@@ -1839,23 +1967,22 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
 
     LOCK2(cs_main, mempool.cs);
 
-    CellBlockIndex* pindexPrev = chainActive.Tip();
+    MCBlockIndex* pindexPrev = chainActive.Tip();
     nHeight = pindexPrev->nHeight + 1;
-	if (!this->outpoint.IsNull()) {
-		CellMutableTransaction stakeTx;
-        stakeTx.nVersion = CellTransaction::STAKE;
-		if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
-			return nullptr;
-		}
+    if (!this->outpoint.IsNull()) {
+        MCMutableTransaction stakeTx;
+        stakeTx.nVersion = MCTransaction::STAKE;
+        if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
+            return nullptr;
+        }
 
-		// set outpoint
-		pblock->prevoutStake = outpoint;
+        // set outpoint
+        pblock->prevoutStake = outpoint;
 
-		pblock->vtx.emplace_back();
         pblocktemplate->vTxFees.push_back(-1);       // updated at end
         pblocktemplate->vTxSigOpsCost.push_back(-1); // updated at end
-		pblock->vtx[1] = MakeTransactionRef(std::move(stakeTx));
-	}
+        pblock->vtx.emplace_back(MakeTransactionRef(std::move(stakeTx)));
+    }
 
 	pblock->nVersion = ComputeBlockVersion(pindexPrev, chainparams.GetConsensus());
 	// -regtest only: allow overriding block.nVersion with
@@ -1890,8 +2017,8 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
 	nLastBlockWeight = nBlockWeight;
 
 	// make coin base
-	CellMutableTransaction coinbaseTx;
-	CellAmount nReward= MakeCoinbaseTransaction(coinbaseTx, nFees, pindexPrev, scriptPubKeyIn, chainparams);
+	MCMutableTransaction coinbaseTx;
+	MCAmount nReward= MakeCoinbaseTransaction(coinbaseTx, nFees, pindexPrev, scriptPubKeyIn, chainparams);
 
 	pblock->vtx[0] = MakeTransactionRef(std::move(coinbaseTx));
 	pblocktemplate->vchCoinbaseCommitment = GenerateCoinbaseCommitment(*pblock, pindexPrev, chainparams.GetConsensus());
@@ -1919,17 +2046,24 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
 		LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
 	}
 
-
 	// to verify is mining with the address owner
-	CellMutableTransaction kSignTx(*pblock->vtx[0]);
+	MCMutableTransaction kSignTx(*pblock->vtx[0]);
 	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn))
 		throw std::runtime_error( "sign coin base transaction error");
 	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
-	CellValidationState state;
+	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
 		throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
 	}
+
+    CoinAmountDB coinAmountDB;
+    CoinAmountCache coinAmountCache(&coinAmountDB);
+    LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
+        error("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
+        return nullptr;
+    }
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
@@ -1941,25 +2075,24 @@ std::unique_ptr<CellBlockTemplate> BlockAssembler::CreateNewBlock( const CellScr
  * minerpkey 矿工地址
  * pCoinsCache 一个block的cache或者是pcoinsTip
  */
-void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const CellScript &minerpkey, const CellCoinsViewCache* pCoinsCache)
+void BlockAssembler::addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache)
 {
-    if (!Params().IsMainChain())
+    if (!chainparams.IsMainChain())
         return;
 
     if (!ptxReport->IsReport() || ptxReport->pReportData == nullptr)
         return;
 
     // 检查ptxReport是否满足高度 REPORT_OUTOF_HEIGHT
-    // TODO: 检查ptxReport有没有被证明
 
     //get data from ptxReport
     uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
     uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
-    if (!pBranchDb->HasBranchData(reportbranchid))
+    if (!g_pBranchDb->HasBranchData(reportbranchid))
         return;
 
-    BranchData branchdata = pBranchDb->GetBranchData(reportbranchid);
-    if (!branchdata.mapHeads.count(reportblockhash))// TODO: best chain check!
+    BranchData branchdata = g_pBranchDb->GetBranchData(reportbranchid);
+    if (!branchdata.mapHeads.count(reportblockhash))// best chain check?
         return;
     
     // 从stake交易取出prevout(抵押币)
@@ -1968,24 +2101,30 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
     if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
         return;
 
-    CellOutPoint prevout(coinfromtxid, 0);// 抵押币放在vout[0]位
+    // 检查ptxReport有没有被证明
+    uint256 reportFlagHash = GetReportTxHashKey(*ptxReport);
+    if (blockdata.mapReportStatus.count(reportFlagHash) == 0 || blockdata.mapReportStatus[reportFlagHash] == RP_FLAG_PROVED){
+        return;
+    }
+
+    MCOutPoint prevout(coinfromtxid, 0);// 抵押币放在vout[0]位
     const Coin& coin = pCoinsCache->AccessCoin(prevout);
     if (coin.IsSpent())
         return;
     
-    CellAmount nValueIn = coin.out.nValue;   
-    const CellScript reporterAddress = ptxReport->vout[0].scriptPubKey;
+    const MCAmount& nValueIn = coin.out.nValue;   
+    const MCScript& reporterAddress = ptxReport->vout[0].scriptPubKey;
 
     // 不用留手续费, 因为这个是矿工自己创建的交易
-    CellMutableTransaction mtx;
-    mtx.nVersion = CellTransaction::REPORT_REWARD;
+    MCMutableTransaction mtx;
+    mtx.nVersion = MCTransaction::REPORT_REWARD;
     mtx.reporttxid = ptxReport->GetHash();
     
     mtx.vin.resize(1);
     mtx.vin[0].prevout = prevout;
 
-    CellAmount nReporterValue = nValueIn / 2;
-    CellAmount nMinerValue = nValueIn - nReporterValue;
+    MCAmount nReporterValue = nValueIn / 2;
+    MCAmount nMinerValue = nValueIn - nReporterValue;
 
     mtx.vout.resize(2);
     mtx.vout[0].nValue = nReporterValue;
@@ -2002,22 +2141,22 @@ void BlockAssembler::addReportProofTx(const CellTransactionRef &ptxReport, const
 // 监控举报交易,发现超过证明时间还没证明成功的,就把抵押币
 // simple imp. miner can be as an report-outtime hunter check some miner miss transaction
 // OP:对所有report记录下来，按块高度排序，对超时的进行处理
-void BlockAssembler::addReportProofTxs(const CellScript& scriptPubKeyIn, CellCoinsViewCache *pcoinsCache)
+void BlockAssembler::addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache)
 {
-    if (!Params().IsMainChain())
+    if (!chainparams.IsMainChain())
         return;
 
     uint32_t nOutOfHeight = REPORT_OUTOF_HEIGHT;
-    CellBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nOutOfHeight];// assume that create new block after active chain's tip
+    MCBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nOutOfHeight];// assume that create new block after active chain's tip
     if (pbi != nullptr)
     {
-        std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
-        CellBlock& block = *pblock;
-        if (ReadBlockFromDisk(block, pbi, Params().GetConsensus()))
+        std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
+        MCBlock& block = *pblock;
+        if (ReadBlockFromDisk(block, pbi, chainparams.GetConsensus()))
         {
             for (int i = 1; i < block.vtx.size(); i++)
             {
-                const CellTransactionRef& tx = block.vtx[i];
+                const MCTransactionRef& tx = block.vtx[i];
                 if (tx->IsReport())
                 {
                     this->addReportProofTx(tx, scriptPubKeyIn, pcoinsCache);

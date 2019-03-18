@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2013 The CellLink Core developers
+# Copyright (c) 2013 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,7 +7,7 @@ if [ -d "$1" ]; then
   cd "$1"
 else
   echo "Usage: $0 <datadir>" >&2
-  echo "Removes obsolete CellLink database files" >&2
+  echo "Removes obsolete MagnaChain database files" >&2
   exit 1
 fi
 
@@ -19,22 +19,22 @@ if [ -f wallet.dat -a -f peers.dat -a -f chainstate/CURRENT -a -f blocks/index/C
 
 case $LEVEL in
   0)
-    echo "Error: no CellLink datadir detected."
+    echo "Error: no MagnaChain datadir detected."
     exit 1
     ;;
   1)
-    echo "Detected old CellLink datadir (before 0.7)."
+    echo "Detected old MagnaChain datadir (before 0.7)."
     echo "Nothing to do."
     exit 0
     ;;
   2)
-    echo "Detected CellLink 0.7 datadir."
+    echo "Detected MagnaChain 0.7 datadir."
     ;;
   3)
-    echo "Detected CellLink pre-0.8 datadir."
+    echo "Detected MagnaChain pre-0.8 datadir."
     ;;
   4)
-    echo "Detected CellLink 0.8 datadir."
+    echo "Detected MagnaChain 0.8 datadir."
     ;;
 esac
 

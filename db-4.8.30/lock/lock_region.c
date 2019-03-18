@@ -34,7 +34,7 @@ static const u_int8_t db_riw_conflicts[] = {
 };
 
 /*
- * This conflict array is used for concurrent db access (CellDB).  It uses
+ * This conflict array is used for concurrent db access (MCDB).  It uses
  * the same locks as the db_riw_conflicts array, but adds an IW mode to
  * be used for write cursors.
  */

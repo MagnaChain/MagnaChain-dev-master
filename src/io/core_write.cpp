@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -17,7 +17,7 @@
 #include "utils/utilmoneystr.h"
 #include "utils/utilstrencodings.h"
 
-UniValue ValueFromAmount(const CellAmount& amount)
+UniValue ValueFromAmount(const MCAmount& amount)
 {
     bool sign = amount < 0;
     int64_t n_abs = (sign ? -amount : amount);
@@ -27,13 +27,13 @@ UniValue ValueFromAmount(const CellAmount& amount)
             strprintf("%s%d.%08d", sign ? "-" : "", quotient, remainder));
 }
 
-std::string FormatScript(const CellScript& script)
+std::string FormatScript(const MCScript& script)
 {
     std::string ret;
-    CellScript::const_iterator it = script.begin();
+    MCScript::const_iterator it = script.begin();
     opcodetype op;
     while (it != script.end()) {
-        CellScript::const_iterator it2 = it;
+        MCScript::const_iterator it2 = it;
         std::vector<unsigned char> vch;
         if (script.GetOp2(it, op, &vch)) {
             if (op == OP_0) {
@@ -72,18 +72,18 @@ const std::map<unsigned char, std::string> mapSigHashTypes = {
 };
 
 /**
- * Create the assembly string representation of a CellScript object.
- * @param[in] script    CellScript object to convert into the asm string representation.
+ * Create the assembly string representation of a MCScript object.
+ * @param[in] script    MCScript object to convert into the asm string representation.
  * @param[in] fAttemptSighashDecode    Whether to attempt to decode sighash types on data within the script that matches the format
  *                                     of a signature. Only pass true for scripts you believe could contain signatures. For example,
  *                                     pass false, or omit the this argument (defaults to false), for scriptPubKeys.
  */
-std::string ScriptToAsmStr(const CellScript& script, const bool fAttemptSighashDecode)
+std::string ScriptToAsmStr(const MCScript& script, const bool fAttemptSighashDecode)
 {
     std::string str;
     opcodetype opcode;
     std::vector<unsigned char> vch;
-    CellScript::const_iterator pc = script.begin();
+    MCScript::const_iterator pc = script.begin();
     while (pc < script.end()) {
         if (!str.empty()) {
             str += " ";
@@ -122,25 +122,25 @@ std::string ScriptToAsmStr(const CellScript& script, const bool fAttemptSighashD
     return str;
 }
 
-std::string EncodeHexTx(const CellTransaction& tx, const int serializeFlags)
+std::string EncodeHexTx(const MCTransaction& tx, const int serializeFlags)
 {
-    CellDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
+    MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
     ssTx << tx;
     return HexStr(ssTx.begin(), ssTx.end());
 }
 
-std::string EncodeHexSpvProof(const CellSpvProof& spv, const int serializeFlags)
+std::string EncodeHexSpvProof(const MCSpvProof& spv, const int serializeFlags)
 {
-    CellDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
+    MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
     ssTx << spv;
     return HexStr(ssTx.begin(), ssTx.end());
 }
 
-void ScriptPubKeyToUniv(const CellScript& scriptPubKey,
+void ScriptPubKeyToUniv(const MCScript& scriptPubKey,
                         UniValue& out, bool fIncludeHex)
 {
     txnouttype type;
-    std::vector<CellTxDestination> addresses;
+    std::vector<MCTxDestination> addresses;
     int nRequired;
 
     out.pushKV("asm", ScriptToAsmStr(scriptPubKey));
@@ -156,12 +156,12 @@ void ScriptPubKeyToUniv(const CellScript& scriptPubKey,
     out.pushKV("type", GetTxnOutputType(type));
 
     UniValue a(UniValue::VARR);
-    for (const CellTxDestination& addr : addresses)
-        a.push_back(CellLinkAddress(addr).ToString());
+    for (const MCTxDestination& addr : addresses)
+        a.push_back(MagnaChainAddress(addr).ToString());
     out.pushKV("addresses", a);
 }
 
-void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& entry, bool include_hex, int serialize_flags)
+void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry, bool include_hex, int serialize_flags)
 {
     entry.pushKV("txid", tx.GetHash().GetHex());
     entry.pushKV("hash", tx.GetWitnessHash().GetHex());
@@ -172,7 +172,7 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
 
     UniValue vin(UniValue::VARR);
     for (unsigned int i = 0; i < tx.vin.size(); i++) {
-        const CellTxIn& txin = tx.vin[i];
+        const MCTxIn& txin = tx.vin[i];
         UniValue in(UniValue::VOBJ);
         if (tx.IsCoinBase())
             in.pushKV("coinbase", HexStr(txin.scriptSig.begin(), txin.scriptSig.end()));
@@ -198,7 +198,7 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
 
     UniValue vout(UniValue::VARR);
     for (unsigned int i = 0; i < tx.vout.size(); i++) {
-        const CellTxOut& txout = tx.vout[i];
+        const MCTxOut& txout = tx.vout[i];
 
         UniValue out(UniValue::VOBJ);
 
@@ -215,32 +215,37 @@ void TxToUniv(const CellTransaction& tx, const uint256& hashBlock, UniValue& ent
     if (!hashBlock.IsNull())
         entry.pushKV("blockhash", hashBlock.GetHex());
 
-	if (tx.nVersion == CellTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
+	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
 	{
-		entry.pushKV("contractaddress", tx.contractAddrs[0].ToString());
-		entry.pushKV("senderpubkey", HexStr(tx.contractSender.begin(), tx.contractSender.end()));
+        UniValue contractdata(UniValue::VOBJ);
+        contractdata.pushKV("contractaddress", MagnaChainAddress(tx.pContractData->address).ToString());
+        contractdata.pushKV("senderpubkey", tx.pContractData->sender.GetID().ToString());//HexStr(tx.pContractData->sender.begin(), tx.pContractData->sender.end())
+
+        if(tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
+            contractdata.pushKV("codeOrFunc", HexStr(tx.pContractData->codeOrFunc.begin(), tx.pContractData->codeOrFunc.end()));
+        else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
+            contractdata.pushKV("codeOrFunc", tx.pContractData->codeOrFunc);
+        contractdata.pushKV("args", tx.pContractData->args);
+        contractdata.pushKV("amountout", tx.pContractData->amountOut);
+
         UniValue o(UniValue::VOBJ);
-        o.pushKV("asm", ScriptToAsmStr(tx.scontractScriptSig, true));
-        o.pushKV("hex", HexStr(tx.scontractScriptSig.begin(), tx.scontractScriptSig.end()));
-        entry.pushKV("scontractScriptSig", o);
+        o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));
+        o.pushKV("hex", HexStr(tx.pContractData->signature.begin(), tx.pContractData->signature.end()));
+        contractdata.pushKV("signature", o);
+
+        entry.pushKV("contractdata", contractdata);
 	}
-	if (tx.nVersion == CellTransaction::CALL_CONTRACT_VERSION)
-	{
-		entry.pushKV("callfun", tx.contractFun);
-		entry.pushKV("params", tx.contractParams);
-	}
-	if (tx.nVersion == CellTransaction::CREATE_BRANCH_VERSION)
+	if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
 	{
 		entry.pushKV("branchVSeeds", tx.branchVSeeds);
 		entry.pushKV("branchSeedSpec6", tx.branchSeedSpec6);
-		entry.pushKV("sendToTxHexData", tx.sendToTxHexData);
 	}
-	if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S1)
+	if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1)
 	{
 		entry.pushKV("sendToBranchid", tx.sendToBranchid);
 		entry.pushKV("sendToTxHexData", tx.sendToTxHexData);
 	}
-	if (tx.nVersion == CellTransaction::TRANS_BRANCH_VERSION_S2)
+	if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
 	{
 		entry.pushKV("fromBranchId", tx.fromBranchId);
 	//	entry.pushKV("fromTx", tx.fromTx);

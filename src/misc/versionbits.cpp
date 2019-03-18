@@ -1,5 +1,5 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -21,7 +21,7 @@ const struct VBDeploymentInfo VersionBitsDeploymentInfo[Consensus::MAX_VERSION_B
     }
 };
 
-ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CellBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const
+ThresholdState AbstractThresholdConditionChecker::GetStateFor(const MCBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const
 {
     int nPeriod = Period(params);
     int nThreshold = Threshold(params);
@@ -34,7 +34,7 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CellBlockInd
     }
 
     // Walk backwards in steps of nPeriod to find a pindexPrev whose information is known
-    std::vector<const CellBlockIndex*> vToCompute;
+    std::vector<const MCBlockIndex*> vToCompute;
     while (cache.count(pindexPrev) == 0) {
         if (pindexPrev == nullptr) {
             // The genesis block is by definition defined.
@@ -75,7 +75,7 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CellBlockInd
                     break;
                 }
                 // We need to count
-                const CellBlockIndex* pindexCount = pindexPrev;
+                const MCBlockIndex* pindexCount = pindexPrev;
                 int count = 0;
                 for (int i = 0; i < nPeriod; i++) {
                     if (Condition(pindexCount, params)) {
@@ -106,7 +106,7 @@ ThresholdState AbstractThresholdConditionChecker::GetStateFor(const CellBlockInd
 }
 
 // return the numerical statistics of blocks signalling the specified BIP9 condition in this current period
-BIP9Stats AbstractThresholdConditionChecker::GetStateStatisticsFor(const CellBlockIndex* pindex, const Consensus::Params& params) const
+BIP9Stats AbstractThresholdConditionChecker::GetStateStatisticsFor(const MCBlockIndex* pindex, const Consensus::Params& params) const
 {
     BIP9Stats stats = {};
 
@@ -117,12 +117,12 @@ BIP9Stats AbstractThresholdConditionChecker::GetStateStatisticsFor(const CellBlo
         return stats;
 
     // Find beginning of period
-    const CellBlockIndex* pindexEndOfPrevPeriod = pindex->GetAncestor(pindex->nHeight - ((pindex->nHeight + 1) % stats.period));
+    const MCBlockIndex* pindexEndOfPrevPeriod = pindex->GetAncestor(pindex->nHeight - ((pindex->nHeight + 1) % stats.period));
     stats.elapsed = pindex->nHeight - pindexEndOfPrevPeriod->nHeight;
 
     // Count from current block to beginning of period
     int count = 0;
-    const CellBlockIndex* currentIndex = pindex;
+    const MCBlockIndex* currentIndex = pindex;
     while (pindexEndOfPrevPeriod->nHeight != currentIndex->nHeight){
         if (Condition(currentIndex, params))
             count++;
@@ -135,7 +135,7 @@ BIP9Stats AbstractThresholdConditionChecker::GetStateStatisticsFor(const CellBlo
     return stats;
 }
 
-int AbstractThresholdConditionChecker::GetStateSinceHeightFor(const CellBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const
+int AbstractThresholdConditionChecker::GetStateSinceHeightFor(const MCBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const
 {
     const ThresholdState initialState = GetStateFor(pindexPrev, params, cache);
 
@@ -154,7 +154,7 @@ int AbstractThresholdConditionChecker::GetStateSinceHeightFor(const CellBlockInd
     // The parent of the genesis block is represented by nullptr.
     pindexPrev = pindexPrev->GetAncestor(pindexPrev->nHeight - ((pindexPrev->nHeight + 1) % nPeriod));
 
-    const CellBlockIndex* previousPeriodParent = pindexPrev->GetAncestor(pindexPrev->nHeight - nPeriod);
+    const MCBlockIndex* previousPeriodParent = pindexPrev->GetAncestor(pindexPrev->nHeight - nPeriod);
 
     while (previousPeriodParent != nullptr && GetStateFor(previousPeriodParent, params, cache) == initialState) {
         pindexPrev = previousPeriodParent;
@@ -180,7 +180,7 @@ protected:
     int Period(const Consensus::Params& params) const override { return params.nMinerConfirmationWindow; }
     int Threshold(const Consensus::Params& params) const override { return params.nRuleChangeActivationThreshold; }
 
-    bool Condition(const CellBlockIndex* pindex, const Consensus::Params& params) const override
+    bool Condition(const MCBlockIndex* pindex, const Consensus::Params& params) const override
     {
         return (((pindex->nVersion & VERSIONBITS_TOP_MASK) == VERSIONBITS_TOP_BITS) && (pindex->nVersion & Mask(params)) != 0);
     }
@@ -192,17 +192,17 @@ public:
 
 } // namespace
 
-ThresholdState VersionBitsState(const CellBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache)
+ThresholdState VersionBitsState(const MCBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache)
 {
     return VersionBitsConditionChecker(pos).GetStateFor(pindexPrev, params, cache.caches[pos]);
 }
 
-BIP9Stats VersionBitsStatistics(const CellBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos)
+BIP9Stats VersionBitsStatistics(const MCBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos)
 {
     return VersionBitsConditionChecker(pos).GetStateStatisticsFor(pindexPrev, params);
 }
 
-int VersionBitsStateSinceHeight(const CellBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache)
+int VersionBitsStateSinceHeight(const MCBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache)
 {
     return VersionBitsConditionChecker(pos).GetStateSinceHeightFor(pindexPrev, params, cache.caches[pos]);
 }

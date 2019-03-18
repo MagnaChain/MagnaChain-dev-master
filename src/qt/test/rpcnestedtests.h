@@ -1,10 +1,10 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_TEST_RPC_NESTED_TESTS_H
-#define CELLLINK_QT_TEST_RPC_NESTED_TESTS_H
+#ifndef MAGNACHAIN_QT_TEST_RPC_NESTED_TESTS_H
+#define MAGNACHAIN_QT_TEST_RPC_NESTED_TESTS_H
 
 #include <QObject>
 #include <QTest>
@@ -20,7 +20,7 @@ class RPCNestedTests : public QObject
     void rpcNestedTests();
 
 private:
-    CellCoinsViewDB *pcoinsdbview;
+    MCCoinsViewDB *pcoinsdbview;
 };
 
-#endif // CELLLINK_QT_TEST_RPC_NESTED_TESTS_H
+#endif // MAGNACHAIN_QT_TEST_RPC_NESTED_TESTS_H

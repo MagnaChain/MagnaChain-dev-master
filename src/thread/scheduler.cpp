@@ -1,5 +1,5 @@
 // Copyright (c) 2015-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,11 +12,11 @@
 #include <boost/bind.hpp>
 #include <utility>
 
-CellScheduler::CellScheduler() : nThreadsServicingQueue(0), stopRequested(false), stopWhenEmpty(false)
+MCScheduler::MCScheduler() : nThreadsServicingQueue(0), stopRequested(false), stopWhenEmpty(false)
 {
 }
 
-CellScheduler::~CellScheduler()
+MCScheduler::~MCScheduler()
 {
     assert(nThreadsServicingQueue == 0);
 }
@@ -31,7 +31,7 @@ static boost::system_time toPosixTime(const boost::chrono::system_clock::time_po
 }
 #endif
 
-void CellScheduler::serviceQueue()
+void MCScheduler::serviceQueue()
 {
     boost::unique_lock<boost::mutex> lock(newTaskMutex);
     ++nThreadsServicingQueue;
@@ -92,7 +92,7 @@ void CellScheduler::serviceQueue()
     newTaskScheduled.notify_one();
 }
 
-void CellScheduler::stop(bool drain)
+void MCScheduler::stop(bool drain)
 {
     {
         boost::unique_lock<boost::mutex> lock(newTaskMutex);
@@ -104,7 +104,7 @@ void CellScheduler::stop(bool drain)
     newTaskScheduled.notify_all();
 }
 
-void CellScheduler::schedule(CellScheduler::Function f, boost::chrono::system_clock::time_point t)
+void MCScheduler::schedule(MCScheduler::Function f, boost::chrono::system_clock::time_point t)
 {
     {
         boost::unique_lock<boost::mutex> lock(newTaskMutex);
@@ -113,23 +113,23 @@ void CellScheduler::schedule(CellScheduler::Function f, boost::chrono::system_cl
     newTaskScheduled.notify_one();
 }
 
-void CellScheduler::scheduleFromNow(CellScheduler::Function f, int64_t deltaMilliSeconds)
+void MCScheduler::scheduleFromNow(MCScheduler::Function f, int64_t deltaMilliSeconds)
 {
     schedule(f, boost::chrono::system_clock::now() + boost::chrono::milliseconds(deltaMilliSeconds));
 }
 
-static void Repeat(CellScheduler* s, CellScheduler::Function f, int64_t deltaMilliSeconds)
+static void Repeat(MCScheduler* s, MCScheduler::Function f, int64_t deltaMilliSeconds)
 {
     f();
     s->scheduleFromNow(boost::bind(&Repeat, s, f, deltaMilliSeconds), deltaMilliSeconds);
 }
 
-void CellScheduler::scheduleEvery(CellScheduler::Function f, int64_t deltaMilliSeconds)
+void MCScheduler::scheduleEvery(MCScheduler::Function f, int64_t deltaMilliSeconds)
 {
     scheduleFromNow(boost::bind(&Repeat, this, f, deltaMilliSeconds), deltaMilliSeconds);
 }
 
-size_t CellScheduler::getQueueInfo(boost::chrono::system_clock::time_point &first,
+size_t MCScheduler::getQueueInfo(boost::chrono::system_clock::time_point &first,
                              boost::chrono::system_clock::time_point &last) const
 {
     boost::unique_lock<boost::mutex> lock(newTaskMutex);
@@ -141,7 +141,7 @@ size_t CellScheduler::getQueueInfo(boost::chrono::system_clock::time_point &firs
     return result;
 }
 
-bool CellScheduler::AreThreadsServicingQueue() const {
+bool MCScheduler::AreThreadsServicingQueue() const {
     boost::unique_lock<boost::mutex> lock(newTaskMutex);
     return nThreadsServicingQueue;
 }

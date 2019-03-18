@@ -342,8 +342,6 @@ LUA_API lua_Hook lua_gethook (lua_State *L);
 LUA_API int lua_gethookmask (lua_State *L);
 LUA_API int lua_gethookcount (lua_State *L);
 
-LUA_API long lua_setlimitinstruction(lua_State *L, long n);
-
 struct lua_Debug {
   int event;
   const char *name;	/* (n) */

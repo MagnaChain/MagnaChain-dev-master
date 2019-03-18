@@ -1,9 +1,9 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "utils/utilstrencodings.h"
 #include "wallet/crypter.h"
 
@@ -34,7 +34,7 @@ bool OldSetKeyFromPassphrase(const SecureString& strKeyData, const std::vector<u
     return true;
 }
 
-bool OldEncrypt(const CellKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext, const unsigned char chKey[32], const unsigned char chIV[16])
+bool OldEncrypt(const MCKeyingMaterial& vchPlaintext, std::vector<unsigned char> &vchCiphertext, const unsigned char chKey[32], const unsigned char chIV[16])
 {
     // max ciphertext len for a n bytes of plaintext is
     // n + AES_BLOCK_SIZE - 1 bytes
@@ -62,13 +62,13 @@ bool OldEncrypt(const CellKeyingMaterial& vchPlaintext, std::vector<unsigned cha
     return true;
 }
 
-bool OldDecrypt(const std::vector<unsigned char>& vchCiphertext, CellKeyingMaterial& vchPlaintext, const unsigned char chKey[32], const unsigned char chIV[16])
+bool OldDecrypt(const std::vector<unsigned char>& vchCiphertext, MCKeyingMaterial& vchPlaintext, const unsigned char chKey[32], const unsigned char chIV[16])
 {
     // plaintext will always be equal to or lesser than length of ciphertext
     int nLen = vchCiphertext.size();
     int nPLen = nLen, nFLen = 0;
 
-    vchPlaintext = CellKeyingMaterial(nPLen);
+    vchPlaintext = MCKeyingMaterial(nPLen);
 
     EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
 
@@ -100,7 +100,7 @@ static void TestPassphraseSingle(const std::vector<unsigned char>& vchSalt, cons
     unsigned char chKey[WALLET_CRYPTO_KEY_SIZE];
     unsigned char chIV[WALLET_CRYPTO_IV_SIZE];
 
-    CellCrypter crypt;
+    MCCrypter crypt;
     crypt.SetKeyFromPassphrase(passphrase, vchSalt, rounds, 0);
 
     OldSetKeyFromPassphrase(passphrase, vchSalt, rounds, 0, chKey, chIV);
@@ -128,11 +128,11 @@ static void TestPassphrase(const std::vector<unsigned char>& vchSalt, const Secu
 }
 
 
-static void TestDecrypt(const CellCrypter& crypt, const std::vector<unsigned char>& vchCiphertext, \
+static void TestDecrypt(const MCCrypter& crypt, const std::vector<unsigned char>& vchCiphertext, \
                         const std::vector<unsigned char>& vchPlaintext = std::vector<unsigned char>())
 {
-    CellKeyingMaterial vchDecrypted1;
-    CellKeyingMaterial vchDecrypted2;
+    MCKeyingMaterial vchDecrypted1;
+    MCKeyingMaterial vchDecrypted2;
     int result1, result2;
     result1 = crypt.Decrypt(vchCiphertext, vchDecrypted1);
     result2 = OldDecrypt(vchCiphertext, vchDecrypted2, crypt.vchKey.data(), crypt.vchIV.data());
@@ -143,17 +143,17 @@ static void TestDecrypt(const CellCrypter& crypt, const std::vector<unsigned cha
     // This behavior was reverted for 1.0.1k.
     if (vchDecrypted1 != vchDecrypted2 && vchDecrypted1.size() >= AES_BLOCK_SIZE && SSLeay() == 0x100010afL)
     {
-        for(CellKeyingMaterial::iterator it = vchDecrypted1.end() - AES_BLOCK_SIZE; it != vchDecrypted1.end() - 1; it++)
+        for(MCKeyingMaterial::iterator it = vchDecrypted1.end() - AES_BLOCK_SIZE; it != vchDecrypted1.end() - 1; it++)
             *it = 0;
     }
 
     BOOST_CHECK_MESSAGE(vchDecrypted1 == vchDecrypted2, HexStr(vchDecrypted1.begin(), vchDecrypted1.end()) + " != " + HexStr(vchDecrypted2.begin(), vchDecrypted2.end()));
 
     if (vchPlaintext.size())
-        BOOST_CHECK(CellKeyingMaterial(vchPlaintext.begin(), vchPlaintext.end()) == vchDecrypted2);
+        BOOST_CHECK(MCKeyingMaterial(vchPlaintext.begin(), vchPlaintext.end()) == vchDecrypted2);
 }
 
-static void TestEncryptSingle(const CellCrypter& crypt, const CellKeyingMaterial& vchPlaintext,
+static void TestEncryptSingle(const MCCrypter& crypt, const MCKeyingMaterial& vchPlaintext,
                        const std::vector<unsigned char>& vchCiphertextCorrect = std::vector<unsigned char>())
 {
     std::vector<unsigned char> vchCiphertext1;
@@ -173,12 +173,12 @@ static void TestEncryptSingle(const CellCrypter& crypt, const CellKeyingMaterial
         TestDecrypt(crypt, vchCiphertext1, vchPlaintext2);
 }
 
-static void TestEncrypt(const CellCrypter& crypt, const std::vector<unsigned char>& vchPlaintextIn, \
+static void TestEncrypt(const MCCrypter& crypt, const std::vector<unsigned char>& vchPlaintextIn, \
                        const std::vector<unsigned char>& vchCiphertextCorrect = std::vector<unsigned char>())
 {
-    TestEncryptSingle(crypt, CellKeyingMaterial(vchPlaintextIn.begin(), vchPlaintextIn.end()), vchCiphertextCorrect);
+    TestEncryptSingle(crypt, MCKeyingMaterial(vchPlaintextIn.begin(), vchPlaintextIn.end()), vchCiphertextCorrect);
     for(std::vector<unsigned char>::const_iterator i(vchPlaintextIn.begin()); i != vchPlaintextIn.end(); ++i)
-        TestEncryptSingle(crypt, CellKeyingMaterial(i, vchPlaintextIn.end()));
+        TestEncryptSingle(crypt, MCKeyingMaterial(i, vchPlaintextIn.end()));
 }
 
 };
@@ -202,7 +202,7 @@ BOOST_AUTO_TEST_CASE(passphrase) {
 BOOST_AUTO_TEST_CASE(encrypt) {
     std::vector<unsigned char> vchSalt = ParseHex("0000deadbeef0000");
     BOOST_CHECK(vchSalt.size() == WALLET_CRYPTO_SALT_SIZE);
-    CellCrypter crypt;
+    MCCrypter crypt;
     crypt.SetKeyFromPassphrase("passphrase", vchSalt, 25000, 0);
     TestCrypter::TestEncrypt(crypt, ParseHex("22bcade09ac03ff6386914359cfe885cfeb5f77ff0d670f102f619687453b29d"));
 
@@ -217,7 +217,7 @@ BOOST_AUTO_TEST_CASE(encrypt) {
 BOOST_AUTO_TEST_CASE(decrypt) {
     std::vector<unsigned char> vchSalt = ParseHex("0000deadbeef0000");
     BOOST_CHECK(vchSalt.size() == WALLET_CRYPTO_SALT_SIZE);
-    CellCrypter crypt;
+    MCCrypter crypt;
     crypt.SetKeyFromPassphrase("passphrase", vchSalt, 25000, 0);
 
     // Some corner cases the came up while testing

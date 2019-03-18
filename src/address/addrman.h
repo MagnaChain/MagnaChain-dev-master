@@ -1,11 +1,11 @@
 // Copyright (c) 2012 Pieter Wuille
 // Copyright (c) 2012-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_ADDRMAN_H
-#define CELLLINK_ADDRMAN_H
+#ifndef MAGNACHAIN_ADDRMAN_H
+#define MAGNACHAIN_ADDRMAN_H
 
 #include "net/netaddress.h"
 #include "net/protocol.h"
@@ -20,9 +20,9 @@
 #include <vector>
 
 /**
- * Extended statistics about a CellAddress
+ * Extended statistics about a MCAddress
  */
-class CellAddrInfo : public CellAddress
+class MCAddrInfo : public MCAddress
 {
 
 
@@ -35,7 +35,7 @@ public:
 
 private:
     //! where knowledge about this address first came from
-    CellNetAddr source;
+    MCNetAddr source;
 
     //! last successful connection by us
     int64_t nLastSuccess;
@@ -52,7 +52,7 @@ private:
     //! position in vRandom
     int nRandomPos;
 
-    friend class CellAddrMan;
+    friend class MCAddrMan;
 
 public:
 
@@ -60,7 +60,7 @@ public:
 
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(*(CellAddress*)this);
+        READWRITE(*(MCAddress*)this);
         READWRITE(source);
         READWRITE(nLastSuccess);
         READWRITE(nAttempts);
@@ -77,12 +77,12 @@ public:
         nRandomPos = -1;
     }
 
-    CellAddrInfo(const CellAddress &addrIn, const CellNetAddr &addrSource) : CellAddress(addrIn), source(addrSource)
+    MCAddrInfo(const MCAddress &addrIn, const MCNetAddr &addrSource) : MCAddress(addrIn), source(addrSource)
     {
         Init();
     }
 
-    CellAddrInfo() : CellAddress(), source()
+    MCAddrInfo() : MCAddress(), source()
     {
         Init();
     }
@@ -91,7 +91,7 @@ public:
     int GetTriedBucket(const uint256 &nKey) const;
 
     //! Calculate in which "new" bucket this entry belongs, given a certain source
-    int GetNewBucket(const uint256 &nKey, const CellNetAddr& src) const;
+    int GetNewBucket(const uint256 &nKey, const MCNetAddr& src) const;
 
     //! Calculate in which "new" bucket this entry belongs, using its default source
     int GetNewBucket(const uint256 &nKey) const
@@ -180,20 +180,20 @@ public:
 /** 
  * Stochastical (IP) address manager 
  */
-class CellAddrMan
+class MCAddrMan
 {
 private:
     //! critical section to protect the inner data structures
-    mutable CellCriticalSection cs;
+    mutable MCCriticalSection cs;
 
     //! last used nId
     int nIdCount;
 
     //! table with information about all nIds
-    std::map<int, CellAddrInfo> mapInfo;
+    std::map<int, MCAddrInfo> mapInfo;
 
     //! find an nId based on its network address
-    std::map<CellNetAddr, int> mapAddr;
+    std::map<MCNetAddr, int> mapAddr;
 
     //! randomly-ordered vector of all nIds
     std::vector<int> vRandom;
@@ -221,17 +221,17 @@ protected:
     FastRandomContext insecure_rand;
 
     //! Find an entry.
-    CellAddrInfo* Find(const CellNetAddr& addr, int *pnId = nullptr);
+    MCAddrInfo* Find(const MCNetAddr& addr, int *pnId = nullptr);
 
     //! find an entry, creating it if necessary.
     //! nTime and nServices of the found node are updated, if necessary.
-    CellAddrInfo* Create(const CellAddress &addr, const CellNetAddr &addrSource, int *pnId = nullptr);
+    MCAddrInfo* Create(const MCAddress &addr, const MCNetAddr &addrSource, int *pnId = nullptr);
 
     //! Swap two elements in vRandom.
     void SwapRandom(unsigned int nRandomPos1, unsigned int nRandomPos2);
 
     //! Move an entry from the "new" table(s) to the "tried" table
-    void MakeTried(CellAddrInfo& info, int nId);
+    void MakeTried(MCAddrInfo& info, int nId);
 
     //! Delete an entry. It must not be in tried, and have refcount 0.
     void Delete(int nId);
@@ -240,16 +240,16 @@ protected:
     void ClearNew(int nUBucket, int nUBucketPos);
 
     //! Mark an entry "good", possibly moving it from "new" to "tried".
-    void Good_(const CellService &addr, int64_t nTime);
+    void Good_(const MCService &addr, int64_t nTime);
 
     //! Add an entry to the "new" table.
-    bool Add_(const CellAddress &addr, const CellNetAddr& source, int64_t nTimePenalty);
+    bool Add_(const MCAddress &addr, const MCNetAddr& source, int64_t nTimePenalty);
 
     //! Mark an entry as attempted to connect.
-    void Attempt_(const CellService &addr, bool fCountFailure, int64_t nTime);
+    void Attempt_(const MCService &addr, bool fCountFailure, int64_t nTime);
 
     //! Select an address to connect to, if newOnly is set to true, only the new table is selected from.
-    CellAddrInfo Select_(bool newOnly);
+    MCAddrInfo Select_(bool newOnly);
 
     //! Wraps GetRandInt to allow tests to override RandomInt and make it determinismistic.
     virtual int RandomInt(int nMax);
@@ -260,13 +260,13 @@ protected:
 #endif
 
     //! Select several addresses at once.
-    void GetAddr_(std::vector<CellAddress> &vAddr);
+    void GetAddr_(std::vector<MCAddress> &vAddr);
 
     //! Mark an entry as currently-connected-to.
-    void Connected_(const CellService &addr, int64_t nTime);
+    void Connected_(const MCService &addr, int64_t nTime);
 
     //! Update an entry's service bits.
-    void SetServices_(const CellService &addr, ServiceFlags nServices);
+    void SetServices_(const MCService &addr, ServiceFlags nServices);
 
 public:
     /**
@@ -314,9 +314,9 @@ public:
         s << nUBuckets;
         std::map<int, int> mapUnkIds;
         int nIds = 0;
-        for (std::map<int, CellAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
+        for (std::map<int, MCAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
             mapUnkIds[(*it).first] = nIds;
-            const CellAddrInfo &info = (*it).second;
+            const MCAddrInfo &info = (*it).second;
             if (info.nRefCount) {
                 assert(nIds != nNew); // this means nNew was wrong, oh ow
                 s << info;
@@ -324,8 +324,8 @@ public:
             }
         }
         nIds = 0;
-        for (std::map<int, CellAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
-            const CellAddrInfo &info = (*it).second;
+        for (std::map<int, MCAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); it++) {
+            const MCAddrInfo &info = (*it).second;
             if (info.fInTried) {
                 assert(nIds != nTried); // this means nTried was wrong, oh ow
                 s << info;
@@ -370,16 +370,16 @@ public:
         }
 
         if (nNew > ADDRMAN_NEW_BUCKET_COUNT * ADDRMAN_BUCKET_SIZE) {
-            throw std::ios_base::failure("Corrupt CellAddrMan serialization, nNew exceeds limit.");
+            throw std::ios_base::failure("Corrupt MCAddrMan serialization, nNew exceeds limit.");
         }
 
         if (nTried > ADDRMAN_TRIED_BUCKET_COUNT * ADDRMAN_BUCKET_SIZE) {
-            throw std::ios_base::failure("Corrupt CellAddrMan serialization, nTried exceeds limit.");
+            throw std::ios_base::failure("Corrupt MCAddrMan serialization, nTried exceeds limit.");
         }
 
         // Deserialize entries from the new table.
         for (int n = 0; n < nNew; n++) {
-            CellAddrInfo &info = mapInfo[n];
+            MCAddrInfo &info = mapInfo[n];
             s >> info;
             mapAddr[info] = n;
             info.nRandomPos = vRandom.size();
@@ -400,7 +400,7 @@ public:
         // Deserialize entries from the tried table.
         int nLost = 0;
         for (int n = 0; n < nTried; n++) {
-            CellAddrInfo info;
+            MCAddrInfo info;
             s >> info;
             int nKBucket = info.GetTriedBucket(nKey);
             int nKBucketPos = info.GetBucketPosition(nKey, false, nKBucket);
@@ -426,7 +426,7 @@ public:
                 int nIndex = 0;
                 s >> nIndex;
                 if (nIndex >= 0 && nIndex < nNew) {
-                    CellAddrInfo &info = mapInfo[nIndex];
+                    MCAddrInfo &info = mapInfo[nIndex];
                     int nUBucketPos = info.GetBucketPosition(nKey, true, bucket);
                     if (nVersion == 1 && nUBuckets == ADDRMAN_NEW_BUCKET_COUNT && vvNew[bucket][nUBucketPos] == -1 && info.nRefCount < ADDRMAN_NEW_BUCKETS_PER_ADDRESS) {
                         info.nRefCount++;
@@ -438,9 +438,9 @@ public:
 
         // Prune new entries with refcount 0 (as a result of collisions).
         int nLostUnk = 0;
-        for (std::map<int, CellAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); ) {
+        for (std::map<int, MCAddrInfo>::const_iterator it = mapInfo.begin(); it != mapInfo.end(); ) {
             if (it->second.fInTried == false && it->second.nRefCount == 0) {
-                std::map<int, CellAddrInfo>::const_iterator itCopy = it++;
+                std::map<int, MCAddrInfo>::const_iterator itCopy = it++;
                 Delete(itCopy->first);
                 nLostUnk++;
             } else {
@@ -477,12 +477,12 @@ public:
         mapAddr.clear();
     }
 
-    CellAddrMan()
+    MCAddrMan()
     {
         Clear();
     }
 
-    ~CellAddrMan()
+    ~MCAddrMan()
     {
         nKey.SetNull();
     }
@@ -508,7 +508,7 @@ public:
     }
 
     //! Add a single address.
-    bool Add(const CellAddress &addr, const CellNetAddr& source, int64_t nTimePenalty = 0)
+    bool Add(const MCAddress &addr, const MCNetAddr& source, int64_t nTimePenalty = 0)
     {
         LOCK(cs);
         bool fRet = false;
@@ -522,12 +522,12 @@ public:
     }
 
     //! Add multiple addresses.
-    bool Add(const std::vector<CellAddress> &vAddr, const CellNetAddr& source, int64_t nTimePenalty = 0)
+    bool Add(const std::vector<MCAddress> &vAddr, const MCNetAddr& source, int64_t nTimePenalty = 0)
     {
         LOCK(cs);
         int nAdd = 0;
         Check();
-        for (std::vector<CellAddress>::const_iterator it = vAddr.begin(); it != vAddr.end(); it++)
+        for (std::vector<MCAddress>::const_iterator it = vAddr.begin(); it != vAddr.end(); it++)
             nAdd += Add_(*it, source, nTimePenalty) ? 1 : 0;
         Check();
         if (nAdd) {
@@ -537,7 +537,7 @@ public:
     }
 
     //! Mark an entry as accessible.
-    void Good(const CellService &addr, int64_t nTime = GetAdjustedTime())
+    void Good(const MCService &addr, int64_t nTime = GetAdjustedTime())
     {
         LOCK(cs);
         Check();
@@ -546,7 +546,7 @@ public:
     }
 
     //! Mark an entry as connection attempted to.
-    void Attempt(const CellService &addr, bool fCountFailure, int64_t nTime = GetAdjustedTime())
+    void Attempt(const MCService &addr, bool fCountFailure, int64_t nTime = GetAdjustedTime())
     {
         LOCK(cs);
         Check();
@@ -557,9 +557,9 @@ public:
     /**
      * Choose an address to connect to.
      */
-    CellAddrInfo Select(bool newOnly = false)
+    MCAddrInfo Select(bool newOnly = false)
     {
-        CellAddrInfo addrRet;
+        MCAddrInfo addrRet;
         {
             LOCK(cs);
             Check();
@@ -570,10 +570,10 @@ public:
     }
 
     //! Return a bunch of addresses, selected at random.
-    std::vector<CellAddress> GetAddr()
+    std::vector<MCAddress> GetAddr()
     {
         Check();
-        std::vector<CellAddress> vAddr;
+        std::vector<MCAddress> vAddr;
         {
             LOCK(cs);
             GetAddr_(vAddr);
@@ -583,7 +583,7 @@ public:
     }
 
     //! Mark an entry as currently-connected-to.
-    void Connected(const CellService &addr, int64_t nTime = GetAdjustedTime())
+    void Connected(const MCService &addr, int64_t nTime = GetAdjustedTime())
     {
         LOCK(cs);
         Check();
@@ -591,7 +591,7 @@ public:
         Check();
     }
 
-    void SetServices(const CellService &addr, ServiceFlags nServices)
+    void SetServices(const MCService &addr, ServiceFlags nServices)
     {
         LOCK(cs);
         Check();
@@ -601,4 +601,4 @@ public:
 
 };
 
-#endif // CELLLINK_ADDRMAN_H
+#endif // MAGNACHAIN_ADDRMAN_H

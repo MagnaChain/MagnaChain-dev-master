@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -65,7 +65,7 @@ static SendCoinsRecipient handleRequest(PaymentServer* server, std::vector<unsig
 
 void PaymentServerTests::paymentServerTests()
 {
-    SelectParams(CellBaseChainParams::MAIN);
+    SelectParams(MCBaseChainParams::MAIN);
     OptionsModel optionsModel;
     PaymentServer* server = new PaymentServer(nullptr, false);
     X509_STORE* caStore = X509_STORE_new();
@@ -196,9 +196,9 @@ void PaymentServerTests::paymentServerTests()
     // Ensure the request is initialized
     QVERIFY(r.paymentRequest.IsInitialized());
     // Extract address and amount from the request
-    QList<std::pair<CellScript, CellAmount> > sendingTos = r.paymentRequest.getPayTo();
-    for (const std::pair<CellScript, CellAmount>& sendingTo : sendingTos) {
-        CellTxDestination dest;
+    QList<std::pair<MCScript, MCAmount> > sendingTos = r.paymentRequest.getPayTo();
+    for (const std::pair<MCScript, MCAmount>& sendingTo : sendingTos) {
+        MCTxDestination dest;
         if (ExtractDestination(sendingTo.first, dest))
             QCOMPARE(PaymentServer::verifyAmount(sendingTo.second), false);
     }

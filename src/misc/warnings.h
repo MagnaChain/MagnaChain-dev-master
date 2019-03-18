@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_WARNINGS_H
-#define CELLLINK_WARNINGS_H
+#ifndef MAGNACHAIN_WARNINGS_H
+#define MAGNACHAIN_WARNINGS_H
 
 #include <stdlib.h>
 #include <string>
@@ -25,4 +25,4 @@ std::string GetWarnings(const std::string& strFor);
 
 static const bool DEFAULT_TESTSAFEMODE = false;
 
-#endif //  CELLLINK_WARNINGS_H
+#endif //  MAGNACHAIN_WARNINGS_H

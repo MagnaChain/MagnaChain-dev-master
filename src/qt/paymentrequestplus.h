@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_PAYMENTREQUESTPLUS_H
-#define CELLLINK_QT_PAYMENTREQUESTPLUS_H
+#ifndef MAGNACHAIN_QT_PAYMENTREQUESTPLUS_H
+#define MAGNACHAIN_QT_PAYMENTREQUESTPLUS_H
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -40,7 +40,7 @@ public:
     bool getMerchant(X509_STORE* certStore, QString& merchant) const;
 
     // Returns list of outputs, amount
-    QList<std::pair<CellScript,CellAmount> > getPayTo() const;
+    QList<std::pair<MCScript,MCAmount> > getPayTo() const;
 
     const payments::PaymentDetails& getDetails() const { return details; }
 
@@ -49,4 +49,4 @@ private:
     payments::PaymentDetails details;
 };
 
-#endif // CELLLINK_QT_PAYMENTREQUESTPLUS_H
+#endif // MAGNACHAIN_QT_PAYMENTREQUESTPLUS_H

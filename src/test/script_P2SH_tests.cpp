@@ -1,5 +1,5 @@
 // Copyright (c) 2012-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -13,7 +13,7 @@
 #include "script/script_error.h"
 #include "script/sign.h"
 #include "script/ismine.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <vector>
 
@@ -21,21 +21,21 @@
 
 // Helpers:
 static std::vector<unsigned char>
-Serialize(const CellScript& s)
+Serialize(const MCScript& s)
 {
     std::vector<unsigned char> sSerialized(s.begin(), s.end());
     return sSerialized;
 }
 
 static bool
-Verify(const CellScript& scriptSig, const CellScript& scriptPubKey, bool fStrict, ScriptError& err)
+Verify(const MCScript& scriptSig, const MCScript& scriptPubKey, bool fStrict, ScriptError& err)
 {
     // Create dummy to/from transactions:
-    CellMutableTransaction txFrom;
+    MCMutableTransaction txFrom;
     txFrom.vout.resize(1);
     txFrom.vout[0].scriptPubKey = scriptPubKey;
 
-    CellMutableTransaction txTo;
+    MCMutableTransaction txTo;
     txTo.vin.resize(1);
     txTo.vout.resize(1);
     txTo.vin[0].prevout.n = 0;
@@ -57,8 +57,8 @@ BOOST_AUTO_TEST_CASE(sign)
     // scriptPubKey: HASH160 <hash> EQUAL
 
     // Test SignSignature() (and therefore the version of Solver() that signs transactions)
-    CellBasicKeyStore keystore;
-    CellKey key[4];
+    MCBasicKeyStore keystore;
+    MCKey key[4];
     for (int i = 0; i < 4; i++)
     {
         key[i].MakeNewKey(true);
@@ -67,19 +67,19 @@ BOOST_AUTO_TEST_CASE(sign)
 
     // 8 Scripts: checking all combinations of
     // different keys, straight/P2SH, pubkey/pubkeyhash
-    CellScript standardScripts[4];
+    MCScript standardScripts[4];
     standardScripts[0] << ToByteVector(key[0].GetPubKey()) << OP_CHECKSIG;
     standardScripts[1] = GetScriptForDestination(key[1].GetPubKey().GetID());
     standardScripts[2] << ToByteVector(key[1].GetPubKey()) << OP_CHECKSIG;
     standardScripts[3] = GetScriptForDestination(key[2].GetPubKey().GetID());
-    CellScript evalScripts[4];
+    MCScript evalScripts[4];
     for (int i = 0; i < 4; i++)
     {
         keystore.AddCScript(standardScripts[i]);
-        evalScripts[i] = GetScriptForDestination(CellScriptID(standardScripts[i]));
+        evalScripts[i] = GetScriptForDestination(MCScriptID(standardScripts[i]));
     }
 
-    CellMutableTransaction txFrom;  // Funding transaction:
+    MCMutableTransaction txFrom;  // Funding transaction:
     std::string reason;
     txFrom.vout.resize(8);
     for (int i = 0; i < 4; i++)
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(sign)
     }
     BOOST_CHECK(IsStandardTx(txFrom, reason));
 
-    CellMutableTransaction txTo[8]; // Spending transactions
+    MCMutableTransaction txTo[8]; // Spending transactions
     for (int i = 0; i < 8; i++)
     {
         txTo[i].vin.resize(1);
@@ -111,9 +111,9 @@ BOOST_AUTO_TEST_CASE(sign)
         PrecomputedTransactionData txdata(txTo[i]);
         for (int j = 0; j < 8; j++)
         {
-            CellScript sigSave = txTo[i].vin[0].scriptSig;
+            MCScript sigSave = txTo[i].vin[0].scriptSig;
             txTo[i].vin[0].scriptSig = txTo[j].vin[0].scriptSig;
-            const CellTxOut& output = txFrom.vout[txTo[i].vin[0].prevout.n];
+            const MCTxOut& output = txFrom.vout[txTo[i].vin[0].prevout.n];
             bool sigOK = CScriptCheck(output.scriptPubKey, output.nValue, txTo[i], 0, SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_STRICTENC, false, &txdata)();
             if (i == j)
                 BOOST_CHECK_MESSAGE(sigOK, strprintf("VerifySignature %d %d", i, j));
@@ -129,12 +129,12 @@ BOOST_AUTO_TEST_CASE(norecurse)
     ScriptError err;
     // Make sure only the outer pay-to-script-hash does the
     // extra-validation thing:
-    CellScript invalidAsScript;
+    MCScript invalidAsScript;
     invalidAsScript << OP_INVALIDOPCODE << OP_INVALIDOPCODE;
 
-    CellScript p2sh = GetScriptForDestination(CellScriptID(invalidAsScript));
+    MCScript p2sh = GetScriptForDestination(MCScriptID(invalidAsScript));
 
-    CellScript scriptSig;
+    MCScript scriptSig;
     scriptSig << Serialize(invalidAsScript);
 
     // Should not verify, because it will try to execute OP_INVALIDOPCODE
@@ -143,8 +143,8 @@ BOOST_AUTO_TEST_CASE(norecurse)
 
     // Try to recur, and verification should succeed because
     // the inner HASH160 <> EQUAL should only check the hash:
-    CellScript p2sh2 = GetScriptForDestination(CellScriptID(p2sh));
-    CellScript scriptSig2;
+    MCScript p2sh2 = GetScriptForDestination(MCScriptID(p2sh));
+    MCScript scriptSig2;
     scriptSig2 << Serialize(invalidAsScript) << Serialize(p2sh);
 
     BOOST_CHECK(Verify(scriptSig2, p2sh2, true, err));
@@ -154,10 +154,10 @@ BOOST_AUTO_TEST_CASE(norecurse)
 BOOST_AUTO_TEST_CASE(set)
 {
     LOCK(cs_main);
-    // Test the CellScript::Set* methods
-    CellBasicKeyStore keystore;
-    CellKey key[4];
-    std::vector<CellPubKey> keys;
+    // Test the MCScript::Set* methods
+    MCBasicKeyStore keystore;
+    MCKey key[4];
+    std::vector<MCPubKey> keys;
     for (int i = 0; i < 4; i++)
     {
         key[i].MakeNewKey(true);
@@ -165,20 +165,20 @@ BOOST_AUTO_TEST_CASE(set)
         keys.push_back(key[i].GetPubKey());
     }
 
-    CellScript inner[4];
+    MCScript inner[4];
     inner[0] = GetScriptForDestination(key[0].GetPubKey().GetID());
-    inner[1] = GetScriptForMultisig(2, std::vector<CellPubKey>(keys.begin(), keys.begin()+2));
-    inner[2] = GetScriptForMultisig(1, std::vector<CellPubKey>(keys.begin(), keys.begin()+2));
-    inner[3] = GetScriptForMultisig(2, std::vector<CellPubKey>(keys.begin(), keys.begin()+3));
+    inner[1] = GetScriptForMultisig(2, std::vector<MCPubKey>(keys.begin(), keys.begin()+2));
+    inner[2] = GetScriptForMultisig(1, std::vector<MCPubKey>(keys.begin(), keys.begin()+2));
+    inner[3] = GetScriptForMultisig(2, std::vector<MCPubKey>(keys.begin(), keys.begin()+3));
 
-    CellScript outer[4];
+    MCScript outer[4];
     for (int i = 0; i < 4; i++)
     {
-        outer[i] = GetScriptForDestination(CellScriptID(inner[i]));
+        outer[i] = GetScriptForDestination(MCScriptID(inner[i]));
         keystore.AddCScript(inner[i]);
     }
 
-    CellMutableTransaction txFrom;  // Funding transaction:
+    MCMutableTransaction txFrom;  // Funding transaction:
     std::string reason;
     txFrom.vout.resize(4);
     for (int i = 0; i < 4; i++)
@@ -188,7 +188,7 @@ BOOST_AUTO_TEST_CASE(set)
     }
     BOOST_CHECK(IsStandardTx(txFrom, reason));
 
-    CellMutableTransaction txTo[4]; // Spending transactions
+    MCMutableTransaction txTo[4]; // Spending transactions
     for (int i = 0; i < 4; i++)
     {
         txTo[i].vin.resize(1);
@@ -208,23 +208,23 @@ BOOST_AUTO_TEST_CASE(set)
 
 BOOST_AUTO_TEST_CASE(is)
 {
-    // Test CellScript::IsPayToScriptHash()
+    // Test MCScript::IsPayToScriptHash()
     uint160 dummy;
-    CellScript p2sh;
+    MCScript p2sh;
     p2sh << OP_HASH160 << ToByteVector(dummy) << OP_EQUAL;
     BOOST_CHECK(p2sh.IsPayToScriptHash());
 
     // Not considered pay-to-script-hash if using one of the OP_PUSHDATA opcodes:
     static const unsigned char direct[] =    { OP_HASH160, 20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(CellScript(direct, direct+sizeof(direct)).IsPayToScriptHash());
+    BOOST_CHECK(MCScript(direct, direct+sizeof(direct)).IsPayToScriptHash());
     static const unsigned char pushdata1[] = { OP_HASH160, OP_PUSHDATA1, 20, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(!CellScript(pushdata1, pushdata1+sizeof(pushdata1)).IsPayToScriptHash());
+    BOOST_CHECK(!MCScript(pushdata1, pushdata1+sizeof(pushdata1)).IsPayToScriptHash());
     static const unsigned char pushdata2[] = { OP_HASH160, OP_PUSHDATA2, 20,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(!CellScript(pushdata2, pushdata2+sizeof(pushdata2)).IsPayToScriptHash());
+    BOOST_CHECK(!MCScript(pushdata2, pushdata2+sizeof(pushdata2)).IsPayToScriptHash());
     static const unsigned char pushdata4[] = { OP_HASH160, OP_PUSHDATA4, 20,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, OP_EQUAL };
-    BOOST_CHECK(!CellScript(pushdata4, pushdata4+sizeof(pushdata4)).IsPayToScriptHash());
+    BOOST_CHECK(!MCScript(pushdata4, pushdata4+sizeof(pushdata4)).IsPayToScriptHash());
 
-    CellScript not_p2sh;
+    MCScript not_p2sh;
     BOOST_CHECK(!not_p2sh.IsPayToScriptHash());
 
     not_p2sh.clear(); not_p2sh << OP_HASH160 << ToByteVector(dummy) << ToByteVector(dummy) << OP_EQUAL;
@@ -240,13 +240,13 @@ BOOST_AUTO_TEST_CASE(is)
 BOOST_AUTO_TEST_CASE(switchover)
 {
     // Test switch over code
-    CellScript notValid;
+    MCScript notValid;
     ScriptError err;
     notValid << OP_11 << OP_12 << OP_EQUALVERIFY;
-    CellScript scriptSig;
+    MCScript scriptSig;
     scriptSig << Serialize(notValid);
 
-    CellScript fund = GetScriptForDestination(CellScriptID(notValid));
+    MCScript fund = GetScriptForDestination(MCScriptID(notValid));
 
 
     // Validation should succeed under old rules (hash is correct):
@@ -260,11 +260,11 @@ BOOST_AUTO_TEST_CASE(switchover)
 BOOST_AUTO_TEST_CASE(AreInputsStandard)
 {
     LOCK(cs_main);
-    CellCoinsView coinsDummy;
-    CellCoinsViewCache coins(&coinsDummy);
-    CellBasicKeyStore keystore;
-    CellKey key[6];
-    std::vector<CellPubKey> keys;
+    MCCoinsView coinsDummy;
+    MCCoinsViewCache coins(&coinsDummy);
+    MCBasicKeyStore keystore;
+    MCKey key[6];
+    std::vector<MCPubKey> keys;
     for (int i = 0; i < 6; i++)
     {
         key[i].MakeNewKey(true);
@@ -273,15 +273,15 @@ BOOST_AUTO_TEST_CASE(AreInputsStandard)
     for (int i = 0; i < 3; i++)
         keys.push_back(key[i].GetPubKey());
 
-    CellMutableTransaction txFrom;
+    MCMutableTransaction txFrom;
     txFrom.vout.resize(7);
 
     // First three are standard:
-    CellScript pay1 = GetScriptForDestination(key[0].GetPubKey().GetID());
+    MCScript pay1 = GetScriptForDestination(key[0].GetPubKey().GetID());
     keystore.AddCScript(pay1);
-    CellScript pay1of3 = GetScriptForMultisig(1, keys);
+    MCScript pay1of3 = GetScriptForMultisig(1, keys);
 
-    txFrom.vout[0].scriptPubKey = GetScriptForDestination(CellScriptID(pay1)); // P2SH (OP_CHECKSIG)
+    txFrom.vout[0].scriptPubKey = GetScriptForDestination(MCScriptID(pay1)); // P2SH (OP_CHECKSIG)
     txFrom.vout[0].nValue = 1000;
     txFrom.vout[1].scriptPubKey = pay1; // ordinary OP_CHECKSIG
     txFrom.vout[1].nValue = 2000;
@@ -290,37 +290,37 @@ BOOST_AUTO_TEST_CASE(AreInputsStandard)
 
     // vout[3] is complicated 1-of-3 AND 2-of-3
     // ... that is OK if wrapped in P2SH:
-    CellScript oneAndTwo;
+    MCScript oneAndTwo;
     oneAndTwo << OP_1 << ToByteVector(key[0].GetPubKey()) << ToByteVector(key[1].GetPubKey()) << ToByteVector(key[2].GetPubKey());
     oneAndTwo << OP_3 << OP_CHECKMULTISIGVERIFY;
     oneAndTwo << OP_2 << ToByteVector(key[3].GetPubKey()) << ToByteVector(key[4].GetPubKey()) << ToByteVector(key[5].GetPubKey());
     oneAndTwo << OP_3 << OP_CHECKMULTISIG;
     keystore.AddCScript(oneAndTwo);
-    txFrom.vout[3].scriptPubKey = GetScriptForDestination(CellScriptID(oneAndTwo));
+    txFrom.vout[3].scriptPubKey = GetScriptForDestination(MCScriptID(oneAndTwo));
     txFrom.vout[3].nValue = 4000;
 
     // vout[4] is max sigops:
-    CellScript fifteenSigops; fifteenSigops << OP_1;
+    MCScript fifteenSigops; fifteenSigops << OP_1;
     for (unsigned i = 0; i < MAX_P2SH_SIGOPS; i++)
         fifteenSigops << ToByteVector(key[i%3].GetPubKey());
     fifteenSigops << OP_15 << OP_CHECKMULTISIG;
     keystore.AddCScript(fifteenSigops);
-    txFrom.vout[4].scriptPubKey = GetScriptForDestination(CellScriptID(fifteenSigops));
+    txFrom.vout[4].scriptPubKey = GetScriptForDestination(MCScriptID(fifteenSigops));
     txFrom.vout[4].nValue = 5000;
 
     // vout[5/6] are non-standard because they exceed MAX_P2SH_SIGOPS
-    CellScript sixteenSigops; sixteenSigops << OP_16 << OP_CHECKMULTISIG;
+    MCScript sixteenSigops; sixteenSigops << OP_16 << OP_CHECKMULTISIG;
     keystore.AddCScript(sixteenSigops);
-    txFrom.vout[5].scriptPubKey = GetScriptForDestination(CellScriptID(fifteenSigops));
+    txFrom.vout[5].scriptPubKey = GetScriptForDestination(MCScriptID(fifteenSigops));
     txFrom.vout[5].nValue = 5000;
-    CellScript twentySigops; twentySigops << OP_CHECKMULTISIG;
+    MCScript twentySigops; twentySigops << OP_CHECKMULTISIG;
     keystore.AddCScript(twentySigops);
-    txFrom.vout[6].scriptPubKey = GetScriptForDestination(CellScriptID(twentySigops));
+    txFrom.vout[6].scriptPubKey = GetScriptForDestination(MCScriptID(twentySigops));
     txFrom.vout[6].nValue = 6000;
 
     AddCoins(coins, txFrom, 0);
 
-    CellMutableTransaction txTo;
+    MCMutableTransaction txTo;
     txTo.vout.resize(1);
     txTo.vout[0].scriptPubKey = GetScriptForDestination(key[1].GetPubKey().GetID());
 
@@ -343,7 +343,7 @@ BOOST_AUTO_TEST_CASE(AreInputsStandard)
     // 22 P2SH sigops for all inputs (1 for vin[0], 6 for vin[3], 15 for vin[4]
     BOOST_CHECK_EQUAL(GetP2SHSigOpCount(txTo, coins), 22U);
 
-    CellMutableTransaction txToNonStd1;
+    MCMutableTransaction txToNonStd1;
     txToNonStd1.vout.resize(1);
     txToNonStd1.vout[0].scriptPubKey = GetScriptForDestination(key[1].GetPubKey().GetID());
     txToNonStd1.vout[0].nValue = 1000;
@@ -355,7 +355,7 @@ BOOST_AUTO_TEST_CASE(AreInputsStandard)
     BOOST_CHECK(!::AreInputsStandard(txToNonStd1, coins));
     BOOST_CHECK_EQUAL(GetP2SHSigOpCount(txToNonStd1, coins), 16U);
 
-    CellMutableTransaction txToNonStd2;
+    MCMutableTransaction txToNonStd2;
     txToNonStd2.vout.resize(1);
     txToNonStd2.vout[0].scriptPubKey = GetScriptForDestination(key[1].GetPubKey().GetID());
     txToNonStd2.vout[0].nValue = 1000;

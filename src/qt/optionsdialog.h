@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_OPTIONSDIALOG_H
-#define CELLLINK_QT_OPTIONSDIALOG_H
+#ifndef MAGNACHAIN_QT_OPTIONSDIALOG_H
+#define MAGNACHAIN_QT_OPTIONSDIALOG_H
 
 #include <QDialog>
 #include <QValidator>
@@ -48,7 +48,7 @@ private Q_SLOTS:
     /* set OK button state (enabled / disabled) */
     void setOkButtonState(bool fState);
     void on_resetButton_clicked();
-    void on_openCellLinkConfButton_clicked();
+    void on_openMagnaChainConfButton_clicked();
     void on_okButton_clicked();
     void on_cancelButton_clicked();
     
@@ -69,4 +69,4 @@ private:
     QDataWidgetMapper *mapper;
 };
 
-#endif // CELLLINK_QT_OPTIONSDIALOG_H
+#endif // MAGNACHAIN_QT_OPTIONSDIALOG_H

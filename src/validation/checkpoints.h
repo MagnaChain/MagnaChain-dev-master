@@ -1,17 +1,17 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHECKPOINTS_H
-#define CELLLINK_CHECKPOINTS_H
+#ifndef MAGNACHAIN_CHECKPOINTS_H
+#define MAGNACHAIN_CHECKPOINTS_H
 
 #include "coding/uint256.h"
 
 #include <map>
 
-class CellBlockIndex;
-struct CellCheckpointData;
+class MCBlockIndex;
+struct MCCheckpointData;
 
 /**
  * Block-chain checkpoints are compiled-in sanity checks.
@@ -20,9 +20,9 @@ struct CellCheckpointData;
 namespace Checkpoints
 {
 
-//! Returns last CellBlockIndex* in mapBlockIndex that is a checkpoint
-CellBlockIndex* GetLastCheckpoint(const CellCheckpointData& data);
+//! Returns last MCBlockIndex* in mapBlockIndex that is a checkpoint
+MCBlockIndex* GetLastCheckpoint(const MCCheckpointData& data);
 
 } //namespace Checkpoints
 
-#endif // CELLLINK_CHECKPOINTS_H
+#endif // MAGNACHAIN_CHECKPOINTS_H

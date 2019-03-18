@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test descendant package tracking code."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.mininode import COIN
 
-MAX_ANCESTORS = 25
-MAX_DESCENDANTS = 25
+MAX_ANCESTORS = 50
+MAX_DESCENDANTS = 50
 
-class MempoolPackagesTest(BitcoinTestFramework):
+class MempoolPackagesTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
-        self.extra_args = [["-maxorphantx=1000"], ["-maxorphantx=1000", "-limitancestorcount=5"]]
+        self.extra_args = [["-maxorphantx=1000","-minrelaytxfee=0.00000001"], ["-maxorphantx=1000", "-limitancestorcount=5","-minrelaytxfee=0.00000001"]]
+        self.setup_clean_chain = True
 
     # Build a transaction that spends parent_txid:vout
     # Return amount sent
@@ -33,7 +34,7 @@ class MempoolPackagesTest(BitcoinTestFramework):
 
     def run_test(self):
         ''' Mine some blocks and have them mature. '''
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(10)
         utxo = self.nodes[0].listunspent(10)
         txid = utxo[0]['txid']
         vout = utxo[0]['vout']
@@ -100,7 +101,7 @@ class MempoolPackagesTest(BitcoinTestFramework):
         for x in chain:
             ancestor_fees += mempool[x]['fee']
             assert_equal(mempool[x]['ancestorfees'], ancestor_fees * COIN + 1000)
-        
+
         # Undo the prioritisetransaction for later tests
         self.nodes[0].prioritisetransaction(txid=chain[0], fee_delta=-1000)
 
@@ -167,6 +168,7 @@ class MempoolPackagesTest(BitcoinTestFramework):
 
         # Sending one more chained transaction will fail
         utxo = transaction_package.pop(0)
+        # ret = self.chain_transaction( self.nodes[0], utxo['txid'], utxo['vout'], utxo['amount'], fee, 10)
         assert_raises_rpc_error(-26, "too-long-mempool-chain", self.chain_transaction, self.nodes[0], utxo['txid'], utxo['vout'], utxo['amount'], fee, 10)
 
         # TODO: check that node1's mempool is as expected
@@ -237,6 +239,8 @@ class MempoolPackagesTest(BitcoinTestFramework):
         self.nodes[1].invalidateblock(self.nodes[1].getbestblockhash())
         self.nodes[0].invalidateblock(self.nodes[0].getbestblockhash())
         sync_blocks(self.nodes)
+
+        # TODO 补充合约代码
 
 if __name__ == '__main__':
     MempoolPackagesTest().main()

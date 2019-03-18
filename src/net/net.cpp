@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "net/net.h"
@@ -83,14 +83,14 @@ static const uint64_t RANDOMIZER_ID_LOCALHOSTNONCE = 0xd93e69e2bbfa5735ULL; // S
 bool fDiscover = true;
 bool fListen = true;
 bool fRelayTxes = true;
-CellCriticalSection cs_mapLocalHost;
-std::map<CellNetAddr, LocalServiceInfo> mapLocalHost;
+MCCriticalSection cs_mapLocalHost;
+std::map<MCNetAddr, LocalServiceInfo> mapLocalHost;
 static bool vfLimited[NET_MAX] = {};
 std::string strSubVersion;
 
 limitedmap<uint256, int64_t> mapAlreadyAskedFor(MAX_INV_SZ);
 
-void CellConnman::AddOneShot(const std::string& strDest)
+void MCConnman::AddOneShot(const std::string& strDest)
 {
     LOCK(cs_vOneShots);
     vOneShots.push_back(strDest);
@@ -102,7 +102,7 @@ unsigned short GetListenPort()
 }
 
 // find 'best' local address for a particular peer
-bool GetLocal(CellService& addr, const CellNetAddr *paddrPeer)
+bool GetLocal(MCService& addr, const MCNetAddr *paddrPeer)
 {
     if (!fListen)
         return false;
@@ -111,13 +111,13 @@ bool GetLocal(CellService& addr, const CellNetAddr *paddrPeer)
     int nBestReachability = -1;
     {
         LOCK(cs_mapLocalHost);
-        for (std::map<CellNetAddr, LocalServiceInfo>::iterator it = mapLocalHost.begin(); it != mapLocalHost.end(); it++)
+        for (std::map<MCNetAddr, LocalServiceInfo>::iterator it = mapLocalHost.begin(); it != mapLocalHost.end(); it++)
         {
             int nScore = (*it).second.nScore;
             int nReachability = (*it).first.GetReachabilityFrom(paddrPeer);
             if (nReachability > nBestReachability || (nReachability == nBestReachability && nScore > nBestScore))
             {
-                addr = CellService((*it).first, (*it).second.nPort);
+                addr = MCService((*it).first, (*it).second.nPort);
                 nBestReachability = nReachability;
                 nBestScore = nScore;
             }
@@ -127,43 +127,43 @@ bool GetLocal(CellService& addr, const CellNetAddr *paddrPeer)
 }
 
 //! Convert the pnSeeds6 array into usable address objects.
-static std::vector<CellAddress> convertSeed6(const std::vector<SeedSpec6> &vSeedsIn)
+static std::vector<MCAddress> convertSeed6(const std::vector<SeedSpec6> &vSeedsIn)
 {
     // It'll only connect to one or two seed nodes because once it connects,
     // it'll get a pile of addresses with newer timestamps.
     // Seed nodes are given a random 'last seen time' of between one and two
     // weeks ago.
     const int64_t nOneWeek = 7*24*60*60;
-    std::vector<CellAddress> vSeedsOut;
+    std::vector<MCAddress> vSeedsOut;
     vSeedsOut.reserve(vSeedsIn.size());
     for (std::vector<SeedSpec6>::const_iterator i(vSeedsIn.begin()); i != vSeedsIn.end(); ++i)
     {
         struct in6_addr ip;
         memcpy(&ip, i->addr, sizeof(ip));
-        CellAddress addr(CellService(ip, i->port), NODE_NETWORK);
+        MCAddress addr(MCService(ip, i->port), NODE_NETWORK);
         addr.nTime = GetTime() - GetRand(nOneWeek) - nOneWeek;
         vSeedsOut.push_back(addr);
     }
     return vSeedsOut;
 }
 
-// get best local address for a particular peer as a CellAddress
+// get best local address for a particular peer as a MCAddress
 // Otherwise, return the unroutable 0.0.0.0 but filled in with
 // the normal parameters, since the IP may be changed to a useful
 // one by discovery.
-CellAddress GetLocalAddress(const CellNetAddr *paddrPeer, ServiceFlags nLocalServices)
+MCAddress GetLocalAddress(const MCNetAddr *paddrPeer, ServiceFlags nLocalServices)
 {
-    CellAddress ret(CellService(CellNetAddr(),GetListenPort()), nLocalServices);
-    CellService addr;
+    MCAddress ret(MCService(MCNetAddr(),GetListenPort()), nLocalServices);
+    MCService addr;
     if (GetLocal(addr, paddrPeer))
     {
-        ret = CellAddress(addr, nLocalServices);
+        ret = MCAddress(addr, nLocalServices);
     }
     ret.nTime = GetAdjustedTime();
     return ret;
 }
 
-int GetnScore(const CellService& addr)
+int GetnScore(const MCService& addr)
 {
     LOCK(cs_mapLocalHost);
     if (mapLocalHost.count(addr) == LOCAL_NONE)
@@ -172,19 +172,19 @@ int GetnScore(const CellService& addr)
 }
 
 // Is our peer's addrLocal potentially useful as an external IP source?
-bool IsPeerAddrLocalGood(CellNode *pnode)
+bool IsPeerAddrLocalGood(MCNode *pnode)
 {
-    CellService addrLocal = pnode->GetAddrLocal();
+    MCService addrLocal = pnode->GetAddrLocal();
     return fDiscover && pnode->addr.IsRoutable() && addrLocal.IsRoutable() &&
            !IsLimited(addrLocal.GetNetwork());
 }
 
 // pushes our own address to a peer
-void AdvertiseLocal(CellNode *pnode)
+void AdvertiseLocal(MCNode *pnode)
 {
     if (fListen && pnode->fSuccessfullyConnected)
     {
-        CellAddress addrLocal = GetLocalAddress(&pnode->addr, pnode->GetLocalServices());
+        MCAddress addrLocal = GetLocalAddress(&pnode->addr, pnode->GetLocalServices());
         // If discovery is enabled, sometimes give our peer the address it
         // tells us that it sees us as in case it has a better idea of our
         // address than we do.
@@ -203,7 +203,7 @@ void AdvertiseLocal(CellNode *pnode)
 }
 
 // learn a new local address
-bool AddLocal(const CellService& addr, int nScore)
+bool AddLocal(const MCService& addr, int nScore)
 {
     if (!addr.IsRoutable())
         return false;
@@ -229,12 +229,12 @@ bool AddLocal(const CellService& addr, int nScore)
     return true;
 }
 
-bool AddLocal(const CellNetAddr &addr, int nScore)
+bool AddLocal(const MCNetAddr &addr, int nScore)
 {
-    return AddLocal(CellService(addr, GetListenPort()), nScore);
+    return AddLocal(MCService(addr, GetListenPort()), nScore);
 }
 
-bool RemoveLocal(const CellService& addr)
+bool RemoveLocal(const MCService& addr)
 {
     LOCK(cs_mapLocalHost);
     LogPrintf("RemoveLocal(%s)\n", addr.ToString());
@@ -257,13 +257,13 @@ bool IsLimited(enum Network net)
     return vfLimited[net];
 }
 
-bool IsLimited(const CellNetAddr &addr)
+bool IsLimited(const MCNetAddr &addr)
 {
     return IsLimited(addr.GetNetwork());
 }
 
 /** vote for a local address */
-bool SeenLocal(const CellService& addr)
+bool SeenLocal(const MCService& addr)
 {
     {
         LOCK(cs_mapLocalHost);
@@ -276,7 +276,7 @@ bool SeenLocal(const CellService& addr)
 
 
 /** check whether a given address is potentially local */
-bool IsLocal(const CellService& addr)
+bool IsLocal(const MCService& addr)
 {
     LOCK(cs_mapLocalHost);
     return mapLocalHost.count(addr) > 0;
@@ -290,35 +290,35 @@ bool IsReachable(enum Network net)
 }
 
 /** check whether a given address is in a network we can probably connect to */
-bool IsReachable(const CellNetAddr& addr)
+bool IsReachable(const MCNetAddr& addr)
 {
     enum Network net = addr.GetNetwork();
     return IsReachable(net);
 }
 
 
-CellNode* CellConnman::FindNode(const CellNetAddr& ip)
+MCNode* MCConnman::FindNode(const MCNetAddr& ip)
 {
     LOCK(cs_vNodes);
-    for (CellNode* pnode : vNodes)
-        if ((CellNetAddr)pnode->addr == ip)
+    for (MCNode* pnode : vNodes)
+        if ((MCNetAddr)pnode->addr == ip)
             return (pnode);
     return nullptr;
 }
 
-CellNode* CellConnman::FindNode(const CSubNet& subNet)
+MCNode* MCConnman::FindNode(const CSubNet& subNet)
 {
     LOCK(cs_vNodes);
-    for (CellNode* pnode : vNodes)
-    if (subNet.Match((CellNetAddr)pnode->addr))
+    for (MCNode* pnode : vNodes)
+    if (subNet.Match((MCNetAddr)pnode->addr))
         return (pnode);
     return nullptr;
 }
 
-CellNode* CellConnman::FindNode(const std::string& addrName)
+MCNode* MCConnman::FindNode(const std::string& addrName)
 {
     LOCK(cs_vNodes);
-    for (CellNode* pnode : vNodes) {
+    for (MCNode* pnode : vNodes) {
         if (pnode->GetAddrName() == addrName) {
             return (pnode);
         }
@@ -326,29 +326,29 @@ CellNode* CellConnman::FindNode(const std::string& addrName)
     return nullptr;
 }
 
-CellNode* CellConnman::FindNode(const CellService& addr)
+MCNode* MCConnman::FindNode(const MCService& addr)
 {
     LOCK(cs_vNodes);
-    for (CellNode* pnode : vNodes)
-        if ((CellService)pnode->addr == addr)
+    for (MCNode* pnode : vNodes)
+        if ((MCService)pnode->addr == addr)
             return (pnode);
     return nullptr;
 }
 
-bool CellConnman::CheckIncomingNonce(uint64_t nonce)
+bool MCConnman::CheckIncomingNonce(uint64_t nonce)
 {
     LOCK(cs_vNodes);
-    for (CellNode* pnode : vNodes) {
+    for (MCNode* pnode : vNodes) {
         if (!pnode->fSuccessfullyConnected && !pnode->fInbound && pnode->GetLocalNonce() == nonce)
             return false;
     }
     return true;
 }
 
-/** Get the bind address for a socket as CellAddress */
-static CellAddress GetBindAddress(SOCKET sock)
+/** Get the bind address for a socket as MCAddress */
+static MCAddress GetBindAddress(SOCKET sock)
 {
-    CellAddress addr_bind;
+    MCAddress addr_bind;
     struct sockaddr_storage sockaddr_bind;
     socklen_t sockaddr_bind_len = sizeof(sockaddr_bind);
     if (sock != INVALID_SOCKET) {
@@ -361,14 +361,14 @@ static CellAddress GetBindAddress(SOCKET sock)
     return addr_bind;
 }
 
-CellNode* CellConnman::ConnectNode(CellAddress addrConnect, const char *pszDest, bool fCountFailure)
+MCNode* MCConnman::ConnectNode(MCAddress addrConnect, const char *pszDest, bool fCountFailure)
 {
     if (pszDest == nullptr) {
         if (IsLocal(addrConnect))
             return nullptr;
 
         // Look for an existing connection
-        CellNode* pnode = FindNode((CellService)addrConnect);
+        MCNode* pnode = FindNode((MCService)addrConnect);
         if (pnode)
         {
             LogPrintf("Failed to open new connection, already connected\n");
@@ -395,11 +395,11 @@ CellNode* CellConnman::ConnectNode(CellAddress addrConnect, const char *pszDest,
 
         if (pszDest && addrConnect.IsValid()) {
             // It is possible that we already have a connection to the IP/port pszDest resolved to.
-            // In that case, drop the connection that was just created, and return the existing CellNode instead.
-            // Also store the name we used to connect in that CellNode, so that future FindNode() calls to that
+            // In that case, drop the connection that was just created, and return the existing MCNode instead.
+            // Also store the name we used to connect in that MCNode, so that future FindNode() calls to that
             // name catch this early.
             LOCK(cs_vNodes);
-            CellNode* pnode = FindNode((CellService)addrConnect);
+            MCNode* pnode = FindNode((MCService)addrConnect);
             if (pnode)
             {
                 pnode->MaybeSetAddrName(std::string(pszDest));
@@ -414,8 +414,8 @@ CellNode* CellConnman::ConnectNode(CellAddress addrConnect, const char *pszDest,
         // Add node
         NodeId id = GetNewNodeId();
         uint64_t nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(id).Finalize();
-        CellAddress addr_bind = GetBindAddress(hSocket);
-        CellNode* pnode = new CellNode(id, nLocalServices, GetBestHeight(), hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, addr_bind, pszDest ? pszDest : "", false);
+        MCAddress addr_bind = GetBindAddress(hSocket);
+        MCNode* pnode = new MCNode(id, nLocalServices, GetBestHeight(), hSocket, addrConnect, CalculateKeyedNetGroup(addrConnect), nonce, addr_bind, pszDest ? pszDest : "", false);
         pnode->nServicesExpected = ServiceFlags(addrConnect.nServices & nRelevantServices);
         pnode->AddRef();
 
@@ -429,7 +429,7 @@ CellNode* CellConnman::ConnectNode(CellAddress addrConnect, const char *pszDest,
     return nullptr;
 }
 
-void CellConnman::DumpBanlist()
+void MCConnman::DumpBanlist()
 {
     SweepBanned(); // clean unused entries (if bantime has expired)
 
@@ -438,7 +438,7 @@ void CellConnman::DumpBanlist()
 
     int64_t nStart = GetTimeMillis();
 
-    CellBanDB bandb;
+    MCBanDB bandb;
     banmap_t banmap;
     GetBanned(banmap);
     if (bandb.Write(banmap)) {
@@ -449,7 +449,7 @@ void CellConnman::DumpBanlist()
         banmap.size(), GetTimeMillis() - nStart);
 }
 
-void CellNode::CloseSocketDisconnect()
+void MCNode::CloseSocketDisconnect()
 {
     fDisconnect = true;
     LOCK(cs_hSocket);
@@ -460,7 +460,7 @@ void CellNode::CloseSocketDisconnect()
     }
 }
 
-void CellConnman::ClearBanned()
+void MCConnman::ClearBanned()
 {
     {
         LOCK(cs_setBanned);
@@ -472,13 +472,13 @@ void CellConnman::ClearBanned()
         clientInterface->BannedListChanged();
 }
 
-bool CellConnman::IsBanned(CellNetAddr ip)
+bool MCConnman::IsBanned(MCNetAddr ip)
 {
     LOCK(cs_setBanned);
     for (banmap_t::iterator it = setBanned.begin(); it != setBanned.end(); it++)
     {
         CSubNet subNet = (*it).first;
-        CellBanEntry banEntry = (*it).second;
+        MCBanEntry banEntry = (*it).second;
 
         if (subNet.Match(ip) && GetTime() < banEntry.nBanUntil) {
             return true;
@@ -487,13 +487,13 @@ bool CellConnman::IsBanned(CellNetAddr ip)
     return false;
 }
 
-bool CellConnman::IsBanned(CSubNet subnet)
+bool MCConnman::IsBanned(CSubNet subnet)
 {
     LOCK(cs_setBanned);
     banmap_t::iterator i = setBanned.find(subnet);
     if (i != setBanned.end())
     {
-        CellBanEntry banEntry = (*i).second;
+        MCBanEntry banEntry = (*i).second;
         if (GetTime() < banEntry.nBanUntil) {
             return true;
         }
@@ -501,13 +501,13 @@ bool CellConnman::IsBanned(CSubNet subnet)
     return false;
 }
 
-void CellConnman::Ban(const CellNetAddr& addr, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
+void MCConnman::Ban(const MCNetAddr& addr, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
     CSubNet subNet(addr);
     Ban(subNet, banReason, bantimeoffset, sinceUnixEpoch);
 }
 
-void CellConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
-    CellBanEntry banEntry(GetTime());
+void MCConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t bantimeoffset, bool sinceUnixEpoch) {
+    MCBanEntry banEntry(GetTime());
     banEntry.banReason = banReason;
     if (bantimeoffset <= 0)
     {
@@ -529,8 +529,8 @@ void CellConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t
         clientInterface->BannedListChanged();
     {
         LOCK(cs_vNodes);
-        for (CellNode* pnode : vNodes) {
-            if (subNet.Match((CellNetAddr)pnode->addr))
+        for (MCNode* pnode : vNodes) {
+            if (subNet.Match((MCNetAddr)pnode->addr))
                 pnode->fDisconnect = true;
         }
     }
@@ -538,12 +538,12 @@ void CellConnman::Ban(const CSubNet& subNet, const BanReason &banReason, int64_t
         DumpBanlist(); //store banlist to disk immediately if user requested ban
 }
 
-bool CellConnman::Unban(const CellNetAddr &addr) {
+bool MCConnman::Unban(const MCNetAddr &addr) {
     CSubNet subNet(addr);
     return Unban(subNet);
 }
 
-bool CellConnman::Unban(const CSubNet &subNet) {
+bool MCConnman::Unban(const CSubNet &subNet) {
     {
         LOCK(cs_setBanned);
         if (!setBanned.erase(subNet))
@@ -556,7 +556,7 @@ bool CellConnman::Unban(const CSubNet &subNet) {
     return true;
 }
 
-void CellConnman::GetBanned(banmap_t &banMap)
+void MCConnman::GetBanned(banmap_t &banMap)
 {
     LOCK(cs_setBanned);
     // Sweep the banlist so expired bans are not returned
@@ -564,14 +564,14 @@ void CellConnman::GetBanned(banmap_t &banMap)
     banMap = setBanned; //create a thread safe copy
 }
 
-void CellConnman::SetBanned(const banmap_t &banMap)
+void MCConnman::SetBanned(const banmap_t &banMap)
 {
     LOCK(cs_setBanned);
     setBanned = banMap;
     setBannedIsDirty = true;
 }
 
-void CellConnman::SweepBanned()
+void MCConnman::SweepBanned()
 {
     int64_t now = GetTime();
 
@@ -580,7 +580,7 @@ void CellConnman::SweepBanned()
     while(it != setBanned.end())
     {
         CSubNet subNet = (*it).first;
-        CellBanEntry banEntry = (*it).second;
+        MCBanEntry banEntry = (*it).second;
         if(now > banEntry.nBanUntil)
         {
             setBanned.erase(it++);
@@ -592,20 +592,20 @@ void CellConnman::SweepBanned()
     }
 }
 
-bool CellConnman::BannedSetIsDirty()
+bool MCConnman::BannedSetIsDirty()
 {
     LOCK(cs_setBanned);
     return setBannedIsDirty;
 }
 
-void CellConnman::SetBannedSetDirty(bool dirty)
+void MCConnman::SetBannedSetDirty(bool dirty)
 {
     LOCK(cs_setBanned); //reuse setBanned lock for the isDirty flag
     setBannedIsDirty = dirty;
 }
 
 
-bool CellConnman::IsWhitelistedRange(const CellNetAddr &addr) {
+bool MCConnman::IsWhitelistedRange(const MCNetAddr &addr) {
     for (const CSubNet& subnet : vWhitelistedRange) {
         if (subnet.Match(addr))
             return true;
@@ -613,24 +613,24 @@ bool CellConnman::IsWhitelistedRange(const CellNetAddr &addr) {
     return false;
 }
 
-std::string CellNode::GetAddrName() const {
+std::string MCNode::GetAddrName() const {
     LOCK(cs_addrName);
     return addrName;
 }
 
-void CellNode::MaybeSetAddrName(const std::string& addrNameIn) {
+void MCNode::MaybeSetAddrName(const std::string& addrNameIn) {
     LOCK(cs_addrName);
     if (addrName.empty()) {
         addrName = addrNameIn;
     }
 }
 
-CellService CellNode::GetAddrLocal() const {
+MCService MCNode::GetAddrLocal() const {
     LOCK(cs_addrLocal);
     return addrLocal;
 }
 
-void CellNode::SetAddrLocal(const CellService& addrLocalIn) {
+void MCNode::SetAddrLocal(const MCService& addrLocalIn) {
     LOCK(cs_addrLocal);
     if (addrLocal.IsValid()) {
         error("Addr local already set for node: %i. Refusing to change from %s to %s", id, addrLocal.ToString(), addrLocalIn.ToString());
@@ -641,7 +641,7 @@ void CellNode::SetAddrLocal(const CellService& addrLocalIn) {
 
 #undef X
 #define X(name) stats.name = name
-void CellNode::copyStats(CellNodeStats &stats)
+void MCNode::copyStats(MCNodeStats &stats)
 {
     stats.nodeid = this->GetId();
     X(nServices);
@@ -687,18 +687,18 @@ void CellNode::copyStats(CellNodeStats &stats)
         nPingUsecWait = GetTimeMicros() - nPingUsecStart;
     }
 
-    // Raw ping time is in microseconds, but show it to user as whole seconds (CellLink users should be well used to small numbers with many decimal places by now :)
+    // Raw ping time is in microseconds, but show it to user as whole seconds (MagnaChain users should be well used to small numbers with many decimal places by now :)
     stats.dPingTime = (((double)nPingUsecTime) / 1e6);
     stats.dMinPing  = (((double)nMinPingUsecTime) / 1e6);
     stats.dPingWait = (((double)nPingUsecWait) / 1e6);
 
     // Leave string empty if addrLocal invalid (not filled in yet)
-    CellService addrLocalUnlocked = GetAddrLocal();
+    MCService addrLocalUnlocked = GetAddrLocal();
     stats.addrLocal = addrLocalUnlocked.IsValid() ? addrLocalUnlocked.ToString() : "";
 }
 #undef X
 
-bool CellNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& complete)
+bool MCNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& complete)
 {
     complete = false;
     int64_t nTimeMicros = GetTimeMicros();
@@ -740,7 +740,7 @@ bool CellNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& compl
             if (i == mapRecvBytesPerMsgCmd.end())
                 i = mapRecvBytesPerMsgCmd.find(NET_MESSAGE_COMMAND_OTHER);
             assert(i != mapRecvBytesPerMsgCmd.end());
-            i->second += msg.hdr.nMessageSize + CellMessageHeader::HEADER_SIZE;
+            i->second += msg.hdr.nMessageSize + MCMessageHeader::HEADER_SIZE;
 
             msg.nTime = nTimeMicros;
             complete = true;
@@ -750,7 +750,7 @@ bool CellNode::ReceiveMsgBytes(const char *pch, unsigned int nBytes, bool& compl
     return true;
 }
 
-void CellNode::SetSendVersion(int nVersionIn)
+void MCNode::SetSendVersion(int nVersionIn)
 {
     // Send version may only be changed in the version message, and
     // only one version message is allowed per session. We can therefore
@@ -764,7 +764,7 @@ void CellNode::SetSendVersion(int nVersionIn)
     }
 }
 
-int CellNode::GetSendVersion() const
+int MCNode::GetSendVersion() const
 {
     // The send version should always be explicitly set to
     // INIT_PROTO_VERSION rather than using this value until SetSendVersion
@@ -790,7 +790,7 @@ int CNetMessage::readHeader(const char *pch, unsigned int nBytes)
     if (nHdrPos < 24)
         return nCopy;
 
-    // deserialize to CellMessageHeader
+    // deserialize to MCMessageHeader
     try {
         hdrbuf >> hdr;
     }
@@ -842,7 +842,7 @@ const uint256& CNetMessage::GetMessageHash() const
 
 
 // requires LOCK(cs_vSend)
-size_t CellConnman::SocketSendData(CellNode *pnode) const
+size_t MCConnman::SocketSendData(MCNode *pnode) const
 {
     auto it = pnode->vSendMsg.begin();
     size_t nSentSize = 0;
@@ -904,7 +904,7 @@ struct NodeEvictionCandidate
     bool fRelevantServices;
     bool fRelayTxes;
     bool fBloomFilter;
-    CellAddress addr;
+    MCAddress addr;
     uint64_t nKeyedNetGroup;
 };
 
@@ -947,13 +947,13 @@ static bool CompareNodeTXTime(const NodeEvictionCandidate &a, const NodeEviction
  *   to forge.  In order to partition a node the attacker must be
  *   simultaneously better at all of them than honest peers.
  */
-bool CellConnman::AttemptToEvictConnection()
+bool MCConnman::AttemptToEvictConnection()
 {
     std::vector<NodeEvictionCandidate> vEvictionCandidates;
     {
         LOCK(cs_vNodes);
 
-        for (CellNode *node : vNodes) {
+        for (MCNode *node : vNodes) {
             if (node->fWhitelisted)
                 continue;
             if (!node->fInbound)
@@ -1031,7 +1031,7 @@ bool CellConnman::AttemptToEvictConnection()
     // Disconnect from the network group with the most connections
     NodeId evicted = vEvictionCandidates.front().id;
     LOCK(cs_vNodes);
-    for(std::vector<CellNode*>::const_iterator it(vNodes.begin()); it != vNodes.end(); ++it) {
+    for(std::vector<MCNode*>::const_iterator it(vNodes.begin()); it != vNodes.end(); ++it) {
         if ((*it)->GetId() == evicted) {
             (*it)->fDisconnect = true;
             return true;
@@ -1040,11 +1040,11 @@ bool CellConnman::AttemptToEvictConnection()
     return false;
 }
 
-void CellConnman::AcceptConnection(const ListenSocket& hListenSocket) {
+void MCConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     struct sockaddr_storage sockaddr;
     socklen_t len = sizeof(sockaddr);
     SOCKET hSocket = accept(hListenSocket.socket, (struct sockaddr*)&sockaddr, &len);
-    CellAddress addr;
+    MCAddress addr;
     int nInbound = 0;
     int nMaxInbound = nMaxConnections - (nMaxOutbound + nMaxFeeler);
 
@@ -1057,7 +1057,7 @@ void CellConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     bool whitelisted = hListenSocket.whitelisted || IsWhitelistedRange(addr);
     {
         LOCK(cs_vNodes);
-        for (CellNode* pnode : vNodes)
+        for (MCNode* pnode : vNodes)
             if (pnode->fInbound)
                 nInbound++;
     }
@@ -1106,9 +1106,9 @@ void CellConnman::AcceptConnection(const ListenSocket& hListenSocket) {
 
     NodeId id = GetNewNodeId();
     uint64_t nonce = GetDeterministicRandomizer(RANDOMIZER_ID_LOCALHOSTNONCE).Write(id).Finalize();
-    CellAddress addr_bind = GetBindAddress(hSocket);
+    MCAddress addr_bind = GetBindAddress(hSocket);
 
-    CellNode* pnode = new CellNode(id, nLocalServices, GetBestHeight(), hSocket, addr, CalculateKeyedNetGroup(addr), nonce, addr_bind, "", true);
+    MCNode* pnode = new MCNode(id, nLocalServices, GetBestHeight(), hSocket, addr, CalculateKeyedNetGroup(addr), nonce, addr_bind, "", true);
     pnode->AddRef();
     pnode->fWhitelisted = whitelisted;
     m_msgproc->InitializeNode(pnode);
@@ -1121,7 +1121,7 @@ void CellConnman::AcceptConnection(const ListenSocket& hListenSocket) {
     }
 }
 
-void CellConnman::ThreadSocketHandler()
+void MCConnman::ThreadSocketHandler()
 {
     unsigned int nPrevNodeCount = 0;
     while (!interruptNet)
@@ -1132,8 +1132,8 @@ void CellConnman::ThreadSocketHandler()
         {
             LOCK(cs_vNodes);
             // Disconnect unused nodes
-            std::vector<CellNode*> vNodesCopy = vNodes;
-            for (CellNode* pnode : vNodesCopy)
+            std::vector<MCNode*> vNodesCopy = vNodes;
+            for (MCNode* pnode : vNodesCopy)
             {
                 if (pnode->fDisconnect)
                 {
@@ -1154,8 +1154,8 @@ void CellConnman::ThreadSocketHandler()
         }
         {
             // Delete disconnected nodes
-            std::list<CellNode*> vNodesDisconnectedCopy = vNodesDisconnected;
-            for (CellNode* pnode : vNodesDisconnectedCopy)
+            std::list<MCNode*> vNodesDisconnectedCopy = vNodesDisconnected;
+            for (MCNode* pnode : vNodesDisconnectedCopy)
             {
                 // wait until threads are done using it
                 if (pnode->GetRefCount() <= 0) {
@@ -1211,7 +1211,7 @@ void CellConnman::ThreadSocketHandler()
 
         {
             LOCK(cs_vNodes);
-            for (CellNode* pnode : vNodes)
+            for (MCNode* pnode : vNodes)
             {
                 // Implement the following logic:
                 // * If there is data to send, select() for sending data. As this only
@@ -1283,14 +1283,14 @@ void CellConnman::ThreadSocketHandler()
         //
         // Service each socket
         //
-        std::vector<CellNode*> vNodesCopy;
+        std::vector<MCNode*> vNodesCopy;
         {
             LOCK(cs_vNodes);
             vNodesCopy = vNodes;
-            for (CellNode* pnode : vNodesCopy)
+            for (MCNode* pnode : vNodesCopy)
                 pnode->AddRef();
         }
-        for (CellNode* pnode : vNodesCopy)
+        for (MCNode* pnode : vNodesCopy)
         {
             if (interruptNet)
                 return;
@@ -1332,7 +1332,7 @@ void CellConnman::ThreadSocketHandler()
                         for (; it != pnode->vRecvMsg.end(); ++it) {
                             if (!it->complete())
                                 break;
-                            nSizeAdded += it->vRecv.size() + CellMessageHeader::HEADER_SIZE;
+                            nSizeAdded += it->vRecv.size() + MCMessageHeader::HEADER_SIZE;
                         }
                         {
                             LOCK(pnode->cs_vProcessMsg);
@@ -1411,13 +1411,13 @@ void CellConnman::ThreadSocketHandler()
         }
         {
             LOCK(cs_vNodes);
-            for (CellNode* pnode : vNodesCopy)
+            for (MCNode* pnode : vNodesCopy)
                 pnode->Release();
         }
     }
 }
 
-void CellConnman::WakeMessageHandler()
+void MCConnman::WakeMessageHandler()
 {
     {
         std::lock_guard<std::mutex> lock(mutexMsgProc);
@@ -1469,7 +1469,7 @@ void ThreadMapPort()
             {
                 if(externalIPAddress[0])
                 {
-                    CellNetAddr resolved;
+                    MCNetAddr resolved;
                     if(LookupHost(externalIPAddress, resolved, false)) {
                         LogPrintf("UPnP: ExternalIPAddress = %s\n", resolved.ToString().c_str());
                         AddLocal(resolved, LOCAL_UPNP);
@@ -1480,7 +1480,7 @@ void ThreadMapPort()
             }
         }
 
-        std::string strDesc = "Celllink " + FormatFullVersion();
+        std::string strDesc = "MagnaChain " + FormatFullVersion();
 
         try {
             while (true) {
@@ -1552,7 +1552,7 @@ void MapPort(bool)
 
 
 
-static std::string GetDNSHost(const CellDNSSeedData& data, ServiceFlags* requiredServiceBits)
+static std::string GetDNSHost(const MCDNSSeedData& data, ServiceFlags* requiredServiceBits)
 {
     //use default host for non-filter-capable seeds or if we use the default service bits (NODE_NETWORK)
     if (!data.supportsServiceBitsFiltering || *requiredServiceBits == NODE_NETWORK) {
@@ -1565,7 +1565,7 @@ static std::string GetDNSHost(const CellDNSSeedData& data, ServiceFlags* require
 }
 
 
-void CellConnman::ThreadDNSAddressSeed()
+void MCConnman::ThreadDNSAddressSeed()
 {
     // goal: only query DNS seeds if address need is acute
     // Avoiding DNS seeds when we don't need them improves user privacy by
@@ -1587,32 +1587,32 @@ void CellConnman::ThreadDNSAddressSeed()
         }
     }
 
-    const std::vector<CellDNSSeedData> &vSeeds = Params().DNSSeeds();
+    const std::vector<MCDNSSeedData> &vSeeds = Params().DNSSeeds();
     int found = 0;
 
     LogPrintf("Loading addresses from DNS seeds (could take a while)\n");
 
-    for (const CellDNSSeedData &seed : vSeeds) {
+    for (const MCDNSSeedData &seed : vSeeds) {
         if (interruptNet) {
             return;
         }
         if (HaveNameProxy()) {
             AddOneShot(seed.host);
         } else {
-            std::vector<CellNetAddr> vIPs;
-            std::vector<CellAddress> vAdd;
+            std::vector<MCNetAddr> vIPs;
+            std::vector<MCAddress> vAdd;
             ServiceFlags requiredServiceBits = nRelevantServices;
             std::string host = GetDNSHost(seed, &requiredServiceBits);
-            CellNetAddr resolveSource;
+            MCNetAddr resolveSource;
             if (!resolveSource.SetInternal(host)) {
                 continue;
             }
             if (LookupHost(host.c_str(), vIPs, 0, true))
             {
-                for (const CellNetAddr& ip : vIPs)
+                for (const MCNetAddr& ip : vIPs)
                 {
                     int nOneDay = 24*3600;
-                    CellAddress addr = CellAddress(CellService(ip, Params().GetDefaultPort()), requiredServiceBits);
+                    MCAddress addr = MCAddress(MCService(ip, Params().GetDefaultPort()), requiredServiceBits);
                     addr.nTime = GetTime() - 3*nOneDay - GetRand(4*nOneDay); // use a random age between 3 and 7 days old
                     vAdd.push_back(addr);
                     found++;
@@ -1636,24 +1636,24 @@ void CellConnman::ThreadDNSAddressSeed()
 
 
 
-void CellConnman::DumpAddresses()
+void MCConnman::DumpAddresses()
 {
     int64_t nStart = GetTimeMillis();
 
-    CellAddrDB adb;
+    MCAddrDB adb;
     adb.Write(addrman);
 
     LogPrint(BCLog::NET, "Flushed %d addresses to peers.dat  %dms\n",
            addrman.size(), GetTimeMillis() - nStart);
 }
 
-void CellConnman::DumpData()
+void MCConnman::DumpData()
 {
     DumpAddresses();
     DumpBanlist();
 }
 
-void CellConnman::ProcessOneShot()
+void MCConnman::ProcessOneShot()
 {
     std::string strDest;
     {
@@ -1663,7 +1663,7 @@ void CellConnman::ProcessOneShot()
         strDest = vOneShots.front();
         vOneShots.pop_front();
     }
-    CellAddress addr;
+    MCAddress addr;
     CSemaphoreGrant grant(*semOutbound, true);
     if (grant) {
         if (!OpenNetworkConnection(addr, false, &grant, strDest.c_str(), true))
@@ -1671,12 +1671,12 @@ void CellConnman::ProcessOneShot()
     }
 }
 
-bool CellConnman::GetTryNewOutboundPeer()
+bool MCConnman::GetTryNewOutboundPeer()
 {
     return m_try_another_outbound_peer;
 }
 
-void CellConnman::SetTryNewOutboundPeer(bool flag)
+void MCConnman::SetTryNewOutboundPeer(bool flag)
 {
     m_try_another_outbound_peer = flag;
     LogPrint(BCLog::NET, "net: setting try another outbound peer=%s\n", flag ? "true" : "false");
@@ -1688,12 +1688,12 @@ void CellConnman::SetTryNewOutboundPeer(bool flag)
 // Also exclude peers that haven't finished initial connection handshake yet
 // (so that we don't decide we're over our desired connection limit, and then
 // evict some peer that has finished the handshake)
-int CellConnman::GetExtraOutboundCount()
+int MCConnman::GetExtraOutboundCount()
 {
     int nOutbound = 0;
     {
         LOCK(cs_vNodes);
-        for (CellNode* pnode : vNodes) {
+        for (MCNode* pnode : vNodes) {
             if (!pnode->fInbound && !pnode->m_manual_connection && !pnode->fFeeler && !pnode->fDisconnect && !pnode->fOneShot && pnode->fSuccessfullyConnected) {
                 ++nOutbound;
             }
@@ -1702,7 +1702,7 @@ int CellConnman::GetExtraOutboundCount()
     return std::max(nOutbound - nMaxOutbound, 0);
 }
 
-void CellConnman::ThreadOpenConnections()
+void MCConnman::ThreadOpenConnections()
 {
     // Connect to specific addresses
     if (gArgs.IsArgSet("-connect"))
@@ -1712,7 +1712,7 @@ void CellConnman::ThreadOpenConnections()
             ProcessOneShot();
             for (const std::string& strAddr : gArgs.GetArgs("-connect"))
             {
-                CellAddress addr(CellService(), NODE_NONE);
+                MCAddress addr(MCService(), NODE_NONE);
                 OpenNetworkConnection(addr, false, nullptr, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
@@ -1746,7 +1746,7 @@ void CellConnman::ThreadOpenConnections()
             static bool done = false;
             if (!done) {
                 LogPrintf("Adding fixed seed nodes as DNS doesn't seem to be available.\n");
-                CellNetAddr local;
+                MCNetAddr local;
                 local.SetInternal("fixedseeds");
                 addrman.Add(convertSeed6(Params().FixedSeeds()), local);
                 done = true;
@@ -1756,7 +1756,7 @@ void CellConnman::ThreadOpenConnections()
         //
         // Choose an address to connect to based on most recently seen
         //
-        CellAddress addrConnect;
+        MCAddress addrConnect;
 
         // Only connect out to one peer per network group (/16 for IPv4).
         // Do this here so we don't have to critsect vNodes inside mapAddresses critsect.
@@ -1765,7 +1765,7 @@ void CellConnman::ThreadOpenConnections()
         std::set<std::vector<unsigned char> > setConnected;
         {
             LOCK(cs_vNodes);
-            for (CellNode* pnode : vNodes) {
+            for (MCNode* pnode : vNodes) {
                 if (!pnode->fInbound && !pnode->m_manual_connection) {
 
                     // Count the peers that have all relevant services
@@ -1811,7 +1811,7 @@ void CellConnman::ThreadOpenConnections()
         int nTries = 0;
         while (!interruptNet)
         {
-            CellAddrInfo addr = addrman.Select(fFeeler);
+            MCAddrInfo addr = addrman.Select(fFeeler);
 
             // if we selected an invalid address, restart
             if (!addr.IsValid() || setConnected.count(addr.GetGroup()) || IsLocal(addr))
@@ -1875,7 +1875,7 @@ void CellConnman::ThreadOpenConnections()
     }
 }
 
-std::vector<AddedNodeInfo> CellConnman::GetAddedNodeInfo()
+std::vector<AddedNodeInfo> MCConnman::GetAddedNodeInfo()
 {
     std::vector<AddedNodeInfo> ret;
 
@@ -1888,31 +1888,31 @@ std::vector<AddedNodeInfo> CellConnman::GetAddedNodeInfo()
     }
 
 
-    // Build a map of all already connected addresses (by IP:port and by name) to inbound/outbound and resolved CellService
-    std::map<CellService, bool> mapConnected;
-    std::map<std::string, std::pair<bool, CellService>> mapConnectedByName;
+    // Build a map of all already connected addresses (by IP:port and by name) to inbound/outbound and resolved MCService
+    std::map<MCService, bool> mapConnected;
+    std::map<std::string, std::pair<bool, MCService>> mapConnectedByName;
     {
         LOCK(cs_vNodes);
-        for (const CellNode* pnode : vNodes) {
+        for (const MCNode* pnode : vNodes) {
             if (pnode->addr.IsValid()) {
                 mapConnected[pnode->addr] = pnode->fInbound;
             }
             std::string addrName = pnode->GetAddrName();
             if (!addrName.empty()) {
-                mapConnectedByName[std::move(addrName)] = std::make_pair(pnode->fInbound, static_cast<const CellService&>(pnode->addr));
+                mapConnectedByName[std::move(addrName)] = std::make_pair(pnode->fInbound, static_cast<const MCService&>(pnode->addr));
             }
         }
     }
 
     for (const std::string& strAddNode : lAddresses) {
-        CellService service(LookupNumeric(strAddNode.c_str(), Params().GetDefaultPort()));
+        MCService service(LookupNumeric(strAddNode.c_str(), Params().GetDefaultPort()));
         if (service.IsValid()) {
             // strAddNode is an IP:port
             auto it = mapConnected.find(service);
             if (it != mapConnected.end()) {
                 ret.push_back(AddedNodeInfo{strAddNode, service, true, it->second});
             } else {
-                ret.push_back(AddedNodeInfo{strAddNode, CellService(), false, false});
+                ret.push_back(AddedNodeInfo{strAddNode, MCService(), false, false});
             }
         } else {
             // strAddNode is a name
@@ -1920,7 +1920,7 @@ std::vector<AddedNodeInfo> CellConnman::GetAddedNodeInfo()
             if (it != mapConnectedByName.end()) {
                 ret.push_back(AddedNodeInfo{strAddNode, it->second.second, true, it->second.first});
             } else {
-                ret.push_back(AddedNodeInfo{strAddNode, CellService(), false, false});
+                ret.push_back(AddedNodeInfo{strAddNode, MCService(), false, false});
             }
         }
     }
@@ -1928,7 +1928,7 @@ std::vector<AddedNodeInfo> CellConnman::GetAddedNodeInfo()
     return ret;
 }
 
-void CellConnman::ThreadOpenAddedConnections()
+void MCConnman::ThreadOpenAddedConnections()
 {
     {
         LOCK(cs_vAddedNodes);
@@ -1950,8 +1950,8 @@ void CellConnman::ThreadOpenAddedConnections()
                 // If strAddedNode is an IP/port, decode it immediately, so
                 // OpenNetworkConnection can detect existing connections to that IP/port.
                 tried = true;
-                CellService service(LookupNumeric(info.strAddedNode.c_str(), Params().GetDefaultPort()));
-                OpenNetworkConnection(CellAddress(service, NODE_NONE), false, &grant, info.strAddedNode.c_str(), false, false, true);
+                MCService service(LookupNumeric(info.strAddedNode.c_str(), Params().GetDefaultPort()));
+                OpenNetworkConnection(MCAddress(service, NODE_NONE), false, &grant, info.strAddedNode.c_str(), false, false, true);
                 if (!interruptNet.sleep_for(std::chrono::milliseconds(500)))
                     return;
             }
@@ -1963,7 +1963,7 @@ void CellConnman::ThreadOpenAddedConnections()
 }
 
 // if successful, this moves the passed grant to the constructed node
-bool CellConnman::OpenNetworkConnection(const CellAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler, bool manual_connection)
+bool MCConnman::OpenNetworkConnection(const MCAddress& addrConnect, bool fCountFailure, CSemaphoreGrant *grantOutbound, const char *pszDest, bool fOneShot, bool fFeeler, bool manual_connection)
 {
     //
     // Initiate outbound network connection
@@ -1976,13 +1976,13 @@ bool CellConnman::OpenNetworkConnection(const CellAddress& addrConnect, bool fCo
     }
     if (!pszDest) {
         if (IsLocal(addrConnect) ||
-            FindNode((CellNetAddr)addrConnect) || IsBanned(addrConnect) ||
+            FindNode((MCNetAddr)addrConnect) || IsBanned(addrConnect) ||
             FindNode(addrConnect.ToStringIPPort()))
             return false;
     } else if (FindNode(std::string(pszDest)))
         return false;
 
-    CellNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure);
+    MCNode* pnode = ConnectNode(addrConnect, pszDest, fCountFailure);
 
     if (!pnode)
         return false;
@@ -2004,22 +2004,22 @@ bool CellConnman::OpenNetworkConnection(const CellAddress& addrConnect, bool fCo
     return true;
 }
 
-void CellConnman::ThreadMessageHandler()
+void MCConnman::ThreadMessageHandler()
 {
     while (!flagInterruptMsgProc)
     {
-        std::vector<CellNode*> vNodesCopy;
+        std::vector<MCNode*> vNodesCopy;
         {
             LOCK(cs_vNodes);
             vNodesCopy = vNodes;
-            for (CellNode* pnode : vNodesCopy) {
+            for (MCNode* pnode : vNodesCopy) {
                 pnode->AddRef();
             }
         }
 
         bool fMoreWork = false;
 
-        for (CellNode* pnode : vNodesCopy)
+        for (MCNode* pnode : vNodesCopy)
         {
             if (pnode->fDisconnect)
                 continue;
@@ -2041,7 +2041,7 @@ void CellConnman::ThreadMessageHandler()
 
         {
             LOCK(cs_vNodes);
-            for (CellNode* pnode : vNodesCopy)
+            for (MCNode* pnode : vNodesCopy)
                 pnode->Release();
         }
 
@@ -2058,7 +2058,7 @@ void CellConnman::ThreadMessageHandler()
 
 
 
-bool CellConnman::BindListenPort(const CellService &addrBind, std::string& strError, bool fWhitelisted)
+bool MCConnman::BindListenPort(const MCService &addrBind, std::string& strError, bool fWhitelisted)
 {
     strError = "";
     int nOne = 1;
@@ -2167,10 +2167,10 @@ void Discover(boost::thread_group& threadGroup)
     char pszHostName[256] = "";
     if (gethostname(pszHostName, sizeof(pszHostName)) != SOCKET_ERROR)
     {
-        std::vector<CellNetAddr> vaddr;
+        std::vector<MCNetAddr> vaddr;
         if (LookupHost(pszHostName, vaddr, 0, true))
         {
-            for (const CellNetAddr &addr : vaddr)
+            for (const MCNetAddr &addr : vaddr)
             {
                 if (AddLocal(addr, LOCAL_IF))
                     LogPrintf("%s: %s - %s\n", __func__, pszHostName, addr.ToString());
@@ -2191,14 +2191,14 @@ void Discover(boost::thread_group& threadGroup)
             if (ifa->ifa_addr->sa_family == AF_INET)
             {
                 struct sockaddr_in* s4 = (struct sockaddr_in*)(ifa->ifa_addr);
-                CellNetAddr addr(s4->sin_addr);
+                MCNetAddr addr(s4->sin_addr);
                 if (AddLocal(addr, LOCAL_IF))
                     LogPrintf("%s: IPv4 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
             }
             else if (ifa->ifa_addr->sa_family == AF_INET6)
             {
                 struct sockaddr_in6* s6 = (struct sockaddr_in6*)(ifa->ifa_addr);
-                CellNetAddr addr(s6->sin6_addr);
+                MCNetAddr addr(s6->sin6_addr);
                 if (AddLocal(addr, LOCAL_IF))
                     LogPrintf("%s: IPv6 %s: %s\n", __func__, ifa->ifa_name, addr.ToString());
             }
@@ -2208,7 +2208,7 @@ void Discover(boost::thread_group& threadGroup)
 #endif
 }
 
-void CellConnman::SetNetworkActive(bool active)
+void MCConnman::SetNetworkActive(bool active)
 {
     LogPrint(BCLog::NET, "SetNetworkActive: %s\n", active);
 
@@ -2221,7 +2221,7 @@ void CellConnman::SetNetworkActive(bool active)
     if (!fNetworkActive) {
         LOCK(cs_vNodes);
         // Close sockets to all nodes
-        for (CellNode* pnode : vNodes) {
+        for (MCNode* pnode : vNodes) {
             pnode->CloseSocketDisconnect();
         }
     }
@@ -2229,7 +2229,7 @@ void CellConnman::SetNetworkActive(bool active)
     uiInterface.NotifyNetworkActiveChanged(fNetworkActive);
 }
 
-CellConnman::CellConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In), nSeed1(nSeed1In)
+MCConnman::MCConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In), nSeed1(nSeed1In)
 {
     fNetworkActive = true;
     setBannedIsDirty = false;
@@ -2246,26 +2246,26 @@ CellConnman::CellConnman(uint64_t nSeed0In, uint64_t nSeed1In) : nSeed0(nSeed0In
     Init(connOptions);
 }
 
-NodeId CellConnman::GetNewNodeId()
+NodeId MCConnman::GetNewNodeId()
 {
     return nLastNodeId.fetch_add(1, std::memory_order_relaxed);
 }
 
 
-bool CellConnman::Bind(const CellService &addr, unsigned int flags) {
+bool MCConnman::Bind(const MCService &addr, unsigned int flags) {
     if (!(flags & BF_EXPLICIT) && IsLimited(addr))
         return false;
     std::string strError;
     if (!BindListenPort(addr, strError, (flags & BF_WHITELIST) != 0)) {
         if ((flags & BF_REPORT_ERROR) && clientInterface) {
-            clientInterface->ThreadSafeMessageBox(strError, "", CellClientUIInterface::MSG_ERROR);
+            clientInterface->ThreadSafeMessageBox(strError, "", MCClientUIInterface::MSG_ERROR);
         }
         return false;
     }
     return true;
 }
 
-bool CellConnman::InitBinds(const std::vector<CellService>& binds, const std::vector<CellService>& whiteBinds) {
+bool MCConnman::InitBinds(const std::vector<MCService>& binds, const std::vector<MCService>& whiteBinds) {
     bool fBound = false;
     for (const auto& addrBind : binds) {
         fBound |= Bind(addrBind, (BF_EXPLICIT | BF_REPORT_ERROR));
@@ -2276,13 +2276,13 @@ bool CellConnman::InitBinds(const std::vector<CellService>& binds, const std::ve
     if (binds.empty() && whiteBinds.empty()) {
         struct in_addr inaddr_any;
         inaddr_any.s_addr = INADDR_ANY;
-        fBound |= Bind(CellService(in6addr_any, GetListenPort()), BF_NONE);
-        fBound |= Bind(CellService(inaddr_any, GetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
+        fBound |= Bind(MCService(in6addr_any, GetListenPort()), BF_NONE);
+        fBound |= Bind(MCService(inaddr_any, GetListenPort()), !fBound ? BF_REPORT_ERROR : BF_NONE);
     }
     return fBound;
 }
 
-bool CellConnman::Start(CellScheduler& scheduler, const Options& connOptions)
+bool MCConnman::Start(MCScheduler& scheduler, const Options& connOptions)
 {
     Init(connOptions);
 
@@ -2295,7 +2295,7 @@ bool CellConnman::Start(CellScheduler& scheduler, const Options& connOptions)
         if (clientInterface) {
             clientInterface->ThreadSafeMessageBox(
                 _("Failed to listen on any port. Use -listen=0 if you want this."),
-                "", CellClientUIInterface::MSG_ERROR);
+                "", MCClientUIInterface::MSG_ERROR);
         }
         return false;
     }
@@ -2310,7 +2310,7 @@ bool CellConnman::Start(CellScheduler& scheduler, const Options& connOptions)
     // Load addresses from peers.dat
     int64_t nStart = GetTimeMillis();
     {
-        CellAddrDB adb;
+        MCAddrDB adb;
         if (adb.Read(addrman))
             LogPrintf("Loaded %i addresses from peers.dat  %dms\n", addrman.size(), GetTimeMillis() - nStart);
         else {
@@ -2323,7 +2323,7 @@ bool CellConnman::Start(CellScheduler& scheduler, const Options& connOptions)
         clientInterface->InitMessage(_("Loading banlist..."));
     // Load addresses from banlist.dat
     nStart = GetTimeMillis();
-    CellBanDB bandb;
+    MCBanDB bandb;
     banmap_t banmap;
     if (bandb.Read(banmap)) {
         SetBanned(banmap); // thread save setter
@@ -2365,25 +2365,25 @@ bool CellConnman::Start(CellScheduler& scheduler, const Options& connOptions)
     }
 
     // Send and receive from sockets, accept connections
-    threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&CellConnman::ThreadSocketHandler, this)));
+    threadSocketHandler = std::thread(&TraceThread<std::function<void()> >, "net", std::function<void()>(std::bind(&MCConnman::ThreadSocketHandler, this)));
 
     if (!gArgs.GetBoolArg("-dnsseed", true))
         LogPrintf("DNS seeding disabled\n");
     else
-        threadDNSAddressSeed = std::thread(&TraceThread<std::function<void()> >, "dnsseed", std::function<void()>(std::bind(&CellConnman::ThreadDNSAddressSeed, this)));
+        threadDNSAddressSeed = std::thread(&TraceThread<std::function<void()> >, "dnsseed", std::function<void()>(std::bind(&MCConnman::ThreadDNSAddressSeed, this)));
 
     // Initiate outbound connections from -addnode
-    threadOpenAddedConnections = std::thread(&TraceThread<std::function<void()> >, "addcon", std::function<void()>(std::bind(&CellConnman::ThreadOpenAddedConnections, this)));
+    threadOpenAddedConnections = std::thread(&TraceThread<std::function<void()> >, "addcon", std::function<void()>(std::bind(&MCConnman::ThreadOpenAddedConnections, this)));
 
     // Initiate outbound connections unless connect=0
     if (!gArgs.IsArgSet("-connect") || gArgs.GetArgs("-connect").size() != 1 || gArgs.GetArgs("-connect")[0] != "0")
-        threadOpenConnections = std::thread(&TraceThread<std::function<void()> >, "opencon", std::function<void()>(std::bind(&CellConnman::ThreadOpenConnections, this)));
+        threadOpenConnections = std::thread(&TraceThread<std::function<void()> >, "opencon", std::function<void()>(std::bind(&MCConnman::ThreadOpenConnections, this)));
 
     // Process messages
-    threadMessageHandler = std::thread(&TraceThread<std::function<void()> >, "msghand", std::function<void()>(std::bind(&CellConnman::ThreadMessageHandler, this)));
+    threadMessageHandler = std::thread(&TraceThread<std::function<void()> >, "msghand", std::function<void()>(std::bind(&MCConnman::ThreadMessageHandler, this)));
 
     // Dump network addresses
-    scheduler.scheduleEvery(std::bind(&CellConnman::DumpData, this), DUMP_ADDRESSES_INTERVAL * 1000);
+    scheduler.scheduleEvery(std::bind(&MCConnman::DumpData, this), DUMP_ADDRESSES_INTERVAL * 1000);
 
     return true;
 }
@@ -2403,7 +2403,7 @@ public:
 }
 instance_of_cnetcleanup;
 
-void CellConnman::Interrupt()
+void MCConnman::Interrupt()
 {
     {
         std::lock_guard<std::mutex> lock(mutexMsgProc);
@@ -2427,7 +2427,7 @@ void CellConnman::Interrupt()
     }
 }
 
-void CellConnman::Stop()
+void MCConnman::Stop()
 {
     if (threadMessageHandler.joinable())
         threadMessageHandler.join();
@@ -2447,7 +2447,7 @@ void CellConnman::Stop()
     }
 
     // Close sockets
-    for (CellNode* pnode : vNodes)
+    for (MCNode* pnode : vNodes)
         pnode->CloseSocketDisconnect();
     for (ListenSocket& hListenSocket : vhListenSocket)
         if (hListenSocket.socket != INVALID_SOCKET)
@@ -2455,10 +2455,10 @@ void CellConnman::Stop()
                 LogPrintf("CloseSocket(hListenSocket) failed with error %s\n", NetworkErrorString(WSAGetLastError()));
 
     // clean up some globals (to help leak detection)
-    for (CellNode *pnode : vNodes) {
+    for (MCNode *pnode : vNodes) {
         DeleteNode(pnode);
     }
-    for (CellNode *pnode : vNodesDisconnected) {
+    for (MCNode *pnode : vNodesDisconnected) {
         DeleteNode(pnode);
     }
     vNodes.clear();
@@ -2470,7 +2470,7 @@ void CellConnman::Stop()
     semAddnode = nullptr;
 }
 
-void CellConnman::DeleteNode(CellNode* pnode)
+void MCConnman::DeleteNode(MCNode* pnode)
 {
     assert(pnode);
     bool fUpdateConnectionTime = false;
@@ -2481,38 +2481,38 @@ void CellConnman::DeleteNode(CellNode* pnode)
     delete pnode;
 }
 
-CellConnman::~CellConnman()
+MCConnman::~MCConnman()
 {
     Interrupt();
     Stop();
 }
 
-size_t CellConnman::GetAddressCount() const
+size_t MCConnman::GetAddressCount() const
 {
     return addrman.size();
 }
 
-void CellConnman::SetServices(const CellService &addr, ServiceFlags nServices)
+void MCConnman::SetServices(const MCService &addr, ServiceFlags nServices)
 {
     addrman.SetServices(addr, nServices);
 }
 
-void CellConnman::MarkAddressGood(const CellAddress& addr)
+void MCConnman::MarkAddressGood(const MCAddress& addr)
 {
     addrman.Good(addr);
 }
 
-void CellConnman::AddNewAddresses(const std::vector<CellAddress>& vAddr, const CellAddress& addrFrom, int64_t nTimePenalty)
+void MCConnman::AddNewAddresses(const std::vector<MCAddress>& vAddr, const MCAddress& addrFrom, int64_t nTimePenalty)
 {
     addrman.Add(vAddr, addrFrom, nTimePenalty);
 }
 
-std::vector<CellAddress> CellConnman::GetAddresses()
+std::vector<MCAddress> MCConnman::GetAddresses()
 {
     return addrman.GetAddr();
 }
 
-bool CellConnman::AddNode(const std::string& strNode)
+bool MCConnman::AddNode(const std::string& strNode)
 {
     LOCK(cs_vAddedNodes);
     for(std::vector<std::string>::const_iterator it = vAddedNodes.begin(); it != vAddedNodes.end(); ++it) {
@@ -2524,7 +2524,7 @@ bool CellConnman::AddNode(const std::string& strNode)
     return true;
 }
 
-bool CellConnman::RemoveAddedNode(const std::string& strNode)
+bool MCConnman::RemoveAddedNode(const std::string& strNode)
 {
     LOCK(cs_vAddedNodes);
     for(std::vector<std::string>::iterator it = vAddedNodes.begin(); it != vAddedNodes.end(); ++it) {
@@ -2536,45 +2536,45 @@ bool CellConnman::RemoveAddedNode(const std::string& strNode)
     return false;
 }
 
-size_t CellConnman::GetNodeCount(NumConnections flags)
+size_t MCConnman::GetNodeCount(NumConnections flags)
 {
     LOCK(cs_vNodes);
-    if (flags == CellConnman::CONNECTIONS_ALL) // Shortcut if we want total
+    if (flags == MCConnman::CONNECTIONS_ALL) // Shortcut if we want total
         return vNodes.size();
 
     int nNum = 0;
-    for(std::vector<CellNode*>::const_iterator it = vNodes.begin(); it != vNodes.end(); ++it)
+    for(std::vector<MCNode*>::const_iterator it = vNodes.begin(); it != vNodes.end(); ++it)
         if (flags & ((*it)->fInbound ? CONNECTIONS_IN : CONNECTIONS_OUT))
             nNum++;
 
     return nNum;
 }
 
-void CellConnman::GetNodeStats(std::vector<CellNodeStats>& vstats)
+void MCConnman::GetNodeStats(std::vector<MCNodeStats>& vstats)
 {
     vstats.clear();
     LOCK(cs_vNodes);
     vstats.reserve(vNodes.size());
-    for(std::vector<CellNode*>::iterator it = vNodes.begin(); it != vNodes.end(); ++it) {
-        CellNode* pnode = *it;
+    for(std::vector<MCNode*>::iterator it = vNodes.begin(); it != vNodes.end(); ++it) {
+        MCNode* pnode = *it;
         vstats.emplace_back();
         pnode->copyStats(vstats.back());
     }
 }
 
-bool CellConnman::DisconnectNode(const std::string& strNode)
+bool MCConnman::DisconnectNode(const std::string& strNode)
 {
     LOCK(cs_vNodes);
-    if (CellNode* pnode = FindNode(strNode)) {
+    if (MCNode* pnode = FindNode(strNode)) {
         pnode->fDisconnect = true;
         return true;
     }
     return false;
 }
-bool CellConnman::DisconnectNode(NodeId id)
+bool MCConnman::DisconnectNode(NodeId id)
 {
     LOCK(cs_vNodes);
-    for(CellNode* pnode : vNodes) {
+    for(MCNode* pnode : vNodes) {
         if (id == pnode->GetId()) {
             pnode->fDisconnect = true;
             return true;
@@ -2583,13 +2583,13 @@ bool CellConnman::DisconnectNode(NodeId id)
     return false;
 }
 
-void CellConnman::RecordBytesRecv(uint64_t bytes)
+void MCConnman::RecordBytesRecv(uint64_t bytes)
 {
     LOCK(cs_totalBytesRecv);
     nTotalBytesRecv += bytes;
 }
 
-void CellConnman::RecordBytesSent(uint64_t bytes)
+void MCConnman::RecordBytesSent(uint64_t bytes)
 {
     LOCK(cs_totalBytesSent);
     nTotalBytesSent += bytes;
@@ -2606,25 +2606,25 @@ void CellConnman::RecordBytesSent(uint64_t bytes)
     nMaxOutboundTotalBytesSentInCycle += bytes;
 }
 
-void CellConnman::SetMaxOutboundTarget(uint64_t limit)
+void MCConnman::SetMaxOutboundTarget(uint64_t limit)
 {
     LOCK(cs_totalBytesSent);
     nMaxOutboundLimit = limit;
 }
 
-uint64_t CellConnman::GetMaxOutboundTarget()
+uint64_t MCConnman::GetMaxOutboundTarget()
 {
     LOCK(cs_totalBytesSent);
     return nMaxOutboundLimit;
 }
 
-uint64_t CellConnman::GetMaxOutboundTimeframe()
+uint64_t MCConnman::GetMaxOutboundTimeframe()
 {
     LOCK(cs_totalBytesSent);
     return nMaxOutboundTimeframe;
 }
 
-uint64_t CellConnman::GetMaxOutboundTimeLeftInCycle()
+uint64_t MCConnman::GetMaxOutboundTimeLeftInCycle()
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2638,7 +2638,7 @@ uint64_t CellConnman::GetMaxOutboundTimeLeftInCycle()
     return (cycleEndTime < now) ? 0 : cycleEndTime - GetTime();
 }
 
-void CellConnman::SetMaxOutboundTimeframe(uint64_t timeframe)
+void MCConnman::SetMaxOutboundTimeframe(uint64_t timeframe)
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundTimeframe != timeframe)
@@ -2650,7 +2650,7 @@ void CellConnman::SetMaxOutboundTimeframe(uint64_t timeframe)
     nMaxOutboundTimeframe = timeframe;
 }
 
-bool CellConnman::OutboundTargetReached(bool historicalBlockServingLimit)
+bool MCConnman::OutboundTargetReached(bool historicalBlockServingLimit)
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2670,7 +2670,7 @@ bool CellConnman::OutboundTargetReached(bool historicalBlockServingLimit)
     return false;
 }
 
-uint64_t CellConnman::GetOutboundTargetBytesLeft()
+uint64_t MCConnman::GetOutboundTargetBytesLeft()
 {
     LOCK(cs_totalBytesSent);
     if (nMaxOutboundLimit == 0)
@@ -2679,36 +2679,36 @@ uint64_t CellConnman::GetOutboundTargetBytesLeft()
     return (nMaxOutboundTotalBytesSentInCycle >= nMaxOutboundLimit) ? 0 : nMaxOutboundLimit - nMaxOutboundTotalBytesSentInCycle;
 }
 
-uint64_t CellConnman::GetTotalBytesRecv()
+uint64_t MCConnman::GetTotalBytesRecv()
 {
     LOCK(cs_totalBytesRecv);
     return nTotalBytesRecv;
 }
 
-uint64_t CellConnman::GetTotalBytesSent()
+uint64_t MCConnman::GetTotalBytesSent()
 {
     LOCK(cs_totalBytesSent);
     return nTotalBytesSent;
 }
 
-ServiceFlags CellConnman::GetLocalServices() const
+ServiceFlags MCConnman::GetLocalServices() const
 {
     return nLocalServices;
 }
 
-void CellConnman::SetBestHeight(int height)
+void MCConnman::SetBestHeight(int height)
 {
     nBestHeight.store(height, std::memory_order_release);
 }
 
-int CellConnman::GetBestHeight() const
+int MCConnman::GetBestHeight() const
 {
     return nBestHeight.load(std::memory_order_acquire);
 }
 
-unsigned int CellConnman::GetReceiveFloodSize() const { return nReceiveFloodSize; }
+unsigned int MCConnman::GetReceiveFloodSize() const { return nReceiveFloodSize; }
 
-CellNode::CellNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const CellAddress& addrIn, uint64_t nKeyedNetGroupIn, uint64_t nLocalHostNonceIn, const CellAddress &addrBindIn, const std::string& addrNameIn, bool fInboundIn) :
+MCNode::MCNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHeightIn, SOCKET hSocketIn, const MCAddress& addrIn, uint64_t nKeyedNetGroupIn, uint64_t nLocalHostNonceIn, const MCAddress &addrBindIn, const std::string& addrNameIn, bool fInboundIn) :
     nTimeConnected(GetSystemTimeInSeconds()),
     addr(addrIn),
     addrBind(addrBindIn),
@@ -2754,7 +2754,7 @@ CellNode::CellNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHe
     nNextInvSend = 0;
     fRelayTxes = false;
     fSentAddr = false;
-    pfilter = new CellBloomFilter();
+    pfilter = new MCBloomFilter();
     timeLastMempoolReq = 0;
     nLastBlockTime = 0;
     nLastTXTime = 0;
@@ -2781,7 +2781,7 @@ CellNode::CellNode(NodeId idIn, ServiceFlags nLocalServicesIn, int nMyStartingHe
     }
 }
 
-CellNode::~CellNode()
+MCNode::~MCNode()
 {
     CloseSocket(hSocket);
 
@@ -2789,7 +2789,7 @@ CellNode::~CellNode()
         delete pfilter;
 }
 
-void CellNode::AskFor(const CellInv& inv)
+void MCNode::AskFor(const MCInv& inv)
 {
     if (mapAskFor.size() > MAPASKFOR_MAX_SZ || setAskFor.size() > SETASKFOR_MAX_SZ)
         return;
@@ -2823,24 +2823,24 @@ void CellNode::AskFor(const CellInv& inv)
     mapAskFor.insert(std::make_pair(nRequestTime, inv));
 }
 
-bool CellConnman::NodeFullyConnected(const CellNode* pnode)
+bool MCConnman::NodeFullyConnected(const MCNode* pnode)
 {
     return pnode && pnode->fSuccessfullyConnected && !pnode->fDisconnect;
 }
 
-void CellConnman::PushMessage(CellNode* pnode, CSerializedNetMsg&& msg)
+void MCConnman::PushMessage(MCNode* pnode, CSerializedNetMsg&& msg)
 {
     size_t nMessageSize = msg.data.size();
-    size_t nTotalSize = nMessageSize + CellMessageHeader::HEADER_SIZE;
+    size_t nTotalSize = nMessageSize + MCMessageHeader::HEADER_SIZE;
     LogPrint(BCLog::NET, "sending %s (%d bytes) peer=%d\n",  SanitizeString(msg.command.c_str()), nMessageSize, pnode->GetId());
 
     std::vector<unsigned char> serializedHeader;
-    serializedHeader.reserve(CellMessageHeader::HEADER_SIZE);
+    serializedHeader.reserve(MCMessageHeader::HEADER_SIZE);
     uint256 hash = Hash(msg.data.data(), msg.data.data() + nMessageSize);
-    CellMessageHeader hdr(Params().MessageStart(), msg.command.c_str(), nMessageSize);
-    memcpy(hdr.pchChecksum, hash.begin(), CellMessageHeader::CHECKSUM_SIZE);
+    MCMessageHeader hdr(Params().MessageStart(), msg.command.c_str(), nMessageSize);
+    memcpy(hdr.pchChecksum, hash.begin(), MCMessageHeader::CHECKSUM_SIZE);
 
-    CellVectorWriter{SER_NETWORK, INIT_PROTO_VERSION, serializedHeader, 0, hdr};
+    MCVectorWriter{SER_NETWORK, INIT_PROTO_VERSION, serializedHeader, 0, hdr};
 
     size_t nBytesSent = 0;
     {
@@ -2865,9 +2865,9 @@ void CellConnman::PushMessage(CellNode* pnode, CSerializedNetMsg&& msg)
         RecordBytesSent(nBytesSent);
 }
 
-bool CellConnman::ForNode(NodeId id, std::function<bool(CellNode* pnode)> func)
+bool MCConnman::ForNode(NodeId id, std::function<bool(MCNode* pnode)> func)
 {
-    CellNode* found = nullptr;
+    MCNode* found = nullptr;
     LOCK(cs_vNodes);
     for (auto&& pnode : vNodes) {
         if(pnode->GetId() == id) {
@@ -2882,12 +2882,12 @@ int64_t PoissonNextSend(int64_t nNow, int average_interval_seconds) {
     return nNow + (int64_t)(log1p(GetRand(1ULL << 48) * -0.0000000000000035527136788 /* -1/2^48 */) * average_interval_seconds * -1000000.0 + 0.5);
 }
 
-CSipHasher CellConnman::GetDeterministicRandomizer(uint64_t id) const
+CSipHasher MCConnman::GetDeterministicRandomizer(uint64_t id) const
 {
     return CSipHasher(nSeed0, nSeed1).Write(id);
 }
 
-uint64_t CellConnman::CalculateKeyedNetGroup(const CellAddress& ad) const
+uint64_t MCConnman::CalculateKeyedNetGroup(const MCAddress& ad) const
 {
     std::vector<unsigned char> vchNetGroup(ad.GetGroup());
 

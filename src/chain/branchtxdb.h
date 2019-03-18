@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef BRANCH_TXDB_H
@@ -6,7 +6,7 @@
 
 #include "transaction/txdb.h"
 
-//¿çÁ´½»Ò×½ÓÊÕ·½½»Ò×µÄkey 
+//è·¨é“¾äº¤æ˜“æ¥æ”¶æ–¹äº¤æ˜“çš„key 
 static const char DB_BRANCH_CHAIN_TX_DATA = 'b';
 static const char DB_BRANCH_CHAIN_RECV_TX_DATA = 'r';
 static const std::string DB_BRANCH_CHAIN_LIST = "chainlist";
@@ -51,7 +51,7 @@ public:
     unsigned char flags;
 };
 
-class CellCreateBranchChainInfo
+class MCCreateBranchChainInfo
 {
 public:
     uint256 txid;
@@ -59,9 +59,9 @@ public:
     std::string branchVSeeds;
     std::string branchSeedSpec6;
 
-    CellCreateBranchChainInfo()
+    MCCreateBranchChainInfo()
     {}
-    CellCreateBranchChainInfo(const CellCreateBranchChainInfo& from)
+    MCCreateBranchChainInfo(const MCCreateBranchChainInfo& from)
         :txid(from.txid), blockhash(from.blockhash), branchVSeeds(from.branchVSeeds), branchSeedSpec6(from.branchSeedSpec6)
     {
     }
@@ -76,7 +76,7 @@ public:
         READWRITE(branchSeedSpec6);
     }
 
-    friend inline bool operator==(const CellCreateBranchChainInfo& a, const CellCreateBranchChainInfo& b)
+    friend inline bool operator==(const MCCreateBranchChainInfo& a, const MCCreateBranchChainInfo& b)
     {
         return a.txid == b.txid && a.blockhash == b.blockhash && a.branchVSeeds == b.branchVSeeds && a.branchSeedSpec6 == b.branchSeedSpec6;
     }
@@ -91,7 +91,7 @@ public:
     uint256 blockhash;
     uint32_t txindex;
     int32_t txnVersion;
-    CellCreateBranchChainInfo createchaininfo; // temp data, not serialize
+    MCCreateBranchChainInfo createchaininfo; // temp data, not serialize
 
     bool IsInit() { return !blockhash.IsNull() && txindex != 0; }
 
@@ -141,31 +141,31 @@ typedef std::map<BranchChainTxEntry, BranchChainTxInfo> BRANCH_CHAIN_INFO_MAP;//
 typedef std::map<BranchChainTxEntry, BranchChainTxRecvInfo> BRANCH_CHAIN_RECV_MAP; //[key, recvinfo]
 typedef std::map<uint256, std::vector<CoinReportInfo>> COIN_BE_REPORT;// [coinpreouthash,vector<un_prove_reporttxid>] 
 
-// ÔÚconnectblock »òÕßdisconnectblock Ê±,ĞèÒªÊı¾İ¿â²Ù×÷ÏÈĞ´µ½cacheÀïÃæ,
-// ´ıÕû¸ö¹ı³ÌÃ»´íºó²Å°ÑcacheµÄÊı¾İĞ´µ½Êı¾İ¿â
+// åœ¨connectblock æˆ–è€…disconnectblock æ—¶,éœ€è¦æ•°æ®åº“æ“ä½œå…ˆå†™åˆ°cacheé‡Œé¢,
+// å¾…æ•´ä¸ªè¿‡ç¨‹æ²¡é”™åæ‰æŠŠcacheçš„æ•°æ®å†™åˆ°æ•°æ®åº“
 class BranchChainTxRecordsCache
 {
 public:
-    //ÒÑ´´½¨µÄÖ§Á´ºÍ·¢Æğ¿çÁ´½»Ò×
-    void AddBranchChainTxRecord(const CellTransactionRef& tx, const uint256& blockhash, uint32_t txindex);
-    void DelBranchChainTxRecord(const CellTransactionRef& tx);
+    //å·²åˆ›å»ºçš„æ”¯é“¾å’Œå‘èµ·è·¨é“¾äº¤æ˜“
+    void AddBranchChainTxRecord(const MCTransactionRef& tx, const uint256& blockhash, uint32_t txindex);
+    void DelBranchChainTxRecord(const MCTransactionRef& tx);
 
-    //ÒÑ½ÓÊÕµÄ¿çÁ´½»Ò×
-    void AddBranchChainRecvTxRecord(const CellTransactionRef& tx, const uint256& blockhash);
-    void DelBranchChainRecvTxRecord(const CellTransactionRef& tx);
+    //å·²æ¥æ”¶çš„è·¨é“¾äº¤æ˜“
+    void AddBranchChainRecvTxRecord(const MCTransactionRef& tx, const uint256& blockhash);
+    void DelBranchChainRecvTxRecord(const MCTransactionRef& tx);
 
-    //Ëø±Ò½âËø
+    //é”å¸è§£é”
     /**
      * fBlockConnect is in block connect or block disconnect
      */
-    void UpdateLockMineCoin(const CellTransactionRef& ptx, bool fBlockConnect);
+    void UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect);
 
     BRANCH_CHAIN_INFO_MAP m_mapChainTxInfos;
     BRANCH_CHAIN_RECV_MAP m_mapRecvRecord;//temp record.
     COIN_BE_REPORT m_mapCoinBeReport;
 };
 
-//¿çÁ´½»Ò×µÄÏà¹Ø¼ÇÂ¼ 
+//è·¨é“¾äº¤æ˜“çš„ç›¸å…³è®°å½• 
 class BranchChainTxRecordsDb
 {
 public:
@@ -176,11 +176,11 @@ public:
 
     BranchChainTxInfo GetBranchChainTxInfo(const uint256& txid);
 
-    bool IsTxRecvRepeat(const CellTransaction& tx, const CellBlock* pBlock = nullptr);
+    bool IsTxRecvRepeat(const MCTransaction& tx, const MCBlock* pBlock = nullptr);
 
     void Flush(BranchChainTxRecordsCache &cache);
 
-    typedef std::vector<CellCreateBranchChainInfo> CREATE_BRANCH_TX_CONTAINER;
+    typedef std::vector<MCCreateBranchChainInfo> CREATE_BRANCH_TX_CONTAINER;
 
     size_t GetCreateBranchSize() { return m_vCreatedBranchTxs.size(); }
     const CREATE_BRANCH_TX_CONTAINER& GetCreateBranchTxsInfo() { return m_vCreatedBranchTxs; }
@@ -188,7 +188,7 @@ public:
 
     bool IsMineCoinLock(const uint256& coinhash) const;
 private:
-    CellDBWrapper m_db;
+    MCDBWrapper m_db;
     CREATE_BRANCH_TX_CONTAINER m_vCreatedBranchTxs;
 };
 extern BranchChainTxRecordsDb* pBranchChainTxRecordsDb;

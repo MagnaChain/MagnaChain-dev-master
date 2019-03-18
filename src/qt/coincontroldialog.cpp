@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,7 +7,7 @@
 #include "ui_coincontroldialog.h"
 
 #include "addresstablemodel.h"
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 #include "platformstyle.h"
@@ -32,11 +32,11 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 
-QList<CellAmount> CoinControlDialog::payAmounts;
-CellCoinControl* CoinControlDialog::coinControl = new CellCoinControl();
+QList<MCAmount> CoinControlDialog::payAmounts;
+MCCoinControl* CoinControlDialog::coinControl = new MCCoinControl();
 bool CoinControlDialog::fSubtractFeeFromAmount = false;
 
-bool CellCoinControlWidgetItem::operator<(const QTreeWidgetItem &other) const {
+bool MCCoinControlWidgetItem::operator<(const QTreeWidgetItem &other) const {
     int column = treeWidget()->sortColumn();
     if (column == CoinControlDialog::COLUMN_AMOUNT || column == CoinControlDialog::COLUMN_DATE || column == CoinControlDialog::COLUMN_CONFIRMATIONS)
         return data(column, Qt::UserRole).toLongLong() < other.data(column, Qt::UserRole).toLongLong();
@@ -125,7 +125,7 @@ CoinControlDialog::CoinControlDialog(const PlatformStyle *_platformStyle, QWidge
     connect(ui->pushButtonSelectAll, SIGNAL(clicked()), this, SLOT(buttonSelectAllClicked()));
 
     // change coin control first column label due Qt4 bug.
-    // see https://github.com/celllink/celllink/issues/5716
+    // see https://github.com/magnachain/magnachain/issues/5716
     ui->treeWidget->headerItem()->setText(COLUMN_CHECKBOX, QString());
 
     ui->treeWidget->setColumnWidth(COLUMN_CHECKBOX, 84);
@@ -237,7 +237,7 @@ void CoinControlDialog::showMenu(const QPoint &point)
 // context menu action: copy amount
 void CoinControlDialog::copyAmount()
 {
-    GUIUtil::setClipboard(CellLinkUnits::removeSpaces(contextMenuItem->text(COLUMN_AMOUNT)));
+    GUIUtil::setClipboard(MagnaChainUnits::removeSpaces(contextMenuItem->text(COLUMN_AMOUNT)));
 }
 
 // context menu action: copy label
@@ -270,7 +270,7 @@ void CoinControlDialog::lockCoin()
     if (contextMenuItem->checkState(COLUMN_CHECKBOX) == Qt::Checked)
         contextMenuItem->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
 
-    CellOutPoint outpt(uint256S(contextMenuItem->text(COLUMN_TXHASH).toStdString()), contextMenuItem->text(COLUMN_VOUT_INDEX).toUInt());
+    MCOutPoint outpt(uint256S(contextMenuItem->text(COLUMN_TXHASH).toStdString()), contextMenuItem->text(COLUMN_VOUT_INDEX).toUInt());
     model->lockCoin(outpt);
     contextMenuItem->setDisabled(true);
     contextMenuItem->setIcon(COLUMN_CHECKBOX, platformStyle->SingleColorIcon(":/icons/lock_closed"));
@@ -280,7 +280,7 @@ void CoinControlDialog::lockCoin()
 // context menu action: unlock coin
 void CoinControlDialog::unlockCoin()
 {
-    CellOutPoint outpt(uint256S(contextMenuItem->text(COLUMN_TXHASH).toStdString()), contextMenuItem->text(COLUMN_VOUT_INDEX).toUInt());
+    MCOutPoint outpt(uint256S(contextMenuItem->text(COLUMN_TXHASH).toStdString()), contextMenuItem->text(COLUMN_VOUT_INDEX).toUInt());
     model->unlockCoin(outpt);
     contextMenuItem->setDisabled(false);
     contextMenuItem->setIcon(COLUMN_CHECKBOX, QIcon());
@@ -378,7 +378,7 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
 {
     if (column == COLUMN_CHECKBOX && item->text(COLUMN_TXHASH).length() == 64) // transaction hash is 64 characters (this means its a child node, so its not a parent node in tree mode)
     {
-        CellOutPoint outpt(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt());
+        MCOutPoint outpt(uint256S(item->text(COLUMN_TXHASH).toStdString()), item->text(COLUMN_VOUT_INDEX).toUInt());
 
         if (item->checkState(COLUMN_CHECKBOX) == Qt::Unchecked)
             coinControl->UnSelect(outpt);
@@ -406,7 +406,7 @@ void CoinControlDialog::viewItemChanged(QTreeWidgetItem* item, int column)
 // shows count of locked unspent outputs
 void CoinControlDialog::updateLabelLocked()
 {
-    std::vector<CellOutPoint> vOutpts;
+    std::vector<MCOutPoint> vOutpts;
     model->listLockedCoins(vOutpts);
     if (vOutpts.size() > 0)
     {
@@ -422,40 +422,40 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         return;
 
     // nPayAmount
-    CellAmount nPayAmount = 0;
+    MCAmount nPayAmount = 0;
     bool fDust = false;
-    CellMutableTransaction txDummy;
-    for (const CellAmount &amount : CoinControlDialog::payAmounts)
+    MCMutableTransaction txDummy;
+    for (const MCAmount &amount : CoinControlDialog::payAmounts)
     {
         nPayAmount += amount;
 
         if (amount > 0)
         {
-            CellTxOut txout(amount, (CellScript)std::vector<unsigned char>(24, 0));
+            MCTxOut txout(amount, (MCScript)std::vector<unsigned char>(24, 0));
             txDummy.vout.push_back(txout);
             fDust |= IsDust(txout, ::dustRelayFee);
         }
     }
 
-    CellAmount nAmount             = 0;
-    CellAmount nPayFee             = 0;
-    CellAmount nAfterFee           = 0;
-    CellAmount nChange             = 0;
+    MCAmount nAmount             = 0;
+    MCAmount nPayFee             = 0;
+    MCAmount nAfterFee           = 0;
+    MCAmount nChange             = 0;
     unsigned int nBytes         = 0;
     unsigned int nBytesInputs   = 0;
     unsigned int nQuantity      = 0;
     bool fWitness               = false;
 
-    std::vector<CellOutPoint> vCoinControl;
-    std::vector<CellOutput>   vOutputs;
+    std::vector<MCOutPoint> vCoinControl;
+    std::vector<MCOutput>   vOutputs;
     coinControl->ListSelected(vCoinControl);
     model->getOutputs(vCoinControl, vOutputs);
 
-    for (const CellOutput& out : vOutputs) {
+    for (const MCOutput& out : vOutputs) {
         // unselect already spent, very unlikely scenario, this could happen
         // when selected are spent elsewhere, like rpc or another computer
         uint256 txhash = out.tx->GetHash();
-        CellOutPoint outpt(txhash, out.i);
+        MCOutPoint outpt(txhash, out.i);
         if (model->isSpent(outpt))
         {
             coinControl->UnSelect(outpt);
@@ -469,7 +469,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         nAmount += out.tx->tx->vout[out.i].nValue;
 
         // Bytes
-        CellTxDestination address;
+        MCTxDestination address;
         int witnessversion = 0;
         std::vector<unsigned char> witnessprogram;
         if (out.tx->tx->vout[out.i].scriptPubKey.IsWitnessProgram(witnessversion, witnessprogram))
@@ -479,8 +479,8 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         }
         else if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, address))
         {
-            CellPubKey pubkey;
-            CellKeyID *keyid = boost::get<CellKeyID>(&address);
+            MCPubKey pubkey;
+            MCKeyID *keyid = boost::get<MCKeyID>(&address);
             if (keyid && model->getPubKey(*keyid, pubkey))
             {
                 nBytesInputs += (pubkey.IsCompressed() ? 148 : 180);
@@ -511,7 +511,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
                 nBytes -= 34;
 
         // Fee
-        nPayFee = CellWallet::GetMinimumFee(nBytes, *coinControl, ::mempool, ::feeEstimator, nullptr /* FeeCalculation */);
+        nPayFee = MCWallet::GetMinimumFee(nBytes, *coinControl, ::mempool, ::feeEstimator, nullptr /* FeeCalculation */);
 
         if (nPayAmount > 0)
         {
@@ -522,7 +522,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             // Never create dust outputs; if we would, just add the dust to the fee.
             if (nChange > 0 && nChange < MIN_CHANGE)
             {
-                CellTxOut txout(nChange, (CellScript)std::vector<unsigned char>(24, 0));
+                MCTxOut txout(nChange, (MCScript)std::vector<unsigned char>(24, 0));
                 if (IsDust(txout, ::dustRelayFee))
                 {
                     nPayFee += nChange;
@@ -537,11 +537,11 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         }
 
         // after fee
-        nAfterFee = std::max<CellAmount>(nAmount - nPayFee, 0);
+        nAfterFee = std::max<MCAmount>(nAmount - nPayFee, 0);
     }
 
     // actually update labels
-    int nDisplayUnit = CellLinkUnits::BTC;
+    int nDisplayUnit = MagnaChainUnits::BTC;
     if (model && model->getOptionsModel())
         nDisplayUnit = model->getOptionsModel()->getDisplayUnit();
 
@@ -561,12 +561,12 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 
     // stats
     l1->setText(QString::number(nQuantity));                                 // Quantity
-    l2->setText(CellLinkUnits::formatWithUnit(nDisplayUnit, nAmount));        // Amount
-    l3->setText(CellLinkUnits::formatWithUnit(nDisplayUnit, nPayFee));        // Fee
-    l4->setText(CellLinkUnits::formatWithUnit(nDisplayUnit, nAfterFee));      // After Fee
+    l2->setText(MagnaChainUnits::formatWithUnit(nDisplayUnit, nAmount));        // Amount
+    l3->setText(MagnaChainUnits::formatWithUnit(nDisplayUnit, nPayFee));        // Fee
+    l4->setText(MagnaChainUnits::formatWithUnit(nDisplayUnit, nAfterFee));      // After Fee
     l5->setText(((nBytes > 0) ? ASYMP_UTF8 : "") + QString::number(nBytes));        // Bytes
     l7->setText(fDust ? tr("yes") : tr("no"));                               // Dust
-    l8->setText(CellLinkUnits::formatWithUnit(nDisplayUnit, nChange));        // Change
+    l8->setText(MagnaChainUnits::formatWithUnit(nDisplayUnit, nChange));        // Change
     if (nPayFee > 0)
     {
         l3->setText(ASYMP_UTF8 + l3->text());
@@ -617,11 +617,11 @@ void CoinControlDialog::updateView()
 
     int nDisplayUnit = model->getOptionsModel()->getDisplayUnit();
 
-    std::map<QString, std::vector<CellOutput> > mapCoins;
+    std::map<QString, std::vector<MCOutput> > mapCoins;
     model->listCoins(mapCoins);
 
-    for (const std::pair<QString, std::vector<CellOutput>>& coins : mapCoins) {
-        CellCoinControlWidgetItem *itemWalletAddress = new CellCoinControlWidgetItem();
+    for (const std::pair<QString, std::vector<MCOutput>>& coins : mapCoins) {
+        MCCoinControlWidgetItem *itemWalletAddress = new MCCoinControlWidgetItem();
         itemWalletAddress->setCheckState(COLUMN_CHECKBOX, Qt::Unchecked);
         QString sWalletAddress = coins.first;
         QString sWalletLabel = model->getAddressTableModel()->labelForAddress(sWalletAddress);
@@ -643,26 +643,26 @@ void CoinControlDialog::updateView()
             itemWalletAddress->setText(COLUMN_ADDRESS, sWalletAddress);
         }
 
-        CellAmount nSum = 0;
+        MCAmount nSum = 0;
         int nChildren = 0;
-        for (const CellOutput& out : coins.second) {
+        for (const MCOutput& out : coins.second) {
             nSum += out.tx->tx->vout[out.i].nValue;
             nChildren++;
 
-            CellCoinControlWidgetItem *itemOutput;
-            if (treeMode)    itemOutput = new CellCoinControlWidgetItem(itemWalletAddress);
-            else             itemOutput = new CellCoinControlWidgetItem(ui->treeWidget);
+            MCCoinControlWidgetItem *itemOutput;
+            if (treeMode)    itemOutput = new MCCoinControlWidgetItem(itemWalletAddress);
+            else             itemOutput = new MCCoinControlWidgetItem(ui->treeWidget);
             itemOutput->setFlags(flgCheckbox);
             itemOutput->setCheckState(COLUMN_CHECKBOX,Qt::Unchecked);
 
             // address
-            CellTxDestination outputAddress;
+            MCTxDestination outputAddress;
             QString sAddress = "";
             if(ExtractDestination(out.tx->tx->vout[out.i].scriptPubKey, outputAddress))
             {
-                sAddress = QString::fromStdString(CellLinkAddress(outputAddress).ToString());
+                sAddress = QString::fromStdString(MagnaChainAddress(outputAddress).ToString());
 
-                // if listMode or change => show celllink address. In tree mode, address is not shown again for direct wallet address outputs
+                // if listMode or change => show magnachain address. In tree mode, address is not shown again for direct wallet address outputs
                 if (!treeMode || (!(sAddress == sWalletAddress)))
                     itemOutput->setText(COLUMN_ADDRESS, sAddress);
             }
@@ -683,7 +683,7 @@ void CoinControlDialog::updateView()
             }
 
             // amount
-            itemOutput->setText(COLUMN_AMOUNT, CellLinkUnits::format(nDisplayUnit, out.tx->tx->vout[out.i].nValue));
+            itemOutput->setText(COLUMN_AMOUNT, MagnaChainUnits::format(nDisplayUnit, out.tx->tx->vout[out.i].nValue));
             itemOutput->setData(COLUMN_AMOUNT, Qt::UserRole, QVariant((qlonglong)out.tx->tx->vout[out.i].nValue)); // padding so that sorting works correctly
 
             // date
@@ -704,14 +704,14 @@ void CoinControlDialog::updateView()
              // disable locked coins
             if (model->isLockedCoin(txhash, out.i))
             {
-                CellOutPoint outpt(txhash, out.i);
+                MCOutPoint outpt(txhash, out.i);
                 coinControl->UnSelect(outpt); // just to be sure
                 itemOutput->setDisabled(true);
                 itemOutput->setIcon(COLUMN_CHECKBOX, platformStyle->SingleColorIcon(":/icons/lock_closed"));
             }
 
             // set checkbox
-            if (coinControl->IsSelected(CellOutPoint(txhash, out.i)))
+            if (coinControl->IsSelected(MCOutPoint(txhash, out.i)))
                 itemOutput->setCheckState(COLUMN_CHECKBOX, Qt::Checked);
         }
 
@@ -719,7 +719,7 @@ void CoinControlDialog::updateView()
         if (treeMode)
         {
             itemWalletAddress->setText(COLUMN_CHECKBOX, "(" + QString::number(nChildren) + ")");
-            itemWalletAddress->setText(COLUMN_AMOUNT, CellLinkUnits::format(nDisplayUnit, nSum));
+            itemWalletAddress->setText(COLUMN_AMOUNT, MagnaChainUnits::format(nDisplayUnit, nSum));
             itemWalletAddress->setData(COLUMN_AMOUNT, Qt::UserRole, QVariant((qlonglong)nSum));
         }
     }

@@ -1,12 +1,12 @@
 // Copyright (c) 2012-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "misc/random.h"
 #include "thread/scheduler.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
@@ -14,7 +14,7 @@
 
 BOOST_AUTO_TEST_SUITE(scheduler_tests)
 
-static void microTask(CellScheduler& s, boost::mutex& mutex, int& counter, int delta, boost::chrono::system_clock::time_point rescheduleTime)
+static void microTask(MCScheduler& s, boost::mutex& mutex, int& counter, int delta, boost::chrono::system_clock::time_point rescheduleTime)
 {
     {
         boost::unique_lock<boost::mutex> lock(mutex);
@@ -22,7 +22,7 @@ static void microTask(CellScheduler& s, boost::mutex& mutex, int& counter, int d
     }
     boost::chrono::system_clock::time_point noTime = boost::chrono::system_clock::time_point::min();
     if (rescheduleTime != noTime) {
-        CellScheduler::Function f = boost::bind(&microTask, boost::ref(s), boost::ref(mutex), boost::ref(counter), -delta + 1, noTime);
+        MCScheduler::Function f = boost::bind(&microTask, boost::ref(s), boost::ref(mutex), boost::ref(counter), -delta + 1, noTime);
         s.schedule(f, rescheduleTime);
     }
 }
@@ -51,7 +51,7 @@ BOOST_AUTO_TEST_CASE(manythreads)
     // microseconds in the future to subtract or add from
     // the counter -random_amount+1, so in the end the shared
     // counters should sum to the number of initial tasks performed.
-    CellScheduler microTasks;
+    MCScheduler microTasks;
 
     boost::mutex counterMutex[10];
     int counter[10] = { 0 };
@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(manythreads)
         boost::chrono::system_clock::time_point t = now + boost::chrono::microseconds(randomMsec(rng));
         boost::chrono::system_clock::time_point tReschedule = now + boost::chrono::microseconds(500 + randomMsec(rng));
         int whichCounter = zeroToNine(rng);
-        CellScheduler::Function f = boost::bind(&microTask, boost::ref(microTasks),
+        MCScheduler::Function f = boost::bind(&microTask, boost::ref(microTasks),
                                              boost::ref(counterMutex[whichCounter]), boost::ref(counter[whichCounter]),
                                              randomDelta(rng), tReschedule);
         microTasks.schedule(f, t);
@@ -83,19 +83,19 @@ BOOST_AUTO_TEST_CASE(manythreads)
     // As soon as these are created they will start running and servicing the queue
     boost::thread_group microThreads;
     for (int i = 0; i < 5; i++)
-        microThreads.create_thread(boost::bind(&CellScheduler::serviceQueue, &microTasks));
+        microThreads.create_thread(boost::bind(&MCScheduler::serviceQueue, &microTasks));
 
     MicroSleep(600);
     now = boost::chrono::system_clock::now();
 
     // More threads and more tasks:
     for (int i = 0; i < 5; i++)
-        microThreads.create_thread(boost::bind(&CellScheduler::serviceQueue, &microTasks));
+        microThreads.create_thread(boost::bind(&MCScheduler::serviceQueue, &microTasks));
     for (int i = 0; i < 100; i++) {
         boost::chrono::system_clock::time_point t = now + boost::chrono::microseconds(randomMsec(rng));
         boost::chrono::system_clock::time_point tReschedule = now + boost::chrono::microseconds(500 + randomMsec(rng));
         int whichCounter = zeroToNine(rng);
-        CellScheduler::Function f = boost::bind(&microTask, boost::ref(microTasks),
+        MCScheduler::Function f = boost::bind(&microTask, boost::ref(microTasks),
                                              boost::ref(counterMutex[whichCounter]), boost::ref(counter[whichCounter]),
                                              randomDelta(rng), tReschedule);
         microTasks.schedule(f, t);

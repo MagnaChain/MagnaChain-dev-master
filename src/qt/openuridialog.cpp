@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2014 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -17,7 +17,7 @@ OpenURIDialog::OpenURIDialog(QWidget *parent) :
 {
     ui->setupUi(this);
 #if QT_VERSION >= 0x040700
-    ui->uriEdit->setPlaceholderText("celllink:");
+    ui->uriEdit->setPlaceholderText("magnachain:");
 #endif
 }
 
@@ -34,7 +34,7 @@ QString OpenURIDialog::getURI()
 void OpenURIDialog::accept()
 {
     SendCoinsRecipient rcp;
-    if(GUIUtil::parseCellLinkURI(getURI(), &rcp))
+    if(GUIUtil::parseMagnaChainURI(getURI(), &rcp))
     {
         /* Only accept value URIs */
         QDialog::accept();
@@ -49,5 +49,5 @@ void OpenURIDialog::on_selectFileButton_clicked()
     if(filename.isEmpty())
         return;
     QUrl fileUri = QUrl::fromLocalFile(filename);
-    ui->uriEdit->setText("celllink:?r=" + QUrl::toPercentEncoding(fileUri.toString()));
+    ui->uriEdit->setText("magnachain:?r=" + QUrl::toPercentEncoding(fileUri.toString()));
 }

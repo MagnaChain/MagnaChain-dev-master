@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -16,17 +16,18 @@
 #include "chain/chainparamsseeds.h"
 #include "key/keystore.h"
 #include "consensus/tx_verify.h"
+#include "smartcontract/smartcontract.h"
 
 SignatureCoinbaseTransactionPf SignatureCoinbaseTransactionPF = nullptr;
 
 
-static CellBlock CreateGenesisBlock(const char* pszTimestamp, const CellScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CellAmount& genesisReward)
+static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& genesisOutputScript, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward, bool isMainChain)
 {
-    CellMutableTransaction txNew;
+    MCMutableTransaction txNew;
     txNew.nVersion = 1;
     txNew.vin.resize(1);
     txNew.vout.resize(1);
-    txNew.vin[0].scriptSig = CellScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
+    txNew.vin[0].scriptSig = MCScript() << 486604799 << CScriptNum(4) << std::vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
     txNew.vout[0].nValue = genesisReward;
     txNew.vout[0].scriptPubKey = genesisOutputScript;
 
@@ -43,24 +44,24 @@ static CellBlock CreateGenesisBlock(const char* pszTimestamp, const CellScript& 
 			code[i] = (unsigned char)pszTimestamp[i%iCodeSize];
 		}
 
-		CellExtKey kExtKey;
+		MCExtKey kExtKey;
 		kExtKey.Decode(code);
 
-		CellBasicKeyStore kKeyStore;
+		MCBasicKeyStore kKeyStore;
 		kKeyStore.AddKeyPubKey(kExtKey.key, kExtKey.key.GetPubKey());
 
-		CellTxDestination kDest(kExtKey.key.GetPubKey().GetID());
-		CellScript kScript = GetScriptForDestination(kDest);
+		MCTxDestination kDest(kExtKey.key.GetPubKey().GetID());
+		MCScript kScript = GetScriptForDestination(kDest);
 		txNew.vout[0].scriptPubKey = kScript;
 
 		(*SignatureCoinbaseTransactionPF)( 0, &kKeyStore, txNew, genesisReward, kScript);
-		//assert(CheckCoinbaseSignature( 0, CellTransaction(txNew)));
+		//assert(CheckCoinbaseSignature( 0, MCTransaction(txNew)));
         if (!hasstartecc)
     		ECC_Stop();
 	}
 
 
-    CellBlock genesis;
+    MCBlock genesis;
     genesis.nTime    = nTime;
     genesis.nBits    = nBits;
     genesis.nNonce   = nNonce;
@@ -68,6 +69,16 @@ static CellBlock CreateGenesisBlock(const char* pszTimestamp, const CellScript& 
     genesis.vtx.push_back(MakeTransactionRef(std::move(txNew)));
     genesis.hashPrevBlock.SetNull();
     genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
+
+    if (!isMainChain) {
+        ContractContext contractContext;
+        contractContext.txFinalData.resize(1);
+        genesis.groupSize.resize(1);
+        genesis.prevContractData.resize(1);
+        genesis.hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(genesis);
+        genesis.hashMerkleRootWithData = BlockMerkleRootWithData(genesis, contractContext);
+    }
+
     return genesis;
 }
 
@@ -77,50 +88,84 @@ const std::string DEFAULT_TIMESTAMP = "The Times 03/Jan/2009 Chancellor on brink
  * transaction cannot be spent since it did not originally exist in the
  * database.
  *
- * CellBlock(hash=000000000019d6, ver=1, hashPrevBlock=00000000000000, hashMerkleRoot=4a5e1e, nTime=1231006505, nBits=1d00ffff, nNonce=2083236893, vtx=1)
- *   CellTransaction(hash=4a5e1e, ver=1, vin.size=1, vout.size=1, nLockTime=0)
- *     CellTxIn(CellOutPoint(000000, -1), coinbase 04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73)
- *     CellTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
+ * MCBlock(hash=000000000019d6, ver=1, hashPrevBlock=00000000000000, hashMerkleRoot=4a5e1e, nTime=1231006505, nBits=1d00ffff, nNonce=2083236893, vtx=1)
+ *   MCTransaction(hash=4a5e1e, ver=1, vin.size=1, vout.size=1, nLockTime=0)
+ *     MCTxIn(MCOutPoint(000000, -1), coinbase 04ffff001d0104455468652054696d65732030332f4a616e2f32303039204368616e63656c6c6f72206f6e206272696e6b206f66207365636f6e64206261696c6f757420666f722062616e6b73)
+ *     MCTxOut(nValue=50.00000000, scriptPubKey=0x5F1DF16B2B704C8A578D0B)
  *   vMerkleTree: 4a5e1e
  */
-static CellBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const CellAmount& genesisReward)
+static MCBlock CreateGenesisBlock(const std::string& pszTimestamp, uint32_t nTime, uint32_t nNonce, uint32_t nBits, int32_t nVersion, const MCAmount& genesisReward, bool isMainChain)
 {
-    const CellScript genesisOutputScript = CellScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
-    return CreateGenesisBlock(pszTimestamp.c_str(), genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward);
+    const MCScript genesisOutputScript = MCScript() << ParseHex("04678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5f") << OP_CHECKSIG;
+    return CreateGenesisBlock(pszTimestamp.c_str(), genesisOutputScript, nTime, nNonce, nBits, nVersion, genesisReward, isMainChain);
 }
 
-void CellChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
+//
+int MCChainParams::GetDefaultPort() const 
+{
+    if (IsMainChain())
+    {
+        return nDefaultPort;
+    }
+    {
+        return gArgs.GetArg("-defaultport", nDefaultPort);
+    }
+}
+
+const uint256* MCChainParams::GetCheckpointHeightHash(int height) const
+{
+    MapCheckpoints::const_iterator cit = checkpointData.mapCheckpoints.find(height);
+    if (cit != checkpointData.mapCheckpoints.end())
+    {
+        return &cit->second;
+    }
+    return nullptr;
+}
+
+void MCChainParams::UpdateVersionBitsParameters(Consensus::DeploymentPos d, int64_t nStartTime, int64_t nTimeout)
 {
     consensus.vDeployments[d].nStartTime = nStartTime;
     consensus.vDeployments[d].nTimeout = nTimeout;
 }
 
 // key base 58 prefixes
-void CellChainParams::InitMainBase58Prefixes()
+void MCChainParams::InitMainBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 75); //X
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 62); //S
+    base58Prefixes[CONTRACT_ADDRESS] = std::vector<unsigned char>(1, 69);
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 128);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x88, 0xB2, 0x1E };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x88, 0xAD, 0xE4 };
 }
 
-void CellChainParams::InitTestnetBase58Prefixes()
+void MCChainParams::InitTestnetBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 110);
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 195);
+    base58Prefixes[CONTRACT_ADDRESS] = std::vector<unsigned char>(1, 199);
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
 }
 
-void CellChainParams::InitRegtestBase58Prefixes()
+void MCChainParams::InitRegtestBase58Prefixes()
 {
     base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1, 110);
     base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1, 195);
+    base58Prefixes[CONTRACT_ADDRESS] = std::vector<unsigned char>(1, 199);
     base58Prefixes[SECRET_KEY] = std::vector<unsigned char>(1, 239);
     base58Prefixes[EXT_PUBLIC_KEY] = { 0x04, 0x35, 0x87, 0xCF };
     base58Prefixes[EXT_SECRET_KEY] = { 0x04, 0x35, 0x83, 0x94 };
+}
+
+int GetBranchInitDefaultPort(bool fTestNet, bool fRegTest)
+{
+    if (fTestNet)
+        return 38833;
+    else if(fRegTest)
+        return 48833;
+    return 28833;//main net
 }
 
 /**
@@ -134,20 +179,20 @@ void CellChainParams::InitRegtestBase58Prefixes()
  * + Contains no strange transactions
  */
 
-class CMainParams : public CellChainParams {
+class CMainParams : public MCChainParams {
 public:
     CMainParams() {
         strNetworkID = "main";
 		consensus.BigBoomHeight = 1000;
-		consensus.BigBoomValue = 1500000 * COIN;
-        consensus.nSubsidyHalvingInterval = 210000 * 20;
+        consensus.BigBoomValue = 2600000 * COIN;
+        consensus.nSubsidyHalvingInterval = 210000 * 40;
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();
         consensus.BIP65Height = 0; // 000000000000000004c2b624ed5d7756c508d90fd0da2c7c679febfa6c4735f0
         consensus.BIP66Height = 0; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 		consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks ƒ—∂»µ˜’˚ ±º‰ 
-        consensus.nPowTargetSpacing = 30;// * 60;//10 * 60;
+        consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
+        consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", MAIN_CHAIN_POW_TARGET_SPACING);
         consensus.fPowAllowMinDifficultyBlocks = false;
         consensus.fPowNoRetargeting = false;
 		consensus.nRuleChangeActivationThreshold = 10;// 1916; // 95% of 2016
@@ -180,7 +225,7 @@ public:
         nDefaultPort = 8833;
         nPruneAfterHeight = 100000;
 
-		genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1231006505, 2, 0x207fffff, 1, 10 * COIN);
+		genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1231006505, 2, 0x207fffff, 1, 10 * COIN, IsMainChain());
         consensus.hashGenesisBlock = genesis.GetHash();
         //assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
         //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -201,9 +246,9 @@ public:
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
 
-        //checkpointData = (CellCheckpointData) {
-        //    {
-        //        // { 11111, uint256S("0x0000000069e244f73d78e8fd29ba2fd2ed618bd6fa2ee92559f542fdb26e7c1d")},
+        checkpointData = {
+            {
+                     { 1000, uint256S("0xd5ab372de41044fc193c253724a31f8224d7e353cc26248058d45c3a3ece22c8")},
         //        // { 33333, uint256S("0x000000002dd5588a74784eaa7ab0507a18ad16a236e7b1ce69f00d7ddfb5d0a6")},
         //        // { 74000, uint256S("0x0000000000573993a3c9e41ce34471c079dcf5f52a0e824a81e7f953b8661a20")},
         //        // {105000, uint256S("0x00000000000291ce28027faea320c8d2b054b2e0fe44a773f3eefb151d6bdc97")},
@@ -216,8 +261,8 @@ public:
         //        // {250000, uint256S("0x000000000000003887df1f29024b06fc2200b55f8af8f35453d7be294df2d214")},
         //        // {279000, uint256S("0x0000000000000001ae8c72a0b0c301f67e3afca10e819efa9041e458e9bd7e40")},
         //        // {295000, uint256S("0x00000000000000004d9b4ef50f0f9d686fd69db2e03af35a100370c64632a983")},
-        //    }
-        //};
+            }
+        };
 
         chainTxData = ChainTxData{
             // Data as of block 000000000000000000d97e53664d17967bd4ee50b23abb92e54a34eb222d15ae (height 478913).
@@ -232,12 +277,12 @@ public:
 /**
  * Testnet (v3)
  */
-class CTestNetParams : public CellChainParams {
+class CTestNetParams : public MCChainParams {
 public:
     CTestNetParams() {
         strNetworkID = "test";
 		consensus.BigBoomHeight = 1000;
-		consensus.BigBoomValue = 1500000 * COIN;
+		consensus.BigBoomValue = 2600000 * COIN;
 		consensus.nSubsidyHalvingInterval = 210000 * 20;
         consensus.BIP34Height = 0;
         consensus.BIP34Hash = uint256();
@@ -245,7 +290,7 @@ public:
         consensus.BIP66Height = 0; // 000000002104c8c45e99a8853285a3b592602a3ccde2b832481da85e9e4ba182
         consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-		consensus.nPowTargetSpacing = 15;//2 *60;
+		consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", TEST_CHAIN_POW_TARGET_SPACING);
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = false;
         consensus.nRuleChangeActivationThreshold = 10; // 75% for testchains
@@ -279,7 +324,7 @@ public:
         nPruneAfterHeight = 1000;
 
 		
-        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 1, 0x207fffff, 1, 10 * COIN);
+        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 1, 0x207fffff, 1, 10 * COIN, IsMainChain());
         consensus.hashGenesisBlock = genesis.GetHash();
         //assert(consensus.hashGenesisBlock == uint256S("0x000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943"));
         //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -298,7 +343,7 @@ public:
         fMineBlocksOnDemand = false;
 
 
-        //checkpointData = (CellCheckpointData) {
+        //checkpointData = (MCCheckpointData) {
         //    {
         //        {546, uint256S("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70")},
         //    }
@@ -317,12 +362,12 @@ public:
 /**
  * Regression test
  */
-class CRegTestParams : public CellChainParams {
+class CRegTestParams : public MCChainParams {
 public:
     CRegTestParams() {
         strNetworkID = "regtest";
 		consensus.BigBoomHeight = 1000;
-		consensus.BigBoomValue = 1500000 * COIN;
+		consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 150;
         consensus.BIP34Height = 0; // BIP34 has not activated on regtest (far in the future so block v1 are not rejected in tests)
         consensus.BIP34Hash = uint256();
@@ -330,7 +375,7 @@ public:
         consensus.BIP66Height = 0; // BIP66 activated on regtest (Used in rpc activation tests)
         consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
         consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-		consensus.nPowTargetSpacing = 2;// 10 * 60;
+		consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", TEST_CHAIN_POW_TARGET_SPACING);
         consensus.fPowAllowMinDifficultyBlocks = true;
         consensus.fPowNoRetargeting = true;
         consensus.nRuleChangeActivationThreshold = 10; // 75% for testchains
@@ -358,7 +403,7 @@ public:
         nDefaultPort = 18844;
         nPruneAfterHeight = 1000;
 
-        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 2, 0x207fffff, 1, 10 * COIN);
+        genesis = CreateGenesisBlock(DEFAULT_TIMESTAMP, 1296688602, 2, 0x207fffff, 1, 10 * COIN, IsMainChain());
         consensus.hashGenesisBlock = genesis.GetHash();
         //assert(consensus.hashGenesisBlock == uint256S("0x0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
         //assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
@@ -370,7 +415,7 @@ public:
         fRequireStandard = false;
         fMineBlocksOnDemand = true;
 
-        //checkpointData = (CellCheckpointData) {
+        //checkpointData = (MCCheckpointData) {
         //    {
         //        {0, uint256S("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206")},
         //    }
@@ -386,9 +431,9 @@ public:
     }
 };
 
-class CellBranchParams : public CellChainParams {
+class MCBranchParams : public MCChainParams {
 public:
-	CellBranchParams(const std::string& strBranchIdParams = "") {
+	MCBranchParams(const std::string& strBranchIdParams = "") {
 		strNetworkID = "branch";
 		consensus.BigBoomHeight = 0;
 		consensus.BigBoomValue = 0 * COIN;
@@ -399,7 +444,7 @@ public:
 		consensus.BIP66Height = 0; // 00000000000000000379eaa19dce8c9b722d46ae6a57c2f1a988119488b50931
 		consensus.powLimit = uint256S("0xefffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 		consensus.nPowTargetTimespan = 14 * 24 * 60 * 60; // two weeks
-		consensus.nPowTargetSpacing = 8;// * 60;//10 * 60;
+		consensus.nPowTargetSpacing = gArgs.GetArg("-powtargetspacing", BRANCH_CHAIN_POW_TARGET_SPACING);
 		consensus.fPowAllowMinDifficultyBlocks = false;
 		consensus.fPowNoRetargeting = false;
 		consensus.nRuleChangeActivationThreshold = 10;// 1916; // 95% of 2016
@@ -420,21 +465,26 @@ public:
 		// By default assume that the signatures in ancestors of this block are valid.
 		consensus.defaultAssumeValid = uint256S("0x00"); //477890
 
+        //‰æßÈìæË∑ü‰∏ªÈìæÁöÑkey‰∏ÄËá¥,Ê†πÊçÆ‰∏çÂêåÁΩëÁªúËøõË°åÂàáÊç¢
+        bool fRegTest = gArgs.GetBoolArg("-regtest", false);
+        bool fTestNet = gArgs.GetBoolArg("-testnet", false);
 		/**
 		* The message start string is designed to be unlikely to occur in normal data.
 		* The characters are rarely used upper ASCII, not valid as UTF-8, and produce
 		* a large 32-bit integer with any alignment.
 		*/
-		pchMessageStart[0] = 0xce;
-		pchMessageStart[1] = 0x11;
-		pchMessageStart[2] = 0x68;
-		pchMessageStart[3] = 0x99;
-		nDefaultPort = 28833;
+        pchMessageStart[0] = 0xce;
+        pchMessageStart[1] = 0x11;
+        pchMessageStart[2] = 0x68;
+        pchMessageStart[3] = 0x99;
+
+		nDefaultPort = GetBranchInitDefaultPort(fTestNet, fRegTest);
+
 		nPruneAfterHeight = 100000;
 
 		//change branch dir
         strBranchId = !strBranchIdParams.empty() ? strBranchIdParams : gArgs.GetArg("-branchid", "");
-		if (strBranchId == "main")
+		if (strBranchId == MCBaseChainParams::MAIN)
 			throw std::runtime_error("main chain no need this option -branchid");
 		if (strBranchId.length() != 64 || !IsHex(strBranchId))
 			throw std::runtime_error(strprintf("%s: Invalid branch id %s, it must a txid", __func__, strBranchId.c_str()));
@@ -443,15 +493,11 @@ public:
 
 		gArgs.SoftSetArg("datadir", "branch" + strBranchId);
 		std::string strTimestamp = "branch_" + strBranchId;
-		genesis = CreateGenesisBlock(strTimestamp, 1231006505, 2, 0x207fffff, 1, 10 * COIN);
+		genesis = CreateGenesisBlock(strTimestamp, 1231006505, 2, 0x207fffff, 1, 10 * COIN, IsMainChain());
 		consensus.hashGenesisBlock = genesis.GetHash();
 
 		//assert(consensus.hashGenesisBlock == uint256S("0x000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"));
 		//assert(genesis.hashMerkleRoot == uint256S("0x4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"));
-
-        //≤‡¡¥∏˙÷˜¡¥µƒkey“ª÷¬,∏˘æ›≤ªÕ¨Õ¯¬ÁΩ¯––«–ªª
-        bool fRegTest = gArgs.GetBoolArg("-regtest", false);
-        bool fTestNet = gArgs.GetBoolArg("-testnet", false);
         InitMainBase58Prefixes();
         if (fTestNet)
             InitTestnetBase58Prefixes();
@@ -475,37 +521,37 @@ public:
 	}
 };
 
-static std::unique_ptr<CellChainParams> globalChainParams;
-static std::map<uint256, std::unique_ptr<CellChainParams>> g_mapBranchParams;
+static std::unique_ptr<MCChainParams> globalChainParams;
+static std::map<uint256, std::unique_ptr<MCChainParams>> g_mapBranchParams;
 
-const CellChainParams &Params() {
+const MCChainParams &Params() {
     assert(globalChainParams);
     return *globalChainParams;
 }
 
-const CellChainParams& BranchParams(const uint256& branchHash)
+const MCChainParams& BranchParams(const uint256& branchHash)
 {
     if (!g_mapBranchParams.count(branchHash))
     {
-        g_mapBranchParams[branchHash] = std::unique_ptr<CellChainParams>(new CellBranchParams(branchHash.GetHex()));
+        g_mapBranchParams[branchHash] = std::unique_ptr<MCChainParams>(new MCBranchParams(branchHash.GetHex()));
     }
     return *g_mapBranchParams[branchHash];
 }
 
-std::unique_ptr<CellChainParams> CreateChainParams(const std::string& chain)
+std::unique_ptr<MCChainParams> CreateChainParams(const std::string& chain)
 {
-    if (chain == CellBaseChainParams::MAIN)
-        return std::unique_ptr<CellChainParams>(new CMainParams());
-    else if (chain == CellBaseChainParams::TESTNET)
-        return std::unique_ptr<CellChainParams>(new CTestNetParams());
-    else if (chain == CellBaseChainParams::REGTEST)
-        return std::unique_ptr<CellChainParams>(new CRegTestParams());
-	else if (chain == CellBaseChainParams::BRANCH)
-		return std::unique_ptr<CellChainParams>(new CellBranchParams());
+    if (chain == MCBaseChainParams::MAIN)
+        return std::unique_ptr<MCChainParams>(new CMainParams());
+    else if (chain == MCBaseChainParams::TESTNET)
+        return std::unique_ptr<MCChainParams>(new CTestNetParams());
+    else if (chain == MCBaseChainParams::REGTEST)
+        return std::unique_ptr<MCChainParams>(new CRegTestParams());
+	else if (chain == MCBaseChainParams::BRANCH)
+		return std::unique_ptr<MCChainParams>(new MCBranchParams());
     throw std::runtime_error(strprintf("%s: Unknown chain %s.", __func__, chain));
 }
 
-static std::vector< std::shared_ptr<CellChainParams> > vecParams;
+static std::vector< std::shared_ptr<MCChainParams> > vecParams;
 
 void SelectParams(const std::string& network)
 {

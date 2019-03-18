@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_POLICY_POLICY_H
-#define CELLLINK_POLICY_POLICY_H
+#ifndef MAGNACHAIN_POLICY_POLICY_H
+#define MAGNACHAIN_POLICY_POLICY_H
 
 #include "consensus/consensus.h"
 #include "policy/feerate.h"
@@ -14,8 +14,9 @@
 
 #include <string>
 
-class CellCoinsViewCache;
-class CellTxOut;
+class MCCoinsViewCache;
+class MCTxOut;
+class SmartLuaState;
 
 /** Default for -blockmaxweight, which controls the range of block weights the mining code will create **/
 static const unsigned int DEFAULT_BLOCK_MAX_WEIGHT = MAX_BLOCK_WEIGHT - 4000;
@@ -73,35 +74,35 @@ static const unsigned int STANDARD_NOT_MANDATORY_VERIFY_FLAGS = STANDARD_SCRIPT_
 static const unsigned int STANDARD_LOCKTIME_VERIFY_FLAGS = LOCKTIME_VERIFY_SEQUENCE |
                                                            LOCKTIME_MEDIAN_TIME_PAST;
 
-CellAmount GetDustThreshold(const CellTxOut& txout, const CellFeeRate& dustRelayFee);
+MCAmount GetDustThreshold(const MCTxOut& txout, const MCFeeRate& dustRelayFee);
 
-bool IsDust(const CellTxOut& txout, const CellFeeRate& dustRelayFee);
+bool IsDust(const MCTxOut& txout, const MCFeeRate& dustRelayFee);
 
-bool IsStandard(const CellScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled = false);
+bool IsStandard(const MCScript& scriptPubKey, txnouttype& whichType, const bool witnessEnabled = false);
     /**
      * Check for standard transaction types
      * @return True if all outputs (scriptPubKeys) use only standard transaction forms
      */
-bool IsStandardTx(const CellTransaction& tx, std::string& reason, const bool witnessEnabled = false);
+bool IsStandardTx(const MCTransaction& tx, std::string& reason, const bool witnessEnabled = false);
     /**
      * Check for standard transaction types
      * @param[in] mapInputs    Map of previous transactions that have outputs we're spending
      * @return True if all inputs (scriptSigs) use only standard transaction forms
      */
-bool AreInputsStandard(const CellTransaction& tx, const CellCoinsViewCache& mapInputs);
+bool AreInputsStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInputs);
     /**
      * Check if the transaction is over standard P2WSH resources limit:
      * 3600bytes witnessScript size, 80bytes per witness stack element, 100 witness stack elements
      * These limits are adequate for multi-signature up to n-of-100 using OP_CHECKSIG, OP_ADD, and OP_EQUAL,
      */
-bool IsWitnessStandard(const CellTransaction& tx, const CellCoinsViewCache& mapInputs);
+bool IsWitnessStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInputs);
 
-extern CellFeeRate incrementalRelayFee;
-extern CellFeeRate dustRelayFee;
+extern MCFeeRate incrementalRelayFee;
+extern MCFeeRate dustRelayFee;
 extern unsigned int nBytesPerSigOp;
 
 /** Compute the virtual transaction size (weight reinterpreted as bytes). */
-int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost);
-int64_t GetVirtualTransactionSize(const CellTransaction& tx, int64_t nSigOpCost = 0);
+int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost, int32_t runningTimes, int32_t deltaDataLen, int factor);
+int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost = 0, int32_t runningTimes = 0, int32_t deltaDataLen = 0);
 
-#endif // CELLLINK_POLICY_POLICY_H
+#endif // MAGNACHAIN_POLICY_POLICY_H

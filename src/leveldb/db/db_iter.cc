@@ -56,8 +56,12 @@ class DBIter: public Iterator {
         sequence_(s),
         direction_(kForward),
         valid_(false),
-        rnd_(seed),
-        bytes_counter_(RandomPeriod()) {
+        rnd_(seed)
+#ifndef LEVELDB_PLATFORM_WINDOWS
+      ,
+      bytes_counter_(RandomPeriod())
+#endif // !LEVELDB_PLATFORM_WINDOWS
+  {
   }
   virtual ~DBIter() {
     delete iter_;
@@ -104,9 +108,11 @@ class DBIter: public Iterator {
   }
 
   // Pick next gap with average value of config::kReadBytesPeriod.
+#ifndef LEVELDB_PLATFORM_WINDOWS
   ssize_t RandomPeriod() {
     return rnd_.Uniform(2*config::kReadBytesPeriod);
   }
+#endif
 
   DBImpl* db_;
   const Comparator* const user_comparator_;
@@ -120,8 +126,9 @@ class DBIter: public Iterator {
   bool valid_;
 
   Random rnd_;
+#ifndef LEVELDB_PLATFORM_WINDOWS
   ssize_t bytes_counter_;
-
+#endif
   // No copying allowed
   DBIter(const DBIter&);
   void operator=(const DBIter&);
@@ -129,12 +136,15 @@ class DBIter: public Iterator {
 
 inline bool DBIter::ParseKey(ParsedInternalKey* ikey) {
   Slice k = iter_->key();
+#ifndef LEVELDB_PLATFORM_WINDOWS
   ssize_t n = k.size() + iter_->value().size();
   bytes_counter_ -= n;
   while (bytes_counter_ < 0) {
     bytes_counter_ += RandomPeriod();
     db_->RecordReadSample(k);
   }
+#endif
+
   if (!ParseInternalKey(k, ikey)) {
     status_ = Status::Corruption("corrupted internal key in DBIter");
     return false;

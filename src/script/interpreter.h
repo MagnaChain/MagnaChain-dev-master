@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_SCRIPT_INTERPRETER_H
-#define CELLLINK_SCRIPT_INTERPRETER_H
+#ifndef MAGNACHAIN_SCRIPT_INTERPRETER_H
+#define MAGNACHAIN_SCRIPT_INTERPRETER_H
 
 #include "script/script_error.h"
 #include "primitives/transaction.h"
@@ -14,9 +14,9 @@
 #include <stdint.h>
 #include <string>
 
-class CellPubKey;
-class CellScript;
-class CellTransaction;
+class MCPubKey;
+class MCScript;
+class MCTransaction;
 class uint256;
 
 /** Signature hash types/flags */
@@ -115,7 +115,7 @@ struct PrecomputedTransactionData
 {
     uint256 hashPrevouts, hashSequence, hashOutputs;
 
-    PrecomputedTransactionData(const CellTransaction& tx);
+    PrecomputedTransactionData(const MCTransaction& tx);
 };
 
 enum SigVersion
@@ -124,12 +124,12 @@ enum SigVersion
     SIGVERSION_WITNESS_V0 = 1,
 };
 
-uint256 SignatureHash(const CellScript &scriptCode, const CellTransaction& txTo, unsigned int nIn, int nHashType, const CellAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache = nullptr);
+uint256 SignatureHash(const MCScript &scriptCode, const MCTransaction& txTo, unsigned int nIn, int nHashType, const MCAmount& amount, SigVersion sigversion, const PrecomputedTransactionData* cache = nullptr);
 
 class BaseSignatureChecker
 {
 public:
-    virtual bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CellScript& scriptCode, SigVersion sigversion) const
+    virtual bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const MCScript& scriptCode, SigVersion sigversion) const
     {
         return false;
     }
@@ -150,18 +150,18 @@ public:
 class TransactionSignatureChecker : public BaseSignatureChecker
 {
 private:
-    const CellTransaction* txTo;
+    const MCTransaction* txTo;
     unsigned int nIn;
-    const CellAmount amount;
+    const MCAmount amount;
     const PrecomputedTransactionData* txdata;
 
 protected:
-    virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const CellPubKey& vchPubKey, const uint256& sighash) const;
+    virtual bool VerifySignature(const std::vector<unsigned char>& vchSig, const MCPubKey& vchPubKey, const uint256& sighash) const;
 
 public:
-    TransactionSignatureChecker(const CellTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(nullptr) {}
-    TransactionSignatureChecker(const CellTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn, const PrecomputedTransactionData& txdataIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(&txdataIn) {}
-    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const CellScript& scriptCode, SigVersion sigversion) const override;
+    TransactionSignatureChecker(const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(nullptr) {}
+    TransactionSignatureChecker(const MCTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn, const PrecomputedTransactionData& txdataIn) : txTo(txToIn), nIn(nInIn), amount(amountIn), txdata(&txdataIn) {}
+    bool CheckSig(const std::vector<unsigned char>& scriptSig, const std::vector<unsigned char>& vchPubKey, const MCScript& scriptCode, SigVersion sigversion) const override;
     bool CheckLockTime(const CScriptNum& nLockTime) const override;
     bool CheckSequence(const CScriptNum& nSequence) const override;
 };
@@ -169,15 +169,15 @@ public:
 class MutableTransactionSignatureChecker : public TransactionSignatureChecker
 {
 private:
-    const CellTransaction txTo;
+    const MCTransaction txTo;
 
 public:
-    MutableTransactionSignatureChecker(const CellMutableTransaction* txToIn, unsigned int nInIn, const CellAmount& amountIn) : TransactionSignatureChecker(&txTo, nInIn, amountIn), txTo(*txToIn) {}
+    MutableTransactionSignatureChecker(const MCMutableTransaction* txToIn, unsigned int nInIn, const MCAmount& amountIn) : TransactionSignatureChecker(&txTo, nInIn, amountIn), txTo(*txToIn) {}
 };
 
-bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const CellScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
-bool VerifyScript(const CellScript& scriptSig, const CellScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
+bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const MCScript& script, unsigned int flags, const BaseSignatureChecker& checker, SigVersion sigversion, ScriptError* error = nullptr);
+bool VerifyScript(const MCScript& scriptSig, const MCScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags, const BaseSignatureChecker& checker, ScriptError* serror = nullptr);
 
-size_t CountWitnessSigOps(const CellScript& scriptSig, const CellScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
+size_t CountWitnessSigOps(const MCScript& scriptSig, const MCScript& scriptPubKey, const CScriptWitness* witness, unsigned int flags);
 
-#endif // CELLLINK_SCRIPT_INTERPRETER_H
+#endif // MAGNACHAIN_SCRIPT_INTERPRETER_H

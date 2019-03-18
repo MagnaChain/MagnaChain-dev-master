@@ -1,0 +1,22 @@
+[Unit]
+Description=MagnaChain's distributed currency daemon
+After=network.target
+
+[Service]
+User=magnachain
+Group=magnachain
+
+Type=forking
+PIDFile=/var/lib/magnachaind/magnachaind.pid
+ExecStart=/usr/bin/magnachaind -daemon -pid=/var/lib/magnachaind/magnachaind.pid \
+-conf=/etc/magnachain/magnachain.conf -datadir=/var/lib/magnachaind -disablewallet
+
+Restart=always
+PrivateTmp=true
+TimeoutStopSec=60s
+TimeoutStartSec=2s
+StartLimitInterval=120s
+StartLimitBurst=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,7 +10,7 @@
 #include "key/pubkey.h"
 #include "script/standard.h"
 
-bool CScriptCompressor::IsToKeyID(CellKeyID &hash) const
+bool CScriptCompressor::IsToKeyID(MCKeyID &hash) const
 {
     if (script.size() == 25 && script[0] == OP_DUP && script[1] == OP_HASH160
                             && script[2] == 20 && script[23] == OP_EQUALVERIFY
@@ -21,7 +21,7 @@ bool CScriptCompressor::IsToKeyID(CellKeyID &hash) const
     return false;
 }
 
-bool CScriptCompressor::IsToScriptID(CellScriptID &hash) const
+bool CScriptCompressor::IsToScriptID(MCScriptID &hash) const
 {
     if (script.size() == 23 && script[0] == OP_HASH160 && script[1] == 20
                             && script[22] == OP_EQUAL) {
@@ -31,7 +31,7 @@ bool CScriptCompressor::IsToScriptID(CellScriptID &hash) const
     return false;
 }
 
-bool CScriptCompressor::IsToPubKey(CellPubKey &pubkey) const
+bool CScriptCompressor::IsToPubKey(MCPubKey &pubkey) const
 {
     if (script.size() == 35 && script[0] == 33 && script[34] == OP_CHECKSIG
                             && (script[1] == 0x02 || script[1] == 0x03)) {
@@ -48,21 +48,21 @@ bool CScriptCompressor::IsToPubKey(CellPubKey &pubkey) const
 
 bool CScriptCompressor::Compress(std::vector<unsigned char> &out) const
 {
-    CellKeyID keyID;
+    MCKeyID keyID;
     if (IsToKeyID(keyID)) {
         out.resize(21);
         out[0] = 0x00;
         memcpy(&out[1], &keyID, 20);
         return true;
     }
-    CellScriptID scriptID;
+    MCScriptID scriptID;
     if (IsToScriptID(scriptID)) {
         out.resize(21);
         out[0] = 0x01;
         memcpy(&out[1], &scriptID, 20);
         return true;
     }
-    CellPubKey pubkey;
+    MCPubKey pubkey;
     if (IsToPubKey(pubkey)) {
         out.resize(33);
         memcpy(&out[1], &pubkey[1], 32);
@@ -118,7 +118,7 @@ bool CScriptCompressor::Decompress(unsigned int nSize, const std::vector<unsigne
         unsigned char vch[33] = {};
         vch[0] = nSize - 2;
         memcpy(&vch[1], in.data(), 32);
-        CellPubKey pubkey(&vch[0], &vch[33]);
+        MCPubKey pubkey(&vch[0], &vch[33]);
         if (!pubkey.Decompress())
             return false;
         assert(pubkey.size() == 65);
@@ -140,7 +140,7 @@ bool CScriptCompressor::Decompress(unsigned int nSize, const std::vector<unsigne
 // * if e==9, we only know the resulting number is not zero, so output 1 + 10*(n - 1) + 9
 // (this is decodable, as d is in [1-9] and e is in [0-9])
 
-uint64_t CellTxOutCompressor::CompressAmount(uint64_t n)
+uint64_t MCTxOutCompressor::CompressAmount(uint64_t n)
 {
     if (n == 0)
         return 0;
@@ -159,7 +159,7 @@ uint64_t CellTxOutCompressor::CompressAmount(uint64_t n)
     }
 }
 
-uint64_t CellTxOutCompressor::DecompressAmount(uint64_t x)
+uint64_t MCTxOutCompressor::DecompressAmount(uint64_t x)
 {
     // x = 0  OR  x = 1+10*(9*n + d - 1) + e  OR  x = 1+10*(n - 1) + 9
     if (x == 0)

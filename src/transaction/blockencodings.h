@@ -1,23 +1,23 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_BLOCK_ENCODINGS_H
-#define CELLLINK_BLOCK_ENCODINGS_H
+#ifndef MAGNACHAIN_BLOCK_ENCODINGS_H
+#define MAGNACHAIN_BLOCK_ENCODINGS_H
 
 #include "primitives/block.h"
 
 #include <memory>
 
-class CellTxMemPool;
+class MCTxMemPool;
 
-// Dumb helper to handle CellTransaction compression at serialize-time
+// Dumb helper to handle MCTransaction compression at serialize-time
 struct TransactionCompressor {
 private:
-    CellTransactionRef& tx;
+    MCTransactionRef& tx;
 public:
-    TransactionCompressor(CellTransactionRef& txIn) : tx(txIn) {}
+    TransactionCompressor(MCTransactionRef& txIn) : tx(txIn) {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -73,7 +73,7 @@ class BlockTransactions {
 public:
     // A BlockTransactions message
     uint256 blockhash;
-    std::vector<CellTransactionRef> txn;
+    std::vector<MCTransactionRef> txn;
 
     BlockTransactions() {}
     BlockTransactions(const BlockTransactionsRequest& req) :
@@ -100,12 +100,12 @@ public:
     }
 };
 
-// Dumb serialization/storage-helper for CellBlockHeaderAndShortTxIDs and PartiallyDownloadedBlock
+// Dumb serialization/storage-helper for MCBlockHeaderAndShortTxIDs and PartiallyDownloadedBlock
 struct PrefilledTransaction {
-    // Used as an offset since last prefilled tx in CellBlockHeaderAndShortTxIDs,
+    // Used as an offset since last prefilled tx in MCBlockHeaderAndShortTxIDs,
     // as a proper transaction-in-block-index in PartiallyDownloadedBlock
     uint16_t index;
-    CellTransactionRef tx;
+    MCTransactionRef tx;
 
     ADD_SERIALIZE_METHODS;
 
@@ -129,7 +129,7 @@ typedef enum ReadStatus_t
                                    // failure in CheckBlock.
 } ReadStatus;
 
-class CellBlockHeaderAndShortTxIDs {
+class MCBlockHeaderAndShortTxIDs {
 private:
     mutable uint64_t shorttxidk0, shorttxidk1;
     uint64_t nonce;
@@ -140,16 +140,18 @@ private:
 
     static const int SHORTTXIDS_LENGTH = 6;
 protected:
+    std::vector<uint16_t> groupSize;
+    std::vector<ContractPrevData> prevContractData;
     std::vector<uint64_t> shorttxids;
     std::vector<PrefilledTransaction> prefilledtxn;
 
 public:
-    CellBlockHeader header;
+    MCBlockHeader header;
 
     // Dummy for deserialization
-    CellBlockHeaderAndShortTxIDs() {}
+    MCBlockHeaderAndShortTxIDs() {}
 
-    CellBlockHeaderAndShortTxIDs(const CellBlock& block, bool fUseWTXID);
+    MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID);
 
     uint64_t GetShortID(const uint256& txhash) const;
 
@@ -161,6 +163,8 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(header);
         READWRITE(nonce);
+        READWRITE(groupSize);
+        READWRITE(prevContractData);
 
         uint64_t shorttxids_size = (uint64_t)shorttxids.size();
         READWRITE(COMPACTSIZE(shorttxids_size));
@@ -194,17 +198,19 @@ public:
 
 class PartiallyDownloadedBlock {
 protected:
-    std::vector<CellTransactionRef> txn_available;
+    std::vector<MCTransactionRef> txn_available;
     size_t prefilled_count = 0, mempool_count = 0, extra_count = 0;
-    CellTxMemPool* pool;
+    MCTxMemPool* pool;
 public:
-    CellBlockHeader header;
-    PartiallyDownloadedBlock(CellTxMemPool* poolIn) : pool(poolIn) {}
+    MCBlockHeader header;
+    std::vector<uint16_t> groupSize;
+    std::vector<ContractPrevData> prevContractData;
+    PartiallyDownloadedBlock(MCTxMemPool* poolIn) : pool(poolIn) {}
 
     // extra_txn is a list of extra transactions to look at, in <witness hash, reference> form
-    ReadStatus InitData(const CellBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, CellTransactionRef>>& extra_txn);
+    ReadStatus InitData(const MCBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, MCTransactionRef>>& extra_txn);
     bool IsTxAvailable(size_t index) const;
-    ReadStatus FillBlock(CellBlock& block, const std::vector<CellTransactionRef>& vtx_missing);
+    ReadStatus FillBlock(MCBlock& block, const std::vector<MCTransactionRef>& vtx_missing);
 };
 
 #endif

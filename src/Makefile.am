@@ -1,5 +1,5 @@
 # Copyright (c) 2013-2016 The Bitcoin Core developers
-# Copyright (c) 2016-2018 The CellLink Core developers
+# Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -19,29 +19,35 @@ else
 LIBUNIVALUE = $(UNIVALUE_LIBS)
 endif
 
-CELLLINK_CONFIG_INCLUDES=-I$(builddir)/config
-CELLLINK_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
+MAGNACHAIN_CONFIG_INCLUDES=-I$(builddir)/config
+MAGNACHAIN_INCLUDES=-I$(builddir) -I$(builddir)/obj $(BDB_CPPFLAGS) $(BOOST_CPPFLAGS) $(LEVELDB_CPPFLAGS) $(CRYPTO_CFLAGS) $(SSL_CFLAGS)
 
-CELLLINK_INCLUDES += -I$(srcdir)/secp256k1/include
-CELLLINK_INCLUDES += $(UNIVALUE_CFLAGS)
+MAGNACHAIN_INCLUDES += -I$(srcdir)/secp256k1/include -I$(srcdir)/lua
+MAGNACHAIN_INCLUDES += $(UNIVALUE_CFLAGS)
 
-LIBCELLLINK_SERVER=libcelllink_server.a
-LIBCELLLINK_COMMON=libcelllink_common.a
-LIBCELLLINK_CONSENSUS=libcelllink_consensus.a
-LIBCELLLINK_CLI=libcelllink_cli.a
-LIBCELLLINK_UTIL=libcelllink_util.a
-LIBCELLLINK_CRYPTO=crypto/libcelllink_crypto.a
-LIBCELLLINKQT=qt/libcelllinkqt.a
+MAGNACHAIN_MONITOR_INCLUDES = -I$(srcdir)/monitor/mysqlcppconn
+
+LIBMAGNACHAIN_LUA=libmagnachain_lua.a
+LIBMAGNACHAIN_SERVER=libmagnachain_server.a
+LIBMAGNACHAIN_COMMON=libmagnachain_common.a
+LIBMAGNACHAIN_CONSENSUS=libmagnachain_consensus.a
+LIBMAGNACHAIN_CLI=libmagnachain_cli.a
+LIBMAGNACHAIN_UTIL=libmagnachain_util.a
+LIBMAGNACHAIN_CRYPTO=crypto/libmagnachain_crypto.a
+LIBMAGNACHAINQT=qt/libmagnachainqt.a
 LIBSECP256K1=secp256k1/libsecp256k1.la
 
 if ENABLE_ZMQ
-LIBCELLLINK_ZMQ=libcelllink_zmq.a
+LIBMAGNACHAIN_ZMQ=libmagnachain_zmq.a
 endif
-if BUILD_CELLLINK_LIBS
-LIBCELLLINKCONSENSUS=libcelllinkconsensus.la
+if BUILD_MAGNACHAIN_LIBS
+LIBMAGNACHAINCONSENSUS=libmagnachainconsensus.la
+endif
+if BUILD_MAGNACHAIN_MONITOR
+LIBMAGNACHAIN_MYSQLCPPCONN=libmagnachain_mysqlcppconn.a
 endif
 if ENABLE_WALLET
-LIBCELLLINK_WALLET=libcelllink_wallet.a
+LIBMAGNACHAIN_WALLET=libmagnachain_wallet.a
 endif
 
 $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
@@ -50,33 +56,39 @@ $(LIBSECP256K1): $(wildcard secp256k1/src/*) $(wildcard secp256k1/include/*)
 # Make is not made aware of per-object dependencies to avoid limiting building parallelization
 # But to build the less dependent modules first, we manually select their order here:
 EXTRA_LIBRARIES += \
-  $(LIBCELLLINK_CRYPTO) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_COMMON) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_CLI) \
-  $(LIBCELLLINK_WALLET) \
-  $(LIBCELLLINK_ZMQ)
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_COMMON) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_LUA) \
+  $(LIBMAGNACHAIN_CLI) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_MYSQLCPPCONN)
 
-lib_LTLIBRARIES = $(LIBCELLLINKCONSENSUS)
+lib_LTLIBRARIES = $(LIBMAGNACHAINCONSENSUS)
 
 bin_PROGRAMS =
 noinst_PROGRAMS =
 TESTS =
 BENCHMARKS =
 
-if BUILD_CELLLINKD
-  bin_PROGRAMS += celllinkd
+if BUILD_MAGNACHAIND
+  bin_PROGRAMS += magnachaind
 endif
 
-if BUILD_CELLLINK_UTILS
-  bin_PROGRAMS += celllink-cli celllink-tx
+if BUILD_MAGNACHAIN_MONITOR
+  bin_PROGRAMS += magnachain-monitor
+endif
+
+if BUILD_MAGNACHAIN_UTILS
+  bin_PROGRAMS += magnachain-cli magnachain-tx
 endif
 
 .PHONY: FORCE check-symbols check-security
-# celllink core #
-CELLLINK_CORE_H = \
+# magnachain core #
+MAGNACHAIN_CORE_H = \
   address/addrdb.h \
   address/addrman.h \
   coding/base58.h \
@@ -173,25 +185,28 @@ CELLLINK_CORE_H = \
   zmq/zmqabstractnotifier.h \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
-  zmq/zmqpublishnotifier.h
+  zmq/zmqpublishnotifier.h \
+  smartcontract/smartcontract.h \
+  smartcontract/contractdb.h
 
 
 obj/build.h: FORCE
 	@$(MKDIR_P) $(builddir)/obj
 	@$(top_srcdir)/share/genbuild.sh "$(abs_top_builddir)/src/obj/build.h" \
 	  "$(abs_top_srcdir)"
-libcelllink_util_a-clientversion.$(OBJEXT): obj/build.h
+libmagnachain_util_a-clientversion.$(OBJEXT): obj/build.h
 
-# server: shared between celllinkd and celllink-qt
-libcelllink_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(MINIUPNPC_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
-libcelllink_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_server_a_SOURCES = \
+# server: shared between magnachaind and magnachain-qt
+libmagnachain_server_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MINIUPNPC_CPPFLAGS) $(EVENT_CFLAGS) $(EVENT_PTHREADS_CFLAGS)
+libmagnachain_server_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_server_a_SOURCES = \
   address/addrdb.cpp \
   address/addrman.cpp \
   transaction/bloom.cpp \
   transaction/blockencodings.cpp \
   chain/chain.cpp \
   validation/checkpoints.cpp \
+  consensus/consensus.cpp \
   consensus/tx_verify.cpp \
   net/http/httprpc.cpp \
   net/http/httpserver.cpp \
@@ -229,23 +244,23 @@ libcelllink_server_a_SOURCES = \
   chain/branchchain.cpp \
   chain/branchdb.cpp \
   chain/branchtxdb.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 if ENABLE_ZMQ
-libcelllink_zmq_a_CPPFLAGS = $(CELLLINK_INCLUDES) $(ZMQ_CFLAGS)
-libcelllink_zmq_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_zmq_a_SOURCES = \
+libmagnachain_zmq_a_CPPFLAGS = $(MAGNACHAIN_INCLUDES) $(ZMQ_CFLAGS)
+libmagnachain_zmq_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_zmq_a_SOURCES = \
   zmq/zmqabstractnotifier.cpp \
   zmq/zmqnotificationinterface.cpp \
   zmq/zmqpublishnotifier.cpp
 endif
 
 
-# wallet: shared between celllinkd and celllink-qt, but only linked
+# wallet: shared between magnachaind and magnachain-qt, but only linked
 # when wallet enabled
-libcelllink_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-libcelllink_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_wallet_a_SOURCES = \
+libmagnachain_wallet_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_wallet_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_wallet_a_SOURCES = \
   wallet/crypter.cpp \
   wallet/db.cpp \
   wallet/feebumper.cpp \
@@ -253,12 +268,39 @@ libcelllink_wallet_a_SOURCES = \
   wallet/rpcwallet.cpp \
   wallet/wallet.cpp \
   wallet/walletdb.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
+
+libmagnachain_mysqlcppconn_a_CPPFLAGS = $(AM_CPPFLAGS) $(BOOST_CPPFLAGS) $(MYSQL_CLIENT_CFLAGS) $(MAGNACHAIN_MONITOR_INCLUDES)
+libmagnachain_mysqlcppconn_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_mysqlcppconn_a_SOURCES = \
+  monitor/mysqlcppconn/driver/nativeapi/library_loader.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_client_api.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_connection_wrapper.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_driver_wrapper.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_resultset_wrapper.cpp \
+  monitor/mysqlcppconn/driver/nativeapi/mysql_native_statement_wrapper.cpp \
+  monitor/mysqlcppconn/driver/mysql_art_resultset.cpp \
+  monitor/mysqlcppconn/driver/mysql_art_rset_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_connection.cpp \
+  monitor/mysqlcppconn/driver/mysql_debug.cpp \
+  monitor/mysqlcppconn/driver/mysql_driver.cpp \
+  monitor/mysqlcppconn/driver/mysql_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_parameter_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_prepared_statement.cpp \
+  monitor/mysqlcppconn/driver/mysql_ps_resultset.cpp \
+  monitor/mysqlcppconn/driver/mysql_ps_resultset_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_resultbind.cpp \
+  monitor/mysqlcppconn/driver/mysql_resultset.cpp \
+  monitor/mysqlcppconn/driver/mysql_resultset_metadata.cpp \
+  monitor/mysqlcppconn/driver/mysql_statement.cpp \
+  monitor/mysqlcppconn/driver/mysql_uri.cpp \
+  monitor/mysqlcppconn/driver/mysql_util.cpp \
+  monitor/mysqlcppconn/driver/mysql_warning.cpp
 
 # crypto primitives library
-crypto_libcelllink_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(CELLLINK_CONFIG_INCLUDES)
-crypto_libcelllink_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-crypto_libcelllink_crypto_a_SOURCES = \
+crypto_libmagnachain_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_CONFIG_INCLUDES)
+crypto_libmagnachain_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+crypto_libmagnachain_crypto_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
   crypto/chacha20.h \
@@ -275,7 +317,16 @@ crypto_libcelllink_crypto_a_SOURCES = \
   crypto/sha256.cpp \
   crypto/sha256.h \
   crypto/sha512.cpp \
-  crypto/sha512.h \
+  crypto/sha512.h
+  
+
+if EXPERIMENTAL_ASM
+crypto_libmagnachain_crypto_a_SOURCES += crypto/sha256_sse4.cpp
+endif
+
+libmagnachain_lua_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_lua_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_lua_a_SOURCES = \
   lua/lapi.c \
   lua/lauxlib.c \
   lua/lbaselib.c \
@@ -310,16 +361,11 @@ crypto_libcelllink_crypto_a_SOURCES = \
   lua/cjson/lua_cjson.c \
   lua/cjson/strbuf.c \
   lua/lua_cmsgpack.c
-  
-
-if EXPERIMENTAL_ASM
-crypto_libcelllink_crypto_a_SOURCES += crypto/sha256_sse4.cpp
-endif
 
 # consensus: shared between all executables that validate any consensus rules.
-libcelllink_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-libcelllink_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_consensus_a_SOURCES = \
+libmagnachain_consensus_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_consensus_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_consensus_a_SOURCES = \
   misc/amount.h \
   coding/arith_uint256.cpp \
   coding/arith_uint256.h \
@@ -338,7 +384,7 @@ libcelllink_consensus_a_SOURCES = \
   transaction/partialmerkletree.h \
   key/pubkey.cpp \
   key/pubkey.h \
-  script/celllinkconsensus.cpp \
+  script/magnachainconsensus.cpp \
   script/interpreter.cpp \
   script/interpreter.h \
   script/script.cpp \
@@ -353,10 +399,10 @@ libcelllink_consensus_a_SOURCES = \
   utils/utilstrencodings.h \
   misc/version.h
 
-# common: shared between celllinkd, and celllink-qt and non-server tools
-libcelllink_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-libcelllink_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_common_a_SOURCES = \
+# common: shared between magnachaind, and magnachain-qt and non-server tools
+libmagnachain_common_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_common_a_SOURCES = \
   coding/base58.cpp \
   chain/chainparams.cpp \
   transaction/coins.cpp \
@@ -373,14 +419,14 @@ libcelllink_common_a_SOURCES = \
   script/sign.cpp \
   script/standard.cpp \
   misc/warnings.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 # util: shared between all executables.
 # This library *must* be included to make sure that the glibc
 # backward-compatibility objects and their sanity checks are linked.
-libcelllink_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-libcelllink_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_util_a_SOURCES = \
+libmagnachain_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_util_a_SOURCES = \
   support/lockedpool.cpp \
   chain/chainparamsbase.cpp \
   misc/clientversion.cpp \
@@ -397,107 +443,138 @@ libcelllink_util_a_SOURCES = \
   utils/utilmoneystr.cpp \
   utils/utilstrencodings.cpp \
   utils/utiltime.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
 if GLIBC_BACK_COMPAT
-libcelllink_util_a_SOURCES += compat/glibc_compat.cpp
+libmagnachain_util_a_SOURCES += compat/glibc_compat.cpp
 endif
 
-# cli: shared between celllink-cli and celllink-qt
-libcelllink_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-libcelllink_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-libcelllink_cli_a_SOURCES = \
+# cli: shared between magnachain-cli and magnachain-qt
+libmagnachain_cli_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+libmagnachain_cli_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachain_cli_a_SOURCES = \
   rpc/client.cpp \
-  $(CELLLINK_CORE_H)
+  $(MAGNACHAIN_CORE_H)
 
-nodist_libcelllink_util_a_SOURCES = $(srcdir)/obj/build.h
+nodist_libmagnachain_util_a_SOURCES = $(srcdir)/obj/build.h
 #
 
-# celllinkd binary #
-celllinkd_SOURCES = celllinkd.cpp
-celllinkd_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-celllinkd_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-celllinkd_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# magnachaind binary #
+magnachaind_SOURCES = magnachaind.cpp
+magnachaind_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+magnachaind_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachaind_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-celllinkd_SOURCES += celllinkd-res.rc
+magnachaind_SOURCES += magnachaind-res.rc
 endif
 
-celllinkd_LDADD = \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_COMMON) \
+magnachaind_LDADD = \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_WALLET) \
-  $(LIBCELLLINK_ZMQ) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_CRYPTO) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
 
-celllinkd_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
+magnachaind_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
 
-# celllink-cli binary #
-celllink_cli_SOURCES = celllink-cli.cpp
-celllink_cli_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) $(EVENT_CFLAGS)
-celllink_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-celllink_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# magnachain monitor binary #
+magnachain_monitor_SOURCES = \
+	magnachain-monitor.cpp \
+	monitor/database.cpp \
+	monitor/monitorinit.cpp \
+	monitor/net_processing.cpp
+
+magnachain_monitor_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MYSQL_CLIENT_CFLAGS) $(MAGNACHAIN_MONITOR_INCLUDES)
+magnachain_monitor_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachain_monitor_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+
+magnachain_monitor_LDADD = \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
+  $(LIBUNIVALUE) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
+  $(LIBLEVELDB) \
+  $(LIBLEVELDB_SSE42) \
+  $(LIBMEMENV) \
+  $(LIBSECP256K1) \
+  $(LIBMAGNACHAIN_MYSQLCPPCONN)
+
+magnachain_monitor_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS) $(MYSQL_CLIENT_LIBS)
+
+# magnachain-cli binary #
+magnachain_cli_SOURCES = magnachain-cli.cpp
+magnachain_cli_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(EVENT_CFLAGS)
+magnachain_cli_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachain_cli_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-celllink_cli_SOURCES += celllink-cli-res.rc
+magnachain_cli_SOURCES += magnachain-cli-res.rc
 endif
 
-celllink_cli_LDADD = \
-  $(LIBCELLLINK_CLI) \
+magnachain_cli_LDADD = \
+  $(LIBMAGNACHAIN_CLI) \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_CRYPTO)
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_CRYPTO)
 
-celllink_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
+magnachain_cli_LDADD += $(BOOST_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(EVENT_LIBS)
 #
 
-# celllink-tx binary #
-celllink_tx_SOURCES = celllink-tx.cpp
-celllink_tx_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-celllink_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-celllink_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# magnachain-tx binary #
+magnachain_tx_SOURCES = magnachain-tx.cpp
+magnachain_tx_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+magnachain_tx_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+magnachain_tx_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
 if TARGET_WINDOWS
-celllink_tx_SOURCES += celllink-tx-res.rc
+magnachain_tx_SOURCES += magnachain-tx-res.rc
 endif
 
-celllink_tx_LDADD = \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_COMMON) \
+magnachain_tx_LDADD = \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_WALLET) \
-  $(LIBCELLLINK_ZMQ) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_CRYPTO) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_WALLET) \
+  $(LIBMAGNACHAIN_ZMQ) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBLEVELDB) \
   $(LIBLEVELDB_SSE42) \
   $(LIBMEMENV) \
   $(LIBSECP256K1)
 
-celllink_tx_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
+magnachain_tx_LDADD += $(BOOST_LIBS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS) $(EVENT_PTHREADS_LIBS) $(EVENT_LIBS) $(ZMQ_LIBS)
 #
 
-# celllinkconsensus library #
-if BUILD_CELLLINK_LIBS
-include_HEADERS = script/celllinkconsensus.h
-libcelllinkconsensus_la_SOURCES = $(crypto_libcelllink_crypto_a_SOURCES) $(libcelllink_consensus_a_SOURCES)
+# magnachainconsensus library #
+if BUILD_MAGNACHAIN_LIBS
+include_HEADERS = script/magnachainconsensus.h
+libmagnachainconsensus_la_SOURCES = $(crypto_libmagnachain_crypto_a_SOURCES) $(libmagnachain_consensus_a_SOURCES)
 
 if GLIBC_BACK_COMPAT
-  libcelllinkconsensus_la_SOURCES += compat/glibc_compat.cpp
+  libmagnachainconsensus_la_SOURCES += compat/glibc_compat.cpp
 endif
 
-libcelllinkconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
-libcelllinkconsensus_la_LIBADD = $(LIBSECP256K1)
-libcelllinkconsensus_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_CELLLINK_INTERNAL
-libcelllinkconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+libmagnachainconsensus_la_LDFLAGS = $(AM_LDFLAGS) -no-undefined $(RELDFLAGS)
+libmagnachainconsensus_la_LIBADD = $(LIBSECP256K1)
+libmagnachainconsensus_la_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/obj -I$(srcdir)/secp256k1/include -DBUILD_MAGNACHAIN_INTERNAL
+libmagnachainconsensus_la_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
 endif
 #
@@ -527,6 +604,7 @@ CLEANFILES += lua/*.gcda lua/*.gcno
 CLEANFILES += main/*.gcda main/*.gcno
 CLEANFILES += mining/*.gcda mining/*.gcno
 CLEANFILES += misc/*.gcda misc/*.gcno
+CLEANFILES += monitor/*.gcda monitor/*.gcno
 CLEANFILES += net/*.gcda net/*.gcno
 CLEANFILES += policy/*.gcda policy/*.gcno
 CLEANFILES += primitives/*.gcda primitives/*.gcno
@@ -551,12 +629,12 @@ DISTCLEANFILES = obj/build.h
 EXTRA_DIST = $(CTAES_DIST)
 
 
-config/celllink-config.h: config/stamp-h1
+config/magnachain-config.h: config/stamp-h1
 	@$(MAKE) -C $(top_builddir) $(subdir)/$(@)
-config/stamp-h1: $(top_srcdir)/$(subdir)/config/celllink-config.h.in $(top_builddir)/config.status
+config/stamp-h1: $(top_srcdir)/$(subdir)/config/magnachain-config.h.in $(top_builddir)/config.status
 	$(AM_V_at)$(MAKE) -C $(top_builddir) $(subdir)/$(@)
-$(top_srcdir)/$(subdir)/config/celllink-config.h.in:  $(am__configure_deps)
-	$(AM_V_at)$(MAKE) -C $(top_srcdir) $(subdir)/config/celllink-config.h.in
+$(top_srcdir)/$(subdir)/config/magnachain-config.h.in:  $(am__configure_deps)
+	$(AM_V_at)$(MAKE) -C $(top_srcdir) $(subdir)/config/magnachain-config.h.in
 
 clean-local:
 	-$(MAKE) -C secp256k1 clean

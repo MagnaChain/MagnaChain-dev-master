@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the getchaintips RPC.
@@ -10,12 +10,13 @@
 - verify that getchaintips now returns two chain tips.
 """
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal
 
-class GetChainTipsTest (BitcoinTestFramework):
+class GetChainTipsTest (MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
+        # self.setup_clean_chain = False
 
     def run_test (self):
         tips = self.nodes[0].getchaintips ()
@@ -47,7 +48,8 @@ class GetChainTipsTest (BitcoinTestFramework):
         # Join the network halves and check that we now have two tips
         # (at least at the nodes that previously had the short chain).
         self.join_network ()
-
+        for i in range(4):
+            print(i,self.nodes[i].getblockcount())
         tips = self.nodes[0].getchaintips ()
         assert_equal (len (tips), 2)
         assert_equal (tips[0], longTip)
@@ -57,6 +59,7 @@ class GetChainTipsTest (BitcoinTestFramework):
         tips[1]['branchlen'] = 0
         tips[1]['status'] = 'active'
         assert_equal (tips[1], shortTip)
+
 
 if __name__ == '__main__':
     GetChainTipsTest ().main ()

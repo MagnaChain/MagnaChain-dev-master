@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-# Copyright (c) 2017 The Bitcoin Core developers
+# Copyright (c) 2017 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test multiwallet.
 
-Verify that a bitcoind node can load multiple wallet files
+Verify that a magnachaind node can load multiple wallet files
 """
 import os
 import shutil
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal, assert_raises_rpc_error
 
-class MultiWalletTest(BitcoinTestFramework):
+class MultiWalletTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 1
@@ -56,7 +56,7 @@ class MultiWalletTest(BitcoinTestFramework):
 
         # check w1 wallet balance
         w1_info = w1.getwalletinfo()
-        assert_equal(w1_info['immature_balance'], 50)
+        assert_equal(w1_info['immature_balance'], 2600085)
         w1_name = w1_info['walletname']
         assert_equal(w1_name, "w1")
 
@@ -71,8 +71,8 @@ class MultiWalletTest(BitcoinTestFramework):
 
         assert_equal({"w1", "w2", "w3"}, {w1_name, w2_name, w3_name})
 
-        w1.generate(101)
-        assert_equal(w1.getbalance(), 100)
+        w1.generate(2)
+        assert_equal(w1.getbalance(), 5200170)
         assert_equal(w2.getbalance(), 0)
         assert_equal(w3.getbalance(), 0)
 

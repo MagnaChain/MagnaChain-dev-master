@@ -1,16 +1,16 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "optionsdialog.h"
 #include "ui_optionsdialog.h"
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 #include "guiutil.h"
 #include "optionsmodel.h"
 
@@ -19,7 +19,7 @@
 #include "transaction/txdb.h" // for -dbcache defaults
 
 #ifdef ENABLE_WALLET
-#include "wallet/wallet.h" // for CellWallet::GetRequiredFee()
+#include "wallet/wallet.h" // for MCWallet::GetRequiredFee()
 #endif
 
 #include <QDataWidgetMapper>
@@ -78,12 +78,12 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     /* Display elements init */
     QDir translations(":translations");
 
-    ui->celllinkAtStartup->setToolTip(ui->celllinkAtStartup->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
-    ui->celllinkAtStartup->setText(ui->celllinkAtStartup->text().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->magnachainAtStartup->setToolTip(ui->magnachainAtStartup->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
+    ui->magnachainAtStartup->setText(ui->magnachainAtStartup->text().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
-    ui->openCellLinkConfButton->setToolTip(ui->openCellLinkConfButton->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->openMagnaChainConfButton->setToolTip(ui->openMagnaChainConfButton->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
 
-    ui->lang->setToolTip(ui->lang->toolTip().arg(QApplication::translate("celllink-core", PACKAGE_NAME)));
+    ui->lang->setToolTip(ui->lang->toolTip().arg(QApplication::translate("magnachain-core", PACKAGE_NAME)));
     ui->lang->addItem(QString("(") + tr("default") + QString(")"), QVariant(""));
     for (const QString &langStr : translations.entryList())
     {
@@ -115,7 +115,7 @@ OptionsDialog::OptionsDialog(QWidget *parent, bool enableWallet) :
     ui->thirdPartyTxUrls->setPlaceholderText("https://example.com/tx/%s");
 #endif
 
-    ui->unit->setModel(new CellLinkUnits(this));
+    ui->unit->setModel(new MagnaChainUnits(this));
 
     /* Widget-to-option mapper */
     mapper = new QDataWidgetMapper(this);
@@ -177,7 +177,7 @@ void OptionsDialog::setModel(OptionsModel *_model)
 void OptionsDialog::setMapper()
 {
     /* Main */
-    mapper->addMapping(ui->celllinkAtStartup, OptionsModel::StartAtStartup);
+    mapper->addMapping(ui->magnachainAtStartup, OptionsModel::StartAtStartup);
     mapper->addMapping(ui->threadsScriptVerif, OptionsModel::ThreadsScriptVerif);
     mapper->addMapping(ui->databaseCache, OptionsModel::DatabaseCache);
 
@@ -233,7 +233,7 @@ void OptionsDialog::on_resetButton_clicked()
     }
 }
 
-void OptionsDialog::on_openCellLinkConfButton_clicked()
+void OptionsDialog::on_openMagnaChainConfButton_clicked()
 {
     /* explain the purpose of the config file */
     QMessageBox::information(this, tr("Configuration options"),
@@ -241,7 +241,7 @@ void OptionsDialog::on_openCellLinkConfButton_clicked()
            "Additionally, any command-line options will override this configuration file."));
 
     /* show an error if there was some problem opening the file */
-    if (!GUIUtil::openCellLinkConf())
+    if (!GUIUtil::openMagnaChainConf())
         QMessageBox::critical(this, tr("Error"), tr("The configuration file could not be opened."));
 }
 
@@ -343,7 +343,7 @@ QValidator::State ProxyAddressValidator::validate(QString &input, int &pos) cons
 {
     Q_UNUSED(pos);
     // Validate the proxy
-    CellService serv(LookupNumeric(input.toStdString().c_str(), 9050));
+    MCService serv(LookupNumeric(input.toStdString().c_str(), 9050));
     proxyType addrProxy = proxyType(serv, true);
     if (addrProxy.IsValid())
         return QValidator::Acceptable;

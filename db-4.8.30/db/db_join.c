@@ -868,7 +868,7 @@ __db_join_cmp(a, b)
 /*
  * __db_join_primget --
  *	Perform a DB->get in the primary, being careful not to use a new
- * locker ID if we're doing CellDB locking.
+ * locker ID if we're doing MCDB locking.
  */
 static int
 __db_join_primget(dbp, ip, txn, locker, key, data, flags)

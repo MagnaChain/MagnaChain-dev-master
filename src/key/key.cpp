@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -120,11 +120,11 @@ static int ec_privkey_export_der(const secp256k1_context *ctx, unsigned char *pr
     return 1;
 }
 
-bool CellKey::Check(const unsigned char *vch) {
+bool MCKey::Check(const unsigned char *vch) {
     return secp256k1_ec_seckey_verify(secp256k1_context_sign, vch);
 }
 
-void CellKey::MakeNewKey(bool fCompressedIn) {
+void MCKey::MakeNewKey(bool fCompressedIn) {
     do {
         GetStrongRandBytes(keydata.data(), keydata.size());
     } while (!Check(keydata.data()));
@@ -132,7 +132,7 @@ void CellKey::MakeNewKey(bool fCompressedIn) {
     fCompressed = fCompressedIn;
 }
 
-CPrivKey CellKey::GetPrivKey() const {
+CPrivKey MCKey::GetPrivKey() const {
     assert(fValid);
     CPrivKey privkey;
     int ret;
@@ -145,11 +145,11 @@ CPrivKey CellKey::GetPrivKey() const {
     return privkey;
 }
 
-CellPubKey CellKey::GetPubKey() const {
+MCPubKey MCKey::GetPubKey() const {
     assert(fValid);
     secp256k1_pubkey pubkey;
     size_t clen = 65;
-    CellPubKey result;
+    MCPubKey result;
     int ret = secp256k1_ec_pubkey_create(secp256k1_context_sign, &pubkey, begin());
     assert(ret);
     secp256k1_ec_pubkey_serialize(secp256k1_context_sign, (unsigned char*)result.begin(), &clen, &pubkey, fCompressed ? SECP256K1_EC_COMPRESSED : SECP256K1_EC_UNCOMPRESSED);
@@ -158,7 +158,7 @@ CellPubKey CellKey::GetPubKey() const {
     return result;
 }
 
-bool CellKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig, uint32_t test_case) const {
+bool MCKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig, uint32_t test_case) const {
     if (!fValid)
         return false;
     vchSig.resize(72);
@@ -173,12 +173,12 @@ bool CellKey::Sign(const uint256 &hash, std::vector<unsigned char>& vchSig, uint
     return true;
 }
 
-bool CellKey::VerifyPubKey(const CellPubKey& pubkey) const {
+bool MCKey::VerifyPubKey(const MCPubKey& pubkey) const {
     if (pubkey.IsCompressed() != fCompressed) {
         return false;
     }
     unsigned char rnd[8];
-    std::string str = "Celllink key verification\n";
+    std::string str = "MagnaChain key verification\n";
     GetRandBytes(rnd, sizeof(rnd));
     uint256 hash;
     CHash256().Write((unsigned char*)str.data(), str.size()).Write(rnd, sizeof(rnd)).Finalize(hash.begin());
@@ -187,7 +187,7 @@ bool CellKey::VerifyPubKey(const CellPubKey& pubkey) const {
     return pubkey.Verify(hash, vchSig);
 }
 
-bool CellKey::SignCompact(const uint256 &hash, std::vector<unsigned char>& vchSig) const {
+bool MCKey::SignCompact(const uint256 &hash, std::vector<unsigned char>& vchSig) const {
     if (!fValid)
         return false;
     vchSig.resize(65);
@@ -202,7 +202,7 @@ bool CellKey::SignCompact(const uint256 &hash, std::vector<unsigned char>& vchSi
     return true;
 }
 
-bool CellKey::Load(CPrivKey &privkey, CellPubKey &vchPubKey, bool fSkipCheck=false) {
+bool MCKey::Load(CPrivKey &privkey, MCPubKey &vchPubKey, bool fSkipCheck=false) {
     if (!ec_privkey_import_der(secp256k1_context_sign, (unsigned char*)begin(), privkey.data(), privkey.size()))
         return false;
     fCompressed = vchPubKey.IsCompressed();
@@ -214,12 +214,12 @@ bool CellKey::Load(CPrivKey &privkey, CellPubKey &vchPubKey, bool fSkipCheck=fal
     return VerifyPubKey(vchPubKey);
 }
 
-bool CellKey::Derive(CellKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const {
+bool MCKey::Derive(MCKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const {
     assert(IsValid());
     assert(IsCompressed());
     std::vector<unsigned char, secure_allocator<unsigned char>> vout(64);
     if ((nChild >> 31) == 0) {
-        CellPubKey pubkey = GetPubKey();
+        MCPubKey pubkey = GetPubKey();
         assert(pubkey.begin() + 33 == pubkey.end());
         BIP32Hash(cc, nChild, *pubkey.begin(), pubkey.begin()+1, vout.data());
     } else {
@@ -234,15 +234,15 @@ bool CellKey::Derive(CellKey& keyChild, ChainCode &ccChild, unsigned int nChild,
     return ret;
 }
 
-bool CellExtKey::Derive(CellExtKey &out, unsigned int _nChild) const {
+bool MCExtKey::Derive(MCExtKey &out, unsigned int _nChild) const {
     out.nDepth = nDepth + 1;
-    CellKeyID id = key.GetPubKey().GetID();
+    MCKeyID id = key.GetPubKey().GetID();
     memcpy(&out.vchFingerprint[0], &id, 4);
     out.nChild = _nChild;
     return key.Derive(out.key, out.chaincode, _nChild, chaincode);
 }
 
-void CellExtKey::SetMaster(const unsigned char *seed, unsigned int nSeedLen) {
+void MCExtKey::SetMaster(const unsigned char *seed, unsigned int nSeedLen) {
     static const unsigned char hashkey[] = {'B','i','t','c','o','i','n',' ','s','e','e','d'};
     std::vector<unsigned char, secure_allocator<unsigned char>> vout(64);
     CHMAC_SHA512(hashkey, sizeof(hashkey)).Write(seed, nSeedLen).Finalize(vout.data());
@@ -253,8 +253,8 @@ void CellExtKey::SetMaster(const unsigned char *seed, unsigned int nSeedLen) {
     memset(vchFingerprint, 0, sizeof(vchFingerprint));
 }
 
-CellExtPubKey CellExtKey::Neuter() const {
-    CellExtPubKey ret;
+MCExtPubKey MCExtKey::Neuter() const {
+    MCExtPubKey ret;
     ret.nDepth = nDepth;
     memcpy(&ret.vchFingerprint[0], &vchFingerprint[0], 4);
     ret.nChild = nChild;
@@ -263,7 +263,7 @@ CellExtPubKey CellExtKey::Neuter() const {
     return ret;
 }
 
-void CellExtKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
+void MCExtKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
     code[0] = nDepth;
     memcpy(code+1, vchFingerprint, 4);
     code[5] = (nChild >> 24) & 0xFF; code[6] = (nChild >> 16) & 0xFF;
@@ -274,7 +274,7 @@ void CellExtKey::Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const {
     memcpy(code+42, key.begin(), 32);
 }
 
-void CellExtKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
+void MCExtKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
     nDepth = code[0];
     memcpy(vchFingerprint, code+1, 4);
     nChild = (code[5] << 24) | (code[6] << 16) | (code[7] << 8) | code[8];
@@ -283,9 +283,9 @@ void CellExtKey::Decode(const unsigned char code[BIP32_EXTKEY_SIZE]) {
 }
 
 bool ECC_InitSanityCheck() {
-    CellKey key;
+    MCKey key;
     key.MakeNewKey(true);
-    CellPubKey pubkey = key.GetPubKey();
+    MCPubKey pubkey = key.GetPubKey();
     return key.VerifyPubKey(pubkey);
 }
 

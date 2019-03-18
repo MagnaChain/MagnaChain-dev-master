@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef BRANCHCHAIN_H
@@ -11,40 +11,50 @@
 
 #include "primitives/transaction.h"
 
-class CellBlockIndex;
-class CellValidationState;
-class CellBlockHeader;
-class CellBlock;
+class MCBlockIndex;
+class MCValidationState;
+class MCBlockHeader;
+class MCBlock;
 class BranchCache;
+class BranchData;
 
-class CellRPCConfig {
+class MCRPCConfig {
 public:
+    MCRPCConfig();
+
+    std::string strBranchId;
 	std::string strIp;
 	uint16_t    iPort;
 	std::string strUser;
 	std::string strPassword;
+    std::string strWallet;
+    std::string strDataDir;
+    std::string strRPCUserColonPass;
+    int getcookiefail;
 
 	void Reset();
 	bool IsValid();
+
+    bool InitUserColonPass(bool bthrowexcetion = false);
 };
 
 //链配置管理 
-typedef std::map<std::string, CellRPCConfig> MAP_RPC_CONFIG; //
-class CellBranchChainMan {
+typedef std::map<std::string, MCRPCConfig> MAP_RPC_CONFIG; //
+class MCBranchChainMan {
 public:
-	CellBranchChainMan();
-	~CellBranchChainMan();
+	MCBranchChainMan();
+	~MCBranchChainMan();
 	
 	void Init();
-	static bool ParseRpcConfig(const std::string& strCfg, CellRPCConfig& rpccfg, std::string& branchid);
-	bool GetRpcConfig(const std::string& strName, CellRPCConfig& rpccfg);
-	bool CheckRpcConfig(CellRPCConfig& rpccfg);
-	void ReplaceRpcConfig(const std::string& strName, CellRPCConfig& rpccfg);
+	static bool ParseRpcConfig(const std::string& strCfg, MCRPCConfig& rpccfg, std::string& branchid);
+	bool GetRpcConfig(const std::string& strName, MCRPCConfig& rpccfg);
+	bool CheckRpcConfig(MCRPCConfig& rpccfg);
+	void ReplaceRpcConfig(const std::string& strName, MCRPCConfig& rpccfg);
 private:
 	MAP_RPC_CONFIG mapRpcConfig;
 };
 
-extern std::unique_ptr<CellBranchChainMan> g_branchChainMan;
+extern std::unique_ptr<MCBranchChainMan> g_branchChainMan;
 
 enum branch_script_type
 {
@@ -54,34 +64,43 @@ enum branch_script_type
     BST_MORTGAGE_ALL = BST_MORTGAGE_MINE | BST_MORTGAGE_COIN,
 };
 
-UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params,
-	const std::string& rpcuser = "", const std::string& rpcpassword = "");
+UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, 
+	const std::string& strRPCUserColonPass, const std::string& rpcwallet = "");
 
-UniValue CallRPC(const CellRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params);
+UniValue CallRPC(MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params);
 
 void ProcessBlockBranchChain();
 
-CellSpvProof* NewSpvProof(const CellBlock &block, const std::set<uint256>& txids);
-bool CheckSpvProof(const uint256& frombranchid, CellValidationState &state, const CellSpvProof& spvProof, const uint256 &querytxhash);
-bool CheckBranchTransaction(const CellTransaction& tx, CellValidationState &state, const bool fVerifingDB, CellTransactionRef& pFromTx);
+MCSpvProof* NewSpvProof(const MCBlock &block, const std::set<uint256>& txids);
+int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uint256 &querytxhash);
+bool CheckBranchTransaction(const MCTransaction& tx, MCValidationState &state, const bool fVerifingDB, const MCTransactionRef& pFromTx);
 
-CellAmount GetBranchChainCreateTxOut(const CellTransaction& tx);
-CellAmount GetBranchChainTransOut(const CellTransaction& branchTransStep1Tx);
-CellAmount GetBranchChainOut(const CellTransaction& tx);
-CellAmount GetMortgageMineOut(const CellTransaction& tx, bool bWithBranchOut);
-CellAmount GetMortgageCoinOut(const CellTransaction& tx, bool bWithBranchOut);
+MCAmount GetBranchChainCreateTxOut(const MCTransaction& tx);
+MCAmount GetBranchChainTransOut(const MCTransaction& branchTransStep1Tx);
+MCAmount GetBranchChainOut(const MCTransaction& tx);
+MCAmount GetMortgageMineOut(const MCTransaction& tx, bool bWithBranchOut);
+MCAmount GetMortgageCoinOut(const MCTransaction& tx, bool bWithBranchOut);
 
-branch_script_type QuickGetBranchScriptType(const CellScript& scriptPubKey);
-bool GetMortgageMineData(const CellScript& scriptPubKey, uint256* pBranchHash = nullptr, CellKeyID *pKeyID = nullptr, int64_t *pnHeight = nullptr);
-bool GetMortgageCoinData(const CellScript& scriptPubKey, uint256* pFromTxid = nullptr, CellKeyID *pKeyID = nullptr, int64_t *pnHeight = nullptr);
-bool GetRedeemSriptData(const CellScript& scriptPubKey, uint256* pFromTxid);
+branch_script_type QuickGetBranchScriptType(const MCScript& scriptPubKey);
+bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash = nullptr, MCKeyID *pKeyID = nullptr, int64_t *pnHeight = nullptr);
+bool GetMortgageCoinData(const MCScript& scriptPubKey, uint256* pFromTxid = nullptr, MCKeyID *pKeyID = nullptr, int64_t *pnHeight = nullptr);
+bool GetRedeemSriptData(const MCScript& scriptPubKey, uint256* pFromTxid);
 
-bool BranchChainTransStep2(const CellTransactionRef& tx, const CellBlock &block);
+bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock &block, std::string* pStrErrorMsg);
 
-bool SendBranchBlockHeader(const std::shared_ptr<const CellBlock> pBlockHeader, std::string *pStrErr=nullptr);
-bool CheckBranchBlockInfoTx(const CellTransaction& tx, CellValidationState& state, BranchCache* pBranchCache);
+bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlockHeader, std::string *pStrErr=nullptr);
+bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache);
+bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache);
 
-bool CheckReportRewardTransaction(const CellTransaction& tx, CellValidationState& state, CellBlockIndex* pindex);
-bool CheckLockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
-bool CheckUnlockMortgageMineCoinTx(const CellTransaction& tx, CellValidationState& state);
+uint256 GetReportTxHashKey(const MCTransaction& tx);
+uint256 GetProveTxHashKey(const MCTransaction& tx);
+
+bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& state, MCBlockIndex* pindex, BranchCache *pBranchCache);
+bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
+bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
+bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+
+bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block, std::string *pStrErr = nullptr);
 #endif //  BRANCHCHAIN_H

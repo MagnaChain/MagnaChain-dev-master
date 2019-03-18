@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -14,7 +14,7 @@
 #include "coding/uint256.h"
 #include "utils/util.h"
 #include "utils/utilstrencodings.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "univalue.h"
 
 #include <boost/test/unit_test.hpp>
@@ -81,15 +81,19 @@ private:
     std::string exp_addrType;
 public:
     TestAddrTypeVisitor(const std::string &_exp_addrType) : exp_addrType(_exp_addrType) { }
-    bool operator()(const CellKeyID &id) const
+	bool operator()(const MCContractID &id) const
+	{
+		return (exp_addrType == "contractid");
+	}
+    bool operator()(const MCKeyID &id) const
     {
         return (exp_addrType == "pubkey");
     }
-    bool operator()(const CellScriptID &id) const
+    bool operator()(const MCScriptID &id) const
     {
         return (exp_addrType == "script");
     }
-    bool operator()(const CellNoDestination &no) const
+    bool operator()(const MCNoDestination &no) const
     {
         return (exp_addrType == "none");
     }
@@ -102,17 +106,17 @@ private:
     std::vector<unsigned char> exp_payload;
 public:
     TestPayloadVisitor(std::vector<unsigned char> &_exp_payload) : exp_payload(_exp_payload) { }
-    bool operator()(const CellKeyID &id) const
+    bool operator()(const MCKeyID &id) const
     {
         uint160 exp_key(exp_payload);
         return exp_key == id;
     }
-    bool operator()(const CellScriptID &id) const
+    bool operator()(const MCScriptID &id) const
     {
         uint160 exp_key(exp_payload);
         return exp_key == id;
     }
-    bool operator()(const CellNoDestination &no) const
+    bool operator()(const MCNoDestination &no) const
     {
         return exp_payload.size() == 0;
     }
@@ -121,10 +125,10 @@ public:
 // Goal: check that parsed keys match test payload
 BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
 {
-    UniValue tests = read_json(std::string(json_tests::base58_keys_valid, json_tests::base58_keys_valid + sizeof(json_tests::base58_keys_valid)));
-    CellLinkSecret secret;
-    CellLinkAddress addr;
-	SELECTPARAMS(CellBaseChainParams::MAIN);
+    UniValue tests = read_json(std::string((const char*)json_tests::base58_keys_valid));
+    MagnaChainSecret secret;
+    MagnaChainAddress addr;
+	SELECTPARAMS(MCBaseChainParams::MAIN);
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -140,17 +144,17 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
         bool isPrivkey = find_value(metadata, "isPrivkey").get_bool();
         bool isTestnet = find_value(metadata, "isTestnet").get_bool();
         if (isTestnet)
-			SELECTPARAMS(CellBaseChainParams::TESTNET)
+			SELECTPARAMS(MCBaseChainParams::TESTNET)
         else
-			SELECTPARAMS(CellBaseChainParams::MAIN)
+			SELECTPARAMS(MCBaseChainParams::MAIN)
         if(isPrivkey)
         {
             bool isCompressed = find_value(metadata, "isCompressed").get_bool();
             // Must be valid private key
-            // Note: CellLinkSecret::SetString tests isValid, whereas CellLinkAddress does not!
+            // Note: MagnaChainSecret::SetString tests isValid, whereas MagnaChainAddress does not!
             BOOST_CHECK_MESSAGE(secret.SetString(exp_base58string), "!SetString:"+ strTest);
             BOOST_CHECK_MESSAGE(secret.IsValid(), "!IsValid:" + strTest);
-            CellKey privkey = secret.GetKey();
+            MCKey privkey = secret.GetKey();
             BOOST_CHECK_MESSAGE(privkey.IsCompressed() == isCompressed, "compressed mismatch:" + strTest);
             BOOST_CHECK_MESSAGE(privkey.size() == exp_payload.size() && std::equal(privkey.begin(), privkey.end(), exp_payload.begin()), "key mismatch:" + strTest);
 
@@ -165,7 +169,7 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
             BOOST_CHECK_MESSAGE(addr.SetString(exp_base58string), "SetString:" + strTest);
             BOOST_CHECK_MESSAGE(addr.IsValid(), "!IsValid:" + strTest);
             BOOST_CHECK_MESSAGE(addr.IsScript() == (exp_addrType == "script"), "isScript mismatch" + strTest);
-            CellTxDestination dest = addr.Get();
+            MCTxDestination dest = addr.Get();
             BOOST_CHECK_MESSAGE(boost::apply_visitor(TestAddrTypeVisitor(exp_addrType), dest), "addrType mismatch" + strTest);
 
             // Public key must be invalid private key
@@ -178,7 +182,7 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_parse)
 // Goal: check that generated keys match test vectors
 BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
 {
-    UniValue tests = read_json(std::string(json_tests::base58_keys_valid, json_tests::base58_keys_valid + sizeof(json_tests::base58_keys_valid)));
+    UniValue tests = read_json(std::string((const char*)json_tests::base58_keys_valid));
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];
@@ -194,60 +198,60 @@ BOOST_AUTO_TEST_CASE(base58_keys_valid_gen)
         bool isPrivkey = find_value(metadata, "isPrivkey").get_bool();
         bool isTestnet = find_value(metadata, "isTestnet").get_bool();
         if (isTestnet)
-			SELECTPARAMS(CellBaseChainParams::TESTNET)
+			SELECTPARAMS(MCBaseChainParams::TESTNET)
         else
-			SELECTPARAMS(CellBaseChainParams::MAIN)
+			SELECTPARAMS(MCBaseChainParams::MAIN)
         if(isPrivkey)
         {
             bool isCompressed = find_value(metadata, "isCompressed").get_bool();
-            CellKey key;
+            MCKey key;
             key.Set(exp_payload.begin(), exp_payload.end(), isCompressed);
             assert(key.IsValid());
-            CellLinkSecret secret;
+            MagnaChainSecret secret;
             secret.SetKey(key);
             BOOST_CHECK_MESSAGE(secret.ToString() == exp_base58string, "result mismatch: " + strTest);
         }
         else
         {
             std::string exp_addrType = find_value(metadata, "addrType").get_str();
-            CellTxDestination dest;
+            MCTxDestination dest;
             if(exp_addrType == "pubkey")
             {
-                dest = CellKeyID(uint160(exp_payload));
+                dest = MCKeyID(uint160(exp_payload));
             }
             else if(exp_addrType == "script")
             {
-                dest = CellScriptID(uint160(exp_payload));
+                dest = MCScriptID(uint160(exp_payload));
             }
             else if(exp_addrType == "none")
             {
-                dest = CellNoDestination();
+                dest = MCNoDestination();
             }
             else
             {
                 BOOST_ERROR("Bad addrtype: " << strTest);
                 continue;
             }
-            CellLinkAddress addrOut;
+            MagnaChainAddress addrOut;
             BOOST_CHECK_MESSAGE(addrOut.Set(dest), "encode dest: " + strTest);
             BOOST_CHECK_MESSAGE(addrOut.ToString() == exp_base58string, "mismatch: " + strTest);
         }
     }
 
-    // Visiting a CellNoDestination must fail
-    CellLinkAddress dummyAddr;
-    CellTxDestination nodest = CellNoDestination();
+    // Visiting a MCNoDestination must fail
+    MagnaChainAddress dummyAddr;
+    MCTxDestination nodest = MCNoDestination();
     BOOST_CHECK(!dummyAddr.Set(nodest));
 
-	SELECTPARAMS(CellBaseChainParams::MAIN);
+	SELECTPARAMS(MCBaseChainParams::MAIN);
 }
 
 // Goal: check that base58 parsing code is robust against a variety of corrupted data
 BOOST_AUTO_TEST_CASE(base58_keys_invalid)
 {
-    UniValue tests = read_json(std::string(json_tests::base58_keys_invalid, json_tests::base58_keys_invalid + sizeof(json_tests::base58_keys_invalid))); // Negative testcases
-    CellLinkSecret secret;
-    CellLinkAddress addr;
+    UniValue tests = read_json(std::string((const char*)json_tests::base58_keys_invalid)); // Negative testcases
+    MagnaChainSecret secret;
+    MagnaChainAddress addr;
 
     for (unsigned int idx = 0; idx < tests.size(); idx++) {
         UniValue test = tests[idx];

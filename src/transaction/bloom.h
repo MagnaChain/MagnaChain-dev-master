@@ -1,17 +1,17 @@
 // Copyright (c) 2012-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_BLOOM_H
-#define CELLLINK_BLOOM_H
+#ifndef MAGNACHAIN_BLOOM_H
+#define MAGNACHAIN_BLOOM_H
 
 #include "io/serialize.h"
 
 #include <vector>
 
-class CellOutPoint;
-class CellTransaction;
+class MCOutPoint;
+class MCTransaction;
 class uint256;
 
 //! 20,000 items with fp rate < 0.1% or 10,000 items and <0.0001%
@@ -42,7 +42,7 @@ enum bloomflags
  * allowing clients to trade more bandwidth for more privacy by obfuscating which
  * keys are controlled by them.
  */
-class CellBloomFilter
+class MCBloomFilter
 {
 private:
     std::vector<unsigned char> vData;
@@ -54,9 +54,9 @@ private:
 
     unsigned int Hash(unsigned int nHashNum, const std::vector<unsigned char>& vDataToHash) const;
 
-    // Private constructor for CellRollingBloomFilter, no restrictions on size
-    CellBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweak);
-    friend class CellRollingBloomFilter;
+    // Private constructor for MCRollingBloomFilter, no restrictions on size
+    MCBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweak);
+    friend class MCRollingBloomFilter;
 
 public:
     /**
@@ -68,8 +68,8 @@ public:
      * It should generally always be a random value (and is largely only exposed for unit testing)
      * nFlags should be one of the BLOOM_UPDATE_* enums (not _MASK)
      */
-    CellBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweak, unsigned char nFlagsIn);
-    CellBloomFilter() : isFull(true), isEmpty(false), nHashFuncs(0), nTweak(0), nFlags(0) {}
+    MCBloomFilter(const unsigned int nElements, const double nFPRate, const unsigned int nTweak, unsigned char nFlagsIn);
+    MCBloomFilter() : isFull(true), isEmpty(false), nHashFuncs(0), nTweak(0), nFlags(0) {}
 
     ADD_SERIALIZE_METHODS;
 
@@ -82,11 +82,11 @@ public:
     }
 
     void insert(const std::vector<unsigned char>& vKey);
-    void insert(const CellOutPoint& outpoint);
+    void insert(const MCOutPoint& outpoint);
     void insert(const uint256& hash);
 
     bool contains(const std::vector<unsigned char>& vKey) const;
-    bool contains(const CellOutPoint& outpoint) const;
+    bool contains(const MCOutPoint& outpoint) const;
     bool contains(const uint256& hash) const;
 
     void clear();
@@ -97,7 +97,7 @@ public:
     bool IsWithinSizeConstraints() const;
 
     //! Also adds any outputs which match the filter to the filter (to match their spending txes)
-    bool IsRelevantAndUpdate(const CellTransaction& tx);
+    bool IsRelevantAndUpdate(const MCTransaction& tx);
 
     //! Checks for empty and full filters to avoid wasting cpu
     void UpdateEmptyFull();
@@ -106,7 +106,7 @@ public:
 /**
  * RollingBloomFilter is a probabilistic "keep track of most recently inserted" set.
  * Construct it with the number of items to keep track of, and a false-positive
- * rate. Unlike CellBloomFilter, by default nTweak is set to a cryptographically
+ * rate. Unlike MCBloomFilter, by default nTweak is set to a cryptographically
  * secure random value for you. Similarly rather than clear() the method
  * reset() is provided, which also changes nTweak to decrease the impact of
  * false-positives.
@@ -117,13 +117,13 @@ public:
  * It needs around 1.8 bytes per element per factor 0.1 of false positive rate.
  * (More accurately: 3/(log(256)*log(2)) * log(1/fpRate) * nElements bytes)
  */
-class CellRollingBloomFilter
+class MCRollingBloomFilter
 {
 public:
     // A random bloom filter calls GetRand() at creation time.
-    // Don't create global CellRollingBloomFilter objects, as they may be
+    // Don't create global MCRollingBloomFilter objects, as they may be
     // constructed before the randomizer is properly initialized.
-    CellRollingBloomFilter(const unsigned int nElements, const double nFPRate);
+    MCRollingBloomFilter(const unsigned int nElements, const double nFPRate);
 
     void insert(const std::vector<unsigned char>& vKey);
     void insert(const uint256& hash);
@@ -141,4 +141,4 @@ private:
     int nHashFuncs;
 };
 
-#endif // CELLLINK_BLOOM_H
+#endif // MAGNACHAIN_BLOOM_H

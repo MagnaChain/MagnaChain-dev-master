@@ -1,17 +1,18 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_VALIDATION_H
-#define CELLLINK_CONSENSUS_VALIDATION_H
+#ifndef MAGNACHAIN_CONSENSUS_VALIDATION_H
+#define MAGNACHAIN_CONSENSUS_VALIDATION_H
 
 #include <string>
 #include "misc/version.h"
 #include "consensus/consensus.h"
 #include "primitives/transaction.h"
 #include "primitives/block.h"
+#include "smartcontract/smartcontract.h"
 
 /** "reject" message codes */
 static const unsigned char REJECT_MALFORMED = 0x01;
@@ -23,8 +24,11 @@ static const unsigned char REJECT_NONSTANDARD = 0x40;
 static const unsigned char REJECT_INSUFFICIENTFEE = 0x42;
 static const unsigned char REJECT_CHECKPOINT = 0x43;
 
+static const int32_t BASE_INSTRUCTION_NUM = 1500;
+static const int32_t STEP_INSTRUCTION_NUM = 500;
+
 /** Capture information about block/transaction validation */
-class CellValidationState {
+class MCValidationState {
 private:
     enum mode_state {
         MODE_VALID,   //!< everything ok
@@ -37,7 +41,7 @@ private:
     bool corruptionPossible;
     std::string strDebugMessage;
 public:
-    CellValidationState() : mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false) {}
+    MCValidationState() : mode(MODE_VALID), nDoS(0), chRejectCode(0), corruptionPossible(false) {}
     bool DoS(int level, bool ret = false,
              unsigned int chRejectCodeIn=0, const std::string &strRejectReasonIn="",
              bool corruptionIn=false,
@@ -90,12 +94,12 @@ public:
     std::string GetDebugMessage() const { return strDebugMessage; }
 };
 
-static inline int64_t GetTransactionWeight(const CellTransaction& tx)
+static inline int64_t GetTransactionWeight(const MCTransaction& tx)
 {
-    return ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR -1) + ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
+    return ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 }
 
-static inline int64_t GetBlockWeight(const CellBlock& block)
+static inline int64_t GetBlockWeight(const MCBlock& block)
 {
     // This implements the weight = (stripped_size * 4) + witness_size formula,
     // using only serialization with and without witness data. As witness_size
@@ -103,6 +107,6 @@ static inline int64_t GetBlockWeight(const CellBlock& block)
     // weight = (stripped_size * 3) + total_size.
     return ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION);
 }
-bool CheckBlockHeaderSignature(const CellBlockHeader& block);
+bool CheckBlockHeaderSignature(const MCBlockHeader& block);
 
-#endif // CELLLINK_CONSENSUS_VALIDATION_H
+#endif // MAGNACHAIN_CONSENSUS_VALIDATION_H

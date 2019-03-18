@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "init.h"
@@ -73,16 +73,11 @@
 #include "smartcontract/contractdb.h"
 
 bool fFeeEstimatesInitialized = false;
-static const bool DEFAULT_PROXYRANDOMIZE = true;
-static const bool DEFAULT_REST_ENABLE = false;
-static const bool DEFAULT_DISABLE_SAFEMODE = false;
-static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 
-std::unique_ptr<CellConnman> g_connman;
 std::unique_ptr<PeerLogicValidation> peerLogic;
 
 #if ENABLE_ZMQ
-static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
+CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 #endif
 
 #ifdef _WIN32
@@ -97,31 +92,7 @@ static CZMQNotificationInterface* pzmqNotificationInterface = nullptr;
 
 static const char* FEE_ESTIMATES_FILENAME = "fee_estimates.dat";
 
-//////////////////////////////////////////////////////////////////////////////
-//
-// Shutdown
-//
-
-//
-// Thread management and startup/shutdown:
-//
-// The network-processing threads are all part of a thread group
-// created by AppInit() or the Qt main() function.
-//
-// A clean exit happens when StartShutdown() or the SIGTERM
-// signal handler sets fRequestShutdown, which triggers
-// the DetectShutdownThread(), which interrupts the main thread group.
-// DetectShutdownThread() then exits, which causes AppInit() to
-// continue (it .joins the shutdown thread).
-// Shutdown() is then
-// called to clean up database connections, and stop other
-// threads that should only be stopped after the main network-processing
-// threads have exited.
-//
-// Shutdown for Qt is very similar, only it uses a QTimer to detect
-// fRequestShutdown getting set, and then does the normal Qt
-// shutdown thing.
-//
+std::unique_ptr<MCConnman> g_connman;
 
 std::atomic<bool> fRequestShutdown(false);
 std::atomic<bool> fDumpMempoolLater(false);
@@ -129,6 +100,10 @@ std::atomic<bool> fDumpMempoolLater(false);
 void StartShutdown()
 {
     fRequestShutdown = true;
+}
+void StopShutdown()
+{
+    fRequestShutdown = false;
 }
 bool ShutdownRequested()
 {
@@ -138,17 +113,17 @@ bool ShutdownRequested()
 /**
  * This is a minimally invasive approach to shutdown on LevelDB read errors from the
  * chainstate, while keeping user interface out of the common library, which is shared
- * between celllinkd, and celllink-qt and non-server tools.
+ * between magnachaind, and magnachain-qt and non-server tools.
 */
-class CellCoinsViewErrorCatcher : public CellCoinsViewBacked
+class MCCoinsViewErrorCatcher : public MCCoinsViewBacked
 {
 public:
-    CellCoinsViewErrorCatcher(CellCoinsView* view) : CellCoinsViewBacked(view) {}
-    bool GetCoin(const CellOutPoint &outpoint, Coin &coin) const override {
+    MCCoinsViewErrorCatcher(MCCoinsView* view) : MCCoinsViewBacked(view) {}
+    bool GetCoin(const MCOutPoint &outpoint, Coin &coin) const override {
         try {
-            return CellCoinsViewBacked::GetCoin(outpoint, coin);
+            return MCCoinsViewBacked::GetCoin(outpoint, coin);
         } catch (const std::runtime_error& e) {
-            uiInterface.ThreadSafeMessageBox(_("Error reading from database, shutting down."), "", CellClientUIInterface::MSG_ERROR);
+            uiInterface.ThreadSafeMessageBox(_("Error reading from database, shutting down."), "", MCClientUIInterface::MSG_ERROR);
             LogPrintf("Error reading from database: %s\n", e.what());
             // Starting the shutdown sequence and returning false to the caller would be
             // interpreted as 'entry not found' (as opposed to unable to read data), and
@@ -160,7 +135,7 @@ public:
     // Writes do not need similar protection, as failure to write is handled by the caller.
 };
 
-static CellCoinsViewErrorCatcher* pcoinscatcher = nullptr;
+static MCCoinsViewErrorCatcher* pcoinscatcher = nullptr;
 static std::unique_ptr<ECCVerifyHandle> globalVerifyHandle;
 
 void Interrupt(boost::thread_group& threadGroup)
@@ -178,18 +153,18 @@ void Interrupt(boost::thread_group& threadGroup)
 void Shutdown()
 {
     LogPrintf("%s: In progress...\n", __func__);
-    static CellCriticalSection cs_Shutdown;
+    static MCCriticalSection cs_Shutdown;
     TRY_LOCK(cs_Shutdown, lockShutdown);
     if (!lockShutdown)
         return;
 
-	GenerateCells(false, 1, Params());
+	GenerateMCs(false, 1, Params());
 
     /// Note: Shutdown() must be able to handle cases in which initialization failed part of the way,
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("celllink-shutoff");
+    RenameThread("magnachain-shutoff");
     mempool.AddTransactionsUpdated(1);
 
     StopHTTPRPC();
@@ -218,7 +193,7 @@ void Shutdown()
     if (fFeeEstimatesInitialized) {
         ::feeEstimator.FlushUnconfirmed(::mempool);
         fs::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
-        CellAutoFile est_fileout(fsbridge::fopen(est_path, "wb"), SER_DISK, CLIENT_VERSION);
+        MCAutoFile est_fileout(fsbridge::fopen(est_path, "wb"), SER_DISK, CLIENT_VERSION);
         if (!est_fileout.IsNull())
             ::feeEstimator.Write(est_fileout);
         else
@@ -232,7 +207,7 @@ void Shutdown()
     }
 
     // After there are no more peers/RPC left to give us new data which may generate
-    // CellValidationInterface callbacks, flush them...
+    // MCValidationInterface callbacks, flush them...
     GetMainSignals().FlushBackgroundCallbacks();
 
     // Any future callbacks will be dropped. This should absolutely be safe - if
@@ -260,8 +235,14 @@ void Shutdown()
         pcoinsdbview = nullptr;
         delete pblocktree;
         pblocktree = nullptr;
-        delete pBranchDb;
-        pBranchDb = nullptr;
+        delete g_pBranchDataMemCache;
+        g_pBranchDataMemCache = nullptr;
+        delete g_pBranchDb;
+        g_pBranchDb = nullptr;
+        delete pCoinAmountCache;
+        pCoinAmountCache = nullptr;
+        delete pCoinAmountDB;
+        pCoinAmountDB = nullptr;
     }
 #ifdef ENABLE_WALLET
     for (CWalletRef pwallet : vpwallets) {
@@ -304,7 +285,7 @@ void Shutdown()
  */
 static void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 static void HandleSIGHUP(int)
@@ -347,10 +328,10 @@ void OnRPCPreCommand(const CRPCCommand& cmd)
 
 std::string HelpMessage(HelpMessageMode mode)
 {
-    const auto defaultBaseParams = CreateBaseChainParams(CellBaseChainParams::MAIN);
-    const auto testnetBaseParams = CreateBaseChainParams(CellBaseChainParams::TESTNET);
-    const auto defaultChainParams = CreateChainParams(CellBaseChainParams::MAIN);
-    const auto testnetChainParams = CreateChainParams(CellBaseChainParams::TESTNET);
+    const auto defaultBaseParams = CreateBaseChainParams(MCBaseChainParams::MAIN);
+    const auto testnetBaseParams = CreateBaseChainParams(MCBaseChainParams::TESTNET);
+    const auto defaultChainParams = CreateChainParams(MCBaseChainParams::MAIN);
+    const auto testnetChainParams = CreateChainParams(MCBaseChainParams::TESTNET);
     const bool showDebug = gArgs.GetBoolArg("-help-debug", false);
 
     // When adding new options to the categories, please keep and ensure alphabetical ordering.
@@ -363,8 +344,8 @@ std::string HelpMessage(HelpMessageMode mode)
     if (showDebug)
         strUsage += HelpMessageOpt("-blocksonly", strprintf(_("Whether to operate in a blocks only mode (default: %u)"), DEFAULT_BLOCKSONLY));
     strUsage += HelpMessageOpt("-assumevalid=<hex>", strprintf(_("If this block is in the chain assume that it and its ancestors are valid and potentially skip their script verification (0 to verify all, default: %s, testnet: %s)"), defaultChainParams->GetConsensus().defaultAssumeValid.GetHex(), testnetChainParams->GetConsensus().defaultAssumeValid.GetHex()));
-    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), CELLLINK_CONF_FILENAME));
-    if (mode == HMM_CELLLINKD)
+    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), MAGNACHAIN_CONF_FILENAME));
+    if (mode == HMM_MAGNACHAIND)
     {
 #if HAVE_DECL_DAEMON
         strUsage += HelpMessageOpt("-daemon", _("Run in the background as a daemon and accept commands"));
@@ -389,7 +370,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-par=<n>", strprintf(_("Set the number of script verification threads (%u to %d, 0 = auto, <0 = leave that many cores free, default: %d)"),
         -GetNumCores(), MAX_SCRIPTCHECK_THREADS, DEFAULT_SCRIPTCHECK_THREADS));
 #ifndef WIN32
-    strUsage += HelpMessageOpt("-pid=<file>", strprintf(_("Specify pid file (default: %s)"), CELLLINK_PID_FILENAME));
+    strUsage += HelpMessageOpt("-pid=<file>", strprintf(_("Specify pid file (default: %s)"), MAGNACHAIN_PID_FILENAME));
 #endif
     strUsage += HelpMessageOpt("-prune=<n>", strprintf(_("Reduce storage requirements by enabling pruning (deleting) of old blocks. This allows the pruneblockchain RPC to be called to delete specific blocks, and enables automatic pruning of old blocks if a target size in MiB is provided. This mode is incompatible with -txindex and -rescan. "
                                                          "Warning: Reverting this setting requires re-downloading the entire blockchain. "
@@ -443,7 +424,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-maxuploadtarget=<n>", strprintf(_("Tries to keep outbound traffic under the given target (in MiB per 24h), 0 = no limit (default: %d)"), DEFAULT_MAX_UPLOAD_TARGET));
 
 #ifdef ENABLE_WALLET
-    strUsage += CellWallet::GetWalletHelpString(showDebug);
+    strUsage += MCWallet::GetWalletHelpString(showDebug);
 #endif
 
 #if ENABLE_ZMQ
@@ -551,14 +532,14 @@ std::string HelpMessage(HelpMessageMode mode)
 
 std::string LicenseInfo()
 {
-    const std::string URL_SOURCE_CODE = "opening soon.";
-    const std::string URL_WEBSITE = "<https://CellInfo.io>";
+    const std::string URL_SOURCE_CODE = "<https://github.com/MagnaChain/MagnaChain-dev-master>";
+    const std::string URL_WEBSITE = "<https://magnachain.co>";
 
     return CopyrightHolders(strprintf(_("Copyright (C) %i-%i"), 2016, COPYRIGHT_YEAR) + " ") + "\n" +
            "\n" +
            strprintf(_("Please contribute if you find %s useful. "
                        "Visit %s for further information about the software."),
-               "CellLink Core", URL_WEBSITE) +
+               "MagnaChain Core", URL_WEBSITE) +
            "\n" +
            strprintf(_("The source code is available from %s."),
                URL_SOURCE_CODE) +
@@ -571,7 +552,7 @@ std::string LicenseInfo()
            "\n";
 }
 
-static void BlockNotifyCallback(bool initialSync, const CellBlockIndex *pBlockIndex)
+static void BlockNotifyCallback(bool initialSync, const MCBlockIndex *pBlockIndex)
 {
     if (initialSync || !pBlockIndex)
         return;
@@ -584,9 +565,9 @@ static void BlockNotifyCallback(bool initialSync, const CellBlockIndex *pBlockIn
 
 static bool fHaveGenesis = false;
 static boost::mutex cs_GenesisWait;
-static CellConditionVariable condvar_GenesisWait;
+static MCConditionVariable condvar_GenesisWait;
 
-static void BlockNotifyGenesisWait(bool, const CellBlockIndex *pBlockIndex)
+static void BlockNotifyGenesisWait(bool, const MCBlockIndex *pBlockIndex)
 {
     if (pBlockIndex != nullptr) {
         {
@@ -654,8 +635,8 @@ void CleanupBlockRevFiles()
 
 void ThreadImport(std::vector<fs::path> vImportFiles)
 {
-    const CellChainParams& chainparams = Params();
-    RenameThread("celllink-loadblk");
+    const MCChainParams& chainparams = Params();
+    RenameThread("magnachain-loadblk");
 
     {
     CImportingNow imp;
@@ -664,7 +645,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     if (fReindex) {
         int nFile = 0;
         while (true) {
-            CellDiskBlockPos pos(nFile, 0);
+            MCDiskBlockPos pos(nFile, 0);
             if (!fs::exists(GetBlockPosFilename(pos, "blk")))
                 break; // No block files left to reindex
             FILE *file = OpenBlockFile(pos, true);
@@ -707,7 +688,7 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     }
 
     // scan for better chains in the block chain database, that are not yet connected in the active best chain
-    CellValidationState state;
+    MCValidationState state;
     if (!ActivateBestChain(state, chainparams)) {
         LogPrintf("Failed to connect best block");
         StartShutdown();
@@ -720,12 +701,12 @@ void ThreadImport(std::vector<fs::path> vImportFiles)
     } // End scope of CImportingNow
     if (gArgs.GetArg("-persistmempool", DEFAULT_PERSIST_MEMPOOL)) {
         LoadMempool();
-        fDumpMempoolLater = !fRequestShutdown;
+        fDumpMempoolLater = !ShutdownRequested();
     }
 }
 
 /** Sanity checks
- *  Ensure that CellLink is running in a usable environment with all
+ *  Ensure that MagnaChain is running in a usable environment with all
  *  necessary library support.
  */
 bool InitSanityCheck(void)
@@ -767,6 +748,16 @@ bool AppInitServers(boost::thread_group& threadGroup)
 // Parameter interaction based on rules
 void InitParameterInteraction()
 {
+    // modify COINBASE_MATURITY for regtest
+    if (gArgs.GetBoolArg("-regtest", false))//Params().NetworkIDString() == MCBaseChainParams::REGTEST , this condition not for branch chain.
+    {
+        COINBASE_MATURITY = gArgs.GetArg("-regtestmaturity", 1);
+        BRANCH_CHAIN_MATURITY = gArgs.GetArg("-regtestbcmaturity", 1);
+        REDEEM_SAFE_HEIGHT = gArgs.GetArg("-regtestrsheight", 60);
+        REPORT_OUTOF_HEIGHT = gArgs.GetArg("-regtestrooheight", 60);
+        REPORT_LOCK_COIN_HEIGHT = gArgs.GetArg("-regtestrooheight", 30);
+    }
+
     // when specifying an explicit binding address, you want to listen on it
     // even when -connect or -proxy is specified
     if (gArgs.IsArgSet("-bind")) {
@@ -837,31 +828,19 @@ void InitParameterInteraction()
     }
 }
 
-static std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
+std::string ResolveErrMsg(const char * const optname, const std::string& strBind)
 {
     return strprintf(_("Cannot resolve -%s address: '%s'"), optname, strBind);
 }
 
 void InitLogging()
 {
-    fPrintToConsole = gArgs.GetBoolArg("-printtoconsole", false);
+    fPrintToConsole = gArgs.GetBoolArg("-printtoconsole", true);
     fLogTimestamps = gArgs.GetBoolArg("-logtimestamps", DEFAULT_LOGTIMESTAMPS);
     fLogTimeMicros = gArgs.GetBoolArg("-logtimemicros", DEFAULT_LOGTIMEMICROS);
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
-
-    LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    LogPrintf("Celllink version %s\n", FormatFullVersion());
+    LogPrintf("MagnaChain version %s\n", FormatFullVersion());
 }
-
-namespace { // Variables internal to initialization process only
-
-ServiceFlags nRelevantServices = NODE_NETWORK;
-int nMaxConnections;
-int nUserMaxConnections;
-int nFD;
-ServiceFlags nLocalServices = NODE_NETWORK;
-
-} // namespace
 
 [[noreturn]] static void new_handler_terminate()
 {
@@ -926,7 +905,7 @@ bool AppInitBasicSetup()
 
 bool AppInitParameterInteraction()
 {
-    const CellChainParams& chainparams = Params();
+    const MCChainParams& chainparams = Params();
     // ********************************************************* Step 2: parameter interactions
 
     // also see: InitParameterInteraction()
@@ -1007,7 +986,7 @@ bool AppInitParameterInteraction()
     // Checkmempool and checkblockindex default to true in regtest mode
     int ratio = std::min<int>(std::max<int>(gArgs.GetArg("-checkmempool", chainparams.DefaultConsistencyChecks() ? 1 : 0), 0), 1000000);
     if (ratio != 0) {
-        mempool.setSanityCheck(1.0 / ratio);
+        mempool.SetSanityCheck(1.0 / ratio);
     }
     fCheckBlockIndex = gArgs.GetBoolArg("-checkblockindex", chainparams.DefaultConsistencyChecks());
     fCheckpointsEnabled = gArgs.GetBoolArg("-checkpoints", DEFAULT_CHECKPOINTS_ENABLED);
@@ -1041,10 +1020,10 @@ bool AppInitParameterInteraction()
     // and the amount the mempool min fee increases above the feerate of txs evicted due to mempool limiting.
     if (gArgs.IsArgSet("-incrementalrelayfee"))
     {
-        CellAmount n = 0;
+        MCAmount n = 0;
         if (!ParseMoney(gArgs.GetArg("-incrementalrelayfee", ""), n))
             return InitError(AmountErrMsg("incrementalrelayfee", gArgs.GetArg("-incrementalrelayfee", "")));
-        incrementalRelayFee = CellFeeRate(n);
+        incrementalRelayFee = MCFeeRate(n);
     }
 
     // -par=0 means autodetect, but nScriptCheckThreads==0 means no concurrency
@@ -1084,12 +1063,12 @@ bool AppInitParameterInteraction()
         nConnectTimeout = DEFAULT_CONNECT_TIMEOUT;
 
     if (gArgs.IsArgSet("-minrelaytxfee")) {
-        CellAmount n = 0;
+        MCAmount n = 0;
         if (!ParseMoney(gArgs.GetArg("-minrelaytxfee", ""), n)) {
             return InitError(AmountErrMsg("minrelaytxfee", gArgs.GetArg("-minrelaytxfee", "")));
         }
-        // High fee check is done afterward in CellWallet::ParameterInteraction()
-        ::minRelayTxFee = CellFeeRate(n);
+        // High fee check is done afterward in MCWallet::ParameterInteraction()
+        ::minRelayTxFee = MCFeeRate(n);
     } else if (incrementalRelayFee > ::minRelayTxFee) {
         // Allow only setting incrementalRelayFee to control both
         ::minRelayTxFee = incrementalRelayFee;
@@ -1100,7 +1079,7 @@ bool AppInitParameterInteraction()
     // TODO: Harmonize which arguments need sanity checking and where that happens
     if (gArgs.IsArgSet("-blockmintxfee"))
     {
-        CellAmount n = 0;
+        MCAmount n = 0;
         if (!ParseMoney(gArgs.GetArg("-blockmintxfee", ""), n))
             return InitError(AmountErrMsg("blockmintxfee", gArgs.GetArg("-blockmintxfee", "")));
     }
@@ -1109,10 +1088,10 @@ bool AppInitParameterInteraction()
     // implementations may inadvertently create non-standard transactions
     if (gArgs.IsArgSet("-dustrelayfee"))
     {
-        CellAmount n = 0;
+        MCAmount n = 0;
         if (!ParseMoney(gArgs.GetArg("-dustrelayfee", ""), n) || 0 == n)
             return InitError(AmountErrMsg("dustrelayfee", gArgs.GetArg("-dustrelayfee", "")));
-        dustRelayFee = CellFeeRate(n);
+        dustRelayFee = MCFeeRate(n);
     }
 
     fRequireStandard = !gArgs.GetBoolArg("-acceptnonstdtxn", !chainparams.RequireStandard());
@@ -1121,7 +1100,7 @@ bool AppInitParameterInteraction()
     nBytesPerSigOp = gArgs.GetArg("-bytespersigop", nBytesPerSigOp);
 
 #ifdef ENABLE_WALLET
-    if (!CellWallet::ParameterInteraction())
+    if (!MCWallet::ParameterInteraction())
         return false;
 #endif
 
@@ -1192,7 +1171,7 @@ static bool LockDataDirectory(bool probeOnly)
 {
     std::string strDataDir = GetDataDir().string();
 
-    // Make sure only a single CellLink process is using the data directory.
+    // Make sure only a single MagnaChain process is using the data directory.
     fs::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fsbridge::fopen(pathLockFile, "a"); // empty lock file; created if it doesn't exist.
     if (file) fclose(file);
@@ -1244,9 +1223,9 @@ bool AppInitLockDataDirectory()
     return true;
 }
 
-bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
+bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
-    const CellChainParams& chainparams = Params();
+    const MCChainParams& chainparams = Params();
     // ********************************************************* Step 4a: application initialization
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());
@@ -1257,6 +1236,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
         ShrinkDebugFile();
     }
 
+    fPrintToDebugLog = gArgs.GetBoolArg("-printtodebuglog", true);// fPrintToConsole, let's print to console and debug log by default.If you don't want that, disable it manually.
     if (fPrintToDebugLog)
         OpenDebugLog();
 
@@ -1264,7 +1244,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
         LogPrintf("Startup time: %s\n", DateTimeStrFormat("%Y-%m-%d %H:%M:%S", GetTime()));
     LogPrintf("Default data directory %s\n", GetDefaultDataDir().string());
     LogPrintf("Using data directory %s\n", GetDataDir().string());
-    LogPrintf("Using config file %s\n", GetConfigFile(gArgs.GetArg("-conf", CELLLINK_CONF_FILENAME)).string());
+    LogPrintf("Using config file %s\n", GetConfigFile(gArgs.GetArg("-conf", MAGNACHAIN_CONF_FILENAME)).string());
     LogPrintf("Using at most %i automatic connections (%i file descriptors available)\n", nMaxConnections, nFD);
 
     InitSignatureCache();
@@ -1277,8 +1257,8 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     }
 
     // Start the lightweight task scheduler thread
-    CellScheduler::Function serviceLoop = boost::bind(&CellScheduler::serviceQueue, &scheduler);
-    threadGroup.create_thread(boost::bind(&TraceThread<CellScheduler::Function>, "scheduler", serviceLoop));
+    MCScheduler::Function serviceLoop = boost::bind(&MCScheduler::serviceQueue, &scheduler);
+    threadGroup.create_thread(boost::bind(&TraceThread<MCScheduler::Function>, "scheduler", serviceLoop));
 
     GetMainSignals().RegisterBackgroundSignalScheduler(scheduler);
 
@@ -1298,7 +1278,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
 
     // ********************************************************* Step 5: verify wallet database integrity
 #ifdef ENABLE_WALLET
-    if (!CellWallet::Verify())
+    if (!MCWallet::Verify())
         return false;
 #endif
     // ********************************************************* Step 6: network initialization
@@ -1308,16 +1288,16 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     // need to reindex later.
 
     assert(!g_connman);
-    g_connman = std::unique_ptr<CellConnman>(new CellConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
-    CellConnman& connman = *g_connman;
+    g_connman = std::unique_ptr<MCConnman>(new MCConnman(GetRand(std::numeric_limits<uint64_t>::max()), GetRand(std::numeric_limits<uint64_t>::max())));
+    MCConnman& connman = *g_connman;
 
 	assert(!g_branchChainMan);
-	g_branchChainMan = std::unique_ptr<CellBranchChainMan>(new CellBranchChainMan());
+	g_branchChainMan = std::unique_ptr<MCBranchChainMan>(new MCBranchChainMan());
 	g_branchChainMan->Init();
 
     LogPrintf("Init branch chain %s\n", chainparams.GetBranchId());
 
-    peerLogic.reset(new PeerLogicValidation(&connman, scheduler));
+    peerLogic.reset(new PeerLogicValidation(&connman, scheduler, &ProcessMessage, &GetLocator));
     RegisterValidationInterface(peerLogic.get());
 
     // sanitize comments per BIP-0014, format user agent and check total size
@@ -1357,7 +1337,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     std::string proxyArg = gArgs.GetArg("-proxy", "");
     SetLimited(NET_TOR);
     if (proxyArg != "" && proxyArg != "0") {
-        CellService proxyAddr;
+        MCService proxyAddr;
         if (!Lookup(proxyArg.c_str(), proxyAddr, 9050, fNameLookup)) {
             return InitError(strprintf(_("Invalid -proxy address or hostname: '%s'"), proxyArg));
         }
@@ -1381,7 +1361,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
         if (onionArg == "0") { // Handle -noonion/-onion=0
             SetLimited(NET_TOR); // set onions as unreachable
         } else {
-            CellService onionProxy;
+            MCService onionProxy;
             if (!Lookup(onionArg.c_str(), onionProxy, 9050, fNameLookup)) {
                 return InitError(strprintf(_("Invalid -onion address or hostname: '%s'"), onionArg));
             }
@@ -1399,7 +1379,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     fRelayTxes = !gArgs.GetBoolArg("-blocksonly", DEFAULT_BLOCKSONLY);
 
     for (const std::string& strAddr : gArgs.GetArgs("-externalip")) {
-        CellService addrLocal;
+        MCService addrLocal;
         if (Lookup(strAddr.c_str(), addrLocal, GetListenPort(), fNameLookup) && addrLocal.IsValid())
             AddLocal(addrLocal, LOCAL_MANUAL);
         else
@@ -1443,7 +1423,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     LogPrintf("* Using %.1fMiB for in-memory UTXO set (plus up to %.1fMiB of unused mempool space)\n", nCoinCacheUsage * (1.0 / 1024 / 1024), nMempoolSizeMax * (1.0 / 1024 / 1024));
 
     bool fLoaded = false;
-    while (!fLoaded && !fRequestShutdown) {
+    while (!fLoaded && !ShutdownRequested()) {
         bool fReset = fReindex;
         std::string strLoadError;
 
@@ -1459,10 +1439,11 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                 delete pcoinsdbview;
                 delete pcoinscatcher;
                 delete pblocktree;
-                delete pBranchDb;
+                delete g_pBranchDataMemCache;
+                delete g_pBranchDb;
                 //BranchDb::DeleteDb();
 
-                pblocktree = new CellBlockTreeDB(nBlockTreeDBCache, false, fReset);
+                pblocktree = new MCBlockTreeDB(nBlockTreeDBCache, false, fReset);
 
                 if (fReset) {
                     pblocktree->WriteReindexing(true);
@@ -1471,7 +1452,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                         CleanupBlockRevFiles();
                 }
 
-                if (fRequestShutdown) break;
+                if (ShutdownRequested()) break;
 
                 // LoadBlockIndex will load fTxIndex from the db, or set it if
                 // we're reindexing. It will also load fHavePruned if we've
@@ -1513,15 +1494,20 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                 // At this point we're either in reindex or we've loaded a useful
                 // block tree into mapBlockIndex!
 
-                pcoinsdbview = new CellCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
-                pcoinscatcher = new CellCoinsViewErrorCatcher(pcoinsdbview);
-
+                pcoinsdbview = new MCCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
+                pcoinscatcher = new MCCoinsViewErrorCatcher(pcoinsdbview);
+                mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
+                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
+                
                 // If necessary, upgrade from older database format.
                 // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!pcoinsdbview->Upgrade()) {
                     strLoadError = _("Error upgrading chainstate database");
                     break;
                 }
+
+                pcoinsTip = new MCCoinsViewCache(pcoinscatcher);
+                pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
 
                 // ReplayBlocks is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate
                 if (!ReplayBlocks(chainparams, pcoinsdbview)) {
@@ -1530,14 +1516,12 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                 }
 
                 // The on-disk coinsdb is now in a good state, create the cache
-                pcoinsTip = new CellCoinsViewCache(pcoinscatcher);
-				pcoinListDb = new CoinListDB( pcoinsdbview->GetDb() );
-				mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, false);
-                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, false);
+                pCoinAmountDB = new CoinAmountDB();
+                pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
                 
                 if (Params().IsMainChain()) //only in main chain
                 {
-                    if (pBranchDb == nullptr) { // cache size calculations
+                    if (g_pBranchDb == nullptr) { // cache size calculations
                         int64_t nTotalCache = (gArgs.GetArg("-dbcache", nDefaultDbCache) << 20);
                         nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
                         nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greater than nMaxDbcache
@@ -1546,8 +1530,11 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                         nTotalCache -= nBlockTreeDBCache;
                         int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
                         nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20);                   // cap total coins db cache
-                        pBranchDb = new BranchDb(GetDataDir() / "branchchain", nCoinDBCache, false, false);
-                        pBranchDb->LoadData();
+                        g_pBranchDb = new BranchDb(GetDataDir() / "branchchain", nCoinDBCache, false, false);
+                        g_pBranchDb->LoadData();
+                    }
+                    if (g_pBranchDataMemCache == nullptr){
+                        g_pBranchDataMemCache = new BranchCache(g_pBranchDb);
                     }
                 }
                 
@@ -1574,14 +1561,15 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
 
                 if (!is_coinsview_empty) {
                     uiInterface.InitMessage(_("Verifying blocks..."));
-                    if (fHavePruned && gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS) > MIN_BLOCKS_TO_KEEP) {
+                    int nCheckDepth = gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS) / Params().GetConsensus().nPowTargetSpacing;
+                    if (fHavePruned && nCheckDepth > MIN_BLOCKS_TO_KEEP) {
                         LogPrintf("Prune: pruned datadir may not have more than %d blocks; only checking available blocks",
                             MIN_BLOCKS_TO_KEEP);
                     }
 
                     {
                         LOCK(cs_main);
-                        CellBlockIndex* tip = chainActive.Tip();
+                        MCBlockIndex* tip = chainActive.Tip();
                         RPCNotifyBlockChange(true, tip);
                         if (tip && tip->nTime > GetAdjustedTime() + 2 * 60 * 60) {
                             strLoadError = _("The block database contains a block which appears to be from the future. "
@@ -1591,8 +1579,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
                         }
                     }
 
-                    if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, gArgs.GetArg("-checklevel", DEFAULT_CHECKLEVEL),
-                                  gArgs.GetArg("-checkblocks", DEFAULT_CHECKBLOCKS))) {
+                    if (!CVerifyDB().VerifyDB(chainparams, pcoinsdbview, gArgs.GetArg("-checklevel", DEFAULT_CHECKLEVEL), nCheckDepth)) {
                         strLoadError = _("Corrupted block database detected");
                         break;
                     }
@@ -1606,16 +1593,16 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
             fLoaded = true;
         } while (false);
 
-        if (!fLoaded && !fRequestShutdown) {
+        if (!fLoaded && !ShutdownRequested()) {
             // first suggest a reindex
             if (!fReset) {
                 bool fRet = uiInterface.ThreadSafeQuestion(
                     strLoadError + ".\n\n" + _("Do you want to rebuild the block database now?"),
                     strLoadError + ".\nPlease restart with -reindex or -reindex-chainstate to recover.",
-                    "", CellClientUIInterface::MSG_ERROR | CellClientUIInterface::BTN_ABORT);
+                    "", MCClientUIInterface::MSG_ERROR | MCClientUIInterface::BTN_ABORT);
                 if (fRet) {
                     fReindex = true;
-                    fRequestShutdown = false;
+                    StopShutdown();
                 } else {
                     LogPrintf("Aborted block database rebuild. Exiting.\n");
                     return false;
@@ -1629,7 +1616,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
-    if (fRequestShutdown)
+    if (ShutdownRequested())
     {
         LogPrintf("Shutdown requested. Exiting.\n");
         return false;
@@ -1639,7 +1626,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     }
 
     fs::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
-    CellAutoFile est_filein(fsbridge::fopen(est_path, "rb"), SER_DISK, CLIENT_VERSION);
+    MCAutoFile est_filein(fsbridge::fopen(est_path, "rb"), SER_DISK, CLIENT_VERSION);
     // Allowed to fail as this file IS missing on first startup.
     if (!est_filein.IsNull())
         ::feeEstimator.Read(est_filein);
@@ -1647,7 +1634,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
 
     // ********************************************************* Step 8: load wallet
 #ifdef ENABLE_WALLET
-    if (!CellWallet::InitLoadWallet())
+    if (!MCWallet::InitLoadWallet())
         return false;
 #else
     LogPrintf("No wallet support compiled in!\n");
@@ -1723,7 +1710,7 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     // Map ports with UPnP
     MapPort(gArgs.GetBoolArg("-upnp", DEFAULT_UPNP));
 
-    CellConnman::Options connOptions;
+    MCConnman::Options connOptions;
     connOptions.nLocalServices = nLocalServices;
     connOptions.nRelevantServices = nRelevantServices;
     connOptions.nMaxConnections = nMaxConnections;
@@ -1740,14 +1727,14 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     connOptions.nMaxOutboundLimit = nMaxOutboundLimit;
 
     for (const std::string& strBind : gArgs.GetArgs("-bind")) {
-        CellService addrBind;
+        MCService addrBind;
         if (!Lookup(strBind.c_str(), addrBind, GetListenPort(), false)) {
             return InitError(ResolveErrMsg("bind", strBind));
         }
         connOptions.vBinds.push_back(addrBind);
     }
     for (const std::string& strBind : gArgs.GetArgs("-whitebind")) {
-        CellService addrBind;
+        MCService addrBind;
         if (!Lookup(strBind.c_str(), addrBind, 0, false)) {
             return InitError(ResolveErrMsg("whitebind", strBind));
         }
@@ -1784,5 +1771,5 @@ bool AppInitMain(boost::thread_group& threadGroup, CellScheduler& scheduler)
     }
 #endif
 
-    return !fRequestShutdown;
+    return !ShutdownRequested();
 }

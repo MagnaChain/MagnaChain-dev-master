@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -55,7 +55,7 @@ unsigned int ParseConfirmTarget(const UniValue& value)
  * If 'height' is nonnegative, compute the estimate at the time when a given block was found.
  */
 UniValue GetNetworkHashPS(int lookup, int height) {
-    CellBlockIndex *pb = chainActive.Tip();
+    MCBlockIndex *pb = chainActive.Tip();
 
     if (height >= 0 && height < chainActive.Height())
         pb = chainActive[height];
@@ -71,7 +71,7 @@ UniValue GetNetworkHashPS(int lookup, int height) {
     if (lookup > pb->nHeight)
         lookup = pb->nHeight;
 
-    CellBlockIndex *pb0 = pb;
+    MCBlockIndex *pb0 = pb;
     int64_t minTime = pb0->GetBlockTime();
     int64_t maxTime = minTime;
     for (int i = 0; i < lookup; i++) {
@@ -114,15 +114,15 @@ UniValue getnetworkhashps(const JSONRPCRequest& request)
 }
 
 typedef std::vector<unsigned char> valtype;
-bool SignBlock(CellBlock *pblock, CellKeyStore* keystore)
+bool SignBlock(MCBlock *pblock, MCKeyStore* keystore)
 {
 	assert(pblock->vtx.size() >= 2);
 
 	//get private key
-	CellKey key;
+	MCKey key;
 	std::vector<valtype> vSolutions;
 	txnouttype whichType;
-	const CellScript& spk = pblock->vtx[1]->vout[0].scriptPubKey;
+	const MCScript& spk = pblock->vtx[1]->vout[0].scriptPubKey;
 	if (!Solver(spk, whichType, vSolutions))
 	{
 		return false;
@@ -155,20 +155,21 @@ bool SignBlock(CellBlock *pblock, CellKeyStore* keystore)
 	{
 		return false;
 	}
-	CellPubKey pubkey = key.GetPubKey();
+	MCPubKey pubkey = key.GetPubKey();
 	valtype vchPubKey(pubkey.begin(), pubkey.end());
 	pblock->vchBlockSig << vchPubKey << vSignData;
 	return true;
 }
 
-UniValue generateBlocks( CellKeyStore* keystoreIn, std::vector<CellOutput>& vecOutput, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf, CellChainParams*  params, CellCoinsViewCache *pcoinsCache )
+UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, int nGenerate, uint64_t nMaxTries, bool keepScript, GenerateBlockCB pf, MCChainParams* params, MCCoinsViewCache *pcoinsCache)
 {
 	if( vecOutput.empty() )
 		throw JSONRPCError(RPC_INTERNAL_ERROR, "no address with enough coins\n");
-    if (pcoinsCache == nullptr)
-    {
+
+    if (pcoinsCache == nullptr) {
         pcoinsCache = ::pcoinsTip;
     }
+
     static const int nInnerLoopCount = 0x10000;
     int nHeightEnd = 0;
     int nHeight = 0;
@@ -178,144 +179,106 @@ UniValue generateBlocks( CellKeyStore* keystoreIn, std::vector<CellOutput>& vecO
         nHeight = chainActive.Height();
         nHeightEnd = nHeight+nGenerate;
     }
+
 	uint64_t nTries = 0;
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
-    while (nHeight < nHeightEnd && nTries < nMaxTries )
+    while (nHeight < nHeightEnd && nTries < nMaxTries && !ShutdownRequested())
     {
-		if (nTries != 0 && nTries % 500 == 0)
-		{
-			boost::this_thread::interruption_point();
-		}
+        if (nTries != 0 && nTries % 500 == 0)
+            boost::this_thread::interruption_point();
 
-        int startTime = GetTimeMillis();
-		// check script pubkey
-		CellOutput& out = vecOutput[nTries % vecOutput.size()];
-		CellScript scriptPubKey;
-		if (out.tx == nullptr) {
-			CellPubKey newKey;
-			if (!keystoreIn->GetKeyFromPool(newKey)) {
-				throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-			}
-			CellKeyID keyID = newKey.GetID();
+        int64_t startTime = GetTimeMillis();
+        // check script pubkey
+        MCOutput& out = vecOutput[nTries % vecOutput.size()];
+        std::shared_ptr<MCReserveKey> pReserveKey = nullptr;
+        MCScript scriptPubKey;
+        if (out.tx == nullptr) {
+            pReserveKey = std::make_shared<MCReserveKey>(keystoreIn);
 
-			keystoreIn->SetAddressBook(keyID, "", "receive");
+            MCPubKey vchPubKey;
+            if (!pReserveKey->GetReservedKey(vchPubKey))
+                throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
 
-			CellTxDestination kDest(keyID);
-			scriptPubKey = GetScriptForDestination(kDest);
-		}
-		else {
-			scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-			//get branch chain mine pubkey
-            if ((params && !params->IsMainChain()) || !Params().IsMainChain()){
-                CellKeyID keyid;
+            keystoreIn->SetAddressBook(vchPubKey.GetID(), "generateforbigboom", "receive");
+            scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
+        }
+        else {
+            scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
+            //get branch chain mine pubkey
+            if ((params && !params->IsMainChain()) || !Params().IsMainChain()) {
+                MCKeyID keyid;
                 uint256 coinpreouthash;
-                if (!GetMortgageCoinData(scriptPubKey, &coinpreouthash, &keyid)){
+                if (!GetMortgageCoinData(scriptPubKey, &coinpreouthash, &keyid)) {
                     nTries++;
                     continue;
                 }
-                else{
-                    if (pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)){//已经被锁
+                else {
+                    if (pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
                         nTries++;
                         continue;
                     }
                     scriptPubKey = GetScriptForDestination(keyid);
                 }
             }
-			if (scriptPubKey.IsPayToScriptHash()) {
-				nTries++;
-				continue;
-			}
-		}
-		CellOutPoint outpoint;
-		if (out.tx != nullptr) {
-			outpoint.hash = out.tx->tx->GetHash();
-			outpoint.n = out.i;
-		}
-		BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params() );
-		options.outpoint = outpoint;
-        std::unique_ptr<CellBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock( scriptPubKey, true, keystoreIn, pcoinsCache ));
-		if (!pblocktemplate.get()){
-            // out of memory or MakeStokeTransaction fail
-			//throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
-			nTries++;
-			continue;
-		}
-        CellBlock *pblock = &pblocktemplate->block;
-        //{
-        //    LOCK(cs_main);
-        //    IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
-        //}
-		pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值 
-		// 如果有修改头部的值，需要重新签名 
-		if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
-		{
-			if (!SignBlock(pblock, keystoreIn))
-			{
-				nTries++;
-				continue;
-			}
-		}
-		
-		CellValidationState val_state;
-		// while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckBlockWork( *pblock, val_state, Params().GetConsensus())) {
-        // //while (nMaxTries > 0 && pblock->nNonce < nInnerLoopCount && !CheckProofOfWork(pblock->GetHash(), pblock->nBits, Params().GetConsensus())) {
-            // ++pblock->nNonce;
-            // --nMaxTries;
-        // }
-
-		if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
-		{
-			std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
-			if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
-				throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
-			++nHeight;
-			blockHashes.push_back(pblock->GetHash().GetHex());
-		}
-		++nTries;
-        printf("GenerateBlock use time %d\n", GetTimeMillis() - startTime);
-
-		/*
-		while (nMaxTries > 0 && !CheckBlockWork(*pblock, val_state, Params().GetConsensus())) {
-			--nMaxTries;
-			if (nMaxTries == 0 ) {
-				break;
-			}
-			MilliSleep(400);
-			if (pf != nullptr) {
-				(*pf)();
-			}
-			pblocktemplate = BlockAssembler(Params()).CreateNewBlock( vecScript[nMaxTries%vecScript.size()], true, keystoreIn );
-			pblock = &pblocktemplate->block;
-			{
-				LOCK(cs_main);
-				IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
-			}
-		}
-
-        if (nMaxTries == 0) {
-            break;
+            if (scriptPubKey.IsPayToScriptHash()) {
+                nTries++;
+                continue;
+            }
         }
-        if (pblock->nNonce == nInnerLoopCount) {
+        MCOutPoint outpoint;
+        if (out.tx != nullptr) {
+            outpoint.hash = out.tx->tx->GetHash();
+            outpoint.n = out.i;
+        }
+
+        ContractContext contractContext;
+        BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params());
+        options.outpoint = outpoint;
+        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache));
+        if (!pblocktemplate.get()) {
+            // out of memory or MakeStokeTransaction fail
+            nTries++;
             continue;
         }
-        std::shared_ptr<const CellBlock> shared_pblock = std::make_shared<const CellBlock>(*pblock);
-        if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
-        ++nHeight;
-        blockHashes.push_back(pblock->GetHash().GetHex());
-		*/
-        //mark script as important because it was used at least for one coinbase output if the script came from the wallet
-   //     if (keepScript)
-   //     {
-			//vecScript[nMaxTries%vecScript.size()].KeepScript();
-   //     }
+
+        MCBlock *pblock = &pblocktemplate->block;
+        pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
+        if (!Params().IsMainChain()) {
+            pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
+            pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
+        }
+
+        // 如果有修改头部的值，需要重新签名
+        if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
+        {
+            if (!SignBlock(pblock, keystoreIn))
+            {
+                nTries++;
+                continue;
+            }
+        }
+
+        MCValidationState val_state;
+        if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
+        {
+            std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
+            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr))
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
+            ++nHeight;
+            blockHashes.push_back(pblock->GetHash().GetHex());
+            if (pReserveKey)
+                pReserveKey->KeepKey();
+        }
+
+        ++nTries;
+        LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
     }
     return blockHashes;
 }
 
 //挖侧链第二个块，创世块之后的首块
-UniValue generateBranch2ndBlock(CellKeyStore& keystore)
+UniValue generateBranch2ndBlock(MCWallet& wallet)
 {
     //获取交易池中自己的coin
     if (Params().IsMainChain())
@@ -327,16 +290,18 @@ UniValue generateBranch2ndBlock(CellKeyStore& keystore)
         throw std::runtime_error("only 2nd block can gen by this function");
     }
 
-    std::vector<CellOutput> vecOutput;
-    std::map<uint256, CellWalletTx> mapTempWallet;
-    CellCoinsView viewDummy;
-    CellCoinsViewCache view(&viewDummy);
-    GetAvailableMortgageCoinsInMemPool(keystore, vecOutput, mapTempWallet, view);
+    std::vector<MCOutput> vecOutput;
+    std::map<uint256, MCWalletTx> mapTempWallet;
+    MCCoinsView viewDummy;
+    MCCoinsViewCache view(&viewDummy);
+    GetAvailableMortgageCoinsInMemPool(wallet, vecOutput, mapTempWallet, view);
     if (vecOutput.size() > 0)
     {
         int nGenerate = 1;
-        return generateBlocks(&keystore, vecOutput, nGenerate, vecOutput.size(), false, nullptr, nullptr, &view);
+        return generateBlocks(&wallet, vecOutput, nGenerate, vecOutput.size(), false, nullptr, nullptr, &view);
     }
+    else
+        throw std::runtime_error("No mortgagecoin in mempool");
     return NullUniValue;
 }
 UniValue mineblanch2ndblock(const JSONRPCRequest& request)
@@ -354,10 +319,160 @@ UniValue mineblanch2ndblock(const JSONRPCRequest& request)
             + HelpExampleRpc("mineblanch2ndblock", "")
         );
 
-    CellWallet* pwallet = GetWalletForJSONRPCRequest(request);
+    MCWallet* pwallet = GetWalletForJSONRPCRequest(request);
     EnsureWalletIsUnlocked(pwallet);
 
     return generateBranch2ndBlock(*pwallet);
+}
+
+bool CoinsComparer(const MCOutput& v1, const MCOutput& v2)
+{
+    int height = chainActive.Tip()->nHeight + 1;
+    return v1.tx->tx->vout[v1.i].nValue * (height - v1.nDepth) > v2.tx->tx->vout[v2.i].nValue * (height - v2.nDepth);
+}
+
+UniValue genforbigboomimp(MCWallet* const pwallet, int num_generate, uint64_t max_tries)
+{
+    if (chainActive.Height() + num_generate > Params().GetConsensus().BigBoomHeight) {
+        throw JSONRPCError(RPC_INVALID_REQUEST, "Can not use this rpc, instead of using generate");
+    }
+
+    std::vector< MCScript > vecScript;
+    {
+        LOCK2(cs_main, pwallet->cs_wallet);
+
+        EnsureWalletIsUnlocked(pwallet);
+        pwallet->TopUpKeyPool(num_generate);
+
+        //for (int i = 0; i < num_generate; ++i)
+        //{
+        //	// Generate a new key that is added to wallet
+        //	MCPubKey newKey;
+        //	if (!pwallet->GetKeyFromPool(newKey)) {
+        //		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+        //	}
+        //	MCKeyID keyID = newKey.GetID();
+
+        //	pwallet->SetAddressBook(keyID, "", "receive");
+
+        //	MCTxDestination kDest(keyID);
+        //	MCScript kScript = GetScriptForDestination(kDest);
+        //	vecScript.push_back(kScript);
+        //}
+    }
+    std::vector< MCOutput> vecOutputs;
+    MCOutput dummyOut(nullptr, 0, 0, false, false, false);
+    vecOutputs.push_back(dummyOut);
+    return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+}
+
+UniValue generate(const JSONRPCRequest& request)
+{
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
+        throw std::runtime_error(
+            "generate nblocks ( maxtries )\n"
+            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
+            "\nArguments:\n"
+            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
+            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
+            "\nResult:\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
+            "\nExamples:\n"
+            "\nGenerate 11 blocks\n"
+            + HelpExampleCli("generate", "11")
+        );
+    }
+
+    int num_generate = request.params[0].get_int();
+    uint64_t max_tries = 1000000;
+    if (request.params.size() > 1 && !request.params[1].isNull()) {
+        max_tries = request.params[1].get_int();
+    }
+
+    // branch chain, first gen block
+    UniValue genBlockRet(UniValue::VARR);
+    if (!Params().IsMainChain() && chainActive.Height() == 0){
+        num_generate--;
+        genBlockRet = generateBranch2ndBlock(*pwallet);
+        if (!genBlockRet.isArray())
+            return genBlockRet;// may be gen fail.
+    }
+
+    if (num_generate <= 0)
+        return genBlockRet;
+
+    if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
+    {
+        int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
+        genbigboomnum = std::min(num_generate, genbigboomnum);
+        UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
+        if (genBigBoomBlocks.isArray()){
+            num_generate -= genbigboomnum;
+            genBlockRet.push_backV(genBigBoomBlocks.getValues());
+        }
+    }
+
+    if (num_generate <= 0)
+        return genBlockRet;
+
+    std::set<MCTxDestination> setAddress;
+    std::vector<MCOutput> vecOutputs;
+    {
+        assert(pwallet != nullptr);
+
+        LOCK2(cs_main, pwallet->cs_wallet);
+        EnsureWalletIsUnlocked(pwallet);
+
+        if (Params().IsMainChain())
+            pwallet->AvailableCoins(vecOutputs, nullptr, false);
+        else
+            pwallet->AvailableMortgageCoins(vecOutputs, false);
+
+        std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
+    }
+    UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+    if (genblocks.isArray()){
+        genBlockRet.push_backV(genblocks.getValues());
+    }
+    return genBlockRet;
+}
+
+UniValue generateforbigboom(const JSONRPCRequest& request)
+{
+    MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+
+    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+        return NullUniValue;
+    }
+
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2) {
+        throw std::runtime_error(
+            "generateforbigboom nblocks ( maxtries )\n"
+            "\nMine up to nblocks blocks immediately (before the RPC call returns) to an address in the wallet.\n"
+            "\nArguments:\n"
+            "1. nblocks      (numeric, required) How many blocks are generated immediately.\n"
+            "2. maxtries     (numeric, optional) How many iterations to try (default = 1000000).\n"
+            "\nResult:\n"
+            "[ blockhashes ]     (array) hashes of blocks generated\n"
+            "\nExamples:\n"
+            "\nGenerate 11 blocks\n"
+            + HelpExampleCli("generate", "11")
+        );
+    }
+
+    int num_generate = request.params[0].get_int();
+    uint64_t max_tries = 1000000;
+    if (request.params.size() > 1 && !request.params[1].isNull()) {
+        max_tries = request.params[1].get_int();
+    }
+
+    return genforbigboomimp(pwallet, num_generate, max_tries);
 }
 
 UniValue setgenerate(const JSONRPCRequest& request )
@@ -393,10 +508,10 @@ UniValue setgenerate(const JSONRPCRequest& request )
 
 	int nGenProcLimit = 1;
 
-	CellWallet *  pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet *  pwallet = GetWalletForJSONRPCRequest(request);
 	EnsureWalletIsUnlocked(pwallet);
 
-	GenerateCells(fGenerate, nGenProcLimit, Params());
+	GenerateMCs(fGenerate, nGenProcLimit, Params());
 
 	return NullUniValue;
 }
@@ -419,31 +534,36 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
             + HelpExampleCli("generatetoaddress", "11 \"myaddress\"")
         );
 
+    if (gArgs.GetBoolArg("-disablewallet", false))
+    {
+        throw JSONRPCError(RPC_VERIFY_ERROR, "disablewallet option open, no address to mine");
+    }
+
     int nGenerate = request.params[0].get_int();
     uint64_t nMaxTries = 1000000;
     if (!request.params[2].isNull()) {
         nMaxTries = request.params[2].get_int();
     }
 
-    CellLinkAddress address(request.params[1].get_str());
+    MagnaChainAddress address(request.params[1].get_str());
     if (!address.IsValid())
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Error: Invalid address");
 
     std::shared_ptr<CReserveScript> coinbaseScript = std::make_shared<CReserveScript>();
     coinbaseScript->reserveScript = GetScriptForDestination(address.Get());
 
-	CellWallet *  pwallet = GetWalletForJSONRPCRequest(request);
+	MCWallet *  pwallet = GetWalletForJSONRPCRequest(request);
 	EnsureWalletIsUnlocked(pwallet);
 
-	//CellCoinControl ccontrol;
+	//MCCoinControl ccontrol;
 	//ccontrol.destChange = address.Get();
-	std::vector<CellOutput> vecOutputs;
-	CellTxDestination dest = address.Get();
-	pwallet->AvailableCoins(vecOutputs, dest, true);
+	std::vector<MCOutput> vecOutputs;
+	MCTxDestination dest = address.Get();
+	pwallet->AvailableCoins(vecOutputs, &dest, true);
 
-	//std::vector< CellScript> vecScript;
+	//std::vector< MCScript> vecScript;
 	//vecScript.push_back(coinbaseScript->reserveScript);
-    return generateBlocks( (CellKeyStore*)pwallet, vecOutputs, nGenerate, nMaxTries, false);
+    return generateBlocks( pwallet, vecOutputs, nGenerate, nMaxTries, false);
 }
 
 UniValue getmininginfo(const JSONRPCRequest& request)
@@ -478,7 +598,7 @@ UniValue getmininginfo(const JSONRPCRequest& request)
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
     obj.push_back(Pair("errors",           GetWarnings("statusbar")));
     obj.push_back(Pair("networkhashps",    getnetworkhashps(request)));
-    obj.push_back(Pair("pooledtx",         (uint64_t)mempool.size()));
+    obj.push_back(Pair("pooledtx",         (uint64_t)mempool.Size()));
     obj.push_back(Pair("chain",            Params().NetworkIDString()));
     return obj;
 }
@@ -508,7 +628,7 @@ UniValue prioritisetransaction(const JSONRPCRequest& request)
     LOCK(cs_main);
 
     uint256 hash = ParseHashStr(request.params[0].get_str(), "txid");
-    CellAmount nAmount = request.params[2].get_int64();
+    MCAmount nAmount = request.params[2].get_int64();
 
     if (!(request.params[1].isNull() || request.params[1].get_real() == 0)) {
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Priority is no longer supported, dummy argument to prioritisetransaction must be 0.");
@@ -520,7 +640,7 @@ UniValue prioritisetransaction(const JSONRPCRequest& request)
 
 
 // NOTE: Assumes a conclusive result; if result is inconclusive, it must be handled by caller
-static UniValue BIP22ValidationResult(const CellValidationState& state)
+static UniValue BIP22ValidationResult(const MCValidationState& state)
 {
     if (state.IsValid())
         return NullUniValue;
@@ -549,19 +669,20 @@ std::string gbt_vb_name(const Consensus::DeploymentPos pos) {
 
 UniValue getblocktemplate(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() > 1)
+    if (request.fHelp || request.params.size() > 2)
         throw std::runtime_error(
             "getblocktemplate ( TemplateRequest )\n"
             "\nIf the request parameters include a 'mode' key, that is used to explicitly select between the default 'template' request or a 'proposal'.\n"
             "It returns data needed to construct a block to work on.\n"
             "For full specification, see BIPs 22, 23, 9, and 145:\n"
-            "    https://github.com/celllink/bips/blob/master/bip-0022.mediawiki\n"
-            "    https://github.com/celllink/bips/blob/master/bip-0023.mediawiki\n"
-            "    https://github.com/celllink/bips/blob/master/bip-0009.mediawiki#getblocktemplate_changes\n"
-            "    https://github.com/celllink/bips/blob/master/bip-0145.mediawiki\n"
+            "    https://github.com/magnachain/bips/blob/master/bip-0022.mediawiki\n"
+            "    https://github.com/magnachain/bips/blob/master/bip-0023.mediawiki\n"
+            "    https://github.com/magnachain/bips/blob/master/bip-0009.mediawiki#getblocktemplate_changes\n"
+            "    https://github.com/magnachain/bips/blob/master/bip-0145.mediawiki\n"
 
             "\nArguments:\n"
-            "1. template_request         (json object, optional) A json object in the following spec\n"
+            "1. address                  (string, optional) Address for coinbase out and signature.\n"
+            "2. template_request         (json object, optional) A json object in the following spec\n"
             "     {\n"
             "       \"mode\":\"template\"    (string, optional) This must be set to \"template\", \"proposal\" (see BIP 23), or omitted\n"
             "       \"capabilities\":[     (array, optional) A list of strings\n"
@@ -632,9 +753,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     UniValue lpval = NullUniValue;
     std::set<std::string> setClientRules;
     int64_t nMaxVersionPreVB = -1;
-    if (!request.params[0].isNull())
+    if (!request.params[1].isNull())
     {
-        const UniValue& oparam = request.params[0].get_obj();
+        const UniValue& oparam = request.params[1].get_obj();
         const UniValue& modeval = find_value(oparam, "mode");
         if (modeval.isStr())
             strMode = modeval.get_str();
@@ -652,14 +773,14 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             if (!dataval.isStr())
                 throw JSONRPCError(RPC_TYPE_ERROR, "Missing data String key for proposal");
 
-            CellBlock block;
+            MCBlock block;
             if (!DecodeHexBlk(block, dataval.get_str()))
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
             uint256 hash = block.GetHash();
             BlockMap::iterator mi = mapBlockIndex.find(hash);
             if (mi != mapBlockIndex.end()) {
-                CellBlockIndex *pindex = mi->second;
+                MCBlockIndex *pindex = mi->second;
                 if (pindex->IsValid(BLOCK_VALID_SCRIPTS))
                     return "duplicate";
                 if (pindex->nStatus & BLOCK_FAILED_MASK)
@@ -667,11 +788,11 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
                 return "duplicate-inconclusive";
             }
 
-            CellBlockIndex* const pindexPrev = chainActive.Tip();
+            MCBlockIndex* const pindexPrev = chainActive.Tip();
             // TestBlockValidity only supports blocks built on the current Tip
             if (block.hashPrevBlock != pindexPrev->GetBlockHash())
                 return "inconclusive-not-best-prevblk";
-            CellValidationState state;
+            MCValidationState state;
             TestBlockValidity(state, Params(), block, pindexPrev, false, true);
             return BIP22ValidationResult(state);
         }
@@ -697,11 +818,11 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     if(!g_connman)
         throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
 
-    if (g_connman->GetNodeCount(CellConnman::CONNECTIONS_ALL) == 0)
-        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "CellLink is not connected!");
+    if (g_connman->GetNodeCount(MCConnman::CONNECTIONS_ALL) == 0)
+        throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "MagnaChain is not connected!");
 
     if (IsInitialBlockDownload())
-        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "CellLink is downloading blocks...");
+        throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "MagnaChain is downloading blocks...");
 
     static unsigned int nTransactionsUpdatedLast;
 
@@ -751,6 +872,12 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         // TODO: Maybe recheck connections/IBD and (if something wrong) send an expires-immediately template to stop miners?
     }
 
+    //mining block need wallet for private key to sign block.
+    MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
+    if (!EnsureWalletIsAvailable(pwallet, false)) {
+        return NullUniValue;
+    }
+
     const struct VBDeploymentInfo& segwit_info = VersionBitsDeploymentInfo[Consensus::DEPLOYMENT_SEGWIT];
     // If the caller is indicating segwit support, then allow CreateNewBlock()
     // to select witness transactions, after segwit activates (otherwise
@@ -758,9 +885,9 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     bool fSupportsSegwit = setClientRules.find(segwit_info.name) != setClientRules.end();
 
     // Update block
-    static CellBlockIndex* pindexPrev;
+    static MCBlockIndex* pindexPrev;
     static int64_t nStart;
-    static std::unique_ptr<CellBlockTemplate> pblocktemplate;
+    static std::unique_ptr<MCBlockTemplate> pblocktemplate;
     // Cache whether the last invocation was with segwit support, to avoid returning
     // a segwit-block to a non-segwit caller.
     static bool fLastTemplateSupportsSegwit = true;
@@ -773,21 +900,47 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
         // Store the pindexBest used before CreateNewBlock, to avoid races
         nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
-        CellBlockIndex* pindexPrevNew = chainActive.Tip();
+        MCBlockIndex* pindexPrevNew = chainActive.Tip();
         nStart = GetTime();
         fLastTemplateSupportsSegwit = fSupportsSegwit;
 
         // Create new block
-        CellScript scriptDummy = CellScript() << OP_TRUE;
+        MCScript scriptForMine;
+        if (request.params.size() > 0)
+        {
+            MagnaChainAddress address(request.params[0].get_str());
+            if (!address.IsValid())
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address.");
+            MCKeyID keyid;
+            if (!address.GetKeyID(keyid)){
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain address(need pubkey address).");
+            }
+            if (!pwallet->HaveKey(keyid)){
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Param 1 address is not in wallet.");
+            }
+            scriptForMine = GetScriptForDestination(keyid);
+        }
+        else {
+            MCPubKey newKey;
+            if (!pwallet->GetKeyFromPool(newKey)) {
+                throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
+            }
+            MCKeyID keyID = newKey.GetID();
+            //pwallet->SetAddressBook(keyID, "", "");
+            scriptForMine = GetScriptForDestination(keyID);
+        }
 
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock( scriptDummy, fSupportsSegwit);
+        ContractContext contractContext;
+        MCCoinsView viewDummy;
+        MCCoinsViewCache view(&viewDummy);
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
 
         // Need to update only after we know CreateNewBlock succeeded
         pindexPrev = pindexPrevNew;
     }
-    CellBlock* pblock = &pblocktemplate->block; // pointer for convenience
+    MCBlock* pblock = &pblocktemplate->block; // pointer for convenience
     const Consensus::Params& consensusParams = Params().GetConsensus();
 
     // Update nTime
@@ -803,7 +956,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     std::map<uint256, int64_t> setTxIndex;
     int i = 0;
     for (const auto& it : pblock->vtx) {
-        const CellTransaction& tx = *it;
+        const MCTransaction& tx = *it;
         uint256 txHash = tx.GetHash();
         setTxIndex[txHash] = i++;
 
@@ -817,7 +970,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         entry.push_back(Pair("hash", tx.GetWitnessHash().GetHex()));
 
         UniValue deps(UniValue::VARR);
-        for (const CellTxIn &in : tx.vin)
+        for (const MCTxIn &in : tx.vin)
         {
             if (setTxIndex.count(in.prevout.hash))
                 deps.push_back(setTxIndex[in.prevout.hash]);
@@ -938,17 +1091,17 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
     return result;
 }
 
-class submitblock_StateCatcher : public CellValidationInterface
+class submitblock_StateCatcher : public MCValidationInterface
 {
 public:
     uint256 hash;
     bool found;
-    CellValidationState state;
+    MCValidationState state;
 
     submitblock_StateCatcher(const uint256 &hashIn) : hash(hashIn), found(false), state() {}
 
 protected:
-    void BlockChecked(const CellBlock& block, const CellValidationState& stateIn) override {
+    void BlockChecked(const MCBlock& block, const MCValidationState& stateIn) override {
         if (block.GetHash() != hash)
             return;
         found = true;
@@ -963,7 +1116,7 @@ UniValue submitblock(const JSONRPCRequest& request)
         throw std::runtime_error(
             "submitblock \"hexdata\"  ( \"dummy\" )\n"
             "\nAttempts to submit new block to network.\n"
-            "See https://en.celllink.it/wiki/BIP_0022 for full specification.\n"
+            "See https://en.magnachain.it/wiki/BIP_0022 for full specification.\n"
 
             "\nArguments\n"
             "1. \"hexdata\"        (string, required) the hex-encoded block data to submit\n"
@@ -975,8 +1128,8 @@ UniValue submitblock(const JSONRPCRequest& request)
         );
     }
 
-    std::shared_ptr<CellBlock> blockptr = std::make_shared<CellBlock>();
-    CellBlock& block = *blockptr;
+    std::shared_ptr<MCBlock> blockptr = std::make_shared<MCBlock>();
+    MCBlock& block = *blockptr;
     if (!DecodeHexBlk(block, request.params[0].get_str())) {
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
     }
@@ -991,7 +1144,7 @@ UniValue submitblock(const JSONRPCRequest& request)
         LOCK(cs_main);
         BlockMap::iterator mi = mapBlockIndex.find(hash);
         if (mi != mapBlockIndex.end()) {
-            CellBlockIndex *pindex = mi->second;
+            MCBlockIndex *pindex = mi->second;
             if (pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
                 return "duplicate";
             }
@@ -1013,7 +1166,8 @@ UniValue submitblock(const JSONRPCRequest& request)
 
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(Params(), blockptr, true, nullptr);
+    ContractContext contractContext;
+    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found) {
@@ -1055,8 +1209,8 @@ UniValue estimatefee(const JSONRPCRequest& request)
     if (nBlocks < 1)
         nBlocks = 1;
 
-    CellFeeRate feeRate = ::feeEstimator.estimateFee(nBlocks);
-    if (feeRate == CellFeeRate(0))
+    MCFeeRate feeRate = ::feeEstimator.EstimateFee(nBlocks);
+    if (feeRate == MCFeeRate(0))
         return -1.0;
 
     return ValueFromAmount(feeRate.GetFeePerK());
@@ -1084,7 +1238,7 @@ UniValue estimatesmartfee(const JSONRPCRequest& request)
             "       \"CONSERVATIVE\"\n"
             "\nResult:\n"
             "{\n"
-            "  \"feerate\" : x.x,     (numeric, optional) estimate fee-per-kilobyte (in CELL)\n"
+            "  \"feerate\" : x.x,     (numeric, optional) estimate fee rate in " + CURRENCY_UNIT + "/kB\n"
             "  \"errors\": [ str... ] (json array of strings, optional) Errors encountered during processing\n"
             "  \"blocks\" : n         (numeric) block number where estimate was found\n"
             "}\n"
@@ -1112,8 +1266,8 @@ UniValue estimatesmartfee(const JSONRPCRequest& request)
     UniValue result(UniValue::VOBJ);
     UniValue errors(UniValue::VARR);
     FeeCalculation feeCalc;
-    CellFeeRate feeRate = ::feeEstimator.estimateSmartFee(conf_target, &feeCalc, conservative);
-    if (feeRate != CellFeeRate(0)) {
+    MCFeeRate feeRate = ::feeEstimator.EstimateSmartFee(conf_target, &feeCalc, conservative);
+    if (feeRate != MCFeeRate(0)) {
         result.push_back(Pair("feerate", ValueFromAmount(feeRate.GetFeePerK())));
     } else {
         errors.push_back("Insufficient data or no feerate found");
@@ -1143,7 +1297,7 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
             "\nResult:\n"
             "{\n"
             "  \"short\" : {            (json object, optional) estimate for short time horizon\n"
-            "      \"feerate\" : x.x,        (numeric, optional) estimate fee-per-kilobyte (in CELL)\n"
+            "      \"feerate\" : x.x,        (numeric, optional) estimate fee rate in " + CURRENCY_UNIT + "/kB\n"
             "      \"decay\" : x.x,          (numeric) exponential decay (per block) for historical moving average of confirmation data\n"
             "      \"scale\" : x,            (numeric) The resolution of confirmation targets at this time horizon\n"
             "      \"pass\" : {              (json object, optional) information about the lowest range of feerates to succeed in meeting the threshold\n"
@@ -1180,13 +1334,13 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
     UniValue result(UniValue::VOBJ);
 
     for (FeeEstimateHorizon horizon : {FeeEstimateHorizon::SHORT_HALFLIFE, FeeEstimateHorizon::MED_HALFLIFE, FeeEstimateHorizon::LONG_HALFLIFE}) {
-        CellFeeRate feeRate;
+        MCFeeRate feeRate;
         EstimationResult buckets;
 
         // Only output results for horizons which track the target
         if (conf_target > ::feeEstimator.HighestTargetTracked(horizon)) continue;
 
-        feeRate = ::feeEstimator.estimateRawFee(conf_target, threshold, horizon, &buckets);
+        feeRate = ::feeEstimator.EstimateRawFee(conf_target, threshold, horizon, &buckets);
         UniValue horizon_result(UniValue::VOBJ);
         UniValue errors(UniValue::VARR);
         UniValue passbucket(UniValue::VOBJ);
@@ -1204,8 +1358,8 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
         failbucket.push_back(Pair("inmempool", round(buckets.fail.inMempool * 100.0) / 100.0));
         failbucket.push_back(Pair("leftmempool", round(buckets.fail.leftMempool * 100.0) / 100.0));
 
-        // CellFeeRate(0) is used to indicate error as a return value from estimateRawFee
-        if (feeRate != CellFeeRate(0)) {
+        // MCFeeRate(0) is used to indicate error as a return value from estimateRawFee
+        if (feeRate != MCFeeRate(0)) {
             horizon_result.push_back(Pair("feerate", ValueFromAmount(feeRate.GetFeePerK())));
             horizon_result.push_back(Pair("decay", buckets.decay));
             horizon_result.push_back(Pair("scale", (int)buckets.scale));
@@ -1225,14 +1379,56 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
     return result;
 }
 
+UniValue updateminingreservetxsize(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 3)
+        throw std::runtime_error(
+            "set/get tx reserve size for addPackageTxs.\n"
+            "\nArguments:\n"
+            "1. pubcontractsize (numeric, optional) ReservePubContractBlockDataSize\n"
+            "2. callcontractsize   (numeric, optional) ReserveCallContractBlockDataSize\n"
+            "3. branchtxsize      (numeric, optional) ReserveBranchTxBlockDataSize\n"
+            "\n"
+            "\nResult:\n"
+            "{\n"
+            "  \"ReservePubContractBlockDataSize\" : ReservePubContractBlockDataSize\n"
+            "  \"ReserveCallContractBlockDataSize\" : ReserveCallContractBlockDataSize\n"
+            "  \"ReserveBranchTxBlockDataSize\" : ReserveBranchTxBlockDataSize\n"
+            "}\n"
+            "\n"
+            "Results are returned for any horizon which tracks blocks up to the confirmation target.\n"
+            "\nExample:\n"
+            + HelpExampleCli("updateminingreservetxsize", "100 1000 1000")
+        );
+
+    if (request.params.size() > 0){
+        ReservePubContractBlockDataSize = request.params[0].get_int64();
+    }
+    if (request.params.size() > 1) {
+        ReserveCallContractBlockDataSize = request.params[1].get_int64();
+    }
+    if (request.params.size() > 2) {
+        ReserveBranchTxBlockDataSize = request.params[2].get_int64();
+    }
+
+    UniValue result(UniValue::VOBJ);
+    result.push_back(Pair("ReservePubContractBlockDataSize", ReservePubContractBlockDataSize));
+    result.push_back(Pair("ReserveCallContractBlockDataSize", ReserveCallContractBlockDataSize));
+    result.push_back(Pair("ReserveBranchTxBlockDataSize", ReserveBranchTxBlockDataSize));
+    return result;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         okSafeMode
   //  --------------------- ------------------------  -----------------------  ----------
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true,  {"nblocks","height"} },
     { "mining",             "getmininginfo",          &getmininginfo,          true,  {} },
     { "mining",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","dummy","fee_delta"} },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  {"template_request"} },
+    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
+
+    { "generating",         "generate",               &generate,               true,  { "nblocks","maxtries" } },
+    { "generating",         "generateforbigboom",     &generateforbigboom,	   true,  { "nblocks","maxtries" } },
 
     { "generating",         "generatetoaddress",      &generatetoaddress,      true,  {"nblocks","address","maxtries"} },
 	{ "setgenerate",        "setgenerate",			  &setgenerate,			   true,  { "generate"} },
@@ -1242,6 +1438,7 @@ static const CRPCCommand commands[] =
     { "util",               "estimatesmartfee",       &estimatesmartfee,       true,  {"conf_target", "estimate_mode"} },
 
     { "hidden",             "estimaterawfee",         &estimaterawfee,         true,  {"conf_target", "threshold"} },
+    { "mining",             "updateminingreservetxsize",&updateminingreservetxsize ,true, {"reservesize","reservesize","reservesize"} },
 };
 
 void RegisterMiningRPCCommands(CRPCTable &t)

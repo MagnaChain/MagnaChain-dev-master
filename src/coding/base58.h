@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,8 +12,8 @@
  * - E-mail usually won't line-break if there's no punctuation to break at.
  * - Double-clicking selects the whole string as one word if it's all alphanumeric.
  */
-#ifndef CELLLINK_BASE58_H
-#define CELLLINK_BASE58_H
+#ifndef MAGNACHAIN_BASE58_H
+#define MAGNACHAIN_BASE58_H
 
 #include "chain/chainparams.h"
 #include "key/key.h"
@@ -69,7 +69,7 @@ inline bool DecodeBase58Check(const std::string& str, std::vector<unsigned char>
 /**
  * Base class for all base58-encoded data
  */
-class CellBase58Data
+class MCBase58Data
 {
 protected:
     //! the version byte(s)
@@ -79,7 +79,7 @@ protected:
     typedef std::vector<unsigned char, zero_after_free_allocator<unsigned char> > vector_uchar;
     vector_uchar vchData;
 
-    CellBase58Data();
+    MCBase58Data();
     void SetData(const std::vector<unsigned char> &vchVersionIn, const void* pdata, size_t nSize);
     void SetData(const std::vector<unsigned char> &vchVersionIn, const unsigned char *pbegin, const unsigned char *pend);
 
@@ -87,56 +87,60 @@ public:
     bool SetString(const char* psz, unsigned int nVersionBytes = 1);
     bool SetString(const std::string& str);
     std::string ToString() const;
-    int CompareTo(const CellBase58Data& b58) const;
+    int CompareTo(const MCBase58Data& b58) const;
 
-    bool operator==(const CellBase58Data& b58) const { return CompareTo(b58) == 0; }
-    bool operator<=(const CellBase58Data& b58) const { return CompareTo(b58) <= 0; }
-    bool operator>=(const CellBase58Data& b58) const { return CompareTo(b58) >= 0; }
-    bool operator< (const CellBase58Data& b58) const { return CompareTo(b58) <  0; }
-    bool operator> (const CellBase58Data& b58) const { return CompareTo(b58) >  0; }
+    bool operator==(const MCBase58Data& b58) const { return CompareTo(b58) == 0; }
+    bool operator<=(const MCBase58Data& b58) const { return CompareTo(b58) <= 0; }
+    bool operator>=(const MCBase58Data& b58) const { return CompareTo(b58) >= 0; }
+    bool operator< (const MCBase58Data& b58) const { return CompareTo(b58) <  0; }
+    bool operator> (const MCBase58Data& b58) const { return CompareTo(b58) >  0; }
 };
 
-/** base58-encoded CellLink addresses.
+/** base58-encoded MagnaChain addresses.
  * Public-key-hash-addresses have version 0 (or 111 testnet).
  * The data vector contains RIPEMD160(SHA256(pubkey)), where pubkey is the serialized public key.
  * Script-hash-addresses have version 5 (or 196 testnet).
  * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
  */
-class CellLinkAddress : public CellBase58Data {
+class MagnaChainAddress : public MCBase58Data {
 public:
-    bool Set(const CellKeyID &id);
-    bool Set(const CellScriptID &id);
-    bool Set(const CellTxDestination &dest);
+    bool Set(const MCContractID &id);
+    bool Set(const MCKeyID &id);
+    bool Set(const MCScriptID &id);
+    bool Set(const MCTxDestination &dest);
     bool IsValid() const;
-    bool IsValid(const CellChainParams &params) const;
+    bool IsValid(const MCChainParams &params) const;
 
-    CellLinkAddress() {}
-    CellLinkAddress(const CellTxDestination &dest) { Set(dest); }
-    CellLinkAddress(const std::string& strAddress) { SetString(strAddress); }
-    CellLinkAddress(const char* pszAddress) { SetString(pszAddress); }
+    MagnaChainAddress() {}
+    MagnaChainAddress(const MCTxDestination &dest) { Set(dest); }
+    MagnaChainAddress(const std::string& strAddress) { SetString(strAddress); }
+    MagnaChainAddress(const char* pszAddress) { SetString(pszAddress); }
 
-    CellTxDestination Get() const;
-    bool GetKeyID(CellKeyID &keyID) const;
+    MCTxDestination Get() const;
+    bool GetContractID(MCContractID &contractID) const;
+    bool GetKeyID(MCKeyID &keyID) const;
+    bool IsContractID() const;
     bool IsScript() const;
+    bool IsKeyID() const;
 };
 
 /**
  * A base58-encoded secret key
  */
-class CellLinkSecret : public CellBase58Data
+class MagnaChainSecret : public MCBase58Data
 {
 public:
-    void SetKey(const CellKey& vchSecret);
-    CellKey GetKey();
+    void SetKey(const MCKey& vchSecret);
+    MCKey GetKey();
     bool IsValid() const;
     bool SetString(const char* pszSecret);
     bool SetString(const std::string& strSecret);
 
-    CellLinkSecret(const CellKey& vchSecret) { SetKey(vchSecret); }
-    CellLinkSecret() {}
+    MagnaChainSecret(const MCKey& vchSecret) { SetKey(vchSecret); }
+    MagnaChainSecret() {}
 };
 
-template<typename K, int Size, CellChainParams::Base58Type Type> class CellLinkExtKeyBase : public CellBase58Data
+template<typename K, int Size, MCChainParams::Base58Type Type> class MagnaChainExtKeyBase : public MCBase58Data
 {
 public:
     void SetKey(const K &key) {
@@ -154,18 +158,18 @@ public:
         return ret;
     }
 
-    CellLinkExtKeyBase(const K &key) {
+    MagnaChainExtKeyBase(const K &key) {
         SetKey(key);
     }
 
-    CellLinkExtKeyBase(const std::string& strBase58c) {
+    MagnaChainExtKeyBase(const std::string& strBase58c) {
         SetString(strBase58c.c_str(), Params().Base58Prefix(Type).size());
     }
 
-    CellLinkExtKeyBase() {}
+    MagnaChainExtKeyBase() {}
 };
 
-typedef CellLinkExtKeyBase<CellExtKey, BIP32_EXTKEY_SIZE, CellChainParams::EXT_SECRET_KEY> CellLinkExtKey;
-typedef CellLinkExtKeyBase<CellExtPubKey, BIP32_EXTKEY_SIZE, CellChainParams::EXT_PUBLIC_KEY> CellLinkExtPubKey;
+typedef MagnaChainExtKeyBase<MCExtKey, BIP32_EXTKEY_SIZE, MCChainParams::EXT_SECRET_KEY> MagnaChainExtKey;
+typedef MagnaChainExtKeyBase<MCExtPubKey, BIP32_EXTKEY_SIZE, MCChainParams::EXT_PUBLIC_KEY> MagnaChainExtPubKey;
 
-#endif // CELLLINK_BASE58_H
+#endif // MAGNACHAIN_BASE58_H

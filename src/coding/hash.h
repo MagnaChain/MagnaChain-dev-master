@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_HASH_H
-#define CELLLINK_HASH_H
+#ifndef MAGNACHAIN_HASH_H
+#define MAGNACHAIN_HASH_H
 
 #include "crypto/ripemd160.h"
 #include "crypto/sha256.h"
@@ -18,7 +18,7 @@
 
 typedef uint256 ChainCode;
 
-/** A hasher class for CellLink's 256-bit hash (double SHA-256). */
+/** A hasher class for MagnaChain's 256-bit hash (double SHA-256). */
 class CHash256 {
 private:
     CSHA256 sha;
@@ -42,7 +42,7 @@ public:
     }
 };
 
-/** A hasher class for CellLink's 160-bit hash (SHA-256 + RIPEMD-160). */
+/** A hasher class for MagnaChain's 160-bit hash (SHA-256 + RIPEMD-160). */
 class CHash160 {
 private:
     CSHA256 sha;
@@ -128,7 +128,7 @@ inline uint160 Hash160(const prevector<N, unsigned char>& vch)
 }
 
 /** A writer stream (for serialization) that computes a 256-bit hash. */
-class CellHashWriter
+class MCHashWriter
 {
 private:
     CHash256 ctx;
@@ -137,7 +137,7 @@ private:
     const int nVersion;
 public:
 
-    CellHashWriter(int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn) {}
+    MCHashWriter(int nTypeIn, int nVersionIn) : nType(nTypeIn), nVersion(nVersionIn) {}
 
     int GetType() const { return nType; }
     int GetVersion() const { return nVersion; }
@@ -154,7 +154,7 @@ public:
     }
 
     template<typename T>
-    CellHashWriter& operator<<(const T& obj) {
+    MCHashWriter& operator<<(const T& obj) {
         // Serialize to this stream
         ::Serialize(*this, obj);
         return (*this);
@@ -163,13 +163,13 @@ public:
 
 /** Reads data from an underlying stream, while hashing the read data. */
 template<typename Source>
-class CHashVerifier : public CellHashWriter
+class CHashVerifier : public MCHashWriter
 {
 private:
     Source* source;
 
 public:
-    CHashVerifier(Source* source_) : CellHashWriter(source_->GetType(), source_->GetVersion()), source(source_) {}
+    CHashVerifier(Source* source_) : MCHashWriter(source_->GetType(), source_->GetVersion()), source(source_) {}
 
     void read(char* pch, size_t nSize)
     {
@@ -200,7 +200,7 @@ public:
 template<typename T>
 uint256 SerializeHash(const T& obj, int nType=SER_GETHASH, int nVersion=PROTOCOL_VERSION)
 {
-    CellHashWriter ss(nType, nVersion);
+    MCHashWriter ss(nType, nVersion);
     ss << obj;
     return ss.GetHash();
 }
@@ -244,4 +244,4 @@ public:
 uint64_t SipHashUint256(uint64_t k0, uint64_t k1, const uint256& val);
 uint64_t SipHashUint256Extra(uint64_t k0, uint64_t k1, const uint256& val, uint32_t extra);
 
-#endif // CELLLINK_HASH_H
+#endif // MAGNACHAIN_HASH_H

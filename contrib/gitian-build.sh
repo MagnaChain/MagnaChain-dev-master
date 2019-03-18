@@ -1,4 +1,4 @@
-# Copyright (c) 2016 The CellLink Core developers
+# Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -17,12 +17,12 @@ osx=true
 SIGNER=
 VERSION=
 commit=false
-url=https://github.com/bitcoin/bitcoin
+url=https://github.com/magnachain/magnachain
 proc=2
 mem=2000
 lxc=true
 osslTarUrl=http://downloads.sourceforge.net/project/osslsigncode/osslsigncode/osslsigncode-1.7.1.tar.gz
-osslPatchUrl=https://bitcoincore.org/cfields/osslsigncode-Backports-to-1.7.1.patch
+osslPatchUrl=https://magnachaincore.org/cfields/osslsigncode-Backports-to-1.7.1.patch
 scriptName=$(basename -- "$0")
 signProg="gpg --detach-sign"
 commitFiles=true
@@ -31,7 +31,7 @@ commitFiles=true
 read -d '' usage <<- EOF
 Usage: $scriptName [-c|u|v|b|s|B|o|h|j|m|] signer version
 
-Run this script from the directory containing the celllink, gitian-builder, gitian.sigs, and celllink-detached-sigs.
+Run this script from the directory containing the magnachain, gitian-builder, gitian.sigs, and magnachain-detached-sigs.
 
 Arguments:
 signer          GPG signer to sign each build assert file
@@ -39,7 +39,7 @@ version		Version number, commit, or branch to build. If building a commit or bra
 
 Options:
 -c|--commit	Indicate that the version argument is for a commit or branch
--u|--url	Specify the URL of the repository. Default is https://github.com/bitcoin/bitcoin
+-u|--url	Specify the URL of the repository. Default is https://github.com/magnachain/magnachain
 -v|--verify 	Verify the gitian build
 -b|--build	Do a gitian build
 -s|--sign	Make signed binaries for Windows and Mac OSX
@@ -232,8 +232,8 @@ echo ${COMMIT}
 if [[ $setup = true ]]
 then
     sudo apt-get install ruby apache2 git apt-cacher-ng python-vm-builder qemu-kvm qemu-utils
-    git clone https://github.com/bitcoin-core/gitian.sigs.git
-    git clone https://github.com/bitcoin-core/celllink-detached-sigs.git
+    git clone https://github.com/magnachain-core/gitian.sigs.git
+    git clone https://github.com/magnachain-core/magnachain-detached-sigs.git
     git clone https://github.com/devrandom/gitian-builder.git
     pushd ./gitian-builder
     if [[ -n "$USE_LXC" ]]
@@ -247,7 +247,7 @@ then
 fi
 
 # Set up build
-pushd ./celllink
+pushd ./magnachain
 git fetch
 git checkout ${COMMIT}
 popd
@@ -256,7 +256,7 @@ popd
 if [[ $build = true ]]
 then
 	# Make output folder
-	mkdir -p ./celllink-binaries/${VERSION}
+	mkdir -p ./magnachain-binaries/${VERSION}
 	
 	# Build Dependencies
 	echo ""
@@ -266,7 +266,7 @@ then
 	mkdir -p inputs
 	wget -N -P inputs $osslPatchUrl
 	wget -N -P inputs $osslTarUrl
-	make -C ../celllink/depends download SOURCES_PATH=`pwd`/cache/common
+	make -C ../magnachain/depends download SOURCES_PATH=`pwd`/cache/common
 
 	# Linux
 	if [[ $linux = true ]]
@@ -274,9 +274,9 @@ then
             echo ""
 	    echo "Compiling ${VERSION} Linux"
 	    echo ""
-	    ./bin/gbuild -j ${proc} -m ${mem} --commit celllink=${COMMIT} --url celllink=${url} ../celllink/contrib/gitian-descriptors/gitian-linux.yml
-	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-linux --destination ../gitian.sigs/ ../celllink/contrib/gitian-descriptors/gitian-linux.yml
-	    mv build/out/celllink-*.tar.gz build/out/src/celllink-*.tar.gz ../celllink-binaries/${VERSION}
+	    ./bin/gbuild -j ${proc} -m ${mem} --commit magnachain=${COMMIT} --url magnachain=${url} ../magnachain/contrib/gitian-descriptors/gitian-linux.yml
+	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-linux --destination ../gitian.sigs/ ../magnachain/contrib/gitian-descriptors/gitian-linux.yml
+	    mv build/out/magnachain-*.tar.gz build/out/src/magnachain-*.tar.gz ../magnachain-binaries/${VERSION}
 	fi
 	# Windows
 	if [[ $windows = true ]]
@@ -284,10 +284,10 @@ then
 	    echo ""
 	    echo "Compiling ${VERSION} Windows"
 	    echo ""
-	    ./bin/gbuild -j ${proc} -m ${mem} --commit celllink=${COMMIT} --url celllink=${url} ../celllink/contrib/gitian-descriptors/gitian-win.yml
-	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-win-unsigned --destination ../gitian.sigs/ ../celllink/contrib/gitian-descriptors/gitian-win.yml
-	    mv build/out/celllink-*-win-unsigned.tar.gz inputs/celllink-win-unsigned.tar.gz
-	    mv build/out/celllink-*.zip build/out/celllink-*.exe ../celllink-binaries/${VERSION}
+	    ./bin/gbuild -j ${proc} -m ${mem} --commit magnachain=${COMMIT} --url magnachain=${url} ../magnachain/contrib/gitian-descriptors/gitian-win.yml
+	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-win-unsigned --destination ../gitian.sigs/ ../magnachain/contrib/gitian-descriptors/gitian-win.yml
+	    mv build/out/magnachain-*-win-unsigned.tar.gz inputs/magnachain-win-unsigned.tar.gz
+	    mv build/out/magnachain-*.zip build/out/magnachain-*.exe ../magnachain-binaries/${VERSION}
 	fi
 	# Mac OSX
 	if [[ $osx = true ]]
@@ -295,10 +295,10 @@ then
 	    echo ""
 	    echo "Compiling ${VERSION} Mac OSX"
 	    echo ""
-	    ./bin/gbuild -j ${proc} -m ${mem} --commit celllink=${COMMIT} --url celllink=${url} ../celllink/contrib/gitian-descriptors/gitian-osx.yml
-	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-osx-unsigned --destination ../gitian.sigs/ ../celllink/contrib/gitian-descriptors/gitian-osx.yml
-	    mv build/out/celllink-*-osx-unsigned.tar.gz inputs/celllink-osx-unsigned.tar.gz
-	    mv build/out/celllink-*.tar.gz build/out/celllink-*.dmg ../celllink-binaries/${VERSION}
+	    ./bin/gbuild -j ${proc} -m ${mem} --commit magnachain=${COMMIT} --url magnachain=${url} ../magnachain/contrib/gitian-descriptors/gitian-osx.yml
+	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-osx-unsigned --destination ../gitian.sigs/ ../magnachain/contrib/gitian-descriptors/gitian-osx.yml
+	    mv build/out/magnachain-*-osx-unsigned.tar.gz inputs/magnachain-osx-unsigned.tar.gz
+	    mv build/out/magnachain-*.tar.gz build/out/magnachain-*.dmg ../magnachain-binaries/${VERSION}
 	fi
 	popd
 
@@ -325,27 +325,27 @@ then
 	echo ""
 	echo "Verifying v${VERSION} Linux"
 	echo ""
-	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-linux ../celllink/contrib/gitian-descriptors/gitian-linux.yml
+	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-linux ../magnachain/contrib/gitian-descriptors/gitian-linux.yml
 	# Windows
 	echo ""
 	echo "Verifying v${VERSION} Windows"
 	echo ""
-	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-win-unsigned ../celllink/contrib/gitian-descriptors/gitian-win.yml
+	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-win-unsigned ../magnachain/contrib/gitian-descriptors/gitian-win.yml
 	# Mac OSX	
 	echo ""
 	echo "Verifying v${VERSION} Mac OSX"
 	echo ""	
-	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-osx-unsigned ../celllink/contrib/gitian-descriptors/gitian-osx.yml
+	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-osx-unsigned ../magnachain/contrib/gitian-descriptors/gitian-osx.yml
 	# Signed Windows
 	echo ""
 	echo "Verifying v${VERSION} Signed Windows"
 	echo ""
-	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-osx-signed ../celllink/contrib/gitian-descriptors/gitian-osx-signer.yml
+	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-osx-signed ../magnachain/contrib/gitian-descriptors/gitian-osx-signer.yml
 	# Signed Mac OSX
 	echo ""
 	echo "Verifying v${VERSION} Signed Mac OSX"
 	echo ""
-	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-osx-signed ../celllink/contrib/gitian-descriptors/gitian-osx-signer.yml	
+	./bin/gverify -v -d ../gitian.sigs/ -r ${VERSION}-osx-signed ../magnachain/contrib/gitian-descriptors/gitian-osx-signer.yml	
 	popd
 fi
 
@@ -360,10 +360,10 @@ then
 	    echo ""
 	    echo "Signing ${VERSION} Windows"
 	    echo ""
-	    ./bin/gbuild -i --commit signature=${COMMIT} ../celllink/contrib/gitian-descriptors/gitian-win-signer.yml
-	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-win-signed --destination ../gitian.sigs/ ../celllink/contrib/gitian-descriptors/gitian-win-signer.yml
-	    mv build/out/celllink-*win64-setup.exe ../celllink-binaries/${VERSION}
-	    mv build/out/celllink-*win32-setup.exe ../celllink-binaries/${VERSION}
+	    ./bin/gbuild -i --commit signature=${COMMIT} ../magnachain/contrib/gitian-descriptors/gitian-win-signer.yml
+	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-win-signed --destination ../gitian.sigs/ ../magnachain/contrib/gitian-descriptors/gitian-win-signer.yml
+	    mv build/out/magnachain-*win64-setup.exe ../magnachain-binaries/${VERSION}
+	    mv build/out/magnachain-*win32-setup.exe ../magnachain-binaries/${VERSION}
 	fi
 	# Sign Mac OSX
 	if [[ $osx = true ]]
@@ -371,9 +371,9 @@ then
 	    echo ""
 	    echo "Signing ${VERSION} Mac OSX"
 	    echo ""
-	    ./bin/gbuild -i --commit signature=${COMMIT} ../celllink/contrib/gitian-descriptors/gitian-osx-signer.yml
-	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-osx-signed --destination ../gitian.sigs/ ../celllink/contrib/gitian-descriptors/gitian-osx-signer.yml
-	    mv build/out/celllink-osx-signed.dmg ../celllink-binaries/${VERSION}/celllink-${VERSION}-osx.dmg
+	    ./bin/gbuild -i --commit signature=${COMMIT} ../magnachain/contrib/gitian-descriptors/gitian-osx-signer.yml
+	    ./bin/gsign -p $signProg --signer $SIGNER --release ${VERSION}-osx-signed --destination ../gitian.sigs/ ../magnachain/contrib/gitian-descriptors/gitian-osx-signer.yml
+	    mv build/out/magnachain-osx-signed.dmg ../magnachain-binaries/${VERSION}/magnachain-${VERSION}-osx.dmg
 	fi
 	popd
 

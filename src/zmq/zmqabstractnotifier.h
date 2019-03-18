@@ -1,14 +1,14 @@
 // Copyright (c) 2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_ZMQ_ZMQABSTRACTNOTIFIER_H
-#define CELLLINK_ZMQ_ZMQABSTRACTNOTIFIER_H
+#ifndef MAGNACHAIN_ZMQ_ZMQABSTRACTNOTIFIER_H
+#define MAGNACHAIN_ZMQ_ZMQABSTRACTNOTIFIER_H
 
 #include "zmq/zmqconfig.h"
 
-class CellBlockIndex;
+class MCBlockIndex;
 class CZMQAbstractNotifier;
 
 typedef CZMQAbstractNotifier* (*CZMQNotifierFactory)();
@@ -33,8 +33,8 @@ public:
     virtual bool Initialize(void *pcontext) = 0;
     virtual void Shutdown() = 0;
 
-    virtual bool NotifyBlock(const CellBlockIndex *pindex);
-    virtual bool NotifyTransaction(const CellTransaction &transaction);
+    virtual bool NotifyBlock(const MCBlockIndex *pindex);
+    virtual bool NotifyTransaction(const MCTransaction &transaction);
 
 protected:
     void *psocket;
@@ -42,4 +42,4 @@ protected:
     std::string address;
 };
 
-#endif // CELLLINK_ZMQ_ZMQABSTRACTNOTIFIER_H
+#endif // MAGNACHAIN_ZMQ_ZMQABSTRACTNOTIFIER_H

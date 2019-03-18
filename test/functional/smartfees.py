@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test fee estimation code."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.script import CScript, OP_1, OP_DROP, OP_2, OP_HASH160, OP_EQUAL, hash160, OP_TRUE
 from test_framework.mininode import CTransaction, CTxIn, CTxOut, COutPoint, ToHex, COIN
@@ -76,7 +76,7 @@ def split_inputs(from_node, txins, txouts, initial_split = False):
     tx.vin.append(CTxIn(COutPoint(int(prevtxout["txid"], 16), prevtxout["vout"]), b""))
 
     half_change = satoshi_round(prevtxout["amount"]/2)
-    rem_change = prevtxout["amount"] - half_change  - Decimal("0.00001000")
+    rem_change = prevtxout["amount"] - half_change  - Decimal("0.1000")
     tx.vout.append(CTxOut(int(half_change*COIN), P2SH_1))
     tx.vout.append(CTxOut(int(rem_change*COIN), P2SH_2))
 
@@ -140,7 +140,7 @@ def check_estimates(node, fees_seen, max_invalid, print_estimates = True):
     return all_estimates
 
 
-class EstimateFeeTest(BitcoinTestFramework):
+class EstimateFeeTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 3
 
@@ -162,7 +162,7 @@ class EstimateFeeTest(BitcoinTestFramework):
 
 
     def transact_and_mine(self, numblocks, mining_node):
-        min_fee = Decimal("0.00001")
+        min_fee = Decimal("0.01")
         # We will now mine numblocks blocks generating on average 100 transactions between each block
         # We shuffle our confirmed txout set before each set of transactions
         # small_txpuzzle_randfee will use the transactions that have inputs already in the chain when possible
@@ -172,11 +172,11 @@ class EstimateFeeTest(BitcoinTestFramework):
             for j in range(random.randrange(100-50,100+50)):
                 from_index = random.randint(1,2)
                 (txhex, fee) = small_txpuzzle_randfee(self.nodes[from_index], self.confutxo,
-                                                      self.memutxo, Decimal("0.005"), min_fee, min_fee)
+                                                      self.memutxo, Decimal("0.5"), min_fee, min_fee)
                 tx_kbytes = (len(txhex) // 2) / 1000.0
                 self.fees_per_kb.append(float(fee)/tx_kbytes)
             sync_mempools(self.nodes[0:3], wait=.1)
-            mined = mining_node.getblock(mining_node.generate(1)[0],True)["tx"]
+            mined = mining_node.getblock(mining_node.generate(1)[0],True,1)["tx"]
             sync_blocks(self.nodes[0:3], wait=.1)
             # update which txouts are confirmed
             newmem = []

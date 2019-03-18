@@ -1,22 +1,23 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include "utils/util.h"
 
+#include "chain/chainparams.h"
 #include "chain/chainparamsbase.h"
 #include "io/fs.h"
-#include "misc/random.h"
 #include "io/serialize.h"
+#include "misc/random.h"
+#include "net/net.h"
 #include "utils/utilstrencodings.h"
 #include "utils/utiltime.h"
-#include "chain/chainparams.h"
 
 #include <stdarg.h>
 
@@ -95,8 +96,8 @@
 // Application startup time (used for uptime calculation)
 const int64_t nStartupTime = GetTime();
 
-const char * const CELLLINK_CONF_FILENAME = "celllink.conf";
-const char * const CELLLINK_PID_FILENAME = "celllink.pid";
+const char * const MAGNACHAIN_CONF_FILENAME = "magnachain.conf";
+const char * const MAGNACHAIN_PID_FILENAME = "magnachain.pid";
 
 ArgsManager gArgs;
 bool fPrintToConsole = false;
@@ -112,7 +113,7 @@ CTranslationInterface translationInterface;
 std::atomic<uint32_t> logCategories(0);
 
 /** Init OpenSSL library multithreading support */
-static std::unique_ptr<CellCriticalSection[]> ppmutexOpenSSL;
+static std::unique_ptr<MCCriticalSection[]> ppmutexOpenSSL;
 void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAFETY_ANALYSIS
 {
     if (mode & CRYPTO_LOCK) {
@@ -129,7 +130,7 @@ public:
     CInit()
     {
         // Init OpenSSL library multithreading support
-        ppmutexOpenSSL.reset(new CellCriticalSection[CRYPTO_num_locks()]);
+        ppmutexOpenSSL.reset(new MCCriticalSection[CRYPTO_num_locks()]);
         CRYPTO_set_locking_callback(locking_callback);
 
         // OpenSSL can optionally load a config file which lists optional loadable modules and engines.
@@ -250,6 +251,9 @@ const CLogCategoryDesc LogCategories[] =
     {BCLog::QT, "qt"},
     {BCLog::LEVELDB, "leveldb"},
     {BCLog::BRANCH, "branch"},
+    {BCLog::MINING, "mining"},
+    {BCLog::TRANSACTION, "transaction"},
+    {BCLog::WALLET, "wallet"},
     {BCLog::ALL, "1"},
     {BCLog::ALL, "all"},
 };
@@ -347,7 +351,7 @@ int LogPrintStr(const std::string &str)
         ret = fwrite(strTimestamped.data(), 1, strTimestamped.size(), stdout);
         fflush(stdout);
     }
-    else if (fPrintToDebugLog)
+    if (fPrintToDebugLog)
     {
         boost::call_once(&DebugPrintInit, debugPrintInitFlag);
         boost::mutex::scoped_lock scoped_lock(*mutexDebugLog);
@@ -514,7 +518,7 @@ static std::string FormatException(const std::exception* pex, const char* pszThr
     char pszModule[MAX_PATH] = "";
     GetModuleFileNameA(nullptr, pszModule, sizeof(pszModule));
 #else
-    const char* pszModule = "celllink";
+    const char* pszModule = "magnachain";
 #endif
     if (pex)
         return strprintf(
@@ -533,13 +537,13 @@ void PrintExceptionContinue(const std::exception* pex, const char* pszThread)
 
 fs::path GetDefaultDataDir()
 {
-    // Windows < Vista: C:\Documents and Settings\Username\Application Data\CellLink
-    // Windows >= Vista: C:\Users\Username\AppData\Roaming\CellLink
-    // Mac: ~/Library/Application Support/CellLink
-    // Unix: ~/.celllink
+    // Windows < Vista: C:\Documents and Settings\Username\Application Data\magnachain
+    // Windows >= Vista: C:\Users\Username\AppData\Roaming\magnachain
+    // Mac: ~/Library/Application Support/magnachain
+    // Unix: ~/.magnachain
 #ifdef _WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "CellLink";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "magnachain";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -549,17 +553,17 @@ fs::path GetDefaultDataDir()
         pathRet = fs::path(pszHome);
 #ifdef MAC_OSX
     // Mac
-    return pathRet / "Library/Application Support/CellLink";
+    return pathRet / "Library/Application Support/magnachain";
 #else
     // Unix
-    return pathRet / ".celllink";
+    return pathRet / ".magnachain";
 #endif
 #endif
 }
 
 static fs::path pathCached;
 static fs::path pathCachedNetSpecific;
-static CellCriticalSection csPathCached;
+static MCCriticalSection csPathCached;
 
 const fs::path &GetDataDir(bool fNetSpecific)
 {
@@ -611,7 +615,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 {
     fs::ifstream streamConfig(GetConfigFile(confPath));
     if (!streamConfig.good())
-        return; // No celllink.conf file is OK
+        return; // No magnachain.conf file is OK
 
     {
         LOCK(cs_args);
@@ -620,7 +624,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 
         for (boost::program_options::detail::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it)
         {
-            // Don't overwrite existing settings so command line settings override celllink.conf
+            // Don't overwrite existing settings so command line settings override magnachain.conf
             std::string strKey = std::string("-") + it->string_key;
             std::string strValue = it->value[0];
             InterpretNegativeSetting(strKey, strValue);
@@ -636,7 +640,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
 #ifndef WIN32
 fs::path GetPidFile()
 {
-    fs::path pathPidFile(gArgs.GetArg("-pid", CELLLINK_PID_FILENAME));
+    fs::path pathPidFile(gArgs.GetArg("-pid", MAGNACHAIN_PID_FILENAME));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
@@ -896,9 +900,9 @@ std::string CopyrightHolders(const std::string& strPrefix)
 {
     std::string strCopyrightHolders = strPrefix + strprintf(_(COPYRIGHT_HOLDERS), _(COPYRIGHT_HOLDERS_SUBSTITUTION));
 
-    // Check for untranslated substitution to make sure CellLink Core copyright is not removed by accident
-    if (strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION).find("CellLink") == std::string::npos) {
-        strCopyrightHolders += "\n" + strPrefix + "The CellLink Core developers";
+    // Check for untranslated substitution to make sure MagnaChain Core copyright is not removed by accident
+    if (strprintf(COPYRIGHT_HOLDERS, COPYRIGHT_HOLDERS_SUBSTITUTION).find("MagnaChain") == std::string::npos) {
+        strCopyrightHolders += "\n" + strPrefix + "The MagnaChain Core developers";
     }
     return strCopyrightHolders;
 }

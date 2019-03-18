@@ -1,7 +1,7 @@
 ﻿#include <stdio.h>
 #include "key.h"
 #include "base58.h"
-#include "BitcoinAddress.h"
+#include "MagnaChainAddress.h"
 #include <secp256k1.h>
 #include "chainparams.h"
 

@@ -1,12 +1,12 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_TRANSACTIONTABLEMODEL_H
-#define CELLLINK_QT_TRANSACTIONTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_TRANSACTIONTABLEMODEL_H
+#define MAGNACHAIN_QT_TRANSACTIONTABLEMODEL_H
 
-#include "celllinkunits.h"
+#include "magnachainunits.h"
 
 #include <QAbstractTableModel>
 #include <QStringList>
@@ -16,7 +16,7 @@ class TransactionRecord;
 class TransactionTablePriv;
 class WalletModel;
 
-class CellWallet;
+class MCWallet;
 
 /** UI model for the transaction table of a wallet.
  */
@@ -25,7 +25,7 @@ class TransactionTableModel : public QAbstractTableModel
     Q_OBJECT
 
 public:
-    explicit TransactionTableModel(const PlatformStyle *platformStyle, CellWallet* wallet, WalletModel *parent = 0);
+    explicit TransactionTableModel(const PlatformStyle *platformStyle, MCWallet* wallet, WalletModel *parent = 0);
     ~TransactionTableModel();
 
     enum ColumnIndex {
@@ -83,7 +83,7 @@ public:
     bool processingQueuedTransactions() { return fProcessingQueuedTransactions; }
 
 private:
-    CellWallet* wallet;
+    MCWallet* wallet;
     WalletModel *walletModel;
     QStringList columns;
     TransactionTablePriv *priv;
@@ -99,7 +99,7 @@ private:
     QString formatTxDate(const TransactionRecord *wtx) const;
     QString formatTxType(const TransactionRecord *wtx) const;
     QString formatTxToAddress(const TransactionRecord *wtx, bool tooltip) const;
-    QString formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, CellLinkUnits::SeparatorStyle separators=CellLinkUnits::separatorStandard) const;
+    QString formatTxAmount(const TransactionRecord *wtx, bool showUnconfirmed=true, MagnaChainUnits::SeparatorStyle separators=MagnaChainUnits::separatorStandard) const;
     QString formatTooltip(const TransactionRecord *rec) const;
     QVariant txStatusDecoration(const TransactionRecord *wtx) const;
     QVariant txWatchonlyDecoration(const TransactionRecord *wtx) const;
@@ -118,4 +118,4 @@ public Q_SLOTS:
     friend class TransactionTablePriv;
 };
 
-#endif // CELLLINK_QT_TRANSACTIONTABLEMODEL_H
+#endif // MAGNACHAIN_QT_TRANSACTIONTABLEMODEL_H

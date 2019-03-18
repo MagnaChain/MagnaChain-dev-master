@@ -1,10 +1,10 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
-// Copyright (c) 2016-2018 The CellLink developers
+// Copyright (c) 2016-2018 The MagnaChain developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef CELLLINK_COMPAT_H
-#define CELLLINK_COMPAT_H
+#ifndef MAGNACHAIN_COMPAT_H
+#define MAGNACHAIN_COMPAT_H
 
 #ifdef _WIN32
 #define _WIN32_WINNT 0x0501

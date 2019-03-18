@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -28,7 +28,7 @@
 static bool fRPCRunning = false;
 static bool fRPCInWarmup = true;
 static std::string rpcWarmupStatus("RPC server started");
-static CellCriticalSection cs_rpcWarmup;
+static MCCriticalSection cs_rpcWarmup;
 /* Timer-creating functions */
 static RPCTimerInterface* timerInterface = nullptr;
 /* Map of name to timer. */
@@ -111,11 +111,11 @@ void RPCTypeCheckObj(const UniValue& o,
     }
 }
 
-CellAmount AmountFromValue(const UniValue& value)
+MCAmount AmountFromValue(const UniValue& value)
 {
     if (!value.isNum() && !value.isStr())
         throw JSONRPCError(RPC_TYPE_ERROR, "Amount is not a number or string");
-    CellAmount amount;
+    MCAmount amount;
     if (!ParseFixedPoint(value.getValStr(), 8, &amount))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount");
     if (!MoneyRange(amount))
@@ -254,11 +254,11 @@ UniValue stop(const JSONRPCRequest& jsonRequest)
     if (jsonRequest.fHelp || jsonRequest.params.size() > 1)
         throw std::runtime_error(
             "stop\n"
-            "\nStop Celllink server.");
+            "\nStop Magnachain server.");
     // Event loop will exit after current HTTP requests have been handled, so
     // this reply will get back to the client.
     StartShutdown();
-    return "Celllink server stopping";
+    return "Magnachain server stopping";
 }
 
 UniValue uptime(const JSONRPCRequest& jsonRequest)
@@ -528,7 +528,7 @@ std::vector<std::string> CRPCTable::listCommands() const
 
 std::string HelpExampleCli(const std::string& methodname, const std::string& args)
 {
-    return "> celllink-cli " + methodname + " " + args + "\n";
+    return "> magnachain-cli " + methodname + " " + args + "\n";
 }
 
 std::string HelpExampleRpc(const std::string& methodname, const std::string& args)

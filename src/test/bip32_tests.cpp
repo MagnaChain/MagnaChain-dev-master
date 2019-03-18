@@ -1,5 +1,5 @@
 // Copyright (c) 2013-2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,7 +10,7 @@
 #include "coding/uint256.h"
 #include "utils/util.h"
 #include "utils/utilstrencodings.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <string>
 #include <vector>
@@ -90,8 +90,8 @@ TestVector test3 =
 
 void RunTest(const TestVector &test) {
     std::vector<unsigned char> seed = ParseHex(test.strHexMaster);
-    CellExtKey key;
-    CellExtPubKey pubkey;
+    MCExtKey key;
+    MCExtPubKey pubkey;
     key.SetMaster(&seed[0], seed.size());
     pubkey = key.Neuter();
     for (const TestDerivation &derive : test.vDerive) {
@@ -100,44 +100,44 @@ void RunTest(const TestVector &test) {
         pubkey.Encode(data);
 
         // Test private key
-        CellLinkExtKey b58key; b58key.SetKey(key);
+        MagnaChainExtKey b58key; b58key.SetKey(key);
         BOOST_CHECK(b58key.ToString() == derive.prv);
 
-        CellLinkExtKey b58keyDecodeCheck(derive.prv);
-        CellExtKey checkKey = b58keyDecodeCheck.GetKey();
+        MagnaChainExtKey b58keyDecodeCheck(derive.prv);
+        MCExtKey checkKey = b58keyDecodeCheck.GetKey();
         assert(checkKey == key); //ensure a base58 decoded key also matches
 
         // Test public key
-        CellLinkExtPubKey b58pubkey; b58pubkey.SetKey(pubkey);
+        MagnaChainExtPubKey b58pubkey; b58pubkey.SetKey(pubkey);
         BOOST_CHECK(b58pubkey.ToString() == derive.pub);
 
-        CellLinkExtPubKey b58PubkeyDecodeCheck(derive.pub);
-        CellExtPubKey checkPubKey = b58PubkeyDecodeCheck.GetKey();
+        MagnaChainExtPubKey b58PubkeyDecodeCheck(derive.pub);
+        MCExtPubKey checkPubKey = b58PubkeyDecodeCheck.GetKey();
         assert(checkPubKey == pubkey); //ensure a base58 decoded pubkey also matches
 
         // Derive new keys
-        CellExtKey keyNew;
+        MCExtKey keyNew;
         BOOST_CHECK(key.Derive(keyNew, derive.nChild));
-        CellExtPubKey pubkeyNew = keyNew.Neuter();
+        MCExtPubKey pubkeyNew = keyNew.Neuter();
         if (!(derive.nChild & 0x80000000)) {
             // Compare with public derivation
-            CellExtPubKey pubkeyNew2;
+            MCExtPubKey pubkeyNew2;
             BOOST_CHECK(pubkey.Derive(pubkeyNew2, derive.nChild));
             BOOST_CHECK(pubkeyNew == pubkeyNew2);
         }
         key = keyNew;
         pubkey = pubkeyNew;
 
-        CellDataStream ssPub(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssPub(SER_DISK, CLIENT_VERSION);
         ssPub << pubkeyNew;
         BOOST_CHECK(ssPub.size() == 75);
 
-        CellDataStream ssPriv(SER_DISK, CLIENT_VERSION);
+        MCDataStream ssPriv(SER_DISK, CLIENT_VERSION);
         ssPriv << keyNew;
         BOOST_CHECK(ssPriv.size() == 75);
 
-        CellExtPubKey pubCheck;
-        CellExtKey privCheck;
+        MCExtPubKey pubCheck;
+        MCExtKey privCheck;
         ssPub >> pubCheck;
         ssPriv >> privCheck;
 

@@ -1,13 +1,13 @@
 # Copyright (c) 2013-2016 The Bitcoin Core developers
-# Copyright (c) 2016-2018 The CellLink Core developers
+# Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-TESTS += test/test_celllink
-bin_PROGRAMS += test/test_celllink
-noinst_PROGRAMS += test/test_celllink_fuzzy
+TESTS += test/test_magnachain
+bin_PROGRAMS += test/test_magnachain
+noinst_PROGRAMS += test/test_magnachain_fuzzy
 TEST_SRCDIR = test
-TEST_BINARY=test/test_celllink$(EXEEXT)
+TEST_BINARY=test/test_magnachain$(EXEEXT)
 
 JSON_TEST_FILES = \
   test/data/script_tests.json \
@@ -22,8 +22,8 @@ RAW_TEST_FILES =
 
 GENERATED_TEST_FILES = $(JSON_TEST_FILES:.json=.json.h) $(RAW_TEST_FILES:.raw=.raw.h)
 
-# test_celllink binary #
-CELLLINK_TESTS =\
+# test_magnachain binary #
+MAGNACHAIN_TESTS =\
   test/arith_uint256_tests.cpp \
   test/scriptnum10.h \
   test/addrman_tests.cpp \
@@ -35,6 +35,7 @@ CELLLINK_TESTS =\
   test/bip32_tests.cpp \
   test/blockencodings_tests.cpp \
   test/bloom_tests.cpp \
+  test/branchdb_tests.cpp \
   test/bswap_tests.cpp \
   test/checkqueue_tests.cpp \
   test/coins_tests.cpp \
@@ -73,9 +74,9 @@ CELLLINK_TESTS =\
   test/sigopcount_tests.cpp \
   test/skiplist_tests.cpp \
   test/streams_tests.cpp \
-  test/test_celllink.cpp \
-  test/test_celllink.h \
-  test/test_celllink_main.cpp \
+  test/test_magnachain.cpp \
+  test/test_magnachain.h \
+  test/test_magnachain_main.cpp \
   test/timedata_tests.cpp \
   test/torcontrol_tests.cpp \
   test/transaction_tests.cpp \
@@ -86,7 +87,7 @@ CELLLINK_TESTS =\
   test/util_tests.cpp
 
 if ENABLE_WALLET
-CELLLINK_TESTS += \
+MAGNACHAIN_TESTS += \
   wallet/test/wallet_test_fixture.cpp \
   wallet/test/wallet_test_fixture.h \
   wallet/test/accounting_tests.cpp \
@@ -94,61 +95,62 @@ CELLLINK_TESTS += \
   wallet/test/crypto_tests.cpp
 endif
 
-test_test_celllink_SOURCES = $(CELLLINK_TESTS) $(JSON_TEST_FILES) $(RAW_TEST_FILES)
-test_test_celllink_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES) -I$(builddir)/test/ $(TESTDEFS) $(EVENT_CFLAGS)
-test_test_celllink_LDADD =
+test_test_magnachain_SOURCES = $(MAGNACHAIN_TESTS) $(JSON_TEST_FILES) $(RAW_TEST_FILES)
+test_test_magnachain_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) -I$(builddir)/test/ $(TESTDEFS) $(EVENT_CFLAGS)
+test_test_magnachain_LDADD =
 if ENABLE_WALLET
-test_test_celllink_LDADD += $(LIBCELLLINK_WALLET)
+test_test_magnachain_LDADD += $(LIBMAGNACHAIN_WALLET)
 endif
-test_test_celllink_LDADD += $(LIBCELLLINK_SERVER) $(LIBCELLLINK_CLI) $(LIBCELLLINK_COMMON) $(LIBCELLLINK_UTIL) $(LIBCELLLINK_CONSENSUS) $(LIBCELLLINK_CRYPTO) $(LIBUNIVALUE) \
+test_test_magnachain_LDADD += $(LIBMAGNACHAIN_SERVER) $(LIBMAGNACHAIN_CLI) $(LIBMAGNACHAIN_COMMON) $(LIBMAGNACHAIN_UTIL) $(LIBMAGNACHAIN_CONSENSUS) $(LIBMAGNACHAIN_CRYPTO) $(LIBMAGNACHAIN_LUA) $(LIBUNIVALUE) \
   $(LIBLEVELDB) $(LIBLEVELDB_SSE42) $(LIBMEMENV) $(BOOST_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) $(LIBSECP256K1) $(EVENT_LIBS) $(EVENT_PTHREADS_LIBS)
-test_test_celllink_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_test_magnachain_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 
-test_test_celllink_LDADD += $(LIBCELLLINK_CONSENSUS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS)
-test_test_celllink_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
+test_test_magnachain_LDADD += $(LIBMAGNACHAIN_CONSENSUS) $(BDB_LIBS) $(SSL_LIBS) $(CRYPTO_LIBS) $(MINIUPNPC_LIBS)
+test_test_magnachain_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS) -static
 
 if ENABLE_ZMQ
-test_test_celllink_LDADD += $(ZMQ_LIBS)
+test_test_magnachain_LDADD += $(ZMQ_LIBS)
 endif
 #
 
-# test_celllink_fuzzy binary #
-test_test_celllink_fuzzy_SOURCES = test/test_celllink_fuzzy.cpp
-test_test_celllink_fuzzy_CPPFLAGS = $(AM_CPPFLAGS) $(CELLLINK_INCLUDES)
-test_test_celllink_fuzzy_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
-test_test_celllink_fuzzy_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
+# test_magnachain_fuzzy binary #
+test_test_magnachain_fuzzy_SOURCES = test/test_magnachain_fuzzy.cpp
+test_test_magnachain_fuzzy_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
+test_test_magnachain_fuzzy_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
+test_test_magnachain_fuzzy_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
 
-test_test_celllink_fuzzy_LDADD = \
+test_test_magnachain_fuzzy_LDADD = \
   $(LIBUNIVALUE) \
-  $(LIBCELLLINK_SERVER) \
-  $(LIBCELLLINK_COMMON) \
-  $(LIBCELLLINK_UTIL) \
-  $(LIBCELLLINK_CONSENSUS) \
-  $(LIBCELLLINK_CRYPTO) \
+  $(LIBMAGNACHAIN_SERVER) \
+  $(LIBMAGNACHAIN_COMMON) \
+  $(LIBMAGNACHAIN_UTIL) \
+  $(LIBMAGNACHAIN_CONSENSUS) \
+  $(LIBMAGNACHAIN_CRYPTO) \
+  $(LIBMAGNACHAIN_LUA) \
   $(LIBSECP256K1)
 
-test_test_celllink_fuzzy_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
+test_test_magnachain_fuzzy_LDADD += $(BOOST_LIBS) $(CRYPTO_LIBS)
 #
 
-nodist_test_test_celllink_SOURCES = $(GENERATED_TEST_FILES)
+nodist_test_test_magnachain_SOURCES = $(GENERATED_TEST_FILES)
 
-$(CELLLINK_TESTS): $(GENERATED_TEST_FILES)
+$(MAGNACHAIN_TESTS): $(GENERATED_TEST_FILES)
 
-CLEAN_CELLLINK_TEST = test/*.gcda test/*.gcno $(GENERATED_TEST_FILES)
+CLEAN_MAGNACHAIN_TEST = test/*.gcda test/*.gcno $(GENERATED_TEST_FILES)
 
-CLEANFILES += $(CLEAN_CELLLINK_TEST)
+CLEANFILES += $(CLEAN_MAGNACHAIN_TEST)
 
-celllink_test: $(TEST_BINARY)
+magnachain_test: $(TEST_BINARY)
 
-celllink_test_check: $(TEST_BINARY) FORCE
+magnachain_test_check: $(TEST_BINARY) FORCE
 	$(MAKE) check-TESTS TESTS=$^
 
-celllink_test_clean : FORCE
-	rm -f $(CLEAN_CELLLINK_TEST) $(test_test_celllink_OBJECTS) $(TEST_BINARY)
+magnachain_test_clean : FORCE
+	rm -f $(CLEAN_MAGNACHAIN_TEST) $(test_test_magnachain_OBJECTS) $(TEST_BINARY)
 
 check-local:
-	@echo "Running test/util/celllink-util-test.py..."
-	$(PYTHON) $(top_builddir)/test/util/celllink-util-test.py
+	@echo "Running test/util/magnachain-util-test.py..."
+	$(PYTHON) $(top_builddir)/test/util/magnachain-util-test.py
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C secp256k1 check
 if EMBEDDED_UNIVALUE
 	$(AM_V_at)$(MAKE) $(AM_MAKEFLAGS) -C univalue check

@@ -1,6 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,19 +15,19 @@
 
 static bool noui_ThreadSafeMessageBox(const std::string& message, const std::string& caption, unsigned int style)
 {
-    bool fSecure = style & CellClientUIInterface::SECURE;
-    style &= ~CellClientUIInterface::SECURE;
+    bool fSecure = style & MCClientUIInterface::SECURE;
+    style &= ~MCClientUIInterface::SECURE;
 
     std::string strCaption;
     // Check for usage of predefined caption
     switch (style) {
-    case CellClientUIInterface::MSG_ERROR:
+    case MCClientUIInterface::MSG_ERROR:
         strCaption += _("Error");
         break;
-    case CellClientUIInterface::MSG_WARNING:
+    case MCClientUIInterface::MSG_WARNING:
         strCaption += _("Warning");
         break;
-    case CellClientUIInterface::MSG_INFORMATION:
+    case MCClientUIInterface::MSG_INFORMATION:
         strCaption += _("Information");
         break;
     default:
@@ -52,7 +52,7 @@ static void noui_InitMessage(const std::string& message)
 
 void noui_connect()
 {
-    // Connect celllinkd signal handlers
+    // Connect magnachaind signal handlers
     uiInterface.ThreadSafeMessageBox.connect(noui_ThreadSafeMessageBox);
     uiInterface.ThreadSafeQuestion.connect(noui_ThreadSafeQuestion);
     uiInterface.InitMessage.connect(noui_InitMessage);

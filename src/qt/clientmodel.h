@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_CLIENTMODEL_H
-#define CELLLINK_QT_CLIENTMODEL_H
+#ifndef MAGNACHAIN_QT_CLIENTMODEL_H
+#define MAGNACHAIN_QT_CLIENTMODEL_H
 
 #include <QObject>
 #include <QDateTime>
@@ -15,7 +15,7 @@ class BanTableModel;
 class OptionsModel;
 class PeerTableModel;
 
-class CellBlockIndex;
+class MCBlockIndex;
 
 QT_BEGIN_NAMESPACE
 class QTimer;
@@ -35,7 +35,7 @@ enum NumConnections {
     CONNECTIONS_ALL  = (CONNECTIONS_IN | CONNECTIONS_OUT),
 };
 
-/** Model for CellLink network client. */
+/** Model for MagnaChain network client. */
 class ClientModel : public QObject
 {
     Q_OBJECT
@@ -61,7 +61,7 @@ public:
     quint64 getTotalBytesRecv() const;
     quint64 getTotalBytesSent() const;
 
-    double getVerificationProgress(const CellBlockIndex *tip) const;
+    double getVerificationProgress(const MCBlockIndex *tip) const;
     QDateTime getLastBlockDate() const;
 
     //! Return true if core is doing initial block download
@@ -117,4 +117,4 @@ public Q_SLOTS:
     void updateBanlist();
 };
 
-#endif // CELLLINK_QT_CLIENTMODEL_H
+#endif // MAGNACHAIN_QT_CLIENTMODEL_H

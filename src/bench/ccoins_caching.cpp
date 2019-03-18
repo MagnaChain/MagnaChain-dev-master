@@ -1,5 +1,5 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -17,14 +17,14 @@
 // paid to a TX_PUBKEY, the second 21 and 22 CENT outputs
 // paid to a TX_PUBKEYHASH.
 //
-static std::vector<CellMutableTransaction>
-SetupDummyInputs(CellBasicKeyStore& keystoreRet, CellCoinsViewCache& coinsRet)
+static std::vector<MCMutableTransaction>
+SetupDummyInputs(MCBasicKeyStore& keystoreRet, MCCoinsViewCache& coinsRet)
 {
-    std::vector<CellMutableTransaction> dummyTransactions;
+    std::vector<MCMutableTransaction> dummyTransactions;
     dummyTransactions.resize(2);
 
     // Add some keys to the keystore:
-    CellKey key[4];
+    MCKey key[4];
     for (int i = 0; i < 4; i++) {
         key[i].MakeNewKey(i % 2);
         keystoreRet.AddKey(key[i]);
@@ -48,20 +48,20 @@ SetupDummyInputs(CellBasicKeyStore& keystoreRet, CellCoinsViewCache& coinsRet)
     return dummyTransactions;
 }
 
-// Microbenchmark for simple accesses to a CellCoinsViewCache database. Note from
+// Microbenchmark for simple accesses to a MCCoinsViewCache database. Note from
 // laanwj, "replicating the actual usage patterns of the client is hard though,
 // many times micro-benchmarks of the database showed completely different
 // characteristics than e.g. reindex timings. But that's not a requirement of
 // every benchmark."
 // (https://github.com/bitcoin/bitcoin/issues/7883#issuecomment-224807484)
-static void CellCoinsCaching(benchmark::State& state)
+static void MCCoinsCaching(benchmark::State& state)
 {
-    CellBasicKeyStore keystore;
-    CellCoinsView coinsDummy;
-    CellCoinsViewCache coins(&coinsDummy);
-    std::vector<CellMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
+    MCBasicKeyStore keystore;
+    MCCoinsView coinsDummy;
+    MCCoinsViewCache coins(&coinsDummy);
+    std::vector<MCMutableTransaction> dummyTransactions = SetupDummyInputs(keystore, coins);
 
-    CellMutableTransaction t1;
+    MCMutableTransaction t1;
     t1.vin.resize(3);
     t1.vin[0].prevout.hash = dummyTransactions[0].GetHash();
     t1.vin[0].prevout.n = 1;
@@ -80,9 +80,9 @@ static void CellCoinsCaching(benchmark::State& state)
     while (state.KeepRunning()) {
         bool success = AreInputsStandard(t1, coins);
         assert(success);
-        CellAmount value = coins.GetValueIn(t1);
+        MCAmount value = coins.GetValueIn(t1);
         assert(value == (50 + 21 + 22) * CENT);
     }
 }
 
-BENCHMARK(CellCoinsCaching);
+BENCHMARK(MCCoinsCaching);

@@ -1,7 +1,7 @@
 // Taken from https://gist.github.com/arvidsson/7231973
 
-#ifndef CELLLINK_REVERSE_ITERATOR_H
-#define CELLLINK_REVERSE_ITERATOR_H
+#ifndef MAGNACHAIN_REVERSE_ITERATOR_H
+#define MAGNACHAIN_REVERSE_ITERATOR_H
 
 /**
  * Template used for reverse iteration in C++11 range-based for loops.
@@ -36,4 +36,4 @@ reverse_range<T> reverse_iterate(T &x)
     return reverse_range<T>(x);
 }
 
-#endif // CELLLINK_REVERSE_ITERATOR_H
+#endif // MAGNACHAIN_REVERSE_ITERATOR_H

@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -20,9 +20,9 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/algorithm/string/split.hpp>
 
-CellScript ParseScript(const std::string& s)
+MCScript ParseScript(const std::string& s)
 {
-    CellScript result;
+    MCScript result;
 
     static std::map<std::string, opcodetype> mapOpNames;
 
@@ -89,10 +89,10 @@ CellScript ParseScript(const std::string& s)
 }
 
 // Check that all of the input and output scripts of a transaction contains valid opcodes
-bool CheckTxScriptsSanity(const CellMutableTransaction& tx)
+bool CheckTxScriptsSanity(const MCMutableTransaction& tx)
 {
     // Check input scripts for non-coinbase txs
-    if (!CellTransaction(tx).IsCoinBase()) {
+    if (!MCTransaction(tx).IsCoinBase()) {
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
             if (!tx.vin[i].scriptSig.HasValidOps() || tx.vin[i].scriptSig.size() > MAX_SCRIPT_SIZE) {
                 return false;
@@ -109,7 +109,7 @@ bool CheckTxScriptsSanity(const CellMutableTransaction& tx)
     return true;
 }
 
-bool DecodeHexTx(CellMutableTransaction& tx, const std::string& strHexTx, bool fTryNoWitness)
+bool DecodeHexTx(MCMutableTransaction& tx, const std::string& strHexTx, bool fTryNoWitness)
 {
     if (!IsHex(strHexTx)) {
         return false;
@@ -118,7 +118,7 @@ bool DecodeHexTx(CellMutableTransaction& tx, const std::string& strHexTx, bool f
     std::vector<unsigned char> txData(ParseHex(strHexTx));
 
     if (fTryNoWitness) {
-        CellDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+        MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
         try {
             ssData >> tx;
             if (ssData.eof() && CheckTxScriptsSanity(tx)) {
@@ -130,7 +130,7 @@ bool DecodeHexTx(CellMutableTransaction& tx, const std::string& strHexTx, bool f
         }
     }
 
-    CellDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssData >> tx;
         if (!ssData.empty()) {
@@ -144,7 +144,7 @@ bool DecodeHexTx(CellMutableTransaction& tx, const std::string& strHexTx, bool f
     return true;
 }
 
-bool DecodeHexSpv(CellSpvProof& spv, const std::string& strHexSpv, bool fTryNoWitness)
+bool DecodeHexSpv(MCSpvProof& spv, const std::string& strHexSpv, bool fTryNoWitness)
 {
     if (!IsHex(strHexSpv)) {
         return false;
@@ -153,7 +153,7 @@ bool DecodeHexSpv(CellSpvProof& spv, const std::string& strHexSpv, bool fTryNoWi
     std::vector<unsigned char> txData(ParseHex(strHexSpv));
 
     if (fTryNoWitness) {
-        CellDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+        MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
         try {
             ssData >> spv;
             if (ssData.eof()) {
@@ -165,7 +165,7 @@ bool DecodeHexSpv(CellSpvProof& spv, const std::string& strHexSpv, bool fTryNoWi
         }
     }
 
-    CellDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssData >> spv;
         if (!ssData.empty()) {
@@ -179,13 +179,13 @@ bool DecodeHexSpv(CellSpvProof& spv, const std::string& strHexSpv, bool fTryNoWi
     return true;
 }
 
-bool DecodeHexBlk(CellBlock& block, const std::string& strHexBlk)
+bool DecodeHexBlk(MCBlock& block, const std::string& strHexBlk)
 {
     if (!IsHex(strHexBlk))
         return false;
 
     std::vector<unsigned char> blockData(ParseHex(strHexBlk));
-    CellDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
+    MCDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
     try {
         ssBlock >> block;
     }

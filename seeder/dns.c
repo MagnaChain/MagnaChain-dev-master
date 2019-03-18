@@ -385,6 +385,7 @@ error:
 }
 
 static int listenSocket = -1;
+static int listentype;
 int DoListenIPv6(int port)
 {
 	if (listenSocket == -1)
@@ -452,14 +453,16 @@ int DoListenIPv4(int port)
 
 int dnsserver(dns_opt_t *opt)
 {
-    int type = DoListenIPv6(opt->port);
-	if (type < 0)
+    if (listenSocket == -1)
+    {
+    listentype = DoListenIPv6(opt->port);
+	if (listentype < 0)
 	{
-        type = DoListenIPv4(opt->port);
-		if (type < 0)
-			return type;
+        listentype = DoListenIPv4(opt->port);
+		if (listentype < 0)
+			return listentype;
 	}
-
+    }
 	unsigned char inbuf[BUFLEN], outbuf[BUFLEN];
 	struct iovec iov[1] = {
 	  {
@@ -470,12 +473,12 @@ int dnsserver(dns_opt_t *opt)
 
     int len = 0;
     struct sockaddr* si_other;
-    if (type == AF_INET6)
+    if (listentype == AF_INET6)
     {
         len = sizeof(struct sockaddr_in6);
         si_other = malloc(len);
     }
-    else if (type == AF_INET)
+    else if (listentype == AF_INET)
     {
         len = sizeof(struct sockaddr_in);
         si_other = malloc(len);

@@ -1,12 +1,12 @@
 // Copyright (c) 2012-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "io/serialize.h"
 #include "io/streams.h"
 #include "coding/hash.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <stdint.h>
 
@@ -21,10 +21,10 @@ protected:
     bool boolval;
     std::string stringval;
     const char* charstrval;
-    CellTransactionRef txval;
+    MCTransactionRef txval;
 public:
     CSerializeMethodsTestSingle() = default;
-    CSerializeMethodsTestSingle(int intvalin, bool boolvalin, std::string stringvalin, const char* charstrvalin, CellTransaction txvalin) : intval(intvalin), boolval(boolvalin), stringval(std::move(stringvalin)), charstrval(charstrvalin), txval(MakeTransactionRef(txvalin)){}
+    CSerializeMethodsTestSingle(int intvalin, bool boolvalin, std::string stringvalin, const char* charstrvalin, MCTransaction txvalin) : intval(intvalin), boolval(boolvalin), stringval(std::move(stringvalin)), charstrval(charstrvalin), txval(MakeTransactionRef(txvalin)){}
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
@@ -139,7 +139,7 @@ Python code to generate the below hashes:
 */
 BOOST_AUTO_TEST_CASE(floats)
 {
-    CellDataStream ss(SER_DISK, 0);
+    MCDataStream ss(SER_DISK, 0);
     // encode
     for (int i = 0; i < 1000; i++) {
         ss << float(i);
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(floats)
 
 BOOST_AUTO_TEST_CASE(doubles)
 {
-    CellDataStream ss(SER_DISK, 0);
+    MCDataStream ss(SER_DISK, 0);
     // encode
     for (int i = 0; i < 1000; i++) {
         ss << double(i);
@@ -175,8 +175,8 @@ BOOST_AUTO_TEST_CASE(varints)
 {
     // encode
 
-    CellDataStream ss(SER_DISK, 0);
-    CellDataStream::size_type size = 0;
+    MCDataStream ss(SER_DISK, 0);
+    MCDataStream::size_type size = 0;
     for (int i = 0; i < 100000; i++) {
         ss << VARINT(i);
         size += ::GetSerializeSize(VARINT(i), 0, 0);
@@ -205,7 +205,7 @@ BOOST_AUTO_TEST_CASE(varints)
 
 BOOST_AUTO_TEST_CASE(varints_bitpatterns)
 {
-    CellDataStream ss(SER_DISK, 0);
+    MCDataStream ss(SER_DISK, 0);
     ss << VARINT(0); BOOST_CHECK_EQUAL(HexStr(ss), "00"); ss.clear();
     ss << VARINT(0x7f); BOOST_CHECK_EQUAL(HexStr(ss), "7f"); ss.clear();
     ss << VARINT((int8_t)0x7f); BOOST_CHECK_EQUAL(HexStr(ss), "7f"); ss.clear();
@@ -226,7 +226,7 @@ BOOST_AUTO_TEST_CASE(varints_bitpatterns)
 
 BOOST_AUTO_TEST_CASE(compactsize)
 {
-    CellDataStream ss(SER_DISK, 0);
+    MCDataStream ss(SER_DISK, 0);
     std::vector<char>::size_type i, j;
 
     for (i = 1; i <= MAX_SIZE; i *= 2)
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(noncanonical)
 {
     // Write some non-canonical CompactSize encodings, and
     // make sure an exception is thrown when read back.
-    CellDataStream ss(SER_DISK, 0);
+    MCDataStream ss(SER_DISK, 0);
     std::vector<char>::size_type n;
 
     // zero encoded with three bytes:
@@ -295,7 +295,7 @@ BOOST_AUTO_TEST_CASE(noncanonical)
 BOOST_AUTO_TEST_CASE(insert_delete)
 {
     // Test inserting/deleting bytes.
-    CellDataStream ss(SER_DISK, 0);
+    MCDataStream ss(SER_DISK, 0);
     BOOST_CHECK_EQUAL(ss.size(), 0);
 
     ss.write("\x00\x01\x02\xff", 4);
@@ -346,12 +346,12 @@ BOOST_AUTO_TEST_CASE(class_methods)
     bool boolval(true);
     std::string stringval("testing");
     const char* charstrval("testing charstr");
-    CellMutableTransaction txval;
+    MCMutableTransaction txval;
     CSerializeMethodsTestSingle methodtest1(intval, boolval, stringval, charstrval, txval);
     CSerializeMethodsTestMany methodtest2(intval, boolval, stringval, charstrval, txval);
     CSerializeMethodsTestSingle methodtest3;
     CSerializeMethodsTestMany methodtest4;
-    CellDataStream ss(SER_DISK, PROTOCOL_VERSION);
+    MCDataStream ss(SER_DISK, PROTOCOL_VERSION);
     BOOST_CHECK(methodtest1 == methodtest2);
     ss << methodtest1;
     ss >> methodtest4;
@@ -361,7 +361,7 @@ BOOST_AUTO_TEST_CASE(class_methods)
     BOOST_CHECK(methodtest2 == methodtest3);
     BOOST_CHECK(methodtest3 == methodtest4);
 
-    CellDataStream ss2(SER_DISK, PROTOCOL_VERSION, intval, boolval, stringval, FLATDATA(charstrval), txval);
+    MCDataStream ss2(SER_DISK, PROTOCOL_VERSION, intval, boolval, stringval, FLATDATA(charstrval), txval);
     ss2 >> methodtest3;
     BOOST_CHECK(methodtest3 == methodtest4);
 }

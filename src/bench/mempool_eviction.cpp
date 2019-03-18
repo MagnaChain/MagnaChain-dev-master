@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,14 +10,14 @@
 #include <list>
 #include <vector>
 
-static void AddTx(const CellTransaction& tx, const CellAmount& nFee, CellTxMemPool& pool)
+static void AddTx(const MCTransaction& tx, const MCAmount& nFee, MCTxMemPool& pool)
 {
     int64_t nTime = 0;
     unsigned int nHeight = 1;
     bool spendsCoinbase = false;
     unsigned int sigOpCost = 4;
     LockPoints lp;
-    pool.addUnchecked(tx.GetHash(), CellTxMemPoolEntry(
+    pool.AddUnchecked(tx.GetHash(), MCTxMemPoolEntry(
                                         MakeTransactionRef(tx), nFee, nTime, nHeight,
                                         spendsCoinbase, sigOpCost, lp));
 }
@@ -27,77 +27,77 @@ static void AddTx(const CellTransaction& tx, const CellAmount& nFee, CellTxMemPo
 // unique transactions for a more meaningful performance measurement.
 static void MempoolEviction(benchmark::State& state)
 {
-    CellMutableTransaction tx1 = CellMutableTransaction();
+    MCMutableTransaction tx1 = MCMutableTransaction();
     tx1.vin.resize(1);
-    tx1.vin[0].scriptSig = CellScript() << OP_1;
+    tx1.vin[0].scriptSig = MCScript() << OP_1;
     tx1.vout.resize(1);
-    tx1.vout[0].scriptPubKey = CellScript() << OP_1 << OP_EQUAL;
+    tx1.vout[0].scriptPubKey = MCScript() << OP_1 << OP_EQUAL;
     tx1.vout[0].nValue = 10 * COIN;
 
-    CellMutableTransaction tx2 = CellMutableTransaction();
+    MCMutableTransaction tx2 = MCMutableTransaction();
     tx2.vin.resize(1);
-    tx2.vin[0].scriptSig = CellScript() << OP_2;
+    tx2.vin[0].scriptSig = MCScript() << OP_2;
     tx2.vout.resize(1);
-    tx2.vout[0].scriptPubKey = CellScript() << OP_2 << OP_EQUAL;
+    tx2.vout[0].scriptPubKey = MCScript() << OP_2 << OP_EQUAL;
     tx2.vout[0].nValue = 10 * COIN;
 
-    CellMutableTransaction tx3 = CellMutableTransaction();
+    MCMutableTransaction tx3 = MCMutableTransaction();
     tx3.vin.resize(1);
-    tx3.vin[0].prevout = CellOutPoint(tx2.GetHash(), 0);
-    tx3.vin[0].scriptSig = CellScript() << OP_2;
+    tx3.vin[0].prevout = MCOutPoint(tx2.GetHash(), 0);
+    tx3.vin[0].scriptSig = MCScript() << OP_2;
     tx3.vout.resize(1);
-    tx3.vout[0].scriptPubKey = CellScript() << OP_3 << OP_EQUAL;
+    tx3.vout[0].scriptPubKey = MCScript() << OP_3 << OP_EQUAL;
     tx3.vout[0].nValue = 10 * COIN;
 
-    CellMutableTransaction tx4 = CellMutableTransaction();
+    MCMutableTransaction tx4 = MCMutableTransaction();
     tx4.vin.resize(2);
     tx4.vin[0].prevout.SetNull();
-    tx4.vin[0].scriptSig = CellScript() << OP_4;
+    tx4.vin[0].scriptSig = MCScript() << OP_4;
     tx4.vin[1].prevout.SetNull();
-    tx4.vin[1].scriptSig = CellScript() << OP_4;
+    tx4.vin[1].scriptSig = MCScript() << OP_4;
     tx4.vout.resize(2);
-    tx4.vout[0].scriptPubKey = CellScript() << OP_4 << OP_EQUAL;
+    tx4.vout[0].scriptPubKey = MCScript() << OP_4 << OP_EQUAL;
     tx4.vout[0].nValue = 10 * COIN;
-    tx4.vout[1].scriptPubKey = CellScript() << OP_4 << OP_EQUAL;
+    tx4.vout[1].scriptPubKey = MCScript() << OP_4 << OP_EQUAL;
     tx4.vout[1].nValue = 10 * COIN;
 
-    CellMutableTransaction tx5 = CellMutableTransaction();
+    MCMutableTransaction tx5 = MCMutableTransaction();
     tx5.vin.resize(2);
-    tx5.vin[0].prevout = CellOutPoint(tx4.GetHash(), 0);
-    tx5.vin[0].scriptSig = CellScript() << OP_4;
+    tx5.vin[0].prevout = MCOutPoint(tx4.GetHash(), 0);
+    tx5.vin[0].scriptSig = MCScript() << OP_4;
     tx5.vin[1].prevout.SetNull();
-    tx5.vin[1].scriptSig = CellScript() << OP_5;
+    tx5.vin[1].scriptSig = MCScript() << OP_5;
     tx5.vout.resize(2);
-    tx5.vout[0].scriptPubKey = CellScript() << OP_5 << OP_EQUAL;
+    tx5.vout[0].scriptPubKey = MCScript() << OP_5 << OP_EQUAL;
     tx5.vout[0].nValue = 10 * COIN;
-    tx5.vout[1].scriptPubKey = CellScript() << OP_5 << OP_EQUAL;
+    tx5.vout[1].scriptPubKey = MCScript() << OP_5 << OP_EQUAL;
     tx5.vout[1].nValue = 10 * COIN;
 
-    CellMutableTransaction tx6 = CellMutableTransaction();
+    MCMutableTransaction tx6 = MCMutableTransaction();
     tx6.vin.resize(2);
-    tx6.vin[0].prevout = CellOutPoint(tx4.GetHash(), 1);
-    tx6.vin[0].scriptSig = CellScript() << OP_4;
+    tx6.vin[0].prevout = MCOutPoint(tx4.GetHash(), 1);
+    tx6.vin[0].scriptSig = MCScript() << OP_4;
     tx6.vin[1].prevout.SetNull();
-    tx6.vin[1].scriptSig = CellScript() << OP_6;
+    tx6.vin[1].scriptSig = MCScript() << OP_6;
     tx6.vout.resize(2);
-    tx6.vout[0].scriptPubKey = CellScript() << OP_6 << OP_EQUAL;
+    tx6.vout[0].scriptPubKey = MCScript() << OP_6 << OP_EQUAL;
     tx6.vout[0].nValue = 10 * COIN;
-    tx6.vout[1].scriptPubKey = CellScript() << OP_6 << OP_EQUAL;
+    tx6.vout[1].scriptPubKey = MCScript() << OP_6 << OP_EQUAL;
     tx6.vout[1].nValue = 10 * COIN;
 
-    CellMutableTransaction tx7 = CellMutableTransaction();
+    MCMutableTransaction tx7 = MCMutableTransaction();
     tx7.vin.resize(2);
-    tx7.vin[0].prevout = CellOutPoint(tx5.GetHash(), 0);
-    tx7.vin[0].scriptSig = CellScript() << OP_5;
-    tx7.vin[1].prevout = CellOutPoint(tx6.GetHash(), 0);
-    tx7.vin[1].scriptSig = CellScript() << OP_6;
+    tx7.vin[0].prevout = MCOutPoint(tx5.GetHash(), 0);
+    tx7.vin[0].scriptSig = MCScript() << OP_5;
+    tx7.vin[1].prevout = MCOutPoint(tx6.GetHash(), 0);
+    tx7.vin[1].scriptSig = MCScript() << OP_6;
     tx7.vout.resize(2);
-    tx7.vout[0].scriptPubKey = CellScript() << OP_7 << OP_EQUAL;
+    tx7.vout[0].scriptPubKey = MCScript() << OP_7 << OP_EQUAL;
     tx7.vout[0].nValue = 10 * COIN;
-    tx7.vout[1].scriptPubKey = CellScript() << OP_7 << OP_EQUAL;
+    tx7.vout[1].scriptPubKey = MCScript() << OP_7 << OP_EQUAL;
     tx7.vout[1].nValue = 10 * COIN;
 
-    CellTxMemPool pool;
+    MCTxMemPool pool;
 
     while (state.KeepRunning()) {
         AddTx(tx1, 10000LL, pool);

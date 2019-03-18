@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the pruning code.
@@ -9,7 +9,7 @@ This test uses 4GB of disk space.
 This test takes 30 mins or more (up to 2 hours)
 """
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 import time
 import os
@@ -25,7 +25,7 @@ TIMESTAMP_WINDOW = 2 * 60 * 60
 def calc_usage(blockdir):
     return sum(os.path.getsize(blockdir+f) for f in os.listdir(blockdir) if os.path.isfile(blockdir+f)) / (1024. * 1024.)
 
-class PruneTest(BitcoinTestFramework):
+class PruneTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 6
@@ -55,14 +55,14 @@ class PruneTest(BitcoinTestFramework):
         sync_blocks(self.nodes[0:5])
 
     def setup_nodes(self):
-        self.add_nodes(self.num_nodes, self.extra_args, timewait=900)
+        self.add_nodes(self.num_nodes, self.extra_args, timewait=9000)
         self.start_nodes()
 
     def create_big_chain(self):
         # Start by creating some coinbases we can spend later
-        self.nodes[1].generate(200)
+        [self.nodes[1].generate(50) for i in range(4)]
         sync_blocks(self.nodes[0:2])
-        self.nodes[0].generate(150)
+        [self.nodes[0].generate(50) for i in range(3)]
         # Then mine enough full blocks to create more than 550MiB of data
         for i in range(645):
             mine_large_block(self.nodes[0], self.utxo_cache_0)
@@ -154,7 +154,7 @@ class PruneTest(BitcoinTestFramework):
         self.start_node(1, extra_args=["-maxreceivebuffer=20000","-blockmaxsize=5000", "-checkblocks=5", "-disablesafemode"])
 
         self.log.info("Generating new longer chain of 300 more blocks")
-        self.nodes[1].generate(300)
+        [self.nodes[1].generate(50) for i in range(6)]
 
         self.log.info("Reconnect nodes")
         connect_nodes(self.nodes[0], 1)
@@ -214,7 +214,10 @@ class PruneTest(BitcoinTestFramework):
             self.nodes[0].invalidateblock(curchainhash)
             assert(self.nodes[0].getblockcount() == self.mainchainheight)
             assert(self.nodes[0].getbestblockhash() == self.mainchainhash2)
-            goalbesthash = self.nodes[0].generate(blocks_to_mine)[-1]
+            while(blocks_to_mine > 0):
+                goalbesthash = self.nodes[0].generate(min(50,blocks_to_mine))[-1]
+                blocks_to_mine -= 50
+            # goalbesthash = self.nodes[0].generate(blocks_to_mine)[-1]
             goalbestheight = first_reorg_height + 1
 
         self.log.info("Verify node 2 reorged back to the main chain, some blocks of which it had to redownload")
@@ -302,7 +305,7 @@ class PruneTest(BitcoinTestFramework):
             raise AssertionError("blk00002.dat is still there, should be pruned by now")
 
         # advance the tip so blk00002.dat and blk00003.dat can be pruned (the last 288 blocks should now be in blk00004.dat)
-        node.generate(288)
+        [node.generate(48) for i in range(6)]
         prune(1000)
         if has_block(2):
             raise AssertionError("blk00002.dat is still there, should be pruned by now")

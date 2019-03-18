@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_RPCCONSOLE_H
-#define CELLLINK_QT_RPCCONSOLE_H
+#ifndef MAGNACHAIN_QT_RPCCONSOLE_H
+#define MAGNACHAIN_QT_RPCCONSOLE_H
 
 #include "guiutil.h"
 #include "peertablemodel.h"
@@ -28,7 +28,7 @@ class QMenu;
 class QItemSelection;
 QT_END_NAMESPACE
 
-/** Local CellLink RPC console. */
+/** Local MagnaChain RPC console. */
 class RPCConsole: public QWidget
 {
     Q_OBJECT
@@ -158,4 +158,4 @@ private:
     void updateNetworkState();
 };
 
-#endif // CELLLINK_QT_RPCCONSOLE_H
+#endif // MAGNACHAIN_QT_RPCCONSOLE_H

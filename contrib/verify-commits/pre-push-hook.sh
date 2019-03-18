@@ -1,9 +1,9 @@
 #!/bin/bash
-# Copyright (c) 2014-2015 The CellLink Core developers
+# Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-if ! [[ "$2" =~ ^(git@)?(www.)?github.com(:|/)celllink/celllink(.git)?$ ]]; then
+if ! [[ "$2" =~ ^(git@)?(www.)?github.com(:|/)magnachain/magnachain(.git)?$ ]]; then
     exit 0
 fi
 

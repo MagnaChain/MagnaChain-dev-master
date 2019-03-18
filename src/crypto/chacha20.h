@@ -1,10 +1,10 @@
 // Copyright (c) 2017 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CRYPTO_CHACHA20_H
-#define CELLLINK_CRYPTO_CHACHA20_H
+#ifndef MAGNACHAIN_CRYPTO_CHACHA20_H
+#define MAGNACHAIN_CRYPTO_CHACHA20_H
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,4 +24,4 @@ public:
     void Output(unsigned char* output, size_t bytes);
 };
 
-#endif // CELLLINK_CRYPTO_CHACHA20_H
+#endif // MAGNACHAIN_CRYPTO_CHACHA20_H

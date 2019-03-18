@@ -1,5 +1,5 @@
-#ifndef CELLLINK_QT_TEST_WALLETTESTS_H
-#define CELLLINK_QT_TEST_WALLETTESTS_H
+#ifndef MAGNACHAIN_QT_TEST_WALLETTESTS_H
+#define MAGNACHAIN_QT_TEST_WALLETTESTS_H
 
 #include <QObject>
 #include <QTest>
@@ -12,4 +12,4 @@ private Q_SLOTS:
     void walletTests();
 };
 
-#endif // CELLLINK_QT_TEST_WALLETTESTS_H
+#endif // MAGNACHAIN_QT_TEST_WALLETTESTS_H

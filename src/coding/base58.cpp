@@ -1,5 +1,5 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -150,13 +150,13 @@ bool DecodeBase58Check(const std::string& str, std::vector<unsigned char>& vchRe
     return DecodeBase58Check(str.c_str(), vchRet);
 }
 
-CellBase58Data::CellBase58Data()
+MCBase58Data::MCBase58Data()
 {
     vchVersion.clear();
     vchData.clear();
 }
 
-void CellBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const void* pdata, size_t nSize)
+void MCBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const void* pdata, size_t nSize)
 {
     vchVersion = vchVersionIn;
     vchData.resize(nSize);
@@ -164,12 +164,12 @@ void CellBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, con
         memcpy(vchData.data(), pdata, nSize);
 }
 
-void CellBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const unsigned char* pbegin, const unsigned char* pend)
+void MCBase58Data::SetData(const std::vector<unsigned char>& vchVersionIn, const unsigned char* pbegin, const unsigned char* pend)
 {
     SetData(vchVersionIn, (void*)pbegin, pend - pbegin);
 }
 
-bool CellBase58Data::SetString(const char* psz, unsigned int nVersionBytes)
+bool MCBase58Data::SetString(const char* psz, unsigned int nVersionBytes)
 {
     std::vector<unsigned char> vchTemp;
     bool rc58 = DecodeBase58Check(psz, vchTemp);
@@ -186,19 +186,19 @@ bool CellBase58Data::SetString(const char* psz, unsigned int nVersionBytes)
     return true;
 }
 
-bool CellBase58Data::SetString(const std::string& str)
+bool MCBase58Data::SetString(const std::string& str)
 {
     return SetString(str.c_str());
 }
 
-std::string CellBase58Data::ToString() const
+std::string MCBase58Data::ToString() const
 {
     std::vector<unsigned char> vch = vchVersion;
     vch.insert(vch.end(), vchData.begin(), vchData.end());
     return EncodeBase58Check(vch);
 }
 
-int CellBase58Data::CompareTo(const CellBase58Data& b58) const
+int MCBase58Data::CompareTo(const MCBase58Data& b58) const
 {
     if (vchVersion < b58.vchVersion)
         return -1;
@@ -213,109 +213,139 @@ int CellBase58Data::CompareTo(const CellBase58Data& b58) const
 
 namespace
 {
-class CellLinkAddressVisitor : public boost::static_visitor<bool>
+class MagnaChainAddressVisitor : public boost::static_visitor<bool>
 {
 private:
-    CellLinkAddress* addr;
+    MagnaChainAddress* addr;
 
 public:
-    CellLinkAddressVisitor(CellLinkAddress* addrIn) : addr(addrIn) {}
+    MagnaChainAddressVisitor(MagnaChainAddress* addrIn) : addr(addrIn) {}
 
-    bool operator()(const CellKeyID& id) const { return addr->Set(id); }
-    bool operator()(const CellScriptID& id) const { return addr->Set(id); }
-    bool operator()(const CellNoDestination& no) const { return false; }
+    bool operator()(const MCContractID& id) const { return addr->Set(id); }
+    bool operator()(const MCKeyID& id) const { return addr->Set(id); }
+    bool operator()(const MCScriptID& id) const { return addr->Set(id); }
+    bool operator()(const MCNoDestination& no) const { return false; }
 };
 
 } // namespace
 
-bool CellLinkAddress::Set(const CellKeyID& id)
+bool MagnaChainAddress::Set(const MCContractID& id)
 {
-    SetData(Params().Base58Prefix(CellChainParams::PUBKEY_ADDRESS), &id, 20);
+    SetData(Params().Base58Prefix(MCChainParams::CONTRACT_ADDRESS), &id, 20);
     return true;
 }
 
-bool CellLinkAddress::Set(const CellScriptID& id)
+bool MagnaChainAddress::Set(const MCKeyID& id)
 {
-    SetData(Params().Base58Prefix(CellChainParams::SCRIPT_ADDRESS), &id, 20);
+    SetData(Params().Base58Prefix(MCChainParams::PUBKEY_ADDRESS), &id, 20);
     return true;
 }
 
-bool CellLinkAddress::Set(const CellTxDestination& dest)
+bool MagnaChainAddress::Set(const MCScriptID& id)
 {
-    return boost::apply_visitor(CellLinkAddressVisitor(this), dest);
+    SetData(Params().Base58Prefix(MCChainParams::SCRIPT_ADDRESS), &id, 20);
+    return true;
 }
 
-bool CellLinkAddress::IsValid() const
+bool MagnaChainAddress::Set(const MCTxDestination& dest)
+{
+    return boost::apply_visitor(MagnaChainAddressVisitor(this), dest);
+}
+
+bool MagnaChainAddress::IsValid() const
 {
     return IsValid(Params());
 }
 
-bool CellLinkAddress::IsValid(const CellChainParams& params) const
+bool MagnaChainAddress::IsValid(const MCChainParams& params) const
 {
     bool fCorrectSize = vchData.size() == 20;
-    bool fKnownVersion = vchVersion == params.Base58Prefix(CellChainParams::PUBKEY_ADDRESS) ||
-                         vchVersion == params.Base58Prefix(CellChainParams::SCRIPT_ADDRESS);
+    bool fKnownVersion = vchVersion == params.Base58Prefix(MCChainParams::PUBKEY_ADDRESS) ||
+        vchVersion == params.Base58Prefix(MCChainParams::SCRIPT_ADDRESS) ||
+        vchVersion == params.Base58Prefix(MCChainParams::CONTRACT_ADDRESS);
     return fCorrectSize && fKnownVersion;
 }
 
-CellTxDestination CellLinkAddress::Get() const
+MCTxDestination MagnaChainAddress::Get() const
 {
     if (!IsValid())
-        return CellNoDestination();
+        return MCNoDestination();
     uint160 id;
     memcpy(&id, vchData.data(), 20);
-    if (vchVersion == Params().Base58Prefix(CellChainParams::PUBKEY_ADDRESS))
-        return CellKeyID(id);
-    else if (vchVersion == Params().Base58Prefix(CellChainParams::SCRIPT_ADDRESS))
-        return CellScriptID(id);
+    if (vchVersion == Params().Base58Prefix(MCChainParams::PUBKEY_ADDRESS))
+        return MCKeyID(id);
+    else if (vchVersion == Params().Base58Prefix(MCChainParams::SCRIPT_ADDRESS))
+        return MCScriptID(id);
+    else if (vchVersion == Params().Base58Prefix(MCChainParams::CONTRACT_ADDRESS))
+        return MCContractID(id);
     else
-        return CellNoDestination();
+        return MCNoDestination();
 }
 
-bool CellLinkAddress::GetKeyID(CellKeyID& keyID) const
+bool MagnaChainAddress::GetContractID(MCContractID& contractID) const
 {
-    if (!IsValid() || vchVersion != Params().Base58Prefix(CellChainParams::PUBKEY_ADDRESS))
+    if (!IsValid() || vchVersion != Params().Base58Prefix(MCChainParams::CONTRACT_ADDRESS))
         return false;
     uint160 id;
     memcpy(&id, vchData.data(), 20);
-    keyID = CellKeyID(id);
+    contractID = MCContractID(id);
     return true;
 }
 
-bool CellLinkAddress::IsScript() const
+bool MagnaChainAddress::GetKeyID(MCKeyID& keyID) const
 {
-    return IsValid() && vchVersion == Params().Base58Prefix(CellChainParams::SCRIPT_ADDRESS);
+    if (!IsValid() || vchVersion != Params().Base58Prefix(MCChainParams::PUBKEY_ADDRESS))
+        return false;
+    uint160 id;
+    memcpy(&id, vchData.data(), 20);
+    keyID = MCKeyID(id);
+    return true;
 }
 
-void CellLinkSecret::SetKey(const CellKey& vchSecret)
+bool MagnaChainAddress::IsContractID() const
+{
+    return IsValid() && vchVersion == Params().Base58Prefix(MCChainParams::CONTRACT_ADDRESS);
+}
+
+bool MagnaChainAddress::IsScript() const
+{
+    return IsValid() && vchVersion == Params().Base58Prefix(MCChainParams::SCRIPT_ADDRESS);
+}
+
+bool MagnaChainAddress::IsKeyID() const
+{
+    return IsValid() && vchVersion == Params().Base58Prefix(MCChainParams::PUBKEY_ADDRESS);
+}
+
+void MagnaChainSecret::SetKey(const MCKey& vchSecret)
 {
     assert(vchSecret.IsValid());
-    SetData(Params().Base58Prefix(CellChainParams::SECRET_KEY), vchSecret.begin(), vchSecret.size());
+    SetData(Params().Base58Prefix(MCChainParams::SECRET_KEY), vchSecret.begin(), vchSecret.size());
     if (vchSecret.IsCompressed())
         vchData.push_back(1);
 }
 
-CellKey CellLinkSecret::GetKey()
+MCKey MagnaChainSecret::GetKey()
 {
-    CellKey ret;
+    MCKey ret;
     assert(vchData.size() >= 32);
     ret.Set(vchData.begin(), vchData.begin() + 32, vchData.size() > 32 && vchData[32] == 1);
     return ret;
 }
 
-bool CellLinkSecret::IsValid() const
+bool MagnaChainSecret::IsValid() const
 {
     bool fExpectedFormat = vchData.size() == 32 || (vchData.size() == 33 && vchData[32] == 1);
-    bool fCorrectVersion = vchVersion == Params().Base58Prefix(CellChainParams::SECRET_KEY);
+    bool fCorrectVersion = vchVersion == Params().Base58Prefix(MCChainParams::SECRET_KEY);
     return fExpectedFormat && fCorrectVersion;
 }
 
-bool CellLinkSecret::SetString(const char* pszSecret)
+bool MagnaChainSecret::SetString(const char* pszSecret)
 {
-    return CellBase58Data::SetString(pszSecret) && IsValid();
+    return MCBase58Data::SetString(pszSecret) && IsValid();
 }
 
-bool CellLinkSecret::SetString(const std::string& strSecret)
+bool MagnaChainSecret::SetString(const std::string& strSecret)
 {
     return SetString(strSecret.c_str());
 }

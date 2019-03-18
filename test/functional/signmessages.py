@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# Copyright (c) 2016 The Bitcoin Core developers
+# Copyright (c) 2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test RPC commands for signing and verifying messages."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import assert_equal
 
-class SignMessagesTest(BitcoinTestFramework):
+class SignMessagesTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 1
@@ -19,6 +19,9 @@ class SignMessagesTest(BitcoinTestFramework):
         priv_key = 'cUeKHd5orzT3mz8P9pxyREHfsWtVfgsfDjiZZBcjUBAaGk1BTj7N'
         address = 'mpLQjfK79b7CCV4VMJWEWAj5Mpx8Up5zxB'
         expected_signature = 'INbVnW4e6PeRmsv2Qgu8NuopvrVjkcxob+sX8OcZG0SALhWybUjzMLPdAsXI46YZGb0KQTRii+wWIQzRpG/U+S0='
+        priv_key = 'L2KKHnjnh3rjDhBFGynbZZpxX7Q6mQbT4QqWk7xVNBp4imBN6kgW'
+        address = 'XT7FPqV3ZfidDzX5mtQz9nFbkeC6q7dyZB'
+        expected_signature = 'H4GtJ4s9J2FmgqYxpP5woRKh2QHVZq+w+Al15vZQHu6MfMYt/EALuZbW25Bx4LlQ8S6YuOmG5Q2bimMkxVZ+Tk4='
         signature = self.nodes[0].signmessagewithprivkey(priv_key, message)
         assert_equal(expected_signature, signature)
         assert(self.nodes[0].verifymessage(address, signature, message))

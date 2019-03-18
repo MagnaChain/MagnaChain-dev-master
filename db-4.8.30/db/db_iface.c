@@ -358,7 +358,7 @@ __db_cursor(dbp, ip, txn, dbcp, flags)
 		return (ret);
 
 	/*
-	 * If this is CellDB, do all the locking in the interface, which is
+	 * If this is MCDB, do all the locking in the interface, which is
 	 * right here.
 	 */
 	if (CDB_LOCKING(env)) {
@@ -801,11 +801,11 @@ __db_get_arg(dbp, key, data, flags)
 
 	/*
 	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
-	 * with CellDB cursors since if you're going to write the cursor, you
+	 * with MCDB cursors since if you're going to write the cursor, you
 	 * had to create it with DB_WRITECURSOR.  Regardless, we check for
 	 * LOCKING_ON and not STD_LOCKING, as we don't want to disallow it.
 	 * If this changes, confirm that DB does not itself set the DB_RMW
-	 * flag in a path where CellDB may have been configured.
+	 * flag in a path where MCDB may have been configured.
 	 */
 	dirty = 0;
 	if (LF_ISSET(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW)) {
@@ -2239,11 +2239,11 @@ __dbc_get_arg(dbc, key, data, flags)
 	 * we modify them.
 	 *
 	 * Check for read-modify-write validity.  DB_RMW doesn't make sense
-	 * with CellDB cursors since if you're going to write the cursor, you
+	 * with MCDB cursors since if you're going to write the cursor, you
 	 * had to create it with DB_WRITECURSOR.  Regardless, we check for
 	 * LOCKING_ON and not STD_LOCKING, as we don't want to disallow it.
 	 * If this changes, confirm that DB does not itself set the DB_RMW
-	 * flag in a path where CellDB may have been configured.
+	 * flag in a path where MCDB may have been configured.
 	 */
 	dirty = 0;
 	if (LF_ISSET(DB_READ_COMMITTED | DB_READ_UNCOMMITTED | DB_RMW)) {

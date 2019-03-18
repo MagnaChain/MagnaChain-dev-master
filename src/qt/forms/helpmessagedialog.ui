@@ -52,7 +52,7 @@
         </size>
        </property>
        <property name="pixmap">
-        <pixmap resource="../celllink.qrc">:/icons/celllink</pixmap>
+        <pixmap resource="../magnachain.qrc">:/icons/magnachain</pixmap>
        </property>
        <property name="scaledContents">
         <bool>true</bool>
@@ -150,7 +150,7 @@
   </layout>
  </widget>
  <resources>
-  <include location="../celllink.qrc"/>
+  <include location="../magnachain.qrc"/>
  </resources>
  <connections>
   <connection>

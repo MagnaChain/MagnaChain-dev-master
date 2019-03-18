@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,28 +15,28 @@
 #include "utils/util.h"
 #include "validation/validation.h"
 
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 
 #include <stdint.h>
 
 #include <boost/test/unit_test.hpp>
 
 // Tests these internal-to-net_processing.cpp methods:
-extern bool AddOrphanTx(const CellTransactionRef& tx, NodeId peer);
+extern bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer);
 extern void EraseOrphansFor(NodeId peer);
 extern unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans);
-struct CellOrphanTx {
-    CellTransactionRef tx;
+struct MCOrphanTx {
+    MCTransactionRef tx;
     NodeId fromPeer;
     int64_t nTimeExpire;
 };
-extern std::map<uint256, CellOrphanTx> mapOrphanTransactions;
+extern std::map<uint256, MCOrphanTx> mapOrphanTransactions;
 
-CellService ip(uint32_t i)
+MCService ip(uint32_t i)
 {
     struct in_addr s;
     s.s_addr = i;
-    return CellService(CellNetAddr(s), Params().GetDefaultPort());
+    return MCService(MCNetAddr(s), Params().GetDefaultPort());
 }
 
 static NodeId id = 0;
@@ -58,8 +58,8 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
     std::atomic<bool> interruptDummy(false);
 
     // Mock an outbound peer
-    CellAddress addr1(ip(0xa0b0c001), NODE_NONE);
-    CellNode dummyNode1(id++, ServiceFlags(NODE_NETWORK|NODE_WITNESS), 0, INVALID_SOCKET, addr1, 0, 0, CellAddress(), "", /*fInboundIn=*/ false);
+    MCAddress addr1(ip(0xa0b0c001), NODE_NONE);
+    MCNode dummyNode1(id++, ServiceFlags(NODE_NETWORK|NODE_WITNESS), 0, INVALID_SOCKET, addr1, 0, 0, MCAddress(), "", /*fInboundIn=*/ false);
     dummyNode1.SetSendVersion(PROTOCOL_VERSION);
 
     peerLogic->InitializeNode(&dummyNode1);
@@ -90,31 +90,31 @@ BOOST_AUTO_TEST_CASE(outbound_slow_chain_eviction)
     peerLogic->FinalizeNode(dummyNode1.GetId(), dummy);
 }
 
-void AddRandomOutboundPeer(std::vector<CellNode *> &vNodes, PeerLogicValidation &peerLogic)
+void AddRandomOutboundPeer(std::vector<MCNode *> &vNodes, PeerLogicValidation &peerLogic)
 {
-    CellAddress addr(ip(GetRandInt(0xffffffff)), NODE_NONE);
-    vNodes.emplace_back(new CellNode(id++, ServiceFlags(NODE_NETWORK|NODE_WITNESS), 0, INVALID_SOCKET, addr, 0, 0, CellAddress(), "", /*fInboundIn=*/ false));
-    CellNode &node = *vNodes.back();
+    MCAddress addr(ip(GetRandInt(0xffffffff)), NODE_NONE);
+    vNodes.emplace_back(new MCNode(id++, ServiceFlags(NODE_NETWORK|NODE_WITNESS), 0, INVALID_SOCKET, addr, 0, 0, MCAddress(), "", /*fInboundIn=*/ false));
+    MCNode &node = *vNodes.back();
     node.SetSendVersion(PROTOCOL_VERSION);
 
     peerLogic.InitializeNode(&node);
     node.nVersion = 1;
     node.fSuccessfullyConnected = true;
 
-    CellConnmanTest::AddNode(node);
+    MCConnmanTest::AddNode(node);
 }
 
 BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
     constexpr int nMaxOutbound = 8;
-    CellConnman::Options options;
+    MCConnman::Options options;
     options.nMaxConnections = 125;
     options.nMaxOutbound = nMaxOutbound;
     options.nMaxFeeler = 1;
 
     connman->Init(options);
-    std::vector<CellNode *> vNodes;
+    std::vector<MCNode *> vNodes;
 
     // Mock some outbound peers
     for (int i=0; i<nMaxOutbound; ++i) {
@@ -124,11 +124,12 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
     peerLogic->CheckForStaleTipAndEvictPeers(consensusParams);
 
     // No nodes should be marked for disconnection while we have no extra peers
-    for (const CellNode *node : vNodes) {
+    for (const MCNode *node : vNodes) {
         BOOST_CHECK(node->fDisconnect == false);
     }
 
-    SetMockTime(GetTime() + 3*consensusParams.nPowTargetSpacing + 1);
+    int64_t oldSpacing = 10 * 60;
+    SetMockTime(GetTime() + 3 * oldSpacing + 1);
 
     // Now tip should definitely be stale, and we should look for an extra
     // outbound peer
@@ -136,7 +137,7 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
     BOOST_CHECK(connman->GetTryNewOutboundPeer());
 
     // Still no peers should be marked for disconnection
-    for (const CellNode *node : vNodes) {
+    for (const MCNode *node : vNodes) {
         BOOST_CHECK(node->fDisconnect == false);
     }
 
@@ -166,11 +167,11 @@ BOOST_AUTO_TEST_CASE(stale_tip_peer_management)
     BOOST_CHECK(vNodes.back()->fDisconnect == false);
 
     bool dummy;
-    for (const CellNode *node : vNodes) {
+    for (const MCNode *node : vNodes) {
         peerLogic->FinalizeNode(node->GetId(), dummy);
     }
 
-    CellConnmanTest::ClearNodes();
+    MCConnmanTest::ClearNodes();
 }
 
 BOOST_AUTO_TEST_CASE(DoS_banning)
@@ -178,8 +179,8 @@ BOOST_AUTO_TEST_CASE(DoS_banning)
     std::atomic<bool> interruptDummy(false);
 
     connman->ClearBanned();
-    CellAddress addr1(ip(0xa0b0c001), NODE_NONE);
-    CellNode dummyNode1(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr1, 0, 0, CellAddress(), "", true);
+    MCAddress addr1(ip(0xa0b0c001), NODE_NONE);
+    MCNode dummyNode1(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr1, 0, 0, MCAddress(), "", true);
     dummyNode1.SetSendVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(&dummyNode1);
     dummyNode1.nVersion = 1;
@@ -189,8 +190,8 @@ BOOST_AUTO_TEST_CASE(DoS_banning)
     BOOST_CHECK(connman->IsBanned(addr1));
     BOOST_CHECK(!connman->IsBanned(ip(0xa0b0c001|0x0000ff00))); // Different IP, not banned
 
-    CellAddress addr2(ip(0xa0b0c002), NODE_NONE);
-    CellNode dummyNode2(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr2, 1, 1, CellAddress(), "", true);
+    MCAddress addr2(ip(0xa0b0c002), NODE_NONE);
+    MCNode dummyNode2(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr2, 1, 1, MCAddress(), "", true);
     dummyNode2.SetSendVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(&dummyNode2);
     dummyNode2.nVersion = 1;
@@ -214,8 +215,8 @@ BOOST_AUTO_TEST_CASE(DoS_banscore)
 
     connman->ClearBanned();
     gArgs.ForceSetArg("-banscore", "111"); // because 11 is my favorite number
-    CellAddress addr1(ip(0xa0b0c001), NODE_NONE);
-    CellNode dummyNode1(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr1, 3, 1, CellAddress(), "", true);
+    MCAddress addr1(ip(0xa0b0c001), NODE_NONE);
+    MCNode dummyNode1(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr1, 3, 1, MCAddress(), "", true);
     dummyNode1.SetSendVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(&dummyNode1);
     dummyNode1.nVersion = 1;
@@ -243,8 +244,8 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
     int64_t nStartTime = GetTime();
     SetMockTime(nStartTime); // Overrides future calls to GetTime()
 
-    CellAddress addr(ip(0xa0b0c001), NODE_NONE);
-    CellNode dummyNode(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr, 4, 4, CellAddress(), "", true);
+    MCAddress addr(ip(0xa0b0c001), NODE_NONE);
+    MCNode dummyNode(id++, NODE_NETWORK, 0, INVALID_SOCKET, addr, 4, 4, MCAddress(), "", true);
     dummyNode.SetSendVersion(PROTOCOL_VERSION);
     peerLogic->InitializeNode(&dummyNode);
     dummyNode.nVersion = 1;
@@ -264,9 +265,9 @@ BOOST_AUTO_TEST_CASE(DoS_bantime)
     peerLogic->FinalizeNode(dummyNode.GetId(), dummy);
 }
 
-CellTransactionRef RandomOrphan()
+MCTransactionRef RandomOrphan()
 {
-    std::map<uint256, CellOrphanTx>::iterator it;
+    std::map<uint256, MCOrphanTx>::iterator it;
     it = mapOrphanTransactions.lower_bound(InsecureRand256());
     if (it == mapOrphanTransactions.end())
         it = mapOrphanTransactions.begin();
@@ -275,15 +276,15 @@ CellTransactionRef RandomOrphan()
 
 BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
 {
-    CellKey key;
+    MCKey key;
     key.MakeNewKey(true);
-    CellBasicKeyStore keystore;
+    MCBasicKeyStore keystore;
     keystore.AddKey(key);
 
     // 50 orphan transactions:
     for (int i = 0; i < 50; i++)
     {
-        CellMutableTransaction tx;
+        MCMutableTransaction tx;
         tx.vin.resize(1);
         tx.vin[0].prevout.n = 0;
         tx.vin[0].prevout.hash = InsecureRand256();
@@ -298,9 +299,9 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
     // ... and 50 that depend on other orphans:
     for (int i = 0; i < 50; i++)
     {
-        CellTransactionRef txPrev = RandomOrphan();
+        MCTransactionRef txPrev = RandomOrphan();
 
-        CellMutableTransaction tx;
+        MCMutableTransaction tx;
         tx.vin.resize(1);
         tx.vin[0].prevout.n = 0;
         tx.vin[0].prevout.hash = txPrev->GetHash();
@@ -315,9 +316,9 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
     // This really-big orphan should be ignored:
     for (int i = 0; i < 10; i++)
     {
-        CellTransactionRef txPrev = RandomOrphan();
+        MCTransactionRef txPrev = RandomOrphan();
 
-        CellMutableTransaction tx;
+        MCMutableTransaction tx;
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey = GetScriptForDestination(key.GetPubKey().GetID());

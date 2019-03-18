@@ -1,10 +1,10 @@
 // Copyright (c) 2012-2015 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CHECKQUEUE_H
-#define CELLLINK_CHECKQUEUE_H
+#ifndef MAGNACHAIN_CHECKQUEUE_H
+#define MAGNACHAIN_CHECKQUEUE_H
 
 #include "thread/sync.h"
 
@@ -15,7 +15,7 @@
 #include <boost/thread/mutex.hpp>
 
 template <typename T>
-class CellCheckQueueControl;
+class MCCheckQueueControl;
 
 /** 
  * Queue for verifications that have to be performed.
@@ -28,7 +28,7 @@ class CellCheckQueueControl;
   * as an N'th worker, until all jobs are done.
   */
 template <typename T>
-class CellCheckQueue
+class MCCheckQueue
 {
 private:
     //! Mutex to protect the inner state
@@ -84,7 +84,8 @@ private:
                     if (nTodo == 0 && !fMaster)
                         // We processed the last element; inform the master it can exit and return the result
                         condMaster.notify_one();
-                } else {
+                }
+                else {
                     // first iteration
                     nTotal++;
                 }
@@ -128,11 +129,11 @@ private:
     }
 
 public:
-    //! Mutex to ensure only one concurrent CellCheckQueueControl
+    //! Mutex to ensure only one concurrent MCCheckQueueControl
     boost::mutex ControlMutex;
 
     //! Create a new check queue
-    CellCheckQueue(unsigned int nBatchSizeIn) : nIdle(0), nTotal(0), fAllOk(true), nTodo(0), fQuit(false), nBatchSize(nBatchSizeIn) {}
+    MCCheckQueue(unsigned int nBatchSizeIn) : nIdle(0), nTotal(0), fAllOk(true), nTodo(0), fQuit(false), nBatchSize(nBatchSizeIn) {}
 
     //! Worker thread
     void Thread()
@@ -161,28 +162,28 @@ public:
             condWorker.notify_all();
     }
 
-    ~CellCheckQueue()
+    ~MCCheckQueue()
     {
     }
 
 };
 
 /** 
- * RAII-style controller object for a CellCheckQueue that guarantees the passed
+ * RAII-style controller object for a MCCheckQueue that guarantees the passed
  * queue is finished before continuing.
  */
 template <typename T>
-class CellCheckQueueControl
+class MCCheckQueueControl
 {
 private:
-    CellCheckQueue<T> * const pqueue;
+    MCCheckQueue<T> * const pqueue;
     bool fDone;
 
 public:
-    CellCheckQueueControl() = delete;
-    CellCheckQueueControl(const CellCheckQueueControl&) = delete;
-    CellCheckQueueControl& operator=(const CellCheckQueueControl&) = delete;
-    explicit CellCheckQueueControl(CellCheckQueue<T> * const pqueueIn) : pqueue(pqueueIn), fDone(false)
+    MCCheckQueueControl() = delete;
+    MCCheckQueueControl(const MCCheckQueueControl&) = delete;
+    MCCheckQueueControl& operator=(const MCCheckQueueControl&) = delete;
+    explicit MCCheckQueueControl(MCCheckQueue<T> * const pqueueIn) : pqueue(pqueueIn), fDone(false)
     {
         // passed queue is supposed to be unused, or nullptr
         if (pqueue != nullptr) {
@@ -205,7 +206,7 @@ public:
             pqueue->Add(vChecks);
     }
 
-    ~CellCheckQueueControl()
+    ~MCCheckQueueControl()
     {
         if (!fDone)
             Wait();
@@ -215,4 +216,4 @@ public:
     }
 };
 
-#endif // CELLLINK_CHECKQUEUE_H
+#endif // MAGNACHAIN_CHECKQUEUE_H

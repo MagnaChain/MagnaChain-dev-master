@@ -1,10 +1,10 @@
 // Copyright (c) 2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_CONSENSUS_VERSIONBITS
-#define CELLLINK_CONSENSUS_VERSIONBITS
+#ifndef MAGNACHAIN_CONSENSUS_VERSIONBITS
+#define MAGNACHAIN_CONSENSUS_VERSIONBITS
 
 #include "chain/chain.h"
 #include <map>
@@ -29,7 +29,7 @@ enum ThresholdState {
 // A map that gives the state for blocks whose height is a multiple of Period().
 // The map is indexed by the block's parent, however, so all keys in the map
 // will either be nullptr or a block with (height + 1) % Period() == 0.
-typedef std::map<const CellBlockIndex*, ThresholdState> ThresholdConditionCache;
+typedef std::map<const MCBlockIndex*, ThresholdState> ThresholdConditionCache;
 
 struct VBDeploymentInfo {
     /** Deployment name */
@@ -53,17 +53,17 @@ extern const struct VBDeploymentInfo VersionBitsDeploymentInfo[];
  */
 class AbstractThresholdConditionChecker {
 protected:
-    virtual bool Condition(const CellBlockIndex* pindex, const Consensus::Params& params) const =0;
+    virtual bool Condition(const MCBlockIndex* pindex, const Consensus::Params& params) const =0;
     virtual int64_t BeginTime(const Consensus::Params& params) const =0;
     virtual int64_t EndTime(const Consensus::Params& params) const =0;
     virtual int Period(const Consensus::Params& params) const =0;
     virtual int Threshold(const Consensus::Params& params) const =0;
 
 public:
-    BIP9Stats GetStateStatisticsFor(const CellBlockIndex* pindex, const Consensus::Params& params) const;
+    BIP9Stats GetStateStatisticsFor(const MCBlockIndex* pindex, const Consensus::Params& params) const;
     // Note that the functions below take a pindexPrev as input: they compute information for block B based on its parent.
-    ThresholdState GetStateFor(const CellBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const;
-    int GetStateSinceHeightFor(const CellBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const;
+    ThresholdState GetStateFor(const MCBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const;
+    int GetStateSinceHeightFor(const MCBlockIndex* pindexPrev, const Consensus::Params& params, ThresholdConditionCache& cache) const;
 };
 
 struct VersionBitsCache
@@ -73,9 +73,9 @@ struct VersionBitsCache
     void Clear();
 };
 
-ThresholdState VersionBitsState(const CellBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache);
-BIP9Stats VersionBitsStatistics(const CellBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos);
-int VersionBitsStateSinceHeight(const CellBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache);
+ThresholdState VersionBitsState(const MCBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache);
+BIP9Stats VersionBitsStatistics(const MCBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos);
+int VersionBitsStateSinceHeight(const MCBlockIndex* pindexPrev, const Consensus::Params& params, Consensus::DeploymentPos pos, VersionBitsCache& cache);
 uint32_t VersionBitsMask(const Consensus::Params& params, Consensus::DeploymentPos pos);
 
 #endif

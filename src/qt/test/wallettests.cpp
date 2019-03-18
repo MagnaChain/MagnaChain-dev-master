@@ -1,6 +1,6 @@
 #include "wallettests.h"
 
-#include "qt/celllinkamountfield.h"
+#include "qt/magnachainamountfield.h"
 #include "qt/callback.h"
 #include "qt/optionsmodel.h"
 #include "qt/platformstyle.h"
@@ -10,7 +10,7 @@
 #include "qt/transactiontablemodel.h"
 #include "qt/transactionview.h"
 #include "qt/walletmodel.h"
-#include "test/test_celllink.h"
+#include "test/test_magnachain.h"
 #include "validation/validation.h"
 #include "wallet/wallet.h"
 
@@ -57,18 +57,18 @@ void ConfirmSend(QString* text = nullptr, bool cancel = false)
 }
 
 //! Send coins to address and return txid.
-uint256 SendCoins(CellWallet& wallet, SendCoinsDialog& sendCoinsDialog, const CellLinkAddress& address, CellAmount amount, bool rbf)
+uint256 SendCoins(MCWallet& wallet, SendCoinsDialog& sendCoinsDialog, const MagnaChainAddress& address, MCAmount amount, bool rbf)
 {
     QVBoxLayout* entries = sendCoinsDialog.findChild<QVBoxLayout*>("entries");
     SendCoinsEntry* entry = qobject_cast<SendCoinsEntry*>(entries->itemAt(0)->widget());
     entry->findChild<QValidatedLineEdit*>("payTo")->setText(QString::fromStdString(address.ToString()));
-    entry->findChild<CellLinkAmountField*>("payAmount")->setValue(amount);
+    entry->findChild<MagnaChainAmountField*>("payAmount")->setValue(amount);
     sendCoinsDialog.findChild<QFrame*>("frameFee")
         ->findChild<QFrame*>("frameFeeSelection")
         ->findChild<QCheckBox*>("optInRBF")
         ->setCheckState(rbf ? Qt::Checked : Qt::Unchecked);
     uint256 txid;
-    boost::signals2::scoped_connection c(wallet.NotifyTransactionChanged.connect([&txid](CellWallet*, const uint256& hash, ChangeType status) {
+    boost::signals2::scoped_connection c(wallet.NotifyTransactionChanged.connect([&txid](MCWallet*, const uint256& hash, ChangeType status) {
         if (status == CT_NEW) txid = hash;
     }));
     ConfirmSend();
@@ -137,9 +137,9 @@ void BumpFee(TransactionView& view, const uint256& txid, bool expectDisabled, st
 //
 // This also requires overriding the default minimal Qt platform:
 //
-//     src/qt/test/test_celllink-qt -platform xcb      # Linux
-//     src/qt/test/test_celllink-qt -platform windows  # Windows
-//     src/qt/test/test_celllink-qt -platform cocoa    # macOS
+//     src/qt/test/test_magnachain-qt -platform xcb      # Linux
+//     src/qt/test/test_magnachain-qt -platform windows  # Windows
+//     src/qt/test/test_magnachain-qt -platform cocoa    # macOS
 void TestSendCoins()
 {
     // Set up wallet and chain with 105 blocks (5 mature blocks for spending).
@@ -148,8 +148,8 @@ void TestSendCoins()
         test.CreateAndProcessBlock({}, GetScriptForRawPubKey(test.coinbaseKey.GetPubKey()));
     }
     bitdb.MakeMock();
-    std::unique_ptr<CellWalletDBWrapper> dbw(new CellWalletDBWrapper(&bitdb, "wallet_test.dat"));
-    CellWallet wallet(std::move(dbw));
+    std::unique_ptr<MCWalletDBWrapper> dbw(new MCWalletDBWrapper(&bitdb, "wallet_test.dat"));
+    MCWallet wallet(std::move(dbw));
     bool firstRun;
     wallet.LoadWallet(firstRun);
     {
@@ -172,8 +172,8 @@ void TestSendCoins()
     // Send two transactions, and verify they are added to transaction list.
     TransactionTableModel* transactionTableModel = walletModel.getTransactionTableModel();
     QCOMPARE(transactionTableModel->rowCount({}), 105);
-    uint256 txid1 = SendCoins(wallet, sendCoinsDialog, CellLinkAddress(CellKeyID()), 5 * COIN, false /* rbf */);
-    uint256 txid2 = SendCoins(wallet, sendCoinsDialog, CellLinkAddress(CellKeyID()), 10 * COIN, true /* rbf */);
+    uint256 txid1 = SendCoins(wallet, sendCoinsDialog, MagnaChainAddress(MCKeyID()), 5 * COIN, false /* rbf */);
+    uint256 txid2 = SendCoins(wallet, sendCoinsDialog, MagnaChainAddress(MCKeyID()), 10 * COIN, true /* rbf */);
     QCOMPARE(transactionTableModel->rowCount({}), 107);
     QVERIFY(FindTx(*transactionTableModel, txid1).isValid());
     QVERIFY(FindTx(*transactionTableModel, txid2).isValid());

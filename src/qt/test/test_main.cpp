@@ -1,10 +1,10 @@
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/celllink-config.h"
+#include "config/magnachain-config.h"
 #endif
 
 #include "chain/chainparams.h"
@@ -52,10 +52,10 @@ int main(int argc, char *argv[])
 {
     SetupEnvironment();
     SetupNetworking();
-    SelectParams(CellBaseChainParams::MAIN);
+    SelectParams(MCBaseChainParams::MAIN);
     noui_connect();
     ClearDatadirCache();
-    fs::path pathTemp = fs::temp_directory_path() / strprintf("test_celllink-qt_%lu_%i", (unsigned long)GetTime(), (int)GetRand(100000));
+    fs::path pathTemp = fs::temp_directory_path() / strprintf("test_magnachain-qt_%lu_%i", (unsigned long)GetTime(), (int)GetRand(100000));
     fs::create_directories(pathTemp);
     gArgs.ForceSetArg("-datadir", pathTemp.string());
 
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     // Don't remove this, it's needed to access
     // QApplication:: and QCoreApplication:: in the tests
     QApplication app(argc, argv);
-    app.setApplicationName("CellLink-Qt-test");
+    app.setApplicationName("MagnaChain-Qt-test");
 
     SSL_library_init();
 

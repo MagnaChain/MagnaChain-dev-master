@@ -1,5 +1,5 @@
-// Copyright (c) 2011-2013 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2011-2013 The MagnaChain Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -14,7 +14,7 @@
 - (NSString *)__bundleIdentifier
 {
     if (self == [NSBundle mainBundle]) {
-        return @"org.celllinkfoundation.CellLink-Qt";
+        return @"org.magnachainfoundation.MagnaChain-Qt";
     } else {
         return [self __bundleIdentifier];
     }

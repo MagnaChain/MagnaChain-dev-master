@@ -1,5 +1,5 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -118,14 +118,14 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
     /* Clear old signature to ensure users don't get confused on error with an old signature displayed */
     ui->signatureOut_SM->clear();
 
-    CellLinkAddress addr(ui->addressIn_SM->text().toStdString());
+    MagnaChainAddress addr(ui->addressIn_SM->text().toStdString());
     if (!addr.IsValid())
     {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_SM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
-    CellKeyID keyID;
+    MCKeyID keyID;
     if (!addr.GetKeyID(keyID))
     {
         ui->addressIn_SM->setValid(false);
@@ -142,7 +142,7 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
         return;
     }
 
-    CellKey key;
+    MCKey key;
     if (!model->getPrivKey(keyID, key))
     {
         ui->statusLabel_SM->setStyleSheet("QLabel { color: red; }");
@@ -150,7 +150,7 @@ void SignVerifyMessageDialog::on_signMessageButton_SM_clicked()
         return;
     }
 
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << ui->messageIn_SM->document()->toPlainText().toStdString();
 
@@ -198,14 +198,14 @@ void SignVerifyMessageDialog::on_addressBookButton_VM_clicked()
 
 void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
 {
-    CellLinkAddress addr(ui->addressIn_VM->text().toStdString());
+    MagnaChainAddress addr(ui->addressIn_VM->text().toStdString());
     if (!addr.IsValid())
     {
         ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_VM->setText(tr("The entered address is invalid.") + QString(" ") + tr("Please check the address and try again."));
         return;
     }
-    CellKeyID keyID;
+    MCKeyID keyID;
     if (!addr.GetKeyID(keyID))
     {
         ui->addressIn_VM->setValid(false);
@@ -225,11 +225,11 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
         return;
     }
 
-    CellHashWriter ss(SER_GETHASH, 0);
+    MCHashWriter ss(SER_GETHASH, 0);
     ss << strMessageMagic;
     ss << ui->messageIn_VM->document()->toPlainText().toStdString();
 
-    CellPubKey pubkey;
+    MCPubKey pubkey;
     if (!pubkey.RecoverCompact(ss.GetHash(), vchSig))
     {
         ui->signatureIn_VM->setValid(false);
@@ -238,7 +238,7 @@ void SignVerifyMessageDialog::on_verifyMessageButton_VM_clicked()
         return;
     }
 
-    if (!(CellLinkAddress(pubkey.GetID()) == addr))
+    if (!(MagnaChainAddress(pubkey.GetID()) == addr))
     {
         ui->statusLabel_VM->setStyleSheet("QLabel { color: red; }");
         ui->statusLabel_VM->setText(QString("<nobr>") + tr("Message verification failed.") + QString("</nobr>"));

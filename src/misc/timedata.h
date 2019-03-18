@@ -1,10 +1,10 @@
 // Copyright (c) 2014-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_TIMEDATA_H
-#define CELLLINK_TIMEDATA_H
+#ifndef MAGNACHAIN_TIMEDATA_H
+#define MAGNACHAIN_TIMEDATA_H
 
 #include <algorithm>
 #include <assert.h>
@@ -13,7 +13,7 @@
 
 static const int64_t DEFAULT_MAX_TIME_ADJUSTMENT = 70 * 60;
 
-class CellNetAddr;
+class MCNetAddr;
 
 /** 
  * Median filter over a stream of values.
@@ -74,6 +74,6 @@ public:
 /** Functions to keep track of adjusted P2P time */
 int64_t GetTimeOffset();
 int64_t GetAdjustedTime();
-void AddTimeData(const CellNetAddr& ip, int64_t nTime);
+void AddTimeData(const MCNetAddr& ip, int64_t nTime);
 
-#endif // CELLLINK_TIMEDATA_H
+#endif // MAGNACHAIN_TIMEDATA_H

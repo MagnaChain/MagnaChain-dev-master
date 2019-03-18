@@ -1,11 +1,11 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_KEY_H
-#define CELLLINK_KEY_H
+#ifndef MAGNACHAIN_KEY_H
+#define MAGNACHAIN_KEY_H
 
 #include "key/pubkey.h"
 #include "io/serialize.h"
@@ -33,7 +33,7 @@
 typedef std::vector<unsigned char, secure_allocator<unsigned char> > CPrivKey;
 
 /** An encapsulated private key. */
-class CellKey
+class MCKey
 {
 private:
     //! Whether this private key is valid. We check for correctness when modifying the key
@@ -51,18 +51,18 @@ private:
 
 public:
     //! Construct an invalid private key.
-    CellKey() : fValid(false), fCompressed(false)
+    MCKey() : fValid(false), fCompressed(false)
     {
         // Important: vch must be 32 bytes in length to not break serialization
         keydata.resize(32);
     }
 
     //! Destructor (again necessary because of memlocking).
-    ~CellKey()
+    ~MCKey()
     {
     }
 
-    friend bool operator==(const CellKey& a, const CellKey& b)
+    friend bool operator==(const MCKey& a, const MCKey& b)
     {
         return a.fCompressed == b.fCompressed &&
             a.size() == b.size() &&
@@ -108,7 +108,7 @@ public:
      * Compute the public key from a private key.
      * This is expensive.
      */
-    CellPubKey GetPubKey() const;
+    MCPubKey GetPubKey() const;
 
     /**
      * Create a DER-serialized signature.
@@ -126,26 +126,26 @@ public:
     bool SignCompact(const uint256& hash, std::vector<unsigned char>& vchSig) const;
 
     //! Derive BIP32 child key.
-    bool Derive(CellKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
+    bool Derive(MCKey& keyChild, ChainCode &ccChild, unsigned int nChild, const ChainCode& cc) const;
 
     /**
      * Verify thoroughly whether a private key and a public key match.
      * This is done using a different mechanism than just regenerating it.
      */
-    bool VerifyPubKey(const CellPubKey& vchPubKey) const;
+    bool VerifyPubKey(const MCPubKey& vchPubKey) const;
 
     //! Load private key and check that public key matches.
-    bool Load(CPrivKey& privkey, CellPubKey& vchPubKey, bool fSkipCheck);
+    bool Load(CPrivKey& privkey, MCPubKey& vchPubKey, bool fSkipCheck);
 };
 
-struct CellExtKey {
+struct MCExtKey {
     unsigned char nDepth;
     unsigned char vchFingerprint[4];
     unsigned int nChild;
     ChainCode chaincode;
-    CellKey key;
+    MCKey key;
 
-    friend bool operator==(const CellExtKey& a, const CellExtKey& b)
+    friend bool operator==(const MCExtKey& a, const MCExtKey& b)
     {
         return a.nDepth == b.nDepth &&
             memcmp(&a.vchFingerprint[0], &b.vchFingerprint[0], sizeof(vchFingerprint)) == 0 &&
@@ -156,8 +156,8 @@ struct CellExtKey {
 
     void Encode(unsigned char code[BIP32_EXTKEY_SIZE]) const;
     void Decode(const unsigned char code[BIP32_EXTKEY_SIZE]);
-    bool Derive(CellExtKey& out, unsigned int nChild) const;
-    CellExtPubKey Neuter() const;
+    bool Derive(MCExtKey& out, unsigned int nChild) const;
+    MCExtPubKey Neuter() const;
     void SetMaster(const unsigned char* seed, unsigned int nSeedLen);
     template <typename Stream>
     void Serialize(Stream& s) const
@@ -191,4 +191,4 @@ void ECC_Stop(void);
 /** Check that required EC support is available at runtime. */
 bool ECC_InitSanityCheck(void);
 
-#endif // CELLLINK_KEY_H
+#endif // MAGNACHAIN_KEY_H

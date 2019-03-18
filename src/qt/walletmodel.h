@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_WALLETMODEL_H
-#define CELLLINK_QT_WALLETMODEL_H
+#ifndef MAGNACHAIN_QT_WALLETMODEL_H
+#define MAGNACHAIN_QT_WALLETMODEL_H
 
 #include "paymentrequestplus.h"
 #include "walletmodeltransaction.h"
@@ -23,12 +23,12 @@ class RecentRequestsTableModel;
 class TransactionTableModel;
 class WalletModelTransaction;
 
-class CellCoinControl;
-class CellKeyID;
-class CellOutPoint;
-class CellOutput;
-class CellPubKey;
-class CellWallet;
+class MCCoinControl;
+class MCKeyID;
+class MCOutPoint;
+class MCOutput;
+class MCPubKey;
+class MCWallet;
 class uint256;
 
 QT_BEGIN_NAMESPACE
@@ -39,7 +39,7 @@ class SendCoinsRecipient
 {
 public:
     explicit SendCoinsRecipient() : amount(0), fSubtractFeeFromAmount(false), nVersion(SendCoinsRecipient::CURRENT_VERSION) { }
-    explicit SendCoinsRecipient(const QString &addr, const QString &_label, const CellAmount& _amount, const QString &_message):
+    explicit SendCoinsRecipient(const QString &addr, const QString &_label, const MCAmount& _amount, const QString &_message):
         address(addr), label(_label), amount(_amount), message(_message), fSubtractFeeFromAmount(false), nVersion(SendCoinsRecipient::CURRENT_VERSION) {}
 
     // If from an unauthenticated payment request, this is used for storing
@@ -49,7 +49,7 @@ public:
     // Todo: This is a hack, should be replaced with a cleaner solution!
     QString address;
     QString label;
-    CellAmount amount;
+    MCAmount amount;
     // If from a payment request, this is used for storing the memo
     QString message;
 
@@ -95,13 +95,13 @@ public:
     }
 };
 
-/** Interface to CellLink wallet from Qt view code. */
+/** Interface to MagnaChain wallet from Qt view code. */
 class WalletModel : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit WalletModel(const PlatformStyle *platformStyle, CellWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
+    explicit WalletModel(const PlatformStyle *platformStyle, MCWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
     ~WalletModel();
 
     enum StatusCode // Returned by sendCoins
@@ -130,13 +130,13 @@ public:
     TransactionTableModel *getTransactionTableModel();
     RecentRequestsTableModel *getRecentRequestsTableModel();
 
-    CellAmount getBalance(const CellCoinControl *coinControl = nullptr) const;
-    CellAmount getUnconfirmedBalance() const;
-    CellAmount getImmatureBalance() const;
+    MCAmount getBalance(const MCCoinControl *coinControl = nullptr) const;
+    MCAmount getUnconfirmedBalance() const;
+    MCAmount getImmatureBalance() const;
     bool haveWatchOnly() const;
-    CellAmount getWatchBalance() const;
-    CellAmount getWatchUnconfirmedBalance() const;
-    CellAmount getWatchImmatureBalance() const;
+    MCAmount getWatchBalance() const;
+    MCAmount getWatchUnconfirmedBalance() const;
+    MCAmount getWatchImmatureBalance() const;
     EncryptionStatus getEncryptionStatus() const;
 
     // Check address for validity
@@ -155,7 +155,7 @@ public:
     };
 
     // prepare transaction for getting txfee before sending coins
-    SendCoinsReturn prepareTransaction(WalletModelTransaction &transaction, const CellCoinControl& coinControl);
+    SendCoinsReturn prepareTransaction(WalletModelTransaction &transaction, const MCCoinControl& coinControl);
 
     // Send coins to a list of recipients
     SendCoinsReturn sendCoins(WalletModelTransaction &transaction);
@@ -190,17 +190,17 @@ public:
 
     UnlockContext requestUnlock();
 
-    bool getPubKey(const CellKeyID &address, CellPubKey& vchPubKeyOut) const;
-    bool IsSpendable(const CellTxDestination& dest) const;
-    bool getPrivKey(const CellKeyID &address, CellKey& vchPrivKeyOut) const;
-    void getOutputs(const std::vector<CellOutPoint>& vOutpoints, std::vector<CellOutput>& vOutputs);
-    bool isSpent(const CellOutPoint& outpoint) const;
-    void listCoins(std::map<QString, std::vector<CellOutput> >& mapCoins) const;
+    bool getPubKey(const MCKeyID &address, MCPubKey& vchPubKeyOut) const;
+    bool IsSpendable(const MCTxDestination& dest) const;
+    bool getPrivKey(const MCKeyID &address, MCKey& vchPrivKeyOut) const;
+    void getOutputs(const std::vector<MCOutPoint>& vOutpoints, std::vector<MCOutput>& vOutputs);
+    bool isSpent(const MCOutPoint& outpoint) const;
+    void listCoins(std::map<QString, std::vector<MCOutput> >& mapCoins) const;
 
     bool isLockedCoin(uint256 hash, unsigned int n) const;
-    void lockCoin(CellOutPoint& output);
-    void unlockCoin(CellOutPoint& output);
-    void listLockedCoins(std::vector<CellOutPoint>& vOutpts);
+    void lockCoin(MCOutPoint& output);
+    void unlockCoin(MCOutPoint& output);
+    void listLockedCoins(std::vector<MCOutPoint>& vOutpts);
 
     void loadReceiveRequests(std::vector<std::string>& vReceiveRequests);
     bool saveReceiveRequest(const std::string &sAddress, const int64_t nId, const std::string &sRequest);
@@ -220,7 +220,7 @@ public:
     bool getDefaultWalletRbf() const;
 
 private:
-    CellWallet *wallet;
+    MCWallet *wallet;
     bool fHaveWatchOnly;
     bool fForceCheckBalanceChanged;
 
@@ -233,12 +233,12 @@ private:
     RecentRequestsTableModel *recentRequestsTableModel;
 
     // Cache some values to be able to detect changes
-    CellAmount cachedBalance;
-    CellAmount cachedUnconfirmedBalance;
-    CellAmount cachedImmatureBalance;
-    CellAmount cachedWatchOnlyBalance;
-    CellAmount cachedWatchUnconfBalance;
-    CellAmount cachedWatchImmatureBalance;
+    MCAmount cachedBalance;
+    MCAmount cachedUnconfirmedBalance;
+    MCAmount cachedImmatureBalance;
+    MCAmount cachedWatchOnlyBalance;
+    MCAmount cachedWatchUnconfBalance;
+    MCAmount cachedWatchImmatureBalance;
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
 
@@ -250,8 +250,8 @@ private:
 
 Q_SIGNALS:
     // Signal that balance in wallet changed
-    void balanceChanged(const CellAmount& balance, const CellAmount& unconfirmedBalance, const CellAmount& immatureBalance,
-                        const CellAmount& watchOnlyBalance, const CellAmount& watchUnconfBalance, const CellAmount& watchImmatureBalance);
+    void balanceChanged(const MCAmount& balance, const MCAmount& unconfirmedBalance, const MCAmount& immatureBalance,
+                        const MCAmount& watchOnlyBalance, const MCAmount& watchUnconfBalance, const MCAmount& watchImmatureBalance);
 
     // Encryption status of wallet changed
     void encryptionStatusChanged(int status);
@@ -265,7 +265,7 @@ Q_SIGNALS:
     void message(const QString &title, const QString &message, unsigned int style);
 
     // Coins sent: from wallet, to recipient, in (serialized) transaction:
-    void coinsSent(CellWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
+    void coinsSent(MCWallet* wallet, SendCoinsRecipient recipient, QByteArray transaction);
 
     // Show progress dialog e.g. for rescan
     void showProgress(const QString &title, int nProgress);
@@ -286,4 +286,4 @@ public Q_SLOTS:
     void pollBalanceChanged();
 };
 
-#endif // CELLLINK_QT_WALLETMODEL_H
+#endif // MAGNACHAIN_QT_WALLETMODEL_H

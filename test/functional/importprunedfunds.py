@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the importprunedfunds and removeprunedfunds RPCs."""
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
-class ImportPrunedFundsTest(BitcoinTestFramework):
+class ImportPrunedFundsTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 2
 
     def run_test(self):
         self.log.info("Mining blocks...")
-        self.nodes[0].generate(101)
+        self.nodes[0].generate(3)
 
         self.sync_all()
         
@@ -33,7 +33,7 @@ class ImportPrunedFundsTest(BitcoinTestFramework):
         self.sync_all()
 
         #Node 1 sync test
-        assert_equal(self.nodes[1].getblockcount(),101)
+        assert_equal(self.nodes[1].getblockcount(),3)
 
         #Address Test - before import
         address_info = self.nodes[1].validateaddress(address1)
@@ -64,10 +64,27 @@ class ImportPrunedFundsTest(BitcoinTestFramework):
         rawtxn3 = self.nodes[0].gettransaction(txnid3)['hex']
         proof3 = self.nodes[0].gettxoutproof([txnid3])
 
+        # publish contract
+        contract = generate_contract(self.options.tmpdir)
+        result = self.nodes[0].publishcontract(contract)
+        self.nodes[0].generate(1)
+        txnid4,contract_id = result['txid'],result['contractaddress']
+        rawtxn4 = self.nodes[0].gettransaction(txnid4)['hex']
+        proof4 = self.nodes[0].gettxoutproof([txnid4])
+
+        # call contract
+        sender = self.nodes[0].getnewaddress()
+        result = self.nodes[0].callcontract(True, 1, contract_id, sender, "payable")
+        txnid5 = result['txid']
+        self.nodes[0].generate(1)
+        rawtxn5 = self.nodes[0].gettransaction(txnid5)['hex']
+        proof5 = self.nodes[0].gettxoutproof([txnid5])
         self.sync_all()
 
         #Import with no affiliated address
         assert_raises_rpc_error(-5, "No addresses", self.nodes[1].importprunedfunds, rawtxn1, proof1)
+        assert_raises_rpc_error(-5, "No addresses", self.nodes[1].importprunedfunds, rawtxn4, proof4)
+        assert_raises_rpc_error(-5, "No addresses", self.nodes[1].importprunedfunds, rawtxn5, proof5)
 
         balance1 = self.nodes[1].getbalance("", 0, True)
         assert_equal(balance1, Decimal(0))
@@ -99,6 +116,8 @@ class ImportPrunedFundsTest(BitcoinTestFramework):
 
         #Remove transactions
         assert_raises_rpc_error(-8, "Transaction does not exist in wallet.", self.nodes[1].removeprunedfunds, txnid1)
+        assert_raises_rpc_error(-8, "Transaction does not exist in wallet.", self.nodes[1].removeprunedfunds, txnid4)
+        assert_raises_rpc_error(-8, "Transaction does not exist in wallet.", self.nodes[1].removeprunedfunds, txnid5)
 
         balance1 = self.nodes[1].getbalance("*", 0, True)
         assert_equal(balance1, Decimal('0.075'))

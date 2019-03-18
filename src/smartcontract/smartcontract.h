@@ -1,14 +1,16 @@
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef SMARTCONTRACT_H
-#define SMARTCONTEACT_H
+#define SMARTCONTRACT_H
 
 extern "C"
 {
+#include "lua/lvm.h"
 #include "lua/lstate.h"
 #include "lua/lualib.h"
 #include "lua/lauxlib.h"
+//#include "lua/ldebug.h"
 }
 
 #include <set>
@@ -17,76 +19,95 @@ extern "C"
 #include "key/pubkey.h"
 #include "univalue.h"
 #include "smartcontract/contractdb.h"
+#include "coding/base58.h"
 
-const int MAX_CONTRACT_CALL = 10000;
+const int MAX_CONTRACT_FILE_LEN = 65536;
+const int MAX_CONTRACT_CALL = 15000;
 const int MAX_DATA_LEN = 1024 * 1024;
 
 class Coin;
-class CellWallet;
-class CellWalletTx;
-class CellLinkAddress;
-
-struct SmartContractRet
-{
-    UniValue result;
-    std::string data;
-    uint32_t runningTimes = 0;
-
-    SmartContractRet()
-        : result(UniValue::VARR) {
-    }
-};
+class MCWallet;
+class MCWalletTx;
+class MagnaChainAddress;
+class MakeBranchTxUTXO;
 
 class SmartLuaState
 {
 public:
+    static const int SAVE_TYPE_NONE = 0;
     static const int SAVE_TYPE_CACHE = 1;
     static const int SAVE_TYPE_DATA = 2;
+    static const int MAX_INTERNAL_CALL_NUM = 30;
 
-    std::vector<std::pair<Coin, CellOutPoint>> inputs;
-    std::vector<CellTxOut> outputs;
-    std::set<CellKeyID> contractKeys;           // luaÖ´ĞĞÆÚ¼äËùÓĞµ÷ÓÃ¹ıµÄºÏÔ¼
-    std::stack<CellLinkAddress> contractAddrs;  // ÒÔÕ»ĞÎÊ½±íÊ¾µ±Ç°µ÷ÓÃºÏÔ¼µÄºÏÔ¼µØÖ·
-    std::stack<CellLinkAddress> senderAddrs;    // ÒÔÕ»ĞÎÊ½±íÊ¾µ±Ç°µ÷ÓÃºÏÔ¼µÄµ÷ÓÃÕßµØÖ·
+    std::vector<MCTxOut> recipients;
+    std::set<MCContractID> contractIds; // luaæ‰§è¡ŒæœŸé—´æ‰€æœ‰è°ƒç”¨è¿‡çš„åˆçº¦
+    std::vector<MagnaChainAddress> contractAddrs;   // ä»¥æ ˆå½¢å¼è¡¨ç¤ºå½“å‰è°ƒç”¨åˆçº¦çš„åˆçº¦åœ°å€
+    MagnaChainAddress originAddr;   // å½“å‰è°ƒç”¨åˆçº¦çš„è°ƒç”¨è€…æœ€åŸå§‹å…¬é’¥åœ°å€
 
+    bool isPublish;
     int saveType;
-    int64_t timestamp;                          // Ö´ĞĞÊ±µÄÊ±¼ä´Á
-    int blockHeight;                            // Ö´ĞĞÊ±µÄÇø¿é¸ß¶È
-    CellAmount totalAmount = -1;
-    CellAmount sendAmount = 0;
+    int64_t timestamp;  // æ‰§è¡Œæ—¶çš„æ—¶é—´æˆ³
+    int blockHeight;    // æ‰§è¡Œæ—¶çš„åŒºå—é«˜åº¦
+    int txIndex;
+    MCAmount contractOut = 0;
     uint32_t runningTimes = 0;
-    size_t deltaDataLen = 0;
-    size_t codeLen = 0;
+    uint32_t deltaDataLen = 0;
+    uint32_t codeLen = 0;
+    int internalCallNum = 0;
+    CoinAmountCache* pCoinAmountCache;
+    std::map<MCContractID, ContractInfo> contractDataFrom;
 
 private:
-    mutable CellCriticalSection _contractCS;
-    ContractContext* _pContractContext;
-    CellBlockIndex* _pPrevBlockIndex;
-    std::queue<lua_State*> _luaStates;
+    mutable MCCriticalSection contractCS;
+    ContractContext* pContractContext = nullptr;
+    MCBlockIndex* pPrevBlockIndex = nullptr;
+    std::queue<lua_State*> luaStates;
+    MCTransactionRef tx;
 
 public:
-    void SetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo, bool cache);
-    bool GetContractInfo(const CellKeyID& contractKey, ContractInfo& contractInfo);
+    void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache);
+    bool GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
 
-    void Initialize(int64_t timestamp, int blockHeight, ContractContext* pContractContext, CellBlockIndex* pPrevBlockIndex, int saveType);
-    lua_State* GetLuaState(CellLinkAddress& contractAddr, CellLinkAddress& senderAddr);
+    void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, 
+        ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
+    lua_State* GetLuaState(MagnaChainAddress& contractAddr);
     void ReleaseLuaState(lua_State* L);
+
+    void Clear();
 };
 
-extern bool GetSenderAddr(CellWallet* pWallet, const std::string& strSenderAddr, CellLinkAddress& senderAddr);
-extern uint160 GenerateTempContractAddress(const CellLinkAddress& kSender, const std::string &strCode);
+bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
+MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
 
-extern void SetContractMsg(lua_State* L, const std::string& contractAddr, const std::string& sender, lua_Number payment, uint32_t blockTime, lua_Number blockHeight);
+//temp contract address for publish
+template<typename TxType>
+MCContractID GenerateContractAddressByTx(TxType& tx)
+{
+    MCHashWriter ss(SER_GETHASH, 0);
+    for (auto v : tx.vin)
+        ss << v.prevout;
+    for (auto v : tx.vout)
+        ss << v.nValue;
 
-extern int PublishContract(SmartLuaState* sls, CellWallet* pWallet, CellAmount amount, const std::string& strSenderAddr, std::string& rawCode, std::string& code, UniValue& ret);
-extern int PublishContract(SmartLuaState* sls, CellAmount amount, CellLinkAddress& contractAddr, CellLinkAddress& senderAddr, const std::string& rawCode, std::string& code, SmartContractRet& scr);
-extern int PublishContract(lua_State* L, const std::string& rawCode, std::string& code, SmartContractRet& ret);
+    ss << tx.pContractData->codeOrFunc;
+    ss << tx.pContractData->sender;
+    return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
+}
 
-extern int CallContract(SmartLuaState* sls, long& maxCallNum, CellAmount amount, CellLinkAddress& contractAddr, CellLinkAddress& senderAddr, const std::string& strFuncName, const UniValue& args, SmartContractRet& scr);
-extern int CallContract(lua_State* L, long maxCallNum, const std::string& code, const std::string& data, const std::string& strFuncName, const UniValue& args, SmartContractRet& ret);
+std::string TrimCode(const std::string& rawCode);
 
-// LuaÄÚÖÃº¯Êı
-extern int InternalCallContract(lua_State *L);
-extern int SendCoins(lua_State* L);
+bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
+bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret, bool decompress);
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, UniValue& ret);
+
+bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
+bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);
+
+uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
+uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData);
+bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractTxFinalData>& contractData, std::vector<uint256>& leaves);
+bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves);
+uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool* mutated = nullptr);
+uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated = nullptr);
 
 #endif

@@ -1,15 +1,15 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "chain.h"
 
 /**
- * CellChain implementation
+ * MCChain implementation
  */
-void CellChain::SetTip(CellBlockIndex *pindex) {
+void MCChain::SetTip(MCBlockIndex *pindex) {
     if (pindex == nullptr) {
         vChain.clear();
         return;
@@ -21,7 +21,7 @@ void CellChain::SetTip(CellBlockIndex *pindex) {
     }
 }
 
-CellBlockLocator CellChain::GetLocator(const CellBlockIndex *pindex) const {
+MCBlockLocator MCChain::GetLocator(const MCBlockIndex *pindex) const {
     int nStep = 1;
     std::vector<uint256> vHave;
     vHave.reserve(32);
@@ -36,7 +36,7 @@ CellBlockLocator CellChain::GetLocator(const CellBlockIndex *pindex) const {
         // Exponentially larger steps back, plus the genesis block.
         int nHeight = std::max(pindex->nHeight - nStep, 0);
         if (Contains(pindex)) {
-            // Use O(1) CellChain index if possible.
+            // Use O(1) MCChain index if possible.
             pindex = (*this)[nHeight];
         } else {
             // Otherwise, use O(log n) skiplist.
@@ -46,10 +46,10 @@ CellBlockLocator CellChain::GetLocator(const CellBlockIndex *pindex) const {
             nStep *= 2;
     }
 
-    return CellBlockLocator(vHave);
+    return MCBlockLocator(vHave);
 }
 
-const CellBlockIndex *CellChain::FindFork(const CellBlockIndex *pindex) const {
+const MCBlockIndex *MCChain::FindFork(const MCBlockIndex *pindex) const {
     if (pindex == nullptr) {
         return nullptr;
     }
@@ -60,18 +60,18 @@ const CellBlockIndex *CellChain::FindFork(const CellBlockIndex *pindex) const {
     return pindex;
 }
 
-CellBlockIndex* CellChain::FindEarliestAtLeast(int64_t nTime) const
+MCBlockIndex* MCChain::FindEarliestAtLeast(int64_t nTime) const
 {
-    std::vector<CellBlockIndex*>::const_iterator lower = std::lower_bound(vChain.begin(), vChain.end(), nTime,
-        [](CellBlockIndex* pBlock, const int64_t& time) -> bool { return pBlock->GetBlockTimeMax() < time; });
+    std::vector<MCBlockIndex*>::const_iterator lower = std::lower_bound(vChain.begin(), vChain.end(), nTime,
+        [](MCBlockIndex* pBlock, const int64_t& time) -> bool { return pBlock->GetBlockTimeMax() < time; });
     return (lower == vChain.end() ? nullptr : *lower);
 }
 
 /** Turn the lowest '1' bit in the binary representation of a number into a '0'. */
 int static inline InvertLowestOne(int n) { return n & (n - 1); }
 
-/** Compute what height to jump back to with the CellBlockIndex::pskip pointer. */
-int static inline GetSkipHeight(int height) {
+/** Compute what height to jump back to with the MCBlockIndex::pskip pointer. */
+int GetSkipHeight(int height) {
     if (height < 2)
         return 0;
 
@@ -81,12 +81,12 @@ int static inline GetSkipHeight(int height) {
     return (height & 1) ? InvertLowestOne(InvertLowestOne(height - 1)) + 1 : InvertLowestOne(height);
 }
 
-CellBlockIndex* CellBlockIndex::GetAncestor(int height)
+MCBlockIndex* MCBlockIndex::GetAncestor(int height)
 {
     if (height > nHeight || height < 0)
         return nullptr;
 
-    CellBlockIndex* pindexWalk = this;
+    MCBlockIndex* pindexWalk = this;
     int heightWalk = nHeight;
     while (heightWalk > height) {
         int heightSkip = GetSkipHeight(heightWalk);
@@ -107,18 +107,18 @@ CellBlockIndex* CellBlockIndex::GetAncestor(int height)
     return pindexWalk;
 }
 
-const CellBlockIndex* CellBlockIndex::GetAncestor(int height) const
+const MCBlockIndex* MCBlockIndex::GetAncestor(int height) const
 {
-    return const_cast<CellBlockIndex*>(this)->GetAncestor(height);
+    return const_cast<MCBlockIndex*>(this)->GetAncestor(height);
 }
 
-void CellBlockIndex::BuildSkip()
+void MCBlockIndex::BuildSkip()
 {
     if (pprev)
         pskip = pprev->GetAncestor(GetSkipHeight(nHeight));
 }
 
-arith_uint256 GetBlockProof(const CellBlockIndex& block)
+arith_uint256 GetBlockProof(const MCBlockIndex& block)
 {
     arith_uint256 bnTarget;
     bool fNegative;
@@ -145,7 +145,7 @@ arith_uint256 GetBlockProof(uint32_t blockBits)
     return (~bnTarget / (bnTarget + 1)) + 1;
 }
 
-int64_t GetBlockProofEquivalentTime(const CellBlockIndex& to, const CellBlockIndex& from, const CellBlockIndex& tip, const Consensus::Params& params)
+int64_t GetBlockProofEquivalentTime(const MCBlockIndex& to, const MCBlockIndex& from, const MCBlockIndex& tip, const Consensus::Params& params)
 {
     arith_uint256 r;
     int sign = 1;
@@ -164,7 +164,7 @@ int64_t GetBlockProofEquivalentTime(const CellBlockIndex& to, const CellBlockInd
 
 /** Find the last common ancestor two blocks have.
  *  Both pa and pb must be non-nullptr. */
-const CellBlockIndex* LastCommonAncestor(const CellBlockIndex* pa, const CellBlockIndex* pb) {
+const MCBlockIndex* LastCommonAncestor(const MCBlockIndex* pa, const MCBlockIndex* pb) {
     if (pa->nHeight > pb->nHeight) {
         pa = pa->GetAncestor(pb->nHeight);
     } else if (pb->nHeight > pa->nHeight) {

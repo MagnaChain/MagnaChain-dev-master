@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The Bitcoin Core developers
+# Copyright (c) 2014-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test mempool limiting together/eviction with the wallet."""
 
-from test_framework.test_framework import BitcoinTestFramework
+from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 
-class MempoolLimitTest(BitcoinTestFramework):
+class MempoolLimitTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.setup_clean_chain = True
         self.num_nodes = 1
@@ -23,7 +23,7 @@ class MempoolLimitTest(BitcoinTestFramework):
         #create a mempool tx that will be evicted
         us0 = utxos.pop()
         inputs = [{ "txid" : us0["txid"], "vout" : us0["vout"]}]
-        outputs = {self.nodes[0].getnewaddress() : 0.0001}
+        outputs = {self.nodes[0].getnewaddress() : 0.1}
         tx = self.nodes[0].createrawtransaction(inputs, outputs)
         self.nodes[0].settxfee(relayfee) # specifically fund this tx with low fee
         txF = self.nodes[0].fundrawtransaction(tx)

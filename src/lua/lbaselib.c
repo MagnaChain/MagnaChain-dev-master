@@ -340,14 +340,17 @@ static int luaB_assert (lua_State *L) {
 
 
 static int luaB_unpack (lua_State *L) {
-  int i, e, n;
+  int i, e;
+  unsigned int n;
   luaL_checktype(L, 1, LUA_TTABLE);
   i = luaL_optint(L, 2, 1);
   e = luaL_opt(L, luaL_checkint, 3, luaL_getn(L, 1));
   if (i > e) return 0;  /* empty range */
-  n = e - i + 1;  /* number of elements */
-  if (n <= 0 || !lua_checkstack(L, n))  /* n <= 0 means arith. overflow */
-    return luaL_error(L, "too many results to unpack");
+  //n = e - i + 1;  /* number of elements */
+  //if (n <= 0 || !lua_checkstack(L, n))  /* n <= 0 means arith. overflow */
+  n = (unsigned int)e - (unsigned int)i;
+  if (n > (INT_MAX - 10) || !lua_checkstack(L, ++n))
+      return luaL_error(L, "too many results to unpack");
   lua_rawgeti(L, 1, i);  /* push arg[i] (avoiding overflow problems) */
   while (i++ < e)  /* push arg[i + 1...e] */
     lua_rawgeti(L, 1, i);
@@ -392,26 +395,6 @@ static int luaB_xpcall (lua_State *L) {
   return lua_gettop(L);  /* return status + all results */
 }
 
-/* 不支持嵌套调用lpcall,嵌套后最里层起作用 */
-static int luaB_lpcall(lua_State *L) {
-	int status;
-    luaL_checkany(L, 1);
-    long limit = luaL_optlong(L, 1, 0);
-    lua_setlimitinstruction(L, limit);
-    lua_pushboolean(L, 1);
-    lua_insert(L, 1);
-    lua_pushinteger(L, 0);
-    lua_insert(L, 2);
-	status = lua_pcall(L, lua_gettop(L) - 4, LUA_MULTRET, 0);
-	long rest = lua_setlimitinstruction(L, 0);// reset limit
-	long runtimes = limit - rest;
-	lua_pushboolean(L, (status == 0));
-	lua_replace(L, 1);
-	lua_pushinteger(L, runtimes);
-    lua_replace(L, 2);
-	return lua_gettop(L);  /* return status + run times + all results */
-}
-
 static int luaB_tostring (lua_State *L) {
   luaL_checkany(L, 1);
   if (luaL_callmeta(L, 1, "__tostring"))  /* is there a metafield? */
@@ -430,7 +413,8 @@ static int luaB_tostring (lua_State *L) {
       lua_pushliteral(L, "nil");
       break;
     default:
-      lua_pushfstring(L, "%s: %p", luaL_typename(L, 1), lua_topointer(L, 1));
+      //lua_pushfstring(L, "%s: %p", luaL_typename(L, 1), lua_topointer(L, 1));
+      lua_pushliteral(L, "not support");
       break;
   }
   return 1;
@@ -486,11 +470,7 @@ static const luaL_Reg base_funcs[] = {
   {"tostring", luaB_tostring},
   {"type", luaB_type},
   {"unpack", luaB_unpack},
-  { "unpacktable", luaB_unpack },
   {"xpcall", luaB_xpcall},
-
-//  {"limitinstruction", luaB_limitinstruction },
-  {"lpcall", luaB_lpcall },
   {NULL, NULL}
 };
 

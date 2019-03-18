@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_PEERTABLEMODEL_H
-#define CELLLINK_QT_PEERTABLEMODEL_H
+#ifndef MAGNACHAIN_QT_PEERTABLEMODEL_H
+#define MAGNACHAIN_QT_PEERTABLEMODEL_H
 
 #include "net/net_processing.h" // For CNodeStateStats
 #include "net/net.h"
@@ -20,7 +20,7 @@ class QTimer;
 QT_END_NAMESPACE
 
 struct CNodeCombinedStats {
-    CellNodeStats nodeStats;
+    MCNodeStats nodeStats;
     CNodeStateStats nodeStateStats;
     bool fNodeStateStatsAvailable;
 };
@@ -81,4 +81,4 @@ private:
     QTimer *timer;
 };
 
-#endif // CELLLINK_QT_PEERTABLEMODEL_H
+#endif // MAGNACHAIN_QT_PEERTABLEMODEL_H

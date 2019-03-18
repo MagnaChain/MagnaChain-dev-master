@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -33,8 +33,8 @@
 #include "utils/utilstrencodings.h"
 #include "validation/validationinterface.h"
 
-#if defined(NDEBUG)
-# error "CellLink cannot be compiled without assertions."
+#if defined(NDEBUG) && !defined(SDK_RELEASE)
+# error "MagnaChain cannot be compiled without assertions."
 #endif
 
 std::atomic<int64_t> nTimeBestReceived(0); // Used only to inform the wallet of when we last received a block
@@ -69,18 +69,18 @@ struct IteratorComparator
 	}
 };
 
-struct CellOrphanTx {
+struct MCOrphanTx {
     // When modifying, adapt the copy of this definition in tests/DoS_tests.
-    CellTransactionRef tx;
+    MCTransactionRef tx;
     NodeId fromPeer;
     int64_t nTimeExpire;  
 };
-std::map<uint256, CellOrphanTx> mapOrphanTransactions GUARDED_BY(cs_main);
-std::map<CellOutPoint, std::set<std::map<uint256, CellOrphanTx>::iterator, IteratorComparator>> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
+std::map<uint256, MCOrphanTx> mapOrphanTransactions GUARDED_BY(cs_main);
+std::map<MCOutPoint, std::set<std::map<uint256, MCOrphanTx>::iterator, IteratorComparator>> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
 void EraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 static size_t vExtraTxnForCompactIt = 0;
-static std::vector<std::pair<uint256, CellTransactionRef>> vExtraTxnForCompact GUARDED_BY(cs_main);
+static std::vector<std::pair<uint256, MCTransactionRef>> vExtraTxnForCompact GUARDED_BY(cs_main);
 
 static const uint64_t RANDOMIZER_ID_ADDRESS_RELAY = 0x3cac0035b5866b90ULL; // SHA256("main address relay")[0:8]
 
@@ -118,16 +118,9 @@ namespace {
      *
      * Memory used: 1.3 MB
      */
-    std::unique_ptr<CellRollingBloomFilter> recentRejects;
+    std::unique_ptr<MCRollingBloomFilter> recentRejects;
     uint256 hashRecentRejectsChainTip;
 
-    /** Blocks that are in flight, and that are in the queue to be downloaded. Protected by cs_main. */
-    struct QueuedBlock {
-        uint256 hash;
-        const CellBlockIndex* pindex;                               //!< Optional.
-        bool fValidatedHeaders;                                  //!< Whether this block has validated headers at the time of request.
-        std::unique_ptr<PartiallyDownloadedBlock> partialBlock;  //!< Optional, used for CMPCTBLOCK downloads
-    };
     std::map<uint256, std::pair<NodeId, std::list<QueuedBlock>::iterator> > mapBlocksInFlight;
 
     /** Stack of nodes which we have set to announce using compact blocks */
@@ -146,151 +139,24 @@ namespace {
     int64_t g_last_tip_update = 0;
 
     /** Relay map, protected by cs_main. */
-    typedef std::map<uint256, CellTransactionRef> MapRelay;
+    typedef std::map<uint256, MCTransactionRef> MapRelay;
     MapRelay mapRelay;
     /** Expiration-time ordered list of (expire time, relay map entry) pairs, protected by cs_main). */
     std::deque<std::pair<int64_t, MapRelay::iterator>> vRelayExpiration;
 } // namespace
 
-namespace {
-
-struct CellBlockReject {
-    unsigned char chRejectCode;
-    std::string strRejectReason;
-    uint256 hashBlock;
-};
-
-/**
- * Maintain validation-specific state about nodes, protected by cs_main, instead
- * by CellNode's own locks. This simplifies asynchronous operation, where
- * processing of incoming data is done after the ProcessMessage call returns,
- * and we're no longer holding the node's locks.
- */
-struct CellNodeState {
-    //! The peer's address
-    const CellService address;
-    //! Whether we have a fully established connection.
-    bool fCurrentlyConnected;
-    //! Accumulated misbehaviour score for this peer.
-    int nMisbehavior;
-    //! Whether this peer should be disconnected and banned (unless whitelisted).
-    bool fShouldBan;
-    //! String name of this peer (debugging/logging purposes).
-    const std::string name;
-    //! List of asynchronously-determined block rejections to notify this peer about.
-    std::vector<CellBlockReject> rejects;
-    //! The best known block we know this peer has announced.
-    const CellBlockIndex *pindexBestKnownBlock;
-    //! The hash of the last unknown block this peer has announced.
-    uint256 hashLastUnknownBlock;
-    //! The last full block we both have.
-    const CellBlockIndex *pindexLastCommonBlock;
-    //! The best header we have sent our peer.
-    const CellBlockIndex *pindexBestHeaderSent;
-    //! Length of current-streak of unconnecting headers announcements
-    int nUnconnectingHeaders;
-    //! Whether we've started headers synchronization with this peer.
-    bool fSyncStarted;
-    //! When to potentially disconnect peer for stalling headers download
-    int64_t nHeadersSyncTimeout;
-    //! Since when we're stalling block download progress (in microseconds), or 0.
-    int64_t nStallingSince;
-    std::list<QueuedBlock> vBlocksInFlight;
-    //! When the first entry in vBlocksInFlight started downloading. Don't care when vBlocksInFlight is empty.
-    int64_t nDownloadingSince;
-    int nBlocksInFlight;
-    int nBlocksInFlightValidHeaders;
-    //! Whether we consider this a preferred download peer.
-    bool fPreferredDownload;
-    //! Whether this peer wants invs or headers (when possible) for block announcements.
-    bool fPreferHeaders;
-    //! Whether this peer wants invs or cmpctblocks (when possible) for block announcements.
-    bool fPreferHeaderAndIDs;
-    /**
-      * Whether this peer will send us cmpctblocks if we request them.
-      * This is not used to gate request logic, as we really only care about fSupportsDesiredCmpctVersion,
-      * but is used as a flag to "lock in" the version of compact blocks (fWantsCmpctWitness) we send.
-      */
-    bool fProvidesHeaderAndIDs;
-    //! Whether this peer can give us witnesses
-    bool fHaveWitness;
-    //! Whether this peer wants witnesses in cmpctblocks/blocktxns
-    bool fWantsCmpctWitness;
-    /**
-     * If we've announced NODE_WITNESS to this peer: whether the peer sends witnesses in cmpctblocks/blocktxns,
-     * otherwise: whether this peer sends non-witnesses in cmpctblocks/blocktxns.
-     */
-    bool fSupportsDesiredCmpctVersion;
-
-    /** State used to enforce CHAIN_SYNC_TIMEOUT
-      * Only in effect for outbound, non-manual connections, with
-      * m_protect == false
-      * Algorithm: if a peer's best known block has less work than our tip,
-      * set a timeout CHAIN_SYNC_TIMEOUT seconds in the future:
-      *   - If at timeout their best known block now has more work than our tip
-      *     when the timeout was set, then either reset the timeout or clear it
-      *     (after comparing against our current tip's work)
-      *   - If at timeout their best known block still has less work than our
-      *     tip did when the timeout was set, then send a getheaders message,
-      *     and set a shorter timeout, HEADERS_RESPONSE_TIME seconds in future.
-      *     If their best known block is still behind when that new timeout is
-      *     reached, disconnect.
-      */
-    struct ChainSyncTimeoutState {
-        //! A timeout used for checking whether our peer has sufficiently synced
-        int64_t m_timeout;
-        //! A header with the work we require on our peer's chain
-        const CellBlockIndex * m_work_header;
-        //! After timeout is reached, set to true after sending getheaders
-        bool m_sent_getheaders;
-        //! Whether this peer is protected from disconnection due to a bad/slow chain
-        bool m_protect;
-    };
-
-    ChainSyncTimeoutState m_chain_sync;
-
-    //! Time of last new block announcement
-    int64_t m_last_block_announcement;
-
-    CellNodeState(CellAddress addrIn, std::string addrNameIn) : address(addrIn), name(addrNameIn) {
-        fCurrentlyConnected = false;
-        nMisbehavior = 0;
-        fShouldBan = false;
-        pindexBestKnownBlock = nullptr;
-        hashLastUnknownBlock.SetNull();
-        pindexLastCommonBlock = nullptr;
-        pindexBestHeaderSent = nullptr;
-        nUnconnectingHeaders = 0;
-        fSyncStarted = false;
-        nHeadersSyncTimeout = 0;
-        nStallingSince = 0;
-        nDownloadingSince = 0;
-        nBlocksInFlight = 0;
-        nBlocksInFlightValidHeaders = 0;
-        fPreferredDownload = false;
-        fPreferHeaders = false;
-        fPreferHeaderAndIDs = false;
-        fProvidesHeaderAndIDs = false;
-        fHaveWitness = false;
-        fWantsCmpctWitness = false;
-        fSupportsDesiredCmpctVersion = false;
-        m_chain_sync = { 0, nullptr, false, false };
-        m_last_block_announcement = 0;
-    }
-};
-
 /** Map maintaining per-node state. Requires cs_main. */
-std::map<NodeId, CellNodeState> mapNodeState;
+std::map<NodeId, MCNodeState> mapNodeState;
 
-// Requires cs_main.
-CellNodeState *State(NodeId pnode) {
-    std::map<NodeId, CellNodeState>::iterator it = mapNodeState.find(pnode);
+  // Requires cs_main.
+MCNodeState *State(NodeId pnode) {
+    std::map<NodeId, MCNodeState>::iterator it = mapNodeState.find(pnode);
     if (it == mapNodeState.end())
         return nullptr;
     return &it->second;
 }
 
-void UpdatePreferredDownload(CellNode* node, CellNodeState* state)
+void UpdatePreferredDownload(MCNode* node, MCNodeState* state)
 {
     nPreferredDownload -= state->fPreferredDownload;
 
@@ -300,26 +166,29 @@ void UpdatePreferredDownload(CellNode* node, CellNodeState* state)
     nPreferredDownload += state->fPreferredDownload;
 }
 
-void PushNodeVersion(CellNode *pnode, CellConnman* connman, int64_t nTime)
+void PushNodeVersion(MCNode *pnode, MCConnman* connman, int64_t nTime)
 {
     ServiceFlags nLocalNodeServices = pnode->GetLocalServices();
     uint64_t nonce = pnode->GetLocalNonce();
     int nNodeStartingHeight = pnode->GetMyStartingHeight();
     NodeId nodeid = pnode->GetId();
-    CellAddress addr = pnode->addr;
+    MCAddress addr = pnode->addr;
 
-    CellAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : CellAddress(CellService(), addr.nServices));
-    CellAddress addrMe = CellAddress(CellService(), nLocalNodeServices);
+    MCAddress addrYou = (addr.IsRoutable() && !IsProxy(addr) ? addr : MCAddress(MCService(), addr.nServices));
+    MCAddress addrMe = MCAddress(MCService(), nLocalNodeServices);
 
     connman->PushMessage(pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::VERSION, PROTOCOL_VERSION, (uint64_t)nLocalNodeServices, nTime, Params().GetBranchId(), addrYou, addrMe,
-            nonce, strSubVersion, nNodeStartingHeight, ::fRelayTxes));
+        nonce, strSubVersion, nNodeStartingHeight, ::fRelayTxes));
 
     if (fLogIPs) {
         LogPrint(BCLog::NET, "send version message: version %d, blocks=%d, us=%s, them=%s, peer=%d\n", PROTOCOL_VERSION, nNodeStartingHeight, addrMe.ToString(), addrYou.ToString(), nodeid);
-    } else {
+    }
+    else {
         LogPrint(BCLog::NET, "send version message: version %d, blocks=%d, us=%s, peer=%d\n", PROTOCOL_VERSION, nNodeStartingHeight, addrMe.ToString(), nodeid);
     }
 }
+
+namespace {
 
 // Requires cs_main.
 // Returns a bool indicating whether we requested this block.
@@ -327,7 +196,7 @@ void PushNodeVersion(CellNode *pnode, CellConnman* connman, int64_t nTime)
 bool MarkBlockAsReceived(const uint256& hash) {
     std::map<uint256, std::pair<NodeId, std::list<QueuedBlock>::iterator> >::iterator itInFlight = mapBlocksInFlight.find(hash);
     if (itInFlight != mapBlocksInFlight.end()) {
-        CellNodeState *state = State(itInFlight->second.first);
+        MCNodeState *state = State(itInFlight->second.first);
         state->nBlocksInFlightValidHeaders -= itInFlight->second.second->fValidatedHeaders;
         if (state->nBlocksInFlightValidHeaders == 0 && itInFlight->second.second->fValidatedHeaders) {
             // Last validated block on the queue was received.
@@ -349,8 +218,8 @@ bool MarkBlockAsReceived(const uint256& hash) {
 // Requires cs_main.
 // returns false, still setting pit, if the block was already in flight from the same peer
 // pit will only be valid as long as the same cs_main lock is being held
-bool MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const CellBlockIndex* pindex = nullptr, std::list<QueuedBlock>::iterator** pit = nullptr) {
-    CellNodeState *state = State(nodeid);
+bool MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const MCBlockIndex* pindex = nullptr, std::list<QueuedBlock>::iterator** pit = nullptr) {
+    MCNodeState *state = State(nodeid);
     assert(state != nullptr);
 
     // Short-circuit most stuff in case its from the same node
@@ -384,7 +253,7 @@ bool MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const CellBlockInde
 
 /** Check whether the last unknown block a peer advertised is not yet known. */
 void ProcessBlockAvailability(NodeId nodeid) {
-    CellNodeState *state = State(nodeid);
+    MCNodeState *state = State(nodeid);
     assert(state != nullptr);
 
     if (!state->hashLastUnknownBlock.IsNull()) {
@@ -399,7 +268,7 @@ void ProcessBlockAvailability(NodeId nodeid) {
 
 /** Update tracking information about which blocks a peer is assumed to have. */
 void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
-    CellNodeState *state = State(nodeid);
+    MCNodeState *state = State(nodeid);
     assert(state != nullptr);
 
     ProcessBlockAvailability(nodeid);
@@ -415,9 +284,9 @@ void UpdateBlockAvailability(NodeId nodeid, const uint256 &hash) {
     }
 }
 
-void MaybeSetPeerAsAnnouncingHeaderAndIDs(NodeId nodeid, CellConnman* connman) {
+void MaybeSetPeerAsAnnouncingHeaderAndIDs(NodeId nodeid, MCConnman* connman) {
     AssertLockHeld(cs_main);
-    CellNodeState* nodestate = State(nodeid);
+    MCNodeState* nodestate = State(nodeid);
     if (!nodestate || !nodestate->fSupportsDesiredCmpctVersion) {
         // Never ask from peers who can't provide witnesses.
         return;
@@ -430,13 +299,13 @@ void MaybeSetPeerAsAnnouncingHeaderAndIDs(NodeId nodeid, CellConnman* connman) {
                 return;
             }
         }
-        connman->ForNode(nodeid, [connman](CellNode* pfrom){
+        connman->ForNode(nodeid, [connman](MCNode* pfrom){
             bool fAnnounceUsingCMPCTBLOCK = false;
             uint64_t nCMPCTBLOCKVersion = (pfrom->GetLocalServices() & NODE_WITNESS) ? 2 : 1;
             if (lNodesAnnouncingHeaderAndIDs.size() >= 3) {
                 // As per BIP152, we only get 3 of our peers to announce
                 // blocks using compact encodings.
-                connman->ForNode(lNodesAnnouncingHeaderAndIDs.front(), [connman, fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion](CellNode* pnodeStop){
+                connman->ForNode(lNodesAnnouncingHeaderAndIDs.front(), [connman, fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion](MCNode* pnodeStop){
                     connman->PushMessage(pnodeStop, CNetMsgMaker(pnodeStop->GetSendVersion()).Make(NetMsgType::SENDCMPCT, fAnnounceUsingCMPCTBLOCK, nCMPCTBLOCKVersion));
                     return true;
                 });
@@ -466,7 +335,7 @@ bool CanDirectFetch(const Consensus::Params &consensusParams)
 }
 
 // Requires cs_main
-bool PeerHasHeader(CellNodeState *state, const CellBlockIndex *pindex)
+bool PeerHasHeader(MCNodeState *state, const MCBlockIndex *pindex)
 {
     if (state->pindexBestKnownBlock && pindex == state->pindexBestKnownBlock->GetAncestor(pindex->nHeight))
         return true;
@@ -477,12 +346,12 @@ bool PeerHasHeader(CellNodeState *state, const CellBlockIndex *pindex)
 
 /** Update pindexLastCommonBlock and add not-in-flight missing successors to vBlocks, until it has
  *  at most count entries. */
-void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<const CellBlockIndex*>& vBlocks, NodeId& nodeStaller, const Consensus::Params& consensusParams) {
+void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<const MCBlockIndex*>& vBlocks, NodeId& nodeStaller, const Consensus::Params& consensusParams) {
     if (count == 0)
         return;
 
     vBlocks.reserve(vBlocks.size() + count);
-    CellNodeState *state = State(nodeid);
+    MCNodeState *state = State(nodeid);
     assert(state != nullptr);
 
     // Make sure pindexBestKnownBlock is up to date, we'll need it.
@@ -505,8 +374,8 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
     if (state->pindexLastCommonBlock == state->pindexBestKnownBlock)
         return;
 
-    std::vector<const CellBlockIndex*> vToFetch;
-    const CellBlockIndex *pindexWalk = state->pindexLastCommonBlock;
+    std::vector<const MCBlockIndex*> vToFetch;
+    const MCBlockIndex *pindexWalk = state->pindexLastCommonBlock;
     // Never fetch further than the best block we know the peer has, or more than BLOCK_DOWNLOAD_WINDOW + 1 beyond the last
     // linked block we have in common with this peer. The +1 is so we can detect stalling, namely if we would be able to
     // download that next block if the window were 1 larger.
@@ -515,8 +384,8 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
     NodeId waitingfor = -1;
     while (pindexWalk->nHeight < nMaxHeight) {
         // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
-        // pindexBestKnownBlock) into vToFetch. We fetch 128, because CellBlockIndex::GetAncestor may be as expensive
-        // as iterating over ~100 CellBlockIndex* entries anyway.
+        // pindexBestKnownBlock) into vToFetch. We fetch 128, because MCBlockIndex::GetAncestor may be as expensive
+        // as iterating over ~100 MCBlockIndex* entries anyway.
         int nToFetch = std::min(nMaxHeight - pindexWalk->nHeight, std::max<int>(count - vBlocks.size(), 128));
         vToFetch.resize(nToFetch);
         pindexWalk = state->pindexBestKnownBlock->GetAncestor(pindexWalk->nHeight + nToFetch);
@@ -529,7 +398,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
         // are not yet downloaded and not in flight to vBlocks. In the mean time, update
         // pindexLastCommonBlock as long as all ancestors are already downloaded, or if it's
         // already part of our chain (and therefore don't need it even if pruned).
-        for (const CellBlockIndex* pindex : vToFetch) {
+        for (const MCBlockIndex* pindex : vToFetch) {
             if (!pindex->IsValid(BLOCK_VALID_TREE)) {
                 // We consider the chain that this peer is on invalid.
                 return;
@@ -570,19 +439,19 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<con
 void UpdateLastBlockAnnounceTime(NodeId node, int64_t time_in_seconds)
 {
     LOCK(cs_main);
-    CellNodeState *state = State(node);
+    MCNodeState *state = State(node);
     if (state) state->m_last_block_announcement = time_in_seconds;
 }
 
 // Returns true for outbound peers, excluding manual connections, feelers, and
 // one-shots
-bool IsOutboundDisconnectionCandidate(const CellNode *node)
+bool IsOutboundDisconnectionCandidate(const MCNode *node)
 {
     return !(node->fInbound || node->m_manual_connection || node->fFeeler || node->fOneShot);
 }
 
-void PeerLogicValidation::InitializeNode(CellNode *pnode) {
-    CellAddress addr = pnode->addr;
+void PeerLogicValidation::InitializeNode(MCNode *pnode) {
+    MCAddress addr = pnode->addr;
     std::string addrName = pnode->GetAddrName();
     NodeId nodeid = pnode->GetId();
     {
@@ -596,7 +465,7 @@ void PeerLogicValidation::InitializeNode(CellNode *pnode) {
 void PeerLogicValidation::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTime) {
     fUpdateConnectionTime = false;
     LOCK(cs_main);
-    CellNodeState *state = State(nodeid);
+    MCNodeState *state = State(nodeid);
     assert(state != nullptr);
 
     if (state->fSyncStarted)
@@ -630,7 +499,7 @@ void PeerLogicValidation::FinalizeNode(NodeId nodeid, bool& fUpdateConnectionTim
 
 bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
     LOCK(cs_main);
-    CellNodeState *state = State(nodeid);
+    MCNodeState *state = State(nodeid);
     if (state == nullptr)
         return false;
     stats.nMisbehavior = state->nMisbehavior;
@@ -648,7 +517,7 @@ bool GetNodeStateStats(NodeId nodeid, CNodeStateStats &stats) {
 // mapOrphanTransactions
 //
 
-void AddToCompactExtraTransactions(const CellTransactionRef& tx)
+void AddToCompactExtraTransactions(const MCTransactionRef& tx)
 {
     size_t max_extra_txn = gArgs.GetArg("-blockreconstructionextratxn", DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN);
     if (max_extra_txn <= 0)
@@ -659,7 +528,7 @@ void AddToCompactExtraTransactions(const CellTransactionRef& tx)
     vExtraTxnForCompactIt = (vExtraTxnForCompactIt + 1) % max_extra_txn;
 }
 
-bool AddOrphanTx(const CellTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     const uint256& hash = tx->GetHash();
     if (mapOrphanTransactions.count(hash))
@@ -679,9 +548,9 @@ bool AddOrphanTx(const CellTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQU
         return false;
     }
 
-    auto ret = mapOrphanTransactions.emplace(hash, CellOrphanTx{tx, peer, GetTime() + ORPHAN_TX_EXPIRE_TIME});
+    auto ret = mapOrphanTransactions.emplace(hash, MCOrphanTx{tx, peer, GetTime() + ORPHAN_TX_EXPIRE_TIME});
     assert(ret.second);
-    for (const CellTxIn& txin : tx->vin) {
+    for (const MCTxIn& txin : tx->vin) {
         mapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
     }
 
@@ -694,10 +563,10 @@ bool AddOrphanTx(const CellTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQU
 
 int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
-    std::map<uint256, CellOrphanTx>::iterator it = mapOrphanTransactions.find(hash);
+    std::map<uint256, MCOrphanTx>::iterator it = mapOrphanTransactions.find(hash);
     if (it == mapOrphanTransactions.end())
         return 0;
-    for (const CellTxIn& txin : it->second.tx->vin)
+    for (const MCTxIn& txin : it->second.tx->vin)
     {
         auto itPrev = mapOrphanTransactionsByPrev.find(txin.prevout);
         if (itPrev == mapOrphanTransactionsByPrev.end())
@@ -713,10 +582,10 @@ int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 void EraseOrphansFor(NodeId peer)
 {
     int nErased = 0;
-    std::map<uint256, CellOrphanTx>::iterator iter = mapOrphanTransactions.begin();
+    std::map<uint256, MCOrphanTx>::iterator iter = mapOrphanTransactions.begin();
     while (iter != mapOrphanTransactions.end())
     {
-        std::map<uint256, CellOrphanTx>::iterator maybeErase = iter++; // increment to avoid iterator becoming invalid
+        std::map<uint256, MCOrphanTx>::iterator maybeErase = iter++; // increment to avoid iterator becoming invalid
         if (maybeErase->second.fromPeer == peer)
         {
             nErased += EraseOrphanTx(maybeErase->second.tx->GetHash());
@@ -735,10 +604,10 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans) EXCLUSIVE_LOCKS_REQUIRE
         // Sweep out expired orphan pool entries:
         int nErased = 0;
         int64_t nMinExpTime = nNow + ORPHAN_TX_EXPIRE_TIME - ORPHAN_TX_EXPIRE_INTERVAL;
-        std::map<uint256, CellOrphanTx>::iterator iter = mapOrphanTransactions.begin();
+        std::map<uint256, MCOrphanTx>::iterator iter = mapOrphanTransactions.begin();
         while (iter != mapOrphanTransactions.end())
         {
-            std::map<uint256, CellOrphanTx>::iterator maybeErase = iter++;
+            std::map<uint256, MCOrphanTx>::iterator maybeErase = iter++;
             if (maybeErase->second.nTimeExpire <= nNow) {
                 nErased += EraseOrphanTx(maybeErase->second.tx->GetHash());
             } else {
@@ -753,7 +622,7 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans) EXCLUSIVE_LOCKS_REQUIRE
     {
         // Evict a random orphan:
         uint256 randomhash = GetRandHash();
-        std::map<uint256, CellOrphanTx>::iterator it = mapOrphanTransactions.lower_bound(randomhash);
+        std::map<uint256, MCOrphanTx>::iterator it = mapOrphanTransactions.lower_bound(randomhash);
         if (it == mapOrphanTransactions.end())
             it = mapOrphanTransactions.begin();
         EraseOrphanTx(it->first);
@@ -768,7 +637,7 @@ void Misbehaving(NodeId pnode, int howmuch)
     if (howmuch == 0)
         return;
 
-    CellNodeState *state = State(pnode);
+    MCNodeState *state = State(pnode);
     if (state == nullptr)
         return;
 
@@ -794,9 +663,10 @@ void Misbehaving(NodeId pnode, int howmuch)
 // blockchain -> download logic notification
 //
 
-PeerLogicValidation::PeerLogicValidation(CellConnman* connmanIn, CellScheduler &scheduler) : connman(connmanIn), m_stale_tip_check_time(0) {
+PeerLogicValidation::PeerLogicValidation(MCConnman* connmanIn, MCScheduler &scheduler, ProcessMessageFunc processMessageFunc, GetLocatorFunc getLocatorFunc)
+    : connman(connmanIn), m_stale_tip_check_time(0), processMessageFunc(processMessageFunc), getLocatorFunc(getLocatorFunc) {
     // Initialize global variables that cannot be constructed at startup.
-    recentRejects.reset(new CellRollingBloomFilter(120000, 0.000001));
+    recentRejects.reset(new MCRollingBloomFilter(120000, 0.000001));
 
     const Consensus::Params& consensusParams = Params().GetConsensus();
     // Stale tip checking and peer eviction are on two different timers, but we
@@ -807,20 +677,20 @@ PeerLogicValidation::PeerLogicValidation(CellConnman* connmanIn, CellScheduler &
     scheduler.scheduleEvery(std::bind(&PeerLogicValidation::CheckForStaleTipAndEvictPeers, this, consensusParams), EXTRA_PEER_CHECK_INTERVAL * 1000);
 }
 
-void PeerLogicValidation::BlockConnected(const std::shared_ptr<const CellBlock>& pblock, const CellBlockIndex* pindex, const std::vector<CellTransactionRef>& vtxConflicted) {
+void PeerLogicValidation::BlockConnected(const std::shared_ptr<const MCBlock>& pblock, const MCBlockIndex* pindex, const std::vector<MCTransactionRef>& vtxConflicted) {
     LOCK(cs_main);
 
     std::vector<uint256> vOrphanErase;
 
-    for (const CellTransactionRef& ptx : pblock->vtx) {
-        const CellTransaction& tx = *ptx;
+    for (const MCTransactionRef& ptx : pblock->vtx) {
+        const MCTransaction& tx = *ptx;
 
         // Which orphan pool entries must we evict?
         for (const auto& txin : tx.vin) {
             auto itByPrev = mapOrphanTransactionsByPrev.find(txin.prevout);
             if (itByPrev == mapOrphanTransactionsByPrev.end()) continue;
             for (auto mi = itByPrev->second.begin(); mi != itByPrev->second.end(); ++mi) {
-                const CellTransaction& orphanTx = *(*mi)->second.tx;
+                const MCTransaction& orphanTx = *(*mi)->second.tx;
                 const uint256& orphanHash = orphanTx.GetHash();
                 vOrphanErase.push_back(orphanHash);
             }
@@ -840,14 +710,14 @@ void PeerLogicValidation::BlockConnected(const std::shared_ptr<const CellBlock>&
 }
 
 // All of the following cache a recent block, and are protected by cs_most_recent_block
-static CellCriticalSection cs_most_recent_block;
-static std::shared_ptr<const CellBlock> most_recent_block;
-static std::shared_ptr<const CellBlockHeaderAndShortTxIDs> most_recent_compact_block;
+static MCCriticalSection cs_most_recent_block;
+static std::shared_ptr<const MCBlock> most_recent_block;
+static std::shared_ptr<const MCBlockHeaderAndShortTxIDs> most_recent_compact_block;
 static uint256 most_recent_block_hash;
 static bool fWitnessesPresentInMostRecentCompactBlock;
 
-void PeerLogicValidation::NewPoWValidBlock(const CellBlockIndex *pindex, const std::shared_ptr<const CellBlock>& pblock) {
-    std::shared_ptr<const CellBlockHeaderAndShortTxIDs> pcmpctblock = std::make_shared<const CellBlockHeaderAndShortTxIDs> (*pblock, true);
+void PeerLogicValidation::NewPoWValidBlock(const MCBlockIndex *pindex, const std::shared_ptr<const MCBlock>& pblock) {
+    std::shared_ptr<const MCBlockHeaderAndShortTxIDs> pcmpctblock = std::make_shared<const MCBlockHeaderAndShortTxIDs> (*pblock, true);
     const CNetMsgMaker msgMaker(PROTOCOL_VERSION);
 
     LOCK(cs_main);
@@ -868,12 +738,12 @@ void PeerLogicValidation::NewPoWValidBlock(const CellBlockIndex *pindex, const s
         fWitnessesPresentInMostRecentCompactBlock = fWitnessEnabled;
     }
 
-    connman->ForEachNode([this, &pcmpctblock, pindex, &msgMaker, fWitnessEnabled, &hashBlock](CellNode* pnode) {
+    connman->ForEachNode([this, &pcmpctblock, pindex, &msgMaker, fWitnessEnabled, &hashBlock](MCNode* pnode) {
         // TODO: Avoid the repeated-serialization here
         if (pnode->nVersion < INVALID_CB_NO_BAN_VERSION || pnode->fDisconnect)
             return;
         ProcessBlockAvailability(pnode->GetId());
-        CellNodeState &state = *State(pnode->GetId());
+        MCNodeState &state = *State(pnode->GetId());
         // If the peer has, or we announced to them the previous block already,
         // but we don't think they have this one, go ahead and announce it
         if (state.fPreferHeaderAndIDs && (!fWitnessEnabled || state.fWantsCmpctWitness) &&
@@ -887,14 +757,14 @@ void PeerLogicValidation::NewPoWValidBlock(const CellBlockIndex *pindex, const s
     });
 }
 
-void PeerLogicValidation::UpdatedBlockTip(const CellBlockIndex *pindexNew, const CellBlockIndex *pindexFork, bool fInitialDownload) {
+void PeerLogicValidation::UpdatedBlockTip(const MCBlockIndex *pindexNew, const MCBlockIndex *pindexFork, bool fInitialDownload) {
     const int nNewHeight = pindexNew->nHeight;
     connman->SetBestHeight(nNewHeight);
 
     if (!fInitialDownload) {
         // Find the hashes of all blocks that weren't previously in the best chain.
         std::vector<uint256> vHashes;
-        const CellBlockIndex *pindexToAnnounce = pindexNew;
+        const MCBlockIndex *pindexToAnnounce = pindexNew;
         while (pindexToAnnounce != pindexFork) {
             vHashes.push_back(pindexToAnnounce->GetBlockHash());
             pindexToAnnounce = pindexToAnnounce->pprev;
@@ -905,7 +775,7 @@ void PeerLogicValidation::UpdatedBlockTip(const CellBlockIndex *pindexNew, const
             }
         }
         // Relay inventory, but don't relay old inventory during initial block download.
-        connman->ForEachNode([nNewHeight, &vHashes](CellNode* pnode) {
+        connman->ForEachNode([nNewHeight, &vHashes](MCNode* pnode) {
             if (nNewHeight > (pnode->nStartingHeight != -1 ? pnode->nStartingHeight - 2000 : 0)) {
                 for (const uint256& hash : reverse_iterate(vHashes)) {
                     pnode->PushBlockHash(hash);
@@ -918,7 +788,7 @@ void PeerLogicValidation::UpdatedBlockTip(const CellBlockIndex *pindexNew, const
     nTimeBestReceived = GetTime();
 }
 
-void PeerLogicValidation::BlockChecked(const CellBlock& block, const CellValidationState& state) {
+void PeerLogicValidation::BlockChecked(const MCBlock& block, const MCValidationState& state) {
     LOCK(cs_main);
 
     const uint256 hash(block.GetHash());
@@ -928,7 +798,7 @@ void PeerLogicValidation::BlockChecked(const CellBlock& block, const CellValidat
     if (state.IsInvalid(nDoS)) {
         // Don't send reject message with code 0 or an internal reject code.
         if (it != mapBlockSource.end() && State(it->second.first) && state.GetRejectCode() > 0 && state.GetRejectCode() < REJECT_INTERNAL) {
-            CellBlockReject reject = {(unsigned char)state.GetRejectCode(), state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), hash};
+            MCBlockReject reject = {(unsigned char)state.GetRejectCode(), state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), hash};
             State(it->second.first)->rejects.push_back(reject);
             if (nDoS > 0 && it->second.second)
                 Misbehaving(it->second.first, nDoS);
@@ -956,8 +826,12 @@ void PeerLogicValidation::BlockChecked(const CellBlock& block, const CellValidat
 // Messages
 //
 
+MCBlockLocator GetLocator(const MCBlockIndex *pindex)
+{
+    return chainActive.GetLocator(pindex);
+}
 
-bool static AlreadyHave(const CellInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+bool static AlreadyHave(const MCInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     switch (inv.type)
     {
@@ -976,10 +850,10 @@ bool static AlreadyHave(const CellInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
             }
 
             return recentRejects->contains(inv.hash) ||
-                   mempool.exists(inv.hash) ||
+                   mempool.Exists(inv.hash) ||
                    mapOrphanTransactions.count(inv.hash) ||
-                   pcoinsTip->HaveCoinInCache(CellOutPoint(inv.hash, 0)) || // Best effort: only try output 0 and 1
-                   pcoinsTip->HaveCoinInCache(CellOutPoint(inv.hash, 1));
+                   pcoinsTip->HaveCoinInCache(MCOutPoint(inv.hash, 0)) || // Best effort: only try output 0 and 1
+                   pcoinsTip->HaveCoinInCache(MCOutPoint(inv.hash, 1));
         }
     case MSG_BLOCK:
     case MSG_WITNESS_BLOCK:
@@ -989,16 +863,16 @@ bool static AlreadyHave(const CellInv& inv) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
     return true;
 }
 
-static void RelayTransaction(const CellTransaction& tx, CellConnman* connman)
+static void RelayTransaction(const MCTransaction& tx, MCConnman* connman)
 {
-    CellInv inv(MSG_TX, tx.GetHash());
-    connman->ForEachNode([&inv](CellNode* pnode)
+    MCInv inv(MSG_TX, tx.GetHash());
+    connman->ForEachNode([&inv](MCNode* pnode)
     {
         pnode->PushInventory(inv);
     });
 }
 
-static void RelayAddress(const CellAddress& addr, bool fReachable, CellConnman* connman)
+static void RelayAddress(const MCAddress& addr, bool fReachable, MCConnman* connman)
 {
     unsigned int nRelayNodes = fReachable ? 2 : 1; // limited relaying of addresses outside our network(s)
 
@@ -1009,10 +883,10 @@ static void RelayAddress(const CellAddress& addr, bool fReachable, CellConnman* 
     const CSipHasher hasher = connman->GetDeterministicRandomizer(RANDOMIZER_ID_ADDRESS_RELAY).Write(hashAddr << 32).Write((GetTime() + hashAddr) / (24*60*60));
     FastRandomContext insecure_rand;
 
-    std::array<std::pair<uint64_t, CellNode*>,2> best{{{0, nullptr}, {0, nullptr}}};
+    std::array<std::pair<uint64_t, MCNode*>,2> best{{{0, nullptr}, {0, nullptr}}};
     assert(nRelayNodes <= best.size());
 
-    auto sortfunc = [&best, &hasher, nRelayNodes](CellNode* pnode) {
+    auto sortfunc = [&best, &hasher, nRelayNodes](MCNode* pnode) {
         if (pnode->nVersion >= CADDR_TIME_VERSION) {
             uint64_t hashKey = CSipHasher(hasher).Write(pnode->GetId()).Finalize();
             for (unsigned int i = 0; i < nRelayNodes; i++) {
@@ -1034,10 +908,10 @@ static void RelayAddress(const CellAddress& addr, bool fReachable, CellConnman* 
     connman->ForEachNodeThen(std::move(sortfunc), std::move(pushfunc));
 }
 
-void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusParams, CellConnman* connman, const std::atomic<bool>& interruptMsgProc)
+void static ProcessGetData(MCNode* pfrom, const Consensus::Params& consensusParams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc)
 {
-    std::deque<CellInv>::iterator it = pfrom->vRecvGetData.begin();
-    std::vector<CellInv> vNotFound;
+    std::deque<MCInv>::iterator it = pfrom->vRecvGetData.begin();
+    std::vector<MCInv> vNotFound;
     const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
     LOCK(cs_main);
 
@@ -1046,7 +920,7 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
         if (pfrom->fPauseSend)
             break;
 
-        const CellInv &inv = *it;
+        const MCInv &inv = *it;
         {
             if (interruptMsgProc)
                 return;
@@ -1057,8 +931,8 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
             {
                 bool send = false;
                 BlockMap::iterator mi = mapBlockIndex.find(inv.hash);
-                std::shared_ptr<const CellBlock> a_recent_block;
-                std::shared_ptr<const CellBlockHeaderAndShortTxIDs> a_recent_compact_block;
+                std::shared_ptr<const MCBlock> a_recent_block;
+                std::shared_ptr<const MCBlockHeaderAndShortTxIDs> a_recent_compact_block;
                 bool fWitnessesPresentInARecentCompactBlock;
                 {
                     LOCK(cs_most_recent_block);
@@ -1075,7 +949,7 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
                         // before ActivateBestChain but after AcceptBlock).
                         // In this case, we need to run ActivateBestChain prior to checking the relay
                         // conditions below.
-                        CellValidationState dummy;
+                        MCValidationState dummy;
                         ActivateBestChain(dummy, Params(), a_recent_block);
                     }
                     if (chainActive.Contains(mi->second)) {
@@ -1108,12 +982,12 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
                 // it's available before trying to send.
                 if (send && (mi->second->nStatus & BLOCK_HAVE_DATA))
                 {
-                    std::shared_ptr<const CellBlock> pblock;
+                    std::shared_ptr<const MCBlock> pblock;
                     if (a_recent_block && a_recent_block->GetHash() == (*mi).second->GetBlockHash()) {
                         pblock = a_recent_block;
                     } else {
                         // Send block from disk
-                        std::shared_ptr<CellBlock> pblockRead = std::make_shared<CellBlock>();
+                        std::shared_ptr<MCBlock> pblockRead = std::make_shared<MCBlock>();
                         if (!ReadBlockFromDisk(*pblockRead, (*mi).second, consensusParams))
                             assert(!"cannot load block from disk");
                         pblock = pblockRead;
@@ -1125,17 +999,17 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
                     else if (inv.type == MSG_FILTERED_BLOCK)
                     {
                         bool sendMerkleBlock = false;
-                        CellMerkleBlock merkleBlock;
+                        MCMerkleBlock merkleBlock;
                         {
                             LOCK(pfrom->cs_filter);
                             if (pfrom->pfilter) {
                                 sendMerkleBlock = true;
-                                merkleBlock = CellMerkleBlock(*pblock, *pfrom->pfilter);
+                                merkleBlock = MCMerkleBlock(*pblock, *pfrom->pfilter);
                             }
                         }
                         if (sendMerkleBlock) {
                             connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::MERKLEBLOCK, merkleBlock));
-                            // CellMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
+                            // MCMerkleBlock just contains hashes, so also push any transactions in the block the client did not see
                             // This avoids hurting performance by pointlessly requiring a round-trip
                             // Note that there is currently no way for a node to request any single transactions we didn't send here -
                             // they must either disconnect and retry or request the full block.
@@ -1160,7 +1034,7 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
                             if ((fPeerWantsWitness || !fWitnessesPresentInARecentCompactBlock) && a_recent_compact_block && a_recent_compact_block->header.GetHash() == mi->second->GetBlockHash()) {
                                 connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, *a_recent_compact_block));
                             } else {
-                                CellBlockHeaderAndShortTxIDs cmpctblock(*pblock, fPeerWantsWitness);
+                                MCBlockHeaderAndShortTxIDs cmpctblock(*pblock, fPeerWantsWitness);
                                 connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, cmpctblock));
                             }
                         } else {
@@ -1174,8 +1048,8 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
                         // Bypass PushInventory, this must send even if redundant,
                         // and we want it right after the last block so they don't
                         // wait for other stuff first.
-                        std::vector<CellInv> vInv;
-                        vInv.push_back(CellInv(MSG_BLOCK, chainActive.Tip()->GetBlockHash()));
+                        std::vector<MCInv> vInv;
+                        vInv.push_back(MCInv(MSG_BLOCK, chainActive.Tip()->GetBlockHash()));
                         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::INV, vInv));
                         pfrom->hashContinue.SetNull();
                     }
@@ -1191,7 +1065,7 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
                     connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::TX, *mi->second));
                     push = true;
                 } else if (pfrom->timeLastMempoolReq) {
-                    auto txinfo = mempool.info(inv.hash);
+                    auto txinfo = mempool.Info(inv.hash);
                     // To protect privacy, do not answer getdata using the mempool when
                     // that TX couldn't have been INVed in reply to a MEMPOOL request.
                     if (txinfo.tx && txinfo.nTime <= pfrom->timeLastMempoolReq) {
@@ -1226,7 +1100,7 @@ void static ProcessGetData(CellNode* pfrom, const Consensus::Params& consensusPa
     }
 }
 
-uint32_t GetFetchFlags(CellNode* pfrom) {
+uint32_t GetFetchFlags(MCNode* pfrom) {
     uint32_t nFetchFlags = 0;
     if ((pfrom->GetLocalServices() & NODE_WITNESS) && State(pfrom->GetId())->fHaveWitness) {
         nFetchFlags |= MSG_WITNESS_FLAG;
@@ -1234,7 +1108,7 @@ uint32_t GetFetchFlags(CellNode* pfrom) {
     return nFetchFlags;
 }
 
-inline void static SendBlockTransactions(const CellBlock& block, const BlockTransactionsRequest& req, CellNode* pfrom, CellConnman* connman) {
+inline void static SendBlockTransactions(const MCBlock& block, const BlockTransactionsRequest& req, MCNode* pfrom, MCConnman* connman) {
     BlockTransactions resp(req);
     for (size_t i = 0; i < req.indexes.size(); i++) {
         if (req.indexes[i] >= block.vtx.size()) {
@@ -1251,7 +1125,7 @@ inline void static SendBlockTransactions(const CellBlock& block, const BlockTran
     connman->PushMessage(pfrom, msgMaker.Make(nSendFlags, NetMsgType::BLOCKTXN, resp));
 }
 
-bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const std::vector<CellBlockHeader>& headers, const CellChainParams& chainparams, bool punish_duplicate_invalid)
+bool static ProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, const std::vector<MCBlockHeader>& headers, const MCChainParams& chainparams, bool punish_duplicate_invalid)
 {
     const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
     size_t nCount = headers.size();
@@ -1262,10 +1136,10 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
     }
 
     bool received_new_header = false;
-    const CellBlockIndex *pindexLast = nullptr;
+    const MCBlockIndex *pindexLast = nullptr;
     {
         LOCK(cs_main);
-        CellNodeState *nodestate = State(pfrom->GetId());
+        MCNodeState *nodestate = State(pfrom->GetId());
 
         // If this looks like it could be a block announcement (nCount <
         // MAX_BLOCKS_TO_ANNOUNCE), use special logic for handling headers that
@@ -1295,7 +1169,7 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
         }
 
         uint256 hashLastBlock;
-        for (const CellBlockHeader& header : headers) {
+        for (const MCBlockHeader& header : headers) {
             if (!hashLastBlock.IsNull() && header.hashPrevBlock != hashLastBlock) {
                 Misbehaving(pfrom->GetId(), 20);
                 return error("non-continuous headers sequence");
@@ -1310,8 +1184,8 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
         }
     }
 
-    CellValidationState state;
-    CellBlockHeader first_invalid_header;
+    MCValidationState state;
+    MCBlockHeader first_invalid_header;
     if (!ProcessNewBlockHeaders(headers, state, chainparams, &pindexLast, &first_invalid_header)) {
         int nDoS;
         if (state.IsInvalid(nDoS)) {
@@ -1359,7 +1233,7 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
 
     {
         LOCK(cs_main);
-        CellNodeState *nodestate = State(pfrom->GetId());
+        MCNodeState *nodestate = State(pfrom->GetId());
         if (nodestate->nUnconnectingHeaders > 0) {
             LogPrint(BCLog::NET, "peer=%d: resetting nUnconnectingHeaders (%d -> 0)\n", pfrom->GetId(), nodestate->nUnconnectingHeaders);
         }
@@ -1388,8 +1262,8 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
         // If this set of headers is valid and ends in a block with at least as
         // much work as our tip, download as much as possible.
         if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && chainActive.Tip()->nChainWork <= pindexLast->nChainWork) {
-            std::vector<const CellBlockIndex*> vToFetch;
-            const CellBlockIndex *pindexWalk = pindexLast;
+            std::vector<const MCBlockIndex*> vToFetch;
+            const MCBlockIndex *pindexWalk = pindexLast;
             // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.
             while (pindexWalk && !chainActive.Contains(pindexWalk) && vToFetch.size() <= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
                 if (!(pindexWalk->nStatus & BLOCK_HAVE_DATA) &&
@@ -1409,15 +1283,15 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
                         pindexLast->GetBlockHash().ToString(),
                         pindexLast->nHeight);
             } else {
-                std::vector<CellInv> vGetData;
+                std::vector<MCInv> vGetData;
                 // Download as much as possible, from earliest to latest.
-                for (const CellBlockIndex *pindex : reverse_iterate(vToFetch)) {
+                for (const MCBlockIndex *pindex : reverse_iterate(vToFetch)) {
                     if (nodestate->nBlocksInFlight >= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
                         // Can't download any more from this peer
                         break;
                     }
                     uint32_t nFetchFlags = GetFetchFlags(pfrom);
-                    vGetData.push_back(CellInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
+                    vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
                     MarkBlockAsInFlight(pfrom->GetId(), pindex->GetBlockHash(), pindex);
                     LogPrint(BCLog::NET, "Requesting block %s from  peer=%d\n",
                             pindex->GetBlockHash().ToString(), pfrom->GetId());
@@ -1429,7 +1303,7 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
                 if (vGetData.size() > 0) {
                     if (nodestate->fSupportsDesiredCmpctVersion && vGetData.size() == 1 && mapBlocksInFlight.size() == 1 && pindexLast->pprev->IsValid(BLOCK_VALID_CHAIN)) {
                         // In any case, we want to download using a compact block, not a regular one
-                        vGetData[0] = CellInv(MSG_CMPCT_BLOCK, vGetData[0].hash);
+                        vGetData[0] = MCInv(MSG_CMPCT_BLOCK, vGetData[0].hash);
                     }
                     connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vGetData));
                 }
@@ -1470,7 +1344,7 @@ bool static ProcessHeadersMessage(CellNode *pfrom, CellConnman *connman, const s
     return true;
 }
 
-bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellDataStream& vRecv, int64_t nTimeReceived, const CellChainParams& chainparams, CellConnman* connman, const std::atomic<bool>& interruptMsgProc)
+bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& vRecv, int64_t nTimeReceived, const MCChainParams& chainparams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc)
 {
     LogPrint(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->GetId());
     if (gArgs.IsArgSet("-dropmessagestest") && GetRand(gArgs.GetArg("-dropmessagestest", 0)) == 0)
@@ -1499,7 +1373,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         if (LogAcceptCategory(BCLog::NET)) {
             try {
                 std::string strMsg; unsigned char ccode; std::string strReason;
-                vRecv >> LIMITED_STRING(strMsg, CellMessageHeader::COMMAND_SIZE) >> ccode >> LIMITED_STRING(strReason, MAX_REJECT_MESSAGE_LENGTH);
+                vRecv >> LIMITED_STRING(strMsg, MCMessageHeader::COMMAND_SIZE) >> ccode >> LIMITED_STRING(strReason, MAX_REJECT_MESSAGE_LENGTH);
 
                 std::ostringstream ss;
                 ss << strMsg << " code " << itostr(ccode) << ": " << strReason;
@@ -1530,8 +1404,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         }
 
         int64_t nTime;
-        CellAddress addrMe;
-        CellAddress addrFrom;
+        MCAddress addrMe;
+        MCAddress addrFrom;
         uint64_t nNonce = 1;
         uint64_t nServiceInt;
         ServiceFlags nServices;
@@ -1656,7 +1530,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             // Advertise our address
             if (fListen && !IsInitialBlockDownload())
             {
-                CellAddress addr = GetLocalAddress(&pfrom->addr, pfrom->GetLocalServices());
+                MCAddress addr = GetLocalAddress(&pfrom->addr, pfrom->GetLocalServices());
                 FastRandomContext insecure_rand;
                 if (addr.IsRoutable())
                 {
@@ -1693,7 +1567,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
         // If the peer is old enough to have the old alert system, send it the final alert.
         if (pfrom->nVersion <= 70012) {
-            CellDataStream finalAlert(ParseHex("60010000000000000000000000ffffff7f00000000ffffff7ffeffff7f01ffffff7f00000000ffffff7f00ffffff7f002f555247454e543a20416c657274206b657920636f6d70726f6d697365642c2075706772616465207265717569726564004630440220653febd6410f470f6bae11cad19c48413becb1ac2c17f908fd0fd53bdc3abd5202206d0e9c96fe88d4a0f01ed9dedae2b6f9e00da94cad0fecaae66ecf689bf71b50"), SER_NETWORK, PROTOCOL_VERSION);
+            MCDataStream finalAlert(ParseHex("60010000000000000000000000ffffff7f00000000ffffff7ffeffff7f01ffffff7f00000000ffffff7f00ffffff7f002f555247454e543a20416c657274206b657920636f6d70726f6d697365642c2075706772616465207265717569726564004630440220653febd6410f470f6bae11cad19c48413becb1ac2c17f908fd0fd53bdc3abd5202206d0e9c96fe88d4a0f01ed9dedae2b6f9e00da94cad0fecaae66ecf689bf71b50"), SER_NETWORK, PROTOCOL_VERSION);
             connman->PushMessage(pfrom, CNetMsgMaker(nSendVersion).Make("alert", finalAlert));
         }
 
@@ -1760,7 +1634,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::ADDR)
     {
-        std::vector<CellAddress> vAddr;
+        std::vector<MCAddress> vAddr;
         vRecv >> vAddr;
 
         // Don't want addr from older versions unless seeding
@@ -1774,10 +1648,10 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         }
 
         // Store the new addresses
-        std::vector<CellAddress> vAddrOk;
+        std::vector<MCAddress> vAddrOk;
         int64_t nNow = GetAdjustedTime();
         int64_t nSince = nNow - 10 * 60;
-        for (CellAddress& addr : vAddr)
+        for (MCAddress& addr : vAddr)
         {
             if (interruptMsgProc)
                 return true;
@@ -1837,7 +1711,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::INV)
     {
-        std::vector<CellInv> vInv;
+        std::vector<MCInv> vInv;
         vRecv >> vInv;
         if (vInv.size() > MAX_INV_SZ)
         {
@@ -1856,7 +1730,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
         uint32_t nFetchFlags = GetFetchFlags(pfrom);
 
-        for (CellInv &inv : vInv)
+        for (MCInv &inv : vInv)
         {
             if (interruptMsgProc)
                 return true;
@@ -1898,7 +1772,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::GETDATA)
     {
-        std::vector<CellInv> vInv;
+        std::vector<MCInv> vInv;
         vRecv >> vInv;
         if (vInv.size() > MAX_INV_SZ)
         {
@@ -1920,7 +1794,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::GETBLOCKS)
     {
-        CellBlockLocator locator;
+        MCBlockLocator locator;
         uint256 hashStop;
         vRecv >> locator >> hashStop;
 
@@ -1932,19 +1806,19 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         // for getheaders requests, and there are no known nodes which support
         // compact blocks but still use getblocks to request blocks.
         {
-            std::shared_ptr<const CellBlock> a_recent_block;
+            std::shared_ptr<const MCBlock> a_recent_block;
             {
                 LOCK(cs_most_recent_block);
                 a_recent_block = most_recent_block;
             }
-            CellValidationState dummy;
+            MCValidationState dummy;
             ActivateBestChain(dummy, Params(), a_recent_block);
         }
 
         LOCK(cs_main);
 
         // Find the last block the caller has in the main chain
-        const CellBlockIndex* pindex = FindForkInGlobalIndex(chainActive, locator);
+        const MCBlockIndex* pindex = FindForkInGlobalIndex(chainActive, locator);
 
         // Send the rest of the chain
         if (pindex)
@@ -1966,7 +1840,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
                 LogPrint(BCLog::NET, " getblocks stopping, pruned or too old block at %d %s\n", pindex->nHeight, pindex->GetBlockHash().ToString());
                 break;
             }
-            pfrom->PushInventory(CellInv(MSG_BLOCK, pindex->GetBlockHash()));
+            pfrom->PushInventory(MCInv(MSG_BLOCK, pindex->GetBlockHash()));
             if (--nLimit <= 0)
             {
                 // When this block is requested, we'll send an inv that'll
@@ -1984,7 +1858,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         BlockTransactionsRequest req;
         vRecv >> req;
 
-        std::shared_ptr<const CellBlock> recent_block;
+        std::shared_ptr<const MCBlock> recent_block;
         {
             LOCK(cs_most_recent_block);
             if (most_recent_block_hash == req.blockhash)
@@ -2013,7 +1887,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             // expensive disk reads, because it will require the peer to
             // actually receive all the data read from disk over the network.
             LogPrint(BCLog::NET, "Peer %d sent us a getblocktxn for a block > %i deep", pfrom->GetId(), MAX_BLOCKTXN_DEPTH);
-            CellInv inv;
+            MCInv inv;
             inv.type = State(pfrom->GetId())->fWantsCmpctWitness ? MSG_WITNESS_BLOCK : MSG_BLOCK;
             inv.hash = req.blockhash;
             pfrom->vRecvGetData.push_back(inv);
@@ -2021,7 +1895,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             return true;
         }
 
-        CellBlock block;
+        MCBlock block;
         bool ret = ReadBlockFromDisk(block, it->second, chainparams.GetConsensus());
         assert(ret);
 
@@ -2031,7 +1905,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::GETHEADERS)
     {
-        CellBlockLocator locator;
+        MCBlockLocator locator;
         uint256 hashStop;
         vRecv >> locator >> hashStop;
 
@@ -2041,8 +1915,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             return true;
         }
 
-        CellNodeState *nodestate = State(pfrom->GetId());
-        const CellBlockIndex* pindex = nullptr;
+        MCNodeState *nodestate = State(pfrom->GetId());
+        const MCBlockIndex* pindex = nullptr;
         if (locator.IsNull())
         {
             // If locator is null, return the hashStop block
@@ -2060,7 +1934,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         }
 
         // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
-        std::vector<CellBlock> vHeaders;
+        std::vector<MCBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
         LogPrint(BCLog::NET, "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), pfrom->GetId());
         for (; pindex; pindex = chainActive.Next(pindex))
@@ -2096,27 +1970,27 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             return true;
         }
 
-        std::deque<CellOutPoint> vWorkQueue;
+        std::deque<MCOutPoint> vWorkQueue;
         std::vector<uint256> vEraseQueue;
-        CellTransactionRef ptx;
+        MCTransactionRef ptx;
         vRecv >> ptx;
-        const CellTransaction& tx = *ptx;
+        const MCTransaction& tx = *ptx;
 
-        CellInv inv(MSG_TX, tx.GetHash());
+        MCInv inv(MSG_TX, tx.GetHash());
         pfrom->AddInventoryKnown(inv);
 
         LOCK(cs_main);
 
         bool fMissingInputs = false;
-        CellValidationState state;
+        MCValidationState state;
 
         pfrom->setAskFor.erase(inv.hash);
         mapAlreadyAskedFor.erase(inv.hash);
 
-        std::list<CellTransactionRef> lRemovedTxn;
+        std::list<MCTransactionRef> lRemovedTxn;
 
         if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, &lRemovedTxn)) {
-            mempool.check(pcoinsTip);
+            mempool.Check(pcoinsTip);
             RelayTransaction(tx, connman);
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 vWorkQueue.emplace_back(inv.hash, i);
@@ -2127,7 +2001,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             LogPrint(BCLog::MEMPOOL, "AcceptToMemoryPool: peer=%d: accepted %s (poolsz %u txn, %u kB)\n",
                 pfrom->GetId(),
                 tx.GetHash().ToString(),
-                mempool.size(), mempool.DynamicMemoryUsage() / 1000);
+                mempool.Size(), mempool.DynamicMemoryUsage() / 1000);
 
             // Recursively process any orphan transactions that depended on this one
             std::set<NodeId> setMisbehaving;
@@ -2140,15 +2014,15 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
                      mi != itByPrev->second.end();
                      ++mi)
                 {
-                    const CellTransactionRef& porphanTx = (*mi)->second.tx;
-                    const CellTransaction& orphanTx = *porphanTx;
+                    const MCTransactionRef& porphanTx = (*mi)->second.tx;
+                    const MCTransaction& orphanTx = *porphanTx;
                     const uint256& orphanHash = orphanTx.GetHash();
                     NodeId fromPeer = (*mi)->second.fromPeer;
                     bool fMissingInputs2 = false;
-                    // Use a dummy CellValidationState so someone can't setup nodes to counter-DoS based on orphan
+                    // Use a dummy MCValidationState so someone can't setup nodes to counter-DoS based on orphan
                     // resolution (that is, feeding people an invalid transaction based on LegitTxX in order to get
                     // anyone relaying LegitTxX banned)
-                    CellValidationState stateDummy;
+                    MCValidationState stateDummy;
 
 
                     if (setMisbehaving.count(fromPeer))
@@ -2183,7 +2057,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
                             recentRejects->insert(orphanHash);
                         }
                     }
-                    mempool.check(pcoinsTip);
+                    mempool.Check(pcoinsTip);
                 }
             }
 
@@ -2193,7 +2067,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         else if (fMissingInputs)
         {
             bool fRejectedParents = false; // It may be the case that the orphans parents have all been rejected
-            for (const CellTxIn& txin : tx.vin) {
+            for (const MCTxIn& txin : tx.vin) {
                 if (recentRejects->contains(txin.prevout.hash)) {
                     fRejectedParents = true;
                     break;
@@ -2201,8 +2075,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             }
             if (!fRejectedParents) {
                 uint32_t nFetchFlags = GetFetchFlags(pfrom);
-                for (const CellTxIn& txin : tx.vin) {
-                    CellInv _inv(MSG_TX | nFetchFlags, txin.prevout.hash);
+                for (const MCTxIn& txin : tx.vin) {
+                    MCInv _inv(MSG_TX | nFetchFlags, txin.prevout.hash);
                     pfrom->AddInventoryKnown(_inv);
                     if (!AlreadyHave(_inv)) pfrom->AskFor(_inv);
                 }
@@ -2253,7 +2127,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             }
         }
 
-        for (const CellTransactionRef& removedTx : lRemovedTxn)
+        for (const MCTransactionRef& removedTx : lRemovedTxn)
             AddToCompactExtraTransactions(removedTx);
 
         int nDoS = 0;
@@ -2274,7 +2148,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::CMPCTBLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
     {
-        CellBlockHeaderAndShortTxIDs cmpctblock;
+        MCBlockHeaderAndShortTxIDs cmpctblock;
         vRecv >> cmpctblock;
 
         bool received_new_header = false;
@@ -2294,8 +2168,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         }
         }
 
-        const CellBlockIndex *pindex = nullptr;
-        CellValidationState state;
+        const MCBlockIndex *pindex = nullptr;
+        MCValidationState state;
         if (!ProcessNewBlockHeaders({cmpctblock.header}, state, chainparams, &pindex)) {
             int nDoS;
             if (state.IsInvalid(nDoS)) {
@@ -2313,15 +2187,15 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         // dummy (empty) BLOCKTXN message, to re-use the logic there in
         // completing processing of the putative block (without cs_main).
         bool fProcessBLOCKTXN = false;
-        CellDataStream blockTxnMsg(SER_NETWORK, PROTOCOL_VERSION);
+        MCDataStream blockTxnMsg(SER_NETWORK, PROTOCOL_VERSION);
 
         // If we end up treating this as a plain headers message, call that as well
         // without cs_main.
         bool fRevertToHeaderProcessing = false;
 
-        // Keep a CellBlock for "optimistic" compactblock reconstructions (see
+        // Keep a MCBlock for "optimistic" compactblock reconstructions (see
         // below)
-        std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
         bool fBlockReconstructed = false;
 
         {
@@ -2330,7 +2204,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         assert(pindex);
         UpdateBlockAvailability(pfrom->GetId(), pindex->GetBlockHash());
 
-        CellNodeState *nodestate = State(pfrom->GetId());
+        MCNodeState *nodestate = State(pfrom->GetId());
 
         // If this was a new header with more work than our tip, update the
         // peer's last block announcement time
@@ -2349,8 +2223,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             if (fAlreadyInFlight) {
                 // We requested this block for some reason, but our mempool will probably be useless
                 // so we just grab the block via normal getdata
-                std::vector<CellInv> vInv(1);
-                vInv[0] = CellInv(MSG_BLOCK | GetFetchFlags(pfrom), cmpctblock.header.GetHash());
+                std::vector<MCInv> vInv(1);
+                vInv[0] = MCInv(MSG_BLOCK | GetFetchFlags(pfrom), cmpctblock.header.GetHash());
                 connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vInv));
             }
             return true;
@@ -2391,8 +2265,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
                     return true;
                 } else if (status == READ_STATUS_FAILED) {
                     // Duplicate txindexes, the block is now in-flight, so just request it
-                    std::vector<CellInv> vInv(1);
-                    vInv[0] = CellInv(MSG_BLOCK | GetFetchFlags(pfrom), cmpctblock.header.GetHash());
+                    std::vector<MCInv> vInv(1);
+                    vInv[0] = MCInv(MSG_BLOCK | GetFetchFlags(pfrom), cmpctblock.header.GetHash());
                     connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vInv));
                     return true;
                 }
@@ -2424,7 +2298,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
                     // TODO: don't ignore failures
                     return true;
                 }
-                std::vector<CellTransactionRef> dummy;
+                std::vector<MCTransactionRef> dummy;
                 status = tempBlock.FillBlock(*pblock, dummy);
                 if (status == READ_STATUS_OK) {
                     fBlockReconstructed = true;
@@ -2434,8 +2308,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             if (fAlreadyInFlight) {
                 // We requested this block, but its far into the future, so our
                 // mempool will probably be useless - request the block normally
-                std::vector<CellInv> vInv(1);
-                vInv[0] = CellInv(MSG_BLOCK | GetFetchFlags(pfrom), cmpctblock.header.GetHash());
+                std::vector<MCInv> vInv(1);
+                vInv[0] = MCInv(MSG_BLOCK | GetFetchFlags(pfrom), cmpctblock.header.GetHash());
                 connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vInv));
                 return true;
             } else {
@@ -2474,14 +2348,15 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             // we have a chain with at least nMinimumChainWork), and we ignore
             // compact blocks with less work than our tip, it is safe to treat
             // reconstructed compact blocks as having been requested.
-            ProcessNewBlock(chainparams, pblock, /*fForceProcessing=*/true, &fNewBlock);
+            ContractContext contractContext;
+            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
                 LOCK(cs_main);
                 mapBlockSource.erase(pblock->GetHash());
             }
-            LOCK(cs_main); // hold cs_main for CellBlockIndex::IsValid()
+            LOCK(cs_main); // hold cs_main for MCBlockIndex::IsValid()
             if (pindex->IsValid(BLOCK_VALID_TRANSACTIONS)) {
                 // Clear download state for this block, which is in
                 // process from some other peer.  We do this after calling
@@ -2498,7 +2373,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         BlockTransactions resp;
         vRecv >> resp;
 
-        std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
         bool fBlockRead = false;
         {
             LOCK(cs_main);
@@ -2519,8 +2394,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
                 return true;
             } else if (status == READ_STATUS_FAILED) {
                 // Might have collided, fall back to getdata now :(
-                std::vector<CellInv> invs;
-                invs.push_back(CellInv(MSG_BLOCK | GetFetchFlags(pfrom), resp.blockhash));
+                std::vector<MCInv> invs;
+                invs.push_back(MCInv(MSG_BLOCK | GetFetchFlags(pfrom), resp.blockhash));
                 connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, invs));
             } else {
                 // Block is either okay, or possibly we received
@@ -2558,7 +2433,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             // disk-space attacks), but this should be safe due to the
             // protections in the compact block handler -- see related comment
             // in compact block optimistic reconstruction handling.
-            ProcessNewBlock(chainparams, pblock, /*fForceProcessing=*/true, &fNewBlock);
+            ContractContext contractContext;
+            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2571,9 +2447,9 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::HEADERS && !fImporting && !fReindex) // Ignore headers received while importing
     {
-        std::vector<CellBlockHeader> headers;
+        std::vector<MCBlockHeader> headers;
 
-        // Bypass the normal CellBlock deserialization, as we don't want to risk deserializing 2000 full blocks.
+        // Bypass the normal MCBlock deserialization, as we don't want to risk deserializing 2000 full blocks.
         unsigned int nCount = ReadCompactSize(vRecv);
         if (nCount > MAX_HEADERS_RESULTS) {
             LOCK(cs_main);
@@ -2584,6 +2460,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         for (unsigned int n = 0; n < nCount; n++) {
             vRecv >> headers[n];
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
+            ReadCompactSize(vRecv); // ignore groupSize count; assume it is 0.
+            ReadCompactSize(vRecv); // ignore prevContractData count; assume it is 0.
         }
 
         // Headers received via a HEADERS message should be valid, and reflect
@@ -2596,7 +2474,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
     {
-        std::shared_ptr<CellBlock> pblock = std::make_shared<CellBlock>();
+        std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
         vRecv >> *pblock;
 
         LogPrint(BCLog::NET, "received block %s peer=%d\n", pblock->GetHash().ToString(), pfrom->GetId());
@@ -2613,7 +2491,8 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
             mapBlockSource.emplace(hash, std::make_pair(pfrom->GetId(), true));
         }
         bool fNewBlock = false;
-        ProcessNewBlock(chainparams, pblock, forceProcessing, &fNewBlock);
+        ContractContext contractContext;
+        ProcessNewBlock(chainparams, pblock, &contractContext, forceProcessing, &fNewBlock);
         if (fNewBlock) {
             pfrom->nLastBlockTime = GetTime();
         } else {
@@ -2644,9 +2523,9 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         pfrom->fSentAddr = true;
 
         pfrom->vAddrToSend.clear();
-        std::vector<CellAddress> vAddr = connman->GetAddresses();
+        std::vector<MCAddress> vAddr = connman->GetAddresses();
         FastRandomContext insecure_rand;
-        for (const CellAddress &addr : vAddr)
+        for (const MCAddress &addr : vAddr)
             pfrom->PushAddress(addr, insecure_rand);
     }
 
@@ -2753,7 +2632,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
 
     else if (strCommand == NetMsgType::FILTERLOAD)
     {
-        CellBloomFilter filter;
+        MCBloomFilter filter;
         vRecv >> filter;
 
         if (!filter.IsWithinSizeConstraints())
@@ -2766,7 +2645,7 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         {
             LOCK(pfrom->cs_filter);
             delete pfrom->pfilter;
-            pfrom->pfilter = new CellBloomFilter(filter);
+            pfrom->pfilter = new MCBloomFilter(filter);
             pfrom->pfilter->UpdateEmptyFull();
             pfrom->fRelayTxes = true;
         }
@@ -2803,20 +2682,20 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
         LOCK(pfrom->cs_filter);
         if (pfrom->GetLocalServices() & NODE_BLOOM) {
             delete pfrom->pfilter;
-            pfrom->pfilter = new CellBloomFilter();
+            pfrom->pfilter = new MCBloomFilter();
         }
         pfrom->fRelayTxes = true;
     }
 
     else if (strCommand == NetMsgType::FEEFILTER) {
-        CellAmount newFeeFilter = 0;
+        MCAmount newFeeFilter = 0;
         vRecv >> newFeeFilter;
         if (MoneyRange(newFeeFilter)) {
             {
                 LOCK(pfrom->cs_feeFilter);
                 pfrom->minFeeFilter = newFeeFilter;
             }
-            LogPrint(BCLog::NET, "received: feefilter of %s from peer=%d\n", CellFeeRate(newFeeFilter).ToString(), pfrom->GetId());
+            LogPrint(BCLog::NET, "received: feefilter of %s from peer=%d\n", MCFeeRate(newFeeFilter).ToString(), pfrom->GetId());
         }
     }
 
@@ -2835,12 +2714,12 @@ bool static ProcessMessage(CellNode* pfrom, const std::string& strCommand, CellD
     return true;
 }
 
-static bool SendRejectsAndCheckIfBanned(CellNode* pnode, CellConnman* connman)
+static bool SendRejectsAndCheckIfBanned(MCNode* pnode, MCConnman* connman)
 {
     AssertLockHeld(cs_main);
-    CellNodeState &state = *State(pnode->GetId());
+    MCNodeState &state = *State(pnode->GetId());
 
-    for (const CellBlockReject& reject : state.rejects) {
+    for (const MCBlockReject& reject : state.rejects) {
         connman->PushMessage(pnode, CNetMsgMaker(INIT_PROTO_VERSION).Make(NetMsgType::REJECT, (std::string)NetMsgType::BLOCK, reject.chRejectCode, reject.strRejectReason, reject.hashBlock));
     }
     state.rejects.clear();
@@ -2865,9 +2744,9 @@ static bool SendRejectsAndCheckIfBanned(CellNode* pnode, CellConnman* connman)
     return false;
 }
 
-bool PeerLogicValidation::ProcessMessages(CellNode* pfrom, std::atomic<bool>& interruptMsgProc)
+bool PeerLogicValidation::ProcessMessages(MCNode* pfrom, std::atomic<bool>& interruptMsgProc)
 {
-    const CellChainParams& chainparams = Params();
+    const MCChainParams& chainparams = Params();
     //
     // Message format
     //  (4) message start
@@ -2898,7 +2777,7 @@ bool PeerLogicValidation::ProcessMessages(CellNode* pfrom, std::atomic<bool>& in
             return false;
         // Just take one message
         msgs.splice(msgs.begin(), pfrom->vProcessMsg, pfrom->vProcessMsg.begin());
-        pfrom->nProcessQueueSize -= msgs.front().vRecv.size() + CellMessageHeader::HEADER_SIZE;
+        pfrom->nProcessQueueSize -= msgs.front().vRecv.size() + MCMessageHeader::HEADER_SIZE;
         pfrom->fPauseRecv = pfrom->nProcessQueueSize > connman->GetReceiveFloodSize();
         fMoreWork = !pfrom->vProcessMsg.empty();
     }
@@ -2906,14 +2785,14 @@ bool PeerLogicValidation::ProcessMessages(CellNode* pfrom, std::atomic<bool>& in
 
     msg.SetVersion(pfrom->GetRecvVersion());
     // Scan for message start
-    if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), CellMessageHeader::MESSAGE_START_SIZE) != 0) {
+    if (memcmp(msg.hdr.pchMessageStart, chainparams.MessageStart(), MCMessageHeader::MESSAGE_START_SIZE) != 0) {
         LogPrintf("PROCESSMESSAGE: INVALID MESSAGESTART %s peer=%d\n", SanitizeString(msg.hdr.GetCommand()), pfrom->GetId());
         pfrom->fDisconnect = true;
         return false;
     }
 
     // Read header
-    CellMessageHeader& hdr = msg.hdr;
+    MCMessageHeader& hdr = msg.hdr;
     if (!hdr.IsValid(chainparams.MessageStart()))
     {
         LogPrintf("PROCESSMESSAGE: ERRORS IN HEADER %s peer=%d\n", SanitizeString(hdr.GetCommand()), pfrom->GetId());
@@ -2925,14 +2804,14 @@ bool PeerLogicValidation::ProcessMessages(CellNode* pfrom, std::atomic<bool>& in
     unsigned int nMessageSize = hdr.nMessageSize;
 
     // Checksum
-    CellDataStream& vRecv = msg.vRecv;
+    MCDataStream& vRecv = msg.vRecv;
     const uint256& hash = msg.GetMessageHash();
-    if (memcmp(hash.begin(), hdr.pchChecksum, CellMessageHeader::CHECKSUM_SIZE) != 0)
+    if (memcmp(hash.begin(), hdr.pchChecksum, MCMessageHeader::CHECKSUM_SIZE) != 0)
     {
         LogPrintf("%s(%s, %u bytes): CHECKSUM ERROR expected %s was %s\n", __func__,
            SanitizeString(strCommand), nMessageSize,
-           HexStr(hash.begin(), hash.begin()+CellMessageHeader::CHECKSUM_SIZE),
-           HexStr(hdr.pchChecksum, hdr.pchChecksum+CellMessageHeader::CHECKSUM_SIZE));
+           HexStr(hash.begin(), hash.begin()+MCMessageHeader::CHECKSUM_SIZE),
+           HexStr(hdr.pchChecksum, hdr.pchChecksum+MCMessageHeader::CHECKSUM_SIZE));
         return fMoreWork;
     }
 
@@ -2940,7 +2819,7 @@ bool PeerLogicValidation::ProcessMessages(CellNode* pfrom, std::atomic<bool>& in
     bool fRet = false;
     try
     {
-        fRet = ProcessMessage(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman, interruptMsgProc);
+        fRet = processMessageFunc(pfrom, strCommand, vRecv, msg.nTime, chainparams, connman, interruptMsgProc);
         if (interruptMsgProc)
             return false;
         if (!pfrom->vRecvGetData.empty())
@@ -2985,11 +2864,11 @@ bool PeerLogicValidation::ProcessMessages(CellNode* pfrom, std::atomic<bool>& in
     return fMoreWork;
 }
 
-void PeerLogicValidation::ConsiderEviction(CellNode *pto, int64_t time_in_seconds)
+void PeerLogicValidation::ConsiderEviction(MCNode *pto, int64_t time_in_seconds)
 {
     AssertLockHeld(cs_main);
 
-    CellNodeState &state = *State(pto->GetId());
+    MCNodeState &state = *State(pto->GetId());
     const CNetMsgMaker msgMaker(pto->GetSendVersion());
 
     if (!state.m_chain_sync.m_protect && IsOutboundDisconnectionCandidate(pto) && state.fSyncStarted) {
@@ -3051,10 +2930,10 @@ void PeerLogicValidation::EvictExtraOutboundPeers(int64_t time_in_seconds)
 
         LOCK(cs_main);
 
-        connman->ForEachNode([&](CellNode* pnode) {
+        connman->ForEachNode([&](MCNode* pnode) {
             // Ignore non-outbound peers, or nodes marked for disconnect already
             if (!IsOutboundDisconnectionCandidate(pnode) || pnode->fDisconnect) return;
-            CellNodeState *state = State(pnode->GetId());
+            MCNodeState *state = State(pnode->GetId());
             if (state == nullptr) return; // shouldn't be possible, but just in case
             // Don't evict our protected peers
             if (state->m_chain_sync.m_protect) return;
@@ -3064,13 +2943,13 @@ void PeerLogicValidation::EvictExtraOutboundPeers(int64_t time_in_seconds)
             }
         });
         if (worst_peer != -1) {
-            bool disconnected = connman->ForNode(worst_peer, [&](CellNode *pnode) {
+            bool disconnected = connman->ForNode(worst_peer, [&](MCNode *pnode) {
                 // Only disconnect a peer that has been connected to us for
                 // some reasonable fraction of our check-frequency, to give
                 // it time for new information to have arrived.
                 // Also don't disconnect any peer we're trying to download a
                 // block from.
-                CellNodeState &state = *State(pnode->GetId());
+                MCNodeState &state = *State(pnode->GetId());
                 if (time_in_seconds - pnode->nTimeConnected > MINIMUM_CONNECT_TIME && state.nBlocksInFlight == 0) {
                     LogPrint(BCLog::NET, "disconnecting extra outbound peer=%d (last block announcement received at time %d)\n", pnode->GetId(), oldest_block_announcement);
                     pnode->fDisconnect = true;
@@ -3116,9 +2995,9 @@ void PeerLogicValidation::CheckForStaleTipAndEvictPeers(const Consensus::Params 
 
 class CompareInvMempoolOrder
 {
-    CellTxMemPool *mp;
+    MCTxMemPool *mp;
 public:
-    CompareInvMempoolOrder(CellTxMemPool *_mempool)
+    CompareInvMempoolOrder(MCTxMemPool *_mempool)
     {
         mp = _mempool;
     }
@@ -3131,7 +3010,7 @@ public:
     }
 };
 
-bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interruptMsgProc)
+bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interruptMsgProc)
 {
     const Consensus::Params& consensusParams = Params().GetConsensus();
     {
@@ -3171,13 +3050,13 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
             }
         }
 
-        TRY_LOCK(cs_main, lockMain); // Acquire cs_main for IsInitialBlockDownload() and CellNodeState()
+        TRY_LOCK(cs_main, lockMain); // Acquire cs_main for IsInitialBlockDownload() and MCNodeState()
         if (!lockMain)
             return true;
 
         if (SendRejectsAndCheckIfBanned(pto, connman))
             return true;
-        CellNodeState &state = *State(pto->GetId());
+        MCNodeState &state = *State(pto->GetId());
 
         // Address refresh broadcast
         int64_t nNow = GetTimeMicros();
@@ -3191,9 +3070,9 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
         //
         if (pto->nNextAddrSend < nNow) {
             pto->nNextAddrSend = PoissonNextSend(nNow, AVG_ADDRESS_BROADCAST_INTERVAL);
-            std::vector<CellAddress> vAddr;
+            std::vector<MCAddress> vAddr;
             vAddr.reserve(pto->vAddrToSend.size());
-            for (const CellAddress& addr : pto->vAddrToSend)
+            for (const MCAddress& addr : pto->vAddrToSend)
             {
                 if (!pto->addrKnown.contains(addr.GetKey()))
                 {
@@ -3225,7 +3104,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                 state.fSyncStarted = true;
                 state.nHeadersSyncTimeout = GetTimeMicros() + HEADERS_DOWNLOAD_TIMEOUT_BASE + HEADERS_DOWNLOAD_TIMEOUT_PER_HEADER * (GetAdjustedTime() - pindexBestHeader->GetBlockTime())/(consensusParams.nPowTargetSpacing);
                 nSyncStarted++;
-                const CellBlockIndex *pindexStart = pindexBestHeader;
+                const MCBlockIndex *pindexStart = pindexBestHeader;
                 /* If possible, start at the block preceding the currently
                    best known header.  This ensures that we always get a
                    non-empty list of headers back as long as the peer
@@ -3236,7 +3115,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                 if (pindexStart->pprev)
                     pindexStart = pindexStart->pprev;
                 LogPrint(BCLog::NET, "initial getheaders (%d) to peer=%d (startheight:%d)\n", pindexStart->nHeight, pto->GetId(), pto->nStartingHeight);
-                connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETHEADERS, chainActive.GetLocator(pindexStart), uint256()));
+                connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETHEADERS, getLocatorFunc(pindexBestHeader), uint256()));
             }
         }
 
@@ -3260,11 +3139,11 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
             // blocks, or if the peer doesn't want headers, just
             // add all to the inv queue.
             LOCK(pto->cs_inventory);
-            std::vector<CellBlock> vHeaders;
+            std::vector<MCBlock> vHeaders;
             bool fRevertToInv = ((!state.fPreferHeaders &&
                                  (!state.fPreferHeaderAndIDs || pto->vBlockHashesToAnnounce.size() > 1)) ||
                                 pto->vBlockHashesToAnnounce.size() > MAX_BLOCKS_TO_ANNOUNCE);
-            const CellBlockIndex *pBestIndex = nullptr; // last header queued for delivery
+            const MCBlockIndex *pBestIndex = nullptr; // last header queued for delivery
             ProcessBlockAvailability(pto->GetId()); // ensure pindexBestKnownBlock is up-to-date
 
             if (!fRevertToInv) {
@@ -3275,7 +3154,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                 for (const uint256 &hash : pto->vBlockHashesToAnnounce) {
                     BlockMap::iterator mi = mapBlockIndex.find(hash);
                     assert(mi != mapBlockIndex.end());
-                    const CellBlockIndex *pindex = mi->second;
+                    const MCBlockIndex *pindex = mi->second;
                     if (chainActive[pindex->nHeight] != pindex) {
                         // Bail out if we reorged away from this block
                         fRevertToInv = true;
@@ -3331,17 +3210,17 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                             if (state.fWantsCmpctWitness || !fWitnessesPresentInMostRecentCompactBlock)
                                 connman->PushMessage(pto, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, *most_recent_compact_block));
                             else {
-                                CellBlockHeaderAndShortTxIDs cmpctblock(*most_recent_block, state.fWantsCmpctWitness);
+                                MCBlockHeaderAndShortTxIDs cmpctblock(*most_recent_block, state.fWantsCmpctWitness);
                                 connman->PushMessage(pto, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, cmpctblock));
                             }
                             fGotBlockFromCache = true;
                         }
                     }
                     if (!fGotBlockFromCache) {
-                        CellBlock block;
+                        MCBlock block;
                         bool ret = ReadBlockFromDisk(block, pBestIndex, consensusParams);
                         assert(ret);
-                        CellBlockHeaderAndShortTxIDs cmpctblock(block, state.fWantsCmpctWitness);
+                        MCBlockHeaderAndShortTxIDs cmpctblock(block, state.fWantsCmpctWitness);
                         connman->PushMessage(pto, msgMaker.Make(nSendFlags, NetMsgType::CMPCTBLOCK, cmpctblock));
                     }
                     state.pindexBestHeaderSent = pBestIndex;
@@ -3368,7 +3247,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                     const uint256 &hashToAnnounce = pto->vBlockHashesToAnnounce.back();
                     BlockMap::iterator mi = mapBlockIndex.find(hashToAnnounce);
                     assert(mi != mapBlockIndex.end());
-                    const CellBlockIndex *pindex = mi->second;
+                    const MCBlockIndex *pindex = mi->second;
 
                     // Warn if we're announcing a block that is not on the main chain.
                     // This should be very rare and could be optimized out.
@@ -3380,7 +3259,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
 
                     // If the peer's chain has this block, don't inv it back.
                     if (!PeerHasHeader(&state, pindex)) {
-                        pto->PushInventory(CellInv(MSG_BLOCK, hashToAnnounce));
+                        pto->PushInventory(MCInv(MSG_BLOCK, hashToAnnounce));
                         LogPrint(BCLog::NET, "%s: sending inv peer=%d hash=%s\n", __func__,
                             pto->GetId(), hashToAnnounce.ToString());
                     }
@@ -3392,14 +3271,14 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
         //
         // Message: inventory
         //
-        std::vector<CellInv> vInv;
+        std::vector<MCInv> vInv;
         {
             LOCK(pto->cs_inventory);
             vInv.reserve(std::max<size_t>(pto->vInventoryBlockToSend.size(), INVENTORY_BROADCAST_MAX));
 
             // Add blocks
             for (const uint256& hash : pto->vInventoryBlockToSend) {
-                vInv.push_back(CellInv(MSG_BLOCK, hash));
+                vInv.push_back(MCInv(MSG_BLOCK, hash));
                 if (vInv.size() == MAX_INV_SZ) {
                     connman->PushMessage(pto, msgMaker.Make(NetMsgType::INV, vInv));
                     vInv.clear();
@@ -3423,9 +3302,9 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
 
             // Respond to BIP35 mempool requests
             if (fSendTrickle && pto->fSendMempool) {
-                auto vtxinfo = mempool.infoAll();
+                auto vtxinfo = mempool.InfoAll();
                 pto->fSendMempool = false;
-                CellAmount filterrate = 0;
+                MCAmount filterrate = 0;
                 {
                     LOCK(pto->cs_feeFilter);
                     filterrate = pto->minFeeFilter;
@@ -3435,7 +3314,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
 
                 for (const auto& txinfo : vtxinfo) {
                     const uint256& hash = txinfo.tx->GetHash();
-                    CellInv inv(MSG_TX, hash);
+                    MCInv inv(MSG_TX, hash);
                     pto->setInventoryTxToSend.erase(hash);
                     if (filterrate) {
                         if (txinfo.feeRate.GetFeePerK() < filterrate)
@@ -3462,7 +3341,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                 for (std::set<uint256>::iterator it = pto->setInventoryTxToSend.begin(); it != pto->setInventoryTxToSend.end(); it++) {
                     vInvTx.push_back(it);
                 }
-                CellAmount filterrate = 0;
+                MCAmount filterrate = 0;
                 {
                     LOCK(pto->cs_feeFilter);
                     filterrate = pto->minFeeFilter;
@@ -3488,7 +3367,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                         continue;
                     }
                     // Not in the mempool anymore? don't bother sending it.
-                    auto txinfo = mempool.info(hash);
+                    auto txinfo = mempool.Info(hash);
                     if (!txinfo.tx) {
                         continue;
                     }
@@ -3497,7 +3376,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
                     }
                     if (pto->pfilter && !pto->pfilter->IsRelevantAndUpdate(*txinfo.tx)) continue;
                     // Send
-                    vInv.push_back(CellInv(MSG_TX, hash));
+                    vInv.push_back(MCInv(MSG_TX, hash));
                     nRelayedTransactions++;
                     {
                         // Expire old relay messages
@@ -3587,14 +3466,14 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
         //
         // Message: getdata (blocks)
         //
-        std::vector<CellInv> vGetData;
+        std::vector<MCInv> vGetData;
         if (!pto->fClient && (fFetch || !IsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
-            std::vector<const CellBlockIndex*> vToDownload;
+            std::vector<const MCBlockIndex*> vToDownload;
             NodeId staller = -1;
             FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller, consensusParams);
-            for (const CellBlockIndex *pindex : vToDownload) {
+            for (const MCBlockIndex *pindex : vToDownload) {
                 uint32_t nFetchFlags = GetFetchFlags(pto);
-                vGetData.push_back(CellInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
+                vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
                 MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), pindex);
                 LogPrint(BCLog::NET, "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
                     pindex->nHeight, pto->GetId());
@@ -3612,7 +3491,7 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
         //
         while (!pto->mapAskFor.empty() && (*pto->mapAskFor.begin()).first <= nNow)
         {
-            const CellInv& inv = (*pto->mapAskFor.begin()).second;
+            const MCInv& inv = (*pto->mapAskFor.begin()).second;
             if (!AlreadyHave(inv))
             {
                 LogPrint(BCLog::NET, "Requesting %s peer=%d\n", inv.ToString(), pto->GetId());
@@ -3637,12 +3516,12 @@ bool PeerLogicValidation::SendMessages(CellNode* pto, std::atomic<bool>& interru
         // We don't want white listed peers to filter txs to us if we have -whitelistforcerelay
         if (pto->nVersion >= FEEFILTER_VERSION && gArgs.GetBoolArg("-feefilter", DEFAULT_FEEFILTER) &&
             !(pto->fWhitelisted && gArgs.GetBoolArg("-whitelistforcerelay", DEFAULT_WHITELISTFORCERELAY))) {
-            CellAmount currentFilter = mempool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK();
+            MCAmount currentFilter = mempool.GetMinFee(gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000).GetFeePerK();
             int64_t timeNow = GetTimeMicros();
             if (timeNow > pto->nextSendTimeFeeFilter) {
-                static CellFeeRate default_feerate(DEFAULT_MIN_RELAY_TX_FEE);
+                static MCFeeRate default_feerate(DEFAULT_MIN_RELAY_TX_FEE);
                 static FeeFilterRounder filterRounder(default_feerate);
-                CellAmount filterToSend = filterRounder.round(currentFilter);
+                MCAmount filterToSend = filterRounder.round(currentFilter);
                 // We always have a fee filter of at least minRelayTxFee
                 filterToSend = std::max(filterToSend, ::minRelayTxFee.GetFeePerK());
                 if (filterToSend != pto->lastSentFeeFilter) {

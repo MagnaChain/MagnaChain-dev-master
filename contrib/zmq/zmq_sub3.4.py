@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# Copyright (c) 2014-2016 The CellLink Core developers
+# Copyright (c) 2016-2019 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 """
     ZMQ example using python3's asyncio
 
-    CellLink should be started with the command line arguments:
-        bitcoind -testnet -daemon \
+    MagnaChain should be started with the command line arguments:
+        magnachaind -testnet -daemon \
                 -zmqpubhashblock=tcp://127.0.0.1:28332 \
                 -zmqpubrawtx=tcp://127.0.0.1:28332 \
                 -zmqpubhashtx=tcp://127.0.0.1:28332 \
@@ -23,7 +23,7 @@
     and `await` keywords respectively.
 
     A blocking example using python 2.7 can be obtained from the git history:
-    https://github.com/bitcoin/bitcoin/blob/37a7fe9e440b83e2364d5498931253937abe9294/contrib/zmq/zmq_sub.py
+    https://github.com/magnachain/magnachain/blob/37a7fe9e440b83e2364d5498931253937abe9294/contrib/zmq/zmq_sub.py
 """
 
 import binascii

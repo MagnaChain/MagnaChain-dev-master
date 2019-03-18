@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2015-2016 The Bitcoin Core developers
+# Copyright (c) 2015-2016 The MagnaChain Core developers
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Utilities for doing coverage analysis on the RPC interface.
@@ -9,7 +9,7 @@ testing.
 """
 
 import os
-
+import time
 
 REFERENCE_FILENAME = 'rpc_interface.txt'
 
@@ -43,7 +43,17 @@ class AuthServiceProxyWrapper(object):
         called to a file.
 
         """
-        return_val = self.auth_service_proxy_instance.__call__(*args, **kwargs)
+
+        if kwargs.get('each_generate',False):
+            kwargs.pop('each_generate')
+            return_val = []
+            for i in range(int(args[0])):
+                val = self.auth_service_proxy_instance.__call__((1), **kwargs)
+                return_val = return_val + val
+                time.sleep(1)
+        else:
+            return_val = self.auth_service_proxy_instance.__call__(*args, **kwargs)
+
         rpc_method = self.auth_service_proxy_instance._service_name
 
         if self.coverage_logfile:
@@ -72,7 +82,7 @@ def get_filename(dirname, n_node):
 
 def write_all_rpc_commands(dirname, node):
     """
-    Write out a list of all RPC functions available in `bitcoin-cli` for
+    Write out a list of all RPC functions available in `magnachain-cli` for
     coverage comparison. This will only happen once per coverage
     directory.
 

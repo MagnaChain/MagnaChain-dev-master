@@ -1,10 +1,10 @@
 // Copyright (c) 2011-2016 The Bitcoin Core developers
-// Copyright (c) 2016-2018 The CellLink Core developers
+// Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-#ifndef CELLLINK_QT_GUIUTIL_H
-#define CELLLINK_QT_GUIUTIL_H
+#ifndef MAGNACHAIN_QT_GUIUTIL_H
+#define MAGNACHAIN_QT_GUIUTIL_H
 
 #include "misc/amount.h"
 #include "io/fs.h"
@@ -30,7 +30,7 @@ class QUrl;
 class QWidget;
 QT_END_NAMESPACE
 
-/** Utility functions used by the CellLink Qt UI.
+/** Utility functions used by the MagnaChain Qt UI.
  */
 namespace GUIUtil
 {
@@ -45,13 +45,13 @@ namespace GUIUtil
     void setupAddressWidget(QValidatedLineEdit *widget, QWidget *parent);
     void setupAmountWidget(QLineEdit *widget, QWidget *parent);
 
-    // Parse "celllink:" URI into recipient object, return true on successful parsing
-    bool parseCellLinkURI(const QUrl &uri, SendCoinsRecipient *out);
-    bool parseCellLinkURI(QString uri, SendCoinsRecipient *out);
-    QString formatCellLinkURI(const SendCoinsRecipient &info);
+    // Parse "magnachain:" URI into recipient object, return true on successful parsing
+    bool parseMagnaChainURI(const QUrl &uri, SendCoinsRecipient *out);
+    bool parseMagnaChainURI(QString uri, SendCoinsRecipient *out);
+    QString formatMagnaChainURI(const SendCoinsRecipient &info);
 
     // Returns true if given address+amount meets "dust" definition
-    bool isDust(const QString& address, const CellAmount& amount);
+    bool isDust(const QString& address, const MCAmount& amount);
 
     // HTML escaping for rich text controls
     QString HtmlEscape(const QString& str, bool fMultiLine=false);
@@ -115,7 +115,7 @@ namespace GUIUtil
     void openDebugLogfile();
 
     // Open the config file
-    bool openCellLinkConf();
+    bool openMagnaChainConf();
 
     // Replace invalid default fonts with known good ones
     void SubstituteFonts(const QString& language);
@@ -189,7 +189,7 @@ namespace GUIUtil
     /* Convert seconds into a QString with days, hours, mins, secs */
     QString formatDurationStr(int secs);
 
-    /* Format CellNodeStats.nServices bitmask into a user-readable string */
+    /* Format MCNodeStats.nServices bitmask into a user-readable string */
     QString formatServicesStr(quint64 mask);
 
     /* Format a CNodeCombinedStats.dPingTime into a user-readable string or display N/A, if 0*/
@@ -242,4 +242,4 @@ namespace GUIUtil
 
 } // namespace GUIUtil
 
-#endif // CELLLINK_QT_GUIUTIL_H
+#endif // MAGNACHAIN_QT_GUIUTIL_H
