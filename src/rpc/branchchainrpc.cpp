@@ -2064,7 +2064,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     // check: 
     // 1 branch, get report tx data
     // 2 coin preout hash
-    // 3 历史久远的不能举报?
+    // 3 limit the long history report tx?
     uint256 reporttxid = ParseHashV(request.params[0], "parameter 1");
     uint256 coinprevouthash = ParseHashV(request.params[1], "parameter 2");
 
@@ -2072,7 +2072,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::LOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;//被主链打包的举报交易id
+    wtx.reporttxid = reporttxid;//the txid of the report transaction that has included by main chain
     wtx.coinpreouthash = coinprevouthash;//锁定目标币的txid
     wtx.isDataTransaction = true;
 
