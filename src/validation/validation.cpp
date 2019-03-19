@@ -1415,15 +1415,15 @@ void static InvalidBlockFound(MCBlockIndex *pindex, const MCValidationState &sta
     }
 }
 
-void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo &txundo, int nHeight, bool isBranch2ndBlockTx = false)
+void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo &txundo, int nHeight, bool isBranch2ndBlockTx/*=false*/, bool ismempoolchecking)
 {
     if (isBranch2ndBlockTx)//no coin in,no need coin cout to record, duplicate 
         return;
 
     // mark inputs spent
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN)
+    if (tx.IsBranchChainTransStep2() && (tx.fromBranchId == MCBaseChainParams::MAIN || ismempoolchecking))
     {
-        // no inputs
+        // no valid inputs
     }
     else if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
@@ -1437,10 +1437,10 @@ void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo &tx
     AddCoins(inputs, tx, nHeight);
 }
 
-void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, int nHeight)
+void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, int nHeight, bool ismempoolchecking)
 {
     MCTxUndo txundo;
-    UpdateCoins(tx, inputs, txundo, nHeight);
+    UpdateCoins(tx, inputs, txundo, nHeight, false, ismempoolchecking);
 }
 
 bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey)
@@ -2200,7 +2200,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         if (i > 0) {
             blockundo.vtxundo.push_back(MCTxUndo());
         }
-        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, isBranch2ndBlockTx);
+        UpdateCoins(tx, view, i == 0 ? undoDummy : blockundo.vtxundo.back(), pindex->nHeight, isBranch2ndBlockTx, false);
 
         if (fTxIndex)// fTxIndex record all
             vPos.push_back(std::make_pair(tx.GetHash(), pos));

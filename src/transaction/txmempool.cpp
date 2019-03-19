@@ -1357,7 +1357,7 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
             bool fCheckResult = tx.IsCoinBase() || tx.IsBranchChainTransStep2() || // mempool branchchain trans step2 tx no valid input 
                 Consensus::CheckTxInputs(tx, state, mempoolDuplicate, nSpendHeight);
             assert(fCheckResult);
-            UpdateCoins(tx, mempoolDuplicate, 1000000);
+            UpdateCoins(tx, mempoolDuplicate, 1000000, true);
         }
     }
     unsigned int stepsSinceLastRemove = 0;
@@ -1374,7 +1374,7 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
             bool fCheckResult = entry->GetTx().IsCoinBase() ||
                 Consensus::CheckTxInputs(entry->GetTx(), state, mempoolDuplicate, nSpendHeight);
             assert(fCheckResult);
-            UpdateCoins(entry->GetTx(), mempoolDuplicate, 1000000);
+            UpdateCoins(entry->GetTx(), mempoolDuplicate, 1000000, true);
             stepsSinceLastRemove = 0;
         }
     }
