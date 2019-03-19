@@ -1,0 +1,1 @@
+The example is based on Unity 5.4.4f1, so if you test the example in a lower Unity version, the test scene may be empty. Please test the example in Unity 5.4.4f1 or later. But the sdk of MagnaChain can be use in any Unity version.
