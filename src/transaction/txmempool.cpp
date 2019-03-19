@@ -1254,11 +1254,13 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
                 }
             }
             else {
-                bool havecoin = pcoins->HaveCoin(txin.prevout);
-                if (!havecoin){
-                    LogPrint(BCLog::MEMPOOL, "assert if have coin for input, fail to find input. txid %s, tx-version %d\n", tx.GetHash().GetHex(), tx.nVersion);
+                if (!(tx.IsBranchChainTransStep2())) {// mempool branchchain trans step2 tx no valid input 
+                    bool havecoin = pcoins->HaveCoin(txin.prevout);
+                    if (!havecoin) {
+                        LogPrint(BCLog::MEMPOOL, "assert if have coin for input, fail to find input. txid %s, tx-version %d, %s\n", tx.GetHash().GetHex(), tx.nVersion);
+                    }
+                    assert(havecoin);
                 }
-                assert(havecoin);
             }
             // Check whether its inputs are marked in mapNextTx.
             auto it3 = mapNextTx.find(txin.prevout);
@@ -1352,7 +1354,7 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
             waitingOnDependants.push_back(&(*it));
         else {
             MCValidationState state;
-            bool fCheckResult = tx.IsCoinBase() ||
+            bool fCheckResult = tx.IsCoinBase() || tx.IsBranchChainTransStep2() || // mempool branchchain trans step2 tx no valid input 
                 Consensus::CheckTxInputs(tx, state, mempoolDuplicate, nSpendHeight);
             assert(fCheckResult);
             UpdateCoins(tx, mempoolDuplicate, 1000000);
