@@ -344,7 +344,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 5 || request.params.size() > 7)
         throw std::runtime_error(
             "addbranchnode branchid ip port username password\n"
-            "\n get a created branch chain info.\n"
+            "\nSet branch rpc connection config.\n"
             "\nArguments:\n"
             "1. \"branchid\"            (string, required) The branch txid.\n"
             "2. \"ip\"                  (string, required) Branch node ip.\n"
@@ -354,12 +354,12 @@ UniValue addbranchnode(const JSONRPCRequest& request)
             "6. \"wallet\"              (string, optional) Rpc wallet\n"
             "7. \"datadir\"             (string, optional) taget blanch datadir\n"
 
-            "\nReturns the hash of the created branch chain.\n"
+            "\nReturns connection result.\n"
             "\nResult:\n"
             "    Ok or fail\n"
             "\nExamples:\n"
-            + HelpExampleCli("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
-            + HelpExampleRpc("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
+            + HelpExampleCli("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"user\" \"clpwd\" \"wallet\" \"datadir\"")
+            + HelpExampleRpc("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"user\" \"clpwd\" \"wallet\" \"datadir\"")
         );
 
     MCRPCConfig rpcconfig;
@@ -418,6 +418,49 @@ UniValue addbranchnode(const JSONRPCRequest& request)
 
     g_branchChainMan->ReplaceRpcConfig(branchid, rpcconfig);
     return "ok";
+}
+
+UniValue getbranchrpcconfig(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 1)
+        throw std::runtime_error(
+            "getbranchrpcconfig branchid\n"
+            "\n get a created branch chain info.\n"
+            "\nArguments:\n"
+            "1. \"branchid\"            (string, required) The branch txid.\n"
+
+            "\nReturns the hash of the created branch chain.\n"
+            "\nResult obj:\n"
+            "{\n"
+            "    \"ip\": ipaddress,\n"
+            "    \"port\": ipaddress,\n"
+            "    \"rpcuser\": \"rpcuser\",\n"
+            "    \"rpcpassword\": \"rpcpassword\",\n"
+            "    \"wallet\": \"wallet\",\n"
+            "    \"datadir\": \"datadir\",\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getbranchrpcconfig", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2")
+            + HelpExampleRpc("getbranchrpcconfig", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2")
+        );
+
+    std::string strBranchid = request.params[0].get_str();
+    MCRPCConfig rpcconfig;
+    if (!g_branchChainMan->GetRpcConfig(strBranchid, rpcconfig)){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "No branch config");
+    }
+
+    UniValue ret(UniValue::VOBJ);
+    ret.pushKV("ip", rpcconfig.strIp);
+    ret.pushKV("port", rpcconfig.iPort);
+    ret.pushKV("rpcuser", rpcconfig.strUser);
+    ret.pushKV("rpcpassword", rpcconfig.strPassword);
+    ret.pushKV("wallet", rpcconfig.strWallet);
+    ret.pushKV("datadir", rpcconfig.strDataDir);
+    if (!rpcconfig.strRPCUserColonPass.empty()){
+        ret.pushKV("Authorization", rpcconfig.strRPCUserColonPass);
+    }
+    return ret;
 }
 
 /**
@@ -2307,6 +2350,7 @@ static const CRPCCommand commands[] =
     { "branchchain",        "getbranchchaininfo",        &getbranchchaininfo,          true,{"branchid"} },
     { "branchchain",        "getallbranchinfo",          &getallbranchinfo,            false,{} },
     { "branchchain",        "addbranchnode",             &addbranchnode,               true,{ "branchid" ,"ip","port","usrname","password" } },
+    { "branchchain",        "getbranchrpcconfig",        &getbranchrpcconfig,          true, {"branchid"} },
     { "branchchain",        "sendtobranchchain",         &sendtobranchchain,           false,{ "branchid","address","amount" } },
     { "branchchain",        "makebranchtransaction",     &makebranchtransaction,       false,{"hexdata"} },
     { "branchchain",        "getbranchchaintransaction", &getbranchchaintransaction,   true,{"txid"} },
