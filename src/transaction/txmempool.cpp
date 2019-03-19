@@ -1254,7 +1254,11 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
                 }
             }
             else {
-                assert(pcoins->HaveCoin(txin.prevout));
+                bool havecoin = pcoins->HaveCoin(txin.prevout);
+                if (!havecoin){
+                    LogPrint(BCLog::MEMPOOL, "assert if have coin for input, fail to find input. txid %s, tx-version %d\n", tx.GetHash().GetHex(), tx.nVersion);
+                }
+                assert(havecoin);
             }
             // Check whether its inputs are marked in mapNextTx.
             auto it3 = mapNextTx.find(txin.prevout);
