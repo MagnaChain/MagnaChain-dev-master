@@ -85,6 +85,9 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         assert all([ item['confirmations'] == 11 for item in mortgage_txs])
         print(self.snode0.listmortgagecoins())
         print(self.snode0.redeemmortgagecoinstatement(mortgage_txs[0]['txid']))
+        assert_equal(self.snode0.listmortgagecoins(),[])
+        assert_raises_rpc_error(-32603,'no address with enough coins',self.snode0.generate,1)
+
 
 
 if __name__ == '__main__':
