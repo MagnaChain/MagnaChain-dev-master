@@ -242,7 +242,7 @@ bool MCTxMemPool::SearchForParents(const MCTxMemPoolEntry& entry, setEntries& pa
         if (piter != mapTx.end()) {
             parentHashes.insert(piter);
             if (parentHashes.size() + 1 > limitAncestorCount) {
-                errString = strprintf("too many unconfirmed parents [limit: %u]", limitAncestorCount);
+                errString = strprintf("too many unconfirmed parents 1 [limit: %u]", limitAncestorCount);
                 return false;
             }
         }
@@ -278,9 +278,21 @@ bool MCTxMemPool::SearchForParents(const MCTxMemPoolEntry& entry, setEntries& pa
             if (last != links->second.end()) {
                 parentHashes.insert(*last);
                 if (parentHashes.size() + 1 > limitAncestorCount) {
-                    errString = strprintf("too many unconfirmed parents [limit: %u]", limitAncestorCount);
+                    errString = strprintf("too many unconfirmed parents 2 [limit: %u]", limitAncestorCount);
                     return false;
                 }
+            }
+        }
+    }
+
+    if (tx.IsSyncBranchInfo()){
+        uint256 prebranchheadblocktxhash = g_pBranchDataMemCache->GetParent(tx);
+        txiter piter = mapTx.find(prebranchheadblocktxhash);
+        if (piter != mapTx.end()) {
+            parentHashes.insert(piter);
+            if (parentHashes.size() + 1 > limitAncestorCount) {
+                errString = strprintf("too many unconfirmed parents 3 [limit: %u]", limitAncestorCount);
+                return false;
             }
         }
     }

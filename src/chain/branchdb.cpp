@@ -913,6 +913,42 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const MCTransaction& tx
     return vecRet;
 }
 
+//TODO: may be we can refactor this function and fun GetAncestorsBlocksHash 
+uint256 BranchCache::GetParent(const MCTransaction& tx)
+{
+    if (!tx.IsSyncBranchInfo()) {
+        return uint256();
+    }
+    BranchBlockData blockData;
+    blockData.InitDataFromTx(tx);
+
+    //uint256 blockHash = blockData.header.GetHash();
+    const uint256& branchHash = tx.pBranchBlockData->branchID;
+
+    bool bgotdata = FetchDataFromSource(branchHash);
+
+    if (mapBranchsData.count(branchHash))
+    {
+        std::shared_ptr<BranchData> pReadOnlyDbData = nullptr;
+        if (readonly_db && readonly_db->HasBranchData(branchHash))
+        {
+            pReadOnlyDbData = std::make_shared<BranchData>(readonly_db->GetBranchData(branchHash));
+        }
+
+        BranchData& branchdata = mapBranchsData[branchHash];
+        uint256& preblockhash = blockData.header.hashPrevBlock;
+        if (branchdata.mapHeads.count(preblockhash)) {
+            if (pReadOnlyDbData && pReadOnlyDbData->mapHeads.count(preblockhash)){
+                return uint256();
+            }
+            BranchBlockData& preblockdata = branchdata.mapHeads[preblockhash];
+            return preblockdata.txHash;
+        }
+    }
+
+    return uint256();
+}
+
 const BranchBlockData* BranchCache::GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash)
 {
     bool bgotdata = FetchDataFromSource(branchhash);

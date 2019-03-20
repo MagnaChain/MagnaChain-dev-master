@@ -203,8 +203,10 @@ public:
     
     void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
 
-    //获取cache中的block的祖先
+    // get sync blanch header tx's ancestoer( note that this is not vin's relation, but it is branch chain block header's order)
     std::vector<uint256> GetAncestorsBlocksHash(const MCTransaction& tx);
+    // get blanch header tx's preblock header tx in cache, note that each sync branch header tx has only one parent(preblock hash)
+    uint256 GetParent(const MCTransaction& tx);
 
     const BranchBlockData* GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash);
 
