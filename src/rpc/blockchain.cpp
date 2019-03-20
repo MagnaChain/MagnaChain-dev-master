@@ -121,22 +121,22 @@ UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool 
     result.push_back(Pair("version", block.nVersion));
     result.push_back(Pair("versionHex", strprintf("%08x", block.nVersion)));
     result.push_back(Pair("merkleroot", block.hashMerkleRoot.GetHex()));
-	result.push_back(Pair("tx_num", (int)block.vtx.size()));
+    result.push_back(Pair("tx_num", (int)block.vtx.size()));
     if (fListTxInfo || txDetails){
-		UniValue txs(UniValue::VARR);
-		for(const auto& tx : block.vtx)
-		{
-			if(txDetails)
-			{
-				UniValue objTx(UniValue::VOBJ);
-				TxToUniv(*tx, uint256(), objTx, true, RPCSerializationFlags());
-				txs.push_back(objTx);
-			}
-			else
-				txs.push_back(tx->GetHash().GetHex());
-		}
-		result.push_back(Pair("tx", txs));
-	}
+        UniValue txs(UniValue::VARR);
+        for(const auto& tx : block.vtx)
+        {
+            if(txDetails)
+            {
+                UniValue objTx(UniValue::VOBJ);
+                TxToUniv(*tx, uint256(), objTx, true, RPCSerializationFlags());
+                txs.push_back(objTx);
+            }
+            else
+                txs.push_back(tx->GetHash().GetHex());
+        }
+        result.push_back(Pair("tx", txs));
+    }
     result.push_back(Pair("time", block.GetBlockTime()));
     if (blockindex) result.push_back(Pair("mediantime", (int64_t)blockindex->GetMedianTimePast()));
     result.push_back(Pair("nonce", (uint64_t)block.nNonce));
@@ -741,7 +741,7 @@ UniValue getblock(const JSONRPCRequest& request)
             "\nArguments:\n"
             "1. \"blockhash\"          (string, required) The block hash\n"
             "2. verbosity              (numeric, optional, default=1) 0 for hex encoded data, 1 for a json object, and 2 for json object with transaction data\n"
-			"3. showtx                 (numeric, optional, default=1) 0 1 show transaction data,0 not show \n"
+            "3. showtx                 (numeric, optional, default=1) 0 1 show transaction data,0 not show \n"
             "\nResult (for verbosity = 0):\n"
             "\"data\"             (string) A string that is serialized, hex-encoded data for block 'hash'.\n"
             "\nResult (for verbosity = 1):\n"
@@ -794,13 +794,13 @@ UniValue getblock(const JSONRPCRequest& request)
             verbosity = request.params[1].get_bool() ? 1 : 0;
     }
 
-	int detail2 = 0;
-	if (!request.params[2].isNull()) {
-		if (request.params[2].isNum())
-			detail2 = request.params[2].get_int();
-	//	else
-	//		detail2 = request.params[2].get_bool() ? 1 : 0;
-	}
+    int detail2 = 0;
+    if (!request.params[2].isNull()) {
+        if (request.params[2].isNum())
+            detail2 = request.params[2].get_int();
+    //    else
+    //        detail2 = request.params[2].get_bool() ? 1 : 0;
+    }
 
     if (mapBlockIndex.count(hash) == 0)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
@@ -832,24 +832,24 @@ UniValue getblock(const JSONRPCRequest& request)
 
 UniValue getlastblock_tx(const JSONRPCRequest& request)
 {
-	LOCK(cs_main);
+    LOCK(cs_main);
 
-	MCBlock block;
-	MCBlockIndex* pblockindex = chainActive.Tip();
+    MCBlock block;
+    MCBlockIndex* pblockindex = chainActive.Tip();
 
-	if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
-		throw JSONRPCError(RPC_MISC_ERROR, "Block not available (pruned data)");
+    if (fHavePruned && !(pblockindex->nStatus & BLOCK_HAVE_DATA) && pblockindex->nTx > 0)
+        throw JSONRPCError(RPC_MISC_ERROR, "Block not available (pruned data)");
 
-	if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
-		// Block not found on disk. This could be because we have the block
-		// header in our index but don't have the block (for example if a
-		// non-whitelisted node sends us an unrequested long chain of valid
-		// blocks, we add the headers to our index, but don't accept the
-		// block).
-		throw JSONRPCError(RPC_MISC_ERROR, "Block not found on disk");
-	UniValue result(UniValue::VSTR, i64tostr(block.vtx.size() ));
+    if (!ReadBlockFromDisk(block, pblockindex, Params().GetConsensus()))
+        // Block not found on disk. This could be because we have the block
+        // header in our index but don't have the block (for example if a
+        // non-whitelisted node sends us an unrequested long chain of valid
+        // blocks, we add the headers to our index, but don't accept the
+        // block).
+        throw JSONRPCError(RPC_MISC_ERROR, "Block not found on disk");
+    UniValue result(UniValue::VSTR, i64tostr(block.vtx.size() ));
 
-	return result;
+    return result;
 }
 
 struct MCCoinsStats
@@ -1201,7 +1201,7 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
             "\nResult:\n"
             "{\n"
             "  \"chain\": \"xxxx\",        (string) current network name as defined in BIP70 (main, test, regtest)\n"
-			"  \"branchid\": \"xxxx\",     (string) if this chain is  a branchchain will show this fild\n"
+            "  \"branchid\": \"xxxx\",     (string) if this chain is  a branchchain will show this fild\n"
             "  \"blocks\": xxxxxx,         (numeric) the current number of blocks processed in the server\n"
             "  \"headers\": xxxxxx,        (numeric) the current number of headers we have validated\n"
             "  \"bestblockhash\": \"...\", (string) the hash of the currently best block\n"
@@ -1246,10 +1246,10 @@ UniValue getblockchaininfo(const JSONRPCRequest& request)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("chain",                 Params().NetworkIDString()));
-	if (Params().NetworkIDString() == MCBaseChainParams::BRANCH && gArgs.GetArg("-branchid", "") != "")
-	{
-		obj.push_back(Pair("branchid", gArgs.GetArg("-branchid", "")));
-	}
+    if (Params().NetworkIDString() == MCBaseChainParams::BRANCH && gArgs.GetArg("-branchid", "") != "")
+    {
+        obj.push_back(Pair("branchid", gArgs.GetArg("-branchid", "")));
+    }
     obj.push_back(Pair("blocks",                (int)chainActive.Height()));
     obj.push_back(Pair("headers",               pindexBestHeader ? pindexBestHeader->nHeight : -1));
     obj.push_back(Pair("bestblockhash",         chainActive.Tip()->GetBlockHash().GetHex()));
@@ -1622,8 +1622,8 @@ static const CRPCCommand commands[] =
     { "blockchain",         "getblockcount",          &getblockcount,          true,  {} },
     { "blockchain",         "getchaintipwork",        &getchaintipwork,        true,{} },
     { "blockchain",         "getblock",               &getblock,               true,  {"blockhash","verbosity|verbose"} },
-	{ "blockchain",         "getlastblocktx",         &getlastblock_tx,        true,  {} },
-	{ "blockchain",         "getblockhash",           &getblockhash,           true,  {"height"} },
+    { "blockchain",         "getlastblocktx",         &getlastblock_tx,        true,  {} },
+    { "blockchain",         "getblockhash",           &getblockhash,           true,  {"height"} },
     { "blockchain",         "getblockheader",         &getblockheader,         true,  {"blockhash","verbose"} },
     { "blockchain",         "getchaintips",           &getchaintips,           true,  {} },
     { "blockchain",         "getdifficulty",          &getdifficulty,          true,  {} },

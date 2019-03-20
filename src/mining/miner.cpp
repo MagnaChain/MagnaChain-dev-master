@@ -721,7 +721,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         // the SyncBranchInfo tx has two type ancestors and descendants: 1 coins relation. 2 branch block connect relation.
         // OP: can we move to ancestors?
         const MCTransactionRef& iterTx = iter->GetSharedTx();
-        if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
+        if (iterTx->IsSyncBranchInfo()) {//one branch's header transactions should come to block vtx in order
             std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
             bool hasAncestorFailed = false;
             for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
