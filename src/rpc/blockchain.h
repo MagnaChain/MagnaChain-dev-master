@@ -23,7 +23,7 @@ double GetDifficulty(const MCBlockIndex* blockindex = nullptr);
 void RPCNotifyBlockChange(bool ibd, const MCBlockIndex *);
 
 /** Block description to JSON */
-UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool txDetails = false, bool txDetailsOut = true);
+UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool txDetails = false, bool fListTxInfo = true);
 
 /** Mempool information to JSON */
 UniValue mempoolInfoToJSON();

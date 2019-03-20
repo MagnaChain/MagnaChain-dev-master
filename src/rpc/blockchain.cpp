@@ -104,7 +104,7 @@ UniValue blockheaderToJSON(const MCBlockIndex* blockindex)
     return result;
 }
 
-UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool txDetails, bool txDetailsOut)
+UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool txDetails, bool fListTxInfo)
 {
     UniValue result(UniValue::VOBJ);
     result.push_back(Pair("hash", blockindex->GetBlockHash().GetHex()));
@@ -121,7 +121,7 @@ UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool 
     result.push_back(Pair("versionHex", strprintf("%08x", block.nVersion)));
     result.push_back(Pair("merkleroot", block.hashMerkleRoot.GetHex()));
 	result.push_back(Pair("tx_num", (int)block.vtx.size()));
-    if (txDetailsOut){
+    if (fListTxInfo || txDetails){
 		UniValue txs(UniValue::VARR);
 		for(const auto& tx : block.vtx)
 		{
