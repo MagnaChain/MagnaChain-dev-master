@@ -128,6 +128,7 @@ class MagnaChainTestFramework(object):
             self.setup_network()
             if getattr(self, "num_sidenodes", 0) > 0:
                 self.setup_sidechain()
+            self.__for_convenient()
             self.run_test()
             success = TestStatus.PASSED
         except JSONRPCException as e:
@@ -570,6 +571,19 @@ class MagnaChainTestFramework(object):
         Useful if a test case wants complete control over initialization."""
         for i in range(self.num_nodes):
             initialize_datadir(self.options.tmpdir, i)
+
+    def __for_convenient(self):
+        '''
+        be convenient for self.node0 to call
+        :return:
+        '''
+        for i, node in enumerate(self.nodes):
+            # for convenient
+            setattr(self, 'node' + str(i), node)
+
+        for i, node in enumerate(self.sidenodes):
+            # for convenient
+            setattr(self, 'snode' + str(i), node)
 
 
 class ComparisonTestFramework(MagnaChainTestFramework):
