@@ -259,6 +259,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         :return:
         '''
         self.log.info(sys._getframe().f_code.co_name)
+        self.log.info("snode0 mortgage coins num {}".format(len(self.snode0.listmortgagecoins())))
         self.snode0.generate(1)
         assert_equal(self.snode0.getrawmempool(),[])
         hash = self.snode0.getbestblockhash()
@@ -283,12 +284,16 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.snode0.generate(7)
         assert_equal(self.snode0.getblockcount(),new_height + 7)
         self.node0.generate(1)
+        txids = self.node0.getrawmempool()
+        self.log.info("node0 mempool size {}".format(len(txids)))
+        print(txids)
         # self.snode0.rebroadcastchaintransaction(txid2)
         self.snode0.generate(8)
         self.node0.generate(1)
         self.test_getbranchchainheight()
         self.snode0.rebroadcastchaintransaction(txid2)
         self.test_getbranchchainheight()
+        self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
         # todo: we need reconsiderblock previous tip
 
 
