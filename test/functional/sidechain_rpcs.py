@@ -36,7 +36,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.num_nodes = 2
         # self.extra_args = [['-txindex']]
         # self.side_extra_args = [['-txindex']]
-        self.side_extra_args = [['-disablesafemode=true'],['-disablesafemode=true']]
+        self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
