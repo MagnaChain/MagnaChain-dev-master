@@ -32,8 +32,9 @@ $ dig -t NS dnsseed.example.com
 dnsseed.example.com.   86400    IN      NS     vps.example.com.
 
 On the system vps.example.com, you can now run dnsseed:
+First, you need to configure a file like config.lua which is in curent github directory.
 
-./dnsseed -h dnsseed.example.com -n vps.example.com
+./dnsseed -f config.lua
 
 If you want the DNS server to report SOA records, please provide an
 e-mail address (with the @ part replaced by .) using -m.
