@@ -1,6 +1,6 @@
-1、先在32位(x86)环境下好packages，编译一下就会下载了
-2、解压packages_x64build.zip
-3、将解压后packages_x64build目录下面的目录拷贝到packages里面（可以先把对应的目录先备案，用于切换32位）
+1、Build solution platforms in x86, arm to download packages from nuget.
+2、unzip packages_x64build.zip
+3、Move relate dir in packages_x64build to ./packages.Yes you may need to make a backup for later switch back to x86.
 
 -------------------------
 source
