@@ -175,6 +175,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
     def test_rebroadcastchaintransaction(self):
         # to sidechain
         self.log.info(sys._getframe().f_code.co_name)
+        self.node0.generate(8)
         self.snode0.generate(2)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(), 1)
