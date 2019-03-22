@@ -927,21 +927,22 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
     }
 }
 
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, MCTransactionRef &pFromTx)
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx)
 {
+    MCTransactionRef pfromtx = pFromTx;
     MCMutableTransaction mtx(tx);
  
     if (tx.IsBranchChainTransStep2()) {
-        if (pFromTx == nullptr){// re ser from tx.
+        if (pfromtx == nullptr){// re ser from tx.
+            MCTransactionRef pfromtx;
             MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
-            cds >> (pFromTx);
+            cds >> (pfromtx);
+        }
+        if (pfromtx && pfromtx->IsMortgage()) {
+            mtx.vout[0].scriptPubKey.clear();
         }
 
         mtx.fromTx.clear();
-
-        if (pFromTx && pFromTx->IsMortgage()) {
-            mtx.vout[0].scriptPubKey.clear();
-        }
         if (mtx.fromBranchId != MCBaseChainParams::MAIN) {
             mtx.pPMT.reset(new MCSpvProof());
         }
