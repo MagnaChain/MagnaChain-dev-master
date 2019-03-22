@@ -927,7 +927,7 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
     }
 }
 
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx)
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, MCTransactionRef &pFromTx)
 {
     MCMutableTransaction mtx(tx);
  
