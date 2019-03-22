@@ -36,6 +36,7 @@
 
 class MCBlockIndex;
 class ContractInfo;
+class DisconnectedBlockTransactions;
 
 /** Fake height value used in Coin to signify they are only in the memory pool (since 0.8) */
 static const uint32_t MEMPOOL_HEIGHT = 0x7FFFFFFF;
@@ -107,11 +108,11 @@ private:
     uint64_t nSizeWithAncestors;
     MCAmount nModFeesWithAncestors;
     int64_t nSigOpCostWithAncestors;
+public:
     std::shared_ptr<MCTxMemPoolEntryContractData> contractData;
 
 public:
-
-    MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& _nFee, int64_t _nTime, unsigned int _entryHeight, bool spendsCoinbase, int64_t nSigOpsCost, LockPoints lp);
+    MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& _nFee, int64_t _nTime, unsigned int _entryHeight, bool spendsCoinbase, int64_t nSigOpsCost, LockPoints lp, uint64_t order);
 
     MCTxMemPoolEntry(const MCTxMemPoolEntry& other);
 
@@ -153,6 +154,14 @@ public:
     int64_t GetSigOpCostWithAncestors() const { return nSigOpCostWithAncestors; }
 
     mutable size_t vTxHashesIdx; //!< Index in mempool's vTxHashes
+
+    struct ModifyOrder
+    {
+        uint64_t order;
+        void operator()(MCTxMemPoolEntry& e) {
+            e.entryOrder = order;
+        }
+    };
 };
 
 // Helpers for modifying MCTxMemPool::mapTx, which is a boost multi_index.
@@ -281,7 +290,7 @@ class CompareTxMemPoolEntryByEntryTime
 public:
     bool operator()(const MCTxMemPoolEntry& a, const MCTxMemPoolEntry& b) const
     {
-        return a.GetTime() < b.GetTime();
+        return a.GetOrder() < b.GetOrder();
     }
 };
 
@@ -516,6 +525,7 @@ private:
     txlinksMap mapLinks;
     
     std::map<MCContractID, std::list<txiter>> contractLinksMap;
+    uint64_t nextEntryOrder;
 
     void UpdateParent(txiter entry, txiter parent, bool add);
     void UpdateChild(txiter entry, txiter child, bool add);
@@ -529,6 +539,9 @@ public:
     /** Create a new MCTxMemPool.
      */
     MCTxMemPool(MCBlockPolicyEstimator* estimator = nullptr);
+
+    uint64_t GenerateNextOrder() { return nextEntryOrder++; }
+    void PreCalculateTxOrder(const DisconnectedBlockTransactions& disconnectpool, std::map<uint256, uint64_t>& orders);
 
     /**
      * If sanity-checking is turned on, check makes sure the pool is
@@ -682,7 +695,7 @@ private:
      */
     void UpdateForDescendants(txiter updateIt,
         cacheMap& cachedDescendants,
-        const std::set<uint256>& setExclude);
+        const std::map<uint256, int>& setExclude);
     /** Update ancestors of hash to add/remove it as a descendant transaction. */
     void UpdateAncestorsOf(bool add, txiter hash, setEntries& setAncestors);
     /** Set ancestor state for an entry */

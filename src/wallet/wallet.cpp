@@ -3283,7 +3283,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
     if (gArgs.GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS)) {
         // Lastly, ensure this tx will pass the mempool's chain limits
         LockPoints lp;
-        MCTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, false, 0, lp);
+        MCTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, false, 0, lp, 0);
         MCTxMemPool::setEntries setAncestors;
         size_t nLimitAncestors = gArgs.GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT);
         size_t nLimitAncestorSize = gArgs.GetArg("-limitancestorsize", DEFAULT_ANCESTOR_SIZE_LIMIT)*1000;

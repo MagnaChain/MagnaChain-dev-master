@@ -23,13 +23,10 @@
 
 MCTxMemPoolEntry::MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& _nFee,
     int64_t _nTime, unsigned int _entryHeight,
-    bool _spendsCoinbase, int64_t _sigOpsCost, LockPoints lp) :
+    bool _spendsCoinbase, int64_t _sigOpsCost, LockPoints lp, uint64_t order) :
     tx(_tx), nFee(_nFee), nTime(_nTime), entryHeight(_entryHeight),
     spendsCoinbase(_spendsCoinbase), sigOpCost(_sigOpsCost), lockPoints(lp)
 {
-    static uint64_t nextEntryOrder = 1;
-    entryOrder = nextEntryOrder++;
-
     nTxWeight = GetTransactionWeight(*tx);
     nUsageSize = RecursiveDynamicUsage(tx);
 
@@ -43,6 +40,7 @@ MCTxMemPoolEntry::MCTxMemPoolEntry(const MCTransactionRef& _tx, const MCAmount& 
     nSizeWithAncestors = GetTxSize();
     nModFeesWithAncestors = nFee;
     nSigOpCostWithAncestors = sigOpCost;
+    entryOrder = (order > 0 ? order : mempool.GenerateNextOrder());
 }
 
 MCTxMemPoolEntry::MCTxMemPoolEntry(const MCTxMemPoolEntry& other)
@@ -97,7 +95,7 @@ size_t MCTxMemPoolEntry::GetTxSize() const
 // Update the given tx for any in-mempool descendants.
 // Assumes that setMemPoolChildren is correct for the given tx and all
 // descendants.
-void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendants, const std::set<uint256> &setExclude)
+void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendants, const std::map<uint256, int> &setExclude)
 {
     setEntries stageEntries, setAllDescendants;
     stageEntries = GetMemPoolChildren(updateIt);
@@ -127,8 +125,17 @@ void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescenda
     int64_t modifySize = 0;
     MCAmount modifyFee = 0;
     int64_t modifyCount = 0;
+    int index = setExclude.find(updateIt->GetTx().GetHash())->second;
     for (txiter cit : setAllDescendants) {
-        if (!setExclude.count(cit->GetTx().GetHash())) {
+        bool modify = true;
+        auto iter = setExclude.find(cit->GetTx().GetHash());
+        if (iter != setExclude.end()) {
+            if (!cit->GetTx().IsSmartContract() || iter->second > index) {
+                modify = false;
+            }
+        }
+
+        if (modify) {
             modifySize += cit->GetTxSize();
             modifyFee += cit->GetModifiedFee();
             modifyCount++;
@@ -155,7 +162,10 @@ void MCTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256> &vHashe
 
     // Use a set for lookups into vHashesToUpdate (these entries are already
     // accounted for in the state of their ancestors)
-    std::set<uint256> setAlreadyIncluded(vHashesToUpdate.begin(), vHashesToUpdate.end());
+    std::map<uint256, int> setAlreadyIncluded;
+    for (int i = 0; i < vHashesToUpdate.size(); ++i) {
+        setAlreadyIncluded[vHashesToUpdate[i]] = i;
+    }
 
     // Iterate in reverse, so that whenever we are looking at a transaction
     // we are sure that all in-mempool descendants have already been processed.
@@ -179,7 +189,7 @@ void MCTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256> &vHashe
             assert(childIter != mapTx.end());
             // We can skip updating entries we've encountered before or that
             // are in the block (which are already accounted for).
-            if (setChildren.insert(childIter).second && !setAlreadyIncluded.count(childHash)) {
+            if (setChildren.insert(childIter).second && !setAlreadyIncluded.count(childIter->GetTx().GetHash())) {
                 UpdateChild(it, childIter, true);
                 UpdateParent(childIter, it, true);
             }
@@ -263,20 +273,21 @@ bool MCTxMemPool::SearchForParents(const MCTxMemPoolEntry& entry, setEntries& pa
                 continue;
             }
 
-            auto last = links->second.end();
+            auto prev = links->second.end();
             for (auto liter = links->second.begin(); liter != links->second.end(); ++liter) {
                 if ((*liter)->GetOrder() >= entry.GetOrder()) {
-                    if ((*liter)->GetOrder() == entry.GetOrder())
+                    if ((*liter)->GetOrder() == entry.GetOrder()) {
                         assert((*liter)->GetTx().GetHash() == txHash);
+                    }
                     break;
                 }
                 else {
-                    last = liter;
+                    prev = liter;
                 }
             }
 
-            if (last != links->second.end()) {
-                parentHashes.insert(*last);
+            if (prev != links->second.end() && entry.GetTx().GetHash() != (*prev)->GetTx().GetHash()) {
+                parentHashes.insert(*prev);
                 if (parentHashes.size() + 1 > limitAncestorCount) {
                     errString = strprintf("too many unconfirmed parents [limit: %u]", limitAncestorCount);
                     return false;
@@ -350,25 +361,6 @@ void MCTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove, 
     // For each entry, walk back all ancestors and decrement size associated with this
     // transaction
     const uint64_t nNoLimit = std::numeric_limits<uint64_t>::max();
-    if (updateDescendants) {
-        // updateDescendants should be true whenever we're not recursively
-        // removing a tx and all its descendants, eg when a transaction is
-        // confirmed in a block.
-        // Here we only update statistics and not data in mapLinks (which
-        // we need to preserve until we're finished with all operations that
-        // need to traverse the mempool).
-        for (txiter removeIt : entriesToRemove) {
-            setEntries setDescendants;
-            CalculateDescendants(removeIt, setDescendants, true);
-            setDescendants.erase(removeIt); // don't update state for self
-            int64_t modifySize = -((int64_t)removeIt->GetTxSize());
-            MCAmount modifyFee = -removeIt->GetModifiedFee();
-            int modifySigOps = -removeIt->GetSigOpCost();
-            for (txiter dit : setDescendants) {
-                mapTx.modify(dit, update_ancestor_state(modifySize, modifyFee, -1, modifySigOps));
-            }
-        }
-    }
     for (txiter removeIt : entriesToRemove) {
         setEntries setAncestors;
         const MCTxMemPoolEntry &entry = *removeIt;
@@ -394,13 +386,42 @@ void MCTxMemPool::UpdateForRemoveFromMempool(const setEntries &entriesToRemove, 
         // Note that UpdateAncestorsOf severs the child links that point to
         // removeIt in the entries for the parents of removeIt.
         UpdateAncestorsOf(false, removeIt, setAncestors);
-    }
-    // After updating all the ancestor sizes, we can now sever the link between each
-    // transaction being removed and any mempool children (ie, update setMemPoolParents
-    // for each direct child of a transaction being removed).
-    for (txiter removeIt : entriesToRemove) {
+
+        // updateDescendants should be true whenever we're not recursively
+        // removing a tx and all its descendants, eg when a transaction is
+        // confirmed in a block.
+        // Here we only update statistics and not data in mapLinks (which
+        // we need to preserve until we're finished with all operations that
+        // need to traverse the mempool).
+        setEntries setDescendants;
+        if (updateDescendants) {
+            CalculateDescendants(removeIt, setDescendants, true);
+            setDescendants.erase(removeIt); // don't update state for self
+            int64_t modifySize = -((int64_t)removeIt->GetTxSize());
+            MCAmount modifyFee = -removeIt->GetModifiedFee();
+            int modifySigOps = -removeIt->GetSigOpCost();
+            for (txiter dit : setDescendants) {
+                mapTx.modify(dit, update_ancestor_state(modifySize, modifyFee, -1, modifySigOps));
+            }
+        }
+
+        // After updating all the ancestor sizes, we can now sever the link between each
+        // transaction being removed and any mempool children (ie, update setMemPoolParents
+        // for each direct child of a transaction being removed).
         UpdateChildrenForRemoval(removeIt);
         RemoveFromContractLinks(removeIt);
+
+        for (auto piter : setAncestors) {
+            setEntries setDescendants2;
+            CalculateDescendants(piter, setDescendants2, true);
+
+            for (auto citer : setDescendants) {
+                if (!setDescendants2.count(citer)) {
+                    mapTx.modify(citer, update_ancestor_state(-(int64_t)piter->GetTxSize(), -piter->GetModifiedFee(), -1, -piter->GetSigOpCost()));
+                    mapTx.modify(piter, update_descendant_state(-(int64_t)citer->GetTxSize(), -citer->GetModifiedFee(), -1));
+                }
+            }
+        }
     }
 }
 
@@ -426,7 +447,8 @@ void MCTxMemPoolEntry::UpdateAncestorState(int64_t modifySize, MCAmount modifyFe
 
 
 MCTxMemPool::MCTxMemPool(MCBlockPolicyEstimator* estimator) :
-    nTransactionsUpdated(0), minerPolicyEstimator(estimator), nCreateBranchTxCount(0)
+    nTransactionsUpdated(0), minerPolicyEstimator(estimator),
+    nCreateBranchTxCount(0), nextEntryOrder(1)
 {
     DoClear(); //lock free clear
 
@@ -489,11 +511,80 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
     // 设置内存池中与合约关联地址的交易
     if (entry.contractData != nullptr) {
         for (const MCContractID& contractId : entry.contractData->contractAddrs) {
-            auto links = contractLinksMap.find(contractId);
-            if (links != contractLinksMap.end())
-                setParentTransactions.insert(links->second.back()->GetTx().GetHash());
+            auto& links = contractLinksMap[contractId];
+            auto next = links.end();
+            for (auto liter = links.begin(); liter != links.end(); ++liter) {
+                if ((*liter)->GetOrder() >= entry.GetOrder()) {
+                    next = liter;
+                    assert((*liter)->GetOrder() != entry.GetOrder());
+                    break;
+                }
+                else {
+                    for (int i = 0; i < (*liter)->GetTx().vin.size(); ++i) {
+                        const uint256& lhash = (*liter)->GetTx().vin[i].prevout.hash;
+                        txiter piter = mapTx.find(lhash);
+                        if (piter != mapTx.end()) {
+                            txlinksMap::const_iterator it = mapLinks.find(*liter);
+                            if (!it->second.parents.count(piter)) {;
+                                setAncestors.insert(piter);
+                            }
+                        }
+                    }
+                }
+            }
 
-            contractLinksMap[contractId].emplace_back(newit);
+            auto prev = next;
+            if (prev != links.begin()) {
+                prev--;
+            }
+            else {
+                prev = links.end();
+            }
+
+            if (prev != links.end()) {
+                setParentTransactions.insert((*prev)->GetTx().GetHash());
+
+                if (next != links.end()) {
+                    bool remove = true;
+                    for (int i = 0; i < (*next)->GetTx().vin.size(); ++i) {
+                        if ((*next)->GetTx().vin[i].prevout.hash == (*prev)->GetTx().GetHash()) {
+                            remove = false;
+                            break;
+                        }
+                    }
+                    if (remove) {
+                        for (const MCContractID nextCntractId : (*next)->contractData->contractAddrs) {
+                            if (nextCntractId == contractId) {
+                                continue;
+                            }
+                            auto& nextLinks = contractLinksMap[nextCntractId];
+                            auto nextPrev = nextLinks.begin();
+                            for (auto nextliter = nextLinks.begin(); nextliter != nextLinks.end(); ++nextliter) {
+                                if ((*nextliter)->GetOrder() >= (*next)->GetOrder()) {
+                                    break;
+                                }
+                                else {
+                                    nextPrev = nextliter;
+                                }
+                            }
+                            if (*nextPrev == *prev) {
+                                remove = false;
+                            }
+                        }
+                    }
+                    if (remove) {
+                        UpdateChild(*prev, *next, false);
+                        UpdateParent(*next, *prev, false);
+                    }
+                }
+            }
+            auto target = links.insert(next, newit);
+            next = target;
+            next++;
+            if (next != links.end()) {
+                UpdateChild(*target, *next, true);
+                UpdateParent(*next, *target, true);
+            }
         }
     }
     // Don't bother worrying about child transactions of this one.
@@ -1322,18 +1413,17 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
         if (it->contractData != nullptr) {
             for (const MCContractID& contractId : it->contractData->contractAddrs) {
                 auto links = contractLinksMap.find(contractId);
-                if (links != contractLinksMap.end()) {
-                    for (auto liter = links->second.begin(); liter != links->second.end(); ++liter) {
-                        if (*liter == it) {
-                            auto citer = liter;
-                            ++citer;
-                            if (citer != links->second.end()) {
-                                if (setChildrenCheck.insert(*citer).second) {
-                                    childSizes += (*citer)->GetTxSize();
-                                }
+                assert(links != contractLinksMap.end());
+                for (auto liter = links->second.begin(); liter != links->second.end(); ++liter) {
+                    if (*liter == it) {
+                        auto citer = liter;
+                        ++citer;
+                        if (citer != links->second.end()) {
+                            if (setChildrenCheck.insert(*citer).second) {
+                                childSizes += (*citer)->GetTxSize();
                             }
-                            break;
                         }
+                        break;
                     }
                 }
             }
@@ -1596,8 +1686,7 @@ void MCTxMemPool::ReacceptTransactions()
     for (int i = 0; i < entries.size(); ++i) {
         MCTransactionRef pTx = entries[i]->GetSharedTx();
         if (pTx->IsSmartContract()) {
-            try
-            {
+            try {
                 if (!CheckSmartContract(&sls, *entries[i], SmartLuaState::SAVE_TYPE_DATA, pCoinAmountCache)) {
                     vecRemoves.emplace_back(pTx);
                 }
@@ -1626,13 +1715,11 @@ void MCTxMemPool::ReacceptTransactions()
                     }
                 }
             }
-            catch (const std::exception& e)
-            {
+            catch (const std::exception& e) {
                 LogPrintf("ReacceptTransactions contract tx exception %s\n", e.what());
                 vecRemoves.emplace_back(pTx);
             }
-            catch (...)
-            {
+            catch (...) {
                 LogPrintf("ReacceptTransactions contract tx unknow exception\n");
                 vecRemoves.emplace_back(pTx);
             }
@@ -1652,6 +1739,168 @@ bool MCTxMemPool::AddUnchecked(const uint256&hash, const MCTxMemPoolEntry &entry
     std::string dummy;
     CalculateMemPoolAncestors(entry, nullptr, setAncestors, nNoLimit, nNoLimit, nNoLimit, nNoLimit, dummy);
     return AddUnchecked(hash, entry, setAncestors, validFeeEstimate);
+}
+
+void MCTxMemPool::PreCalculateTxOrder(const DisconnectedBlockTransactions& disconnectpool, std::map<uint256, uint64_t>& orders)
+{
+    // map of txs in block
+    // value.first is base order, value.second is adjust order before tx
+    std::map<uint256, std::pair<txiter, MCTransactionRef>> txOrders;
+    auto it = disconnectpool.queuedTx.get<insertion_order>().rbegin();
+    while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
+        MCTransactionRef ptx = *it++;
+        const uint256& hash = ptx->GetHash();
+        txiter before = mapTx.end();
+        uint64_t order = std::numeric_limits<uint64_t>::max();
+
+        // before any tx in mempool?
+        auto iter = mapNextTx.lower_bound(MCOutPoint(hash, 0));
+        for (; iter != mapNextTx.end() && iter->first->hash == hash; ++iter) {
+            const uint256 &childHash = iter->second->GetHash();
+            txiter childIter = mapTx.find(childHash);
+            assert(childIter != mapTx.end());
+            if (before == mapTx.end() || childIter->GetOrder() < before->GetOrder()) {
+                before = childIter;
+            }
+        }
+
+        // is publish contract?
+        if (ptx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
+            auto iter = contractLinksMap.find(ptx->pContractData->address);
+            if (iter != contractLinksMap.end() && iter->second.size() > 0) {
+                auto begin = iter->second.begin();
+                if (before == mapTx.end() || (*begin)->GetOrder() < before->GetOrder()) {
+                    before = *begin;
+                }
+            }
+        }
+
+        // is vin's prevout in this block?
+        for (int i = 0; i < ptx->vin.size(); ++i) {
+            auto piter = txOrders.find(ptx->vin[i].prevout.hash);
+            if (piter != txOrders.end()) {
+                auto temp = piter;
+                while (temp->second.second != nullptr) {
+                    temp = txOrders.find(temp->second.second->GetHash());
+                    assert(temp != txOrders.end());
+                }
+                // make prevout before this tx
+                if (before != mapTx.end() && temp->second.first->GetOrder() > before->GetOrder()) {
+                    txOrders[ptx->vin[i].prevout.hash] = std::make_pair(piter->second.first, ptx);
+                }
+            }
+        }
+
+        txOrders[hash] = std::make_pair(before, nullptr);
+    }
+
+    std::map<uint64_t, uint256> order2tx;
+    it = disconnectpool.queuedTx.get<insertion_order>().rbegin();
+    while (it != disconnectpool.queuedTx.get<insertion_order>().rend()) {
+        MCTransactionRef ptx = *it++;
+        auto item = txOrders.find(ptx->GetHash());
+        if (orders.count(item->first) == 0) {
+            int offset = 0;
+            auto temp = item;
+            while (temp->second.second != nullptr) {
+                temp = txOrders.find(temp->second.second->GetHash());
+                assert(temp != txOrders.end());
+                offset++;
+            }
+
+            uint64_t minOrder = (temp->second.first == mapTx.end() ? GenerateNextOrder() : temp->second.first->GetOrder());
+            uint64_t maxOrder = minOrder;
+
+            temp = item;
+            while (temp->second.second != nullptr) {
+                orders[temp->first] = maxOrder++;
+                temp = txOrders.find(temp->second.second->GetHash());
+            }
+            orders[temp->first] = maxOrder;
+            assert(minOrder + offset == maxOrder);
+
+            // calculate the number of item need to offset
+            std::vector<uint256> modifyItems;
+            auto oi = order2tx.begin();
+            auto mi = mapTx.get<entry_time>().begin();
+            while (oi != order2tx.end() || mi != mapTx.get<entry_time>().end()) {
+                bool oivalid = false;
+                while (oi != order2tx.end()) {
+                    if (oi->first >= minOrder && oi->first <= maxOrder) {
+                        oivalid = true;
+                        break;
+                    }
+                    else if (oi->first > maxOrder) {
+                        break;
+                    }
+                    oi++;
+                }
+
+                bool mivalid = false;
+                while (mi != mapTx.get<entry_time>().end()) {
+                    if (mi->GetOrder() >= minOrder && mi->GetOrder() <= maxOrder) {
+                        mivalid = true;
+                        break;
+                    }
+                    else if (mi->GetOrder() > maxOrder) {
+                        break;
+                    }
+                    mi++;
+                }
+
+                if (!oivalid && !mivalid) {
+                    break;
+                }
+
+                bool addoi = false;
+                if (oivalid && mivalid) {
+                    assert(oi->first != mi->GetOrder());
+                    if (oi->first < mi->GetOrder()) {
+                        addoi = true;
+                    }
+                }
+                else if (oivalid) {
+                    addoi = true;
+                }
+                else if (mivalid) {
+                    addoi = false;
+                }
+
+                if (addoi) {
+                    modifyItems.emplace_back(oi->second);
+                    oi++;
+                }
+                else {
+                    modifyItems.emplace_back(mi->GetTx().GetHash());
+                    mi++;
+                }
+                maxOrder++;
+            }
+
+            nextEntryOrder = std::max(maxOrder + 1, nextEntryOrder);
+
+            MCTxMemPoolEntry::ModifyOrder modifier;
+            for (int i = modifyItems.size() - 1; i >= 0; --i) {
+                if (orders.count(modifyItems[i])) {
+                    order2tx[maxOrder] = modifyItems[i];
+                    orders[modifyItems[i]] = maxOrder--;
+                }
+                else {
+                    order2tx.erase(maxOrder);
+                    txiter iter = mapTx.find(modifyItems[i]);
+                    modifier.order = maxOrder--;
+                    mapTx.modify(iter, modifier);
+                }
+            }
+
+            temp = item;
+            while (temp->second.second != nullptr) {
+                order2tx[minOrder++] = temp->first;
+                temp = txOrders.find(temp->second.second->GetHash());
+            }
+            order2tx[minOrder] = temp->first;
+        }
+    }
 }
 
 void MCTxMemPool::UpdateChild(txiter entry, txiter child, bool add)

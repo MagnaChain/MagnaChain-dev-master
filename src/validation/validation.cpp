@@ -470,6 +470,10 @@ static bool IsCurrentForFeeEstimation()
 void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool fAddToMempool)
 {
     AssertLockHeld(cs_main);
+
+    std::map<uint256, uint64_t> orders;
+    mempool.PreCalculateTxOrder(disconnectpool, orders);
+
     std::vector<uint256> vHashUpdate;
     // disconnectpool's insertion_order index sorts the entries from
     // oldest to newest, but the oldest entry will be the last tx from the
@@ -490,12 +494,14 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions &disconnectpool, bool f
                 ptx = MakeTransactionRef(mtx);
             }
         }
+        uint64_t order = orders[ptx->GetHash()];
         if (!fAddToMempool || ptx->IsCoinBase() || ptx->IsStake() || ptx->IsReportReward() // these tx are not accepted in mempool
-            || !AcceptToMemoryPool(mempool, stateDummy, ptx, false, nullptr, nullptr, true)) {
+            || !AcceptToMemoryPool(mempool, stateDummy, ptx, false, nullptr, nullptr, true, 0, true, order)) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
             mempool.RemoveRecursive(*ptx, MemPoolRemovalReason::REORG);
-        } else if (mempool.Exists(ptx->GetHash())) {
+        }
+        else if (mempool.Exists(ptx->GetHash())) {
             vHashUpdate.push_back(ptx->GetHash());
         }
         ++it;
@@ -552,7 +558,7 @@ static bool CheckInputsFromMempoolAndCache(const MCTransaction& tx, MCValidation
 
 static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& ptx, bool fLimitFree,
                               bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced,
-                              bool fOverrideMempoolLimit, const MCAmount& nAbsurdFee, std::vector<MCOutPoint>& coins_to_uncache, bool executeSmartContract)
+                              bool fOverrideMempoolLimit, const MCAmount& nAbsurdFee, std::vector<MCOutPoint>& coins_to_uncache, bool executeSmartContract, uint64_t order)
 {
     const MCTransaction& tx = *ptx;
     const uint256 hash = tx.GetHash();
@@ -720,7 +726,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             }
         }
 
-        MCTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(), fSpendsCoinbase, nSigOpsCost, lp);
+        MCTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(), fSpendsCoinbase, nSigOpsCost, lp, order);
 
         // execute contract
         if (tx.IsSmartContract()) {
@@ -1015,17 +1021,17 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
 /** (try to) add transaction to memory pool with a specified acceptance time **/
 static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState &state, const MCTransactionRef &tx, bool fLimitFree,
                         bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced,
-                        bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract)
+                        bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order)
 {
     bool res;
     if (tx->IsBranchChainTransStep2())
     {
-        res = AcceptChainTransStep2ToMemoryPool(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee);
+        res = AcceptChainTransStep2ToMemoryPool(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, order);
     }
     else
     {
         std::vector<MCOutPoint> coins_to_uncache;
-        res = AcceptToMemoryPoolWorker(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, coins_to_uncache, executeSmartContract);
+        res = AcceptToMemoryPoolWorker(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, coins_to_uncache, executeSmartContract, order);
         if (!res) {
             for (const MCOutPoint& hashTx : coins_to_uncache)
                 pcoinsTip->Uncache(hashTx);
@@ -1047,10 +1053,10 @@ int lastTimeMillis = 0;
 int lastTimeMilisCount = 0;
 bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState &state, const MCTransactionRef &tx, bool fLimitFree,
                         bool* pfMissingInputs, std::list<MCTransactionRef>* plTxnReplaced,
-                        bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract)
+                        bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order)
 {
     const MCChainParams& chainparams = Params();
-    return AcceptToMemoryPoolWithTime(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, GetTimeMillis(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, executeSmartContract);
+    return AcceptToMemoryPoolWithTime(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, GetTimeMillis(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, executeSmartContract, order);
 }
 
 
@@ -4991,7 +4997,7 @@ bool LoadMempool(void)
             MCValidationState state;
             if (nTime + nExpiryTimeout > nNow) {
                 LOCK(cs_main);
-                AcceptToMemoryPoolWithTime(chainparams, mempool, state, tx, true, nullptr, nTime, nullptr, false, 0, true);
+                AcceptToMemoryPoolWithTime(chainparams, mempool, state, tx, true, nullptr, nTime, nullptr, false, 0, true, 0);
                 if (state.IsValid()) {
                     ++count;
                 } else {
@@ -5100,7 +5106,7 @@ class CMainCleanup
 
 bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState &state, const MCTransactionRef &ptx, bool fLimitFree,
         bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced,
-        bool fOverrideMempoolLimit, const MCAmount nAbsurdFee)
+        bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, uint64_t order)
 {
     const MCTransaction& tx = *ptx;
     const uint256 hash = tx.GetHash();
@@ -5197,7 +5203,7 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
         bool fSpendsCoinbase = false;
         //... no input for check
         MCTxMemPoolEntry entry(ptx, nFees, nAcceptTime, chainActive.Height(),
-                fSpendsCoinbase, nSigOpsCost, lp);
+                fSpendsCoinbase, nSigOpsCost, lp, order);
         unsigned int nSize = entry.GetTxSize();
 
         if (nSigOpsCost > MAX_STANDARD_TX_SIGOPS_COST)
