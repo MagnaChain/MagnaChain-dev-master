@@ -2944,7 +2944,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
             else {//找到足够的币提前退出
                 MCAmount nMinimumAmount = 1;
                 MCAmount nMaximumAmount = MAX_MONEY;
-                MCAmount nMinimumSumAmount = nValue * 2 + (nFeeNeeded ? nFeeNeeded : COIN);
+                MCAmount nMinimumSumAmount = nValue * 2 + (nFeeNeeded ? nFeeNeeded : 20*COIN);// we need more coin for the big fee situation, such as sendbrachchain transaction
                 AvailableCoins(vAvailableCoins, nullptr, true, &coin_control, nMinimumAmount, nMaximumAmount, nMinimumSumAmount);
             }
 
