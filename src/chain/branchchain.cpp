@@ -834,7 +834,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     }
 
     MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx);
-    /*
+    
     //remove fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();
     if (txTrans1.IsMortgage())
@@ -845,7 +845,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     {
         mtxTrans2my.pPMT.reset(new MCSpvProof());
     }
-    */
+    
     if (mtxTrans2.GetHash() != mtxTrans2my.GetHash())
     {
         std::string strErr = strprintf("%s transaction hash error\n", __func__);

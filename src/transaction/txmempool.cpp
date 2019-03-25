@@ -933,17 +933,17 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
     MCMutableTransaction mtx(tx);
  
     if (tx.IsBranchChainTransStep2()) {
-        if (pfromtx == nullptr){// re ser from tx.
-            MCTransactionRef pfromtx;
-            MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
-            cds >> (pfromtx);
-        }
-        if (pfromtx && pfromtx->IsMortgage()) {
-            mtx.vout[0].scriptPubKey.clear();
-        }
+        //if (pfromtx == nullptr){// re ser from tx.
+        //    MCTransactionRef pfromtx;
+        //    MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        //    cds >> (pfromtx);
+        //}
+        //if (pfromtx && pfromtx->IsMortgage()) {
+        //    mtx.vout[0].scriptPubKey.clear();
+        //}
 
-        mtx.fromTx.clear();
-        if (mtx.fromBranchId != MCBaseChainParams::MAIN) {
+        //mtx.fromTx.clear();
+        if (mtx.fromBranchId != MCBaseChainParams::MAIN) {// transaction may be mined in diff blocks, so remove spv info
             mtx.pPMT.reset(new MCSpvProof());
         }
     }
