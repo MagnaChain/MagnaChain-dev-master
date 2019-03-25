@@ -1186,16 +1186,18 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
         std::vector<MCTransactionRef> vRemove;
         for (const auto& it : mapTx) {
             const MCTransactionRef& ptx = it.GetPtrTx();
-            BranchBlockData blockData;
-            blockData.InitDataFromTx(*ptx);
-            const uint256 blockHash = blockData.header.GetHash();
-            const uint256& branchHash = ptx->pBranchBlockData->branchID;
-            uint256 mixhash = blockHash | branchHash;
-            if (setHeaderMixHash.count(mixhash)) {
-                vRemove.push_back(ptx);
+            if (ptx->IsSyncBranchInfo()){
+                BranchBlockData blockData;
+                blockData.InitDataFromTx(*ptx);
+                const uint256 blockHash = blockData.header.GetHash();
+                const uint256& branchHash = ptx->pBranchBlockData->branchID;
+                uint256 mixhash = blockHash | branchHash;
+                if (setHeaderMixHash.count(mixhash)) {
+                    vRemove.push_back(ptx);
 
-                uint256 txid = ptx->GetHash();
-                LogPrintf("remove duplicate syncbranchheaderinfo tx from mempool %s\n", txid.GetHex());
+                    uint256 txid = ptx->GetHash();
+                    LogPrintf("remove duplicate syncbranchheaderinfo tx from mempool %s\n", txid.GetHex());
+                }
             }
         }
         RemoveForVector(vRemove);
