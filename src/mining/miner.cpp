@@ -309,10 +309,8 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             else if (pblock->vtx[i] != nullptr){// coinbase is not init.
                 hash = pblock->vtx[i]->GetHash();
             }
-            //if (!hash.IsNull()){ //where to find coinbase hash ?
-                temp.emplace_back(std::make_pair(hash, i));
-                trans2group[hash] = groupId;
-            //}
+            temp.emplace_back(std::make_pair(hash, i));
+            trans2group[hash] = groupId;
         }
     }
 
@@ -320,20 +318,29 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     for (int i = offset; i < pblock->vtx.size(); ++i) {
         mergeGroups.clear();
         int groupId = nextGroupId;
-        const MCTransactionRef& tx = pblock->vtx[i];
+        const MCTransactionRef ptx = pblock->vtx[i];
 
-        if (trans2group.find(tx->GetHash()) != trans2group.end()) {
-            groupId = trans2group[tx->GetHash()];
+        if (trans2group.find(ptx->GetHash()) != trans2group.end()) {
+            groupId = trans2group[ptx->GetHash()];
+        }
+
+        std::set<uint256> parentHash;
+        for (int j = 0; j < ptx->vin.size(); ++j) {
+            const MCOutPoint& preOutPoint = ptx->vin[j].prevout;
+            if (!preOutPoint.hash.IsNull()) {
+                parentHash.insert(ptx->vin[j].prevout.hash);
+            }
+        }
+
+        if (ptx->IsSyncBranchInfo()) {
+            const uint256& hash = g_pBranchDataMemCache->GetParent(*ptx);
+            parentHash.insert(hash);
         }
 
         int lastGroupId = -1;
-        for (int j = 0; j < tx->vin.size(); ++j) {
-            const MCOutPoint& preOutPoint = tx->vin[j].prevout;
-            if (preOutPoint.hash.IsNull()) {
-                continue;
-            }
-            if (trans2group.find(preOutPoint.hash) != trans2group.end()) {
-                int preTransGroupId = trans2group[preOutPoint.hash];
+        for (const uint256& hash : parentHash) {
+            if (trans2group.find(hash) != trans2group.end()) {
+                int preTransGroupId = trans2group[hash];
                 groupId = std::min(preTransGroupId, groupId);
                 if (lastGroupId != -1) {
                     groupId = std::min(groupId, lastGroupId);
@@ -347,9 +354,9 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             }
             else if (lastGroupId == -1 || lastGroupId == groupId) {
                 // 输入不在区块中，标记该交易与当前groupid相同
-                trans2group[preOutPoint.hash] = groupId;
+                trans2group[hash] = groupId;
                 auto& temp = group2trans[groupId];
-                temp.emplace_back(std::make_pair(preOutPoint.hash, std::numeric_limits<int>::max()));
+                temp.emplace_back(std::make_pair(hash, std::numeric_limits<int>::max()));
             }
             else {
                 groupId = std::min(lastGroupId, groupId);
@@ -360,7 +367,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             lastGroupId = groupId;
         }
 
-        if (tx->IsSmartContract()) {
+        if (ptx->IsSmartContract()) {
             const MCTxMemPoolEntry* entry = blockTxEntries[i];
             int finalGroupId = groupId;
             for (auto& contractAddr : entry->contractData->contractAddrs) {
@@ -398,11 +405,11 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             group2trans.erase(item);
         }
 
-        des.emplace_back(std::make_pair(tx->GetHash(), i));
-        trans2group[tx->GetHash()] = groupId;
-        if (tx->IsSmartContract()) {
-            if (!tx->pContractData->address.IsNull()) {
-                contract2group[tx->pContractData->address] = groupId;
+        des.emplace_back(std::make_pair(ptx->GetHash(), i));
+        trans2group[ptx->GetHash()] = groupId;
+        if (ptx->IsSmartContract()) {
+            if (!ptx->pContractData->address.IsNull()) {
+                contract2group[ptx->pContractData->address] = groupId;
             }
         }
 
