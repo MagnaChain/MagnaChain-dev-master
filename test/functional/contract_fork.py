@@ -63,10 +63,6 @@ class ContractForkTest(MagnaChainTestFramework):
     def run_test(self):
         """Main test logic"""
         # prepare
-        for i, node in enumerate(self.nodes):
-            # for convenient
-            setattr(self, 'node' + str(i), node)
-
         for n in self.nodes:
             n.generate(2)  # make some coins
             self.sync_all()
@@ -89,7 +85,7 @@ class ContractForkTest(MagnaChainTestFramework):
         self.log.info("start mix transaction reorg test,no generate")
         self.test_mix_contract_transaction_fork()
         self.log.info("start mix transaction reorg test,with generate")
-        # self.test_mix_contract_transaction_fork(gen_blocks=True)
+        self.test_mix_contract_transaction_fork(gen_blocks=True)
 
     def test_publish_fork_with_utxo(self, is_contract_output=False):
         '''
@@ -113,9 +109,9 @@ class ContractForkTest(MagnaChainTestFramework):
             ct = Contract(self.node0,self.options.tmpdir,debug = False)
             tmp_tx1 = ct.call_payable(amount=2000)['txid']
             tmp_tx2 = ct.call_sendCoinTest(coster, 1000)['txid']
-            print(ct.publish_txid, tmp_tx1, tmp_tx2)
+            # print(ct.publish_txid, tmp_tx1, tmp_tx2)
         else:
-            print(self.node0.sendtoaddress(coster, 1000))
+            self.node0.sendtoaddress(coster, 1000)
         self.node0.generate(2)
         self.sync_all()
         blocks_num = self.node1.getblockcount()
@@ -128,7 +124,7 @@ class ContractForkTest(MagnaChainTestFramework):
         amount = 0
         changeaddress = self.node0.getnewaddress()
         result = self.publish_contract(self.node0, hex_content, coster, sender_pub, sender_pri, amount, changeaddress)
-        print(result)
+        # print(result)
         txid_a1 = result['txid']
         contract_a1 = result['contractaddress']
         # 第一组节点同步,这是该组链高度应该为12
@@ -142,7 +138,7 @@ class ContractForkTest(MagnaChainTestFramework):
         amount = 1
         changeaddress = self.node2.getnewaddress()
         result = self.publish_contract(self.node2, hex_content, coster, sender_pub, sender_pri, amount, changeaddress)
-        print(result)
+        # print(result)
         txid_b1 = result['txid']
         contract_b1 = result['contractaddress']
         # 第二组节点同步,这是该组链高度应该为22
@@ -161,18 +157,18 @@ class ContractForkTest(MagnaChainTestFramework):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
         # 确认存在分叉存在，并且主链为22个区块的
         tips = self.nodes[0].getchaintips()
-        print(tips)
+        # print(tips)
         assert_equal(len(tips), self.tips_num + 1)
         self.tips_num += 1
         assert_equal(self.node2.getblockcount(), blocks_num + 12 + len(blocks))
         assert_equal(self.node2.getbestblockhash(), block_b13 if not blocks else blocks[-1])
-        print(self.node0.gettransaction(txid_a1))
+        self.node0.gettransaction(txid_a1)
         # 确认分叉上的合约在主链上不能被调用
         assert_raises_rpc_error(-1, "CallContractReal => GetContractInfo fail, contractid is " + contract_a1,
                                 self.node0.callcontract, True,
                                 1, contract_a1, self.node0.getnewaddress(), "payable")
         # 主链合约是可以调用的
-        print(self.node0.callcontract(True, 1, contract_b1, self.node0.getnewaddress(), "payable"))
+        self.node0.callcontract(True, 1, contract_b1, self.node0.getnewaddress(), "payable")
         # 未完成的用例，下面的有问题，先屏蔽
         # '''
         # listsinceblock(lastblockhash) should now include txid_a1, as seen from nodes[0]
@@ -229,7 +225,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # generate bb1-bb2 on right side
         self.node2.generate(2)
         txid2 = self.node2.sendrawtransaction(signed_tx['hex'])
-        print(txid1, txid2)
+        # print(txid1, txid2)
         assert_equal(txid1, txid2)
 
         lastblockhash = self.node0.generate(3)[-1]
@@ -323,10 +319,11 @@ class ContractForkTest(MagnaChainTestFramework):
         if with_send:
             tmp_ct = Contract(self.node1, debug=False)
             print(tmp_ct.publish_txid)
+            # why after this call ,ct balance at node1 is 1980,it should 1990
             tx_a13 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest', tmp_ct.contract_id,
                                                    "contractDataTest",amount = 0)
             print("ct balance:", ct.get_balance())
-            print(tx_a13)
+            print(tx_a13.txid)
         print(tx_a1, tx_a11, tx_a12)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
         last_block_hash = self.node1.generate(2)[-1]
@@ -347,14 +344,17 @@ class ContractForkTest(MagnaChainTestFramework):
             if crash_point == 1:
                 tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
                                                        ct.contract_id, "contractDataTest", exec_node=self.node3,amount = 0)
-                print("ct balance:", ct.get_balance(exec_node=self.node3))
+                print("ct balance at node3:", ct.get_balance(exec_node=self.node3))
 
             else:
+                # 这里也在node1中的内存池？
                 tx_b12 = ct.call_callOtherContractTest(ct2.contract_id, 'callOtherContractTest',
                                                        ct.contract_id, "contractDataTest",amount = 0)
-                ct.call_reentrancyTest()
+                tx_b13 = ct.call_reentrancyTest(amount = 0).txid
+                print("tx_b13:", tx_b13)
                 print("ct balance:", ct.get_balance(exec_node=self.node1))
-            print("ct balance:", ct.get_balance(exec_node=self.node3))
+            print("ct balance at node3:", ct.get_balance(exec_node=self.node3))
+            print("ct balance at node1:", ct.get_balance(exec_node=self.node1))
             print("tx_b12:", tx_b12.txid)
         print(tx_b11)
         block_b16 = self.node3.generate(6)[-1]
@@ -362,8 +362,7 @@ class ContractForkTest(MagnaChainTestFramework):
         if with_send and crash_point == 1:
             assert_equal(self.node1.getrawmempool(), [])
         elif with_send and crash_point == 2:
-            pass
-            # assert_equal(self.node1.getrawmempool(), [tx_b12.txid])
+            assert_equal(sorted(self.node1.getrawmempool()), sorted([tx_b12.txid,tx_b13]))
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
         # join network
@@ -372,39 +371,67 @@ class ContractForkTest(MagnaChainTestFramework):
             print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
             print("mempool:", self.nodes[i].getrawmempool())
 
-        print("ct balance:", ct.get_balance(exec_node=self.node3))
-        print("ct balance:", ct.get_balance(exec_node=self.node1))
+        print("ct balance at node3:", ct.get_balance(exec_node=self.node3))
+        print("ct balance at node1:", ct.get_balance(exec_node=self.node1))
         print("join network")
         connect_nodes_bi(self.nodes, 1, 2)
         sync_blocks(self.nodes)
 
-        print("ct balance:", ct.get_balance(exec_node=self.node1))
-        print("ct balance:", ct.get_balance(exec_node=self.node3))
+        print("ct balance at node1:", ct.get_balance(exec_node=self.node1))
+        print("ct balance at node3:", ct.get_balance(exec_node=self.node3))
 
         for i in range(4):
             print("mempool:", self.nodes[i].getrawmempool())
         if with_send:
             print("assert_equal(len(self.node1.getrawmempool()), 5),should {} == 5".format(len(self.node1.getrawmempool())))
-            # assert_equal(len(self.node1.getrawmempool()), 5)  # 短链的块内交易必须是打回内存池的，否则可能有bug了
+            for tx in self.node1.getrawmempool():
+                # tx_ai,tx_a11,tx_a12
+                if tx == tx_a1:
+                    self.log.info("tx_a1 in mempool")
+                elif tx == tx_a11:
+                    self.log.info("tx_a11 in mempool")
+                elif tx == tx_a12:
+                    self.log.info("tx_a12 in mempool")
+                elif tx == tmp_ct.publish_txid:
+                    self.log.info("node1 tmp_ct in mempool")
+                elif tx == tx_a13.txid:
+                    self.log.info("tx_a13 in mempool")
+                if crash_point == 2:
+                    if tx == tx_b12.txid:
+                        self.log.info("tx_b12 in mempool")
+                    elif tx == tx_b13:
+                        self.log.info("tx_b13 in mempool")
+            # 短链的块内交易必须是打回内存池的，否则可能有bug了
+            # 这里不能确定具体数量,不好判断
+            assert len(self.node1.getrawmempool()) >=5 and len(self.node1.getrawmempool()) < 8
         else:
-            print(" assert_equal(len(self.node1.getrawmempool()), 3),should {} == 5".format(len(self.node1.getrawmempool())))
-            # assert_equal(len(self.node1.getrawmempool()), 3)  # 短链的块内交易必须是打回内存池的，否则可能有bug了
+            print(" assert_equal(len(self.node1.getrawmempool()), 3),should {} == 3".format(len(self.node1.getrawmempool())))
+            for tx in self.node1.getrawmempool():
+                # tx_ai,tx_a11,tx_a12
+                if tx == tx_a1:
+                    self.log.info("tx_a1 in mempool")
+                elif tx == tx_a11:
+                    self.log.info("tx_a11 in mempool")
+                elif tx == tx_a12:
+                    self.log.info("tx_a12 in mempool")
+            assert_equal(len(self.node1.getrawmempool()), 3)  # 短链的块内交易必须是打回内存池的，否则可能有bug了
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
         print("node2 ct get_balance:", ct.get_balance(exec_node=self.node2))
         bal = 2000
         if with_send and crash_point == 1:
-            bal = 2000- 20  #应该是2000-10的
+            bal = 2000- 20  #这里20是因为send都从第一个合约里边去扣了
         assert_equal(self.node1.getbalanceof(ct.contract_id), bal)  # 减去合约的send调用
         assert_equal(self.node0.getbalanceof(ct.contract_id), bal)  # 减去合约的send调用
-        # assert_equal(ct.call_get('counter', broadcasting=False,amount = 0)['return'][0], 4)  # 因为本节点mempool有合约交易，所以应该为4
+        assert_equal(ct.call_get('counter', broadcasting=False,amount = 0)['return'][0], 4)  # 因为本节点mempool有合约交易，所以应该为4
         assert_equal(ct.call_get('counter', broadcasting=False, exec_node=self.node2,amount = 0)['return'][0],
                      2)  # 该节点内存池中没有交易哦，所以应该为2
         for i in range(4):
             print("node{} ct2 get_balance:{}".format(i, ct2.get_balance(exec_node=self.nodes[i])))
-        # assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
-        # assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
-        # # assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
-        # assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 0 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
+        # 节点2,3的ct2应该是1000 - 10的，但是现在的send都是从第一个合约里扣，所以没有减少
+        assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node3.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
 
         for i in range(4):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
@@ -414,27 +441,33 @@ class ContractForkTest(MagnaChainTestFramework):
         self.tips_num += 1
         assert_equal(self.node2.getblockcount(), blocks_num + 16 + len(more_work_blocks))
         assert_equal(self.node2.getbestblockhash(), block_b16 if not more_work_blocks else more_work_blocks[-1])
-        print(self.node1.gettransaction(tx_a1))
-        print(self.node1.gettransaction(tx_a11))
+        # print(self.node1.gettransaction(tx_a1))
+        # print(self.node1.gettransaction(tx_a11))
 
         # clear node0's and node1's mempool and check balance
         self.node1.generate(4)
         sync_blocks(self.nodes)
         assert_equal(self.node0.getrawmempool(), [])
         assert_equal(self.node1.getrawmempool(), [])
-        # assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 20 if with_send else 4000)
+        if with_send and crash_point == 1:
+            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40)
+        elif with_send and crash_point == 2:
+            # what the he?
+            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40 if len( self.node1.getrawmempool()) == 7 else 4000 - 20)
+        else:
+            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000)
         bal = 4000
         if with_send and crash_point == 1:
-            bal = 4000- 40  #应该是4000- 20 的
+            bal = 4000- 40  #应该是4000- 20 的，但是现在的send都是从第一个合约里扣
         elif with_send and crash_point == 2:
             bal = 4000 - 20
-        # assert_equal(self.node1.getbalanceof(ct.contract_id), bal)
+        assert_equal(self.node1.getbalanceof(ct.contract_id), bal)
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
 
         # In bestchain,ensure contract data is correct
-        # for i in range(4):
-        #     assert_equal(
-        #         ct.call_get('counter', exec_node=self.nodes[i], sender=self.nodes[i].getnewaddress(),amount = 0)['return'][0], 4)
+        for i in range(4):
+            assert_equal(
+                ct.call_get('counter', exec_node=self.nodes[i], sender=self.nodes[i].getnewaddress(),amount = 0)['return'][0], 4)
 
         # 未完成的用例，下面的有问题，先屏蔽
         # '''
@@ -526,10 +559,10 @@ class ContractForkTest(MagnaChainTestFramework):
                 print("mempool:", self.nodes[i].getrawmempool())
 
         print("join network")
-        connect_nodes_bi(self.nodes, 1, 2)
+        connect_nodes_bi(self.nodes, 0, 2)
         try:
             print("sync_mempools.......")
-            # sync_mempools(self.nodes, timeout=30)
+            sync_mempools(self.nodes, timeout=30)
             print("sync_mempools done")
         except Exception as e:
             print("sync mempool failed,ignore!")
@@ -547,22 +580,25 @@ class ContractForkTest(MagnaChainTestFramework):
         self.tips_num += 1
 
         # 合并后，节点再次调用合约,该交易应该回被不同组的节点抛弃，因为合约不存在
+        self.log.info("when joined,contractCall will throw EXCEPTION because of the contractPublish transaction be droped by different group")
+        tx1,tx2 = None,None
         result = ccontracts_a[2].call_reentrancyTest()
         if not result.reason():
             tx1 = result.txid
         result = ccontracts_b[2].call_reentrancyTest()
         if not result.reason():
             tx2 = result.txid
-        # tx1 = ccontracts_a[2].call_reentrancyTest().txid
-        # tx2 = ccontracts_b[2].call_reentrancyTest().txid
         try:
             sync_mempools(self.nodes, timeout=30)
         except Exception as e:
             print("sync_mempools(self.nodes,timeout = 30) not done")
-        # wait_until(lambda: tx1 not in self.node2.getrawmempool(), timeout=10)
-        # wait_until(lambda: tx1 in self.node1.getrawmempool(), timeout=10)
-        # wait_until(lambda: tx2 not in self.node1.getrawmempool(), timeout=10)
-        # wait_until(lambda: tx2 in self.node3.getrawmempool(), timeout=10)
+        if tx1 and tx2:
+            wait_until(lambda: tx1 not in self.node2.getrawmempool(), timeout=10)
+            wait_until(lambda: tx1 in self.node1.getrawmempool(), timeout=10)
+            wait_until(lambda: tx2 not in self.node1.getrawmempool(), timeout=10)
+            wait_until(lambda: tx2 in self.node3.getrawmempool(), timeout=10)
+        else:
+            print('tx1 and tx2 is None')
 
         for i, n in enumerate(self.nodes):
             n.generate(2)
