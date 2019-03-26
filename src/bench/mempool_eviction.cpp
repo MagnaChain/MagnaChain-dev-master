@@ -19,7 +19,7 @@ static void AddTx(const MCTransaction& tx, const MCAmount& nFee, MCTxMemPool& po
     LockPoints lp;
     pool.AddUnchecked(tx.GetHash(), MCTxMemPoolEntry(
                                         MakeTransactionRef(tx), nFee, nTime, nHeight,
-                                        spendsCoinbase, sigOpCost, lp));
+                                        spendsCoinbase, sigOpCost, lp, 0));
 }
 
 // Right now this is only testing eviction performance in an extremely small
