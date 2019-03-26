@@ -494,9 +494,11 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
 
     const MCTransaction& tx = newit->GetTx();
     std::set<uint256> setParentTransactions;
-    for (unsigned int i = 0; i < tx.vin.size(); i++) {
-        mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
-        setParentTransactions.insert(tx.vin[i].prevout.hash);
+    if (!tx.IsBranchChainTransStep2()){ 
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
+            mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
+            setParentTransactions.insert(tx.vin[i].prevout.hash);
+        }
     }
     // 设置内存池中与合约关联地址的交易
     if (entry.contractData != nullptr) {
@@ -932,7 +934,7 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
     MCTransactionRef pfromtx = pFromTx;
     MCMutableTransaction mtx(tx);
  
-    if (tx.IsBranchChainTransStep2()) {
+    //if (tx.IsBranchChainTransStep2()) {
         //if (pfromtx == nullptr){// re ser from tx.
         //    MCTransactionRef pfromtx;
         //    MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
@@ -943,10 +945,10 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
         //}
 
         //mtx.fromTx.clear();
-        if (mtx.fromBranchId != MCBaseChainParams::MAIN) {// transaction may be mined in diff blocks, so remove spv info
-            mtx.pPMT.reset(new MCSpvProof());
-        }
-    }
+        //if (mtx.fromBranchId != MCBaseChainParams::MAIN) {
+        //    mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
+        //}
+    //}
 
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
         //recover tx: remove UTXO
@@ -963,6 +965,7 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
                 mtx.vout.erase(mtx.vout.begin() + i);
             }
         }
+        mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
     }
     else if (tx.IsSmartContract()) {
         for (int i = mtx.vin.size() - 1; i >= 0; i--) {
@@ -1284,9 +1287,11 @@ void MCTxMemPool::Check(const MCCoinsViewCache *pcoins) const
             }
             // Check whether its inputs are marked in mapNextTx.
             auto it3 = mapNextTx.find(txin.prevout);
-            assert(it3 != mapNextTx.end());
-            assert(it3->first == &txin.prevout);
-            assert(it3->second == &tx);
+            if (!(tx.IsBranchChainTransStep2())) {
+                assert(it3 != mapNextTx.end());
+                assert(it3->first == &txin.prevout);
+                assert(it3->second == &tx);
+            }
             i++;
         }
 
