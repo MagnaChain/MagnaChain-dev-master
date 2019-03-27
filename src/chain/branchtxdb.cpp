@@ -77,7 +77,7 @@ void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const MCTransactionRe
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.blockhash = blockhash;
     data.flags = DbDataFlag::eADD;
-    LogPrintf("branchtx cache add %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
+    LogPrintf("branchtx cache add ori txid %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
 }
 
 void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRef& tx)
@@ -89,7 +89,7 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRe
     BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
-    LogPrintf("branchtx cache del %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
+    LogPrintf("branchtx cache del ori txid %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
 }
 
 void BranchChainTxRecordsCache::AddToCache(const MCTransactionRef& ptx, const uint256& blockhash, int blocktxindex)
@@ -245,11 +245,11 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
         const BranchChainTxInfo& txinfo = mit->second;
         if (txinfo.flags == DbDataFlag::eADD){
             batch.Write(keyentry, txinfo);
-            LogPrintf("branchtxdb add %s\n", keyentry.txhash.GetHex());
+            LogPrintf("branchtxdb add ori txid %s\n", keyentry.txhash.GetHex());
         }
         else if (txinfo.flags == DbDataFlag::eDELETE){
             batch.Erase(keyentry);
-            LogPrintf("branchtxdb add %s\n", keyentry.txhash.GetHex());
+            LogPrintf("branchtxdb add ori txid %s\n", keyentry.txhash.GetHex());
         }
 
         if (batch.SizeEstimate() > batch_size) {

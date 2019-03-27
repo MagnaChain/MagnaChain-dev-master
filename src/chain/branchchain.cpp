@@ -1181,7 +1181,8 @@ bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, B
             return state.DoS(0, false, REJECT_DUPLICATE, "branchchaintransstep2 tx duplicate");
         }
         if (g_pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, nullptr)) {
-            return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
+            uint256 oritxid = mempool.GetOriTxHash(tx);
+            return state.Invalid(false, REJECT_DUPLICATE, strprintf("txn-already-in-records oritx id %s, %s", oritxid.GetHex(), tx.GetHash().GetHex()));
         }
     }
 
