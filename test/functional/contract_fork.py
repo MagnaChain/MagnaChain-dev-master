@@ -551,6 +551,9 @@ class ContractForkTest(MagnaChainTestFramework):
 
         # join network
         if gen_blocks:
+            for i in range(4):
+                print("before make_more_work_than:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+                print("mempool:", self.nodes[i].getrawmempool())
             blocks_a = self.node0.generate(2)
             blocks_b = self.node2.generate(8)
             more_work_blocks = self.make_more_work_than(2, 0)
