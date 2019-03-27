@@ -304,8 +304,11 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
 	if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
 	{
 		entry.pushKV("fromBranchId", tx.fromBranchId);
-	//	entry.pushKV("fromTx", tx.fromTx);
 		entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+        MCTransactionRef pfromtx;
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pfromtx);
+        entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
 	}
     if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO){
         entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());

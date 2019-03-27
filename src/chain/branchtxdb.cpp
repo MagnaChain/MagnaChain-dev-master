@@ -76,6 +76,7 @@ void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const MCTransactionRe
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.blockhash = blockhash;
     data.flags = DbDataFlag::eADD;
+    LogPrintf("branchtx cache add %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
 }
 
 void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRef& tx)
@@ -87,6 +88,7 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRe
     BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
+    LogPrintf("branchtx cache del %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
 }
 
 void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect)
@@ -181,17 +183,21 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const MCTransaction& tx, const MCBlo
 
 void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
 {
-    LogPrint(BCLog::COINDB, "flush branch chain tx data to db");
+    LogPrint(BCLog::COINDB, "flush branch chain tx data to db\n");
     MCDBBatch batch(m_db);
     size_t batch_size = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
     bool bCreatedChainTxChanged = false;
     for (auto mit = cache.m_mapChainTxInfos.begin(); mit != cache.m_mapChainTxInfos.end(); mit++) {
         const BranchChainTxEntry& keyentry = mit->first;
         const BranchChainTxInfo& txinfo = mit->second;
-        if (txinfo.flags == DbDataFlag::eADD)
+        if (txinfo.flags == DbDataFlag::eADD){
             batch.Write(keyentry, txinfo);
-        else if (txinfo.flags == DbDataFlag::eDELETE)
+            LogPrintf("branchtxdb add %s\n", keyentry.txhash.GetHex());
+        }
+        else if (txinfo.flags == DbDataFlag::eDELETE){
             batch.Erase(keyentry);
+            LogPrintf("branchtxdb add %s\n", keyentry.txhash.GetHex());
+        }
 
         if (batch.SizeEstimate() > batch_size) {
             LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 0, Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
@@ -286,7 +292,7 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             m_db.Erase(key);
     }
 
-    LogPrint(BCLog::COINDB, "finsh flush branch tx data.");
+    LogPrint(BCLog::COINDB, "finsh flush branch tx data.\n");
 }
 
 bool BranchChainTxRecordsDb::IsBranchCreated(const uint256 &branchid) const
