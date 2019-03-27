@@ -245,11 +245,11 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
         const BranchChainTxInfo& txinfo = mit->second;
         if (txinfo.flags == DbDataFlag::eADD){
             batch.Write(keyentry, txinfo);
-            LogPrintf("branchtxdb add ori txid %s\n", keyentry.txhash.GetHex());
+            LogPrintf("branchtxdb add ori txid %s, key %c\n", keyentry.txhash.GetHex(), keyentry.key);
         }
         else if (txinfo.flags == DbDataFlag::eDELETE){
             batch.Erase(keyentry);
-            LogPrintf("branchtxdb add ori txid %s\n", keyentry.txhash.GetHex());
+            LogPrintf("branchtxdb add ori txid %s, key %c\n", keyentry.txhash.GetHex(), keyentry.key);
         }
 
         if (batch.SizeEstimate() > batch_size) {
