@@ -286,10 +286,14 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
     for (auto mit = cache.m_mapRecvRecord.begin(); mit != cache.m_mapRecvRecord.end(); mit++) {
         const BranchChainTxEntry& keyentry = mit->first;
         const BranchChainTxRecvInfo& txinfo = mit->second;
-        if (txinfo.flags == DbDataFlag::eADD)
+        if (txinfo.flags == DbDataFlag::eADD){
             batch.Write(keyentry, txinfo);
-        else if (txinfo.flags == DbDataFlag::eDELETE)
+            LogPrintf("branchtxdb add ori txid %s, key %c\n", keyentry.txhash.GetHex(), keyentry.key);
+        }
+        else if (txinfo.flags == DbDataFlag::eDELETE){
             batch.Erase(keyentry);
+            LogPrintf("branchtxdb add ori txid %s, key %c\n", keyentry.txhash.GetHex(), keyentry.key);
+        }
 
         if (batch.SizeEstimate() > batch_size) {
             LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing partial batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
