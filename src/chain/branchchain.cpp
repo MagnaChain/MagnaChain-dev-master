@@ -835,14 +835,12 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
 
     MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx);
     
-    //remove fields exclude in txTrans1
+    //Revert other fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();
-    if (txTrans1.IsMortgage())
-    {
+    if (txTrans1.IsMortgage()){
         mtxTrans2my.vout[0].scriptPubKey.clear();
     }
-    if (mtxTrans2my.fromBranchId != MCBaseChainParams::MAIN)
-    {
+    if (mtxTrans2my.fromBranchId != MCBaseChainParams::MAIN){
         mtxTrans2my.pPMT.reset(new MCSpvProof());
     }
     
@@ -1043,7 +1041,7 @@ bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, B
     MCBlockHeader blockheader;
     tx.pBranchBlockData->GetBlockHeader(blockheader);
 
-    if (!pBranchChainTxRecordsDb->IsBranchCreated(tx.pBranchBlockData->branchID)) {
+    if (!g_pBranchChainTxRecordsDb->IsBranchCreated(tx.pBranchBlockData->branchID)) {
         return state.DoS(100, false, REJECT_INVALID, "Branch chain has not created");
     }
 
@@ -1163,7 +1161,7 @@ uint256 GetProveTxHashKey(const MCTransaction& tx)
 }
 
 // 调用地方 主要还是follow CheckInputs : 1.accepttomempool 2.connectblock
-bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
+bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchChainTxRecordsCache* pBranchTxRecordCache, BranchCache* pBranchCache)
 {
     if (tx.IsSyncBranchInfo()){
         if (pBranchCache && pBranchCache->HasInCache(tx))
@@ -1178,7 +1176,11 @@ bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, B
     }
 
     if (tx.IsBranchChainTransStep2()) {
-        if (pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, nullptr)) {
+        // check in cache pBranchCache
+        if (pBranchTxRecordCache && pBranchTxRecordCache->HasInCache(tx)){
+            return state.DoS(0, false, REJECT_DUPLICATE, "branchchaintransstep2 tx duplicate");
+        }
+        if (g_pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, nullptr)) {
             return state.Invalid(false, REJECT_DUPLICATE, "txn-already-in-records");
         }
     }

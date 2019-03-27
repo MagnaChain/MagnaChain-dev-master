@@ -919,7 +919,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             scriptVerifyFlags = gArgs.GetArg("-promiscuousmempoolflags", scriptVerifyFlags);
         }
 
-        if (!CheckBranchDuplicateTx(tx, state, g_pBranchDataMemCache)) {
+        if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache, g_pBranchDataMemCache)) {
             return false;
         }
 
@@ -1028,8 +1028,12 @@ static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMem
     }
     if (res) //accept ok
     {
-        if (g_pBranchDataMemCache)
+        if (g_pBranchDataMemCache){
             g_pBranchDataMemCache->AddToCache(*tx); //check n add relate cache
+        }
+        if (g_pBranchTxRecordCache) {
+            g_pBranchTxRecordCache->AddToCache(tx, uint256(), 0);
+        }
     }
 
     // After we've (potentially) uncached entries, ensure our coins cache is still within its size limits
@@ -1771,15 +1775,7 @@ static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex
             // At this point, all of txundo.vprevout should have been moved out.
         }
         if (pBranchTxRecordCache) {
-            if (tx.IsPregnantTx() || tx.IsBranchCreate()) {
-                pBranchTxRecordCache->DelBranchChainTxRecord(ptx);
-            }
-            if (tx.IsBranchChainTransStep2()) {
-                pBranchTxRecordCache->DelBranchChainRecvTxRecord(ptx);
-            }
-            if (tx.IsLockMortgageMineCoin() || tx.IsUnLockMortgageMineCoin()) {
-                pBranchTxRecordCache->UpdateLockMineCoin(ptx, false);
-            }
+            pBranchTxRecordCache->RemoveFromCache(ptx);
         }
     }
 
@@ -1916,10 +1912,12 @@ static int64_t nTimeTotal = 0;
 static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlockIndex* pindex, MCCoinsViewCache& view, const MCChainParams& chainparams, bool fJustCheck = false, BranchChainTxRecordsCache* pBranchTxRecordCache = nullptr, BranchCache* pBranchCache = nullptr)
 {
     AssertLockHeld(cs_main);
+    const uint256 blockhash = block.GetHash();
+
     assert(pindex);
     // pindex->phashBlock can be null if called by CreateNewBlock/TestBlockValidity
     assert((pindex->phashBlock == nullptr) ||
-           (*pindex->phashBlock == block.GetHash()));
+           (*pindex->phashBlock == blockhash));
     int64_t nTimeStart = GetTimeMicros();
 
     BranchCache branchcache(g_pBranchDb);
@@ -1933,7 +1931,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
 
     // Special case for the genesis block, skipping connection of its transactions
     // (its coinbase is unspendable)
-    if (block.GetHash() == chainparams.GetConsensus().hashGenesisBlock) {
+    if (blockhash == chainparams.GetConsensus().hashGenesisBlock) {
         if (!fJustCheck)
             view.SetBestBlock(pindex->GetBlockHash());
         return true;
@@ -2070,7 +2068,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         }
 
         //duplicate check and add to cache
-        if (!CheckBranchDuplicateTx(tx, state, pBranchCache)) {
+        if (!CheckBranchDuplicateTx(tx, state, pBranchTxRecordCache, pBranchCache)) {
             return false;
         }
         //
@@ -2136,7 +2134,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
             if (QuickGetBranchScriptType(coin.out.scriptPubKey) != BST_MORTGAGE_COIN) {
                 return state.DoS(100, error("Invalid mortgage coin"));
             }
-            if (pBranchChainTxRecordsDb->IsMineCoinLock(fromhash1)) {
+            if (g_pBranchChainTxRecordsDb->IsMineCoinLock(fromhash1)) {
                 return state.DoS(0, error("Mine-coin-is-locked"));
             }
         }
@@ -2158,14 +2156,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
 
         if (pBranchTxRecordCache && i > 0) {
-            if (tx.IsPregnantTx() || tx.IsBranchCreate()) {
-                pBranchTxRecordCache->AddBranchChainTxRecord(ptx, block.GetHash(), i);
-            }
-            if (tx.IsBranchChainTransStep2()) {
-                pBranchTxRecordCache->AddBranchChainRecvTxRecord(ptx, block.GetHash());
-            }
-            if (tx.IsLockMortgageMineCoin() || tx.IsUnLockMortgageMineCoin())
-                pBranchTxRecordCache->UpdateLockMineCoin(ptx, true);
+            pBranchTxRecordCache->AddToCache(ptx, blockhash, i);
         }
     }
     int64_t nTime3 = GetTimeMicros();
@@ -2452,7 +2443,7 @@ bool static DisconnectTip(MCValidationState& state, const MCChainParams& chainpa
             return error("DisconnectTip(): DisconnectBlock %s failed", pindexDelete->GetBlockHash().ToString());
         bool flushed = view.Flush();
         assert(flushed);
-        pBranchChainTxRecordsDb->Flush(bccache);
+        g_pBranchChainTxRecordsDb->Flush(bccache);
         if (g_pBranchDb)
             g_pBranchDb->Flush(pblock, false);
     }
@@ -2601,7 +2592,7 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
         LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
         bool flushed = view.Flush();
         assert(flushed);
-        pBranchChainTxRecordsDb->Flush(bccache);
+        g_pBranchChainTxRecordsDb->Flush(bccache);
         if (g_pBranchDb)
             g_pBranchDb->Flush(pthisBlock, true);
     }
@@ -2619,6 +2610,9 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
     disconnectpool.RemoveForBlock(blockConnecting.vtx);
     if (g_pBranchDataMemCache)
         g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
+    if (g_pBranchTxRecordCache){
+        g_pBranchTxRecordCache->RemoveFromBlock(blockConnecting.vtx);
+    }
     // Update chainActive & related variables.
     UpdateTip(pindexNew, chainparams);
 
@@ -5052,7 +5046,7 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
     if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache))
         return false;
 
-    if (!CheckBranchDuplicateTx(tx, state, g_pBranchDataMemCache)) {
+    if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache, g_pBranchDataMemCache)) {
         return false;
     }
 

@@ -17,6 +17,7 @@ class MCBlockHeader;
 class MCBlock;
 class BranchCache;
 class BranchData;
+class BranchChainTxRecordsCache;
 
 class MCRPCConfig {
 public:
@@ -90,7 +91,7 @@ bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock &block, std
 
 bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlockHeader, std::string *pStrErr, bool onlySendMy = true);
 bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache);
-bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache);
+bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchChainTxRecordsCache* pBranchTxRecordCache, BranchCache* pBranchCache);
 
 uint256 GetReportTxHashKey(const MCTransaction& tx);
 uint256 GetProveTxHashKey(const MCTransaction& tx);

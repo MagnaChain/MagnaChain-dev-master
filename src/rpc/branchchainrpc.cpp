@@ -54,9 +54,9 @@ MCAmount GetCreateBranchMortgage(const MCBlock* pBlock, const MCBlockIndex* pBlo
 
     size_t nSize = 0;
 
-    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = g_pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
     if (pBlockIndex == nullptr)
-        nSize = pBranchChainTxRecordsDb->GetCreateBranchSize();
+        nSize = g_pBranchChainTxRecordsDb->GetCreateBranchSize();
     else
     {
         int64_t blockheigt = pBlockIndex->nHeight;
@@ -82,7 +82,7 @@ MCAmount GetCreateBranchMortgage(const MCBlock* pBlock, const MCBlockIndex* pBlo
 // OP: make a cache will be better
 static bool GetTransactionDataByTxInfo(const uint256 &txhash, MCTransactionRef &tx, MCBlockIndex** ppblockindex, uint32_t &tx_vtx_index, MCBlock& block)
 {
-    BranchChainTxInfo chainsendinfo = pBranchChainTxRecordsDb->GetBranchChainTxInfo(txhash);
+    BranchChainTxInfo chainsendinfo = g_pBranchChainTxRecordsDb->GetBranchChainTxInfo(txhash);
     if (chainsendinfo.IsInit() == false)
     {
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("Load transaction sendinfo fail."));
@@ -314,7 +314,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
 
     LOCK(cs_main);
     UniValue arr(UniValue::VARR);
-    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = g_pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
 
     bool fRegTest = gArgs.GetBoolArg("-regtest", false);
     bool fTestNet = gArgs.GetBoolArg("-testnet", false);
@@ -1079,7 +1079,7 @@ UniValue getbranchchainheight(const JSONRPCRequest& request)
 
     LOCK(cs_main);
     uint256 branchid = ParseHashV(request.params[0], "parameter 1");
-    if (!pBranchChainTxRecordsDb->IsBranchCreated(branchid))
+    if (!g_pBranchChainTxRecordsDb->IsBranchCreated(branchid))
         throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
 
     UniValue retObj(UniValue::VOBJ);

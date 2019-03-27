@@ -227,8 +227,10 @@ void Shutdown()
         pcoinsTip = nullptr;
         delete mpContractDb;
         mpContractDb = nullptr;
-        delete pBranchChainTxRecordsDb;
-        pBranchChainTxRecordsDb = nullptr;
+        delete g_pBranchChainTxRecordsDb;
+        g_pBranchChainTxRecordsDb = nullptr;
+        delete g_pBranchTxRecordCache;
+        g_pBranchTxRecordCache = nullptr;
         delete pcoinscatcher;
         pcoinscatcher = nullptr;
         delete pcoinsdbview;
@@ -1435,7 +1437,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 UnloadBlockIndex();
                 delete pcoinsTip;
 				delete mpContractDb;
-				delete pBranchChainTxRecordsDb;
+				delete g_pBranchChainTxRecordsDb;
+                delete g_pBranchTxRecordCache;
                 delete pcoinsdbview;
                 delete pcoinscatcher;
                 delete pblocktree;
@@ -1497,7 +1500,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 pcoinsdbview = new MCCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
                 pcoinscatcher = new MCCoinsViewErrorCatcher(pcoinsdbview);
                 mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
-                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
+                g_pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
+                g_pBranchTxRecordCache = new BranchChainTxRecordsCache();
                 
                 // If necessary, upgrade from older database format.
                 // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate

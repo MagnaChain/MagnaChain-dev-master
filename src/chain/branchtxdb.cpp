@@ -30,7 +30,8 @@ namespace {
     };
 }
 
-BranchChainTxRecordsDb* pBranchChainTxRecordsDb = nullptr;
+BranchChainTxRecordsDb* g_pBranchChainTxRecordsDb = nullptr;
+BranchChainTxRecordsCache* g_pBranchTxRecordCache = nullptr;
 
 void BranchChainTxRecordsCache::AddBranchChainTxRecord(const MCTransactionRef& tx, const uint256& blockhash, uint32_t txindex)
 {
@@ -89,6 +90,58 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRe
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
     LogPrintf("branchtx cache del %s, %s\n", txid.GetHex(), tx->GetHash().GetHex());
+}
+
+void BranchChainTxRecordsCache::AddToCache(const MCTransactionRef& ptx, const uint256& blockhash, int blocktxindex)
+{
+    if (ptx->IsPregnantTx() || ptx->IsBranchCreate()) {
+        AddBranchChainTxRecord(ptx, blockhash, blocktxindex);
+    }
+    if (ptx->IsBranchChainTransStep2()) {
+        AddBranchChainRecvTxRecord(ptx, blockhash);
+    }
+    if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()){
+        UpdateLockMineCoin(ptx, true);
+    }
+}
+
+void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
+{
+    if (ptx->IsPregnantTx() || ptx->IsBranchCreate()) {
+        DelBranchChainTxRecord(ptx);
+    }
+    if (ptx->IsBranchChainTransStep2()) {
+        DelBranchChainRecvTxRecord(ptx);
+    }
+    if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()) {
+        UpdateLockMineCoin(ptx, false);
+    }
+}
+
+bool BranchChainTxRecordsCache::HasInCache(const MCTransaction& tx)
+{
+    if (tx.IsBranchChainTransStep2()) {
+        uint256 txid = mempool.GetOriTxHash(tx);
+        BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
+        if (m_mapRecvRecord.count(key) && m_mapRecvRecord[key].flags == DbDataFlag::eADD) {// do it necessary to check the flags.
+            return true;
+        }
+    }
+    return false;
+}
+
+void BranchChainTxRecordsCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
+{
+    for (int i=0; i<vtx.size(); i++)// use foreach shuang(cool?) but 
+    {
+        //erase not remove as RemoveFromCache
+        const MCTransactionRef& ptx = vtx[i];
+        if (ptx->IsBranchChainTransStep2()){
+            uint256 txid = mempool.GetOriTxHash(*ptx);
+            BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
+            m_mapRecvRecord.erase(key);
+        }
+    }
 }
 
 void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect)

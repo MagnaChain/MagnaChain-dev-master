@@ -93,7 +93,8 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
         pcoinsTip = new MCCoinsViewCache(pcoinsdbview);
 		pcoinListDb = new CoinListDB(pcoinsdbview->GetDb());
 		mpContractDb = new ContractDataDB(GetDataDir() / "contract", 1 << 23, false, false);
-		pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", 1 << 23, false, false);
+		g_pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", 1 << 23, false, false);
+        g_pBranchTxRecordCache = new BranchChainTxRecordsCache();
         pCoinAmountDB = new CoinAmountDB();
         pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
         if (!LoadGenesisBlock(chainparams)) {
@@ -125,7 +126,8 @@ TestingSetup::~TestingSetup()
 		delete pcoinListDb;
 		delete pcoinsTip;
 		delete mpContractDb;
-		delete pBranchChainTxRecordsDb;
+		delete g_pBranchChainTxRecordsDb;
+        delete g_pBranchTxRecordCache;
         delete pcoinsdbview;
         delete pblocktree;
         fs::remove_all(pathTemp);

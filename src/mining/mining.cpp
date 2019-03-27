@@ -214,7 +214,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
                     continue;
                 }
                 else {
-                    if (pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
+                    if (g_pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
                         nTries++;
                         continue;
                     }

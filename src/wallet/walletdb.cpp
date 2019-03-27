@@ -279,7 +279,7 @@ ReadKeyValue(MCWallet* pwallet, MCDataStream& ssKey, MCDataStream& ssValue,
             BranchCache branchCache(g_pBranchDb);
 			if (wtx.tx->IsBranchCreate())
 			{
-				BranchChainTxInfo chainsendinfo = pBranchChainTxRecordsDb->GetBranchChainTxInfo(hash);
+				BranchChainTxInfo chainsendinfo = g_pBranchChainTxRecordsDb->GetBranchChainTxInfo(hash);
 				if (chainsendinfo.IsInit() && mapBlockIndex.count(chainsendinfo.blockhash))
 				{
 					pTxBlockIndex = mapBlockIndex[chainsendinfo.blockhash];
