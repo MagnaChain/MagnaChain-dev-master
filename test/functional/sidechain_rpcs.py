@@ -34,7 +34,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 2
-        # self.extra_args = [['-txindex']]
+        self.extra_args = [['-txindex','-grouping=0'],['-txindex','-grouping=0']]
         # self.side_extra_args = [['-txindex']]
         self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
 
@@ -48,13 +48,6 @@ class SendToBranchchainTest(MagnaChainTestFramework):
     def run_test(self):
         """Main test logic"""
         self.sync_all([self.sidenodes])
-        for i, node in enumerate(self.nodes):
-            # for convenient
-            setattr(self, 'node' + str(i), node)
-
-        for i, node in enumerate(self.sidenodes):
-            # for convenient
-            setattr(self, 'snode' + str(i), node)
 
         for i in range(2):
             self.sidenodes[i].generate(2)
@@ -98,7 +91,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
     def test_getbranchchaininfo(self):
         self.log.info(sys._getframe().f_code.co_name)
-        tmp = ret = self.node0.getallbranchinfo()[0]
+        tmp = self.node0.getallbranchinfo()[0]
         ret = self.node0.getbranchchaininfo(self.sidechain_id)
         print(ret)
         assert_equal(tmp['txid'], ret['txid'])
@@ -106,7 +99,6 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(tmp['seedspec6'], ret['seedspec6'])
 
     def test_getbranchchaintransaction(self):
-        self.log.info(sys._getframe().f_code.co_name)
         self.log.info(sys._getframe().f_code.co_name)
         txid = self.node0.getbranchchaininfo(self.sidechain_id)['txid']
         assert_raises_rpc_error(-25, "Invalid branch transaction.", self.node0.getbranchchaintransaction, txid)
@@ -176,7 +168,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
     def test_rebroadcastchaintransaction(self):
         # to sidechain
         self.log.info(sys._getframe().f_code.co_name)
-        self.node0.generate(8)
+        self.node0.generate(8) #todo 需要注释看一下,这个应该没什么关系的
         self.snode0.generate(2)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(), 1)

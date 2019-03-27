@@ -356,6 +356,11 @@ class MagnaChainTestFramework(object):
                 assert_equal(len(extra_args), self.num_sidenodes)
                 nodes = self.sidenodes
         try:
+            if not nodes:
+                if sidechain:
+                    nodes = self.sidenodes
+                else:
+                    nodes = self.nodes
             for i, node in enumerate(nodes):
                 node.start(extra_args[i])
             for node in nodes:
@@ -430,6 +435,8 @@ class MagnaChainTestFramework(object):
         bwork = int(self.nodes[b].getchaintipwork(), 16)
         genblocks = []
         while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
+            genblocks.append(self.nodes[a].generate(1)[0])
+        if bwork == int(self.nodes[a].getchaintipwork(), 16):
             genblocks.append(self.nodes[a].generate(1)[0])
         if len(genblocks) > 0:
             self.log.info("make more work by gen %d" % (len(genblocks)))
