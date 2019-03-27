@@ -384,6 +384,7 @@ class ContractForkTest(MagnaChainTestFramework):
             print("mempool:", self.nodes[i].getrawmempool())
         if with_send:
             print("assert_equal(len(self.node1.getrawmempool()), 5),should {} == 5".format(len(self.node1.getrawmempool())))
+            with_send_crash_point2 = len(self.node1.getrawmempool())
             for tx in self.node1.getrawmempool():
                 # tx_ai,tx_a11,tx_a12
                 if tx == tx_a1:
@@ -453,7 +454,7 @@ class ContractForkTest(MagnaChainTestFramework):
             assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40)
         elif with_send and crash_point == 2:
             # what the he?
-            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40 if len( self.node1.getrawmempool()) == 7 else 4000 - 20)
+            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40 if with_send_crash_point2 == 7 else 4000 - 20)
         else:
             assert_equal(self.node1.getbalanceof(ct.contract_id), 4000)
         bal = 4000
@@ -551,7 +552,7 @@ class ContractForkTest(MagnaChainTestFramework):
         # join network
         if gen_blocks:
             blocks_a = self.node0.generate(2)
-            blocks_b = self.node2.generate(6)
+            blocks_b = self.node2.generate(8)
             more_work_blocks = self.make_more_work_than(2, 0)
 
             for i in range(4):
@@ -582,6 +583,12 @@ class ContractForkTest(MagnaChainTestFramework):
         # 合并后，节点再次调用合约,该交易应该回被不同组的节点抛弃，因为合约不存在
         self.log.info("when joined,contractCall will throw EXCEPTION because of the contractPublish transaction be droped by different group")
         tx1,tx2 = None,None
+        # make sure contract publish transaction in mempool
+        for i,c in enumerate(ccontracts_a):
+            # sometimes assert failed here
+            if c.publish_txid not in self.node0.getrawmempool():
+                print("OOPS!!!!!!!OMG!!!!That's IMPOSSABLE")
+                print("contractPublish transaction {} not in mempool,index is {}.When call will throw exception".format(c.publish_txid,i))
         result = ccontracts_a[2].call_reentrancyTest()
         if not result.reason():
             tx1 = result.txid
@@ -595,13 +602,22 @@ class ContractForkTest(MagnaChainTestFramework):
         if tx1 and tx2:
             wait_until(lambda: tx1 not in self.node2.getrawmempool(), timeout=10)
             wait_until(lambda: tx1 in self.node1.getrawmempool(), timeout=10)
-            wait_until(lambda: tx2 not in self.node1.getrawmempool(), timeout=10)
+            if gen_blocks:
+                # 因为tx2是主链交易，块同步后，可以找到合约的
+                wait_until(lambda: tx2 in self.node1.getrawmempool(), timeout=10)
+            else:
+                wait_until(lambda: tx2 not in self.node1.getrawmempool(), timeout=10)
             wait_until(lambda: tx2 in self.node3.getrawmempool(), timeout=10)
         else:
             print('tx1 and tx2 is None')
 
         for i, n in enumerate(self.nodes):
-            n.generate(2)
+            try:
+                n.generate(2)
+            except Exception as  e:
+                self.log.info("Don't know why!!node{} generate failed,reason:{}".format(i,repr(e)))
+                raise
+
             print("node{} generate done".format(i))
             sync_blocks(self.nodes)
         # todo more assert
@@ -609,10 +625,10 @@ class ContractForkTest(MagnaChainTestFramework):
     def publish_contract(self, node, hex_content, coster, sender_pub, sender_pri, amount, changeaddress,
                          send_flag=True):
         pre_transaction = node.prepublishcode(hex_content, coster, sender_pub, amount, changeaddress)
-        print(pre_transaction)
+        # print(pre_transaction)
         txhex = pre_transaction['txhex']
         spent_utxo = pre_transaction['coins']
-        print(spent_utxo)
+        # print(spent_utxo)
         prevtxs = []
         for ele in spent_utxo:
             info = {}
@@ -622,7 +638,7 @@ class ContractForkTest(MagnaChainTestFramework):
             info['scriptPubKey'] = ele['script']
             prevtxs.append(info)
         signed_tx = node.signrawtransaction(txhex, prevtxs, [sender_pri, sender_pri])
-        print(signed_tx)
+        # print(signed_tx)
         if send_flag:
             return node.sendrawtransaction(signed_tx['hex'])
         return signed_tx
