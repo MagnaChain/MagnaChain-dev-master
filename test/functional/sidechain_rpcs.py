@@ -34,9 +34,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 2
-        self.extra_args = [['-txindex','-grouping=0'],['-txindex','-grouping=0']]
+        self.extra_args = [['-txindex'],['-txindex']]
         # self.side_extra_args = [['-txindex']]
-        self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
+        # self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
@@ -256,7 +256,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(self.snode0.getrawmempool(),[])
         hash = self.snode0.getbestblockhash()
         block_height = self.snode0.getblockcount()
-        self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
+        # self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
         addr = self.snode0.getnewaddress()
         txid1 = self.snode0.sendtoaddress(addr,10)
         txid2 = self.snode0.sendtobranchchain('main',self.node0.getnewaddress(),10)['txid']
@@ -264,8 +264,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.node0.generate(1)
         self.snode0.generate(3)
         bad_hash = self.snode0.getblockhash(block_height + 1)
+        before_work = int(self.snode0.getchaintipwork(), 16)
+        before_height = self.snode0.getblockcount()
+        before_besthash = self.snode0.getbestblockhash()
         self.snode0.invalidateblock(bad_hash)
-        self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
+        # self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
         new_height = self.snode0.getblockcount()
         new_hash = self.snode0.getbestblockhash()
         if (new_height != block_height or new_hash != hash):
@@ -276,17 +279,24 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.snode0.generate(7)
         assert_equal(self.snode0.getblockcount(),new_height + 7)
         self.node0.generate(1)
-        txids = self.node0.getrawmempool()
-        self.log.info("node0 mempool size {}".format(len(txids)))
-        print(txids)
-        # self.snode0.rebroadcastchaintransaction(txid2)
-        self.snode0.generate(8)
+        for i in range(3):
+            self.snode0.generate(8)
         self.node0.generate(1)
         self.test_getbranchchainheight()
-        self.snode0.rebroadcastchaintransaction(txid2)
+        assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
         self.test_getbranchchainheight()
         self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
         # todo: we need reconsiderblock previous tip
+        besthash = self.snode0.getbestblockhash()
+        block_height = self.snode0.getblockcount()
+        self.snode0.reconsiderblock(bad_hash)
+        if int(self.snode0.getchaintipwork(), 16) <= before_work:
+            assert_equal(self.snode0.getblockcount(), before_height)
+            assert_equal(self.snode0.getbestblockhash(),before_besthash)
+        else:
+            assert_equal(self.snode0.getblockcount(), block_height)
+            assert_equal(self.snode0.getbestblockhash(),besthash)
+
 
 
 
