@@ -120,6 +120,8 @@ class RevertTransactionTest(MagnaChainTestFramework):
         txids2 = self.node0.getrawmempool()
         assert_equal(2, len(txids2))
         assert_equal(txids, txids2)
+        self.node0.generate(1)
+        assert_equal(0, len(self.node0.getrawmempool()))
     
 
 if __name__ == '__main__':
