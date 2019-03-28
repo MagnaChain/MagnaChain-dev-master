@@ -437,13 +437,17 @@ public:
     MCPubKey sender;
     std::string codeOrFunc;
     std::string args;
-    MCAmount amountOut;
     MCScript signature;
+    std::map<MCContractID, MCAmount> contractCoinsOut;
 
-    ContractData() : amountOut(0) {}
+    ContractData()
+    {
+    }
 
     ContractData(const ContractData& from)
-        : address(from.address), sender(from.sender), codeOrFunc(from.codeOrFunc), args(from.args), amountOut(from.amountOut), signature(from.signature) {}
+        : address(from.address), sender(from.sender), codeOrFunc(from.codeOrFunc), args(from.args), contractCoinsOut(from.contractCoinsOut), signature(from.signature)
+    {
+    }
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -452,7 +456,7 @@ public:
         READWRITE(sender);
         READWRITE(codeOrFunc);
         READWRITE(args);
-        READWRITE(amountOut);
+        READWRITE(contractCoinsOut);
         READWRITE(signature);
     }
 };

@@ -282,7 +282,12 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
             contractdata.pushKV("codeOrFunc", tx.pContractData->codeOrFunc);
         contractdata.pushKV("args", tx.pContractData->args);
-        contractdata.pushKV("amountout", tx.pContractData->amountOut);
+
+        UniValue contractCoinsOut(UniValue::VOBJ);
+        for (auto it : tx.pContractData->contractCoinsOut) {
+            contractCoinsOut.pushKV(it.first.ToString(), it.second);
+        }
+        contractdata.pushKV("amountout", contractCoinsOut);
 
         UniValue o(UniValue::VOBJ);
         o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));

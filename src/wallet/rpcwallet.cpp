@@ -680,7 +680,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     wtx.pContractData->codeOrFunc = trimRawCode;
     wtx.pContractData->sender = senderPubKey;
     wtx.pContractData->address = contractId;
-    wtx.pContractData->amountOut = 0;
+    wtx.pContractData->contractCoinsOut.clear();
     SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
 
     ret.setObject();
@@ -812,7 +812,7 @@ UniValue callcontract(const JSONRPCRequest& request)
             wtx.pContractData->codeOrFunc = strFuncName;
             wtx.pContractData->args = args.write();
             wtx.pContractData->address = contractId;
-            wtx.pContractData->amountOut = sls.contractOut;
+            wtx.pContractData->contractCoinsOut = std::move(sls.contractCoinsOut);
 
             bool subtractFeeFromAmount = false;
             MCCoinControl coinCtrl;
@@ -942,7 +942,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
             wtx.pContractData->codeOrFunc = strFuncName;
             wtx.pContractData->args = args.write();
             wtx.pContractData->address = contractID;
-            wtx.pContractData->amountOut = sls.contractOut;
+            wtx.pContractData->contractCoinsOut = std::move(sls.contractCoinsOut);
             SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));

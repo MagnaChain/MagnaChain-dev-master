@@ -421,8 +421,8 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
 
     MCAmount nValueIn = 0;
     MCAmount nFees = 0;
-    MCAmount nContractAmountIn = 0;
     MCScript contractScript;
+    std::map<MCContractID, MCAmount> contractCoinsOut;
     if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
         contractScript = GetScriptForDestination(tx.pContractData->address);
 
@@ -453,9 +453,9 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
         if (tx.vin[i].scriptSig.IsContract()) {
-            if (tx.vin[i].scriptSig != contractScript)
-                return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
-            nContractAmountIn += coin.out.nValue;
+            MCContractID contractId;
+            tx.vin[i].scriptSig.GetContractAddr(contractId);
+            contractCoinsOut[contractId] += coin.out.nValue;
         }
 
         // Check input types
@@ -480,15 +480,17 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         }
     }
 
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && nContractAmountIn == 0 && tx.pContractData->amountOut > 0) {
-        nValueIn += tx.pContractData->amountOut;
-        if (!MoneyRange(tx.pContractData->amountOut) || !MoneyRange(nValueIn))
-            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-        nContractAmountIn += tx.pContractData->amountOut;
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && contractCoinsOut.size() == 0 && tx.pContractData->contractCoinsOut.size() > 0) {
+        for (auto& it : tx.pContractData->contractCoinsOut) {
+            nValueIn += it.second;
+            if (!MoneyRange(it.second) || !MoneyRange(nValueIn))
+                return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+            contractCoinsOut[it.first] = it.second;
+        }
     }
 
     MCAmount nValueOut = 0;
-    MCAmount nContractAmountChange = 0;
+    std::map<MCContractID, MCAmount> contractChange;
     for (const auto& tx_out : tx.vout) {
         nValueOut += tx_out.nValue;
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
@@ -496,13 +498,16 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
 
         if (tx_out.scriptPubKey.IsContract()) {
             MCContractID contractId;
-            if (!tx_out.scriptPubKey.GetContractAddr(contractId) || contractId != tx.pContractData->address)
+            if (!tx_out.scriptPubKey.GetContractAddr(contractId)) {
                 return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
+            }
             if (tx_out.scriptPubKey.IsContractChange()) {
                 // 合约输出只能有一个找零
-                if (nContractAmountChange > 0)
+                auto it = contractChange.find(contractId);
+                if (it != contractChange.end()) {
                     return state.DoS(100, false, REJECT_INVALID, "bad_contract_amount_change");
-                nContractAmountChange += tx_out.nValue;
+                }
+                contractChange.insert(std::make_pair(contractId, tx_out.nValue));
             }
         }
     }
@@ -540,9 +545,19 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         }
     }
 
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->amountOut > 0) {
-        if (nContractAmountIn - nContractAmountChange != tx.pContractData->amountOut)
-            return state.DoS(100, false, REJECT_INVALID, "contract amount not match");
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->contractCoinsOut.size() > 0) {
+        MCAmount txContractCoinsOut = 0;
+        for (auto it : tx.pContractData->contractCoinsOut) {
+            if (contractCoinsOut[it.first] - contractChange[it.first] != it.second) {
+                return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
+            }
+            contractCoinsOut.erase(it.first);
+            contractChange.erase(it.first);
+        }
+
+        if (contractCoinsOut.size() != 0 || contractChange.size() != 0) {
+            return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
+        }
     }
 
     //check vout

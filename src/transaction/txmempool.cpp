@@ -619,8 +619,10 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
     UpdateEntryForAncestors(newit, setAncestors);
 
     // update contract amount
-    if (entry.GetTx().pContractData != nullptr && entry.GetTx().pContractData->amountOut > 0) {
-        pCoinAmountCache->DecAmount(entry.GetTx().pContractData->address, entry.GetTx().pContractData->amountOut);
+    if (entry.GetTx().pContractData != nullptr && entry.GetTx().pContractData->contractCoinsOut.size() > 0) {
+        for (auto it : entry.GetTx().pContractData->contractCoinsOut) {
+            pCoinAmountCache->DecAmount(it.first, it.second);
+        }
     }
 
     const std::vector<MCTxOut>& vout = entry.GetTx().vout;
@@ -1071,7 +1073,7 @@ uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
 {
     uint256 txHash = tx.GetHash();
     if ((tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && fFromMempool) ||
-        (tx.IsSmartContract() && tx.pContractData->amountOut > 0)) {
+        (tx.IsSmartContract() && tx.pContractData->contractCoinsOut.size() > 0)) {
         auto it = mapFinalTx2OriTx.find(txHash);
         if (it == mapFinalTx2OriTx.end()) {
             uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
@@ -1664,7 +1666,7 @@ bool MCCoinsViewMemPool::GetCoin(const MCOutPoint &outpoint, Coin &coin) const {
     MCTransactionRef ptx = mempool.Get(outpoint.hash);
     if (ptx) {
         if (outpoint.n < ptx->vout.size()) {
-            if (ptx->IsSmartContract() && ptx->pContractData->amountOut > 0) {
+            if (ptx->IsSmartContract() && ptx->pContractData->contractCoinsOut.size() > 0) {
                 return false;
             }
             coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
@@ -1725,8 +1727,10 @@ void MCTxMemPool::ReacceptTransactions()
                 }
                 else {
                     CheckContract(entries[i], &sls);
-                    if (pTx->pContractData != nullptr && pTx->pContractData->amountOut > 0) {
-                        pCoinAmountCache->DecAmount(pTx->pContractData->address, pTx->pContractData->amountOut);
+                    if (pTx->pContractData != nullptr && pTx->pContractData->contractCoinsOut.size() > 0) {
+                        for (auto iter : pTx->pContractData->contractCoinsOut) {
+                            pCoinAmountCache->DecAmount(iter.first, iter.second);
+                        }
                     }
 
                     for (int j = 0; j < pTx->vout.size(); ++j) {

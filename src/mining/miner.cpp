@@ -201,7 +201,7 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCTransactionRef tx = iter->GetSharedTx();
-    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->amountOut > 0)) {
+    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->contractCoinsOut.size() > 0)) {
         if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
         pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
@@ -499,7 +499,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     assert(total == vtx.size());
 }
 
-MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)
+MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)
 {
     if (mapBranchCoins.count(key) == 0) {
         CoinListPtr pcoinlist = pcoinListDb->GetList(key);
@@ -575,7 +575,7 @@ MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<M
     return nValue;
 }
 
-bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey)
+bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, const uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey)
 {
     std::vector<MCOutPoint> vInOutPoints;
     MCAmount nValue = UseUTXO(key, nAmount, vInOutPoints);
@@ -627,13 +627,17 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
         success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
-    if (newTx.IsSmartContract() && newTx.pContractData->amountOut > 0) {
-        MCContractID& contractId = newTx.pContractData->address;
-        MCScript contractScript = GetScriptForDestination(contractId);
-        MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
-
-        success = utxoMaker.MakeTxUTXO(newTx, contractId, newTx.pContractData->amountOut, contractScript, contractChangeScript);
-        keys.push_back(contractId);
+    if (newTx.IsSmartContract() && newTx.pContractData->contractCoinsOut.size() > 0) {
+        for (auto it : newTx.pContractData->contractCoinsOut) {
+            const MCContractID& contractId = it.first;
+            MCScript contractScript = GetScriptForDestination(contractId);
+            MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
+            success = utxoMaker.MakeTxUTXO(newTx, contractId, it.second, contractScript, contractChangeScript);
+            if (!success) {
+                break;
+            }
+            keys.push_back(it.first);
+        }
     }
 
     if (success) {
@@ -823,7 +827,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             const MCTransactionRef& entryTx = entry->GetSharedTx();
 
             if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
-                (entryTx->IsSmartContract() && entryTx->pContractData->amountOut > 0)) {
+                (entryTx->IsSmartContract() && entryTx->pContractData->contractCoinsOut.size() > 0)) {
                 if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {

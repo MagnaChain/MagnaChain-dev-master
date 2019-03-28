@@ -263,10 +263,12 @@ MCAmount MCCoinsViewCache::GetValueIn(const MCTransaction& tx) const
             includeContract = true;
     }
 
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && !includeContract && tx.pContractData->amountOut > 0) {
-        nResult += tx.pContractData->amountOut;
-        if (!MoneyRange(nResult) || !MoneyRange(tx.pContractData->amountOut))
-            return 0;
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && !includeContract && tx.pContractData->contractCoinsOut.size() > 0) {
+        for (auto it : tx.pContractData->contractCoinsOut) {
+            nResult += it.second;
+            if (!MoneyRange(nResult) || !MoneyRange(it.second))
+                return 0;
+        }
     }
 
     return nResult;
