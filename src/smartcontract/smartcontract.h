@@ -49,12 +49,12 @@ public:
     int64_t timestamp;  // 执行时的时间戳
     int blockHeight;    // 执行时的区块高度
     int txIndex;
-    MCAmount contractOut = 0;
     uint32_t runningTimes = 0;
     uint32_t deltaDataLen = 0;
     uint32_t codeLen = 0;
     int internalCallNum = 0;
     CoinAmountCache* pCoinAmountCache;
+    std::map<MCContractID, MCAmount> contractCoinsOut;
     std::map<MCContractID, ContractInfo> contractDataFrom;
 
 private:
@@ -67,6 +67,9 @@ private:
 public:
     void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache);
     bool GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
+
+    MCAmount GetContractCoinOut(const MCContractID& contractId);
+    void AddContractCoinsOut(const MCContractID& contractId, MCAmount delta);
 
     void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, 
         ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);

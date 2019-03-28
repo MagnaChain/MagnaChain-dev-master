@@ -3102,8 +3102,12 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 }
 
                 if (sls != nullptr && sls->recipients.size() > 0) {
-                    txNew.vin.emplace_back(uint256(), txNew.vin.size());
-                    txNew.vout.emplace_back(txNew.pContractData->amountOut, GetScriptForDestination(txNew.pContractData->address));
+                    for (auto iter : txNew.pContractData->contractCoinsOut) {
+                        txNew.vin.emplace_back(uint256(), 0);
+                    }
+                    for (int i = 0; i < sls->recipients.size(); ++i) {
+                        txNew.vout.emplace_back(sls->recipients[i]);
+                    }
                 }
 
 				// 获取交易字节大小
@@ -3116,8 +3120,8 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 nBytes = GetVirtualTransactionSize(txNew, 0, runningTimes, deltaDataLen);
 
                 if (sls != nullptr && sls->recipients.size() > 0) {
-                    txNew.vin.resize(txNew.vin.size() - 1);
-                    txNew.vout.resize(txNew.vout.size() - 1);
+                    txNew.vin.resize(txNew.vin.size() - txNew.pContractData->contractCoinsOut.size());
+                    txNew.vout.resize(txNew.vout.size() - sls->recipients.size());
                 }
 
 				// 移除虚拟签名数据
@@ -3129,8 +3133,9 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
 
                 // check lsdata
                 if (sls != nullptr) {
-                    for (size_t i = 0; i < sls->recipients.size(); ++i)
+                    for (size_t i = 0; i < sls->recipients.size(); ++i) {
                         txNew.vout.push_back(sls->recipients[i]);
+                    }
                     txNew.pContractData->address = wtxNew.pContractData->address;
                 }
 

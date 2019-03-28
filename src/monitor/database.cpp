@@ -429,7 +429,11 @@ bool WriteContract(const MCTransactionRef tx)
     insertContractStatement->setString(3, HexStr(contractData->sender));
     insertContractStatement->setBlob(4, &codeOrFuncStream);
     insertContractStatement->setBlob(5, &argsStream);
-    insertContractStatement->setInt64(6, contractData->amountOut);
+
+    // TODO: change to multi contract coins out
+    insertContractStatement->setInt64(6, 0);
+    //insertContractStatement->setInt64(6, contractData->amountOut);
+
     insertContractStatement->setBlob(7, &signatureStream);
 
     if (!insertContractStatement->executeUpdate()) {

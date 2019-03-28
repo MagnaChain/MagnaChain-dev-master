@@ -371,7 +371,7 @@ bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls)
     if (sls == nullptr)
         return false;
 
-    if (sls->contractOut == 0 && sls->recipients.size() == 0)
+    if (sls->contractCoinsOut.size() == 0 && sls->recipients.size() == 0)
         return true;
 
     for (size_t i = 0; i < sls->recipients.size(); ++i) {
@@ -399,14 +399,14 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
         sls->Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (PublishContract(sls, contractAddr, rawCode, ret, true)) {
             if (CheckContractVinVout(tx, sls)) {
-                return (tx.pContractData->amountOut == 0);
+                return (tx.pContractData->contractCoinsOut.size() == 0 && sls->contractCoinsOut.size() == 0);
             }
         }
     } else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         sls->Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(sls, contractAddr, amount, strFuncName, args, ret)) {
             if (CheckContractVinVout(tx, sls)) {
-                return (tx.pContractData->amountOut == sls->contractOut);
+                return (tx.pContractData->contractCoinsOut == sls->contractCoinsOut);
             }
         }
     }
@@ -486,7 +486,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool, bool f
         bool modify = false;
         if (fAddToMempool) {
             if ((ptx->IsBranchChainTransStep2() && ptx->fromBranchId != MCBaseChainParams::MAIN) ||
-                (ptx->IsSmartContract() && ptx->pContractData->amountOut > 0)) {
+                (ptx->IsSmartContract() && ptx->pContractData->contractCoinsOut.size() > 0)) {
                 // revert transaction data
                 MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr, true);
                 ptx = MakeTransactionRef(mtx);
@@ -661,7 +661,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                 MCTxMemPool::txiter prevTx = mempool.mapTx.find(txin.prevout.hash);
                 if (prevTx != mempool.mapTx.end()) {
                     if ((prevTx->GetTx().IsBranchChainTransStep2() && prevTx->GetTx().fromBranchId != MCBaseChainParams::MAIN) ||
-                        (prevTx->GetTx().IsSmartContract() && prevTx->GetTx().pContractData->amountOut > 0)) {
+                        (prevTx->GetTx().IsSmartContract() && prevTx->GetTx().pContractData->contractCoinsOut.size() > 0)) {
                         state.Invalid(false, REJECT_INVALID, "vin-can-not-be-dynamic-tx-in-mempool");
                     }
                 }
@@ -1393,7 +1393,7 @@ void static InvalidBlockFound(MCBlockIndex* pindex, const MCValidationState& sta
     }
 }
 
-void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo& txundo, int nHeight, bool isBranch2ndBlockTx/*=false*/, bool ismempoolchecking)
+void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo& txundo, int nHeight, bool isBranch2ndBlockTx /*=false*/, bool ismempoolchecking)
 {
     if (isBranch2ndBlockTx) //no coin in,no need coin cout to record, duplicate
         return;
@@ -1401,8 +1401,7 @@ void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo& tx
     // mark inputs spent
     if (tx.IsBranchChainTransStep2() && (tx.fromBranchId == MCBaseChainParams::MAIN || ismempoolchecking)) {
         // no valid inputs
-    }
-    else if (!tx.IsCoinBase()) {
+    } else if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
         for (const MCTxIn& txin : tx.vin) {
             txundo.vprevout.emplace_back();
@@ -1445,12 +1444,11 @@ bool CScriptCheck::operator()()
 
         return CheckTranBranchScript(branchid, scriptPubKey);
     } else if (ptxTo->IsSmartContract() && ptxTo->vin[nIn].scriptSig.IsContract()) {
-        MCContractID contractId1;
-        if (!ptxTo->vin[nIn].scriptSig.GetContractAddr(contractId1))
+        MCContractID contractId;
+        if (!ptxTo->vin[nIn].scriptSig.GetContractAddr(contractId)) {
             return false;
-        if (contractId1 != ptxTo->pContractData->address)
-            return false;
-        return true;
+        }
+        return ptxTo->pContractData->contractCoinsOut.find(contractId) != ptxTo->pContractData->contractCoinsOut.end();
     }
 
     const MCScript& scriptSig = ptxTo->vin[nIn].scriptSig;
@@ -1742,8 +1740,7 @@ static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex
         // exactly.
         if (isBranch2ndBlockTx) {
             // no output to coindb
-        }
-        else {
+        } else {
             for (size_t o = 0; o < tx.vout.size(); o++) {
                 if (!tx.vout[o].scriptPubKey.IsUnspendable()) {
                     MCOutPoint out(hash, o);
@@ -4702,13 +4699,13 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
     // block being explored which are the first to have certain properties.
     size_t nNodes = 0;
     int nHeight = 0;
-    MCBlockIndex* pindexFirstInvalid = nullptr; // Oldest ancestor of pindex which is invalid.
-    MCBlockIndex* pindexFirstMissing = nullptr; // Oldest ancestor of pindex which does not have BLOCK_HAVE_DATA.
-    MCBlockIndex* pindexFirstNeverProcessed = nullptr; // Oldest ancestor of pindex for which nTx == 0.
-    MCBlockIndex* pindexFirstNotTreeValid = nullptr; // Oldest ancestor of pindex which does not have BLOCK_VALID_TREE (regardless of being valid or not).
+    MCBlockIndex* pindexFirstInvalid = nullptr;              // Oldest ancestor of pindex which is invalid.
+    MCBlockIndex* pindexFirstMissing = nullptr;              // Oldest ancestor of pindex which does not have BLOCK_HAVE_DATA.
+    MCBlockIndex* pindexFirstNeverProcessed = nullptr;       // Oldest ancestor of pindex for which nTx == 0.
+    MCBlockIndex* pindexFirstNotTreeValid = nullptr;         // Oldest ancestor of pindex which does not have BLOCK_VALID_TREE (regardless of being valid or not).
     MCBlockIndex* pindexFirstNotTransactionsValid = nullptr; // Oldest ancestor of pindex which does not have BLOCK_VALID_TRANSACTIONS (regardless of being valid or not).
-    MCBlockIndex* pindexFirstNotChainValid = nullptr; // Oldest ancestor of pindex which does not have BLOCK_VALID_CHAIN (regardless of being valid or not).
-    MCBlockIndex* pindexFirstNotScriptsValid = nullptr; // Oldest ancestor of pindex which does not have BLOCK_VALID_SCRIPTS (regardless of being valid or not).
+    MCBlockIndex* pindexFirstNotChainValid = nullptr;        // Oldest ancestor of pindex which does not have BLOCK_VALID_CHAIN (regardless of being valid or not).
+    MCBlockIndex* pindexFirstNotScriptsValid = nullptr;      // Oldest ancestor of pindex which does not have BLOCK_VALID_SCRIPTS (regardless of being valid or not).
     while (pindex != nullptr) {
         nNodes++;
         if (pindexFirstInvalid == nullptr && pindex->nStatus & BLOCK_FAILED_VALID) pindexFirstInvalid = pindex;
@@ -4723,7 +4720,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         if (pindex->pprev == nullptr) {
             // Genesis block checks.
             assert(pindex->GetBlockHash() == consensusParams.hashGenesisBlock); // Genesis block's hash must match.
-            assert(pindex == chainActive.Genesis()); // The current active chain's genesis block must be this block.
+            assert(pindex == chainActive.Genesis());                            // The current active chain's genesis block must be this block.
         }
         if (pindex->nChainTx == 0) assert(pindex->nSequenceId <= 0); // nSequenceId can't be set positive for blocks that aren't linked (negative is used for preciousblock)
         // VALID_TRANSACTIONS is equivalent to nTx > 0 for all nodes (whether or not pruning has occurred).
@@ -4741,12 +4738,12 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
         // All parents having had data (at some point) is equivalent to all parents being VALID_TRANSACTIONS, which is equivalent to nChainTx being set.
         assert((pindexFirstNeverProcessed != nullptr) == (pindex->nChainTx == 0)); // nChainTx != 0 is used to signal that all parent blocks have been processed (but may have been pruned).
         assert((pindexFirstNotTransactionsValid != nullptr) == (pindex->nChainTx == 0));
-        assert(pindex->nHeight == nHeight); // nHeight must be consistent.
-        assert(pindex->pprev == nullptr || pindex->nChainWork >= pindex->pprev->nChainWork); // For every block except the genesis block, the chainwork must be larger than the parent's.
-        assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight))); // The pskip pointer must point back for all but the first 2 blocks.
-        assert(pindexFirstNotTreeValid == nullptr); // All mapBlockIndex entries must at least be TREE valid
-        if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TREE) assert(pindexFirstNotTreeValid == nullptr); // TREE valid implies all parents are TREE valid
-        if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_CHAIN) assert(pindexFirstNotChainValid == nullptr); // CHAIN valid implies all parents are CHAIN valid
+        assert(pindex->nHeight == nHeight);                                                                             // nHeight must be consistent.
+        assert(pindex->pprev == nullptr || pindex->nChainWork >= pindex->pprev->nChainWork);                            // For every block except the genesis block, the chainwork must be larger than the parent's.
+        assert(nHeight < 2 || (pindex->pskip && (pindex->pskip->nHeight < nHeight)));                                   // The pskip pointer must point back for all but the first 2 blocks.
+        assert(pindexFirstNotTreeValid == nullptr);                                                                     // All mapBlockIndex entries must at least be TREE valid
+        if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_TREE) assert(pindexFirstNotTreeValid == nullptr);       // TREE valid implies all parents are TREE valid
+        if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_CHAIN) assert(pindexFirstNotChainValid == nullptr);     // CHAIN valid implies all parents are CHAIN valid
         if ((pindex->nStatus & BLOCK_VALID_MASK) >= BLOCK_VALID_SCRIPTS) assert(pindexFirstNotScriptsValid == nullptr); // SCRIPTS valid implies all parents are SCRIPTS valid
         if (pindexFirstInvalid == nullptr) {
             // Checks for not-invalid blocks.
@@ -4784,7 +4781,7 @@ void static CheckBlockIndex(const Consensus::Params& consensusParams)
             assert(foundInUnlinked);
         }
         if (!(pindex->nStatus & BLOCK_HAVE_DATA)) assert(!foundInUnlinked); // Can't be in mapBlocksUnlinked if we don't HAVE_DATA
-        if (pindexFirstMissing == nullptr) assert(!foundInUnlinked); // We aren't missing data for any parent -- cannot be in mapBlocksUnlinked.
+        if (pindexFirstMissing == nullptr) assert(!foundInUnlinked);        // We aren't missing data for any parent -- cannot be in mapBlocksUnlinked.
         if (pindex->pprev && (pindex->nStatus & BLOCK_HAVE_DATA) && pindexFirstNeverProcessed == nullptr && pindexFirstMissing != nullptr) {
             // We HAVE_DATA for this block, have received data for all parents at some point, but we're currently missing data for some parent.
             assert(fHavePruned); // We must have pruned.

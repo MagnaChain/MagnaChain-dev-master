@@ -9,8 +9,8 @@
 #endif
 
 #include "chainparamsbase.h"
-#include "misc/clientversion.h"
 #include "io/fs.h"
+#include "misc/clientversion.h"
 #include "rpc/client.h"
 #include "rpc/protocol.h"
 #include "utils/util.h"
@@ -18,26 +18,26 @@
 
 #include <stdio.h>
 
+#include "support/events.h"
 #include <event2/buffer.h>
 #include <event2/keyvalq_struct.h>
-#include "support/events.h"
 
-#include <univalue.h>
-#include "misc/tinyformat.h"
-#include "thread/sync.h"
-#include "primitives/block.h"
 #include "chainparams.h"
-#include "validation/validation.h"
-#include "consensus/validation.h"
 #include "consensus/merkle.h"
+#include "consensus/validation.h"
+#include "misc/tinyformat.h"
+#include "primitives/block.h"
+#include "thread/sync.h"
+#include "validation/validation.h"
+#include <univalue.h>
 
-#include "script/standard.h"
 #include "coding/base58.h"
+#include "script/standard.h"
 
-#include "io/core_io.h"
-#include "rpc/server.h"
 #include "chain/branchdb.h"
+#include "io/core_io.h"
 #include "misc/timedata.h"
+#include "rpc/server.h"
 #include "smartcontract/smartcontract.h"
 #include "transaction/txmempool.h"
 
@@ -50,183 +50,173 @@ static const int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;
 class MCConnectionFailed : public std::runtime_error
 {
 public:
-
-	explicit inline MCConnectionFailed(const std::string& msg) :
-		std::runtime_error(msg)
-	{}
-
+    explicit inline MCConnectionFailed(const std::string& msg) : std::runtime_error(msg)
+    {
+    }
 };
 
 /** Reply structure for request_done to fill in */
-struct HTTPReply
-{
-	HTTPReply() : status(0), error(-1) {}
+struct HTTPReply {
+    HTTPReply() : status(0), error(-1) {}
 
-	int status;
-	int error;
-	std::string body;
+    int status;
+    int error;
+    std::string body;
 };
 
-const char *http_errorstring2(int code)
+const char* http_errorstring2(int code)
 {
-	switch (code) {
+    switch (code) {
 #if LIBEVENT_VERSION_NUMBER >= 0x02010300
-	case EVREQ_HTTP_TIMEOUT:
-		return "timeout reached";
-	case EVREQ_HTTP_EOF:
-		return "EOF reached";
-	case EVREQ_HTTP_INVALID_HEADER:
-		return "error while reading header, or invalid header";
-	case EVREQ_HTTP_BUFFER_ERROR:
-		return "error encountered while reading or writing";
-	case EVREQ_HTTP_REQUEST_CANCEL:
-		return "request was canceled";
-	case EVREQ_HTTP_DATA_TOO_LONG:
-		return "response body is larger than allowed";
+    case EVREQ_HTTP_TIMEOUT:
+        return "timeout reached";
+    case EVREQ_HTTP_EOF:
+        return "EOF reached";
+    case EVREQ_HTTP_INVALID_HEADER:
+        return "error while reading header, or invalid header";
+    case EVREQ_HTTP_BUFFER_ERROR:
+        return "error encountered while reading or writing";
+    case EVREQ_HTTP_REQUEST_CANCEL:
+        return "request was canceled";
+    case EVREQ_HTTP_DATA_TOO_LONG:
+        return "response body is larger than allowed";
 #endif
-	default:
-		return "unknown";
-	}
+    default:
+        return "unknown";
+    }
 }
 
-static void http_request_done(struct evhttp_request *req, void *ctx)
+static void http_request_done(struct evhttp_request* req, void* ctx)
 {
-	HTTPReply *reply = static_cast<HTTPReply*>(ctx);
+    HTTPReply* reply = static_cast<HTTPReply*>(ctx);
 
-	if (req == nullptr) {
-		/* If req is nullptr, it means an error occurred while connecting: the
+    if (req == nullptr) {
+        /* If req is nullptr, it means an error occurred while connecting: the
 		* error code will have been passed to http_error_cb.
 		*/
-		reply->status = 0;
-		return;
-	}
+        reply->status = 0;
+        return;
+    }
 
-	reply->status = evhttp_request_get_response_code(req);
+    reply->status = evhttp_request_get_response_code(req);
 
-	struct evbuffer *buf = evhttp_request_get_input_buffer(req);
-	if (buf)
-	{
-		size_t size = evbuffer_get_length(buf);
-		const char *data = (const char*)evbuffer_pullup(buf, size);
-		if (data)
-			reply->body = std::string(data, size);
-		evbuffer_drain(buf, size);
-	}
+    struct evbuffer* buf = evhttp_request_get_input_buffer(req);
+    if (buf) {
+        size_t size = evbuffer_get_length(buf);
+        const char* data = (const char*)evbuffer_pullup(buf, size);
+        if (data)
+            reply->body = std::string(data, size);
+        evbuffer_drain(buf, size);
+    }
 }
 
 #if LIBEVENT_VERSION_NUMBER >= 0x02010300
-static void http_error_cb(enum evhttp_request_error err, void *ctx)
+static void http_error_cb(enum evhttp_request_error err, void* ctx)
 {
-	HTTPReply *reply = static_cast<HTTPReply*>(ctx);
-	reply->error = err;
+    HTTPReply* reply = static_cast<HTTPReply*>(ctx);
+    reply->error = err;
 }
 #endif
 
-UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, 
-	const std::string& strRPCUserColonPass, const std::string& rpcwallet/*=""*/)
+UniValue CallRPC(const std::string& host, const int port, const std::string& strMethod, const UniValue& params, const std::string& strRPCUserColonPass, const std::string& rpcwallet /*=""*/)
 {
-	// Obtain event base
-	raii_event_base base = obtain_event_base();
+    // Obtain event base
+    raii_event_base base = obtain_event_base();
 
-	// Synchronously look up hostname
-	raii_evhttp_connection evcon = obtain_evhttp_connection_base(base.get(), host, port);
-	evhttp_connection_set_timeout(evcon.get(), DEFAULT_HTTP_CLIENT_TIMEOUT);
+    // Synchronously look up hostname
+    raii_evhttp_connection evcon = obtain_evhttp_connection_base(base.get(), host, port);
+    evhttp_connection_set_timeout(evcon.get(), DEFAULT_HTTP_CLIENT_TIMEOUT);
 
-	HTTPReply response;
-	raii_evhttp_request req = obtain_evhttp_request(http_request_done, (void*)&response);
-	if (req == nullptr)
-		throw std::runtime_error("create http request failed");
+    HTTPReply response;
+    raii_evhttp_request req = obtain_evhttp_request(http_request_done, (void*)&response);
+    if (req == nullptr)
+        throw std::runtime_error("create http request failed");
 #if LIBEVENT_VERSION_NUMBER >= 0x02010300
-	evhttp_request_set_error_cb(req.get(), http_error_cb);
+    evhttp_request_set_error_cb(req.get(), http_error_cb);
 #endif
-    
-	struct evkeyvalq* output_headers = evhttp_request_get_output_headers(req.get());
-	assert(output_headers);
-	evhttp_add_header(output_headers, "Host", host.c_str());
-	evhttp_add_header(output_headers, "Connection", "close");
-	evhttp_add_header(output_headers, "Authorization", (std::string("Basic ") + EncodeBase64(strRPCUserColonPass)).c_str());
 
-	// Attach request data
+    struct evkeyvalq* output_headers = evhttp_request_get_output_headers(req.get());
+    assert(output_headers);
+    evhttp_add_header(output_headers, "Host", host.c_str());
+    evhttp_add_header(output_headers, "Connection", "close");
+    evhttp_add_header(output_headers, "Authorization", (std::string("Basic ") + EncodeBase64(strRPCUserColonPass)).c_str());
+
+    // Attach request data
     std::string strRequest = JSONRPCRequestObj(strMethod, params, 1).write() + "\n";
-	struct evbuffer* output_buffer = evhttp_request_get_output_buffer(req.get());
-	assert(output_buffer);
-	evbuffer_add(output_buffer, strRequest.data(), strRequest.size());
+    struct evbuffer* output_buffer = evhttp_request_get_output_buffer(req.get());
+    assert(output_buffer);
+    evbuffer_add(output_buffer, strRequest.data(), strRequest.size());
 
-	// check if we should use a special wallet endpoint
-	std::string endpoint = "/";
+    // check if we should use a special wallet endpoint
+    std::string endpoint = "/";
     std::string walletName = rpcwallet;
-	if (!walletName.empty()) {
-		char *encodedURI = evhttp_uriencode(walletName.c_str(), walletName.size(), false);
-		if (encodedURI) {
-			endpoint = "/wallet/" + std::string(encodedURI);
-			free(encodedURI);
-		}
-		else {
-			throw MCConnectionFailed("uri-encode failed");
-		}
-	}
-	int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, endpoint.c_str());
-	req.release(); // ownership moved to evcon in above call
-	if (r != 0) {
-		throw MCConnectionFailed("send http request failed");
-	}
+    if (!walletName.empty()) {
+        char* encodedURI = evhttp_uriencode(walletName.c_str(), walletName.size(), false);
+        if (encodedURI) {
+            endpoint = "/wallet/" + std::string(encodedURI);
+            free(encodedURI);
+        } else {
+            throw MCConnectionFailed("uri-encode failed");
+        }
+    }
+    int r = evhttp_make_request(evcon.get(), req.get(), EVHTTP_REQ_POST, endpoint.c_str());
+    req.release(); // ownership moved to evcon in above call
+    if (r != 0) {
+        throw MCConnectionFailed("send http request failed");
+    }
 
-	event_base_dispatch(base.get());
+    event_base_dispatch(base.get());
 
-	if (response.status == 0)
-		throw MCConnectionFailed(strprintf("couldn't connect to server: %s (code %d)\n(make sure server is running and you are connecting to the correct RPC port)", http_errorstring2(response.error), response.error));
-	else if (response.status == HTTP_UNAUTHORIZED)
-		throw std::runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
-	else if (response.status >= 400 && response.status != HTTP_BAD_REQUEST && response.status != HTTP_NOT_FOUND && response.status != HTTP_INTERNAL_SERVER_ERROR)
-		throw std::runtime_error(strprintf("server returned HTTP error %d", response.status));
-	else if (response.body.empty())
-		throw std::runtime_error("no response from server");
+    if (response.status == 0)
+        throw MCConnectionFailed(strprintf("couldn't connect to server: %s (code %d)\n(make sure server is running and you are connecting to the correct RPC port)", http_errorstring2(response.error), response.error));
+    else if (response.status == HTTP_UNAUTHORIZED)
+        throw std::runtime_error("incorrect rpcuser or rpcpassword (authorization failed)");
+    else if (response.status >= 400 && response.status != HTTP_BAD_REQUEST && response.status != HTTP_NOT_FOUND && response.status != HTTP_INTERNAL_SERVER_ERROR)
+        throw std::runtime_error(strprintf("server returned HTTP error %d", response.status));
+    else if (response.body.empty())
+        throw std::runtime_error("no response from server");
 
-	// Parse reply
-	UniValue valReply(UniValue::VSTR);
-	if (!valReply.read(response.body))
-		throw std::runtime_error("couldn't parse reply from server");
-	const UniValue& reply = valReply.get_obj();
-	if (reply.empty())
-		throw std::runtime_error("expected reply to have result, error and id properties");
+    // Parse reply
+    UniValue valReply(UniValue::VSTR);
+    if (!valReply.read(response.body))
+        throw std::runtime_error("couldn't parse reply from server");
+    const UniValue& reply = valReply.get_obj();
+    if (reply.empty())
+        throw std::runtime_error("expected reply to have result, error and id properties");
 
-	return reply;
+    return reply;
 }
 
 UniValue CallRPC(MCRPCConfig& rpccfg, const std::string& strMethod, const UniValue& params)
 {
     try {
-        if (rpccfg.strRPCUserColonPass.empty() && rpccfg.getcookiefail > 0){
+        if (rpccfg.strRPCUserColonPass.empty() && rpccfg.getcookiefail > 0) {
             rpccfg.InitUserColonPass(true);
         }
 
         UniValue ret = CallRPC(rpccfg.strIp, rpccfg.iPort, strMethod, params, rpccfg.strRPCUserColonPass, rpccfg.strWallet);
         return ret;
-    }
-    catch (const MCConnectionFailed& e)
-    {
+    } catch (const MCConnectionFailed& e) {
         error("%s: CallRPC excetion , %s", __func__, e.what());
         return JSONRPCReplyObj(NullUniValue, e.what(), 1);
-    }
-    catch (const std::exception& e)
-    {
+    } catch (const std::exception& e) {
         error("%s: may be CallRPC excetion cannot connect to main chain,%s", __func__, e.what());
         return JSONRPCReplyObj(NullUniValue, e.what(), 1);
     }
     return NullUniValue;
 }
 
-MCRPCConfig::MCRPCConfig() :iPort(0), getcookiefail(0)
+MCRPCConfig::MCRPCConfig() : iPort(0), getcookiefail(0)
 {
 }
 
 void MCRPCConfig::Reset()
 {
     strBranchId.clear();
-	strIp.clear();
-	iPort = 0;
-	strUser.clear();
-	strPassword.clear();
+    strIp.clear();
+    iPort = 0;
+    strUser.clear();
+    strPassword.clear();
     strWallet.clear();
     strDataDir.clear();
     strRPCUserColonPass.clear();
@@ -235,15 +225,15 @@ void MCRPCConfig::Reset()
 
 bool MCRPCConfig::IsValid()
 {
-	if ((strRPCUserColonPass.empty() && getcookiefail == 0) || iPort == 0)
-		return false;
-	return true;
+    if ((strRPCUserColonPass.empty() && getcookiefail == 0) || iPort == 0)
+        return false;
+    return true;
 }
 
 bool MCRPCConfig::InitUserColonPass(bool bthrowexcetion)
 {
     // Get credentials
-    if (!strDataDir.empty() && strPassword.empty())// load datadir conf first.
+    if (!strDataDir.empty() && strPassword.empty()) // load datadir conf first.
     {
         ArgsManager args;
         fs::path path = fs::system_complete(strDataDir);
@@ -256,19 +246,18 @@ bool MCRPCConfig::InitUserColonPass(bool bthrowexcetion)
         try {
             std::string configfilepath = (path / MAGNACHAIN_CONF_FILENAME).string();
             args.ReadConfigFile(configfilepath);
-        }
-        catch (const std::exception& e) {// no config file is ok
+        } catch (const std::exception& e) { // no config file is ok
             //if (bthrowexcetion) throw std::runtime_error("Error reading configuration file!\n");
             //return false;
         }
-        if (args.GetArg("-rpcpassword", "") == "")//get cookie file, the cookie file only exist when branch is running
+        if (args.GetArg("-rpcpassword", "") == "") //get cookie file, the cookie file only exist when branch is running
         {
             bool fTestNet = gArgs.GetBoolArg("-testnet", false);
             bool fRegTest = gArgs.GetBoolArg("-regtest", false);
-            
+
             fs::path cookiepath = path / ".cookie";
-            if (fTestNet || fRegTest){
-                if (strBranchId == MCBaseChainParams::MAIN)//note that main branch datadir for testnet or regtest will be testnet3 or regtest 
+            if (fTestNet || fRegTest) {
+                if (strBranchId == MCBaseChainParams::MAIN) //note that main branch datadir for testnet or regtest will be testnet3 or regtest
                 {
                     std::string subdir = fTestNet ? SUB_TESTNET_DATADIR : SUB_REGTEST_DATADIR;
                     cookiepath = path / subdir / ".cookie";
@@ -280,17 +269,14 @@ bool MCRPCConfig::InitUserColonPass(bool bthrowexcetion)
                 if (bthrowexcetion) throw std::runtime_error("Error: No authentication cookie could be found");
                 return false;
             }
-        }
-        else
-        {
+        } else {
             strPassword = args.GetArg("-rpcpassword", "");
             if (args.GetArg("-rpcuser", "") != "") { // choise parameters in config file first.
                 strUser = args.GetArg("-rpcuser", "");
             }
             strRPCUserColonPass = strUser + ":" + strPassword;
         }
-    }
-    else{
+    } else {
         strRPCUserColonPass = strUser + ":" + strPassword;
     }
     return !strRPCUserColonPass.empty();
@@ -298,190 +284,182 @@ bool MCRPCConfig::InitUserColonPass(bool bthrowexcetion)
 
 std::unique_ptr<MCBranchChainMan> g_branchChainMan = nullptr;
 
-MCBranchChainMan::MCBranchChainMan() {
+MCBranchChainMan::MCBranchChainMan()
+{
 }
 
-MCBranchChainMan::~MCBranchChainMan() {
+MCBranchChainMan::~MCBranchChainMan()
+{
 }
 
 void MCBranchChainMan::Init()
 {
-	std::string strMainChainCfg = gArgs.GetArg("-mainchaincfg", "");
-	if (strMainChainCfg.empty() == false)
-	{
-		std::string strName;
-		MCRPCConfig rpccfg;
-		if ((ParseRpcConfig(strMainChainCfg, rpccfg, strName) && rpccfg.IsValid()) || rpccfg.getcookiefail == 1)// if getcookiefail, we will give a chance for later try again,may the target chain is not running now.
-		{
-			mapRpcConfig[MCBaseChainParams::MAIN] = rpccfg;
-		}
-	}
+    std::string strMainChainCfg = gArgs.GetArg("-mainchaincfg", "");
+    if (strMainChainCfg.empty() == false) {
+        std::string strName;
+        MCRPCConfig rpccfg;
+        if ((ParseRpcConfig(strMainChainCfg, rpccfg, strName) && rpccfg.IsValid()) || rpccfg.getcookiefail == 1) // if getcookiefail, we will give a chance for later try again,may the target chain is not running now.
+        {
+            mapRpcConfig[MCBaseChainParams::MAIN] = rpccfg;
+        }
+    }
 
-	std::vector<std::string> vBranchChainRpcCfg = gArgs.GetArgs("-branchcfg");
-	for (std::string var : vBranchChainRpcCfg)
-	{
-		std::string branchid;
-		MCRPCConfig rpccfg;
-		if ((ParseRpcConfig(var, rpccfg, branchid) && rpccfg.IsValid()) || rpccfg.getcookiefail == 1)
-		{
-			mapRpcConfig[branchid] = rpccfg;
-		}
-	}
+    std::vector<std::string> vBranchChainRpcCfg = gArgs.GetArgs("-branchcfg");
+    for (std::string var : vBranchChainRpcCfg) {
+        std::string branchid;
+        MCRPCConfig rpccfg;
+        if ((ParseRpcConfig(var, rpccfg, branchid) && rpccfg.IsValid()) || rpccfg.getcookiefail == 1) {
+            mapRpcConfig[branchid] = rpccfg;
+        }
+    }
 }
 
 bool MCBranchChainMan::ParseRpcConfig(const std::string& strCfg, MCRPCConfig& rpccfg, std::string& branchid)
 {
-	UniValue uv;
-	if (uv.read(strCfg) == false)
-		return false;
+    UniValue uv;
+    if (uv.read(strCfg) == false)
+        return false;
 
-	UniValue uvBranchid = find_value(uv, "branchid");
-	if (uvBranchid.isNull()){
+    UniValue uvBranchid = find_value(uv, "branchid");
+    if (uvBranchid.isNull()) {
         branchid = MCBaseChainParams::MAIN;
-    }
-	else
-		branchid = uvBranchid.get_str();
+    } else
+        branchid = uvBranchid.get_str();
     rpccfg.strBranchId = branchid;
 
-	UniValue uvIp = find_value(uv, "ip");
-	if (uvIp.isNull())
-		return false;
-	rpccfg.strIp = uvIp.get_str();
+    UniValue uvIp = find_value(uv, "ip");
+    if (uvIp.isNull())
+        return false;
+    rpccfg.strIp = uvIp.get_str();
 
-	UniValue uvPort = find_value(uv, "port");
-	if (uvPort.isNull())
-		return false;
-	rpccfg.iPort = uvPort.get_int();
-	if (rpccfg.iPort == 0)
-		return false;
+    UniValue uvPort = find_value(uv, "port");
+    if (uvPort.isNull())
+        return false;
+    rpccfg.iPort = uvPort.get_int();
+    if (rpccfg.iPort == 0)
+        return false;
 
-	UniValue uvUserName = find_value(uv, "usrname");
-	if (uvUserName.isNull() == false)
-		rpccfg.strUser = uvUserName.get_str();
+    UniValue uvUserName = find_value(uv, "usrname");
+    if (uvUserName.isNull() == false)
+        rpccfg.strUser = uvUserName.get_str();
 
-	UniValue uvPassworld = find_value(uv, "password");
-	if (uvPassworld.isNull() == false)
-		rpccfg.strPassword = uvPassworld.get_str();
+    UniValue uvPassworld = find_value(uv, "password");
+    if (uvPassworld.isNull() == false)
+        rpccfg.strPassword = uvPassworld.get_str();
 
     UniValue uvWallet = find_value(uv, "wallet");
     if (uvWallet.isNull() == false)
         rpccfg.strWallet = uvWallet.get_str();
 
     UniValue uvDataDir = find_value(uv, "datadir");
-    if (uvDataDir.isNull() == false){
+    if (uvDataDir.isNull() == false) {
         rpccfg.strDataDir = uvDataDir.get_str();
     }
 
-    if (!rpccfg.InitUserColonPass(false)){
+    if (!rpccfg.InitUserColonPass(false)) {
         return false;
     }
 
-	return true;
+    return true;
 }
 
 bool MCBranchChainMan::GetRpcConfig(const std::string& strName, MCRPCConfig& rpccfg)
 {
-	MAP_RPC_CONFIG::iterator mit = mapRpcConfig.find(strName);
-	if (mit == mapRpcConfig.end())
-		return false;
+    MAP_RPC_CONFIG::iterator mit = mapRpcConfig.find(strName);
+    if (mit == mapRpcConfig.end())
+        return false;
 
-	rpccfg = mit->second;
-	return true;
+    rpccfg = mit->second;
+    return true;
 }
 
 bool MCBranchChainMan::CheckRpcConfig(MCRPCConfig& rpccfg)
 {
-	if (rpccfg.iPort == 0)
-		return false;
-	return true;
+    if (rpccfg.iPort == 0)
+        return false;
+    return true;
 }
 
 void MCBranchChainMan::ReplaceRpcConfig(const std::string& strName, MCRPCConfig& rpccfg)
 {
-	mapRpcConfig[strName] = rpccfg;
+    mapRpcConfig[strName] = rpccfg;
 }
 
 MCAmount GetBranchChainCreateTxOut(const MCTransaction& tx)
 {
-	MCAmount nAmount(0);
-	if (tx.IsBranchCreate() == false)
-		return nAmount;
+    MCAmount nAmount(0);
+    if (tx.IsBranchCreate() == false)
+        return nAmount;
 
-	for (MCTxOut txout : tx.vout)
-	{
-		opcodetype opcode;
-		std::vector<unsigned char> vch;
-		MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
-		txout.scriptPubKey.GetOp(pc1, opcode, vch);
-		if (opcode == OP_CREATE_BRANCH)
-		{
-			nAmount += txout.nValue;
-		}
-	}
-	return nAmount;
+    for (MCTxOut txout : tx.vout) {
+        opcodetype opcode;
+        std::vector<unsigned char> vch;
+        MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
+        txout.scriptPubKey.GetOp(pc1, opcode, vch);
+        if (opcode == OP_CREATE_BRANCH) {
+            nAmount += txout.nValue;
+        }
+    }
+    return nAmount;
 }
 
 MCAmount GetBranchChainTransOut(const MCTransaction& branchTransStep1Tx)
 {
-	MCAmount nAmount(0);
-	if (branchTransStep1Tx.IsBranchChainTransStep1() == false)
-		return nAmount;
+    MCAmount nAmount(0);
+    if (branchTransStep1Tx.IsBranchChainTransStep1() == false)
+        return nAmount;
 
-	for (MCTxOut txout : branchTransStep1Tx.vout)
-	{
-		opcodetype opcode;
-		std::vector<unsigned char> vch;
-		MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
-		if (txout.scriptPubKey.GetOp(pc1, opcode, vch))
-		{
-            if (branchTransStep1Tx.sendToBranchid != MCBaseChainParams::MAIN){
-                if (opcode == OP_TRANS_BRANCH){
-                    if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)){
+    for (MCTxOut txout : branchTransStep1Tx.vout) {
+        opcodetype opcode;
+        std::vector<unsigned char> vch;
+        MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
+        if (txout.scriptPubKey.GetOp(pc1, opcode, vch)) {
+            if (branchTransStep1Tx.sendToBranchid != MCBaseChainParams::MAIN) {
+                if (opcode == OP_TRANS_BRANCH) {
+                    if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)) {
                         uint256 branchhash(vch);
-                        if (branchhash.ToString() == branchTransStep1Tx.sendToBranchid){ //branch id check
+                        if (branchhash.ToString() == branchTransStep1Tx.sendToBranchid) { //branch id check
                             nAmount += txout.nValue;
                         }
                     }
                 }
-            }
-            else{
-                if (opcode == OP_RETURN){
+            } else {
+                if (opcode == OP_RETURN) {
                     txout.scriptPubKey.GetOp(pc1, opcode, vch);
-                    if (opcode == OP_TRANS_BRANCH){
+                    if (opcode == OP_TRANS_BRANCH) {
                         nAmount += txout.nValue;
                     }
                 }
             }
         }
-	}
-	return nAmount;
+    }
+    return nAmount;
 }
 
 //获取交易中的抵押币输出
 MCAmount GetMortgageMineOut(const MCTransaction& tx, bool bWithBranchOut)
 {
-	MCAmount nAmount(0);
+    MCAmount nAmount(0);
     std::vector<unsigned char> vch;
-	for (MCTxOut txout : tx.vout)
-	{
-		opcodetype opcode;
-		MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
-		if (txout.scriptPubKey.GetOp(pc1, opcode, vch) == false)
-		    continue;
-		if (opcode == OP_MINE_BRANCH_MORTGAGE){
+    for (MCTxOut txout : tx.vout) {
+        opcodetype opcode;
+        MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
+        if (txout.scriptPubKey.GetOp(pc1, opcode, vch) == false)
+            continue;
+        if (opcode == OP_MINE_BRANCH_MORTGAGE) {
             //script的其他部分判断
-			nAmount += txout.nValue;
-		}
-        if (bWithBranchOut && opcode == OP_TRANS_BRANCH){
-            if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)){
+            nAmount += txout.nValue;
+        }
+        if (bWithBranchOut && opcode == OP_TRANS_BRANCH) {
+            if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)) {
                 uint256 branchhash(vch);
-                if (branchhash.ToString() == tx.sendToBranchid){
+                if (branchhash.ToString() == tx.sendToBranchid) {
                     nAmount += txout.nValue;
                 }
             }
         }
-	}
-	return nAmount;
+    }
+    return nAmount;
 }
 
 //获取交易中的挖矿币输出
@@ -489,21 +467,17 @@ MCAmount GetMortgageCoinOut(const MCTransaction& tx, bool bWithBranchOut)
 {
     MCAmount nAmount(0);
     std::vector<unsigned char> vch;
-    for (MCTxOut txout : tx.vout)
-    {
+    for (MCTxOut txout : tx.vout) {
         opcodetype opcode;
         MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
         txout.scriptPubKey.GetOp(pc1, opcode, vch);
-        if (opcode == OP_MINE_BRANCH_COIN)
-        {
+        if (opcode == OP_MINE_BRANCH_COIN) {
             //script的其他部分判断
             nAmount += txout.nValue;
         }
-        if (bWithBranchOut && opcode == OP_RETURN)
-        {
+        if (bWithBranchOut && opcode == OP_RETURN) {
             txout.scriptPubKey.GetOp(pc1, opcode, vch);
-            if (opcode == OP_TRANS_BRANCH)
-            {
+            if (opcode == OP_TRANS_BRANCH) {
                 nAmount += txout.nValue;
             }
         }
@@ -517,12 +491,10 @@ branch_script_type QuickGetBranchScriptType(const MCScript& scriptPubKey)
     MCScript::const_iterator pc1 = scriptPubKey.begin();
     if (!scriptPubKey.GetOp(pc1, opcode))
         return BST_INVALID;
-    if (opcode == OP_MINE_BRANCH_MORTGAGE)
-    {
+    if (opcode == OP_MINE_BRANCH_MORTGAGE) {
         return BST_MORTGAGE_MINE;
     }
-    if (opcode == OP_MINE_BRANCH_COIN)
-    {
+    if (opcode == OP_MINE_BRANCH_COIN) {
         return BST_MORTGAGE_COIN;
     }
 
@@ -533,7 +505,7 @@ branch_script_type QuickGetBranchScriptType(const MCScript& scriptPubKey)
 //1. scriptPubKey (in)
 //2. pBranchHash (out)
 //3. pKeyID (out) the pubkey hash
-bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash /*= nullptr*/, MCKeyID *pKeyID /*= nullptr*/, int64_t *pnHeight)
+bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash /*= nullptr*/, MCKeyID* pKeyID /*= nullptr*/, int64_t* pnHeight)
 {
     opcodetype opcode;
     std::vector<unsigned char> vch;
@@ -541,26 +513,23 @@ bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash /*= 
     if (scriptPubKey.GetOp(pc1, opcode, vch) == false || opcode != OP_MINE_BRANCH_MORTGAGE)
         return false;
 
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256))//branch hash256
+    if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256)) //branch hash256
         return false;
     if (pBranchHash)
         *pBranchHash = uint256(vch);
 
-    if (!scriptPubKey.GetOp(pc1, opcode, vch))//OP_BLOCK_HIGH
+    if (!scriptPubKey.GetOp(pc1, opcode, vch)) //OP_BLOCK_HIGH
         return false;
-    if (pnHeight){
+    if (pnHeight) {
         try {
             *pnHeight = GetScriptInt64(opcode, vch);
-        }
-        catch (const scriptnum_error &err) {
+        } catch (const scriptnum_error& err) {
             return false;
         }
     }
 
     //OP_2DROP OP_DUP OP_HASH160
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP
-        || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP
-        || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160)
+    if (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160)
         return false;
 
     if (!scriptPubKey.GetOp(pc1, opcode, vch))
@@ -575,7 +544,7 @@ bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash /*= 
 //1. scriptPubKey (in)
 //2. pFromTxid (out)
 //3. pKeyID (out) the pubkey hash
-bool GetMortgageCoinData(const MCScript& scriptPubKey, uint256* pFromTxid /*= nullptr*/, MCKeyID *pKeyID /*= nullptr*/, int64_t *pnHeight)
+bool GetMortgageCoinData(const MCScript& scriptPubKey, uint256* pFromTxid /*= nullptr*/, MCKeyID* pKeyID /*= nullptr*/, int64_t* pnHeight)
 {
     opcodetype opcode;
     std::vector<unsigned char> vch;
@@ -583,26 +552,23 @@ bool GetMortgageCoinData(const MCScript& scriptPubKey, uint256* pFromTxid /*= nu
     if (scriptPubKey.GetOp(pc1, opcode, vch) == false || opcode != OP_MINE_BRANCH_COIN)
         return false;
 
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256))//branch hash256
+    if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256)) //branch hash256
         return false;
     if (pFromTxid)
         *pFromTxid = uint256(vch);
 
-    if (!scriptPubKey.GetOp(pc1, opcode, vch))//OP_BLOCK_HIGH
+    if (!scriptPubKey.GetOp(pc1, opcode, vch)) //OP_BLOCK_HIGH
         return false;
     if (pnHeight) {
         try {
             *pnHeight = GetScriptInt64(opcode, vch);
-        }
-        catch (const scriptnum_error &err) {
+        } catch (const scriptnum_error& err) {
             return false;
         }
     }
 
     //OP_2DROP OP_DUP OP_HASH160
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP
-        || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP
-        || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160)
+    if (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160)
         return false;
 
     if (!scriptPubKey.GetOp(pc1, opcode, vch))
@@ -624,7 +590,7 @@ bool GetRedeemSriptData(const MCScript& scriptPubKey, uint256* pFromTxid)
     if (scriptPubKey.GetOp(pc1, opcode, vch) == false || opcode != OP_REDEEM_MORTGAGE)
         return false;
 
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256))//branch hash256
+    if (!scriptPubKey.GetOp(pc1, opcode, vch) || vch.size() != sizeof(uint256)) //branch hash256
         return false;
     if (pFromTxid)
         *pFromTxid = uint256(vch);
@@ -636,10 +602,10 @@ MCAmount GetBranchChainOut(const MCTransaction& tx)
     /*if (tx.IsBranchCreate()){
         return GetBranchChainCreateTxOut(tx);
     }
-    else */if (tx.IsBranchChainTransStep1()){
+    else */
+    if (tx.IsBranchChainTransStep1()) {
         return GetBranchChainTransOut(tx);
-    }
-    else if (tx.IsMortgage()){
+    } else if (tx.IsMortgage()) {
         return GetMortgageMineOut(tx, true);
     }
     return 0;
@@ -664,7 +630,7 @@ MCAmount GetContractAmountOut(const MCTransaction& tx)
 }
 
 //copy from merkleblock.cpp
-MCSpvProof* NewSpvProof(const MCBlock &block, const std::set<uint256>& txids)
+MCSpvProof* NewSpvProof(const MCBlock& block, const std::set<uint256>& txids)
 {
     std::vector<bool> vMatch;
     std::vector<uint256> vHashes;
@@ -672,8 +638,7 @@ MCSpvProof* NewSpvProof(const MCBlock &block, const std::set<uint256>& txids)
     vMatch.reserve(block.vtx.size());
     vHashes.reserve(block.vtx.size());
 
-    for (unsigned int i = 0; i < block.vtx.size(); i++)
-    {
+    for (unsigned int i = 0; i < block.vtx.size(); i++) {
         const uint256& hash = block.vtx[i]->GetHash();
         if (txids.count(hash))
             vMatch.push_back(true);
@@ -685,7 +650,7 @@ MCSpvProof* NewSpvProof(const MCBlock &block, const std::set<uint256>& txids)
     return new MCSpvProof(vHashes, vMatch, block.GetHash());
 }
 
-int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uint256 &querytxhash)
+int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uint256& querytxhash)
 {
     std::vector<uint256> vMatch;
     std::vector<unsigned int> vIndex;
@@ -698,28 +663,26 @@ int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uin
     return vIndex[0];
 }
 
-// 跨链交易从发起链广播到目标链 
-bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock &block, std::string* pStrErrorMsg)
+// 跨链交易从发起链广播到目标链
+bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock& block, std::string* pStrErrorMsg)
 {
-	if (!tx->IsPregnantTx())
-	{
-		return error_ex1(pStrErrorMsg, "%s: tx no a branch chain transaction", __func__);
-	}
+    if (!tx->IsPregnantTx()) {
+        return error_ex1(pStrErrorMsg, "%s: tx no a branch chain transaction", __func__);
+    }
 
-	//broadcast to target chain.
-	const std::string strToChainId = tx->sendToBranchid;
-	if (strToChainId == Params().GetBranchId())
-		return error_ex1(pStrErrorMsg, "%s: can not to this chain!", __func__);
+    //broadcast to target chain.
+    const std::string strToChainId = tx->sendToBranchid;
+    if (strToChainId == Params().GetBranchId())
+        return error_ex1(pStrErrorMsg, "%s: can not to this chain!", __func__);
 
-	MCRPCConfig chainrpccfg;
-	if (g_branchChainMan->GetRpcConfig(strToChainId, chainrpccfg) == false || chainrpccfg.IsValid() == false)
-	{
-		return error_ex1(pStrErrorMsg, "%s: can not found branch rpc config for %s\n", __func__, strToChainId);
-	}
+    MCRPCConfig chainrpccfg;
+    if (g_branchChainMan->GetRpcConfig(strToChainId, chainrpccfg) == false || chainrpccfg.IsValid() == false) {
+        return error_ex1(pStrErrorMsg, "%s: can not found branch rpc config for %s\n", __func__, strToChainId);
+    }
 
     std::string strTxHexData;
-    if (strToChainId == MCBaseChainParams::MAIN && tx->IsBranchChainTransStep1())
-    {//添加 部分默克尔树(spv证明)
+    if (strToChainId == MCBaseChainParams::MAIN && tx->IsBranchChainTransStep1()) {
+        //添加 部分默克尔树(spv证明)
         std::set<uint256> txids;
         txids.emplace(tx->GetHash());
 
@@ -728,60 +691,52 @@ bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock &block, std
 
         MCTransactionRef sendtx = MakeTransactionRef(mtx);
         strTxHexData = EncodeHexTx(*sendtx, RPCSerializationFlags());
+    } else {
+        strTxHexData = EncodeHexTx(*tx, RPCSerializationFlags());
     }
-    else{
-    	strTxHexData = EncodeHexTx(*tx, RPCSerializationFlags());
+
+    // rpc to branch chain to create an branchtranstraction.
+    std::string strMethod = "makebranchtransaction";
+    UniValue params(UniValue::VARR);
+    params.push_back(strTxHexData);
+
+    UniValue reply = CallRPC(chainrpccfg, strMethod, params);
+
+    const UniValue& result = find_value(reply, "result");
+    const UniValue& errorVal = find_value(reply, "error");
+    if (!errorVal.isNull()) {
+        //throw JSONRPCError(RPC_WALLET_ERROR, strError);
+        return error_ex1(pStrErrorMsg, "%s: RPC call makebranchtransaction fail: %s, txid %s\n", __func__, errorVal.write(), tx->GetHash().GetHex());
     }
 
-	// rpc to branch chain to create an branchtranstraction.
-	std::string strMethod = "makebranchtransaction";
-	UniValue params(UniValue::VARR);
-	params.push_back(strTxHexData);
-
-	UniValue reply = CallRPC(chainrpccfg, strMethod, params);
-
-	const UniValue& result = find_value(reply, "result");
-	const UniValue& errorVal = find_value(reply, "error");
-	if (!errorVal.isNull())
-	{
-		//throw JSONRPCError(RPC_WALLET_ERROR, strError);
-		return error_ex1(pStrErrorMsg, "%s: RPC call makebranchtransaction fail: %s, txid %s\n", __func__, errorVal.write(), tx->GetHash().GetHex());
-	}
-
-	if (result.isNull() || result.get_str() != "ok")
-	{
-		return error_ex1(pStrErrorMsg, "%s RPC call not return ok", __func__);
-	}
-	return true;
+    if (result.isNull() || result.get_str() != "ok") {
+        return error_ex1(pStrErrorMsg, "%s RPC call not return ok", __func__);
+    }
+    return true;
 }
 
 //OP:移动独立的线程中去?或者满足高度后,相应的拥有者自己调用相关逻辑,但是这样跨链转账变得更麻烦
 void ProcessBlockBranchChain()
 {
-	{
-		uint32_t nBlockHeight = BRANCH_CHAIN_MATURITY + CUSHION_HEIGHT;
-		MCBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nBlockHeight];
-		if (pbi != nullptr)
-		{
-			std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
-			MCBlock& block = *pblock;
-			if (ReadBlockFromDisk(block, pbi, Params().GetConsensus()))
-			{
-				for (int i = 1; i < block.vtx.size(); i++)
-				{
-					const MCTransactionRef& tx = block.vtx[i];
-					if (tx->IsBranchChainTransStep1() || tx->IsMortgage())
-					{
-						BranchChainTransStep2(tx, block, nullptr);
-					}
-                    if (tx->IsRedeemMortgageStatement())
-                    {
+    {
+        uint32_t nBlockHeight = BRANCH_CHAIN_MATURITY + CUSHION_HEIGHT;
+        MCBlockIndex* pbi = chainActive[chainActive.Tip()->nHeight - nBlockHeight];
+        if (pbi != nullptr) {
+            std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
+            MCBlock& block = *pblock;
+            if (ReadBlockFromDisk(block, pbi, Params().GetConsensus())) {
+                for (int i = 1; i < block.vtx.size(); i++) {
+                    const MCTransactionRef& tx = block.vtx[i];
+                    if (tx->IsBranchChainTransStep1() || tx->IsMortgage()) {
+                        BranchChainTransStep2(tx, block, nullptr);
+                    }
+                    if (tx->IsRedeemMortgageStatement()) {
                         ReqMainChainRedeemMortgage(tx, block);
                     }
-				}
-			}
-		}
-	}
+                }
+            }
+        }
+    }
 }
 
 //chain transaction step 2 Check.
@@ -791,45 +746,39 @@ void ProcessBlockBranchChain()
  @param fVerifingDB 
  @param pFromTx The source transaction(step 1 tx) of txBranchChainStep2
 */
-bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidationState &state, const bool fVerifingDB, const MCTransactionRef &pFromTx)
+bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidationState& state, const bool fVerifingDB, const MCTransactionRef& pFromTx)
 {
-	if (txBranchChainStep2.IsBranchChainTransStep2() == false)
-		return state.DoS(100, false, REJECT_INVALID, "is not a IsBranchChainTransStep2");
+    if (txBranchChainStep2.IsBranchChainTransStep2() == false)
+        return state.DoS(100, false, REJECT_INVALID, "is not a IsBranchChainTransStep2");
 
-	const std::string& fromBranchId = txBranchChainStep2.fromBranchId;
+    const std::string& fromBranchId = txBranchChainStep2.fromBranchId;
     std::string fromTxHash = pFromTx->GetHash().ToString();
-    if (fromBranchId == Params().GetBranchId())
-	{
+    if (fromBranchId == Params().GetBranchId()) {
         std::string strErr = strprintf("%s ctFromChain eq ctToChain", __func__);
-		return state.DoS(100, false, REJECT_INVALID, strErr);
-	}
+        return state.DoS(100, false, REJECT_INVALID, strErr);
+    }
 
     //-----------------------------------------------
     //检查fromtx
     const MCTransaction& txTrans1 = *pFromTx;
-    if (txTrans1.IsMortgage())
-    {//
+    if (txTrans1.IsMortgage()) { //
         MCKeyID keyid1;
         int64_t height1;
-        if (!GetMortgageMineData(txTrans1.vout[0].scriptPubKey, nullptr, &keyid1, &height1))
-        {
+        if (!GetMortgageMineData(txTrans1.vout[0].scriptPubKey, nullptr, &keyid1, &height1)) {
             return state.DoS(100, false, REJECT_INVALID, "invalid mortgage mine script");
         }
         MCKeyID keyid2;
         int64_t height2;
-        if (txBranchChainStep2.vout.size() != 1 || !GetMortgageCoinData(txBranchChainStep2.vout[0].scriptPubKey, nullptr, &keyid2, &height2))
-        {
+        if (txBranchChainStep2.vout.size() != 1 || !GetMortgageCoinData(txBranchChainStep2.vout[0].scriptPubKey, nullptr, &keyid2, &height2)) {
             return error("%s invalid mortgage transaction,", __func__);
         }
-        if (keyid1 != keyid2 || height1 != height2)
-        {
+        if (keyid1 != keyid2 || height1 != height2) {
             return state.DoS(100, false, REJECT_INVALID, "invalid mortgage coin script");
         }
     }
 
     MCMutableTransaction mtxTrans2;
-    if (!DecodeHexTx(mtxTrans2, txTrans1.sendToTxHexData))
-    {
+    if (!DecodeHexTx(mtxTrans2, txTrans1.sendToTxHexData)) {
         return error("%s sendToTxHexData is not a valid transaction data.\n", __func__);
     }
 
@@ -837,15 +786,14 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     
     //Revert other fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();
-    if (txTrans1.IsMortgage()){
+    if (txTrans1.IsMortgage()) {
         mtxTrans2my.vout[0].scriptPubKey.clear();
     }
-    if (mtxTrans2my.fromBranchId != MCBaseChainParams::MAIN){
+    if (mtxTrans2my.fromBranchId != MCBaseChainParams::MAIN) {
         mtxTrans2my.pPMT.reset(new MCSpvProof());
     }
     
-    if (mtxTrans2.GetHash() != mtxTrans2my.GetHash())
-    {
+    if (mtxTrans2.GetHash() != mtxTrans2my.GetHash()) {
         std::string strErr = strprintf("%s transaction hash error\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }
@@ -858,15 +806,14 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     //
     MCAmount nOrginalOut = txBranchChainStep2.GetValueOut();
     if (txBranchChainStep2.fromBranchId != MCBaseChainParams::MAIN) {
-        nOrginalOut = 0;// recalc exclude branch tran recharge
+        nOrginalOut = 0; // recalc exclude branch tran recharge
         for (const auto& txout : txBranchChainStep2.vout) {
             if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
                 nOrginalOut += txout.nValue;
             }
         }
     }
-    if (nOrginalOut > txBranchChainStep2.inAmount)
-    {
+    if (nOrginalOut > txBranchChainStep2.inAmount) {
         std::string strErr = strprintf("%s GetValueOut larger than inAmount\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }
@@ -879,8 +826,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     }
 
     MCRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false)
-    {
+    if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false) {
         if (Params().IsMainChain() && gArgs.GetBoolArg("-unchecknoconfigbranch", false))
             return true;
 
@@ -888,79 +834,76 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
         return state.DoS(1, false, REJECT_INVALID, strErr);
     }
 
-	const std::string strMethod = "getbranchchaintransaction";
-	UniValue params(UniValue::VARR);
-	params.push_back(fromTxHash);
+    const std::string strMethod = "getbranchchaintransaction";
+    UniValue params(UniValue::VARR);
+    params.push_back(fromTxHash);
 
-	UniValue reply = CallRPC(branchrpccfg, strMethod, params);
+    UniValue reply = CallRPC(branchrpccfg, strMethod, params);
 
-	const UniValue& result = find_value(reply, "result");
-	const UniValue& errorVal = find_value(reply, "error");
-	if (!errorVal.isNull())
-	{
-		return error(" %s RPC call getbranchchaintransaction fail: %s, txid %s\n", __func__, errorVal.write(), txBranchChainStep2.GetHash().GetHex());
-	}
-	if (result.isNull())
-	{
-		return error(" %s RPC call getbranchchaintransaction fail: result null\n", __func__);
-	}
+    const UniValue& result = find_value(reply, "result");
+    const UniValue& errorVal = find_value(reply, "error");
+    if (!errorVal.isNull()) {
+        return error(" %s RPC call getbranchchaintransaction fail: %s, txid %s\n", __func__, errorVal.write(), txBranchChainStep2.GetHash().GetHex());
+    }
+    if (result.isNull()) {
+        return error(" %s RPC call getbranchchaintransaction fail: result null\n", __func__);
+    }
 
-	//const UniValue& txid = find_value(result, "txid");
-	const UniValue& txhex = find_value(result, "hex");
-	const UniValue& confirmations = find_value(result, "confirmations");
-	if (txhex.isStr() == false) {
+    //const UniValue& txid = find_value(result, "txid");
+    const UniValue& txhex = find_value(result, "hex");
+    const UniValue& confirmations = find_value(result, "confirmations");
+    if (txhex.isStr() == false) {
         std::string strErr = strprintf(" %s RPC call getbranchchaintransaction tx hex invalid.\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
-	}
+    }
 
-	MCMutableTransaction mtxTrans1;
-	if (!DecodeHexTx(mtxTrans1, txhex.get_str()))
-	{
+    MCMutableTransaction mtxTrans1;
+    if (!DecodeHexTx(mtxTrans1, txhex.get_str())) {
         std::string strErr = strprintf(" %s RPC call getbranchchaintransaction DecodeHexTx tx hex fail.\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
-	}
+    }
 
-	if (mtxTrans1.GetHash().ToString() != fromTxHash)//|| txid.get_str() != fromTxHash
-	{
+    if (mtxTrans1.GetHash().ToString() != fromTxHash) {
         std::string strErr = strprintf(" %s return transaction is not the one that i wanted.\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
-	}
+    }
 
-	const uint32_t maturity = BRANCH_CHAIN_MATURITY;
-	if(!confirmations.isNum() || confirmations.get_int() < maturity + 1){
-		return error(" %s RPC confirmations not satisfy.\n", __func__);
-	}
-	return true;
+    const uint32_t maturity = BRANCH_CHAIN_MATURITY;
+    if (!confirmations.isNum() || confirmations.get_int() < maturity + 1) {
+        return error(" %s RPC confirmations not satisfy.\n", __func__);
+    }
+    return true;
 }
 
-#define SetStrErr(strMsg) {if (pStrErr) *pStrErr = (strMsg);}
+#define SetStrErr(strMsg)                 \
+    {                                     \
+        if (pStrErr) *pStrErr = (strMsg); \
+    }
 //提交侧链区块头
 //call in branch chain
-bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::string *pStrErr, bool onlySendMy)
+bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::string* pStrErr, bool onlySendMy)
 {
     SetStrErr("Unknow error\n");
     if (Params().IsMainChain() || pBlock == nullptr) {
         SetStrErr("Can not called in main chain or pPlock is null\n");
         return false;
     }
- 
+
     MCBlockIndex* pBlockIndex = nullptr;
     if (mapBlockIndex.count(pBlock->GetHash())) {
         pBlockIndex = mapBlockIndex[pBlock->GetHash()];
     }
-    if (pBlockIndex == nullptr){
+    if (pBlockIndex == nullptr) {
         SetStrErr("get block index fail\n");
         return false;
     }
 
-    if (onlySendMy)
-    {
+    if (onlySendMy) {
         //get block pubkey
         std::vector<unsigned char> vchPubKey;
         MCScript::const_iterator pc = pBlock->vchBlockSig.begin();
         opcodetype opcode;
-        if (!pBlock->vchBlockSig.GetOp2(pc, opcode, &vchPubKey))
-        {
+        if (!pBlock->vchBlockSig.GetOp2(pc, opcode, &vchPubKey)) {
             SetStrErr("get block block signature pubkey fail\n");
             return false;
         }
@@ -968,7 +911,7 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
         MCPubKey pubKey(vchPubKey);
         MCKeyID keyid = pubKey.GetID();
         extern bool IsMineForAllWallets(const MCKeyID& keyid);
-        if (!IsMineForAllWallets(keyid)){
+        if (!IsMineForAllWallets(keyid)) {
             SetStrErr("I don't care others block's info\n");
             return false;
         }
@@ -981,19 +924,19 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
 
     //header info
     pBlockInfo->SetBlockHeader(*pBlock);
-    
+
     //other info
     pBlockInfo->blockHeight = pBlockIndex->nHeight;
     pBlockInfo->branchID.SetHex(Params().GetBranchId());
-    if (pBlock->vtx.size() < 2){
+    if (pBlock->vtx.size() < 2) {
         SetStrErr("block vtx size error\n");
         return false;
     }
-    MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, pBlockInfo->vchStakeTxData, 0, pBlock->vtx[1]};
-    
+    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pBlockInfo->vchStakeTxData, 0, pBlock->vtx[1]};
+
     //call rpc
     MCRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig(MCBaseChainParams::MAIN, branchrpccfg) == false || branchrpccfg.IsValid() == false){
+    if (g_branchChainMan->GetRpcConfig(MCBaseChainParams::MAIN, branchrpccfg) == false || branchrpccfg.IsValid() == false) {
         SetStrErr("can not found main chain rpc connnect info\n");
         return false;
     }
@@ -1007,7 +950,7 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
 
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
-    if (!errorVal.isNull()){
+    if (!errorVal.isNull()) {
         SetStrErr(errorVal.write());
         return false;
     }
@@ -1015,29 +958,28 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
         SetStrErr("SendBranchBlockHeader rpc result is null.\n");
         return false;
     }
-    
-    if (result.isObject()){
+
+    if (result.isObject()) {
         const UniValue& commitreject = find_value(result, "commit_reject_reason");
-        if (!commitreject.isNull()){
+        if (!commitreject.isNull()) {
             SetStrErr(commitreject.get_str());
             return false;
         }
     }
-    
+
     SetStrErr("");
     return true;
 }
 
-extern bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache* pBranchCache);
-extern bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData &branchdata, 
-    int64_t nAdjustedTime, BranchCache* pBranchCache);
+extern bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, BranchCache* pBranchCache);
+extern bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, int64_t nAdjustedTime, BranchCache* pBranchCache);
 
 bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
     if (!tx.IsSyncBranchInfo()) {
         return state.DoS(100, false, REJECT_INVALID, "Sync branch info fail");
     }
-    
+
     MCBlockHeader blockheader;
     tx.pBranchBlockData->GetBlockHeader(blockheader);
 
@@ -1068,12 +1010,12 @@ bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, B
     if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache)) {
         return state.DoS(100, false, REJECT_INVALID, "BranchBlockInfo CheckBlockHeaderWork fail");
     }
-    
+
     return true;
 }
 
 // 如果是自己的交易则,向自己的主链发起赎回请求,把抵押币解锁
-bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block, std::string *pStrErr)
+bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block, std::string* pStrErr)
 {
     SetStrErr("Unknow error");
     if (tx->IsRedeemMortgageStatement() == false) {
@@ -1127,7 +1069,7 @@ bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block
 //GetReportTxHashKey 和 GetProveTxHashKey 需要计算出同样的值
 uint256 GetReportTxHashKey(const MCTransaction& tx)
 {
-    if (!tx.IsReport()){
+    if (!tx.IsReport()) {
         return uint256();
     }
 
@@ -1135,9 +1077,7 @@ uint256 GetReportTxHashKey(const MCTransaction& tx)
     int nVersion = PROTOCOL_VERSION;
     MCHashWriter ss(nType, nVersion);
     ss << tx.pReportData->reporttype;
-    if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE 
-        || tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE || tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA)
-    {
+    if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE || tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE || tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA) {
         ss << tx.pReportData->reportedBranchId;
         ss << tx.pReportData->reportedBlockHash;
         ss << tx.pReportData->reportedTxHash;
@@ -1150,9 +1090,7 @@ uint256 GetProveTxHashKey(const MCTransaction& tx)
     int nVersion = PROTOCOL_VERSION;
     MCHashWriter ss(nType, nVersion);
     ss << tx.pProveData->provetype;
-    if (tx.pProveData->provetype == ReportType::REPORT_TX || tx.pProveData->provetype == ReportType::REPORT_COINBASE
-        || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)
-    {
+    if (tx.pProveData->provetype == ReportType::REPORT_TX || tx.pProveData->provetype == ReportType::REPORT_COINBASE || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE) {
         ss << tx.pProveData->branchId;
         ss << tx.pProveData->blockHash;
         ss << tx.pProveData->txHash;
@@ -1163,7 +1101,7 @@ uint256 GetProveTxHashKey(const MCTransaction& tx)
 // 调用地方 主要还是follow CheckInputs : 1.accepttomempool 2.connectblock
 bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchChainTxRecordsCache* pBranchTxRecordCache, BranchCache* pBranchCache)
 {
-    if (tx.IsSyncBranchInfo()){
+    if (tx.IsSyncBranchInfo()) {
         if (pBranchCache && pBranchCache->HasInCache(tx))
             return state.DoS(0, false, REJECT_DUPLICATE, "branch block info duplicate");
 
@@ -1171,13 +1109,13 @@ bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, B
         MCBlockHeader blockheader;
         tx.pBranchBlockData->GetBlockHeader(blockheader);
         if (branchdata.mapHeads.count(blockheader.GetHash())) {
-            return state.DoS(0, false, REJECT_DUPLICATE, "blockheader info has include before");//防止重复
+            return state.DoS(0, false, REJECT_DUPLICATE, "blockheader info has include before"); //防止重复
         }
     }
 
     if (tx.IsBranchChainTransStep2()) {
         // check in cache pBranchCache
-        if (pBranchTxRecordCache && pBranchTxRecordCache->HasInCache(tx)){
+        if (pBranchTxRecordCache && pBranchTxRecordCache->HasInCache(tx)) {
             return state.DoS(0, false, REJECT_DUPLICATE, "branchchaintransstep2 tx duplicate");
         }
         if (g_pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, nullptr)) {
@@ -1186,29 +1124,26 @@ bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, B
         }
     }
 
-    if (tx.IsReport()){
+    if (tx.IsReport()) {
         uint256 reportFlagHash = GetReportTxHashKey(tx);
         const uint256& rpBranchId = tx.pReportData->reportedBranchId;
         const uint256& rpBlockId = tx.pReportData->reportedBlockHash;
-        if (pBranchCache && pBranchCache->mReortTxFlagCache.count(reportFlagHash)){
+        if (pBranchCache && pBranchCache->mReortTxFlagCache.count(reportFlagHash)) {
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in cache");
         }
-        if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, reportFlagHash) != RP_INVALID){
+        if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, reportFlagHash) != RP_INVALID) {
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate report in db");
         }
     }
 
-    if (tx.IsProve()){
+    if (tx.IsProve()) {
         uint256 proveFlagHash = GetProveTxHashKey(tx);
         const uint256& rpBranchId = tx.pProveData->branchId;
         const uint256& rpBlockId = tx.pProveData->blockHash;
-        if (pBranchCache && pBranchCache->mReortTxFlagCache.count(proveFlagHash) 
-            && pBranchCache->mReortTxFlagCache[proveFlagHash] == RP_FLAG_PROVED)
-        {
+        if (pBranchCache && pBranchCache->mReortTxFlagCache.count(proveFlagHash) && pBranchCache->mReortTxFlagCache[proveFlagHash] == RP_FLAG_PROVED) {
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate prove in cache");
         }
-        if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, proveFlagHash) == RP_FLAG_PROVED)
-        {
+        if (g_pBranchDb->GetTxReportState(rpBranchId, rpBlockId, proveFlagHash) == RP_FLAG_PROVED) {
             return state.DoS(0, false, REJECT_DUPLICATE, "duplicate prove in db");
         }
     }
@@ -1227,44 +1162,39 @@ bool CheckReportTxCommonly(const MCTransaction& tx, MCValidationState& state, Br
     return true;
 }
 
-bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache)
+bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (tx.IsReport())
-    {
+    if (tx.IsReport()) {
         const uint256 reportedBranchId = tx.pReportData->reportedBranchId;
         if (!pBranchCache->HasBranchData(reportedBranchId))
             return state.DoS(100, false, REJECT_INVALID, "CheckReportCheatTx branchid error");
         BranchData branchdata = pBranchCache->GetBranchData(reportedBranchId);
 
-        if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE)
-        {
+        if (tx.pReportData->reporttype == ReportType::REPORT_TX || tx.pReportData->reporttype == ReportType::REPORT_COINBASE) {
             MCSpvProof spvProof(*tx.pPMT);
             BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
             if (pBlockData == nullptr)
                 return state.DoS(100, false, REJECT_INVALID, "pBlockData == nullptr");
             if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, tx.pReportData->reportedTxHash) < 0)
-                return state.DoS(100, false, REJECT_INVALID, "CheckSpvProof fail");;
+                return state.DoS(100, false, REJECT_INVALID, "CheckSpvProof fail");
+            ;
             if (!CheckReportTxCommonly(tx, state, branchdata))
-                return state.DoS(100, false, REJECT_INVALID, "CheckReportTxCommonly fail");;
-        }
-        else if (tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE)
-        {
+                return state.DoS(100, false, REJECT_INVALID, "CheckReportTxCommonly fail");
+            ;
+        } else if (tx.pReportData->reporttype == ReportType::REPORT_MERKLETREE) {
             if (!CheckReportTxCommonly(tx, state, branchdata))
-                return state.DoS(100, false, REJECT_INVALID, "CheckProveContractData fail");;
-        }
-        else if (tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA)
-        {
+                return state.DoS(100, false, REJECT_INVALID, "CheckProveContractData fail");
+            ;
+        } else if (tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA) {
             if (!CheckProveContractData(tx, state, pBranchCache))
                 return state.DoS(100, false, REJECT_INVALID, "CheckProveContractData fail");
-        }
-        else
+        } else
             return state.DoS(100, false, REJECT_INVALID, "Invalid report type!");
     }
     return true;
 }
 
-bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCValidationState& state, 
-    const std::vector<ProveDataItem>& vectProveData, BranchData& branchData, MCAmount& fee, bool jumpFrist)
+bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCValidationState& state, const std::vector<ProveDataItem>& vectProveData, BranchData& branchData, MCAmount& fee, bool jumpFrist)
 {
     if (pProveTx->IsCoinBase()) {
         return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx Prove tx can not a coinbase transaction");
@@ -1276,10 +1206,9 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
     }
 
     MCAmount nInAmount = 0;
-    MCAmount nContractIn = 0;
+    std::map<MCContractID, MCAmount> contractCoinsOut;
     MCScript contractScript = GetScriptForDestination(pProveTx->pContractData->address);
-    for (size_t i = 0; i < pProveTx->vin.size(); ++i)
-    {
+    for (size_t i = 0; i < pProveTx->vin.size(); ++i) {
         const ProveDataItem& provDataItem = vectProveData[i + baseIndex];
         if (branchData.mapHeads.count(provDataItem.blockHash) == 0)
             return state.DoS(0, false, REJECT_INVALID, "proveitem's block not exist");
@@ -1308,9 +1237,9 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
         nInAmount += amount;
 
         if (scriptPubKey.IsContract()) {
-            if (scriptPubKey != contractScript)
-                return state.DoS(0, false, REJECT_INVALID, "Invalid contract inpoint");
-            nContractIn += amount;
+            MCContractID contractId;
+            scriptPubKey.GetContractAddr(contractId);
+            contractCoinsOut[contractId] += amount;
         }
 
         bool fCacheResults = false;
@@ -1320,7 +1249,7 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
         CScriptCheck check(scriptPubKey, amount, *pProveTx, i, flags, fCacheResults, &txdata);
         if (!check()) {
             bool checkok = true;
-            if (pProveTx->IsCallContract()){//智能合约转币不用签名的
+            if (pProveTx->IsCallContract()) { //智能合约转币不用签名的
                 checkok = false;
                 MCContractID kDestKey;
                 if (!scriptPubKey.GetContractAddr(kDestKey)) {
@@ -1337,9 +1266,8 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
 
     //check input >= output value
     MCAmount nValueOut = 0;
-    MCAmount nContractOut = 0;
-    for (const auto& txout : pProveTx->vout)
-    {
+    std::map<MCContractID, MCAmount> contractChange;
+    for (const auto& txout : pProveTx->vout) {
         if (txout.nValue < 0)
             return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-vout-negative");
         if (txout.nValue > MAX_MONEY)
@@ -1350,14 +1278,29 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef &pProveTx, MCVali
 
         if (txout.scriptPubKey.IsContractChange()) {
             MCContractID contractId;
-            if (!txout.scriptPubKey.GetContractAddr(contractId) || contractId != pProveTx->pContractData->address)
+            if (!txout.scriptPubKey.GetContractAddr(contractId)) {
                 return state.DoS(0, false, REJECT_INVALID, "Invalid contract out public key");
-            nContractOut += txout.nValue;
+            }
+            if (contractChange.find(contractId) != contractChange.end()) {
+                return state.DoS(0, false, REJECT_INVALID, "Dumplicate contract change");
+            }
+            contractChange[contractId] = txout.nValue;
+        }
+    }
+    if (pProveTx->IsSmartContract()) {
+        for (auto it : pProveTx->pContractData->contractCoinsOut) {
+            if (contractCoinsOut[it.first] - contractChange[it.first] != it.second) {
+                return state.DoS(0, false, REJECT_INVALID, "contract coins out not match");
+            }
+            contractCoinsOut.erase(it.first);
+            contractChange.erase(it.first);
+        }
+
+        if (contractCoinsOut.size() != 0 || contractChange.size() != 0) {
+            return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
         }
     }
 
-    if (pProveTx->IsSmartContract() && nContractIn - nContractOut != pProveTx->pContractData->amountOut)
-        return state.DoS(0, false, REJECT_INVALID, "Contract out not match");
     if (!MoneyRange(nValueOut))
         return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
     if (nInAmount < nValueOut) {
@@ -1403,7 +1346,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
     return true;
 }
 
-bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache)
+bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
     if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX)
         return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx param fail");
@@ -1449,11 +1392,9 @@ bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, Branc
     return true;
 }
 
-bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache)
+bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (!tx.IsProve() || tx.pProveData == nullptr 
-        || !(tx.pProveData->provetype == ReportType::REPORT_COINBASE || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)) 
-    {
+    if (!tx.IsProve() || tx.pProveData == nullptr || !(tx.pProveData->provetype == ReportType::REPORT_COINBASE || tx.pProveData->provetype == ReportType::REPORT_MERKLETREE)) {
         return state.DoS(0, false, REJECT_INVALID, "CheckProveCoinbaseTx param invalid");
     }
 
@@ -1463,7 +1404,7 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
     }
 
     BranchData branchData = pBranchCache->GetBranchData(branchId);
-    if (branchData.mapHeads.count(tx.pProveData->blockHash) == 0){
+    if (branchData.mapHeads.count(tx.pProveData->blockHash) == 0) {
         return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no block data");
     }
     BranchBlockData& branchblockdata = branchData.mapHeads[tx.pProveData->blockHash];
@@ -1471,33 +1412,33 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
     std::vector<MCTransactionRef> vtx;
     MCDataStream cds(tx.pProveData->vtxData, SER_NETWORK, INIT_PROTO_VERSION);
     cds >> vtx;
-    if (vtx.size() < 2){
+    if (vtx.size() < 2) {
         return state.DoS(100, false, REJECT_INVALID, "invalid vtx size");
     }
-    if (tx.pProveData->provetype == ReportType::REPORT_COINBASE && vtx[0]->GetHash() != tx.pProveData->txHash){
+    if (tx.pProveData->provetype == ReportType::REPORT_COINBASE && vtx[0]->GetHash() != tx.pProveData->txHash) {
         return state.DoS(100, false, REJECT_INVALID, "coinbase tx is eq txHash");
     }
-    if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE && !tx.pProveData->txHash.IsNull()){
+    if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE && !tx.pProveData->txHash.IsNull()) {
         return state.DoS(100, false, REJECT_INVALID, "merkle poof txhash is invalid,must null");
     }
 
     //prove merkle tree root
     bool mutated;
     uint256 hashMerkleRoot2 = VecTxMerkleRoot(vtx, &mutated);
-    if (branchblockdata.header.hashMerkleRoot != hashMerkleRoot2){
+    if (branchblockdata.header.hashMerkleRoot != hashMerkleRoot2) {
         return state.DoS(100, false, REJECT_INVALID, "Invalid merkle tree for vtx");
     }
     if (mutated)
         return state.DoS(100, false, REJECT_INVALID, "duplicate transaction in vtx");
 
     // size valid
-    if (vtx.size() != tx.pProveData->vecBlockTxProve.size() + 2){
+    if (vtx.size() != tx.pProveData->vecBlockTxProve.size() + 2) {
         return state.DoS(100, false, REJECT_INVALID, "provide vecblocktxprove size invalid");
     }
 
     // check tx and collect input/output, calc fees
     MCAmount totalFee = 0;
-    for (int i = 2; i < vtx.size(); i++){
+    for (int i = 2; i < vtx.size(); i++) {
         const MCTransactionRef& toProveTx = vtx[i];
         const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vecBlockTxProve[i - 2];
 
@@ -1509,14 +1450,14 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
     }
 
     //目前设计支链是不产生块奖励，只有收取手续费
-    if (vtx[0]->GetValueOut() != totalFee){
+    if (vtx[0]->GetValueOut() != totalFee) {
         return state.DoS(100, false, REJECT_INVALID, "Prove coinbase transaction fail, fee invalid");
     }
 
     return true;
 }
 
-bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache)
+bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
     if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA)
         return false;
@@ -1569,10 +1510,9 @@ bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, B
     return false;
 }
 
-bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache)
+bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (tx.IsProve())
-    {
+    if (tx.IsProve()) {
         /*
         //uint256 proveFlagHash = GetProveTxHashKey(tx);
         //check report exist, don't check in cache now. let a report tx in a mined block may be better.
@@ -1583,26 +1523,23 @@ bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache
         }
         */
 
-        if (tx.pProveData->provetype == ReportType::REPORT_TX){
+        if (tx.pProveData->provetype == ReportType::REPORT_TX) {
             if (!CheckProveReportTx(tx, state, pBranchCache))
                 return false;
-        }
-        else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE){
+        } else if (tx.pProveData->provetype == ReportType::REPORT_COINBASE) {
             if (!CheckProveCoinbaseTx(tx, state, pBranchCache))
                 return false;
-        }
-        else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE) {
+        } else if (tx.pProveData->provetype == ReportType::REPORT_MERKLETREE) {
             if (!CheckProveCoinbaseTx(tx, state, pBranchCache))
                 return false;
-        }
-        else
+        } else
             return state.DoS(0, false, REJECT_INVALID, "Invalid report type");
     }
     return true;
 }
 
 //
-bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& state, MCBlockIndex* pindex, BranchCache *pBranchCache)
+bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& state, MCBlockIndex* pindex, BranchCache* pBranchCache)
 {
     if (!tx.IsReportReward())
         return false;
@@ -1614,16 +1551,16 @@ bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& st
     bool retflag;
     bool retval = ReadTxDataByTxIndex(tx.reporttxid, ptxReport, reporthashBlock, retflag);
     if (ptxReport == nullptr)
-        return false;// report tx not exist
- 
+        return false; // report tx not exist
+
     if (!ptxReport->IsReport() || ptxReport->pReportData == nullptr)
         return state.DoS(100, false, REJECT_INVALID, "invalid-report-tx");
 
     // 检查是否满足高度
-    if (!mapBlockIndex.count(reporthashBlock))// block not exist any more ?
+    if (!mapBlockIndex.count(reporthashBlock)) // block not exist any more ?
         return false;
     MCBlockIndex* rpBlockIndex = mapBlockIndex[reporthashBlock];
-    if (!chainActive.Contains(rpBlockIndex))// report tx not in active chain
+    if (!chainActive.Contains(rpBlockIndex)) // report tx not in active chain
         return false;
     if (rpBlockIndex->nHeight - pindex->nHeight < REPORT_OUTOF_HEIGHT)
         return state.DoS(100, false, REJECT_INVALID, "Still in prove stage.");
@@ -1635,7 +1572,7 @@ bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& st
         return false;
 
     BranchData branchdata = pBranchCache->GetBranchData(reportbranchid);
-    if (!branchdata.mapHeads.count(reportblockhash))// best chain check? 1. no, 作弊过，但是数据在分叉上，也可以举报。带来麻烦是，矿工需要监控自己挖出来的分叉有没有监控。  
+    if (!branchdata.mapHeads.count(reportblockhash)) // best chain check? 1. no, 作弊过，但是数据在分叉上，也可以举报。带来麻烦是，矿工需要监控自己挖出来的分叉有没有监控。
         return false;
 
     // 从stake交易取出prevout(抵押币)
@@ -1645,7 +1582,7 @@ bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& st
     if (blockdata.mapReportStatus.count(reportFlagHash) == 0 || blockdata.mapReportStatus[reportFlagHash] == RP_FLAG_PROVED) {
         return false;
     }
-    
+
     uint256 coinfromtxid;
     if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
         return state.DoS(100, false, REJECT_INVALID, "invalid-stake-pubkey");
@@ -1675,8 +1612,7 @@ bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& sta
     const std::string& fromBranchId = MCBaseChainParams::MAIN;
     // check report transactoin is in main chain
     MCRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false)
-    {
+    if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false) {
         //if (Params().IsMainChain() && gArgs.GetBoolArg("-unchecknoconfigbranch", false))
         //    return true;
 
@@ -1687,15 +1623,15 @@ bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& sta
     const std::string strMethod = "getreporttxdata";
     UniValue params(UniValue::VARR);
     params.push_back(tx.reporttxid.ToString());
-    
+
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
 
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
-    if (!errorVal.isNull()){
+    if (!errorVal.isNull()) {
         return error(" %s RPC call fail: %s\n", __func__, errorVal.write());
     }
-    if (result.isNull()){
+    if (result.isNull()) {
         return error(" %s RPC call fail: result null\n", __func__);
     }
 
@@ -1722,17 +1658,17 @@ bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& sta
     uint256 minecoinfromhash;
     if (!SafeParseHashV(uvprevouthash, minecoinfromhash))
         return error("%s parse uvprevouthash fail\n", __func__);
-    
-    if (tx.coinpreouthash != minecoinfromhash){
+
+    if (tx.coinpreouthash != minecoinfromhash) {
         return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
     }
 
     //TODO: 是否要加判断还没有被证明? 加了会不会引出问题：主链下载数据比侧链领先一截，主链加完证明数据，侧链才加载锁定交易，然后进来此判断
     //      不加也ok吧，因为还是可以解锁
 
-    //举报块是否在记录里?? 被举报的块有可能被丢弃?? 
- //   if (mapBlockIndex.count(mtxReport.pReportData->reportedBlockHash) == 0)
- //       return false;
+    //举报块是否在记录里?? 被举报的块有可能被丢弃??
+    //   if (mapBlockIndex.count(mtxReport.pReportData->reportedBlockHash) == 0)
+    //       return false;
 
     return true;
 }
@@ -1746,8 +1682,7 @@ bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& s
     std::string fromBranchId = "main";
     // check prove transactoin is in main chain
     MCRPCConfig branchrpccfg;
-    if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false)
-    {
+    if (g_branchChainMan->GetRpcConfig(fromBranchId, branchrpccfg) == false || branchrpccfg.IsValid() == false) {
         if (Params().IsMainChain() && gArgs.GetBoolArg("-unchecknoconfigbranch", false))
             return true;
 
@@ -1758,18 +1693,18 @@ bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& s
     const std::string strMethod = "getprovetxdata";
     UniValue params(UniValue::VARR);
     params.push_back(tx.provetxid.ToString());
-    
+
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
 
     const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()) {
-        return state.DoS(0, false, REJECT_INVALID, 
-            strprintf(" %s RPC call fail: %s\n", __func__, errorVal.write()) );
+        return state.DoS(0, false, REJECT_INVALID,
+            strprintf(" %s RPC call fail: %s\n", __func__, errorVal.write()));
     }
     if (result.isNull()) {
-        return state.DoS(0, false, REJECT_INVALID, 
-            "CheckUnlockMortgageMineCoinTx RPC call fail: result null." );
+        return state.DoS(0, false, REJECT_INVALID,
+            "CheckUnlockMortgageMineCoinTx RPC call fail: result null.");
     }
 
     const UniValue& uvtxhex = find_value(result, "txhex");
@@ -1780,7 +1715,7 @@ bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& s
 
     int32_t confirmations = uvconfirmations.get_int();
     if (confirmations < REPORT_LOCK_COIN_HEIGHT)
-        return state.DoS(0, false, REJECT_INVALID, 
+        return state.DoS(0, false, REJECT_INVALID,
             strprintf("%s: Need 60 blocks to be mature, now is %d\n", __func__, confirmations));
 
     MCMutableTransaction mtxProve;
@@ -1800,6 +1735,6 @@ bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& s
     if (tx.coinpreouthash != minecoinfromhash) {
         return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
     }
-    
+
     return true;
 }

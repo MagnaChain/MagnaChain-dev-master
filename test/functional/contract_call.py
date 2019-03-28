@@ -227,6 +227,9 @@ class ContractCallTest(MagnaChainTestFramework):
         cb_id = node.publishcontract(contract)["contractaddress"]
         cc_id = node.publishcontract(contract)["contractaddress"]
         caller_b = caller_factory(self, cb_id, sender)
+        caller_c = caller_factory(self, cc_id, sender)
+        caller_b("payable",1000)
+        caller_c("payable", 1000)
         node.generate(nblocks=1)
 
         # step2  a->b->c->a(send will be call in last a)
