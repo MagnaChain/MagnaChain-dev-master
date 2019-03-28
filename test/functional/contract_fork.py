@@ -420,7 +420,7 @@ class ContractForkTest(MagnaChainTestFramework):
         print("node2 ct get_balance:", ct.get_balance(exec_node=self.node2))
         bal = 2000
         if with_send and crash_point == 1:
-            bal = 2000- 20  #这里20是因为send都从第一个合约里边去扣了
+            bal = 2000- 10  #这里20是因为send都从第一个合约里边去扣了
         assert_equal(self.node1.getbalanceof(ct.contract_id), bal)  # 减去合约的send调用
         assert_equal(self.node0.getbalanceof(ct.contract_id), bal)  # 减去合约的send调用
         assert_equal(ct.call_get('counter', broadcasting=False,amount = 0)['return'][0], 4)  # 因为本节点mempool有合约交易，所以应该为4
@@ -428,11 +428,15 @@ class ContractForkTest(MagnaChainTestFramework):
                      2)  # 该节点内存池中没有交易哦，所以应该为2
         for i in range(4):
             print("node{} ct2 get_balance:{}".format(i, ct2.get_balance(exec_node=self.nodes[i])))
-        assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
-        assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
+        if with_send:
+            assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 - 10 if crash_point == 1 else 1000)  # 减去合约的send调用
+            assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+        else:
+            assert_equal(self.node0.getbalanceof(ct2.contract_id),1000)  # 减去合约的send调用
+            assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000)  # 减去合约的send调用
         # 节点2,3的ct2应该是1000 - 10的，但是现在的send都是从第一个合约里扣，所以没有减少
-        assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
-        assert_equal(self.node3.getbalanceof(ct2.contract_id), 1000 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+        assert_equal(self.node3.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
 
         for i in range(4):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
@@ -451,17 +455,17 @@ class ContractForkTest(MagnaChainTestFramework):
         assert_equal(self.node0.getrawmempool(), [])
         assert_equal(self.node1.getrawmempool(), [])
         if with_send and crash_point == 1:
-            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40)
+            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 20)
         elif with_send and crash_point == 2:
             # what the he?
-            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 40 if with_send_crash_point2 == 7 else 4000 - 20)
+            assert_equal(self.node1.getbalanceof(ct.contract_id), 4000 - 20 if with_send_crash_point2 == 7 else 4000 - 10)
         else:
             assert_equal(self.node1.getbalanceof(ct.contract_id), 4000)
         bal = 4000
         if with_send and crash_point == 1:
-            bal = 4000- 40  #应该是4000- 20 的，但是现在的send都是从第一个合约里扣
+            bal = 4000- 20  #应该是4000- 20 的，但是现在的send都是从第一个合约里扣
         elif with_send and crash_point == 2:
-            bal = 4000 - 20
+            bal = 4000 - 10
         assert_equal(self.node1.getbalanceof(ct.contract_id), bal)
         assert (balance - MINER_REWARD * 2 - 2000) - self.node1.getbalance() < 100
 
