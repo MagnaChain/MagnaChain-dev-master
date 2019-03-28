@@ -1064,15 +1064,27 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
     return mtx;
 }
 
+// note that.
+// IsBranchChainTransStep2 transaction will have different txid identify by fFromMempool.
+//
 uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
 {
     uint256 txHash = tx.GetHash();
-    if ((tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) ||
+    if ((tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && fFromMempool) ||
         (tx.IsSmartContract() && tx.pContractData->amountOut > 0)) {
         auto it = mapFinalTx2OriTx.find(txHash);
         if (it == mapFinalTx2OriTx.end()) {
             uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
             mapFinalTx2OriTx[txHash] = oriTxHash;
+            return oriTxHash;
+        }
+        return it->second;
+    }
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && !fFromMempool){
+        auto it = mapFinalTx2OriTx2.find(txHash);
+        if (it == mapFinalTx2OriTx2.end()) {
+            uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
+            mapFinalTx2OriTx2[txHash] = oriTxHash;
             return oriTxHash;
         }
         return it->second;
@@ -1289,6 +1301,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
     lastRollingFeeUpdate = GetTime();
     blockSinceLastRollingFeeBump = true;
     mapFinalTx2OriTx.clear();
+    mapFinalTx2OriTx2.clear();
 }
 
 void MCTxMemPool::DoClear()

@@ -501,6 +501,7 @@ public:
     typedef indexed_transaction_set::nth_index<0>::type::iterator txiter;
     std::vector<std::pair<uint256, txiter>> vTxHashes; //!< All tx witness hashes/entries in mapTx, in random order
     std::map<uint256, uint256> mapFinalTx2OriTx;
+    std::map<uint256, uint256> mapFinalTx2OriTx2;
 
     struct CompareIteratorByHash {
         bool operator()(const txiter& a, const txiter& b) const
