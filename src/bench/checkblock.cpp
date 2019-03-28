@@ -44,13 +44,14 @@ static void DeserializeAndCheckBlockTest(benchmark::State& state)
 
     const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
     BranchCache branhcache(nullptr);
+    MCCoinsViewCache coinsview(nullptr);
     while (state.KeepRunning()) {
         MCBlock block; // Note that CBlock caches its checked state, so we need to recreate it here
         stream >> block;
         assert(stream.Rewind(sizeof(block_bench::block413567)));
 
         MCValidationState validationState;
-        assert(CheckBlock(block, validationState, chainParams->GetConsensus(), &branhcache));
+        assert(CheckBlock(block, validationState, chainParams->GetConsensus(), &branhcache, &coinsview));
     }
 }
 
