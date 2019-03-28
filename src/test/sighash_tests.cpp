@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(sighash_from_data)
           stream >> tx;
 
           MCValidationState state;
-          BOOST_REQUIRE_MESSAGE(CheckTransaction(*tx, state), strTest);
+          BOOST_REQUIRE_MESSAGE(CheckTransaction(*tx, state, true, nullptr, nullptr, false, nullptr), strTest);
           BOOST_REQUIRE(state.IsValid());
 
           std::vector<unsigned char> raw = ParseHex(raw_script);
