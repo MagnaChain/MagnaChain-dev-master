@@ -188,7 +188,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         txs = self.snode0.getrawmempool(True)
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
-        assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.node0.rebroadcastchaintransaction, txid)
+        assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.node0.rebroadcastchaintransaction, txid)
         self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
@@ -202,7 +202,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.node0.generate(1)
         self.snode0.generate(1)
         assert_equal(len(self.node0.getrawmempool()), 2)  # here we are,one for header,one for transaction
-        assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.snode0.rebroadcastchaintransaction, txid)
+        assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.snode0.rebroadcastchaintransaction, txid)
         self.node0.generate(1)
         assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid)
 
