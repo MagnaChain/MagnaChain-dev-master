@@ -430,13 +430,14 @@ class ContractForkTest(MagnaChainTestFramework):
             print("node{} ct2 get_balance:{}".format(i, ct2.get_balance(exec_node=self.nodes[i])))
         if with_send:
             assert_equal(self.node0.getbalanceof(ct2.contract_id), 1000 - 10 if crash_point == 1 else 1000)  # 减去合约的send调用
-            assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+            assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000 - 10 if crash_point == 1 else 1000)  # 减去合约的send调用
+            assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 10 if crash_point == 1 else 1000)  # 减去合约的send调用
+            assert_equal(self.node3.getbalanceof(ct2.contract_id), 1000 - 10 if crash_point == 1 else 1000)  # 减去合约的send调用
         else:
             assert_equal(self.node0.getbalanceof(ct2.contract_id),1000)  # 减去合约的send调用
             assert_equal(self.node1.getbalanceof(ct2.contract_id), 1000)  # 减去合约的send调用
-        # 节点2,3的ct2应该是1000 - 10的，但是现在的send都是从第一个合约里扣，所以没有减少
-        assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
-        assert_equal(self.node3.getbalanceof(ct2.contract_id), 1000 - 10 if with_send else 1000)  # 减去合约的send调用
+            assert_equal(self.node2.getbalanceof(ct2.contract_id), 1000)  # 减去合约的send调用
+            assert_equal(self.node3.getbalanceof(ct2.contract_id), 1000)  # 减去合约的send调用
 
         for i in range(4):
             print(i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
