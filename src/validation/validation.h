@@ -425,7 +425,7 @@ bool ReadBlockFromDisk(MCBlock& block, const MCBlockIndex* pindex, const Consens
 /** Functions for validating blocks and updating the block tree */
 
 /** Context-independent validity checks */
-bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, bool fCheckPOW = true, bool fCheckMerkleRoot = true, bool fVerifingDB = false);
+bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, bool fCheckPOW, bool fCheckMerkleRoot, bool fVerifingDB);
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams);
 
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with cs_main held) */
