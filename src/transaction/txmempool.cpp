@@ -1019,27 +1019,15 @@ void MCTxMemPool::CheckContract(txiter titer, SmartLuaState* sls)
     }
 }
 
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx)
+
+//Revert Transaction for follow situations:
+// 1. Step2 transaction duplicate check, it should exclude pPMT data field to get the hash identify.
+// 2. Re-add to mempool or remove from mempool should keep the pPMT data field.
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fFromMempool)
 {
     MCTransactionRef pfromtx = pFromTx;
     MCMutableTransaction mtx(tx);
  
-    //if (tx.IsBranchChainTransStep2()) {
-        //if (pfromtx == nullptr){// re ser from tx.
-        //    MCTransactionRef pfromtx;
-        //    MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
-        //    cds >> (pfromtx);
-        //}
-        //if (pfromtx && pfromtx->IsMortgage()) {
-        //    mtx.vout[0].scriptPubKey.clear();
-        //}
-
-        //mtx.fromTx.clear();
-        //if (mtx.fromBranchId != MCBaseChainParams::MAIN) {
-        //    mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
-        //}
-    //}
-
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
         //recover tx: remove UTXO
         //vin like func MakeBranchTransStep2Tx
@@ -1055,7 +1043,9 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
                 mtx.vout.erase(mtx.vout.begin() + i);
             }
         }
-        mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
+        if(!fFromMempool){
+            mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
+        }
     }
     else if (tx.IsSmartContract()) {
         for (int i = mtx.vin.size() - 1; i >= 0; i--) {
@@ -1074,14 +1064,14 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
     return mtx;
 }
 
-uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx)
+uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
 {
     uint256 txHash = tx.GetHash();
     if ((tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) ||
         (tx.IsSmartContract() && tx.pContractData->amountOut > 0)) {
         auto it = mapFinalTx2OriTx.find(txHash);
         if (it == mapFinalTx2OriTx.end()) {
-            uint256 oriTxHash = RevertTransaction(tx, nullptr).GetHash();
+            uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
             mapFinalTx2OriTx[txHash] = oriTxHash;
             return oriTxHash;
         }
@@ -1226,11 +1216,11 @@ void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
     }
 }
 
-void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx)
+void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool)
 {
     for (const auto& tx : vtx)
     {
-        uint256 txid = GetOriTxHash(*tx);// remove Transaction that has be modified, as IsBranchChainTransStep2
+        uint256 txid = GetOriTxHash(*tx, fFromMemPool);// remove Transaction that has be modified, as IsBranchChainTransStep2
         txiter it = mapTx.find(txid);
         if (it != mapTx.end()) {
             setEntries stage;
@@ -1254,7 +1244,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
 
     for (const auto& tx : vtx)
     {
-        uint256 hash = GetOriTxHash(*tx);
+        uint256 hash = GetOriTxHash(*tx, true);
 
         indexed_transaction_set::iterator i = mapTx.find(hash);
         if (i != mapTx.end())
@@ -1271,7 +1261,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
 
     // Before the txs in the new block have been removed from the mempool, update policy estimates
     if (minerPolicyEstimator) { minerPolicyEstimator->ProcessBlock(nBlockHeight, entries); }
-    RemoveForVector(vtx);
+    RemoveForVector(vtx, true);
 
     // remove all duplicate branch block header info tx.
     if (bIsMainChain && !setHeaderMixHash.empty())
@@ -1293,7 +1283,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
                 }
             }
         }
-        RemoveForVector(vRemove);
+        RemoveForVector(vRemove, true);
     }
 
     lastRollingFeeUpdate = GetTime();

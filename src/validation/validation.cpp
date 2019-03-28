@@ -488,7 +488,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool, bool f
             if ((ptx->IsBranchChainTransStep2() && ptx->fromBranchId != MCBaseChainParams::MAIN) ||
                 (ptx->IsSmartContract() && ptx->pContractData->amountOut > 0)) {
                 // revert transaction data
-                MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr);
+                MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr, true);
                 ptx = MakeTransactionRef(mtx);
                 modify = true;
             }
@@ -3356,7 +3356,7 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
         pBranchCache->AddToCache(*tx);
 
         if (tx->IsBranchChainTransStep2()) {
-            uint256 txid = mempool.GetOriTxHash(*tx);
+            uint256 txid = mempool.GetOriTxHash(*tx, false);
             if (setTxid.count(txid)) {
                 return state.DoS(100, false, REJECT_INVALID, "Duplicate tx in block.");
             }

@@ -833,7 +833,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
         return error("%s sendToTxHexData is not a valid transaction data.\n", __func__);
     }
 
-    MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx);
+    MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx, false);
     
     //Revert other fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();
@@ -1181,7 +1181,7 @@ bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, B
             return state.DoS(0, false, REJECT_DUPLICATE, "branchchaintransstep2 tx duplicate");
         }
         if (g_pBranchChainTxRecordsDb->IsTxRecvRepeat(tx, nullptr)) {
-            uint256 oritxid = mempool.GetOriTxHash(tx);
+            uint256 oritxid = mempool.GetOriTxHash(tx, false);
             return state.Invalid(false, REJECT_DUPLICATE, strprintf("txn-already-in-records ori txid %s, %s", oritxid.GetHex(), tx.GetHash().GetHex()));
         }
     }

@@ -72,7 +72,7 @@ void BranchChainTxRecordsCache::AddBranchChainRecvTxRecord(const MCTransactionRe
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    uint256 txid = mempool.GetOriTxHash(*tx);
+    uint256 txid = mempool.GetOriTxHash(*tx, false);
     BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.blockhash = blockhash;
@@ -85,7 +85,7 @@ void BranchChainTxRecordsCache::DelBranchChainRecvTxRecord(const MCTransactionRe
     if (tx->IsBranchChainTransStep2() == false)
         return;
 
-    uint256 txid = mempool.GetOriTxHash(*tx);
+    uint256 txid = mempool.GetOriTxHash(*tx, false);
     BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo& data = m_mapRecvRecord[key];
     data.flags = DbDataFlag::eDELETE;
@@ -121,7 +121,7 @@ void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
 bool BranchChainTxRecordsCache::HasInCache(const MCTransaction& tx)
 {
     if (tx.IsBranchChainTransStep2()) {
-        uint256 txid = mempool.GetOriTxHash(tx);
+        uint256 txid = mempool.GetOriTxHash(tx, false);
         BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
         if (m_mapRecvRecord.count(key) && m_mapRecvRecord[key].flags == DbDataFlag::eADD) {// do it necessary to check the flags.
             return true;
@@ -137,7 +137,7 @@ void BranchChainTxRecordsCache::RemoveFromBlock(const std::vector<MCTransactionR
         //erase not remove as RemoveFromCache
         const MCTransactionRef& ptx = vtx[i];
         if (ptx->IsBranchChainTransStep2()){
-            uint256 txid = mempool.GetOriTxHash(*ptx);
+            uint256 txid = mempool.GetOriTxHash(*ptx, false);
             BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
             m_mapRecvRecord.erase(key);
         }
@@ -221,7 +221,7 @@ bool BranchChainTxRecordsDb::IsTxRecvRepeat(const MCTransaction& tx, const MCBlo
     if (tx.IsBranchChainTransStep2() == false)
         return false;
 
-    uint256 txid = mempool.GetOriTxHash(tx);
+    uint256 txid = mempool.GetOriTxHash(tx, false);
     BranchChainTxEntry keyentry(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
     BranchChainTxRecvInfo recvInfo;
     if (!m_db.Read(keyentry, recvInfo))

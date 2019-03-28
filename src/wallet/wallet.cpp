@@ -1069,7 +1069,7 @@ bool MCWallet::AddToWalletIfInvolvingMe(const MCTransactionRef& ptx, const MCBlo
         AssertLockHeld(cs_wallet);
 
         if (pIndex != nullptr) {
-            uint256 txHash = mempool.GetOriTxHash(*ptx);
+            uint256 txHash = mempool.GetOriTxHash(*ptx, false);//TODO: why this use getoritxhash? and fFromMemPool parameter should be false?
             for (const MCTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {

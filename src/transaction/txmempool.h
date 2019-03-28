@@ -565,7 +565,7 @@ public:
     void RemoveForReorg(const MCCoinsViewCache* pcoins, unsigned int nMemPoolHeight, int flags);
     void RemoveConflicts(const MCTransaction& tx);
     void RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight);
-    void RemoveForVector(const std::vector<MCTransactionRef>& vtx);
+    void RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool);
 
     void Clear();
     void DoClear(); //lock free
@@ -585,7 +585,7 @@ public:
     void ApplyDelta(const uint256 hash, MCAmount& nFeeDelta) const;
     void ClearPrioritisation(const uint256 hash);
 
-    uint256 GetOriTxHash(const MCTransaction& tx);
+    uint256 GetOriTxHash(const MCTransaction& tx, bool fFromMempool);
 
     // Update contract data
     void CheckContract(txiter titer, SmartLuaState* sls);
@@ -727,7 +727,7 @@ public:
     }
 };
 
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx);
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fFromMempool);
 
 /** 
  * MCCoinsView that brings transactions from a memorypool into view.
