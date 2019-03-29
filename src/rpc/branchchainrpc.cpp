@@ -707,7 +707,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     const MCChainParams& chainparams = Params();
     MCValidationState state;
     MCAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
-    bool ret = AcceptToMemoryPool(mempool, state, tx2, true, nullptr, nullptr, false, maxTxFee);
+    bool ret = AcceptToMemoryPool(mempool, state, tx2, true, nullptr, nullptr, false, maxTxFee, true, 0);
     if (ret == false)
     {
         std::string strError = strprintf("Error: accept to memory pool fail: %s", state.GetRejectReason());

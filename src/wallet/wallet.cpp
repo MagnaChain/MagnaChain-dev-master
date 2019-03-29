@@ -4687,7 +4687,7 @@ int MCMerkleTx::GetBlocksToMaturityForCoinCreateBranch() const
 
 bool MCMerkleTx::AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, bool* pfMissingInputs)
 {
-    return ::AcceptToMemoryPool(mempool, state, tx, true, pfMissingInputs, nullptr, false, nAbsurdFee, executeSmartContract);
+    return ::AcceptToMemoryPool(mempool, state, tx, true, pfMissingInputs, nullptr, false, nAbsurdFee, executeSmartContract, 0);
 }
 
 void GetAvailableMortgageCoinsInMemPool(const MCKeyStore& keystore, std::vector<MCOutput>& vecOutput, std::map<uint256, MCWalletTx> &mapTempWallet, MCCoinsViewCache &view)

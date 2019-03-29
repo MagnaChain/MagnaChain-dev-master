@@ -3813,7 +3813,7 @@ UniValue posttransaction(const std::string& strHexTx)
 	MCTransactionRef tx = MakeTransactionRef(std::move(mtx));
 	MCValidationState state;
 	MCAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
-	bool ret = AcceptToMemoryPool(mempool, state, tx, true, nullptr, nullptr, false, maxTxFee);
+	bool ret = AcceptToMemoryPool(mempool, state, tx, true, nullptr, nullptr, false, maxTxFee, true, 0);
 
 	return "";
 }
