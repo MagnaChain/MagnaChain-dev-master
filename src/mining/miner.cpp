@@ -1348,7 +1348,7 @@ inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const u
 ////---------------------------------------------------------
 //主链获取侧链头工作量
 //核心算法需要和 GetBlockWork 一致
-uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
+uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
     ///// get and check data
     const MCOutPoint& out = block.prevoutStake;
@@ -1363,7 +1363,7 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
     const MCAmount coinValue = ptx->vout[0].nValue;
 
     //挖矿币-找出抵押币并作相应验证
-    const Coin& fromCoin = pcoinsTip->AccessCoin(MCOutPoint(fromTxHash, 0));
+    const Coin& fromCoin = pCoins->AccessCoin(MCOutPoint(fromTxHash, 0));
     {
         if (fromCoin.IsSpent() || coinValue != fromCoin.out.nValue) 
             return 0;
@@ -1507,12 +1507,12 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
 ////---------------------------------------------------------
 //主链检查侧链头工作量
 //核心和 CheckBlockWork 相同
-bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
+bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
     const Consensus::Params& consensusParams = params.GetConsensus();
 
     uint256 hash;
-    uint32_t iAmount = GetBlockHeaderWork(block, hash, params, branchdata, pBranchCache);
+    uint32_t iAmount = GetBlockHeaderWork(block, hash, params, branchdata, pBranchCache, pCoins);
 
     // check
     bool fNegative;

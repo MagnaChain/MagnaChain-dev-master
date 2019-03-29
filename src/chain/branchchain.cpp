@@ -971,10 +971,10 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
     return true;
 }
 
-extern bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, BranchCache* pBranchCache);
+extern bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, BranchCache* pBranchCache, MCCoinsViewCache* pCoins);
 extern bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, int64_t nAdjustedTime, BranchCache* pBranchCache);
 
-bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
+bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins)
 {
     if (!tx.IsSyncBranchInfo()) {
         return state.DoS(100, false, REJECT_INVALID, "Sync branch info fail");
@@ -1007,7 +1007,7 @@ bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, B
     }
 
     //检查工作量
-    if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache)) {
+    if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache, pCoins)) {
         return state.DoS(100, false, REJECT_INVALID, "BranchBlockInfo CheckBlockHeaderWork fail");
     }
 

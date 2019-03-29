@@ -175,13 +175,13 @@ int64_t GetTransactionSigOpCost(const MCTransaction& tx, const MCCoinsViewCache&
 }
 
 bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fCheckDuplicateInputs, const MCBlock* pBlock, 
-    const MCBlockIndex* pBlockIndex, const bool fVerifingDB, BranchCache *pBranchCache)
+    const MCBlockIndex* pBlockIndex, const bool fVerifingDB, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
     if (tx.IsSyncBranchInfo())
     {
         if (!Params().IsMainChain())
             return state.DoS(100, false, REJECT_INVALID, "Branch chain can not accept branch head transaction");
-        if (!CheckBranchBlockInfoTx(tx, state, pBranchCache))
+        if (!CheckBranchBlockInfoTx(tx, state, pBranchCache, pCoins))
             return false;
     }
     // Basic checks that don't depend on any context

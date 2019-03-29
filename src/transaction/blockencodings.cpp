@@ -208,7 +208,7 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(MCBlock& block, const std::vector
 
     BranchCache branchcache(g_pBranchDb);
     MCValidationState state;
-    if (!CheckBlock(block, state, Params().GetConsensus(), &branchcache, true, true, false)) {
+    if (!CheckBlock(block, state, Params().GetConsensus(), &branchcache, true, true, false, pcoinsTip)) {
         // TODO: We really want to just check merkle tree manually here,
         // but that is expensive, and CheckBlock caches a block's
         // "checked-status" (in the MCBlock?). MCBlock should be able to
