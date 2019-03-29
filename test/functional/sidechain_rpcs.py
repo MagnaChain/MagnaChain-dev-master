@@ -65,6 +65,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.test_makebranchtransaction()
         self.test_mortgageminebranch()
         self.test_rebroadcastchaintransaction()
+        self.test_rebroadcastchaintransaction(gen_blocks=True)
         self.test_resendbranchchainblockinfo()
         self.test_submitbranchblockinfo()
         self.test_invalidateblock()
@@ -165,10 +166,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.node0.mortgageminebranch(self.sidechain_id, 10000, self.snode0.getnewaddress())
         
 
-    def test_rebroadcastchaintransaction(self):
+    def test_rebroadcastchaintransaction(self,gen_blocks = False):
         # to sidechain
-        self.log.info(sys._getframe().f_code.co_name)
-        self.node0.generate(8) #todo 需要注释看一下,这个应该没什么关系的
+        self.log.info(sys._getframe().f_code.co_name + "\t" + str(gen_blocks))
+        if gen_blocks:
+            self.node0.generate(8) #todo 需要注释看一下,这个应该没什么关系的
         self.snode0.generate(2)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(), 1)
@@ -184,12 +186,13 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-25, 'can not broadcast because no enough confirmations',
                                 self.node0.rebroadcastchaintransaction, txid)
         self.node0.generate(7)
-        assert_equal(len(self.snode0.getrawmempool()), 1)  # here we are
+        assert_equal(len(self.snode0.getrawmempool()), 1 if gen_blocks else 3)  # here we are
         txs = self.snode0.getrawmempool(True)
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
         assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.node0.rebroadcastchaintransaction, txid)
-        self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
+        if gen_blocks:
+            self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
         self.node0.generate(2)
