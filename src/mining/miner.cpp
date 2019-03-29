@@ -1523,13 +1523,13 @@ bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& sta
 
     //// Check range
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensusParams.powLimit))
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, range check fail");;
 
     if (UintToArith256(hash) > bnTarget)
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, target check fail");;
 
     if (iAmount != block.nNonce)
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, nonce check fail");;
     return true;
 }
 
@@ -1721,7 +1721,7 @@ bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationSt
 {
     const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
     if (pindexPrev == nullptr)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");
+        return state.DoS(0, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");// sync branch transaction maybe in disorder
 
     // Check proof of work
     arith_uint256 nBlockWork;
