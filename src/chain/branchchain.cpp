@@ -1003,12 +1003,12 @@ bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, B
     //ContextualCheckBlockHeader
     const MCChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
     if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache)) {
-        return false; //state.DoS(100, false, REJECT_INVALID, "Branch contextual check block header fail");
+        return false;
     }
 
     //检查工作量
     if (!CheckBlockHeaderWork(*(tx.pBranchBlockData), state, bparams, branchdata, pBranchCache, pCoins)) {
-        return false;// state.DoS(100, false, REJECT_INVALID, "BranchBlockInfo CheckBlockHeaderWork fail");
+        return false;
     }
 
     return true;

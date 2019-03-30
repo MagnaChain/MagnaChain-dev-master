@@ -1148,7 +1148,7 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 static uint256 guMaxWork = uint256S("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // 如有修改,同时也需修改 GetBlockHeaderWork
-uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash)
+uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins)
 {
 	block_hash  = guMaxWork;
 	BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
@@ -1186,7 +1186,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
     }
 	else {
 		Coin coin;
-		if (pcoinsTip->GetCoin(out, coin)) {
+		if (pCoins->GetCoin(out, coin)) {
             MCAmount v = coin.out.nValue;
 			// 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
 			int iHeight = coin.nHeight;
@@ -1306,7 +1306,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash);
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash, pcoinsTip); //TODO: should pcoinsTip use a CoinViewCache parameter to replace?
 
 	// check
 	bool fNegative;
@@ -2056,7 +2056,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
 	// 如果block work大于要求，将NBITS设为实际值
 	uint256 out_hash;
-	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash);
+	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache);
 	arith_uint256 bTarget;
 	bTarget.SetCompact(pblock->nBits);
 	if (UintToArith256(out_hash) < bTarget) 
