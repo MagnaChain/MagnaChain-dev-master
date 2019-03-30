@@ -560,13 +560,13 @@ static bool CheckInputsFromMempoolAndCache(const MCTransaction& tx, MCValidation
 }
 
 static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& ptx, bool fLimitFree, 
-    bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount& nAbsurdFee, std::vector<MCOutPoint>& coins_to_uncache, bool executeSmartContract, uint64_t order)
+    int* pNMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount& nAbsurdFee, std::vector<MCOutPoint>& coins_to_uncache, bool executeSmartContract, uint64_t order)
 {
     const MCTransaction& tx = *ptx;
     const uint256 hash = tx.GetHash();
     AssertLockHeld(cs_main);
-    if (pfMissingInputs)
-        *pfMissingInputs = false;
+    if (pNMissingInputs)
+        *pNMissingInputs = eMissingInputTypes::eOk;
 
     if (tx.IsBranchCreate() && pool.GetCreateBranchChainTxCount() != 0)
         return state.DoS(0, false, REJECT_INVALID, "mempool have contain a create branch chain transaction"); //only one Branch create transaction in mempool, for easy calc Mortgage
@@ -679,8 +679,8 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                         }
                     }
                     // Otherwise assume this might be an orphan tx for which we just haven't seen parents yet
-                    if (pfMissingInputs) {
-                        *pfMissingInputs = true;
+                    if (pNMissingInputs) {
+                        *pNMissingInputs = (*pNMissingInputs) | eMissingInputTypes::eMissingInputs;
                     }
                     LogPrint(BCLog::MEMPOOL, "not found vin,HaveCoin return fail.preout %s %d\n", txin.prevout.hash.ToString().c_str(), txin.prevout.n);
                     return state.Invalid(false, REJECT_INVALID, "vin-not-found"); // fMissingInputs and !state.IsInvalid() is used to detect this condition, don't set state.Invalid()
@@ -1014,14 +1014,14 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
 }
 
 /** (try to) add transaction to memory pool with a specified acceptance time **/
-static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order)
+static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, int* pNMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order)
 {
     bool res;
     if (tx->IsBranchChainTransStep2()) {
-        res = AcceptChainTransStep2ToMemoryPool(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, order);
+        res = AcceptChainTransStep2ToMemoryPool(chainparams, pool, state, tx, fLimitFree, pNMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, order);
     } else {
         std::vector<MCOutPoint> coins_to_uncache;
-        res = AcceptToMemoryPoolWorker(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, coins_to_uncache, executeSmartContract, order);
+        res = AcceptToMemoryPoolWorker(chainparams, pool, state, tx, fLimitFree, pNMissingInputs, nAcceptTime, plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, coins_to_uncache, executeSmartContract, order);
         if (!res) {
             for (const MCOutPoint& hashTx : coins_to_uncache)
                 pcoinsTip->Uncache(hashTx);
@@ -1045,10 +1045,10 @@ static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMem
 
 int lastTimeMillis = 0;
 int lastTimeMilisCount = 0;
-bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order)
+bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, int* pNMissingInputs, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order)
 {
     const MCChainParams& chainparams = Params();
-    return AcceptToMemoryPoolWithTime(chainparams, pool, state, tx, fLimitFree, pfMissingInputs, GetTimeMillis(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, executeSmartContract, order);
+    return AcceptToMemoryPoolWithTime(chainparams, pool, state, tx, fLimitFree, pNMissingInputs, GetTimeMillis(), plTxnReplaced, fOverrideMempoolLimit, nAbsurdFee, executeSmartContract, order);
 }
 
 
@@ -5029,13 +5029,14 @@ public:
     }
 } instance_of_cmaincleanup;
 
-bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& ptx, bool fLimitFree, bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, uint64_t order)
+bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& ptx, bool fLimitFree, 
+    int* pNMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, uint64_t order)
 {
     const MCTransaction& tx = *ptx;
     const uint256 hash = tx.GetHash();
     AssertLockHeld(cs_main);
-    if (pfMissingInputs)
-        *pfMissingInputs = false;
+    if (pNMissingInputs)
+        *pNMissingInputs = eMissingInputTypes::eOk;
 
     if (tx.IsBranchChainTransStep2() == false) {
         state.DoS(100, false, REJECT_INVALID, "not a branch chain tx");

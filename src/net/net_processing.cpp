@@ -1729,7 +1729,6 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         LOCK(cs_main);
 
         uint32_t nFetchFlags = GetFetchFlags(pfrom);
-
         for (MCInv &inv : vInv)
         {
             if (interruptMsgProc)
@@ -1981,7 +1980,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
         LOCK(cs_main);
 
-        bool fMissingInputs = false;
+        int nMissingInputs = eMissingInputTypes::eOk;
         MCValidationState state;
 
         pfrom->setAskFor.erase(inv.hash);
@@ -1989,7 +1988,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
         std::list<MCTransactionRef> lRemovedTxn;
 
-        if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, &lRemovedTxn, false, 0, true, 0)) {
+        if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &nMissingInputs, &lRemovedTxn, false, 0, true, 0)) {
             mempool.Check(pcoinsTip);
             RelayTransaction(tx, connman);
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
@@ -2018,7 +2017,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                     const MCTransaction& orphanTx = *porphanTx;
                     const uint256& orphanHash = orphanTx.GetHash();
                     NodeId fromPeer = (*mi)->second.fromPeer;
-                    bool fMissingInputs2 = false;
+                    int nMissingInputs2 = eMissingInputTypes::eOk;
                     // Use a dummy MCValidationState so someone can't setup nodes to counter-DoS based on orphan
                     // resolution (that is, feeding people an invalid transaction based on LegitTxX in order to get
                     // anyone relaying LegitTxX banned)
@@ -2027,7 +2026,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
                     if (setMisbehaving.count(fromPeer))
                         continue;
-                    if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &fMissingInputs2, &lRemovedTxn, false, 0, true, 0)) {
+                    if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &nMissingInputs2, &lRemovedTxn, false, 0, true, 0)) {
                         LogPrint(BCLog::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
                         RelayTransaction(orphanTx, connman);
                         for (unsigned int i = 0; i < orphanTx.vout.size(); i++) {
@@ -2035,7 +2034,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                         }
                         vEraseQueue.push_back(orphanHash);
                     }
-                    else if (!fMissingInputs2)
+                    else if (!nMissingInputs2)
                     {
                         int nDos = 0;
                         if (stateDummy.IsInvalid(nDos) && nDos > 0)
@@ -2064,7 +2063,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
         }
-        else if (fMissingInputs)
+        else if (nMissingInputs)
         {
             bool fRejectedParents = false; // It may be the case that the orphans parents have all been rejected
             for (const MCTxIn& txin : tx.vin) {

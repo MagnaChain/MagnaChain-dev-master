@@ -992,13 +992,13 @@ UniValue sendrawtransaction(const JSONRPCRequest& request)
     if (!fHaveMempool && !fHaveChain) {
         // push to local node and sync with wallets
         MCValidationState state;
-        bool fMissingInputs;
+        int pNMissingInputs = eMissingInputTypes::eOk;
         bool fLimitFree = true;
-        if (!AcceptToMemoryPool(mempool, state, std::move(tx), fLimitFree, &fMissingInputs, nullptr, false, nMaxRawTxFee, true, 0)) {
+        if (!AcceptToMemoryPool(mempool, state, std::move(tx), fLimitFree, &pNMissingInputs, nullptr, false, nMaxRawTxFee, true, 0)) {
             if (state.IsInvalid()) {
                 throw JSONRPCError(RPC_TRANSACTION_REJECTED, strprintf("%i: %s", state.GetRejectCode(), state.GetRejectReason()));
             } else {
-                if (fMissingInputs) {
+                if (pNMissingInputs) {
                     throw JSONRPCError(RPC_TRANSACTION_ERROR, "Missing inputs");
                 }
                 throw JSONRPCError(RPC_TRANSACTION_ERROR, state.GetRejectReason());

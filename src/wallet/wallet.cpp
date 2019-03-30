@@ -3343,9 +3343,9 @@ bool MCWallet::CommitTransaction(MCWalletTx& wtxNew, MCReserveKey& reservekey, M
         if (fBroadcastTransactions)
         {
             // Broadcast
-            bool fMissingInputs = false;
-            if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, &fMissingInputs)) {
-                LogPrint(BCLog::TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs":"");
+            int nMissingInputs = eMissingInputTypes::eOk;
+            if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, &nMissingInputs)) {
+                LogPrint(BCLog::TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), nMissingInputs ?",MissingInputs":"");
                 // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
                 return false;// zjh add this return false;
             } else {
@@ -4685,9 +4685,9 @@ int MCMerkleTx::GetBlocksToMaturityForCoinCreateBranch() const
     return std::max(0, (BRANCH_CHAIN_CREATE_COIN_MATURITY + 1) - GetDepthInMainChain());
 }
 
-bool MCMerkleTx::AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, bool* pfMissingInputs)
+bool MCMerkleTx::AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, int* pNMissingInputs)
 {
-    return ::AcceptToMemoryPool(mempool, state, tx, true, pfMissingInputs, nullptr, false, nAbsurdFee, executeSmartContract, 0);
+    return ::AcceptToMemoryPool(mempool, state, tx, true, pNMissingInputs, nullptr, false, nAbsurdFee, executeSmartContract, 0);
 }
 
 void GetAvailableMortgageCoinsInMemPool(const MCKeyStore& keystore, std::vector<MCOutput>& vecOutput, std::map<uint256, MCWalletTx> &mapTempWallet, MCCoinsViewCache &view)

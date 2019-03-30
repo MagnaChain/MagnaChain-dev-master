@@ -318,13 +318,21 @@ void PruneAndFlush();
 /** Prune block files up to a given height */
 void PruneBlockFilesManual(int nManualPruneHeight);
 
+// int* pNMissingInputs return value
+enum eMissingInputTypes
+{
+    eOk = 0,
+    eMissingInputs = 1 << 0,
+    eMissingBranchPreHeadTx = 1 << 1, 
+};
+
 /** (try to) add transaction to memory pool
  * plTxnReplaced will be appended to with all transactions replaced from mempool **/
-bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, 
+bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, int* pNMissingInputs,
     std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order);
 
 bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, 
-    bool fLimitFree, bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, uint64_t order);
+    bool fLimitFree, int* pNMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, uint64_t order);
 
 /** Convert MCValidationState to a human-readable message for logging */
 std::string FormatStateMessage(const MCValidationState& state);
