@@ -75,8 +75,12 @@ struct MCOrphanTx {
     NodeId fromPeer;
     int64_t nTimeExpire;  
 };
-std::map<uint256, MCOrphanTx> mapOrphanTransactions GUARDED_BY(cs_main);
-std::map<MCOutPoint, std::set<std::map<uint256, MCOrphanTx>::iterator, IteratorComparator>> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
+
+typedef std::map<uint256, MCOrphanTx> MAP_ORPHAN_TX;
+typedef std::set<MAP_ORPHAN_TX::iterator, IteratorComparator> SET_MAP_ORPHAN_ITER;
+MAP_ORPHAN_TX mapOrphanTransactions GUARDED_BY(cs_main);
+std::map<MCOutPoint, SET_MAP_ORPHAN_ITER> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
+std::map<uint256, SET_MAP_ORPHAN_ITER> mapOrphanTxBranchPrevHeader GUARDED_BY(cs_main);// <branch pre-header hash, iterator>
 void EraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 static size_t vExtraTxnForCompactIt = 0;
@@ -556,13 +560,15 @@ bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer, int nMissingInputs) EX
         }
     }
     if (nMissingInputs & eMissingInputTypes::eMissingBranchPreHeadTx){
-        
+        if (tx->IsSyncBranchInfo()){
+            mapOrphanTxBranchPrevHeader[tx->pBranchBlockData->hashPrevBlock].insert(ret.first);
+        }
     }
 
     AddToCompactExtraTransactions(tx);
 
-    LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u)\n", hash.ToString(),
-             mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
+    LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u prevhsz %u)\n", hash.ToString(),
+             mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size(), mapOrphanTxBranchPrevHeader.size());
     return true;
 }
 
@@ -579,6 +585,15 @@ int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         itPrev->second.erase(it);
         if (itPrev->second.empty())
             mapOrphanTransactionsByPrev.erase(itPrev);
+    }
+    if (it->second.tx->IsSyncBranchInfo()){
+        auto itPrevH = mapOrphanTxBranchPrevHeader.find(it->second.tx->pBranchBlockData->hashPrevBlock);
+        if (itPrevH != mapOrphanTxBranchPrevHeader.end()) {
+            itPrevH->second.erase(it);
+            if (itPrevH->second.empty()){
+                mapOrphanTxBranchPrevHeader.erase(itPrevH);
+            }
+        }
     }
     mapOrphanTransactions.erase(it);
     return 1;
@@ -698,6 +713,16 @@ void PeerLogicValidation::BlockConnected(const std::shared_ptr<const MCBlock>& p
                 const MCTransaction& orphanTx = *(*mi)->second.tx;
                 const uint256& orphanHash = orphanTx.GetHash();
                 vOrphanErase.push_back(orphanHash);
+            }
+        }
+        if (ptx->IsSyncBranchInfo()){
+            auto itPrevH = mapOrphanTxBranchPrevHeader.find(ptx->pBranchBlockData->hashPrevBlock);
+            if (itPrevH != mapOrphanTxBranchPrevHeader.end()){
+                for (auto mi = itPrevH->second.begin(); mi != itPrevH->second.end(); ++mi) {
+                    const MCTransaction& orphanTx = *(*mi)->second.tx;
+                    const uint256& orphanHash = orphanTx.GetHash();
+                    vOrphanErase.push_back(orphanHash);
+                }
             }
         }
     }
@@ -1975,6 +2000,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         }
 
         std::deque<MCOutPoint> vWorkQueue;
+        std::deque<uint256> vWorkQueuePreHead;
         std::vector<uint256> vEraseQueue;
         MCTransactionRef ptx;
         vRecv >> ptx;
@@ -1999,6 +2025,11 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 vWorkQueue.emplace_back(inv.hash, i);
             }
+            if (tx.IsSyncBranchInfo()) {
+                MCBlockHeader blockheader;
+                tx.pBranchBlockData->GetBlockHeader(blockheader);
+                vWorkQueuePreHead.emplace_back(blockheader.GetHash());
+            }
 
             pfrom->nLastTXTime = GetTime();
 
@@ -2009,13 +2040,25 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
             // Recursively process any orphan transactions that depended on this one
             std::set<NodeId> setMisbehaving;
-            while (!vWorkQueue.empty()) {
-                auto itByPrev = mapOrphanTransactionsByPrev.find(vWorkQueue.front());
-                vWorkQueue.pop_front();
-                if (itByPrev == mapOrphanTransactionsByPrev.end())
-                    continue;
-                for (auto mi = itByPrev->second.begin();
-                     mi != itByPrev->second.end();
+            while (!vWorkQueue.empty() || !vWorkQueuePreHead.empty()) {
+                SET_MAP_ORPHAN_ITER* pSet = nullptr;
+                if (!vWorkQueue.empty()) {
+                    auto itByPrev = mapOrphanTransactionsByPrev.find(vWorkQueue.front());
+                    vWorkQueue.pop_front();
+                    if (itByPrev == mapOrphanTransactionsByPrev.end())
+                        continue;
+                    pSet = &itByPrev->second;
+                }
+                else if (!vWorkQueuePreHead.empty()) {
+                    auto itByPrevH = mapOrphanTxBranchPrevHeader.find(vWorkQueuePreHead.front());
+                    vWorkQueuePreHead.pop_front();
+                    if (itByPrevH == mapOrphanTxBranchPrevHeader.end())
+                        continue;
+                    pSet = &itByPrevH->second;
+                }
+                if (pSet == nullptr) continue;// assert(pSet);
+                for (auto mi = pSet->begin();
+                     mi != pSet->end();
                      ++mi)
                 {
                     const MCTransactionRef& porphanTx = (*mi)->second.tx;
@@ -2027,8 +2070,6 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                     // resolution (that is, feeding people an invalid transaction based on LegitTxX in order to get
                     // anyone relaying LegitTxX banned)
                     MCValidationState stateDummy;
-
-
                     if (setMisbehaving.count(fromPeer))
                         continue;
                     if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &nMissingInputs2, &lRemovedTxn, false, 0, true, 0)) {
@@ -2036,6 +2077,9 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                         RelayTransaction(orphanTx, connman);
                         for (unsigned int i = 0; i < orphanTx.vout.size(); i++) {
                             vWorkQueue.emplace_back(orphanHash, i);
+                        }
+                        if (orphanTx.IsSyncBranchInfo()){
+                            vWorkQueuePreHead.emplace_back(orphanHash);
                         }
                         vEraseQueue.push_back(orphanHash);
                     }
@@ -3553,5 +3597,6 @@ public:
         // orphan transactions
         mapOrphanTransactions.clear();
         mapOrphanTransactionsByPrev.clear();
+        mapOrphanTxBranchPrevHeader.clear();
     }
 } instance_of_cnetprocessingcleanup;
