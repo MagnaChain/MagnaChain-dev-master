@@ -972,9 +972,9 @@ bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlock, std::str
 }
 
 extern bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, BranchCache* pBranchCache, MCCoinsViewCache* pCoins);
-extern bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, int64_t nAdjustedTime, BranchCache* pBranchCache);
+extern bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData& branchdata, int64_t nAdjustedTime, BranchCache* pBranchCache, int* pNMissingInputs);
 
-bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins)
+bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins, int* pNMissingInputs)
 {
     if (!tx.IsSyncBranchInfo()) {
         return state.DoS(100, false, REJECT_INVALID, "Sync branch info fail");
@@ -1002,7 +1002,7 @@ bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, B
     BranchData branchdata = pBranchCache->GetBranchData(tx.pBranchBlockData->branchID);
     //ContextualCheckBlockHeader
     const MCChainParams& bparams = BranchParams(tx.pBranchBlockData->branchID);
-    if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache)) {
+    if (!BranchContextualCheckBlockHeader(blockheader, state, bparams, branchdata, GetAdjustedTime(), pBranchCache, pNMissingInputs)) {
         return false;
     }
 

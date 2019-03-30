@@ -91,7 +91,7 @@ bool GetRedeemSriptData(const MCScript& scriptPubKey, uint256* pFromTxid);
 bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock &block, std::string* pStrErrorMsg);
 
 bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlockHeader, std::string *pStrErr, bool onlySendMy = true);
-bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins);
+bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins, int* pNMissingInputs);
 bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchChainTxRecordsCache* pBranchTxRecordCache, BranchCache* pBranchCache);
 
 uint256 GetReportTxHashKey(const MCTransaction& tx);

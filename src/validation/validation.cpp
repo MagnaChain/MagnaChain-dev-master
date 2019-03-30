@@ -571,7 +571,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
     if (tx.IsBranchCreate() && pool.GetCreateBranchChainTxCount() != 0)
         return state.DoS(0, false, REJECT_INVALID, "mempool have contain a create branch chain transaction"); //only one Branch create transaction in mempool, for easy calc Mortgage
 
-    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache, pcoinsTip))
+    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache, pcoinsTip, pNMissingInputs))
         return false;
 
     // Coinbase is only valid in a block, not as a loose transaction
@@ -3348,7 +3348,7 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
     //BranchCache tempcache(pBranchCache);//use to duplicate check in one block
     // Check transactions
     for (const auto& tx : block.vtx) {
-        if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, pBranchCache, pCoins))
+        if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, pBranchCache, pCoins, nullptr))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                 strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
 
@@ -5043,7 +5043,7 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
         return false;
     }
 
-    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache, pcoinsTip))
+    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache, pcoinsTip, pNMissingInputs))
         return false;
 
     if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache, g_pBranchDataMemCache)) {

@@ -528,7 +528,7 @@ void AddToCompactExtraTransactions(const MCTransactionRef& tx)
     vExtraTxnForCompactIt = (vExtraTxnForCompactIt + 1) % max_extra_txn;
 }
 
-bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer, int nMissingInputs) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     const uint256& hash = tx->GetHash();
     if (mapOrphanTransactions.count(hash))
@@ -550,8 +550,13 @@ bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIR
 
     auto ret = mapOrphanTransactions.emplace(hash, MCOrphanTx{tx, peer, GetTime() + ORPHAN_TX_EXPIRE_TIME});
     assert(ret.second);
-    for (const MCTxIn& txin : tx->vin) {
-        mapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
+    if (nMissingInputs & eMissingInputTypes::eMissingInputs){
+        for (const MCTxIn& txin : tx->vin) {
+            mapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
+        }
+    }
+    if (nMissingInputs & eMissingInputTypes::eMissingBranchPreHeadTx){
+        
     }
 
     AddToCompactExtraTransactions(tx);
@@ -2079,7 +2084,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                     pfrom->AddInventoryKnown(_inv);
                     if (!AlreadyHave(_inv)) pfrom->AskFor(_inv);
                 }
-                AddOrphanTx(ptx, pfrom->GetId());
+                AddOrphanTx(ptx, pfrom->GetId(), nMissingInputs);
 
                 // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
                 unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, gArgs.GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));

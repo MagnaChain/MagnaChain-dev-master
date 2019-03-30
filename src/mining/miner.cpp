@@ -1717,12 +1717,15 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
 ////---------------------------------------------------------
 //主链上验证侧链
 bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData &branchdata, 
-    int64_t nAdjustedTime, BranchCache *pBranchCache)
+    int64_t nAdjustedTime, BranchCache *pBranchCache, int* pNMissingInputs)
 {
     const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-    if (pindexPrev == nullptr)
+    if (pindexPrev == nullptr) {
+        if (pNMissingInputs){
+            *pNMissingInputs = *pNMissingInputs | eMissingInputTypes::eMissingBranchPreHeadTx;
+        }
         return state.DoS(0, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");// sync branch transaction maybe in disorder
-
+    }
     // Check proof of work
     arith_uint256 nBlockWork;
     bool fNegative;
