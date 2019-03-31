@@ -1001,9 +1001,8 @@ bool MCWallet::AddToWallet(const MCWalletTx& wtxIn, bool fFlushOnClose)
         }
     }
 
-    //// debug print
-    if (!fFastMode)
-        ;// LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+    //if (!fFastMode)
+    //    LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
     // Write to disk
     if (fInsertedNew || fUpdated)

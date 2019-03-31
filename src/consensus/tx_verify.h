@@ -15,7 +15,7 @@ class MCCoinsViewCache;
 class MCTransaction;
 class MCValidationState;
 class MCKeyStore;
-class MCMutableTransaction;
+struct MCMutableTransaction;
 class MCScript;
 class MCBlock;
 class BranchCache;

@@ -472,7 +472,7 @@ static bool rest_getutxos(HTTPRequest* req, const std::string& strURIPart)
             }
         } catch (const std::ios_base::failure& e) {
             // abort in case of unreadable binary data
-            return RESTERR(req, HTTP_BAD_REQUEST, "Parse error");
+            return RESTERR(req, HTTP_BAD_REQUEST, strprintf("Parse error: %s", e.what()));
         }
         break;
     }

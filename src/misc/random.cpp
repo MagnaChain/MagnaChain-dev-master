@@ -20,7 +20,7 @@
 #include <chrono>
 #include <thread>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/time.h>
 #endif
 
@@ -176,7 +176,7 @@ static void RandAddSeedPerfmon()
 #endif
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 /** Fallback: get 32 bytes of system entropy from /dev/urandom. The most
  * compatible way to get cryptographic randomness on UNIX-ish platforms.
  */

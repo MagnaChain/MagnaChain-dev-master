@@ -32,9 +32,6 @@
     <Filter Include="src\compat">
       <UniqueIdentifier>{72a237cb-8774-4058-8801-683fcce1b35e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\config">
-      <UniqueIdentifier>{01befa99-aa2e-4b6b-91ce-85ca42b1f2b9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\leveldb">
       <UniqueIdentifier>{6a0e9903-174c-4e3a-874d-c7f0b8e05124}</UniqueIdentifier>
     </Filter>
@@ -124,7 +121,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="..\..\src\lua\lzio.c">
       <Filter>src\lua</Filter>
     </ClCompile>
@@ -598,7 +594,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h" />
     <ClInclude Include="..\..\src\lua\lzio.h">
       <Filter>src\lua</Filter>
     </ClInclude>
@@ -1115,9 +1110,6 @@
     <ClInclude Include="..\..\src\misc\reverselock.h">
       <Filter>src\misc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\config\magnachain-config.h">
-      <Filter>src\config</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\crypto\ctaes\ctaes.h">
       <Filter>src\crypto\ctaes</Filter>
     </ClInclude>
@@ -1133,8 +1125,5 @@
     <ClInclude Include="..\..\src\transaction\partialmerkletree.h">
       <Filter>src\transaction</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
   </ItemGroup>
 </Project>

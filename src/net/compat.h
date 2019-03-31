@@ -12,11 +12,7 @@
 #endif
 
 #ifdef _WIN32
-#ifdef _WIN32_WINNT
-#undef _WIN32_WINNT
-#endif
-#define _WIN32_WINNT 0x0501
-#ifndef WIN32_LEAN_AND_MEAN
+#ifndef _WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN 1
 #endif
 #ifndef NOMINMAX
@@ -48,7 +44,7 @@
 #include <unistd.h>
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
 typedef unsigned int SOCKET;
 #include "errno.h"
 #define WSAGetLastError()   errno

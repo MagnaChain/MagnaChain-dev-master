@@ -948,20 +948,17 @@ void static MagnaChainMiner(const MCChainParams& chainparams)
 			UniValue err = find_value(objError, "message");
 			LogPrintf(err.isStr() ? err.get_str().c_str() : "catch UniValue exception\n");
 		}
-		catch (const boost::thread_interrupted &e)
+		catch (const boost::thread_exception &e)
 		{
-			LogPrintf("MagnaChainMiner terminated for boost::thread_interrupted\n");
-            //throw;
+			LogPrintf("MagnaChainMiner terminated for boost::thread_interrupted: %s\n", e.what());
 		}
 		catch (const std::runtime_error &e)
 		{
 			LogPrintf("MagnaChainMiner runtime error: %s\n", e.what());
-			//return;
 		}
 		catch (const std::exception& e)
 		{
 			LogPrintf("MagnaChainMiner std::exception error: %s\n", e.what());
-			//return;
 		}
 	}
 }

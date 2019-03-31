@@ -246,9 +246,9 @@ bool MCRPCConfig::InitUserColonPass(bool bthrowexcetion)
         try {
             std::string configfilepath = (path / MAGNACHAIN_CONF_FILENAME).string();
             args.ReadConfigFile(configfilepath);
-        } catch (const std::exception& e) { // no config file is ok
-            //if (bthrowexcetion) throw std::runtime_error("Error reading configuration file!\n");
-            //return false;
+        }
+        catch (const std::exception& e) { // no config file is ok
+            fprintf(stderr, "%s:%d reading configuration file fail(%s)\n", __FILE__, __LINE__, e.what());
         }
         if (args.GetArg("-rpcpassword", "") == "") //get cookie file, the cookie file only exist when branch is running
         {
@@ -524,6 +524,7 @@ bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash /*= 
         try {
             *pnHeight = GetScriptInt64(opcode, vch);
         } catch (const scriptnum_error& err) {
+            LogPrintf("%s:%d exception: %s\n", __FILE__, __LINE__, err.what());
             return false;
         }
     }
@@ -562,7 +563,9 @@ bool GetMortgageCoinData(const MCScript& scriptPubKey, uint256* pFromTxid /*= nu
     if (pnHeight) {
         try {
             *pnHeight = GetScriptInt64(opcode, vch);
-        } catch (const scriptnum_error& err) {
+        }
+        catch (const scriptnum_error& err) {
+            LogPrintf("%s:%d exception: %s\n", __FILE__, __LINE__, err.what());
             return false;
         }
     }

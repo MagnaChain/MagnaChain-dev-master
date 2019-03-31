@@ -13,8 +13,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-test", "magnacha
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-tx", "magnachain-tx\magnachain-tx.vcxproj", "{15C82F04-E3DB-4393-9AED-31E8FAEF7D7A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_static", "..\db-4.8.30\build_windows\db_static.vcxproj", "{671539AA-D9A6-4B7B-8044-61B511D6F432}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-monitor", "magnachain-monitor\magnachain-monitor.vcxproj", "{97D10EAE-B201-44BB-8613-EE928D43E6C7}"
 EndProject
 Global
@@ -65,14 +63,6 @@ Global
 		{15C82F04-E3DB-4393-9AED-31E8FAEF7D7A}.Release|x64.Build.0 = Release|x64
 		{15C82F04-E3DB-4393-9AED-31E8FAEF7D7A}.Release|x86.ActiveCfg = Release|Win32
 		{15C82F04-E3DB-4393-9AED-31E8FAEF7D7A}.Release|x86.Build.0 = Release|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x64.ActiveCfg = Debug|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x64.Build.0 = Debug|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x86.ActiveCfg = Debug|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x86.Build.0 = Debug|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x64.ActiveCfg = Release|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x64.Build.0 = Release|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x86.ActiveCfg = Release|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x86.Build.0 = Release|Win32
 		{97D10EAE-B201-44BB-8613-EE928D43E6C7}.Debug|x64.ActiveCfg = Debug|x64
 		{97D10EAE-B201-44BB-8613-EE928D43E6C7}.Debug|x64.Build.0 = Debug|x64
 		{97D10EAE-B201-44BB-8613-EE928D43E6C7}.Debug|x86.ActiveCfg = Debug|Win32

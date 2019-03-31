@@ -26,7 +26,7 @@
 #include <pthread_np.h>
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
 // for posix_fallocate
 #ifdef __linux__
 
@@ -120,6 +120,15 @@ void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAF
         ENTER_CRITICAL_SECTION(ppmutexOpenSSL[i]);
     } else {
         LEAVE_CRITICAL_SECTION(ppmutexOpenSSL[i]);
+    }
+}
+
+#include <boost/stacktrace.hpp>
+void PrintStackTrace()
+{
+    auto st = boost::stacktrace::stacktrace();
+    for (int i = 1; i < st.size(); ++i) {
+        LogPrintf("#%d %s %s:%d\n", i, st[i].name(), st[i].source_file(), st[i].source_line());
     }
 }
 
@@ -637,7 +646,7 @@ void ArgsManager::ReadConfigFile(const std::string& confPath)
     ClearDatadirCache();
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 fs::path GetPidFile()
 {
     fs::path pathPidFile(gArgs.GetArg("-pid", MAGNACHAIN_PID_FILENAME));

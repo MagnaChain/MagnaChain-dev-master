@@ -30,7 +30,7 @@
 #include <memory>
 #include <condition_variable>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <arpa/inet.h>
 #endif
 
@@ -64,7 +64,7 @@ static const int MAX_ADDNODE_CONNECTIONS = 8;
 static const bool DEFAULT_LISTEN = true;
 /** -upnp default */
 #ifdef USE_UPNP
-static const bool DEFAULT_UPNP = USE_UPNP;
+static const bool DEFAULT_UPNP = true;
 #else
 static const bool DEFAULT_UPNP = false;
 #endif
@@ -442,7 +442,6 @@ extern std::unique_ptr<MCConnman> g_connman;
 void Discover(boost::thread_group& threadGroup);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
-bool BindListenPort(const MCService &bindAddr, std::string& strError, bool fWhitelisted = false);
 
 struct CombinerAll
 {
