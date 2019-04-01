@@ -93,8 +93,8 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-4, 'Coin is spent', self.snode0.redeemmortgagecoinstatement, self.mortgage_coin(),9)
         balance = self.node0.getbalance()
         results = []
+        self.sync_all() # TODO: make sure node1 have all branch header tx in mempool.(to be optimize)
         self.snode1.generate(10)
-        self.sync_all([self.sidenodes])
         for i in range(10):
             result = self.snode0.redeemmortgagecoinstatement(self.mortgage_coin())
             results.append(result['txid'])
@@ -102,7 +102,8 @@ class RedeemMortgageTest(MagnaChainTestFramework):
             assert_equal(len(self.snode0.listmortgagecoins()), 10- i - 1)
         assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
         self.snode1.generate(7)
-        self.sync_all([self.sidenodes])
+        self.sync_all()
+        assert_equal(24, len(self.node0.getrawmempool())) # side chain gen block count
         self.node0.generate(1)
         self.sync_all()
         self.snode1.generate(1)
