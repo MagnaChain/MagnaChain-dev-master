@@ -50,7 +50,7 @@ before_script:
 notifications:
   email:
     recipients:
-      - wuwei@matgz.com
+      - notify.dev@yandex.com
     on_success: change
     on_failure: always
 
