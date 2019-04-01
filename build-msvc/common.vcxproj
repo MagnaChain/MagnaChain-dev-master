@@ -4,6 +4,7 @@
   <ItemDefinitionGroup>
     <ClCompile>
       <ObjectFileName>$(IntDir)\%(RelativeDir)</ObjectFileName>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
       <DisableSpecificWarnings>4018;4244;4267;4715;4805;</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>..\..\src;..\..\src\config\msvc;..\..\src\univalue\include;..\..\src\secp256k1\include;..\..\src\leveldb\include;..\..\src\leveldb\helpers\memenv;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
