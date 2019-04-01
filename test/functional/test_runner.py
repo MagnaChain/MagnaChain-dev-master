@@ -61,8 +61,8 @@ BASE_SCRIPTS= [
     'contract_call.py',
     'sidechain_sendtobranchchain.py',
     'sidechain_setup.py',
-    'sidechain_rpcs.py'
-    'sidechain_redeem.py'
+    'sidechain_rpcs.py',
+    'sidechain_redeem.py',
     # vv Tests less than 5m vv
     # 'p2p-fullblocktest.py',not work
     'fundrawtransaction.py',#pass
