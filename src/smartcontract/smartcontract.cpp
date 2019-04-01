@@ -4,25 +4,23 @@
 
 #include "smartcontract/smartcontract.h"
 #include "coding/base58.h"
+#include "consensus/consensus.h"
+#include "consensus/merkle.h"
+#include "mining/miner.h"
+#include "policy/policy.h"
 #include "script/standard.h"
 #include "transaction/txmempool.h"
 #include "univalue.h"
-#include "validation/validation.h" //for mempool access
-#include "wallet/wallet.h"
 #include "utils/util.h"
-#include "wallet/rpcwallet.h"
-#include "consensus/consensus.h"
-#include "wallet/rpcwallet.h"
+#include "validation/validation.h" //for mempool access
 #include "wallet/coincontrol.h"
-#include "univalue.h"
-#include "mining/miner.h"
-#include "consensus/merkle.h"
-#include "policy/policy.h"
+#include "wallet/rpcwallet.h"
+#include "wallet/wallet.h"
 
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
-#include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filtering_stream.hpp>
 
 static const char* initscript = "                                               \n\
 local function createSafeEnv()                                                  \n\
@@ -195,14 +193,13 @@ bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaCha
         senderAddr.SetString(strSenderAddr);
         senderAddr.GetKeyID(key);
         ret = pWallet->HaveKey(key);
-    }
-    else {
+    } else {
         if (pWallet->_senderAddr.IsValid()) {
             senderAddr = pWallet->_senderAddr;
             senderAddr.GetKeyID(key);
             ret = pWallet->HaveKey(key);
         }
-        
+
         if (!ret && GenerateContractSender(pWallet, senderAddr)) {
             senderAddr.GetKeyID(key);
             ret = pWallet->HaveKey(key);
@@ -240,9 +237,8 @@ MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress&
         if (!pWallet->GetKeyFromPool(newKey))
             throw std::runtime_error(strprintf("%s:%d Keypool ran out, please call keypoolrefill first", __FILE__, __LINE__));
         ss << newKey.GetID();
-    }
-    else {
-        // sdk用户没有钱包在本地 
+    } else {
+        // sdk用户没有钱包在本地
         ss << GetTimeMillis();
         ss << (int64_t)(&senderAddr); // get random value by address point
     }
@@ -304,8 +300,7 @@ std::string TrimCode(const std::string& rawCode)
                     symbol = 0;
                 else
                     symbol = line[pos];
-            }
-            else if (symbol != 0 && line[pos] == '\\')
+            } else if (symbol != 0 && line[pos] == '\\')
                 ++pos;
             else if (symbol == 0 && line[pos] == '-' && pos + 1 < len && line[pos + 1] == '-') {
                 if (pos + 3 < len) {
@@ -313,14 +308,11 @@ std::string TrimCode(const std::string& rawCode)
                         if (++leftCount == 1)
                             start = pos;
                         pos += 3;
-                    }
-                    else if (leftCount == 0)
+                    } else if (leftCount == 0)
                         line = line.replace(pos, len - pos, "");
-                }
-                else if (leftCount == 0)
+                } else if (leftCount == 0)
                     line = line.replace(pos, len - pos, "");
-            }
-            else if (leftCount > 0 && line[pos] == ']' && pos + 1 < len && line[pos + 1] == ']') {
+            } else if (leftCount > 0 && line[pos] == ']' && pos + 1 < len && line[pos + 1] == ']') {
                 if (--leftCount == 0)
                     line = line.replace(start, pos - start + 4, " ");
                 pos = start;
@@ -351,8 +343,7 @@ std::string TrimCode(const std::string& rawCode)
                     codeOut += line[k];
                     ++k;
                     continue;
-                }
-                else if (symbol2 != 0 && line[k] == '\\') {
+                } else if (symbol2 != 0 && line[k] == '\\') {
                     codeOut += line[k];
                     if (k + 1 <= j)
                         codeOut += line[++k];
@@ -367,14 +358,11 @@ std::string TrimCode(const std::string& rawCode)
                                 if (line[k] != ' ' && line[k] != '\t')
                                     break;
                             }
-                        }
-                        else
+                        } else
                             ++k;
-                    }
-                    else
+                    } else
                         ++k;
-                }
-                else {
+                } else {
                     codeOut += line[k];
                     ++k;
                 }
@@ -421,8 +409,7 @@ bool static PublishContract(lua_State* L, std::string& rawCode, long& maxCallNum
         size_t cl = 0;
         temp = lua_tolstring(L, top + 3, &cl);
         rawCode.assign(temp, cl);
-    }
-    else {
+    } else {
         const char* err = lua_tostring(L, -1);
         if (err != nullptr) {
             ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
@@ -508,7 +495,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
         wtx.pContractData->codeOrFunc = trimRawCode;
         wtx.pContractData->sender = senderPubKey;
         wtx.pContractData->address = contractId;
-        wtx.pContractData->amountOut = 0;
+        wtx.pContractData->contractCoinsOut.clear();
 
         bool subtractFeeFromAmount = false;
         MCCoinControl coinCtrl;
@@ -524,8 +511,7 @@ bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& s
     return success;
 }
 
-bool static CallContract(lua_State* L, const std::string& rawCode, const std::string& data, 
-    const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
+bool static CallContract(lua_State* L, const std::string& rawCode, const std::string& data, const std::string& strFuncName, const UniValue& args, long& maxCallNum, std::string& dataout, UniValue& ret)
 {
     const std::string& code = DecompressCode(rawCode);
 
@@ -537,8 +523,7 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
     lua_pushlstring(L, code.c_str(), code.size());
     if (data.size() > 0) {
         lua_pushlstring(L, data.c_str(), data.size());
-    }
-    else {
+    } else {
         lua_pushnil(L);
     }
     lua_pushstring(L, strFuncName.c_str());
@@ -563,7 +548,7 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
         }
         argc++;
     }
-    
+
     int result = lua_pcall(L, argc, LUA_MULTRET, 0);
     bool success = ((result == 0) && (lua_toboolean(L, top + 1) != 0));
     if (success) {
@@ -581,8 +566,7 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
             case LUA_TBOOLEAN:
                 ret.push_back(UniValue((bool)lua_toboolean(L, i)));
                 break;
-            case LUA_TSTRING:
-            {
+            case LUA_TSTRING: {
                 size_t sl = 0;
                 const char* sv = lua_tolstring(L, i, &sl);
                 ret.push_back(std::string(sv, sl));
@@ -593,8 +577,7 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
                 break;
             }
         }
-    }
-    else {
+    } else {
         const char* err = lua_tostring(L, -1);
         if (err != nullptr) {
             ret.push_back(strprintf("%s error: %s", __FUNCTION__, err));
@@ -606,14 +589,13 @@ bool static CallContract(lua_State* L, const std::string& rawCode, const std::st
     return success;
 }
 
-bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, 
-    const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
+bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, long& maxCallNum, UniValue& ret)
 {
     if (amount < 0) {
         throw std::runtime_error(strprintf("%s amount < 0", __FUNCTION__));
     }
 
-    if (args.size() > 12){
+    if (args.size() > 12) {
         throw std::runtime_error("Too many args in lua function, max num is 12");
     }
 
@@ -621,6 +603,7 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
     if (!sls->GetContractInfo(contractId, contractInfo)) {
+        LogPrintf("%s:%d GetContractInfo fail %s %s\n", __FUNCTION__, __LINE__, contractId.ToString(), contractAddr.ToString());
         throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
     }
 
@@ -655,8 +638,7 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
     return success;
 }
 
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, 
-    const std::string& strFuncName, const UniValue& args, UniValue& ret)
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, UniValue& ret)
 {
     MCContractID contractID;
     if (!contractAddr.GetContractID(contractID)) {
@@ -763,27 +745,30 @@ int static SendCoins(lua_State* L)
         throw std::runtime_error(strprintf("%s => amount(%d) out of range", __FUNCTION__, amount));
     }
 
-    if (sls->pCoinAmountCache == nullptr)
+    if (sls->pCoinAmountCache == nullptr) {
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
+    }
 
-    std::string strDest = lua_tostring(L, 1);
+    std::string strDest(lua_tostring(L, 1));
     MagnaChainAddress kDest(strDest);
-    if (kDest.IsContractID() || !kDest.IsValid())
+    if (kDest.IsContractID() || !kDest.IsValid()) {
         throw std::runtime_error(strprintf("%s => Invalid destination address", __FUNCTION__));
+    }
 
-
-    MCContractID contractID;
-    sls->contractAddrs[0].GetContractID(contractID);
-    MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractID);
-    if (sls->contractOut + amount > totalAmount)
+    MCContractID contractId;
+    sls->contractAddrs[sls->contractAddrs.size() - 1].GetContractID(contractId);
+    MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractId);
+    MCAmount coinsOut = sls->GetContractCoinOut(contractId);
+    if (coinsOut + amount > totalAmount) {
         throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, sls->contractAddrs[0].ToString()));
+    }
 
     MCTxOut out;
     out.nValue = amount;
     out.scriptPubKey = GetScriptForDestination(kDest.Get());
 
     sls->recipients.emplace_back(out);
-    sls->contractOut += amount;
+    sls->AddContractCoinsOut(contractId, amount);
 
     lua_pushboolean(L, true);
     return 1;
@@ -815,8 +800,7 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr)
         L = luaStates.back();
         luaStates.pop();
         lua_settop(L, 0);
-    }
-    else {
+    } else {
         L = lua_open();
         if (L == nullptr) {
             error("cannot create state: not enough memory\n");
@@ -861,7 +845,6 @@ void SmartLuaState::Clear()
     timestamp = 0;
     blockHeight = -1;
     txIndex = -1;
-    contractOut = 0;
     runningTimes = 0;
     deltaDataLen = 0;
     codeLen = 0;
@@ -873,6 +856,7 @@ void SmartLuaState::Clear()
     contractIds.clear();
     contractAddrs.clear();
     contractDataFrom.clear();
+    contractCoinsOut.clear();
 }
 
 void SmartLuaState::SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache)
@@ -901,6 +885,19 @@ bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo
     return true;
 }
 
+MCAmount SmartLuaState::GetContractCoinOut(const MCContractID& contractId)
+{
+    auto it = contractCoinsOut.find(contractId);
+    return (it == contractCoinsOut.end() ? 0 : it->second);
+}
+
+void SmartLuaState::AddContractCoinsOut(const MCContractID& contractId, MCAmount delta)
+{
+    assert(!contractId.IsNull() && delta > 0);
+    MCAmount value = GetContractCoinOut(contractId);
+    contractCoinsOut[contractId] = value + delta;
+}
+
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext)
 {
     const MCContractID& contractId = tx->pContractData->address;
@@ -918,27 +915,31 @@ bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex,
         sls->Initialize(true, blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
         if (!PublishContract(sls, contractAddr, rawCode, ret, true))
             return false;
-    }
-    else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+    } else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         const std::string& strFuncName = tx->pContractData->codeOrFunc;
         UniValue args;
         args.read(tx->pContractData->args);
 
         sls->Initialize(false, blockTime, blockHeight, txIndex, senderAddr, pContractContext, pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, &coinAmountCache);
-        if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->amountOut != sls->contractOut)
+        if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->contractCoinsOut != sls->contractCoinsOut)
             return false;
 
-        if (tx->pContractData->amountOut > 0 && sls->recipients.size() == 0)
+        if (tx->pContractData->contractCoinsOut.size() > 0 && sls->recipients.size() == 0)
             return false;
 
-        MCAmount total = 0;
+        MCAmount totalSend = 0;
+        for (auto& it : tx->pContractData->contractCoinsOut) {
+            totalSend += it.second;
+        }
+
+        MCAmount totalRecv = 0;
         for (int j = 0; j < sls->recipients.size(); ++j) {
             if (!tx->IsExistVout(sls->recipients[j]))
                 return false;
-            total += sls->recipients[j].nValue;
+            totalRecv += sls->recipients[j].nValue;
         }
 
-        if (total != tx->pContractData->amountOut) {
+        if (totalSend != totalRecv) {
             return false;
         }
 
@@ -1014,7 +1015,7 @@ bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, con
     return true;
 }
 
-uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool*mutated)
+uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool* mutated)
 {
     std::vector<uint256> leaves;
     if (!VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, leaves)) {

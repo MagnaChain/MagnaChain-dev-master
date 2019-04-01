@@ -57,14 +57,11 @@ public:
 class MCContractID;
 typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
 
-class ContractTxFinalData
+struct ContractTxFinalData
 {
 public:
-    MCAmount coins;
+    std::map<MCContractID, MCAmount> contractCoins;
     CONTRACT_DATA data;
-
-public:
-    ContractTxFinalData() : coins(0) {}
 };
 
 class ContractContext

@@ -318,11 +318,21 @@ void PruneAndFlush();
 /** Prune block files up to a given height */
 void PruneBlockFilesManual(int nManualPruneHeight);
 
+// int* pNMissingInputs return value
+enum eMissingInputTypes
+{
+    eOk = 0,
+    eMissingInputs = 1 << 0,
+    eMissingBranchPreHeadTx = 1 << 1, 
+};
+
 /** (try to) add transaction to memory pool
  * plTxnReplaced will be appended to with all transactions replaced from mempool **/
-bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, std::list<MCTransactionRef>* plTxnReplaced = nullptr, bool fOverrideMempoolLimit = false, const MCAmount nAbsurdFee = 0, bool executeSmartContract = true);
+bool AcceptToMemoryPool(MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, int* pNMissingInputs,
+    std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, bool executeSmartContract, uint64_t order);
 
-bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, bool fLimitFree, bool* pfMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee);
+bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMemPool& pool, MCValidationState& state, const MCTransactionRef& tx, 
+    bool fLimitFree, int* pNMissingInputs, int64_t nAcceptTime, std::list<MCTransactionRef>* plTxnReplaced, bool fOverrideMempoolLimit, const MCAmount nAbsurdFee, uint64_t order);
 
 /** Convert MCValidationState to a human-readable message for logging */
 std::string FormatStateMessage(const MCValidationState& state);
@@ -338,7 +348,7 @@ int VersionBitsTipStateSinceHeight(const Consensus::Params& params, Consensus::D
 
 
 /** Apply the effects of this transaction on the UTXO set represented by view */
-void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, int nHeight);
+void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, int nHeight, bool ismempoolchecking);
 
 /** Transaction validation functions */
 
@@ -425,7 +435,8 @@ bool ReadBlockFromDisk(MCBlock& block, const MCBlockIndex* pindex, const Consens
 /** Functions for validating blocks and updating the block tree */
 
 /** Context-independent validity checks */
-bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, bool fCheckPOW = true, bool fCheckMerkleRoot = true, bool fVerifingDB = false);
+bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, 
+    bool fCheckPOW, bool fCheckMerkleRoot, bool fVerifingDB, MCCoinsViewCache* pCoins);
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams);
 
 /** Check a block is completely valid from start to finish (only works on top of our current best block, with cs_main held) */

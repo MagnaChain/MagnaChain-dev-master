@@ -30,7 +30,7 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     }
 
     // ********************************************************* Step 4a: application initialization
-#ifndef WIN32
+#ifndef _WIN32
     CreatePidFile(GetPidFile(), getpid());
 #endif
     if (gArgs.GetBoolArg("-shrinkdebugfile", logCategories == BCLog::NONE)) {

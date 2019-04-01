@@ -282,7 +282,12 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
             contractdata.pushKV("codeOrFunc", tx.pContractData->codeOrFunc);
         contractdata.pushKV("args", tx.pContractData->args);
-        contractdata.pushKV("amountout", tx.pContractData->amountOut);
+
+        UniValue contractCoinsOut(UniValue::VOBJ);
+        for (auto it : tx.pContractData->contractCoinsOut) {
+            contractCoinsOut.pushKV(it.first.ToString(), it.second);
+        }
+        contractdata.pushKV("amountout", contractCoinsOut);
 
         UniValue o(UniValue::VOBJ);
         o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));
@@ -304,8 +309,11 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
 	if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
 	{
 		entry.pushKV("fromBranchId", tx.fromBranchId);
-	//	entry.pushKV("fromTx", tx.fromTx);
 		entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+        MCTransactionRef pfromtx;
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pfromtx);
+        entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
 	}
     if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO){
         entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());

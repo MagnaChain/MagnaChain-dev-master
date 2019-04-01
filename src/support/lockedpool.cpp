@@ -193,7 +193,7 @@ size_t Win32LockedPageAllocator::GetLimit()
 /*******************************************************************************/
 // Implementation: PosixLockedPageAllocator
 
-#ifndef WIN32
+#ifndef _WIN32
 /** LockedPageAllocator specialized for OSes that don't try to be
  * special snowflakes.
  */

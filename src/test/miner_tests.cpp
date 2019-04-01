@@ -251,8 +251,8 @@ BOOST_AUTO_TEST_CASE(CreateNewBlock_validity_need_rewrite)
         
         //pblock->nNonce = blockinfo[i].nonce;
         uint256 hash;
-        extern uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash);
-        pblock->nNonce = GetBlockWork(*pblock, pblock->prevoutStake, hash);
+        extern uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins);
+        pblock->nNonce = GetBlockWork(*pblock, pblock->prevoutStake, hash, pcoinsTip);
         int nHeight = chainActive.Height() + 1;
         MCMutableTransaction kSignTx(*pblock->vtx[0]);
         MCAmount nReward = GetBlockSubsidy(nHeight, chainparams.GetConsensus());

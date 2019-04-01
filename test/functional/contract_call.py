@@ -227,6 +227,9 @@ class ContractCallTest(MagnaChainTestFramework):
         cb_id = node.publishcontract(contract)["contractaddress"]
         cc_id = node.publishcontract(contract)["contractaddress"]
         caller_b = caller_factory(self, cb_id, sender)
+        caller_c = caller_factory(self, cc_id, sender)
+        caller_b("payable",1000)
+        caller_c("payable", 1000)
         node.generate(nblocks=1)
 
         # step2  a->b->c->a(send will be call in last a)
@@ -311,11 +314,17 @@ class ContractCallTest(MagnaChainTestFramework):
                 caller_last(CYCLE_CALL, last_id, "dustChangeTest",to,amount=0)
                 caller_last(CYCLE_CALL, last_id, "addWithdrawList",to,amount=0)
                 # caller_last(CYCLE_CALL, last_id, "batchSendTest",amount=0)
-                if random.randint(1,100) > 70:
+                if random.randint(1,100) > 40:
+                    if node.getmempoolinfo()['size'] >20:
+                        print("mempoolsize: {}".format(node.getmempoolinfo()['size']))
+                        print(node.getrawmempool())
                     node.generate(nblocks=1)
                 else:
-                    if i % 30 == 0:
+                    if node.getmempoolinfo()['size'] >28:
+                        print("trigger size limit mempoolsize: {}".format(node.getmempoolinfo()['size']))
+                        print(node.getrawmempool())
                         node.generate(nblocks=1)
+        assert False
 
     def test_double_spend(self,mineblock = True):
         self.log.info("test double spend")

@@ -1059,7 +1059,7 @@ void TransactionExtraFields(S &s, const MCTransaction& txTo){
         ::Serialize(s, txTo.pContractData->sender);
         ::Serialize(s, txTo.pContractData->codeOrFunc);
         ::Serialize(s, txTo.pContractData->args);
-        ::Serialize(s, txTo.pContractData->amountOut);
+        ::Serialize(s, txTo.pContractData->contractCoinsOut);
 	}
     else if (txTo.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
     {

@@ -34,8 +34,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 2
-        # self.extra_args = [['-txindex']]
+        self.extra_args = [['-txindex'],['-txindex']]
         # self.side_extra_args = [['-txindex']]
+        # self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
@@ -47,13 +48,6 @@ class SendToBranchchainTest(MagnaChainTestFramework):
     def run_test(self):
         """Main test logic"""
         self.sync_all([self.sidenodes])
-        for i, node in enumerate(self.nodes):
-            # for convenient
-            setattr(self, 'node' + str(i), node)
-
-        for i, node in enumerate(self.sidenodes):
-            # for convenient
-            setattr(self, 'snode' + str(i), node)
 
         for i in range(2):
             self.sidenodes[i].generate(2)
@@ -71,6 +65,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.test_makebranchtransaction()
         self.test_mortgageminebranch()
         self.test_rebroadcastchaintransaction()
+        self.test_rebroadcastchaintransaction(gen_blocks=True)
         self.test_resendbranchchainblockinfo()
         self.test_submitbranchblockinfo()
         self.test_invalidateblock()
@@ -97,7 +92,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
     def test_getbranchchaininfo(self):
         self.log.info(sys._getframe().f_code.co_name)
-        tmp = ret = self.node0.getallbranchinfo()[0]
+        tmp = self.node0.getallbranchinfo()[0]
         ret = self.node0.getbranchchaininfo(self.sidechain_id)
         print(ret)
         assert_equal(tmp['txid'], ret['txid'])
@@ -105,7 +100,6 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(tmp['seedspec6'], ret['seedspec6'])
 
     def test_getbranchchaintransaction(self):
-        self.log.info(sys._getframe().f_code.co_name)
         self.log.info(sys._getframe().f_code.co_name)
         txid = self.node0.getbranchchaininfo(self.sidechain_id)['txid']
         assert_raises_rpc_error(-25, "Invalid branch transaction.", self.node0.getbranchchaintransaction, txid)
@@ -172,9 +166,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.node0.mortgageminebranch(self.sidechain_id, 10000, self.snode0.getnewaddress())
         
 
-    def test_rebroadcastchaintransaction(self):
+    def test_rebroadcastchaintransaction(self,gen_blocks = False):
         # to sidechain
-        self.log.info(sys._getframe().f_code.co_name)
+        self.log.info(sys._getframe().f_code.co_name + "\t" + str(gen_blocks))
+        if gen_blocks:
+            self.node0.generate(8) #todo 需要注释看一下,这个应该没什么关系的
         self.snode0.generate(2)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.node0.sendtoaddress(self.node0.getnewaddress(), 1)
@@ -190,12 +186,13 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_raises_rpc_error(-25, 'can not broadcast because no enough confirmations',
                                 self.node0.rebroadcastchaintransaction, txid)
         self.node0.generate(7)
-        assert_equal(len(self.snode0.getrawmempool()), 1)  # here we are
+        assert_equal(len(self.snode0.getrawmempool()), 1 if gen_blocks else 3)  # here we are
         txs = self.snode0.getrawmempool(True)
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
-        assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.node0.rebroadcastchaintransaction, txid)
-        self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
+        assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.node0.rebroadcastchaintransaction, txid)
+        if gen_blocks:
+            self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
         self.node0.generate(2)
@@ -208,7 +205,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.node0.generate(1)
         self.snode0.generate(1)
         assert_equal(len(self.node0.getrawmempool()), 2)  # here we are,one for header,one for transaction
-        assert_raises_rpc_error(-25, 'txn-already-in-mempool', self.snode0.rebroadcastchaintransaction, txid)
+        assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.snode0.rebroadcastchaintransaction, txid)
         self.node0.generate(1)
         assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid)
 
@@ -257,11 +254,12 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         :return:
         '''
         self.log.info(sys._getframe().f_code.co_name)
+        self.log.info("snode0 mortgage coins num {}".format(len(self.snode0.listmortgagecoins())))
         self.snode0.generate(1)
         assert_equal(self.snode0.getrawmempool(),[])
         hash = self.snode0.getbestblockhash()
         block_height = self.snode0.getblockcount()
-        self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
+        # self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
         addr = self.snode0.getnewaddress()
         txid1 = self.snode0.sendtoaddress(addr,10)
         txid2 = self.snode0.sendtobranchchain('main',self.node0.getnewaddress(),10)['txid']
@@ -269,8 +267,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.node0.generate(1)
         self.snode0.generate(3)
         bad_hash = self.snode0.getblockhash(block_height + 1)
+        before_work = int(self.snode0.getchaintipwork(), 16)
+        before_height = self.snode0.getblockcount()
+        before_besthash = self.snode0.getbestblockhash()
         self.snode0.invalidateblock(bad_hash)
-        self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
+        # self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
         new_height = self.snode0.getblockcount()
         new_hash = self.snode0.getbestblockhash()
         if (new_height != block_height or new_hash != hash):
@@ -281,13 +282,24 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.snode0.generate(7)
         assert_equal(self.snode0.getblockcount(),new_height + 7)
         self.node0.generate(1)
-        # self.snode0.rebroadcastchaintransaction(txid2)
-        self.snode0.generate(8)
+        for i in range(3):
+            self.snode0.generate(8)
         self.node0.generate(1)
         self.test_getbranchchainheight()
-        self.snode0.rebroadcastchaintransaction(txid2)
+        assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
         self.test_getbranchchainheight()
+        self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
         # todo: we need reconsiderblock previous tip
+        besthash = self.snode0.getbestblockhash()
+        block_height = self.snode0.getblockcount()
+        self.snode0.reconsiderblock(bad_hash)
+        if int(self.snode0.getchaintipwork(), 16) <= before_work:
+            assert_equal(self.snode0.getblockcount(), before_height)
+            assert_equal(self.snode0.getbestblockhash(),before_besthash)
+        else:
+            assert_equal(self.snode0.getblockcount(), block_height)
+            assert_equal(self.snode0.getbestblockhash(),besthash)
+
 
 
 

@@ -16,7 +16,7 @@
 #include "utils/utilstrencodings.h"
 #include "misc/version.h"
 #include "univalue.h"
-
+#include "validation/validation.h"
 #include <iostream>
 
 #include <boost/test/unit_test.hpp>
@@ -198,7 +198,8 @@ BOOST_AUTO_TEST_CASE(sighash_from_data)
           stream >> tx;
 
           MCValidationState state;
-          BOOST_REQUIRE_MESSAGE(CheckTransaction(*tx, state), strTest);
+          MCCoinsViewCache tempview(pcoinsTip);
+          BOOST_REQUIRE_MESSAGE(CheckTransaction(*tx, state, true, nullptr, nullptr, false, nullptr, &tempview, nullptr), strTest);
           BOOST_REQUIRE(state.IsValid());
 
           std::vector<unsigned char> raw = ParseHex(raw_script);

@@ -7,7 +7,7 @@
 #define MAGNACHAIN_QT_NOTIFICATOR_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/magnachain-config.h"
+#include "magnachain-config.h"
 #endif
 
 #include <QIcon>

@@ -75,8 +75,12 @@ struct MCOrphanTx {
     NodeId fromPeer;
     int64_t nTimeExpire;  
 };
-std::map<uint256, MCOrphanTx> mapOrphanTransactions GUARDED_BY(cs_main);
-std::map<MCOutPoint, std::set<std::map<uint256, MCOrphanTx>::iterator, IteratorComparator>> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
+
+typedef std::map<uint256, MCOrphanTx> MAP_ORPHAN_TX;
+typedef std::set<MAP_ORPHAN_TX::iterator, IteratorComparator> SET_MAP_ORPHAN_ITER;
+MAP_ORPHAN_TX mapOrphanTransactions GUARDED_BY(cs_main);
+std::map<MCOutPoint, SET_MAP_ORPHAN_ITER> mapOrphanTransactionsByPrev GUARDED_BY(cs_main);
+std::map<uint256, SET_MAP_ORPHAN_ITER> mapOrphanTxBranchPrevHeader GUARDED_BY(cs_main);// <branch pre-header hash, iterator>
 void EraseOrphansFor(NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main);
 
 static size_t vExtraTxnForCompactIt = 0;
@@ -528,7 +532,7 @@ void AddToCompactExtraTransactions(const MCTransactionRef& tx)
     vExtraTxnForCompactIt = (vExtraTxnForCompactIt + 1) % max_extra_txn;
 }
 
-bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
+bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer, int nMissingInputs) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
 {
     const uint256& hash = tx->GetHash();
     if (mapOrphanTransactions.count(hash))
@@ -550,14 +554,21 @@ bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer) EXCLUSIVE_LOCKS_REQUIR
 
     auto ret = mapOrphanTransactions.emplace(hash, MCOrphanTx{tx, peer, GetTime() + ORPHAN_TX_EXPIRE_TIME});
     assert(ret.second);
-    for (const MCTxIn& txin : tx->vin) {
-        mapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
+    if (nMissingInputs & eMissingInputTypes::eMissingInputs){
+        for (const MCTxIn& txin : tx->vin) {
+            mapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
+        }
+    }
+    if (nMissingInputs & eMissingInputTypes::eMissingBranchPreHeadTx){
+        if (tx->IsSyncBranchInfo()){
+            mapOrphanTxBranchPrevHeader[tx->pBranchBlockData->hashPrevBlock].insert(ret.first);
+        }
     }
 
     AddToCompactExtraTransactions(tx);
 
-    LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u)\n", hash.ToString(),
-             mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size());
+    LogPrint(BCLog::MEMPOOL, "stored orphan tx %s (mapsz %u outsz %u prevhsz %u)\n", hash.ToString(),
+             mapOrphanTransactions.size(), mapOrphanTransactionsByPrev.size(), mapOrphanTxBranchPrevHeader.size());
     return true;
 }
 
@@ -574,6 +585,15 @@ int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         itPrev->second.erase(it);
         if (itPrev->second.empty())
             mapOrphanTransactionsByPrev.erase(itPrev);
+    }
+    if (it->second.tx->IsSyncBranchInfo()){
+        auto itPrevH = mapOrphanTxBranchPrevHeader.find(it->second.tx->pBranchBlockData->hashPrevBlock);
+        if (itPrevH != mapOrphanTxBranchPrevHeader.end()) {
+            itPrevH->second.erase(it);
+            if (itPrevH->second.empty()){
+                mapOrphanTxBranchPrevHeader.erase(itPrevH);
+            }
+        }
     }
     mapOrphanTransactions.erase(it);
     return 1;
@@ -693,6 +713,16 @@ void PeerLogicValidation::BlockConnected(const std::shared_ptr<const MCBlock>& p
                 const MCTransaction& orphanTx = *(*mi)->second.tx;
                 const uint256& orphanHash = orphanTx.GetHash();
                 vOrphanErase.push_back(orphanHash);
+            }
+        }
+        if (ptx->IsSyncBranchInfo()){
+            auto itPrevH = mapOrphanTxBranchPrevHeader.find(ptx->pBranchBlockData->hashPrevBlock);
+            if (itPrevH != mapOrphanTxBranchPrevHeader.end()){
+                for (auto mi = itPrevH->second.begin(); mi != itPrevH->second.end(); ++mi) {
+                    const MCTransaction& orphanTx = *(*mi)->second.tx;
+                    const uint256& orphanHash = orphanTx.GetHash();
+                    vOrphanErase.push_back(orphanHash);
+                }
             }
         }
     }
@@ -1729,7 +1759,6 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         LOCK(cs_main);
 
         uint32_t nFetchFlags = GetFetchFlags(pfrom);
-
         for (MCInv &inv : vInv)
         {
             if (interruptMsgProc)
@@ -1971,6 +2000,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         }
 
         std::deque<MCOutPoint> vWorkQueue;
+        std::deque<uint256> vWorkQueuePreHead;
         std::vector<uint256> vEraseQueue;
         MCTransactionRef ptx;
         vRecv >> ptx;
@@ -1981,7 +2011,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
         LOCK(cs_main);
 
-        bool fMissingInputs = false;
+        int nMissingInputs = eMissingInputTypes::eOk;
         MCValidationState state;
 
         pfrom->setAskFor.erase(inv.hash);
@@ -1989,11 +2019,16 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
         std::list<MCTransactionRef> lRemovedTxn;
 
-        if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &fMissingInputs, &lRemovedTxn)) {
+        if (!AlreadyHave(inv) && AcceptToMemoryPool(mempool, state, ptx, true, &nMissingInputs, &lRemovedTxn, false, 0, true, 0)) {
             mempool.Check(pcoinsTip);
             RelayTransaction(tx, connman);
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 vWorkQueue.emplace_back(inv.hash, i);
+            }
+            if (tx.IsSyncBranchInfo()) {
+                MCBlockHeader blockheader;
+                tx.pBranchBlockData->GetBlockHeader(blockheader);
+                vWorkQueuePreHead.emplace_back(blockheader.GetHash());
             }
 
             pfrom->nLastTXTime = GetTime();
@@ -2005,37 +2040,50 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
 
             // Recursively process any orphan transactions that depended on this one
             std::set<NodeId> setMisbehaving;
-            while (!vWorkQueue.empty()) {
-                auto itByPrev = mapOrphanTransactionsByPrev.find(vWorkQueue.front());
-                vWorkQueue.pop_front();
-                if (itByPrev == mapOrphanTransactionsByPrev.end())
-                    continue;
-                for (auto mi = itByPrev->second.begin();
-                     mi != itByPrev->second.end();
+            while (!vWorkQueue.empty() || !vWorkQueuePreHead.empty()) {
+                SET_MAP_ORPHAN_ITER* pSet = nullptr;
+                if (!vWorkQueue.empty()) {
+                    auto itByPrev = mapOrphanTransactionsByPrev.find(vWorkQueue.front());
+                    vWorkQueue.pop_front();
+                    if (itByPrev == mapOrphanTransactionsByPrev.end())
+                        continue;
+                    pSet = &itByPrev->second;
+                }
+                else if (!vWorkQueuePreHead.empty()) {
+                    auto itByPrevH = mapOrphanTxBranchPrevHeader.find(vWorkQueuePreHead.front());
+                    vWorkQueuePreHead.pop_front();
+                    if (itByPrevH == mapOrphanTxBranchPrevHeader.end())
+                        continue;
+                    pSet = &itByPrevH->second;
+                }
+                if (pSet == nullptr) continue;// assert(pSet);
+                for (auto mi = pSet->begin();
+                     mi != pSet->end();
                      ++mi)
                 {
                     const MCTransactionRef& porphanTx = (*mi)->second.tx;
                     const MCTransaction& orphanTx = *porphanTx;
                     const uint256& orphanHash = orphanTx.GetHash();
                     NodeId fromPeer = (*mi)->second.fromPeer;
-                    bool fMissingInputs2 = false;
+                    int nMissingInputs2 = eMissingInputTypes::eOk;
                     // Use a dummy MCValidationState so someone can't setup nodes to counter-DoS based on orphan
                     // resolution (that is, feeding people an invalid transaction based on LegitTxX in order to get
                     // anyone relaying LegitTxX banned)
                     MCValidationState stateDummy;
-
-
                     if (setMisbehaving.count(fromPeer))
                         continue;
-                    if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &fMissingInputs2, &lRemovedTxn)) {
+                    if (AcceptToMemoryPool(mempool, stateDummy, porphanTx, true, &nMissingInputs2, &lRemovedTxn, false, 0, true, 0)) {
                         LogPrint(BCLog::MEMPOOL, "   accepted orphan tx %s\n", orphanHash.ToString());
                         RelayTransaction(orphanTx, connman);
                         for (unsigned int i = 0; i < orphanTx.vout.size(); i++) {
                             vWorkQueue.emplace_back(orphanHash, i);
                         }
+                        if (orphanTx.IsSyncBranchInfo()){
+                            vWorkQueuePreHead.emplace_back(orphanHash);
+                        }
                         vEraseQueue.push_back(orphanHash);
                     }
-                    else if (!fMissingInputs2)
+                    else if (!nMissingInputs2)
                     {
                         int nDos = 0;
                         if (stateDummy.IsInvalid(nDos) && nDos > 0)
@@ -2064,7 +2112,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             for (uint256 hash : vEraseQueue)
                 EraseOrphanTx(hash);
         }
-        else if (fMissingInputs)
+        else if (nMissingInputs)
         {
             bool fRejectedParents = false; // It may be the case that the orphans parents have all been rejected
             for (const MCTxIn& txin : tx.vin) {
@@ -2080,7 +2128,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                     pfrom->AddInventoryKnown(_inv);
                     if (!AlreadyHave(_inv)) pfrom->AskFor(_inv);
                 }
-                AddOrphanTx(ptx, pfrom->GetId());
+                AddOrphanTx(ptx, pfrom->GetId(), nMissingInputs);
 
                 // DoS prevention: do not allow mapOrphanTransactions to grow unbounded
                 unsigned int nMaxOrphanTx = (unsigned int)std::max((int64_t)0, gArgs.GetArg("-maxorphantx", DEFAULT_MAX_ORPHAN_TRANSACTIONS));
@@ -3291,7 +3339,12 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
             if (pto->nNextInvSend < nNow) {
                 fSendTrickle = true;
                 // Use half the delay for outbound peers, as there is less privacy concern for them.
-                pto->nNextInvSend = PoissonNextSend(nNow, INVENTORY_BROADCAST_INTERVAL >> !pto->fInbound);
+                if (pto->fInbound) {
+                    pto->nNextInvSend = PoissonNextSend(nNow, INVENTORY_BROADCAST_INTERVAL);
+                }
+                else {
+                    pto->nNextInvSend = PoissonNextSend(nNow, INVENTORY_BROADCAST_INTERVAL >> 1);
+                }
             }
 
             // Time to send but the peer has requested we not relay transactions.
@@ -3549,5 +3602,6 @@ public:
         // orphan transactions
         mapOrphanTransactions.clear();
         mapOrphanTransactionsByPrev.clear();
+        mapOrphanTxBranchPrevHeader.clear();
     }
 } instance_of_cnetprocessingcleanup;

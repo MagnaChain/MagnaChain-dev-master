@@ -19,7 +19,7 @@
 
 #include <atomic>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <fcntl.h>
 #endif
 

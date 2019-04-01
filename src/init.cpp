@@ -52,7 +52,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#ifndef WIN32
+#ifndef _WIN32
 #include <signal.h>
 #endif
 
@@ -227,8 +227,10 @@ void Shutdown()
         pcoinsTip = nullptr;
         delete mpContractDb;
         mpContractDb = nullptr;
-        delete pBranchChainTxRecordsDb;
-        pBranchChainTxRecordsDb = nullptr;
+        delete g_pBranchChainTxRecordsDb;
+        g_pBranchChainTxRecordsDb = nullptr;
+        delete g_pBranchTxRecordCache;
+        g_pBranchTxRecordCache = nullptr;
         delete pcoinscatcher;
         pcoinscatcher = nullptr;
         delete pcoinsdbview;
@@ -258,7 +260,7 @@ void Shutdown()
     }
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
     try {
         fs::remove(GetPidFile());
     } catch (const fs::filesystem_error& e) {
@@ -293,7 +295,7 @@ static void HandleSIGHUP(int)
     fReopenDebugLog = true;
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 static void registerSignalHandler(int signal, void (*handler)(int))
 {
     struct sigaction sa;
@@ -369,7 +371,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-blockreconstructionextratxn=<n>", strprintf(_("Extra transactions to keep in memory for compact block reconstructions (default: %u)"), DEFAULT_BLOCK_RECONSTRUCTION_EXTRA_TXN));
     strUsage += HelpMessageOpt("-par=<n>", strprintf(_("Set the number of script verification threads (%u to %d, 0 = auto, <0 = leave that many cores free, default: %d)"),
         -GetNumCores(), MAX_SCRIPTCHECK_THREADS, DEFAULT_SCRIPTCHECK_THREADS));
-#ifndef WIN32
+#ifndef _WIN32
     strUsage += HelpMessageOpt("-pid=<file>", strprintf(_("Specify pid file (default: %s)"), MAGNACHAIN_PID_FILENAME));
 #endif
     strUsage += HelpMessageOpt("-prune=<n>", strprintf(_("Reduce storage requirements by enabling pruning (deleting) of old blocks. This allows the pruneblockchain RPC to be called to delete specific blocks, and enables automatic pruning of old blocks if a target size in MiB is provided. This mode is incompatible with -txindex and -rescan. "
@@ -378,7 +380,7 @@ std::string HelpMessage(HelpMessageMode mode)
                                                  MIN_DISK_SPACE_FOR_BLOCK_FILES / 1024 / 1024));
     strUsage += HelpMessageOpt("-reindex-chainstate", _("Rebuild chain state from the currently indexed blocks"));
     strUsage += HelpMessageOpt("-reindex", _("Rebuild chain state and block index from the blk*.dat files on disk"));
-#ifndef WIN32
+#ifndef _WIN32
     strUsage += HelpMessageOpt("-sysperms", _("Create new files with system default permissions, instead of umask 077 (only effective with disabled wallet functionality)"));
 #endif
     strUsage += HelpMessageOpt("-txindex", strprintf(_("Maintain a full transaction index, used by the getrawtransaction rpc call (default: %u)"), DEFAULT_TXINDEX));
@@ -412,11 +414,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-torcontrol=<ip>:<port>", strprintf(_("Tor control port to use if onion listening enabled (default: %s)"), DEFAULT_TOR_CONTROL));
     strUsage += HelpMessageOpt("-torpassword=<pass>", _("Tor control port password (default: empty)"));
 #ifdef USE_UPNP
-#if USE_UPNP
     strUsage += HelpMessageOpt("-upnp", _("Use UPnP to map the listening port (default: 1 when listening and no -proxy)"));
 #else
     strUsage += HelpMessageOpt("-upnp", strprintf(_("Use UPnP to map the listening port (default: %u)"), 0));
-#endif
 #endif
     strUsage += HelpMessageOpt("-whitebind=<addr>", _("Bind to given address and whitelist peers connecting to it. Use [host]:port notation for IPv6"));
     strUsage += HelpMessageOpt("-whitelist=<IP address or network>", _("Whitelist peers connecting from the given IP address (e.g. 1.2.3.4) or CIDR notated network (e.g. 1.2.3.0/24). Can be specified multiple times.") +
@@ -882,7 +882,7 @@ bool AppInitBasicSetup()
     if (!SetupNetworking())
         return InitError("Initializing networking failed");
 
-#ifndef WIN32
+#ifndef _WIN32
     if (!gArgs.GetBoolArg("-sysperms", false)) {
         umask(077);
     }
@@ -1227,7 +1227,7 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
     const MCChainParams& chainparams = Params();
     // ********************************************************* Step 4a: application initialization
-#ifndef WIN32
+#ifndef _WIN32
     CreatePidFile(GetPidFile(), getpid());
 #endif
     if (gArgs.GetBoolArg("-shrinkdebugfile", logCategories == BCLog::NONE)) {
@@ -1435,7 +1435,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 UnloadBlockIndex();
                 delete pcoinsTip;
 				delete mpContractDb;
-				delete pBranchChainTxRecordsDb;
+				delete g_pBranchChainTxRecordsDb;
+                delete g_pBranchTxRecordCache;
                 delete pcoinsdbview;
                 delete pcoinscatcher;
                 delete pblocktree;
@@ -1497,7 +1498,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 pcoinsdbview = new MCCoinsViewDB(nCoinDBCache, false, fReset || fReindexChainState);
                 pcoinscatcher = new MCCoinsViewErrorCatcher(pcoinsdbview);
                 mpContractDb = new ContractDataDB(GetDataDir() / "contract", nCoinDBCache, false, fReset || fReindexChainState);
-                pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
+                g_pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", nCoinDBCache, false, fReset || fReindexChainState);
+                g_pBranchTxRecordCache = new BranchChainTxRecordsCache();
                 
                 // If necessary, upgrade from older database format.
                 // This is a no-op if we cleared the coinsviewdb with -reindex or -reindex-chainstate

@@ -201,7 +201,7 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCTransactionRef tx = iter->GetSharedTx();
-    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->amountOut > 0)) {
+    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->contractCoinsOut.size() > 0)) {
         if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
         pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
@@ -309,10 +309,8 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             else if (pblock->vtx[i] != nullptr){// coinbase is not init.
                 hash = pblock->vtx[i]->GetHash();
             }
-            //if (!hash.IsNull()){ //where to find coinbase hash ?
-                temp.emplace_back(std::make_pair(hash, i));
-                trans2group[hash] = groupId;
-            //}
+            temp.emplace_back(std::make_pair(hash, i));
+            trans2group[hash] = groupId;
         }
     }
 
@@ -320,20 +318,29 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     for (int i = offset; i < pblock->vtx.size(); ++i) {
         mergeGroups.clear();
         int groupId = nextGroupId;
-        const MCTransactionRef& tx = pblock->vtx[i];
+        const MCTransactionRef ptx = pblock->vtx[i];
 
-        if (trans2group.find(tx->GetHash()) != trans2group.end()) {
-            groupId = trans2group[tx->GetHash()];
+        if (trans2group.find(ptx->GetHash()) != trans2group.end()) {
+            groupId = trans2group[ptx->GetHash()];
+        }
+
+        std::set<uint256> parentHash;
+        for (int j = 0; j < ptx->vin.size(); ++j) {
+            const MCOutPoint& preOutPoint = ptx->vin[j].prevout;
+            if (!preOutPoint.hash.IsNull()) {
+                parentHash.insert(ptx->vin[j].prevout.hash);
+            }
+        }
+
+        if (ptx->IsSyncBranchInfo()) {
+            const uint256& hash = g_pBranchDataMemCache->GetParent(*ptx);
+            parentHash.insert(hash);
         }
 
         int lastGroupId = -1;
-        for (int j = 0; j < tx->vin.size(); ++j) {
-            const MCOutPoint& preOutPoint = tx->vin[j].prevout;
-            if (preOutPoint.hash.IsNull()) {
-                continue;
-            }
-            if (trans2group.find(preOutPoint.hash) != trans2group.end()) {
-                int preTransGroupId = trans2group[preOutPoint.hash];
+        for (const uint256& hash : parentHash) {
+            if (trans2group.find(hash) != trans2group.end()) {
+                int preTransGroupId = trans2group[hash];
                 groupId = std::min(preTransGroupId, groupId);
                 if (lastGroupId != -1) {
                     groupId = std::min(groupId, lastGroupId);
@@ -347,9 +354,9 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             }
             else if (lastGroupId == -1 || lastGroupId == groupId) {
                 // 输入不在区块中，标记该交易与当前groupid相同
-                trans2group[preOutPoint.hash] = groupId;
+                trans2group[hash] = groupId;
                 auto& temp = group2trans[groupId];
-                temp.emplace_back(std::make_pair(preOutPoint.hash, std::numeric_limits<int>::max()));
+                temp.emplace_back(std::make_pair(hash, std::numeric_limits<int>::max()));
             }
             else {
                 groupId = std::min(lastGroupId, groupId);
@@ -360,7 +367,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             lastGroupId = groupId;
         }
 
-        if (tx->IsSmartContract()) {
+        if (ptx->IsSmartContract()) {
             const MCTxMemPoolEntry* entry = blockTxEntries[i];
             int finalGroupId = groupId;
             for (auto& contractAddr : entry->contractData->contractAddrs) {
@@ -398,11 +405,11 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             group2trans.erase(item);
         }
 
-        des.emplace_back(std::make_pair(tx->GetHash(), i));
-        trans2group[tx->GetHash()] = groupId;
-        if (tx->IsSmartContract()) {
-            if (!tx->pContractData->address.IsNull()) {
-                contract2group[tx->pContractData->address] = groupId;
+        des.emplace_back(std::make_pair(ptx->GetHash(), i));
+        trans2group[ptx->GetHash()] = groupId;
+        if (ptx->IsSmartContract()) {
+            if (!ptx->pContractData->address.IsNull()) {
+                contract2group[ptx->pContractData->address] = groupId;
             }
         }
 
@@ -492,7 +499,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     assert(total == vtx.size());
 }
 
-MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)
+MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints)
 {
     if (mapBranchCoins.count(key) == 0) {
         CoinListPtr pcoinlist = pcoinListDb->GetList(key);
@@ -568,7 +575,7 @@ MCAmount MakeBranchTxUTXO::UseUTXO(uint160& key, MCAmount nAmount, std::vector<M
     return nValue;
 }
 
-bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey)
+bool MakeBranchTxUTXO::MakeTxUTXO(MCMutableTransaction& tx, const uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey)
 {
     std::vector<MCOutPoint> vInOutPoints;
     MCAmount nValue = UseUTXO(key, nAmount, vInOutPoints);
@@ -620,13 +627,17 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
         success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
-    if (newTx.IsSmartContract() && newTx.pContractData->amountOut > 0) {
-        MCContractID& contractId = newTx.pContractData->address;
-        MCScript contractScript = GetScriptForDestination(contractId);
-        MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
-
-        success = utxoMaker.MakeTxUTXO(newTx, contractId, newTx.pContractData->amountOut, contractScript, contractChangeScript);
-        keys.push_back(contractId);
+    if (newTx.IsSmartContract() && newTx.pContractData->contractCoinsOut.size() > 0) {
+        for (auto it : newTx.pContractData->contractCoinsOut) {
+            const MCContractID& contractId = it.first;
+            MCScript contractScript = GetScriptForDestination(contractId);
+            MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
+            success = utxoMaker.MakeTxUTXO(newTx, contractId, it.second, contractScript, contractChangeScript);
+            if (!success) {
+                break;
+            }
+            keys.push_back(it.first);
+        }
     }
 
     if (success) {
@@ -721,7 +732,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         // the SyncBranchInfo tx has two type ancestors and descendants: 1 coins relation. 2 branch block connect relation.
         // OP: can we move to ancestors?
         const MCTransactionRef& iterTx = iter->GetSharedTx();
-        if (iterTx->IsSyncBranchInfo()) {// 提交侧链头信息的前面block先进
+        if (iterTx->IsSyncBranchInfo()) {//one branch's header transactions should come to block vtx in order
             std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
             bool hasAncestorFailed = false;
             for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
@@ -816,7 +827,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             const MCTransactionRef& entryTx = entry->GetSharedTx();
 
             if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
-                (entryTx->IsSmartContract() && entryTx->pContractData->amountOut > 0)) {
+                (entryTx->IsSmartContract() && entryTx->pContractData->contractCoinsOut.size() > 0)) {
                 if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {
@@ -937,20 +948,17 @@ void static MagnaChainMiner(const MCChainParams& chainparams)
 			UniValue err = find_value(objError, "message");
 			LogPrintf(err.isStr() ? err.get_str().c_str() : "catch UniValue exception\n");
 		}
-		catch (const boost::thread_interrupted &e)
+		catch (const boost::thread_exception &e)
 		{
-			LogPrintf("MagnaChainMiner terminated for boost::thread_interrupted\n");
-            //throw;
+			LogPrintf("MagnaChainMiner terminated for boost::thread_interrupted: %s\n", e.what());
 		}
 		catch (const std::runtime_error &e)
 		{
 			LogPrintf("MagnaChainMiner runtime error: %s\n", e.what());
-			//return;
 		}
 		catch (const std::exception& e)
 		{
 			LogPrintf("MagnaChainMiner std::exception error: %s\n", e.what());
-			//return;
 		}
 	}
 }
@@ -1137,7 +1145,7 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 static uint256 guMaxWork = uint256S("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // 如有修改,同时也需修改 GetBlockHeaderWork
-uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash)
+uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins)
 {
 	block_hash  = guMaxWork;
 	BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
@@ -1175,7 +1183,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
     }
 	else {
 		Coin coin;
-		if (pcoinsTip->GetCoin(out, coin)) {
+		if (pCoins->GetCoin(out, coin)) {
             MCAmount v = coin.out.nValue;
 			// 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
 			int iHeight = coin.nHeight;
@@ -1295,7 +1303,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash);
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash, pcoinsTip); //TODO: should pcoinsTip use a CoinViewCache parameter to replace?
 
 	// check
 	bool fNegative;
@@ -1337,7 +1345,7 @@ inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const u
 ////---------------------------------------------------------
 //主链获取侧链头工作量
 //核心算法需要和 GetBlockWork 一致
-uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
+uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
     ///// get and check data
     const MCOutPoint& out = block.prevoutStake;
@@ -1352,7 +1360,7 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
     const MCAmount coinValue = ptx->vout[0].nValue;
 
     //挖矿币-找出抵押币并作相应验证
-    const Coin& fromCoin = pcoinsTip->AccessCoin(MCOutPoint(fromTxHash, 0));
+    const Coin& fromCoin = pCoins->AccessCoin(MCOutPoint(fromTxHash, 0));
     {
         if (fromCoin.IsSpent() || coinValue != fromCoin.out.nValue) 
             return 0;
@@ -1496,12 +1504,12 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
 ////---------------------------------------------------------
 //主链检查侧链头工作量
 //核心和 CheckBlockWork 相同
-bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache)
+bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
     const Consensus::Params& consensusParams = params.GetConsensus();
 
     uint256 hash;
-    uint32_t iAmount = GetBlockHeaderWork(block, hash, params, branchdata, pBranchCache);
+    uint32_t iAmount = GetBlockHeaderWork(block, hash, params, branchdata, pBranchCache, pCoins);
 
     // check
     bool fNegative;
@@ -1512,13 +1520,13 @@ bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& sta
 
     //// Check range
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensusParams.powLimit))
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, range check fail");;
 
     if (UintToArith256(hash) > bnTarget)
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, target check fail");;
 
     if (iAmount != block.nNonce)
-        return false;
+        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, nonce check fail");;
     return true;
 }
 
@@ -1706,12 +1714,15 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
 ////---------------------------------------------------------
 //主链上验证侧链
 bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData &branchdata, 
-    int64_t nAdjustedTime, BranchCache *pBranchCache)
+    int64_t nAdjustedTime, BranchCache *pBranchCache, int* pNMissingInputs)
 {
     const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-    if (pindexPrev == nullptr)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");
-
+    if (pindexPrev == nullptr) {
+        if (pNMissingInputs){
+            *pNMissingInputs = *pNMissingInputs | eMissingInputTypes::eMissingBranchPreHeadTx;
+        }
+        return state.DoS(0, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");// sync branch transaction maybe in disorder
+    }
     // Check proof of work
     arith_uint256 nBlockWork;
     bool fNegative;
@@ -2045,7 +2056,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
 	// 如果block work大于要求，将NBITS设为实际值
 	uint256 out_hash;
-	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash);
+	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache);
 	arith_uint256 bTarget;
 	bTarget.SetCompact(pblock->nBits);
 	if (UintToArith256(out_hash) < bTarget) 

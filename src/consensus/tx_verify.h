@@ -15,7 +15,7 @@ class MCCoinsViewCache;
 class MCTransaction;
 class MCValidationState;
 class MCKeyStore;
-class MCMutableTransaction;
+struct MCMutableTransaction;
 class MCScript;
 class MCBlock;
 class BranchCache;
@@ -23,8 +23,8 @@ class BranchCache;
 /** Transaction validation functions */
 
 /** Context-independent validity checks */
-bool CheckTransaction(const MCTransaction& tx, MCValidationState& state, bool fCheckDuplicateInputs=true, const MCBlock* pBlock=nullptr, 
-    const MCBlockIndex* pBlockIndex=nullptr, const bool fVerifingDB=false, BranchCache *pBranchCache=nullptr);
+bool CheckTransaction(const MCTransaction& tx, MCValidationState& state, bool fCheckDuplicateInputs, const MCBlock* pBlock, const MCBlockIndex* pBlockIndex, 
+    const bool fVerifingDB, BranchCache *pBranchCache, MCCoinsViewCache* pCoins, int* pNMissingInputs);
 bool CheckCoinbaseSignature( int nHeight, const MCTransaction& tx);
 bool SignatureCoinbaseTransaction( int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& tx, MCAmount nValue, const MCScript& scriptPubKey);
 

@@ -969,7 +969,7 @@ def generate_contract(folder, err_type=None):
     return file_path
 
 
-def caller_factory(mgr, contract_id, sender):
+def caller_factory(mgr, contract_id, sender,debug = False):
     '''
 
     :param mgr: the test_framework obj
@@ -982,11 +982,13 @@ def caller_factory(mgr, contract_id, sender):
     sender = sender
 
     def _call_contract(func, *args, amount=random.randint(1, 10000), throw_exception=False):
-        mgr.log.info("%s,%s,%s,%s,%s" % (contract_id, func, sender, amount, args))
+        if debug:
+            mgr.log.info("%s,%s,%s,%s,%s" % (contract_id, func, sender, amount, args))
         balance = node.getbalance()
         try:
             result = node.callcontract(True, amount, contract_id, sender, func, *args)
-            mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s" % (
+            if debug:
+                mgr.log.info("beforecall balance:%s,aftercall balance:%s,in amount:%s,total cost :%s" % (
             balance, node.getbalance(), amount, balance - node.getbalance() - amount))
             return result
         except Exception as e:

@@ -145,7 +145,7 @@ typedef std::map<uint256, std::vector<CoinReportInfo>> COIN_BE_REPORT;// [coinpr
 // 待整个过程没错后才把cache的数据写到数据库
 class BranchChainTxRecordsCache
 {
-public:
+private:
     //已创建的支链和发起跨链交易
     void AddBranchChainTxRecord(const MCTransactionRef& tx, const uint256& blockhash, uint32_t txindex);
     void DelBranchChainTxRecord(const MCTransactionRef& tx);
@@ -153,6 +153,12 @@ public:
     //已接收的跨链交易
     void AddBranchChainRecvTxRecord(const MCTransactionRef& tx, const uint256& blockhash);
     void DelBranchChainRecvTxRecord(const MCTransactionRef& tx);
+public:
+    void AddToCache(const MCTransactionRef& ptx, const uint256& blockhash, int blocktxindex);
+    void RemoveFromCache(const MCTransactionRef& ptx);
+
+    bool HasInCache(const MCTransaction& tx);
+    void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
 
     //锁币解锁
     /**
@@ -191,6 +197,7 @@ private:
     MCDBWrapper m_db;
     CREATE_BRANCH_TX_CONTAINER m_vCreatedBranchTxs;
 };
-extern BranchChainTxRecordsDb* pBranchChainTxRecordsDb;
+extern BranchChainTxRecordsDb* g_pBranchChainTxRecordsDb;
 
+extern BranchChainTxRecordsCache* g_pBranchTxRecordCache;
 #endif

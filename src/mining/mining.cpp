@@ -214,7 +214,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
                     continue;
                 }
                 else {
-                    if (pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
+                    if (g_pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
                         nTries++;
                         continue;
                     }
@@ -418,27 +418,29 @@ UniValue generate(const JSONRPCRequest& request)
         }
     }
 
-    if (num_generate <= 0)
-        return genBlockRet;
-
-    std::set<MCTxDestination> setAddress;
-    std::vector<MCOutput> vecOutputs;
+    int iTryTimes = 30;
+    while (num_generate > 0 && iTryTimes-- > 0)
     {
-        assert(pwallet != nullptr);
+        std::set<MCTxDestination> setAddress;
+        std::vector<MCOutput> vecOutputs;
+        {
+            assert(pwallet != nullptr);
 
-        LOCK2(cs_main, pwallet->cs_wallet);
-        EnsureWalletIsUnlocked(pwallet);
+            LOCK2(cs_main, pwallet->cs_wallet);
+            EnsureWalletIsUnlocked(pwallet);
 
-        if (Params().IsMainChain())
-            pwallet->AvailableCoins(vecOutputs, nullptr, false);
-        else
-            pwallet->AvailableMortgageCoins(vecOutputs, false);
+            if (Params().IsMainChain())
+                pwallet->AvailableCoins(vecOutputs, nullptr, false);
+            else
+                pwallet->AvailableMortgageCoins(vecOutputs, false);
 
-        std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
-    }
-    UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
-    if (genblocks.isArray()){
-        genBlockRet.push_backV(genblocks.getValues());
+            std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
+        }
+        UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+        if (genblocks.isArray()) {
+            num_generate -= genblocks.size();
+            genBlockRet.push_backV(genblocks.getValues());
+        }
     }
     return genBlockRet;
 }

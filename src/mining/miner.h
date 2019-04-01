@@ -149,8 +149,8 @@ public:
     typedef std::map<uint160, BranchUTXOCache> MAP_BRANCH_COINS;
     typedef std::map<uint256, MCTransactionRef> MAP_MAKE_CACHE;
     
-    MCAmount UseUTXO(uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints);
-    bool MakeTxUTXO(MCMutableTransaction& tx, uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey);
+    MCAmount UseUTXO(const uint160& key, MCAmount nAmount, std::vector<MCOutPoint>& vInOutPoints);
+    bool MakeTxUTXO(MCMutableTransaction& tx, const uint160& key, MCAmount nAmount, MCScript& scriptSig, MCScript& changeScriptPubKey);
 
     MAP_MAKE_CACHE mapCache;
     MAP_BRANCH_COINS mapBranchCoins;

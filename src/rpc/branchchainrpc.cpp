@@ -54,9 +54,9 @@ MCAmount GetCreateBranchMortgage(const MCBlock* pBlock, const MCBlockIndex* pBlo
 
     size_t nSize = 0;
 
-    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = g_pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
     if (pBlockIndex == nullptr)
-        nSize = pBranchChainTxRecordsDb->GetCreateBranchSize();
+        nSize = g_pBranchChainTxRecordsDb->GetCreateBranchSize();
     else
     {
         int64_t blockheigt = pBlockIndex->nHeight;
@@ -82,7 +82,7 @@ MCAmount GetCreateBranchMortgage(const MCBlock* pBlock, const MCBlockIndex* pBlo
 // OP: make a cache will be better
 static bool GetTransactionDataByTxInfo(const uint256 &txhash, MCTransactionRef &tx, MCBlockIndex** ppblockindex, uint32_t &tx_vtx_index, MCBlock& block)
 {
-    BranchChainTxInfo chainsendinfo = pBranchChainTxRecordsDb->GetBranchChainTxInfo(txhash);
+    BranchChainTxInfo chainsendinfo = g_pBranchChainTxRecordsDb->GetBranchChainTxInfo(txhash);
     if (chainsendinfo.IsInit() == false)
     {
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("Load transaction sendinfo fail."));
@@ -314,7 +314,7 @@ UniValue getallbranchinfo(const JSONRPCRequest& request)
 
     LOCK(cs_main);
     UniValue arr(UniValue::VARR);
-    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
+    const BranchChainTxRecordsDb::CREATE_BRANCH_TX_CONTAINER& vCreated = g_pBranchChainTxRecordsDb->GetCreateBranchTxsInfo();
 
     bool fRegTest = gArgs.GetBoolArg("-regtest", false);
     bool fTestNet = gArgs.GetBoolArg("-testnet", false);
@@ -344,7 +344,7 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     if (request.fHelp || request.params.size() < 5 || request.params.size() > 7)
         throw std::runtime_error(
             "addbranchnode branchid ip port username password\n"
-            "\n get a created branch chain info.\n"
+            "\nSet branch rpc connection config.\n"
             "\nArguments:\n"
             "1. \"branchid\"            (string, required) The branch txid.\n"
             "2. \"ip\"                  (string, required) Branch node ip.\n"
@@ -354,12 +354,12 @@ UniValue addbranchnode(const JSONRPCRequest& request)
             "6. \"wallet\"              (string, optional) Rpc wallet\n"
             "7. \"datadir\"             (string, optional) taget blanch datadir\n"
 
-            "\nReturns the hash of the created branch chain.\n"
+            "\nReturns connection result.\n"
             "\nResult:\n"
             "    Ok or fail\n"
             "\nExamples:\n"
-            + HelpExampleCli("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
-            + HelpExampleRpc("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"\" clpwd")
+            + HelpExampleCli("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"user\" \"clpwd\" \"wallet\" \"datadir\"")
+            + HelpExampleRpc("addbranchnode", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2 127.0.0.1 9201 \"user\" \"clpwd\" \"wallet\" \"datadir\"")
         );
 
     MCRPCConfig rpcconfig;
@@ -418,6 +418,49 @@ UniValue addbranchnode(const JSONRPCRequest& request)
 
     g_branchChainMan->ReplaceRpcConfig(branchid, rpcconfig);
     return "ok";
+}
+
+UniValue getbranchrpcconfig(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() > 1)
+        throw std::runtime_error(
+            "getbranchrpcconfig branchid\n"
+            "\n get a created branch chain info.\n"
+            "\nArguments:\n"
+            "1. \"branchid\"            (string, required) The branch txid.\n"
+
+            "\nReturns the hash of the created branch chain.\n"
+            "\nResult obj:\n"
+            "{\n"
+            "    \"ip\": ipaddress,\n"
+            "    \"port\": ipaddress,\n"
+            "    \"rpcuser\": \"rpcuser\",\n"
+            "    \"rpcpassword\": \"rpcpassword\",\n"
+            "    \"wallet\": \"wallet\",\n"
+            "    \"datadir\": \"datadir\",\n"
+            "}\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getbranchrpcconfig", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2")
+            + HelpExampleRpc("getbranchrpcconfig", "4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2")
+        );
+
+    std::string strBranchid = request.params[0].get_str();
+    MCRPCConfig rpcconfig;
+    if (!g_branchChainMan->GetRpcConfig(strBranchid, rpcconfig)){
+        throw JSONRPCError(RPC_VERIFY_ERROR, "No branch config");
+    }
+
+    UniValue ret(UniValue::VOBJ);
+    ret.pushKV("ip", rpcconfig.strIp);
+    ret.pushKV("port", rpcconfig.iPort);
+    ret.pushKV("rpcuser", rpcconfig.strUser);
+    ret.pushKV("rpcpassword", rpcconfig.strPassword);
+    ret.pushKV("wallet", rpcconfig.strWallet);
+    ret.pushKV("datadir", rpcconfig.strDataDir);
+    if (!rpcconfig.strRPCUserColonPass.empty()){
+        ret.pushKV("Authorization", rpcconfig.strRPCUserColonPass);
+    }
+    return ret;
 }
 
 /**
@@ -664,7 +707,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     const MCChainParams& chainparams = Params();
     MCValidationState state;
     MCAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
-    bool ret = AcceptToMemoryPool(mempool, state, tx2, true, nullptr, nullptr, false, maxTxFee);
+    bool ret = AcceptToMemoryPool(mempool, state, tx2, true, nullptr, nullptr, false, maxTxFee, true, 0);
     if (ret == false)
     {
         std::string strError = strprintf("Error: accept to memory pool fail: %s", state.GetRejectReason());
@@ -1036,7 +1079,7 @@ UniValue getbranchchainheight(const JSONRPCRequest& request)
 
     LOCK(cs_main);
     uint256 branchid = ParseHashV(request.params[0], "parameter 1");
-    if (!pBranchChainTxRecordsDb->IsBranchCreated(branchid))
+    if (!g_pBranchChainTxRecordsDb->IsBranchCreated(branchid))
         throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
 
     UniValue retObj(UniValue::VOBJ);
@@ -1144,7 +1187,7 @@ UniValue redeemmortgagecoinstatement(const JSONRPCRequest& request)
     const Coin& coin = pcoinsTip->AccessCoin(outpoint);
     if (coin.IsSpent())
         throw JSONRPCError(RPC_WALLET_ERROR, "Coin is spent!");
-    if (chainActive.Height() - coin.nHeight < REDEEM_SAFE_HEIGHT)// 挖矿币需要满足一定高度后才能赎回,给别人举报有时间窗口
+    if (chainActive.Height() - coin.nHeight + 1 < REDEEM_SAFE_HEIGHT)// 挖矿币需要满足一定高度后才能赎回,给别人举报有时间窗口
         throw JSONRPCError(RPC_INVALID_REQUEST, strprintf(std::string("Coin need %d confirmation"), REDEEM_SAFE_HEIGHT));
 
     uint256 fromtxid;
@@ -2064,7 +2107,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
     // check: 
     // 1 branch, get report tx data
     // 2 coin preout hash
-    // 3 历史久远的不能举报?
+    // 3 limit the long history report tx?
     uint256 reporttxid = ParseHashV(request.params[0], "parameter 1");
     uint256 coinprevouthash = ParseHashV(request.params[1], "parameter 2");
 
@@ -2072,7 +2115,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::LOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;//被主链打包的举报交易id
+    wtx.reporttxid = reporttxid;//the txid of the report transaction that has included by main chain
     wtx.coinpreouthash = coinprevouthash;//锁定目标币的txid
     wtx.isDataTransaction = true;
 
@@ -2160,7 +2203,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
     return ret;
 }
 
-// 解锁挖矿币
+// 
 UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 {
     if (gArgs.GetBoolArg("-disablewallet", false))
@@ -2204,9 +2247,9 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;// 举报交易txid
+    wtx.reporttxid = reporttxid;
     wtx.coinpreouthash = coinprevouthash;
-    wtx.provetxid = provetxid;//证明交易txid
+    wtx.provetxid = provetxid;
     wtx.isDataTransaction = true;
 
     bool fSubtractFeeFromAmount = false;
@@ -2242,7 +2285,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
     return ret;
 }
 
-//获取举报交易数据
+//
 UniValue getprovetxdata(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
@@ -2307,6 +2350,7 @@ static const CRPCCommand commands[] =
     { "branchchain",        "getbranchchaininfo",        &getbranchchaininfo,          true,{"branchid"} },
     { "branchchain",        "getallbranchinfo",          &getallbranchinfo,            false,{} },
     { "branchchain",        "addbranchnode",             &addbranchnode,               true,{ "branchid" ,"ip","port","usrname","password" } },
+    { "branchchain",        "getbranchrpcconfig",        &getbranchrpcconfig,          true, {"branchid"} },
     { "branchchain",        "sendtobranchchain",         &sendtobranchchain,           false,{ "branchid","address","amount" } },
     { "branchchain",        "makebranchtransaction",     &makebranchtransaction,       false,{"hexdata"} },
     { "branchchain",        "getbranchchaintransaction", &getbranchchaintransaction,   true,{"txid"} },
@@ -2326,7 +2370,7 @@ static const CRPCCommand commands[] =
     { "branchchain",        "reportcontractdata",          &reportcontractdata,        false,{ "reportedblockhash", "reportedtxid", "proveblockhash", "provetxid" } },
     { "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
     { "branchchain",        "reportbranchchainblockmerkle",&reportbranchchainblockmerkle, false, {"branchid","blockhash"},},
-    // 证明交易数据还需要修改和完善
+    // prove relate
     { "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
     { "branchchain",        "sendmerkleprovetomain",     &sendmerkleprovetomain,       false, {"blockhash"}},
     { "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},

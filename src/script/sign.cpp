@@ -448,7 +448,7 @@ uint256 GetContractHash(const MCTransaction& txTo) {
         ss << txTo.pContractData->sender;
 		ss << txTo.pContractData->codeOrFunc;
         ss << txTo.pContractData->args;
-        ss << txTo.pContractData->amountOut;
+        ss << txTo.pContractData->contractCoinsOut;
 	}
 
 	return ss.GetHash();

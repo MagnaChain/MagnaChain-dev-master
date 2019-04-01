@@ -68,7 +68,7 @@ class MagnaChainTestFramework(object):
         self.nodes = []
         self.sidenodes = []
         self.mocktime = 0
-        # mapped，侧链对主链的映射，eg.[[0,1],[2,3]],表示侧链的0,1节点attach在主链的节点0；侧链2,3节点attach在主链的节点1
+        # mapped，侧链对主链的映射，eg.[[0],[],[],[1]],表示侧链的0节点attach在主链的节点0；侧链1节点attach在主链的节点3
         self.mapped = []
         # self.mortgage_coins = [] #抵押币的txid，赎回抵押币时会用到
         self.set_test_params()
@@ -128,6 +128,7 @@ class MagnaChainTestFramework(object):
             self.setup_network()
             if getattr(self, "num_sidenodes", 0) > 0:
                 self.setup_sidechain()
+            self.__for_convenient()
             self.run_test()
             success = TestStatus.PASSED
         except JSONRPCException as e:
@@ -241,7 +242,7 @@ class MagnaChainTestFramework(object):
         """Override this method to customize test sidenode setup"""
         # todo 多侧链支持
         # 目前主节点与侧节点只能是1对1关系，不支持1对多
-        assert_equal(self.num_nodes,self.num_sidenodes)
+        assert self.num_nodes >= self.num_sidenodes
         self.log.info("setup sidechain")
         # 创建抵押币
         # for convince
@@ -266,38 +267,44 @@ class MagnaChainTestFramework(object):
         # 初始化侧链目录
         logger("create sidechain datadir")
         side_datadirs = []
-
+        if not self.mapped:
+            self.mapped = [ [i] for i in range(self.num_sidenodes)]
         for i in range(self.num_sidenodes):
-            # attach_index = 0
-            # if not self.mapped:
-            #     #     处理特定的节点映射
-            #     for index,m in enumerate(self.mapped):
-            #         if i in m:
-            #             attach_index = index
-            #             break
-            # logger("sidenode{} attach mainnode{}".format(i,attach_index))
+            attach_index = None
+                # 处理特定的节点映射
+                # 最多只能是1对1
+            all([len(m) == 1 for m in self.mapped])
+            for index,m in enumerate(self.mapped):
+                if i in m:
+                    attach_index = index
+                    break
+            if not attach_index:
+                attach_index = i
+            logger("sidenode{} attach to mainnode{}".format(i,attach_index))
             side_datadirs.append(
-                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[i].rpcport,
-                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(i))))
+                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[attach_index].rpcport,
+                                   main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(attach_index))))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
-        for i in range(self.num_nodes):
-            self.nodes[i].generate(2) # make some coins
-            self.sync_all()
-            # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
-            ret = self.nodes[i].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[i].rpcport, '', '','',side_datadirs[i])
-            if ret != 'ok':
-                raise Exception(ret)
-        for i in range(self.num_nodes):
-            logger("mortgage coins to mainchains")
-            for j in range(10):
-                addr = self.sidenodes[i].getnewaddress()
-                txid = self.nodes[i].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
-                # self.mortgage_coins.append(txid)
-            self.nodes[i].generate(10)
-            self.sync_all()
-            assert self.sidenodes[i].getmempoolinfo()['size'] > 0
+        for index, m in enumerate(self.mapped):
+            if m:
+                #只有主节点有被挂载时才处理
+                self.nodes[index].generate(2) # make some coins
+                self.sync_all()
+                # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
+                ret = self.nodes[index].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[m[0]].rpcport, '', '','',side_datadirs[m[0]])
+                if ret != 'ok':
+                    raise Exception(ret)
+        for index, m in enumerate(self.mapped):
+            if m:
+                logger("mortgage coins to sidenode{}".format(m[0]))
+                for j in range(10):
+                    addr = self.sidenodes[m[0]].getnewaddress()
+                    txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
+                self.nodes[index].generate(10)
+                self.sync_all()
+                assert self.sidenodes[m[0]].getmempoolinfo()['size'] > 0
         self.sync_all()
         logger("sidechains setup done")
 
@@ -349,6 +356,11 @@ class MagnaChainTestFramework(object):
                 assert_equal(len(extra_args), self.num_sidenodes)
                 nodes = self.sidenodes
         try:
+            if not nodes:
+                if sidechain:
+                    nodes = self.sidenodes
+                else:
+                    nodes = self.nodes
             for i, node in enumerate(nodes):
                 node.start(extra_args[i])
             for node in nodes:
@@ -423,6 +435,8 @@ class MagnaChainTestFramework(object):
         bwork = int(self.nodes[b].getchaintipwork(), 16)
         genblocks = []
         while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
+            genblocks.append(self.nodes[a].generate(1)[0])
+        if bwork == int(self.nodes[a].getchaintipwork(), 16):
             genblocks.append(self.nodes[a].generate(1)[0])
         if len(genblocks) > 0:
             self.log.info("make more work by gen %d" % (len(genblocks)))
@@ -564,6 +578,19 @@ class MagnaChainTestFramework(object):
         Useful if a test case wants complete control over initialization."""
         for i in range(self.num_nodes):
             initialize_datadir(self.options.tmpdir, i)
+
+    def __for_convenient(self):
+        '''
+        be convenient for self.node0 to call
+        :return:
+        '''
+        for i, node in enumerate(self.nodes):
+            # for convenient
+            setattr(self, 'node' + str(i), node)
+
+        for i, node in enumerate(self.sidenodes):
+            # for convenient
+            setattr(self, 'snode' + str(i), node)
 
 
 class ComparisonTestFramework(MagnaChainTestFramework):

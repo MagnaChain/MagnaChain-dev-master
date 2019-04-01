@@ -1001,9 +1001,8 @@ bool MCWallet::AddToWallet(const MCWalletTx& wtxIn, bool fFlushOnClose)
         }
     }
 
-    //// debug print
-    if (!fFastMode)
-        ;// LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
+    //if (!fFastMode)
+    //    LogPrintf("AddToWallet %s  %s%s\n", wtxIn.GetHash().ToString(), (fInsertedNew ? "new" : ""), (fUpdated ? "update" : ""));
 
     // Write to disk
     if (fInsertedNew || fUpdated)
@@ -1069,7 +1068,7 @@ bool MCWallet::AddToWalletIfInvolvingMe(const MCTransactionRef& ptx, const MCBlo
         AssertLockHeld(cs_wallet);
 
         if (pIndex != nullptr) {
-            uint256 txHash = mempool.GetOriTxHash(*ptx);
+            uint256 txHash = mempool.GetOriTxHash(*ptx, false);//TODO: why this use getoritxhash? and fFromMemPool parameter should be false?
             for (const MCTxIn& txin : tx.vin) {
                 std::pair<TxSpends::const_iterator, TxSpends::const_iterator> range = mapTxSpends.equal_range(txin.prevout);
                 while (range.first != range.second) {
@@ -2944,7 +2943,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
             else {//找到足够的币提前退出
                 MCAmount nMinimumAmount = 1;
                 MCAmount nMaximumAmount = MAX_MONEY;
-                MCAmount nMinimumSumAmount = nValue * 2 + (nFeeNeeded ? nFeeNeeded : COIN);
+                MCAmount nMinimumSumAmount = nValue * 2 + (nFeeNeeded ? nFeeNeeded : 20*COIN);// we need more coin for the big fee situation, such as sendbrachchain transaction
                 AvailableCoins(vAvailableCoins, nullptr, true, &coin_control, nMinimumAmount, nMaximumAmount, nMinimumSumAmount);
             }
 
@@ -3102,8 +3101,12 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 }
 
                 if (sls != nullptr && sls->recipients.size() > 0) {
-                    txNew.vin.emplace_back(uint256(), txNew.vin.size());
-                    txNew.vout.emplace_back(txNew.pContractData->amountOut, GetScriptForDestination(txNew.pContractData->address));
+                    for (auto iter : txNew.pContractData->contractCoinsOut) {
+                        txNew.vin.emplace_back(uint256(), 0);
+                    }
+                    for (int i = 0; i < sls->recipients.size(); ++i) {
+                        txNew.vout.emplace_back(sls->recipients[i]);
+                    }
                 }
 
 				// 获取交易字节大小
@@ -3116,8 +3119,8 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 nBytes = GetVirtualTransactionSize(txNew, 0, runningTimes, deltaDataLen);
 
                 if (sls != nullptr && sls->recipients.size() > 0) {
-                    txNew.vin.resize(txNew.vin.size() - 1);
-                    txNew.vout.resize(txNew.vout.size() - 1);
+                    txNew.vin.resize(txNew.vin.size() - txNew.pContractData->contractCoinsOut.size());
+                    txNew.vout.resize(txNew.vout.size() - sls->recipients.size());
                 }
 
 				// 移除虚拟签名数据
@@ -3129,8 +3132,9 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
 
                 // check lsdata
                 if (sls != nullptr) {
-                    for (size_t i = 0; i < sls->recipients.size(); ++i)
+                    for (size_t i = 0; i < sls->recipients.size(); ++i) {
                         txNew.vout.push_back(sls->recipients[i]);
+                    }
                     txNew.pContractData->address = wtxNew.pContractData->address;
                 }
 
@@ -3283,7 +3287,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
     if (gArgs.GetBoolArg("-walletrejectlongchains", DEFAULT_WALLET_REJECT_LONG_CHAINS)) {
         // Lastly, ensure this tx will pass the mempool's chain limits
         LockPoints lp;
-        MCTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, false, 0, lp);
+        MCTxMemPoolEntry entry(wtxNew.tx, 0, 0, 0, false, 0, lp, 0);
         MCTxMemPool::setEntries setAncestors;
         size_t nLimitAncestors = gArgs.GetArg("-limitancestorcount", DEFAULT_ANCESTOR_LIMIT);
         size_t nLimitAncestorSize = gArgs.GetArg("-limitancestorsize", DEFAULT_ANCESTOR_SIZE_LIMIT)*1000;
@@ -3338,9 +3342,9 @@ bool MCWallet::CommitTransaction(MCWalletTx& wtxNew, MCReserveKey& reservekey, M
         if (fBroadcastTransactions)
         {
             // Broadcast
-            bool fMissingInputs = false;
-            if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, &fMissingInputs)) {
-                LogPrint(BCLog::TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs":"");
+            int nMissingInputs = eMissingInputTypes::eOk;
+            if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, &nMissingInputs)) {
+                LogPrint(BCLog::TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), nMissingInputs ?",MissingInputs":"");
                 // TODO: if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
                 return false;// zjh add this return false;
             } else {
@@ -4680,9 +4684,9 @@ int MCMerkleTx::GetBlocksToMaturityForCoinCreateBranch() const
     return std::max(0, (BRANCH_CHAIN_CREATE_COIN_MATURITY + 1) - GetDepthInMainChain());
 }
 
-bool MCMerkleTx::AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, bool* pfMissingInputs)
+bool MCMerkleTx::AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, int* pNMissingInputs)
 {
-    return ::AcceptToMemoryPool(mempool, state, tx, true, pfMissingInputs, nullptr, false, nAbsurdFee, executeSmartContract);
+    return ::AcceptToMemoryPool(mempool, state, tx, true, pNMissingInputs, nullptr, false, nAbsurdFee, executeSmartContract, 0);
 }
 
 void GetAvailableMortgageCoinsInMemPool(const MCKeyStore& keystore, std::vector<MCOutput>& vecOutput, std::map<uint256, MCWalletTx> &mapTempWallet, MCCoinsViewCache &view)

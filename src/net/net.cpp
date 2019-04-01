@@ -2088,7 +2088,7 @@ bool MCConnman::BindListenPort(const MCService &addrBind, std::string& strError,
     }
 
 
-#ifndef WIN32
+#ifndef _WIN32
 #ifdef SO_NOSIGPIPE
     // Different way of disabling SIGPIPE on BSD
     setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int));

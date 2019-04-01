@@ -180,6 +180,7 @@ bool error_ex1(std::string *pStrMsg/*get error msg*/, const char* fmt, const Arg
     return false;
 }
 
+//void PrintStackTrace();
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void FileCommit(FILE *file);
 bool TruncateFile(FILE *file, unsigned int length);
@@ -191,7 +192,7 @@ fs::path GetDefaultDataDir();
 const fs::path &GetDataDir(bool fNetSpecific = true);
 void ClearDatadirCache();
 fs::path GetConfigFile(const std::string& confPath);
-#ifndef WIN32
+#ifndef _WIN32
 fs::path GetPidFile();
 void CreatePidFile(const fs::path &path, pid_t pid);
 #endif
