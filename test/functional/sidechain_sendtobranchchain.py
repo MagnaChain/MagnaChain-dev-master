@@ -134,11 +134,14 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for txid in txs:
             if txs[txid]['version'] == 7:
                 # static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// 跨链交易的接收链方
+                print("Decimal(txs[txid]['fee']):",Decimal(txs[txid]['fee']))
                 total_fee += Decimal(txs[txid]['fee'])
         node.generate(2)
         self.sync_all()
+        print("total fee:",total_fee)
         assert_equal(node.getbalanceof(addr), side_balance - 30)
         assert_equal(node.getbalance(), balance + MINER_REWARD * 4 + side_balance - 30 + total_fee)
+        # AssertionError: not (114333729.64610000 == 114333729.20000000)
 
         # batch test
         transaction_num = 5000
