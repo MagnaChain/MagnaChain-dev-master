@@ -2079,7 +2079,9 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                             vWorkQueue.emplace_back(orphanHash, i);
                         }
                         if (orphanTx.IsSyncBranchInfo()){
-                            vWorkQueuePreHead.emplace_back(orphanHash);
+                            MCBlockHeader blockheader;
+                            orphanTx.pBranchBlockData->GetBlockHeader(blockheader);
+                            vWorkQueuePreHead.emplace_back(blockheader.GetHash());
                         }
                         vEraseQueue.push_back(orphanHash);
                     }
