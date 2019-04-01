@@ -123,14 +123,14 @@ void locking_callback(int mode, int i, const char* file, int line) NO_THREAD_SAF
     }
 }
 
-#include <boost/stacktrace.hpp>
+/*#include <boost/stacktrace.hpp>
 void PrintStackTrace()
 {
     auto st = boost::stacktrace::stacktrace();
     for (int i = 1; i < st.size(); ++i) {
         LogPrintf("#%d %s %s:%d\n", i, st[i].name(), st[i].source_file(), st[i].source_line());
     }
-}
+}*/
 
 // Singleton for wrapping OpenSSL setup/teardown.
 class CInit

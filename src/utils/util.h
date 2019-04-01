@@ -180,7 +180,7 @@ bool error_ex1(std::string *pStrMsg/*get error msg*/, const char* fmt, const Arg
     return false;
 }
 
-void PrintStackTrace();
+//void PrintStackTrace();
 void PrintExceptionContinue(const std::exception *pex, const char* pszThread);
 void FileCommit(FILE *file);
 bool TruncateFile(FILE *file, unsigned int length);
