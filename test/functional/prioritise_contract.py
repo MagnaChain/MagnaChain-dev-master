@@ -25,7 +25,7 @@ class PrioritiseContractTest(MagnaChainTestFramework):
         self.num_nodes = 2
         self.extra_args = [["-printpriority=1", "-powtargetspacing=15"], ["-printpriority=1", "-powtargetspacing=15"]]
 
-    def setup_nodes(self):
+    def setup_nodes(self,sidechain=False):
         self.add_nodes(self.num_nodes, self.extra_args, timewait=9000)
         self.start_nodes()
 

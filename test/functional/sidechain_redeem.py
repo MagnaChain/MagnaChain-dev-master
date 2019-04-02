@@ -113,7 +113,6 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         #     self.snode0.rebroadcastredeemtransaction(t)
         self.node0.generate(2)
         print(self.node0.getbalance(),balance , self.node0.getbalance() - balance,origin_mortgage)
-        assert False
         # assert self.node0.getbalance() - balance > origin_mortgage
 
 
