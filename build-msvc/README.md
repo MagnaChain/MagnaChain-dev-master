@@ -43,7 +43,7 @@ The instructions below use `vcpkg` to install the dependencies.
     PS >./vcpkg.exe integrate install
 
 ```
-    PS >./vcpkg.exe install --triplet x64-windows-static boost-filesystem boost-signals2 boost-interprocess boost-rapidcheck boost-program-options boost-assign boost-stacktrace boost-test libevent openssl zeromq berkeleydb secp256k1 leveldb
+    PS >./vcpkg.exe install --triplet x64-windows-static boost-filesystem boost-signals2 boost-interprocess boost-program-options boost-assign boost-stacktrace boost-test libevent openssl zeromq berkeleydb secp256k1 leveldb
 ```
 
 - Build in Visual Studio.
