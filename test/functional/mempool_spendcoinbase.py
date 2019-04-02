@@ -24,8 +24,8 @@ class MempoolSpendCoinbaseTest(MagnaChainTestFramework):
 
     def run_test(self):
         self.log.info("generate 200 blocks")
-        for i in range(20):
-            self.nodes[0].generate(10)
+        for i in range(40):
+            self.nodes[0].generate(5)
         chain_height = self.nodes[0].getblockcount()
         assert_equal(chain_height, 200)
         node0_address = self.nodes[0].getnewaddress()
