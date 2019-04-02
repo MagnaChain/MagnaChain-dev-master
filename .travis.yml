@@ -18,7 +18,6 @@ stages:
 
 env:
   global:
-    - MAKEJOBS=-j3
     - CCACHE_SIZE=200M
     - CCACHE_TEMPDIR=/tmp/.ccache-temp
     - CCACHE_COMPRESS=1
