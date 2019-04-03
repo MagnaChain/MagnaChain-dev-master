@@ -42,6 +42,7 @@ before_script:
   - make -j3
   - chmod -R +x ./test/functional
   - ccache --max-size=$CCACHE_SIZE
+  - ln -s $TRAVIS_BUILD_DIR/src/magnachaind $TRAVIS_BUILD_DIR/src/magnachaind-side
 
 # after_script:
 # TODO: commit something

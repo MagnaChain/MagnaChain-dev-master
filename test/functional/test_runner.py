@@ -84,6 +84,7 @@ BASE_SCRIPTS= [
     'merkle_blocks.py',#pass
     'receivedby.py',#pass
     'abandonconflict.py',#pass
+    'sidechain_reverttransaction.py'#pass
     # 'bip68-112-113-p2p.py',not work
     'rawtransactions.py',#pass
     'reindex.py',#pass
@@ -169,6 +170,7 @@ TRAVIS_SCRIPTS = {
         "contract_fork.py",
         'prioritise_contract.py',#pass
         'abandonconflict-with-contract.py',#pass
+        'sidechain_reverttransaction.py'#pass
     ],
     'wallet':[
         'wallet-hd.py',#pass
