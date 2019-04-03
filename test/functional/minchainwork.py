@@ -71,8 +71,11 @@ class MinimumChainWorkTest(MagnaChainTestFramework):
         assert self.nodes[1].getbestblockhash() != self.nodes[0].getbestblockhash()
         assert_equal(self.nodes[2].getblockcount(), starting_blockcount)
 
-        self.log.info("Generating one more block")
-        self.nodes[0].generate(10)
+        self.log.info("Generating more blocks")
+        target_work = int(0xfff)
+        while(int(self.node0.getchaintipwork(), 16) <= target_work):
+            self.nodes[0].generate(5)
+            self.log.info("Node0 current chain work: %s",int(self.node0.getchaintipwork(), 16))
 
         self.log.info("Verifying nodes are all synced")
 

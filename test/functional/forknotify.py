@@ -22,8 +22,8 @@ class ForkNotifyTest(MagnaChainTestFramework):
 
     def run_test(self):
         # Mine 51 up-version blocks
-        for i in range(5):
-            self.nodes[1].generate(10)
+        for i in range(10):
+            self.nodes[1].generate(5)
         self.sync_all()
         # -alertnotify should trigger on the 51'st,
         # but mine and sync another to give
