@@ -24,14 +24,14 @@ env:
     - CCACHE_DIR=$HOME/.ccache
 
 before_install:
-  - sudo apt-get install libtool autotools-dev automake pkg-config libssl-dev libevent-dev bsdmainutils -y
-  - sudo apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev libboost-iostreams-dev -y
-  - sudo apt-get install software-properties-common -y
-  - sudo add-apt-repository ppa:bitcoin/bitcoin -y
+  - sudo apt-get install libtool autotools-dev automake pkg-config libssl-dev libevent-dev bsdmainutils -y -q
+  - sudo apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev libboost-iostreams-dev -y -q
+  - sudo apt-get install software-properties-common -y -q
+  - sudo add-apt-repository ppa:bitcoin/bitcoin -y -q
   - sudo apt-get update
-  - sudo apt-get install libdb4.8-dev libdb4.8++-dev -y
-  - sudo apt-get install libminiupnpc-dev -y
-  - sudo apt-get install libzmq3-dev -y
+  - sudo apt-get install libdb4.8-dev libdb4.8++-dev -y -q
+  - sudo apt-get install libminiupnpc-dev -y -q
+  - sudo apt-get install libzmq3-dev -y -q
 
 install:
   true

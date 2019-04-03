@@ -285,8 +285,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for i in range(3):
             self.snode0.generate(8)
         self.node0.generate(1)
+        self.sync_all()
         self.test_getbranchchainheight()
         assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
+        self.sync_all()
+        # self.sync_all([self.sidenodes])
         self.test_getbranchchainheight()
         self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
         # todo: we need reconsiderblock previous tip
