@@ -116,7 +116,7 @@ bool GetAncestor(DatabaseBlock& indexWalk, int height)
 const uint256 GetMaxHeightBlock()
 {
     char sql[] = "SELECT `blockhash` FROM `block` WHERE (`height`, `time`)"
-        "IN (SELECT `height`, MIN(`time`) FROM `block` WHERE `height` = (SELECT MAX(`height`) FROM `block` WHERE `regtest` = ? AND `branchid` = ?));";
+        "IN (SELECT `height`, MIN(`time`) FROM `block` WHERE `height` = (SELECT MAX(`height`) FROM `block` WHERE `regtest` = ? AND `branchid` = ?) GROUP BY `height`);";
     std::unique_ptr<sql::PreparedStatement> getMaxHeightBlockStatement(sqlConnection->prepareStatement(sql));
     getMaxHeightBlockStatement->setBoolean(1, gArgs.GetBoolArg("-regtest", false));
     getMaxHeightBlockStatement->setString(2, gArgs.GetArg("-branchid", ""));

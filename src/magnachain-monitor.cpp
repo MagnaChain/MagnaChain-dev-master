@@ -174,7 +174,6 @@ bool AppInit(int argc, char* argv[])
     }
     Shutdown();
 
-	system("pause");
     return fRet;
 }
 
