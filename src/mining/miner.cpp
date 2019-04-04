@@ -1075,7 +1075,7 @@ namespace BlockExplorer
 
 using namespace BlockExplorer;
 const uint32_t iMaxWorkBits = 17760256;
-
+const uint32_t NMaxRunTime = 60 * 60 * 24 * 10;
 
 MCAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
@@ -1600,19 +1600,19 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 	// time limit
 	if (pblock->nTime < pindexLast->nTime)
 		return iMaxWorkBits;
-	if (pblock->nTime - pindexLast->nTime < params.nPowTargetSpacing)
+    int64_t timediff = pblock->nTime - pindexLast->nTime;
+	if (timediff < params.nPowTargetSpacing)
 		return iMaxWorkBits;
 
 	uint32_t iRunTime = 1;
-    if (pblock->nTime - pindexLast->nTime > params.nPowTargetSpacing * 2) {
-        iRunTime = pblock->nTime - pindexLast->nTime - params.nPowTargetSpacing * 2;
-        if (iRunTime > 60 * 60 * 24 * 10)
-            iRunTime = 60 * 60 * 24 * 10;
+    if (timediff > params.nPowTargetSpacing * 2) {
+        iRunTime = timediff - params.nPowTargetSpacing * 2;
+        if (iRunTime > NMaxRunTime)
+            iRunTime = NMaxRunTime;
         iRunTime /= 10;
         if (iRunTime < 1)
             iRunTime = 1;
     }
-
 
     bool fNegative;
     bool fOverflow;
@@ -1665,14 +1665,15 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
     // time limit
     if (pblock->nTime < pindexLast->header.nTime)
         return iMaxWorkBits;
-    if (pblock->nTime - pindexLast->header.nTime < consensusParams.nPowTargetSpacing)
+    int64_t timediff = pblock->nTime - pindexLast->header.nTime;
+    if (timediff < consensusParams.nPowTargetSpacing)
         return iMaxWorkBits;
 
     uint32_t iRunTime = 1;
-    if (pblock->nTime - pindexLast->header.nTime > consensusParams.nPowTargetSpacing * 2) {
-        iRunTime = pblock->nTime - pindexLast->header.nTime - consensusParams.nPowTargetSpacing * 2;
-        if (iRunTime > 60 * 60 * 24 * 10)
-            iRunTime = 60 * 60 * 24 * 10;
+    if (timediff > consensusParams.nPowTargetSpacing * 2) {
+        iRunTime = timediff - consensusParams.nPowTargetSpacing * 2;
+        if (iRunTime > NMaxRunTime)
+            iRunTime = NMaxRunTime;
         iRunTime /= 10;
         if (iRunTime < 1)
             iRunTime = 1;
