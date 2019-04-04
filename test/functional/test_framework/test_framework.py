@@ -215,7 +215,7 @@ class MagnaChainTestFramework(object):
         node_num = (self.num_nodes if not sidechain else self.num_sidenodes)
         nodes = self.nodes if not sidechain else self.sidenodes
         for i in range(node_num - 1):
-            connect_nodes_bi(nodes, i, i + 1,sidechain=sidechain)
+            connect_nodes_bi(nodes, i, i + 1, sidechain=sidechain)
         self.sync_all([nodes])
 
     def setup_nodes(self, sidechain=False):
@@ -227,14 +227,14 @@ class MagnaChainTestFramework(object):
             if not getattr(self, 'rpc_timewait', 0):
                 self.add_nodes(self.num_nodes, extra_args)
             else:
-                self.add_nodes(self.num_nodes, extra_args,timewait=self.rpc_timewait)
+                self.add_nodes(self.num_nodes, extra_args, timewait=self.rpc_timewait)
         else:
             if hasattr(self, "side_extra_args"):
                 extra_args = self.side_extra_args
             if not getattr(self, 'rpc_timewait', 0):
-                self.add_nodes(self.num_sidenodes, extra_args,sidechain=True)
+                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True)
             else:
-                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True,timewait=self.rpc_timewait)
+                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True, timewait=self.rpc_timewait)
         self.start_nodes(sidechain=sidechain)
 
     # 支链相关
@@ -257,8 +257,11 @@ class MagnaChainTestFramework(object):
         logger("sidechain id is {}".format(sidechain_id))
         # 创建magnachaind的软链接，为了区分主链和侧链
         if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
-            os.system("ln -s {} {}".format(os.path.join(self.options.srcdir, 'magnachaind'),
-                                           os.path.join(self.options.srcdir, 'magnachaind-side')))
+            try:
+                os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
+                           os.path.join(self.options.srcdir, 'magnachaind-side'))
+            except Exception as e:
+                pass
 
         # Set env vars
         if "MAGNACHAIND_SIDE" not in os.environ:
@@ -268,32 +271,34 @@ class MagnaChainTestFramework(object):
         logger("create sidechain datadir")
         side_datadirs = []
         if not self.mapped:
-            self.mapped = [ [i] for i in range(self.num_sidenodes)]
+            self.mapped = [[i] for i in range(self.num_sidenodes)]
         for i in range(self.num_sidenodes):
             attach_index = None
-                # 处理特定的节点映射
-                # 最多只能是1对1
+            # 处理特定的节点映射
+            # 最多只能是1对1
             all([len(m) == 1 for m in self.mapped])
-            for index,m in enumerate(self.mapped):
+            for index, m in enumerate(self.mapped):
                 if i in m:
                     attach_index = index
                     break
             if not attach_index:
                 attach_index = i
-            logger("sidenode{} attach to mainnode{}".format(i,attach_index))
+            logger("sidenode{} attach to mainnode{}".format(i, attach_index))
             side_datadirs.append(
-                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[attach_index].rpcport,
+                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id,
+                                   mainport=self.nodes[attach_index].rpcport,
                                    main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(attach_index))))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
         for index, m in enumerate(self.mapped):
             if m:
-                #只有主节点有被挂载时才处理
-                self.nodes[index].generate(2) # make some coins
+                # 只有主节点有被挂载时才处理
+                self.nodes[index].generate(2)  # make some coins
                 self.sync_all()
                 # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
-                ret = self.nodes[index].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[m[0]].rpcport, '', '','',side_datadirs[m[0]])
+                ret = self.nodes[index].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[m[0]].rpcport, '', '',
+                                                      '', side_datadirs[m[0]])
                 if ret != 'ok':
                     raise Exception(ret)
         for index, m in enumerate(self.mapped):
@@ -301,7 +306,7 @@ class MagnaChainTestFramework(object):
                 logger("mortgage coins to sidenode{}".format(m[0]))
                 for j in range(10):
                     addr = self.sidenodes[m[0]].getnewaddress()
-                    txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
+                    txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
                 self.nodes[index].generate(10)
                 self.sync_all()
                 assert self.sidenodes[m[0]].getmempoolinfo()['size'] > 0
@@ -325,8 +330,8 @@ class MagnaChainTestFramework(object):
         assert_equal(len(binary), num_nodes)
         for i in range(num_nodes):
             n = TestNode(i, self.options.tmpdir, extra_args[i], rpchost, timewait=timewait, binary=binary[i],
-                     stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir,
-                     sidechain=sidechain)
+                         stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir,
+                         sidechain=sidechain)
             if not sidechain:
                 self.nodes.append(n)
             else:
@@ -431,13 +436,18 @@ class MagnaChainTestFramework(object):
 
     """make a chain have more work than b"""
 
-    def make_more_work_than(self, a, b):
-        bwork = int(self.nodes[b].getchaintipwork(), 16)
+    def make_more_work_than(self, a, b,sidechain = False):
+        if sidechain:
+            node_a = self.sidenodes[a]
+            bwork = int(self.sidenodes[b].getchaintipwork(), 16)
+        else:
+            node_a = self.nodes[a]
+            bwork = int(self.nodes[b].getchaintipwork(), 16)
         genblocks = []
-        while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
-            genblocks.append(self.nodes[a].generate(1)[0])
-        if bwork == int(self.nodes[a].getchaintipwork(), 16):
-            genblocks.append(self.nodes[a].generate(1)[0])
+        while int(node_a.getchaintipwork(), 16) <= bwork:
+            genblocks.append(node_a.generate(1)[0])
+        if bwork == int(node_a.getchaintipwork(), 16):
+            genblocks.append(node_a.generate(1)[0])
         if len(genblocks) > 0:
             self.log.info("make more work by gen %d" % (len(genblocks)))
         return genblocks

@@ -36,7 +36,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.num_nodes = 2
         self.extra_args = [['-txindex'],['-txindex']]
         # self.side_extra_args = [['-txindex']]
-        # self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
+        self.side_extra_args = [["-powtargetspacing=5"],["-powtargetspacing=5"]]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
@@ -270,7 +270,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         before_work = int(self.snode0.getchaintipwork(), 16)
         before_height = self.snode0.getblockcount()
         before_besthash = self.snode0.getbestblockhash()
+        for n in self.sidenodes:
+            self.log.info("before invalidateblock {},{}".format(n.getblockcount(),int(n.getchaintipwork(), 16)))
         self.snode0.invalidateblock(bad_hash)
+        for n in self.sidenodes:
+            self.log.info("after invalidateblock {},{}".format(n.getblockcount(),int(n.getchaintipwork(), 16)))
         # self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
         new_height = self.snode0.getblockcount()
         new_hash = self.snode0.getbestblockhash()
@@ -285,8 +289,15 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         for i in range(3):
             self.snode0.generate(8)
         self.node0.generate(1)
+        self.sync_all()
+        for n in self.sidenodes:
+            self.log.info("before test_getbranchchainheight {},{}".format(n.getblockcount(),int(n.getchaintipwork(), 16)))
+        gens = self.make_more_work_than(0,1,True)
+        self.node0.generate(1)
         self.test_getbranchchainheight()
         assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
+        self.sync_all()
+        # self.sync_all([self.sidenodes])
         self.test_getbranchchainheight()
         self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
         # todo: we need reconsiderblock previous tip

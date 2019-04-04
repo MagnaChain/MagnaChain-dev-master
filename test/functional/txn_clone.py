@@ -24,6 +24,7 @@ class TxnMallTest(MagnaChainTestFramework):
 
     def run_test(self):
         # All nodes should start with 1,250 BTC:
+        # self.options.mine_block = True
         for i in range(2):
             for i in range(4):
                 self.nodes[i].generate(10)
@@ -123,7 +124,7 @@ class TxnMallTest(MagnaChainTestFramework):
         gens = self.make_more_work_than(2,1)
         # Reconnect the split network, and sync chain:
         connect_nodes(self.nodes[1], 2)
-        sync_blocks(self.nodes)
+        # sync_blocks(self.nodes)
         for i in range(4):
             print("after join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
         self.nodes[2].sendrawtransaction(fund_bar_tx["hex"])

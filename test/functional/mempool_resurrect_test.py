@@ -11,7 +11,7 @@ from test_framework.util import *
 class MempoolCoinbaseTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 1
-        self.extra_args = [["-checkmempool"]]
+        self.extra_args = [["-checkmempool","-disablesafemode=1"]]
 
     def run_test(self):
         node0_address = self.nodes[0].getnewaddress()

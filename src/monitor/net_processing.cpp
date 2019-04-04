@@ -406,12 +406,14 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
     else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
     {
         std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
+        size_t start = vRecv.size();
         vRecv >> *pblock;
+        size_t sz = start - vRecv.size();
 
         LogPrint(BCLog::NET, "received block %s peer=%d\n", pblock->GetHash().ToString(), pfrom->GetId());
 
         MCBlock& block = *pblock;
-        if (WriteBlockToDatabase(block) >= 0) {
+        if (WriteBlockToDatabase(block, sz) >= 0) {
             pfrom->nLastBlockTime = GetTime();
         }
     }

@@ -173,7 +173,8 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     // ********************************************************* Step 7: load block chain
     uint256 bestBlockHash = GetMaxHeightBlock();
     if (bestBlockHash.IsNull()) {
-        WriteBlockToDatabase(chainparams.GenesisBlock());
+        const MCBlock& block = chainparams.GenesisBlock();
+        WriteBlockToDatabase(block, GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
         bestBlockHash = chainparams.GenesisBlock().GetHash();
     }
 

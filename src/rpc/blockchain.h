@@ -19,8 +19,10 @@ class UniValue;
  */
 double GetDifficulty(const MCBlockIndex* blockindex = nullptr);
 
+double GetDifficulty(const unsigned int nBits);
+
 /** Callback for when block tip changed. */
-void RPCNotifyBlockChange(bool ibd, const MCBlockIndex *);
+void RPCNotifyBlockChange(bool ibd, const MCBlockIndex*);
 
 /** Block description to JSON */
 UniValue blockToJSON(const MCBlock& block, const MCBlockIndex* blockindex, bool txDetails = false, bool fListTxInfo = true);
@@ -35,4 +37,3 @@ UniValue mempoolToJSON(bool fVerbose = false);
 UniValue blockheaderToJSON(const MCBlockIndex* blockindex);
 
 #endif
-

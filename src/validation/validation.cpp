@@ -737,9 +737,15 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         if (tx.IsSmartContract()) {
             if (executeSmartContract) {
                 SmartLuaState sls;
-                if (!CheckSmartContract(&sls, entry, SmartLuaState::SAVE_TYPE_CACHE, pCoinAmountCache)) {
+                try {
+                    if (!CheckSmartContract(&sls, entry, SmartLuaState::SAVE_TYPE_CACHE, pCoinAmountCache)) {
+                        mpContractDb->contractContext.ClearCache();
+                        return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
+                    }
+                }
+                catch (std::exception& e) {
                     mpContractDb->contractContext.ClearCache();
-                    return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
+                    return state.DoS(0, false, REJECT_INVALID, e.what());
                 }
                 entry.UpdateContract(&sls);
             }

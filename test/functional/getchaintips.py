@@ -27,8 +27,12 @@ class GetChainTipsTest (MagnaChainTestFramework):
 
         # Split the network and build two chains of different lengths.
         self.split_network ()
-        self.nodes[0].generate(10)
-        self.nodes[2].generate(20)
+        # avoid timeout
+        for i in range(4):
+            if i < 2:
+                self.nodes[0].generate(5)
+            self.nodes[2].generate(5)
+        genblocks = len(self.make_more_work_than(2, 0))
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
         tips = self.nodes[1].getchaintips ()
@@ -42,7 +46,7 @@ class GetChainTipsTest (MagnaChainTestFramework):
         assert_equal (len (tips), 1)
         longTip = tips[0]
         assert_equal (longTip['branchlen'], 0)
-        assert_equal (longTip['height'], 220)
+        assert_equal (longTip['height'], 220 + genblocks)
         assert_equal (tips[0]['status'], 'active')
 
         # Join the network halves and check that we now have two tips

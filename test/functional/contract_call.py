@@ -324,7 +324,6 @@ class ContractCallTest(MagnaChainTestFramework):
                         print("trigger size limit mempoolsize: {}".format(node.getmempoolinfo()['size']))
                         print(node.getrawmempool())
                         node.generate(nblocks=1)
-        assert False
 
     def test_double_spend(self,mineblock = True):
         self.log.info("test double spend")
