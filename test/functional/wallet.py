@@ -440,15 +440,16 @@ class WalletTest(MagnaChainTestFramework):
         node0_balance = self.nodes[0].getbalance()
         # Split into two chains
         print((node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.000000000")))
+        tx['hex'] = ''
         print(tx)
         if tx['fee'] == Decimal('-100'):
             rawtx = self.nodes[0].createrawtransaction([{"txid": singletxid, "vout": 0}], {
-                chain_addrs[0]: (node0_balance / 2 - Decimal('50.1')).quantize(Decimal("0.000000000")),
-                chain_addrs[1]: (node0_balance / 2 - Decimal('50.1')).quantize(Decimal("0.000000000"))})
+                chain_addrs[0]: (node0_balance / 2 - Decimal('50.1')).quantize(Decimal("0.00000")),
+                chain_addrs[1]: (node0_balance / 2 - Decimal('45.1')).quantize(Decimal("0.00000"))})
         else:
             rawtx = self.nodes[0].createrawtransaction([{"txid": singletxid, "vout": 0}], {
-                chain_addrs[0]: (node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.000000000")),
-                chain_addrs[1]: (node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.000000000"))})
+                chain_addrs[0]: (node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.00000")),
+                chain_addrs[1]: (node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.00000"))})
         signedtx = self.nodes[0].signrawtransaction(rawtx)
         singletxid = self.nodes[0].sendrawtransaction(signedtx["hex"])
         self.nodes[0].generate(1)

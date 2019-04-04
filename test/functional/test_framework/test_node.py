@@ -159,6 +159,16 @@ class TestNode():
         try:
             self.stop()
         except http.client.CannotSendRequest:
+            try:
+                self.log.info("Unable to stop node by RPC.Retry by CLI")
+                self.cli.stop()
+            except Exception as e:
+                self.log.info("Unable to stop node by CLI.Retry by Kill")
+                try:
+                    self.process.terminate()
+                except Exception as err:
+                    self.log.info("Kill process error for {}".format(err))
+                    pass
             self.log.exception("Unable to stop node.")
 
     def is_node_stopped(self):
