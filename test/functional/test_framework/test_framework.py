@@ -436,13 +436,18 @@ class MagnaChainTestFramework(object):
 
     """make a chain have more work than b"""
 
-    def make_more_work_than(self, a, b):
-        bwork = int(self.nodes[b].getchaintipwork(), 16)
+    def make_more_work_than(self, a, b,sidechain = False):
+        if sidechain:
+            node_a = self.sidenodes[a]
+            bwork = int(self.sidenodes[b].getchaintipwork(), 16)
+        else:
+            node_a = self.nodes[a]
+            bwork = int(self.nodes[b].getchaintipwork(), 16)
         genblocks = []
-        while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
-            genblocks.append(self.nodes[a].generate(1)[0])
-        if bwork == int(self.nodes[a].getchaintipwork(), 16):
-            genblocks.append(self.nodes[a].generate(1)[0])
+        while int(node_a.getchaintipwork(), 16) <= bwork:
+            genblocks.append(node_a.generate(1)[0])
+        if bwork == int(node_a.getchaintipwork(), 16):
+            genblocks.append(node_a.generate(1)[0])
         if len(genblocks) > 0:
             self.log.info("make more work by gen %d" % (len(genblocks)))
         return genblocks
