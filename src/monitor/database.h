@@ -22,7 +22,7 @@ public:
 
 bool DBInitialize();
 const uint256 GetMaxHeightBlock();
-int WriteBlockToDatabase(const MCBlock& block);
+int WriteBlockToDatabase(const MCBlock& block, size_t sz);
 int GetDatabaseBlock(DatabaseBlock* block, const uint256& hashBlock);
 MCBlockLocator MonitorGetLocator(const MCBlockIndex *pindex);
 

@@ -202,6 +202,9 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
             keystoreIn->SetAddressBook(vchPubKey.GetID(), "generateforbigboom", "receive");
             scriptPubKey = GetScriptForDestination(vchPubKey.GetID());
+
+			MagnaChainAddress addr(vchPubKey.GetID());
+            LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, addr.ToString());
         }
         else {
             scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;

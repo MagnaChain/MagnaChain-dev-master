@@ -5,6 +5,9 @@
 #include "monitor/sql.h"
 #include "utils/util.h"
 #include "validation/validation.h"
+#include "rpc/blockchain.h"
+#include "key/key.h"
+#include "coding/base58.h"
 
 #include <cppconn/connection.h>
 #include <cppconn/driver.h>
@@ -14,6 +17,7 @@
 #include <cppconn/prepared_statement.h>
 #include <cppconn/resultset.h>
 #include <cppconn/statement.h>
+#include <strstream>
 
 std::map<uint256, DatabaseBlock> blocks;
 
@@ -25,6 +29,7 @@ std::unique_ptr<sql::PreparedStatement> insertBlockStatement;
 std::unique_ptr<sql::PreparedStatement> insertTransactionStatement;
 std::unique_ptr<sql::PreparedStatement> insertTxInStatement;
 std::unique_ptr<sql::PreparedStatement> insertTxOutStatement;
+std::unique_ptr<sql::PreparedStatement> insertTxOutPubkeyStatement;
 std::unique_ptr<sql::PreparedStatement> insertContractStatement;
 std::unique_ptr<sql::PreparedStatement> insertBranchBlockDataStatement;
 std::unique_ptr<sql::PreparedStatement> insertPMTStatement;
@@ -177,16 +182,16 @@ bool DBCreateTable()
 
     {
         char sql[] = "INSERT INTO `block`(`blockhash`, `hashprevblock`, `hashskipblock`, `hashmerkleroot`"
-            ", `height`, `version`, `time`, `bits`, `nonce`, `regtest`, `branchid`)"
-            " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            ", `height`, `version`, `time`, `bits`, `difficulty` , `nonce`, `regtest`, `branchid`, `blocksize`)"
+            " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         insertBlockStatement.reset(sqlConnection->prepareStatement(sql));
     }
 
     {
         char sql[] = "INSERT INTO `transaction`(`txhash`, `blockhash`, `blockindex`, `version`, `locktime`"
             ", `branchvseeds`, `branchseedspec6`, `sendtobranchid`, `sendtotxhexdata`, `frombranchid`, `fromtx`"
-            ", `inamount`, `reporttxid`, `coinpreouthash`, `provetxid`)"
-            " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
+            ", `inamount`, `reporttxid`, `coinpreouthash`, `provetxid`, `txsize`)"
+            " VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
         insertTransactionStatement.reset(sqlConnection->prepareStatement(sql));
     }
 
@@ -199,6 +204,11 @@ bool DBCreateTable()
     {
         char sql[] = "INSERT INTO `txout`(`txhash`, `txindex`, `value`, `scriptpubkey`) VALUES(?, ?, ?, ?);";
         insertTxOutStatement.reset(sqlConnection->prepareStatement(sql));
+    }
+
+	{
+        char sql[] = "INSERT INTO `txoutpubkey`(`txhash`, `txindex`,`solution`,`solutiontype`) VALUES(?, ?, ?, ?);";
+        insertTxOutPubkeyStatement.reset(sqlConnection->prepareStatement(sql));
     }
 
     {
@@ -278,7 +288,7 @@ bool DBInitialize()
     return DBCreateTable();
 }
 
-int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock)
+int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock , size_t sz)
 {
     bool isGenesisBlock = block.hashPrevBlock.IsNull();
 
@@ -335,9 +345,17 @@ int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock)
     insertBlockStatement->setInt(6, block.nVersion);
     insertBlockStatement->setUInt(7, block.nTime);
     insertBlockStatement->setUInt(8, block.nBits);
-    insertBlockStatement->setUInt(9, block.nNonce);
-    insertBlockStatement->setBoolean(10, gArgs.GetBoolArg("-regtest", false));
-    insertBlockStatement->setString(11, gArgs.GetArg("-branchid", ""));
+    std::strstream team;
+    std::string difficulty;
+    team << GetDifficulty(block.nBits);
+    team >> difficulty;
+    team.clear();
+    insertBlockStatement->setString(9, difficulty);
+    insertBlockStatement->setUInt(10, block.nNonce);
+    insertBlockStatement->setBoolean(11, gArgs.GetBoolArg("-regtest", false));
+    insertBlockStatement->setString(12, gArgs.GetArg("-branchid", ""));
+    insertBlockStatement->setUInt(13, sz);
+
     if (!insertBlockStatement->executeUpdate()) {
         const sql::SQLWarning* warnings = insertBlockStatement->getWarnings();
         if (warnings != nullptr) {
@@ -407,6 +425,67 @@ bool WriteTxOut(const MCTransactionRef tx)
         }
     }
 
+    return true;
+}
+
+bool WriteTxOutPubkey(const MCTransactionRef tx)
+{
+    typedef std::vector<unsigned char> valtype;
+    int num = 0;
+    std::string str = " ";
+    const std::string& txHash(tx->GetHash().ToString());
+    
+    for (uint32_t i = 0; i < tx->vout.size(); ++i) {
+        const MCTxOut& txout = tx->vout[i];
+
+        std::vector<std::vector<unsigned char>> vSolutionsRet;
+        txnouttype typeRet;
+        bool type = Solver(txout.scriptPubKey, typeRet, vSolutionsRet);
+
+		if (typeRet == TX_MULTISIG) {
+            for (const valtype& pubkey : vSolutionsRet) {
+                str = MagnaChainAddress(MCPubKey(pubkey).GetID()).ToString();
+                insertTxOutPubkeyStatement->setString(1, txHash);
+                insertTxOutPubkeyStatement->setUInt(2, i);
+                insertTxOutPubkeyStatement->setString(3, str);
+                insertTxOutPubkeyStatement->setUInt(4, uint32_t(typeRet));
+
+				 if (!insertTxOutPubkeyStatement->executeUpdate()) {
+                    const sql::SQLWarning* warnings = insertTxOutPubkeyStatement->getWarnings();
+                    if (warnings != nullptr) {
+                        LogPrintf("%s:%d => %d:%s\n", __FUNCTION__, __LINE__, warnings->getErrorCode(), warnings->getMessage().c_str());
+                        return false;
+                    }
+                }
+            }
+        }else{
+            if (typeRet == TX_PUBKEY ) {
+                str = MagnaChainAddress(MCPubKey(vSolutionsRet[0]).GetID()).ToString();
+            } else if (typeRet == TX_PUBKEYHASH) {
+                str = MagnaChainAddress(MCKeyID(uint160(vSolutionsRet[0]))).ToString();
+            } else if (typeRet == TX_SCRIPTHASH) {
+                str = MagnaChainAddress(MCScriptID(uint160(vSolutionsRet[0]))).ToString();
+            }else if (typeRet== TX_NULL_DATA){
+                continue;
+            }else {
+                num++;
+                LogPrintf("%s:%d => This type has not been processed => num=%d\n", __FUNCTION__, __LINE__, num);
+                assert(false);
+            }
+            insertTxOutPubkeyStatement->setString(1, txHash);
+            insertTxOutPubkeyStatement->setUInt(2, i);
+            insertTxOutPubkeyStatement->setString(3, str);
+            insertTxOutPubkeyStatement->setUInt(4, uint32_t(typeRet));
+
+            if (!insertTxOutPubkeyStatement->executeUpdate()) {
+                const sql::SQLWarning* warnings = insertTxOutPubkeyStatement->getWarnings();
+                if (warnings != nullptr) {
+                    LogPrintf("%s:%d => %d:%s\n", __FUNCTION__, __LINE__, warnings->getErrorCode(), warnings->getMessage().c_str());
+                    return false;
+                }
+            }
+        }
+    }
     return true;
 }
 
@@ -637,6 +716,7 @@ bool WriteTransaction(const MCBlock& block)
         insertTransactionStatement->setString(13, reporttxid);
         insertTransactionStatement->setString(14, coinpreouthash);
         insertTransactionStatement->setString(15, provetxid);
+        insertTransactionStatement->setInt(16,tx->GetTotalSize());
 
         if (!insertTransactionStatement->executeUpdate()) {
             const sql::SQLWarning* warnings = insertTransactionStatement->getWarnings();
@@ -650,6 +730,9 @@ bool WriteTransaction(const MCBlock& block)
             return false;
         }
         if (!WriteTxOut(tx)) {
+            return false;
+        }
+        if (!WriteTxOutPubkey(tx)) {
             return false;
         }
         if (!WriteContract(tx)) {
@@ -668,12 +751,12 @@ bool WriteTransaction(const MCBlock& block)
     return true;
 }
 
-int WriteBlockToDatabase(const MCBlock& block)
+int WriteBlockToDatabase(const MCBlock& block, size_t sz)
 {
     int height = -1;
     try {
         uint256 hashSkipBlock;
-        height = WriteBlockHeader(block, &hashSkipBlock);
+        height = WriteBlockHeader(block, &hashSkipBlock, sz);
         if (height < 0)
             return -1;
         if (!WriteTransaction(block))
