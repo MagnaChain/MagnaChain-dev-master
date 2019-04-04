@@ -15,7 +15,7 @@ for (1 .. $times) {
 	say $_;
 	system "python3 test_runner.py $script";
 	sleep 30;
-	`killall -9 magnachaind`;
+	#`killall -9 magnachaind`;
 	`killall -9 test_runner.py`;
 	say '*' x 30;
 	sleep 30;
