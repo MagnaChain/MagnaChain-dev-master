@@ -1994,7 +1994,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         MCMutableTransaction stakeTx;
         stakeTx.nVersion = MCTransaction::STAKE;
         if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
-            return nullptr;
+            throw std::runtime_error("Make stake transaction return fail");
         }
 
         // set outpoint
@@ -2069,7 +2069,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	}
     else if (bnOutHash > bTarget) {
         // CheckBlockWork will fail, break follow
-        return nullptr;
+        throw std::runtime_error("Check block work fail, bnOutHash > bTarget");
     }
 
 	// to verify is mining with the address owner
