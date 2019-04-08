@@ -66,19 +66,34 @@ class InvalidateTest(MagnaChainTestFramework):
         self.nodes[2].invalidateblock(self.nodes[2].getblockhash(3))
         for n in self.nodes:
             print(n.getblockcount(),int(n.getchaintipwork(), 16))
-        assert_equal(self.nodes[2].getblockcount(), 2)
+        if get_chainwork(self.node0) == get_chainwork(self.node2):
+            # 节点0的工作量是最大的，到最后节点0的链为主链
+            assert_equal(self.nodes[2].getblockcount(), 4)
+        else:
+            assert_equal(self.nodes[2].getblockcount(), 2)
         self.log.info("..and then mine a block")
         for n in self.nodes:
             print(n.getblockcount(),int(n.getchaintipwork(), 16))
+        node1_chainwork = get_chainwork(self.node1)
         self.nodes[2].generate(1)
+        # check the chainwork
+        if get_chainwork(self.node2) > node1_chainwork:
+            node1_blockcount = self.node2.getblockcount()
+            assert_equal(node1_blockcount,3)
+        elif get_chainwork(self.node2) == node1_chainwork:
+            node1_blockcount = self.node2.getblockcount()
+            assert_equal(node1_blockcount,4)
+        else:
+            node1_blockcount = self.node1.getblockcount()
+            assert_equal(node1_blockcount, 19)
         self.log.info("Verify all nodes are at the right height")
         for n in self.nodes:
             print(n.getblockcount(),int(n.getchaintipwork(), 16))
-        wait_until(lambda: self.nodes[2].getblockcount() == 3, timeout=30)
-        wait_until(lambda: self.nodes[0].getblockcount() == 4, timeout=30)
-        wait_until(lambda: self.nodes[1].getblockcount() == 19, timeout=30)
+        wait_until(lambda: self.nodes[2].getblockcount() == (5 if get_chainwork(self.node1) == get_chainwork(self.node0) else 3), timeout=30)
+        wait_until(lambda: self.nodes[0].getblockcount() == (4 if newheight == 4 else 1) , timeout=30)
+        wait_until(lambda: self.nodes[1].getblockcount() == node1_blockcount, timeout=30)
         node1height = self.nodes[1].getblockcount()
-        if node1height < 4:
+        if node1height < node1_blockcount:
             raise AssertionError("Node 1 reorged to a lower height: %d"%node1height)
 
         self.log.info("Verify that we reconsider all ancestors as well")
