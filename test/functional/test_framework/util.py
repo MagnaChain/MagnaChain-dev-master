@@ -1014,3 +1014,11 @@ def gen_lots_of_contracts(node, contract, num=500):
         result = node.publishcontract(contract)
         infos.append({'txid': result['txid'], 'address': result['contractaddress']})
     return infos
+
+def get_chainwork(node):
+    '''
+    获取当前主链(aactiveTips)的工作量
+    :param node:
+    :return:
+    '''
+    return int(node.getchaintipwork(), 16)

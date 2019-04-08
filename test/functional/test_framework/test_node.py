@@ -168,8 +168,7 @@ class TestNode():
                     self.process.terminate()
                 except Exception as err:
                     self.log.info("Kill process error for {}".format(err))
-                    pass
-            self.log.exception("Unable to stop node.")
+                    self.log.exception("Unable to stop node.")
 
     def is_node_stopped(self):
         """Checks whether the node has stopped.
