@@ -2060,12 +2060,17 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache);
 	arith_uint256 bTarget;
 	bTarget.SetCompact(pblock->nBits);
-	if (UintToArith256(out_hash) < bTarget) 
+    const arith_uint256 bnOutHash = UintToArith256(out_hash);
+	if (bnOutHash < bTarget)
 	{
-		pblock->nBits = UintToArith256(out_hash).GetCompact();
+		pblock->nBits = bnOutHash.GetCompact();
 		bTarget.SetCompact(pblock->nBits);
 		LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
 	}
+    else if (bnOutHash > bTarget) {
+        // CheckBlockWork will fail, break follow
+        return nullptr;
+    }
 
 	// to verify is mining with the address owner
 	MCMutableTransaction kSignTx(*pblock->vtx[0]);
