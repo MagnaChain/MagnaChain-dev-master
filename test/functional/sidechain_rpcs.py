@@ -35,15 +35,12 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 2
         self.extra_args = [['-txindex'],['-txindex']]
-        # self.side_extra_args = [['-txindex']]
-        self.side_extra_args = [["-powtargetspacing=5"],["-powtargetspacing=5"]]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
         and the self.sidenodes like self.nodes
         '''
         self.num_sidenodes = 2
-        # self.rpc_timewait = 900
 
     def run_test(self):
         """Main test logic"""
@@ -287,7 +284,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(self.snode0.getblockcount(),new_height + 7)
         self.node0.generate(1)
         for i in range(3):
-            self.snode0.generate(8)
+            # avoid generate timeout
+            for j in range(8):
+                self.snode0.generate(1)
         self.node0.generate(1)
         self.sync_all()
         for n in self.sidenodes:
