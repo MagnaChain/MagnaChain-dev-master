@@ -78,7 +78,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         while time.time() - time_start < 240:
             try:
                 # Any of these RPC calls could throw due to node crash
-                self.log.info('start with args:',self.nodes[node_index].extra_args)
+                self.log.info('start with args:{}'.format(self.nodes[node_index].extra_args))
                 self.start_node(node_index)
                 self.nodes[node_index].waitforblock(expected_tip)
                 utxo_hash = self.nodes[node_index].gettxoutsetinfo()['hash_serialized_2']
