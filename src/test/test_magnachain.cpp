@@ -162,7 +162,8 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>
 
     //std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
     ContractContext contractContext;
-	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext, true, &tempWallet);
+    std::string strErr;
+	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext, true, &tempWallet, pcoinsTip, strErr);
     MCBlock& block = pblocktemplate->block;
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:

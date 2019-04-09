@@ -235,9 +235,9 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         ContractContext contractContext;
         BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params());
         options.outpoint = outpoint;
-        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache));
+        std::string strCreateBlockError;
+        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache, strCreateBlockError));
         if (!pblocktemplate.get()) {
-            // out of memory or MakeStokeTransaction fail
             nTries++;
             continue;
         }
@@ -935,9 +935,10 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
         ContractContext contractContext;
         MCCoinsView viewDummy;
         MCCoinsViewCache view(&viewDummy);
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view);
+        std::string strCreateBlockError;
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view, strCreateBlockError);
         if (!pblocktemplate)
-            throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
+            throw JSONRPCError(RPC_OUT_OF_MEMORY, strCreateBlockError);
 
         // Need to update only after we know CreateNewBlock succeeded
         pindexPrev = pindexPrevNew;

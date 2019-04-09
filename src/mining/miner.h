@@ -197,7 +197,8 @@ public:
     BlockAssembler(const MCChainParams& params, const Options& options);
 
     /** Construct a new block template with coinbase to scriptPubKeyIn */
-    std::unique_ptr<MCBlockTemplate> CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx=true, const MCKeyStore* keystoreIn = nullptr, MCCoinsViewCache *pcoinsCache = nullptr);
+    std::unique_ptr<MCBlockTemplate> CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx, 
+        const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr);
 
 private:
     // utility functions

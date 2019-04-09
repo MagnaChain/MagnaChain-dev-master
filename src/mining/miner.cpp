@@ -1965,8 +1965,10 @@ bool CheckCoinbaseTx(const MCBlock& block, MCBlockIndex* pindex, MCAmount nFees,
 }
 
 
-std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx, const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache)
+std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, 
+    bool fMineWitnessTx, const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr)
 {
+    strErr.clear();
     if (pcoinsCache == nullptr)
     {
         pcoinsCache = ::pcoinsTip;
@@ -1976,9 +1978,10 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	resetBlock();
 
 	pblocktemplate.reset(new MCBlockTemplate());
-
-	if (!pblocktemplate.get())
+	if (!pblocktemplate.get()){
+        strErr = "Out of memory";
 		return nullptr;
+    }
 	pblock = &pblocktemplate->block; // pointer for convenience
 
 	// Add dummy coinbase tx as first transaction
@@ -1994,7 +1997,10 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         MCMutableTransaction stakeTx;
         stakeTx.nVersion = MCTransaction::STAKE;
         if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
-            throw std::runtime_error("Make stake transaction return fail");
+            strErr = "Make stake transaction return fail";
+            error(strErr.c_str());
+            pblocktemplate.release();
+            return nullptr;
         }
 
         // set outpoint
@@ -2069,25 +2075,37 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	}
     else if (bnOutHash > bTarget) {
         // CheckBlockWork will fail, break follow
-        throw std::runtime_error("Check block work fail, bnOutHash > bTarget");
+        strErr = "Check block work fail, bnOutHash > bTarget";
+        error(strErr.c_str());
+        pblocktemplate.release();
+        return nullptr;
     }
 
 	// to verify is mining with the address owner
 	MCMutableTransaction kSignTx(*pblock->vtx[0]);
-	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn))
-		throw std::runtime_error( "sign coin base transaction error");
+	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn)){
+        strErr = strprintf("%s:%d sign coin base transaction error\n", __FUNCTION__, __LINE__);
+        error(strErr.c_str());
+        pblocktemplate.release();
+        return nullptr;
+    }
 	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
 	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-		throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
+        strErr = strprintf("%s:%d TestBlockValidity fail\n", __FUNCTION__, __LINE__);
+        error(strErr.c_str());
+        pblocktemplate.release();
+        return nullptr;
 	}
 
     CoinAmountDB coinAmountDB;
     CoinAmountCache coinAmountCache(&coinAmountDB);
-    LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+    LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
     if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
-        error("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
+        strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
+        error(strErr.c_str());
+        pblocktemplate.release();
         return nullptr;
     }
 
