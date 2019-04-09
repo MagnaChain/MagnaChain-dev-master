@@ -148,7 +148,7 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
     for (int i = 0; i < headers.size(); ++i) {
         const MCBlockHeader& header = headers[i];
 
-        if (vGetData.size() < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+        if (txSync.size() == 0 && vGetData.size() < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
             if (blockSynced.insert(header.GetHash()).second) {
                 uint32_t nFetchFlags = GetFetchFlags(pfrom);
                 vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, header.GetHash()));
@@ -525,6 +525,9 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
         if (WriteBlockToDatabase(block, dbBlock, sz)) {
             if (lastCommon == nullptr || dbBlock->height > lastCommon->height) {
                 lastCommon = dbBlock;
+            }
+            if (bestKnownBlockHeader == nullptr || dbBlock->height > bestKnownBlockHeader->height) {
+                bestKnownBlockHeader = dbBlock;
             }
             txSync.erase(pblock->GetHash());
             blockSynced.erase(block.GetHash());

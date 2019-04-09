@@ -56,8 +56,14 @@ std::string MCTxOut::ToString() const
     return strprintf("MCTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
 
-MCMutableTransaction::MCMutableTransaction() : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0) {}
-MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) {
+MCMutableTransaction::MCMutableTransaction()
+    : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0), inAmount(0)
+{
+}
+
+MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), inAmount(0)
+{
 	if (nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION)
         pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
 	else if (nVersion == MCTransaction::CREATE_BRANCH_VERSION)
