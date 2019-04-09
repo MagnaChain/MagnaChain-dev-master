@@ -11,4 +11,12 @@
 
 bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& vRecv, int64_t nTimeReceived, const MCChainParams& chainparams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc);
 
+class MonitorPeerLogicValidation : public PeerLogicValidation
+{
+public:
+    explicit MonitorPeerLogicValidation(MCConnman* connman, MCScheduler &scheduler, ProcessMessageFunc processMessageFunc, GetLocatorFunc getLocatorFunc);
+
+    void GetBlockData(MCNode* pto, MCNodeState& state, bool fFetch, std::vector<MCInv>& vGetData) override;
+};
+
 #endif // MAGNACHAIN_NET_PROCESSING_H

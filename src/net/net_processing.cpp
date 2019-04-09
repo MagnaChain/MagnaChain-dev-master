@@ -3523,24 +3523,7 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
         // Message: getdata (blocks)
         //
         std::vector<MCInv> vGetData;
-        if (!pto->fClient && (fFetch || !IsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
-            std::vector<const MCBlockIndex*> vToDownload;
-            NodeId staller = -1;
-            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller, consensusParams);
-            for (const MCBlockIndex *pindex : vToDownload) {
-                uint32_t nFetchFlags = GetFetchFlags(pto);
-                vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
-                MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), pindex);
-                LogPrint(BCLog::NET, "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
-                    pindex->nHeight, pto->GetId());
-            }
-            if (state.nBlocksInFlight == 0 && staller != -1) {
-                if (State(staller)->nStallingSince == 0) {
-                    State(staller)->nStallingSince = nNow;
-                    LogPrint(BCLog::NET, "Stall started peer=%d\n", staller);
-                }
-            }
-        }
+        GetBlockData(pto, state, fFetch, vGetData);
 
         //
         // Message: getdata (non-blocks)
@@ -3595,6 +3578,30 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
         }
     }
     return true;
+}
+
+void PeerLogicValidation::GetBlockData(MCNode* pto, MCNodeState& state, bool fFetch, std::vector<MCInv>& vGetData)
+{
+    int64_t nNow = GetTimeMicros();
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+    if (!pto->fClient && (fFetch || !IsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+        std::vector<const MCBlockIndex*> vToDownload;
+        NodeId staller = -1;
+        FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller, consensusParams);
+        for (const MCBlockIndex *pindex : vToDownload) {
+            uint32_t nFetchFlags = GetFetchFlags(pto);
+            vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
+            MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), pindex);
+            LogPrint(BCLog::NET, "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
+                pindex->nHeight, pto->GetId());
+        }
+        if (state.nBlocksInFlight == 0 && staller != -1) {
+            if (State(staller)->nStallingSince == 0) {
+                State(staller)->nStallingSince = nNow;
+                LogPrint(BCLog::NET, "Stall started peer=%d\n", staller);
+            }
+        }
+    }
 }
 
 class CNetProcessingCleanup

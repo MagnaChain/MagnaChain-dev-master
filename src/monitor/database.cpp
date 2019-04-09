@@ -37,37 +37,32 @@ std::unique_ptr<sql::PreparedStatement> insertReportDataStatement;
 std::unique_ptr<sql::PreparedStatement> insertContractPrevDataItemStatement;
 std::unique_ptr<sql::PreparedStatement> insertContractInfoStatement;
 
-int GetDatabaseBlock(DatabaseBlock* block, const uint256& hashBlock)
+std::shared_ptr<DatabaseBlock> GetDatabaseBlock(const uint256& hashBlock)
 {
-    int height = -1;
     std::map<uint256, DatabaseBlock>::iterator iter = blocks.find(hashBlock);
     if (iter != blocks.end()) {
-        height = iter->second.height;
-        if (block != nullptr) {
-            block->hashBlock = hashBlock;
-            block->hashPrevBlock = iter->second.hashPrevBlock;
-            block->hashSkipBlock = iter->second.hashSkipBlock;
-            block->height = height;
-        }
+        std::shared_ptr<DatabaseBlock> block = std::make_shared<DatabaseBlock>();
+        block->hashBlock = hashBlock;
+        block->hashPrevBlock = iter->second.hashPrevBlock;
+        block->hashSkipBlock = iter->second.hashSkipBlock;
+        block->height = iter->second.height;
+        return block;
     }
     else {
         selectBlockStatement->setString(1, hashBlock.ToString());
         std::unique_ptr<sql::ResultSet> resultSet(selectBlockStatement->executeQuery());
         if (resultSet == nullptr || !resultSet->next()) {
             //LogPrintf("%s:%d => resultSet == nullptr, hash is %s\n", __FUNCTION__, __LINE__, hashBlock.ToString());
-            return -1;
+            return nullptr;
         }
 
-        height = resultSet->getInt(3);
-        if (block != nullptr) {
-            block->hashBlock = hashBlock;
-            block->hashPrevBlock.SetHex(resultSet->getString(1));
-            block->hashSkipBlock.SetHex(resultSet->getString(2));
-            block->height = height;
-        }
+        std::shared_ptr<DatabaseBlock> block = std::make_shared<DatabaseBlock>();
+        block->hashBlock = hashBlock;
+        block->hashPrevBlock.SetHex(resultSet->getString(1));
+        block->hashSkipBlock.SetHex(resultSet->getString(2));
+        block->height = resultSet->getInt(3);
+        return block;
     }
-
-    return height;
 }
 
 void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, const uint256& hashSkipBlock, const int height)
@@ -90,29 +85,6 @@ void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, co
     }
 }
 
-bool GetAncestor(DatabaseBlock& indexWalk, int height)
-{
-    if (height > indexWalk.height || height < 0)
-        return false;
-
-    int heightWalk = indexWalk.height;
-    while (heightWalk > height) {
-        int heightSkip = GetSkipHeight(heightWalk);
-        int heightSkipPrev = GetSkipHeight(heightWalk - 1);
-        if (!indexWalk.hashSkipBlock.IsNull() &&
-            (heightSkip == height || (heightSkip > height && !(heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height)))) {
-            GetDatabaseBlock(&indexWalk, indexWalk.hashSkipBlock);
-            heightWalk = heightSkip;
-        }
-        else {
-            GetDatabaseBlock(&indexWalk, indexWalk.hashPrevBlock);
-            heightWalk--;
-        }
-    }
-
-    return true;
-}
-
 const uint256 GetMaxHeightBlock()
 {
     char sql[] = "SELECT `blockhash` FROM `block` WHERE (`height`, `time`)"
@@ -128,36 +100,6 @@ const uint256 GetMaxHeightBlock()
     uint256 hash;
     hash.SetHex(resultSet->getString(1));
     return hash;
-}
-
-MCBlockLocator MonitorGetLocator(const MCBlockIndex *pindex)
-{
-    if (!pindex) {
-        pindex = chainActive.Tip();
-    }
-
-    DatabaseBlock block;
-    GetDatabaseBlock(&block, pindex->GetBlockHash());
-
-    int nStep = 1;
-    std::vector<uint256> vHave;
-    vHave.reserve(32);
-    while (true) {
-        vHave.emplace_back(block.hashBlock);
-        // Stop when we have added the genesis block.
-        if (block.height == 0) {
-            break;
-        }
-        // Exponentially larger steps back, plus the genesis block.
-        int nHeight = std::max(block.height - nStep, 0);
-        if (!GetAncestor(block, nHeight)) {
-            break;
-        }
-        if (vHave.size() > 10)
-            nStep *= 2;
-    }
-
-    return MCBlockLocator(vHave);
 }
 
 bool DBCreateTable()
@@ -288,41 +230,9 @@ bool DBInitialize()
     return DBCreateTable();
 }
 
-int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock , size_t sz)
+bool WriteBlockHeader(const MCBlock& block, const std::shared_ptr<DatabaseBlock> dbBlock , size_t sz)
 {
     bool isGenesisBlock = block.hashPrevBlock.IsNull();
-
-    // Calculate prev block
-    int height = 0;
-    DatabaseBlock prevBlock;
-    if (!isGenesisBlock) {
-        if (GetDatabaseBlock(&prevBlock, block.hashPrevBlock) < 0) {
-            if (block.hashPrevBlock != Params().GetConsensus().hashGenesisBlock) {
-                LogPrintf("%s:%d => %s\n", __FUNCTION__, __LINE__, block.hashPrevBlock.ToString());
-                return -1;
-            }
-        }
-        else {
-            height = prevBlock.height + 1;
-        }
-    }
-
-    // Calculate skip block
-    DatabaseBlock skipBlock;
-    if (!isGenesisBlock) {
-        skipBlock.hashBlock = prevBlock.hashBlock;
-        skipBlock.hashPrevBlock = prevBlock.hashPrevBlock;
-        skipBlock.hashSkipBlock = prevBlock.hashSkipBlock;
-        skipBlock.height = prevBlock.height;
-
-        int heightSkipNext = GetSkipHeight(height) + 1;
-        int heightWalk = std::max(height - 1, 0);
-        while (heightWalk > heightSkipNext) {
-            GetDatabaseBlock(&skipBlock, skipBlock.hashPrevBlock);
-            assert(skipBlock.height == heightWalk - 1);
-            heightWalk = skipBlock.height;
-        }
-    }
 
     // update
     insertBlockStatement->setString(1, block.GetHash().ToString());
@@ -334,14 +244,14 @@ int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock , size_t sz)
     }
 
     if (!isGenesisBlock) {
-        insertBlockStatement->setString(3, skipBlock.hashPrevBlock.ToString());
+        insertBlockStatement->setString(3, dbBlock->hashSkipBlock.ToString());
     }
     else {
         insertBlockStatement->setString(3, std::string());
     }
 
     insertBlockStatement->setString(4, block.hashMerkleRoot.ToString());
-    insertBlockStatement->setInt(5, height);
+    insertBlockStatement->setInt(5, dbBlock->height);
     insertBlockStatement->setInt(6, block.nVersion);
     insertBlockStatement->setUInt(7, block.nTime);
     insertBlockStatement->setUInt(8, block.nBits);
@@ -360,15 +270,11 @@ int WriteBlockHeader(const MCBlock& block, uint256* hashSkipBlock , size_t sz)
         const sql::SQLWarning* warnings = insertBlockStatement->getWarnings();
         if (warnings != nullptr) {
             LogPrintf("%s:%d => %d:%s\n", __FUNCTION__, __LINE__, warnings->getErrorCode(), warnings->getMessage().c_str());
-            return -1;
+            return false;
         }
     }
 
-    if (hashSkipBlock != nullptr) {
-        *hashSkipBlock = skipBlock.hashPrevBlock;
-    }
-
-    return height;
+    return true;
 }
 
 bool WriteTxIn(const MCTransactionRef tx)
@@ -751,19 +657,18 @@ bool WriteTransaction(const MCBlock& block)
     return true;
 }
 
-int WriteBlockToDatabase(const MCBlock& block, size_t sz)
+bool WriteBlockToDatabase(const MCBlock& block, const std::shared_ptr<DatabaseBlock> dbBlock, size_t sz)
 {
-    int height = -1;
     try {
-        uint256 hashSkipBlock;
-        height = WriteBlockHeader(block, &hashSkipBlock, sz);
-        if (height < 0)
-            return -1;
-        if (!WriteTransaction(block))
-            return -1;
+        if (!WriteBlockHeader(block, dbBlock, sz)) {
+            return false;
+        }
+        if (!WriteTransaction(block)) {
+            return false;
+        }
 
         sqlConnection->commit();
-        AddDatabaseBlock(block.GetHash(), block.hashPrevBlock, hashSkipBlock, height);
+        AddDatabaseBlock(block.GetHash(), block.hashPrevBlock, dbBlock->hashSkipBlock, dbBlock->height);
     }
     catch (sql::SQLException e) {
         LogPrintf("%s:%d => %d:%s\n", __FUNCTION__, __LINE__, e.getErrorCode(), e.what());
@@ -771,9 +676,9 @@ int WriteBlockToDatabase(const MCBlock& block, size_t sz)
             throw e;
         }
         else {
-            return -1;
+            return false;
         }
     }
 
-    return height;
+    return true;
 }
