@@ -148,12 +148,12 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
     for (int i = 0; i < headers.size(); ++i) {
         const MCBlockHeader& header = headers[i];
 
-        if (txSync.size() == 0 && vGetData.size() < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+        /*if (txSync.size() == 0 && vGetData.size() < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
             if (blockSynced.insert(header.GetHash()).second) {
                 uint32_t nFetchFlags = GetFetchFlags(pfrom);
                 vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, header.GetHash()));
             }
-        }
+        }*/
 
         std::shared_ptr<DatabaseBlock> blockHeader = std::make_shared<DatabaseBlock>();
         auto res = txSync.insert(std::make_pair(header.GetHash(), blockHeader));
@@ -187,6 +187,10 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
         const uint256& blockHash = headers[headers.size() - 1].GetHash();
         blockIndex.phashBlock = &blockHash;
         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
+    }
+
+    if (lastCommon == nullptr) {
+        lastCommon = GetDatabaseBlock2(chainActive.Tip()->GetBlockHash());
     }
 }
 
@@ -627,7 +631,7 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
 
 void FindNextBlocksToDownload(unsigned int count, std::vector<std::shared_ptr<DatabaseBlock>>& vBlocks)
 {
-    if (lastCommon == nullptr) {
+    if (lastCommon == nullptr || count == 0) {
         return;
     }
 
@@ -677,6 +681,9 @@ void MonitorPeerLogicValidation::GetBlockData(MCNode* pto, MCNodeState& state, b
     std::vector<std::shared_ptr<DatabaseBlock>> vToDownload;
     FindNextBlocksToDownload(MAX_BLOCKS_IN_TRANSIT_PER_PEER - blockSynced.size(), vToDownload);
     for (const std::shared_ptr<DatabaseBlock> item : vToDownload) {
+        if (blockSynced.size() >= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+            break;
+        }
         uint32_t nFetchFlags = GetFetchFlags(pto);
         vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, item->hashBlock));
         blockSynced.insert(item->hashBlock);
