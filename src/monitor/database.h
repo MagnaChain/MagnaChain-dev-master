@@ -22,8 +22,8 @@ public:
 
 bool DBInitialize();
 const uint256 GetMaxHeightBlock();
-int WriteBlockToDatabase(const MCBlock& block, size_t sz);
-int GetDatabaseBlock(DatabaseBlock* block, const uint256& hashBlock);
-MCBlockLocator MonitorGetLocator(const MCBlockIndex *pindex);
+bool WriteBlockToDatabase(const MCBlock& block, const std::shared_ptr<DatabaseBlock> dbBlock, size_t sz);
+std::shared_ptr<DatabaseBlock> GetDatabaseBlock(const uint256& hashBlock);
+MCBlockLocator MonitorGetLocator(const MCBlockIndex* pindex);
 
 #endif

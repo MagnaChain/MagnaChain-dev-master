@@ -183,7 +183,7 @@ typedef MCBlockLocator (*GetLocatorFunc)(const MCBlockIndex *pindex);
 MCBlockLocator GetLocator(const MCBlockIndex *pindex);
 
 class PeerLogicValidation : public MCValidationInterface, public NetEventsInterface {
-private:
+protected:
     MCConnman* const connman;
     ProcessMessageFunc processMessageFunc;
     GetLocatorFunc getLocatorFunc;
@@ -209,6 +209,7 @@ public:
     * @return                      True if there is more work to be done
     */
     bool SendMessages(MCNode* pto, std::atomic<bool>& interrupt) override;
+    virtual void GetBlockData(MCNode* pto, MCNodeState& state, bool fFetch, std::vector<MCInv>& vGetData);
 
     void ConsiderEviction(MCNode *pto, int64_t time_in_seconds);
     void CheckForStaleTipAndEvictPeers(const Consensus::Params &consensusParams);
