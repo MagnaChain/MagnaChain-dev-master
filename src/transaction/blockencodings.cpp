@@ -47,7 +47,10 @@ uint64_t MCBlockHeaderAndShortTxIDs::GetShortID(const uint256& txhash) const {
     return SipHashUint256(shorttxidk0, shorttxidk1, txhash) & 0xffffffffffffL;
 }
 
-
+PartiallyDownloadedBlock::PartiallyDownloadedBlock(MCTxMemPool* poolIn, BranchDb* pBranchDb) : pool(poolIn) 
+{
+    m_pBranchcache = std::make_shared<BranchCache>(pBranchDb);
+}
 
 ReadStatus PartiallyDownloadedBlock::InitData(const MCBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, MCTransactionRef>>& extra_txn) {
     if (cmpctblock.header.IsNull() || (cmpctblock.shorttxids.empty() && cmpctblock.prefilledtxn.empty()))
@@ -206,9 +209,9 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(MCBlock& block, const std::vector
     if (vtx_missing.size() != tx_missing_offset)
         return READ_STATUS_INVALID;
 
-    BranchCache branchcache(g_pBranchDb);
     MCValidationState state;
-    if (!CheckBlock(block, state, Params().GetConsensus(), &branchcache, true, true, false, pcoinsTip)) {
+    MCCoinsViewCache coinsview(pcoinsTip);
+    if (!CheckBlock(block, state, Params().GetConsensus(), m_pBranchcache.get(), true, true, false, &coinsview)) {
         // TODO: We really want to just check merkle tree manually here,
         // but that is expensive, and CheckBlock caches a block's
         // "checked-status" (in the MCBlock?). MCBlock should be able to

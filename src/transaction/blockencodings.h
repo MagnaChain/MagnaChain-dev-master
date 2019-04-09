@@ -11,6 +11,8 @@
 #include <memory>
 
 class MCTxMemPool;
+class BranchCache;
+class BranchDb;
 
 // Dumb helper to handle MCTransaction compression at serialize-time
 struct TransactionCompressor {
@@ -201,11 +203,12 @@ protected:
     std::vector<MCTransactionRef> txn_available;
     size_t prefilled_count = 0, mempool_count = 0, extra_count = 0;
     MCTxMemPool* pool;
+    std::shared_ptr<BranchCache> m_pBranchcache;
 public:
     MCBlockHeader header;
     std::vector<uint16_t> groupSize;
     std::vector<ContractPrevData> prevContractData;
-    PartiallyDownloadedBlock(MCTxMemPool* poolIn) : pool(poolIn) {}
+    PartiallyDownloadedBlock(MCTxMemPool* poolIn, BranchDb* pBranchDb);
 
     // extra_txn is a list of extra transactions to look at, in <witness hash, reference> form
     ReadStatus InitData(const MCBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, MCTransactionRef>>& extra_txn);
