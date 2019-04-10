@@ -46,7 +46,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         sidechain_id = self.sidechain_id
         saddr = self.sidenodes[0].getnewaddress()
         assert_raises_rpc_error(-25, "Load transaction sendinfo fail", node.sendtobranchchain,
-                                sidechain_id.replace("1", "2"), saddr, 1)
+                                sidechain_id[:len(sidechain_id) - 5] + 'abcde', saddr, 1)
         assert_raises_rpc_error(-4, "can not send to this chain", node.sendtobranchchain,
                                 "main", node.getnewaddress(), 1)
         assert_raises_rpc_error(-4, "can not send to this chain", self.sidenodes[0].sendtobranchchain,
@@ -118,6 +118,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
 
         # side to main
+        self.sync_all()
         node.generate(2)
         self.sync_all()
         side_balance = self.sidenodes[0].getbalance()
@@ -130,10 +131,10 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert txid not in self.sidenodes[0].getrawmempool()
         node.generate(2)
         self.sync_all()
+        total_fee = Decimal('0')
         self.sidenodes[0].generate(1)
         # 侧链的区块头是一个交易，侧转主的是一个交易，所以主链的内存池会有2个交易
         assert len(node.getrawmempool()) == 2
-        total_fee = Decimal('0')
         txs = node.getrawmempool(True)
         for txid in txs:
             print(txs[txid]['version'],txs[txid]['fee'])
@@ -144,7 +145,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(2)
         self.sync_all()
         print("total fee:",total_fee)
-        print("diff:",node.getbalance() - (Decimal(balance) + Decimal(MINER_REWARD * 4) + Decimal(side_balance - 30) + total_fee))
+        print("diff:",node.getbalance() - (Decimal(balance) + Decimal(MINER_REWARD * 4 + Decimal(side_balance - 30) + total_fee)))
         assert_equal(node.getbalanceof(addr), side_balance - 30)
         assert_equal(node.getbalance(), Decimal(balance) + Decimal(MINER_REWARD * 4) + Decimal(side_balance - 30) + total_fee)
 
