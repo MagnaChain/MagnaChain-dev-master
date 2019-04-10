@@ -67,15 +67,21 @@ std::shared_ptr<DatabaseBlock> GetAncestor(const std::shared_ptr<DatabaseBlock> 
     while (heightWalk > height) {
         int heightSkip = GetSkipHeight(heightWalk);
         int heightSkipPrev = GetSkipHeight(heightWalk - 1);
+        std::shared_ptr<DatabaseBlock> temp;
         if (!parent->hashSkipBlock.IsNull() && (heightSkip == height ||
             (heightSkip > height && !(heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height)))) {
-            parent = GetDatabaseBlock2(parent->hashSkipBlock);
+            temp = GetDatabaseBlock2(parent->hashSkipBlock);
             heightWalk = heightSkip;
         }
         else {
-            parent = GetDatabaseBlock2(parent->hashPrevBlock);
+            temp = GetDatabaseBlock2(parent->hashPrevBlock);
             heightWalk--;
         }
+
+        if (temp == nullptr) {
+            height += 0;
+        }
+        parent = temp;
     }
     return parent;
 }
@@ -169,7 +175,7 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
                 bestKnownBlockHeader = res.first->second;
             }
         }
-        LogPrint(BCLog::NET, "Requesting block %s from  peer=%d\n", header.GetHash().ToString(), pfrom->GetId());
+        LogPrint(BCLog::NET, "Receive block header %s from peer=%d\n", header.GetHash().ToString(), pfrom->GetId());
     }
 
     if (vGetData.size() > 1) {
@@ -526,7 +532,13 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
             dbBlock->hashBlock = pblock->GetHash();
         }
 
-        if (WriteBlockToDatabase(block, dbBlock, sz)) {
+        bool result;
+        {
+            LOCK(cs_main);
+            result = WriteBlockToDatabase(block, dbBlock, sz);
+        }
+
+        if (result) {
             if (lastCommon == nullptr || dbBlock->height > lastCommon->height) {
                 lastCommon = dbBlock;
             }

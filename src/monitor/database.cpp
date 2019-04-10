@@ -50,18 +50,24 @@ std::shared_ptr<DatabaseBlock> GetDatabaseBlock(const uint256& hashBlock)
     }
     else {
         selectBlockStatement->setString(1, hashBlock.ToString());
-        std::unique_ptr<sql::ResultSet> resultSet(selectBlockStatement->executeQuery());
-        if (resultSet == nullptr || !resultSet->next()) {
-            //LogPrintf("%s:%d => resultSet == nullptr, hash is %s\n", __FUNCTION__, __LINE__, hashBlock.ToString());
+        try {
+            std::unique_ptr<sql::ResultSet> resultSet(selectBlockStatement->executeQuery());
+            if (resultSet == nullptr || !resultSet->next()) {
+                //LogPrintf("%s:%d => resultSet == nullptr, hash is %s\n", __FUNCTION__, __LINE__, hashBlock.ToString());
+                return nullptr;
+            }
+
+            std::shared_ptr<DatabaseBlock> block = std::make_shared<DatabaseBlock>();
+            block->hashBlock = hashBlock;
+            block->hashPrevBlock.SetHex(resultSet->getString(1));
+            block->hashSkipBlock.SetHex(resultSet->getString(2));
+            block->height = resultSet->getInt(3);
+            return block;
+        }
+        catch (std::exception e) {
+            LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, e.what());
             return nullptr;
         }
-
-        std::shared_ptr<DatabaseBlock> block = std::make_shared<DatabaseBlock>();
-        block->hashBlock = hashBlock;
-        block->hashPrevBlock.SetHex(resultSet->getString(1));
-        block->hashSkipBlock.SetHex(resultSet->getString(2));
-        block->height = resultSet->getInt(3);
-        return block;
     }
 }
 
