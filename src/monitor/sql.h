@@ -17,7 +17,7 @@ const char* sqls[] = {
     ", `branchid` VARCHAR(64) NOT NULL"
     ", `blocksize` INT UNSIGNED NOT NULL"
     ", PRIMARY KEY(`blockhash`)"
-    ", INDEX(`hashprevblock`, `height`, `regtest`, `branchid`)"
+    ", INDEX(`hashprevblock`, `height`, `regtest`, `branchid`, `time`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `transaction` ("
