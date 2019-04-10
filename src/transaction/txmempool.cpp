@@ -296,17 +296,17 @@ bool MCTxMemPool::SearchForParents(const MCTxMemPoolEntry& entry, setEntries& pa
         }
     }
 
-    if (tx.IsSyncBranchInfo()){
-        uint256 prebranchheadblocktxhash = g_pBranchDataMemCache->GetParent(tx);
-        txiter piter = mapTx.find(prebranchheadblocktxhash);
-        if (piter != mapTx.end()) {
-            parentHashes.insert(piter);
-            if (parentHashes.size() + 1 > limitAncestorCount) {
-                errString = strprintf("too many unconfirmed parents 3 [limit: %u]", limitAncestorCount);
-                return false;
-            }
-        }
-    }
+    //if (tx.IsSyncBranchInfo()){
+    //    uint256 prebranchheadblocktxhash = g_pBranchDataMemCache->GetParent(tx);
+    //    txiter piter = mapTx.find(prebranchheadblocktxhash);
+    //    if (piter != mapTx.end()) {
+    //        parentHashes.insert(piter);
+    //        if (parentHashes.size() + 1 > limitAncestorCount) {
+    //            errString = strprintf("too many unconfirmed parents 3 [limit: %u]", limitAncestorCount);
+    //            return false;
+    //        }
+    //    }
+    //}
 
     return true;
 }
@@ -520,6 +520,13 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
             mapNextTx.insert(std::make_pair(&tx.vin[i].prevout, &tx));
             setParentTransactions.insert(tx.vin[i].prevout.hash);
         }
+        //if (tx.IsSyncBranchInfo()){
+        //    uint256 prebranchheadblocktxhash = g_pBranchDataMemCache->GetParent(tx);
+        //    // no value insert to mapNextTx
+        //    if (!prebranchheadblocktxhash.IsNull()){
+        //        setParentTransactions.insert(prebranchheadblocktxhash);
+        //    }
+        //}
     }
     // 设置内存池中与合约关联地址的交易
     if (entry.contractData != nullptr) {
