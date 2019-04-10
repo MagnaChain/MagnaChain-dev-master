@@ -67,7 +67,7 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     MCConnman& connman = *g_connman;
 
     // 这里要取消注释
-    peerLogic.reset(new PeerLogicValidation(&connman, scheduler, &MonitorProcessMessage, &MonitorGetLocator));
+    peerLogic.reset(new MonitorPeerLogicValidation(&connman, scheduler, &MonitorProcessMessage, &MonitorGetLocator));
     RegisterValidationInterface(peerLogic.get());
 
     std::vector<std::string> uacomments;
@@ -174,7 +174,10 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     uint256 bestBlockHash = GetMaxHeightBlock();
     if (bestBlockHash.IsNull()) {
         const MCBlock& block = chainparams.GenesisBlock();
-        WriteBlockToDatabase(block, GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
+        std::shared_ptr<DatabaseBlock> dbBlock = std::make_shared<DatabaseBlock>();
+        dbBlock->hashBlock = block.GetHash();
+        dbBlock->height = 0;
+        WriteBlockToDatabase(block, dbBlock, GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
         bestBlockHash = chainparams.GenesisBlock().GetHash();
     }
 

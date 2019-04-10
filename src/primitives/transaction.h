@@ -850,6 +850,8 @@ template<typename Stream, typename TxType>
 inline void UnserializeTransaction(TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
 
+    tx.inAmount = 0;
+
     s >> tx.nVersion;
     unsigned char flags = 0;
     tx.vin.clear();

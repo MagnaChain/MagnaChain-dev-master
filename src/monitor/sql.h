@@ -64,6 +64,7 @@ const char* sqls[] = {
     ", `solution` VARCHAR(64) NOT NULL"
     ", `solutiontype` INT NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`,`solution`)"
+    ", INDEX(`solution`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `contract` ("
