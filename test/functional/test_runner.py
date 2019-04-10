@@ -84,7 +84,7 @@ BASE_SCRIPTS= [
     'merkle_blocks.py',#pass
     'receivedby.py',#pass
     'abandonconflict.py',#pass
-    'sidechain_reverttransaction.py'#pass
+    'sidechain_reverttransaction.py',#pass
     # 'bip68-112-113-p2p.py',not work
     'rawtransactions.py',#pass
     'reindex.py',#pass
@@ -147,7 +147,7 @@ EXTENDED_SCRIPTS = [
     'dbcrash.py',#pass
     # vv Tests less than 2m vv
     # 'bip68-sequence.py',not test yet
-    'getblocktemplate_longpoll.py',#pass
+    # 'getblocktemplate_longpoll.py',#pass
     'p2p-timeouts.py',#pass
     # vv Tests less than 60s vv
     # 'bip9-softforks.py',not work
@@ -170,7 +170,6 @@ TRAVIS_SCRIPTS = {
         "contract_fork.py",
         'prioritise_contract.py',#pass
         'abandonconflict-with-contract.py',#pass
-        'sidechain_reverttransaction.py'#pass
     ],
     'wallet':[
         'wallet-hd.py',#pass
@@ -199,6 +198,7 @@ TRAVIS_SCRIPTS = {
         'sidechain_rpcs.py',
         'sidechain_redeem.py',
         'sidechain_setup.py',
+        'sidechain_reverttransaction.py',#pass
     ],
     'mempool':[
         'mempool_packages.py', #pass
@@ -230,7 +230,7 @@ TRAVIS_SCRIPTS = {
     'feature':[
         'smartfees.py',#pass
         'dbcrash.py',#pass
-        'getblocktemplate_longpoll.py',#pass
+        # 'getblocktemplate_longpoll.py',#pass
         'p2p-timeouts.py',#pass
         'p2p-feefilter.py',#pass
         'merkle_blocks.py',#pass

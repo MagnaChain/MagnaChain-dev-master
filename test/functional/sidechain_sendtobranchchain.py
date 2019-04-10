@@ -61,7 +61,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert txid1 in node.getrawmempool()
         node.generate(8)
         self.sidenodes[0].generate(2)
-        assert_equal(self.sidenodes[0].getrawmempool(), [])
+        assert_equal(self.sidenodes[0].getrawmempool(), []) #ensure mempool is empty
         self.sync_all([self.sidenodes])
         assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
         self.sync_all()
@@ -69,7 +69,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
 
         # main to side
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
-        node.generate(8)
+        node.generate(8) #sync to sidechain
         self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), 1)
         self.sync_all([self.sidenodes])
@@ -78,13 +78,15 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         side_balance = self.sidenodes[0].getbalance()
         side_balance1 = self.sidenodes[1].getbalance()
         self.sync_all([self.sidenodes])
-        assert_equal(self.sidenodes[0].getrawmempool(), self.sidenodes[1].getrawmempool())
+        assert_equal(self.sidenodes[0].getrawmempool(), self.sidenodes[1].getrawmempool())#ensure transactions are synced
         self.sidenodes[0].generate(2)
         self.sync_all([self.sidenodes])
+        # ensure MGC is reached,include the fee
         assert_equal(self.sidenodes[0].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[0].getbalance(),
                      Decimal(side_balance + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
+        # make sure blocks are synced
         assert_equal(self.sidenodes[1].getbalance(), side_balance1)
         assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
         self.sidenodes[0].generate(2)
@@ -94,6 +96,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all()
         assert_equal(self.nodes[0].getbestblockhash(), self.nodes[1].getbestblockhash())
 
+        # confirm fee in another node with different generate
         txid = node.sendtobranchchain(sidechain_id, saddr, 100)['txid']
         node.generate(8)
         self.sync_all()
@@ -121,6 +124,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         balance = node.getbalance()
         addr = node.getnewaddress()
         txid = self.sidenodes[0].sendtobranchchain("main", addr, side_balance - 30)['txid']
+        # ensure sendtobranchchain tracsaction sync to mainchain
         assert txid in self.sidenodes[0].getrawmempool()
         self.sidenodes[0].generate(7)
         assert txid not in self.sidenodes[0].getrawmempool()
@@ -129,9 +133,10 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sidenodes[0].generate(1)
         # 侧链的区块头是一个交易，侧转主的是一个交易，所以主链的内存池会有2个交易
         assert len(node.getrawmempool()) == 2
-        total_fee = 0
+        total_fee = Decimal('0')
         txs = node.getrawmempool(True)
         for txid in txs:
+            print(txs[txid]['version'],txs[txid]['fee'])
             if txs[txid]['version'] == 7:
                 # static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// 跨链交易的接收链方
                 print("Decimal(txs[txid]['fee']):",Decimal(txs[txid]['fee']))
@@ -139,9 +144,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(2)
         self.sync_all()
         print("total fee:",total_fee)
+        print("diff:",node.getbalance() - (Decimal(balance) + Decimal(MINER_REWARD * 4) + Decimal(side_balance - 30) + total_fee))
         assert_equal(node.getbalanceof(addr), side_balance - 30)
-        assert_equal(node.getbalance(), balance + MINER_REWARD * 4 + side_balance - 30 + total_fee)
-        # AssertionError: not (114333729.64610000 == 114333729.20000000)
+        assert_equal(node.getbalance(), Decimal(balance) + Decimal(MINER_REWARD * 4) + Decimal(side_balance - 30) + total_fee)
 
         # batch test
         transaction_num = 5000
