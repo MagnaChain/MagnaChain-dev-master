@@ -19,7 +19,7 @@ from  test_framework.contract import Contract
 class AbandonConflictTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
-        self.extra_args = [["-minrelaytxfee=0.00001", "-disablesafemode=1"], ["-disablesafemode=1"]]
+        self.extra_args = [["-minrelaytxfee=0.00001", "-disablesafemode"], ["-disablesafemode"]]
 
     def get_txfee(self, txid, node_index=0):
         return Decimal(self.nodes[node_index].gettransaction(txid)['fee'])

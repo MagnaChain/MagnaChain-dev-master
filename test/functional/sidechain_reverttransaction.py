@@ -40,7 +40,7 @@ class RevertTransactionTest(MagnaChainTestFramework):
         self.num_nodes = 2
         self.extra_args = [['-txindex','-grouping=0'],['-txindex','-grouping=0']]
         # self.side_extra_args = [['-txindex']]
-        self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
+        self.side_extra_args = [['-disablesafemode'],['-disablesafemode']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
