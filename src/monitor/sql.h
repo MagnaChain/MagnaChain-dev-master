@@ -11,7 +11,6 @@ const char* sqls[] = {
     ", `version` INT NOT NULL"
     ", `time` INT NOT NULL"
     ", `bits` INT NOT NULL"
-    ", `difficulty` VARCHAR(200) NOT NULL"
     ", `nonce` INT NOT NULL"
     ", `regtest` BOOL NOT NULL"
     ", `branchid` VARCHAR(64) NOT NULL"
@@ -46,7 +45,7 @@ const char* sqls[] = {
     ", `outpointhash` VARCHAR(64) NOT NULL"
     ", `outpointindex` INT NOT NULL"
     ", `sequence` INT UNSIGNED NOT NULL"
-    ", `scriptsig` BLOB NOT NULL"
+    ", `scriptsig` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -54,7 +53,7 @@ const char* sqls[] = {
     "`txhash` VARCHAR(64) NOT NULL"
     ", `txindex` INT NOT NULL"
     ", `value` BIGINT NOT NULL"
-    ", `scriptpubkey` BLOB NOT NULL"
+    ", `scriptpubkey` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -71,10 +70,10 @@ const char* sqls[] = {
     "`txhash` VARCHAR(64) NOT NULL"
     ", `contractid` VARCHAR(64) NOT NULL"
     ", `sender` VARCHAR(64) NOT NULL"
-    ", `codeorfunc` BLOB NOT NULL"
-    ", `args` BLOB NOT NULL"
+    ", `codeorfunc` TEXT NOT NULL"
+    ", `args` VARCHAR(512) NOT NULL"
     ", `amountout` BIGINT NOT NULL"
-    ", `signature` BLOB NOT NULL"
+    ", `signature` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
@@ -91,10 +90,10 @@ const char* sqls[] = {
     ", `nonce` INT NOT NULL"
     ", `prevoutstakehash` VARCHAR(64) NOT NULL"
     ", `prevoutstakeindex` INT NOT NULL"
-    ", `blocksig` BLOB NOT NULL"
+    ", `blocksig` VARCHAR(1024) NOT NULL"
     ", `branchid` VARCHAR(64) NOT NULL"
     ", `blockheight` INT NOT NULL"
-    ", `staketxdata` BLOB NOT NULL"
+    ", `staketxdata` TEXT NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -112,9 +111,9 @@ const char* sqls[] = {
     ", `reportedblockhash` VARCHAR(64) NOT NULL"
     ", `reportedtxhash` VARCHAR(64) NOT NULL"
     ", `contractcoins` BIGINT NOT NULL"
-    ", `contractreportedspvproof` BLOB NOT NULL"
+    ", `contractreportedspvproof` TEXT NOT NULL"
     ", `contractprovetxhash` VARCHAR(64) NOT NULL"
-    ", `contractprovespvproof` BLOB NOT NULL"
+    ", `contractprovespvproof` TEXT NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -132,7 +131,7 @@ const char* sqls[] = {
     ", `contractid` VARCHAR(64) NOT NULL"
     ", `txindex` INT NOT NULL"
     ", `blockhash` VARCHAR(64) NOT NULL"
-    ", `code` BLOB NOT NULL"
+    ", `code` TEXT NOT NULL"
     ", `data` BLOB NOT NULL"
     ", PRIMARY KEY(`txhash`, `contractid`)"
     ", INDEX(`contractid`)"

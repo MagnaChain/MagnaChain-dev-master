@@ -200,6 +200,7 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
     }
 }
 
+MCCriticalSection cs_block;
 bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& vRecv, int64_t nTimeReceived, const MCChainParams& chainparams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc)
 {
     LogPrint(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->GetId());
@@ -522,32 +523,28 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
         size_t start = vRecv.size();
         vRecv >> *pblock;
         size_t sz = start - vRecv.size();
-
         LogPrint(BCLog::NET, "received block %s peer=%d\n", pblock->GetHash().ToString(), pfrom->GetId());
 
-        MCBlock& block = *pblock;
-        std::shared_ptr<DatabaseBlock> dbBlock = GetDatabaseBlock2(pblock->GetHash());
-        if (dbBlock == nullptr) {
-            dbBlock = std::make_shared<DatabaseBlock>();
-            dbBlock->hashBlock = pblock->GetHash();
-        }
-
-        bool result;
         {
-            LOCK(cs_main);
-            result = WriteBlockToDatabase(block, dbBlock, sz);
-        }
+            LOCK(cs_block);
+            std::shared_ptr<DatabaseBlock> dbBlock = GetDatabaseBlock2(pblock->GetHash());
+            if (dbBlock == nullptr) {
+                dbBlock = std::make_shared<DatabaseBlock>();
+                dbBlock->hashBlock = pblock->GetHash();
+            }
 
-        if (result) {
-            if (lastCommon == nullptr || dbBlock->height > lastCommon->height) {
-                lastCommon = dbBlock;
+            MCBlock& block = *pblock;
+            if (WriteBlockToDatabase(block, dbBlock, sz)) {
+                if (lastCommon == nullptr || dbBlock->height > lastCommon->height) {
+                    lastCommon = dbBlock;
+                }
+                if (bestKnownBlockHeader == nullptr || dbBlock->height > bestKnownBlockHeader->height) {
+                    bestKnownBlockHeader = dbBlock;
+                }
+                txSync.erase(pblock->GetHash());
+                blockSynced.erase(block.GetHash());
+                pfrom->nLastBlockTime = GetTime();
             }
-            if (bestKnownBlockHeader == nullptr || dbBlock->height > bestKnownBlockHeader->height) {
-                bestKnownBlockHeader = dbBlock;
-            }
-            txSync.erase(pblock->GetHash());
-            blockSynced.erase(block.GetHash());
-            pfrom->nLastBlockTime = GetTime();
         }
     }
 
