@@ -623,7 +623,7 @@ public:
 
 	bool IsBranchChainTransStep2() const
 	{
-		return nVersion == TRANS_BRANCH_VERSION_S2 && inAmount > 0;
+		return nVersion == TRANS_BRANCH_VERSION_S2;
 	}
 
 	bool IsMortgage() const
@@ -768,7 +768,7 @@ struct MCMutableTransaction
 
 	bool IsBranchChainTransStep2() const
 	{
-		return nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 && inAmount > 0;
+		return nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2;
 	}
 
 	bool IsMortgage() const
