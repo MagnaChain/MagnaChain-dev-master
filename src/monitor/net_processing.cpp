@@ -113,6 +113,8 @@ MCBlockLocator MonitorGetLocator(const MCBlockIndex *pindex)
     return MCBlockLocator(vHave);
 }
 
+bool stopSyncHeader = false;
+const int MAX_HALF_TX_SYNC = 2000;
 bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, const std::vector<MCBlockHeader>& headers, const MCChainParams& chainparams, bool punish_duplicate_invalid)
 {
     static MCBlockIndex blockIndex;
@@ -186,11 +188,14 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vGetData));
     }
 
-    if (nCount == MAX_HEADERS_RESULTS) {
+    if (txSync.size() >= 2 * MAX_HALF_TX_SYNC - 100) {
+        stopSyncHeader = true;
+    }
+    if (!stopSyncHeader && nCount == MAX_HEADERS_RESULTS) {
         // Headers message had its maximum size; the peer may have more headers.
         // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip or pindexBestHeader, continue
         // from there instead.
-        const uint256& blockHash = headers[headers.size() - 1].GetHash();
+        const uint256& blockHash = bestKnownBlockHeader->hashBlock;
         blockIndex.phashBlock = &blockHash;
         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
     }
@@ -697,5 +702,17 @@ void MonitorPeerLogicValidation::GetBlockData(MCNode* pto, MCNodeState& state, b
         vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, item->hashBlock));
         blockSynced.insert(item->hashBlock);
         LogPrint(BCLog::NET, "Requesting block %s (%d)\n", item->hashBlock.ToString(), item->height);
+    }
+
+    if (stopSyncHeader && txSync.size() < MAX_HALF_TX_SYNC) {
+        // Headers message had its maximum size; the peer may have more headers.
+        // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip or pindexBestHeader, continue
+        // from there instead.
+        stopSyncHeader = false;
+        MCBlockIndex blockIndex;
+        const uint256& blockHash = bestKnownBlockHeader->hashBlock;
+        blockIndex.phashBlock = &blockHash;
+        const CNetMsgMaker msgMaker(pto->GetSendVersion());
+        connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
     }
 }
