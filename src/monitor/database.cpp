@@ -201,6 +201,7 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
     txnouttype typeRet;
     std::vector<std::vector<unsigned char>> vSolutionsRet;
     if (!Solver(txout.scriptPubKey, typeRet, vSolutionsRet)) {
+        LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
         return false;
     }
 
@@ -210,6 +211,7 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
     MagnaChainAddress address;
     if (typeRet == TX_MULTISIG) {
         if (vSolutionsRet.size() == 0) {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             return false;
         }
 
@@ -239,6 +241,7 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
             return true;
         }
         else {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             return false;
         }
 
@@ -250,6 +253,8 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
             txHash, index, address.ToString(), (uint32_t)typeRet);
         sqlTxOutPubKey += sql;
     }
+
+    return true;
 }
 
 void WriteTxOut(const MCTransactionRef tx)
