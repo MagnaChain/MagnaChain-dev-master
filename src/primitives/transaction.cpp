@@ -62,7 +62,7 @@ MCMutableTransaction::MCMutableTransaction()
 }
 
 MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
-    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), inAmount(0)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), inAmount(tx.inAmount)
 {
 	if (nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION)
         pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
