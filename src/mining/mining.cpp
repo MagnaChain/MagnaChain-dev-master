@@ -669,6 +669,7 @@ std::string gbt_vb_name(const Consensus::DeploymentPos pos) {
     return s;
 }
 
+// this api is use to mining pool, mgc is pos, so it's useless.
 UniValue getblocktemplate(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() > 2)
@@ -1427,7 +1428,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true,  {"nblocks","height"} },
     { "mining",             "getmininginfo",          &getmininginfo,          true,  {} },
     { "mining",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","dummy","fee_delta"} },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
+ //   { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
 
     { "generating",         "generate",               &generate,               true,  { "nblocks","maxtries" } },
