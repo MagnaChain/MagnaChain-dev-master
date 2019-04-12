@@ -54,7 +54,7 @@ std::shared_ptr<DatabaseBlock> GetDatabaseBlock(const uint256& hashBlock)
         try {
             std::unique_ptr<sql::ResultSet> resultSet(selectBlockStatement->executeQuery());
             if (resultSet == nullptr || !resultSet->next()) {
-                //LogPrintf("%s:%d => resultSet == nullptr, hash is %s\n", __FUNCTION__, __LINE__, hashBlock.ToString());
+                LogPrintf("%s:%d => resultSet == nullptr, hash is %s\n", __FUNCTION__, __LINE__, hashBlock.ToString());
                 return nullptr;
             }
 
