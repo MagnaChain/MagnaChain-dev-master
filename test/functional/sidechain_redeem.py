@@ -80,8 +80,10 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         start_balance = self.snode0.getbalance()
         start_balance1 = self.snode1.getbalance()
         mortgage_txs = self.snode0.listmortgagecoins()
-        assert_raises_rpc_error(-32600, 'Coin need 10 confirmation', self.snode0.redeemmortgagecoinstatement,
-                                mortgage_txs[0]['txid'])
+        for mcobj in mortgage_txs:
+            if mcobj['confirmations'] < 10:
+                assert_raises_rpc_error(-32600, 'Coin need 10 confirmation', self.snode0.redeemmortgagecoinstatement,
+                                mcobj['txid'])
         self.snode0.generate(7)  # 使REDEEM_SAFE_HEIGHT满足
         mortgage_txs = self.snode0.listmortgagecoins()
         print(mortgage_txs)
