@@ -159,7 +159,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         while node.getmempoolinfo()['size'] > 0:
             node.generate(1)
             print('node mempool size left', node.getmempoolinfo()['size'])
-        node.generate(1)
+        node.generate(8)
         self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), transaction_num)
         total_fee = 0
