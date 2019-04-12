@@ -319,6 +319,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         mergeGroups.clear();
         int groupId = nextGroupId;
         const MCTransactionRef ptx = pblock->vtx[i];
+        const MCTxMemPoolEntry* entry = blockTxEntries[i];
 
         if (trans2group.find(ptx->GetHash()) != trans2group.end()) {
             groupId = trans2group[ptx->GetHash()];
@@ -337,81 +338,65 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             parentHash.insert(hash);
         }
 
-        int lastGroupId = -1;
+        // decide merge to which group
+        for (const uint256& hash : parentHash) {
+            if (trans2group.find(hash) != trans2group.end()) {
+                groupId = std::min(trans2group[hash], groupId);
+            }
+        }
+        if (ptx->IsSmartContract()) {
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
+                if (contract2group.find(contractAddr) != contract2group.end()) {
+                    groupId = std::min(contract2group[contractAddr], groupId);
+                }
+            }
+        }
+
+        // mark merge
+        auto& targetGroup = group2trans[groupId];
         for (const uint256& hash : parentHash) {
             if (trans2group.find(hash) != trans2group.end()) {
                 int preTransGroupId = trans2group[hash];
-                groupId = std::min(preTransGroupId, groupId);
-                if (lastGroupId != -1) {
-                    groupId = std::min(groupId, lastGroupId);
-                }
-                if (groupId != preTransGroupId) {
+                if (preTransGroupId > groupId) {
                     mergeGroups.insert(preTransGroupId);
                 }
-                if (lastGroupId != -1 && groupId != lastGroupId) {
-                    mergeGroups.insert(lastGroupId);
-                }
-            }
-            else if (lastGroupId == -1 || lastGroupId == groupId) {
-                // 输入不在区块中，标记该交易与当前groupid相同
-                trans2group[hash] = groupId;
-                auto& temp = group2trans[groupId];
-                temp.emplace_back(std::make_pair(hash, std::numeric_limits<int>::max()));
             }
             else {
-                groupId = std::min(lastGroupId, groupId);
-                if (groupId != lastGroupId) {
-                    mergeGroups.insert(lastGroupId);
-                }
+                targetGroup.emplace_back(std::make_pair(hash, std::numeric_limits<int>::max()));
+                trans2group[hash] = groupId;
             }
-            lastGroupId = groupId;
         }
 
         if (ptx->IsSmartContract()) {
-            const MCTxMemPoolEntry* entry = blockTxEntries[i];
-            int finalGroupId = groupId;
-            for (auto& contractAddr : entry->contractData->contractAddrs) {
-                if (contract2group.find(contractAddr) != contract2group.end()) {
-                    int contractGroupId = contract2group[contractAddr];
-                    finalGroupId = std::min(contractGroupId, finalGroupId);
-                }
-                else
-                    contract2group[contractAddr] = groupId;
-            }
-
-            if (finalGroupId != groupId) {
-                mergeGroups.insert(groupId);
-                groupId = finalGroupId;
-            }
-
-            for (auto& contractAddr : entry->contractData->contractAddrs) {
-                if (contract2group.find(contractAddr) != contract2group.end()) {
-                    int contractGroupId = contract2group[contractAddr];
-                    if (finalGroupId != contractGroupId) {
-                        contract2group[contractAddr] = finalGroupId;
+            for (const MCContractID& contractId : entry->contractData->contractAddrs) {
+                if (contract2group.find(contractId) != contract2group.end()) {
+                    int contractGroupId = contract2group[contractId];
+                    if (contractGroupId > groupId) {
                         mergeGroups.insert(contractGroupId);
                     }
                 }
             }
         }
 
-        auto& des = group2trans[groupId];
-        for (auto item : mergeGroups) {
-            auto& src = group2trans[item];
-            for (auto& it : src) {
-                des.emplace_back(it);
-                trans2group[it.first] = groupId;
+        // do merge
+        for (int oldGroupId : mergeGroups) {
+            auto& oldGroup = group2trans[oldGroupId];
+            for (auto& item : oldGroup) {
+                targetGroup.emplace_back(item);
+                trans2group[item.first] = groupId;
             }
-            group2trans.erase(item);
+            group2trans.erase(oldGroupId);
         }
 
-        des.emplace_back(std::make_pair(ptx->GetHash(), i));
-        trans2group[ptx->GetHash()] = groupId;
         if (ptx->IsSmartContract()) {
-            if (!ptx->pContractData->address.IsNull()) {
-                contract2group[ptx->pContractData->address] = groupId;
+            for (const MCContractID& contractId : entry->contractData->contractAddrs) {
+                contract2group[contractId] = groupId;
             }
         }
+
+        // add tx group info
+        targetGroup.emplace_back(std::make_pair(ptx->GetHash(), i));
+        trans2group[ptx->GetHash()] = groupId;
 
         if (groupId == nextGroupId) {
             nextGroupId++;
