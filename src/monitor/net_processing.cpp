@@ -70,6 +70,7 @@ std::shared_ptr<DatabaseBlock> GetAncestor(const std::shared_ptr<DatabaseBlock> 
         std::shared_ptr<DatabaseBlock> temp;
         if (!parent->hashSkipBlock.IsNull() && (heightSkip == height ||
             (heightSkip > height && !(heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height)))) {
+            //LogPrintf("%s:%d %d=>%d\n", __FUNCTION__, __LINE__, parent->height, GetSkipHeight(parent->height));
             temp = GetDatabaseBlock2(parent->hashSkipBlock);
             heightWalk = heightSkip;
         }
@@ -78,9 +79,6 @@ std::shared_ptr<DatabaseBlock> GetAncestor(const std::shared_ptr<DatabaseBlock> 
             heightWalk--;
         }
 
-        if (temp == nullptr) {
-            height += 0;
-        }
         parent = temp;
     }
     return parent;
@@ -113,6 +111,7 @@ MCBlockLocator MonitorGetLocator(const MCBlockIndex *pindex)
     return MCBlockLocator(vHave);
 }
 
+MCCriticalSection cs_block;
 bool stopSyncHeader = false;
 const int MAX_HALF_TX_SYNC = 2000;
 bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, const std::vector<MCBlockHeader>& headers, const MCChainParams& chainparams, bool punish_duplicate_invalid)
@@ -127,28 +126,23 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
         return true;
     }
 
-    bool received_new_header = false;
-    const MCBlockIndex *pindexLast = nullptr;
-    std::shared_ptr<DatabaseBlock> prevBlock;
-    {
-        LOCK(cs_main);
-        MCNodeState *nodestate = State(pfrom->GetId());
+    LOCK(cs_block);
+    MCNodeState *nodestate = State(pfrom->GetId());
 
-        // If this looks like it could be a block announcement (nCount <
-        // MAX_BLOCKS_TO_ANNOUNCE), use special logic for handling headers that
-        // don't connect:
-        // - Send a getheaders message in response to try to connect the chain.
-        // - The peer can send up to MAX_UNCONNECTING_HEADERS in a row that
-        //   don't connect before giving DoS points
-        // - Once a headers message is received that is valid and does connect,
-        //   nUnconnectingHeaders gets reset back to 0.
-        prevBlock = GetDatabaseBlock2(headers[0].hashPrevBlock);
-        if (!prevBlock->hashBlock.IsNull() && nCount < MAX_BLOCKS_TO_ANNOUNCE) {
-            nodestate->nUnconnectingHeaders++;
-            const uint256& bestBlockHash = GetMaxHeightBlock();
-            blockIndex.phashBlock = &bestBlockHash;
-            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
-        }
+    // If this looks like it could be a block announcement (nCount <
+    // MAX_BLOCKS_TO_ANNOUNCE), use special logic for handling headers that
+    // don't connect:
+    // - Send a getheaders message in response to try to connect the chain.
+    // - The peer can send up to MAX_UNCONNECTING_HEADERS in a row that
+    //   don't connect before giving DoS points
+    // - Once a headers message is received that is valid and does connect,
+    //   nUnconnectingHeaders gets reset back to 0.
+    std::shared_ptr<DatabaseBlock> prevBlock = GetDatabaseBlock2(headers[0].hashPrevBlock);
+    if (!prevBlock->hashBlock.IsNull() && nCount < MAX_BLOCKS_TO_ANNOUNCE) {
+        nodestate->nUnconnectingHeaders++;
+        const uint256& bestBlockHash = GetMaxHeightBlock();
+        blockIndex.phashBlock = &bestBlockHash;
+        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
     }
 
     // Download as much as possible, from earliest to latest.
@@ -166,12 +160,12 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
         std::shared_ptr<DatabaseBlock> blockHeader = std::make_shared<DatabaseBlock>();
         auto res = txSync.insert(std::make_pair(header.GetHash(), blockHeader));
         if (res.second) {
+            prevBlock = GetDatabaseBlock2(header.hashPrevBlock);
             std::shared_ptr<DatabaseBlock> skipBlock = GetAncestor(prevBlock, GetSkipHeight(prevBlock->height + 1));
             blockHeader->hashBlock = header.GetHash();
             blockHeader->height = prevBlock->height + 1;
             blockHeader->hashPrevBlock = header.hashPrevBlock;
             blockHeader->hashSkipBlock = skipBlock->hashBlock;
-            prevBlock = blockHeader;
 
             if (bestKnownBlockHeader == nullptr || blockHeader->height > bestKnownBlockHeader->height) {
                 bestKnownBlockHeader = res.first->second;
@@ -180,10 +174,6 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
         LogPrint(BCLog::NET, "Receive block header %s from peer=%d\n", header.GetHash().ToString(), pfrom->GetId());
     }
 
-    if (vGetData.size() > 1) {
-        LogPrint(BCLog::NET, "Downloading blocks toward %s (%d) via headers direct fetch\n",
-            pindexLast->GetBlockHash().ToString(), pindexLast->nHeight);
-    }
     if (vGetData.size() > 0) {
         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vGetData));
     }
@@ -205,7 +195,6 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
     }
 }
 
-MCCriticalSection cs_block;
 bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& vRecv, int64_t nTimeReceived, const MCChainParams& chainparams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc)
 {
     LogPrint(BCLog::NET, "received: %s (%u bytes) peer=%d\n", SanitizeString(strCommand), vRecv.size(), pfrom->GetId());
