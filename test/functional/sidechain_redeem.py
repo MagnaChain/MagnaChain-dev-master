@@ -114,7 +114,7 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.sync_all()
         self.snode1.generate(1)
         self.log.info("after node0 gen blocks,mortgage coins should be redeemed")
-        self.sync_all([self.sidenodes])
+        self.sync_all() # sync header
         self.node0.generate(2)
         self.log.info("rebroadcastredeemtransaction should raise a RPC exception,we will catch it")
         for t in results:
