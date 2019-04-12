@@ -99,11 +99,13 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.snode1.generate(10)
         self.sync_all([self.sidenodes])
         for i in range(10):
-            result = self.snode0.redeemmortgagecoinstatement(self.mortgage_coin())
+            morttxid = self.mortgage_coin()
+            result = self.snode0.redeemmortgagecoinstatement(morttxid)
             results.append(result['txid'])
-            print("result:", result)
+            print("result:", result, "morttxid", morttxid)
             assert_equal(len(self.snode0.listmortgagecoins()), 10 - i - 1)
         assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
+        self.sync_all([self.sidenodes]) # sync mempool to snode1
         self.snode1.generate(7)
         self.sync_all([self.sidenodes])
         self.sync_all()
