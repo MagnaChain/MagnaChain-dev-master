@@ -155,18 +155,25 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         saddrs = [self.sidenodes[0].getnewaddress() for i in range(transaction_num)]
         for addr in saddrs:
             node.sendtobranchchain(sidechain_id, addr, 2)
-        node.generate(10)
+        assert_equal(node.getmempoolinfo()['size'], transaction_num)
+        while node.getmempoolinfo()['size'] > 0:
+            node.generate(1)
+            print('node mempool size left', node.getmempoolinfo()['size'])
+        node.generate(1)
         self.sync_all()
         assert_equal(len(self.sidenodes[0].getrawmempool()), transaction_num)
         total_fee = 0
         txs = self.sidenodes[0].getrawmempool(True)
         for txid in txs:
             total_fee += Decimal(txs[txid]['fee'])
-        self.sidenodes[0].generate(2)
+        while self.sidenodes[0].getmempoolinfo()['size'] > 0:
+            self.sidenodes[0].generate(1)
+            print('sidenode0 mempool left', self.sidenodes[0].getmempoolinfo()['size'])
+        self.sidenodes[0].generate(1)
         assert_equal(len(self.sidenodes[0].getrawmempool()), 0)
         for addr in saddrs:
             assert_equal(self.sidenodes[0].getbalanceof(addr), 2)
-        assert_equal(self.sidenodes[0].getbalance(), side_balance + transaction_num + total_fee)
+        assert_equal(self.sidenodes[0].getbalance(), side_balance + transaction_num*2 + total_fee)
 
         balance = node.getbalance()
         side_balance = self.sidenodes[0].getbalance()
