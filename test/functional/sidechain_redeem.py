@@ -51,20 +51,18 @@ class RedeemMortgageTest(MagnaChainTestFramework):
     def run_test(self):
         """Main test logic"""
         self.sync_all([self.sidenodes])
-        for i, node in enumerate(self.nodes):
-            # for convenient
-            setattr(self, 'node' + str(i), node)
-
-        for i, node in enumerate(self.sidenodes):
-            # for convenient
-            setattr(self, 'snode' + str(i), node)
-
         for i in range(self.num_nodes):
             self.sidenodes[i].generate(2)
             assert_equal(len(self.sidenodes[i].getrawmempool()), 0)
             self.sync_all([self.sidenodes])
             self.nodes[i].generate(2)
             self.sync_all()
+        # send some coins to branch to use
+        # self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)
+        # self.node0.generate(8)
+        # self.snode0.generate(1)
+        # self.sync_all()
+        # self.sync_all([self.sidenodes])
             # // 赎回挖矿币, 步骤
             # // 1).侧链提起赎回请求.(侧链先销毁挖矿币, 防止继续挖矿)
             #       // 2).主链收到, 创造新的交易, 抵押币作为输入, 赎回到正常地址, 需要指定来自那个侧链请求
@@ -80,10 +78,8 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         start_balance = self.snode0.getbalance()
         start_balance1 = self.snode1.getbalance()
         mortgage_txs = self.snode0.listmortgagecoins()
-        for mcobj in mortgage_txs:
-            if mcobj['confirmations'] < 10:
-                assert_raises_rpc_error(-32600, 'Coin need 10 confirmation', self.snode0.redeemmortgagecoinstatement,
-                                mcobj['txid'])
+        assert_raises_rpc_error(-32600, 'Coin need 10 confirmation', self.snode0.redeemmortgagecoinstatement,
+                                mortgage_txs[0]['txid'])
         self.snode0.generate(7)  # 使REDEEM_SAFE_HEIGHT满足
         mortgage_txs = self.snode0.listmortgagecoins()
         print(mortgage_txs)
@@ -99,10 +95,9 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.snode1.generate(10)
         self.sync_all([self.sidenodes])
         for i in range(10):
-            morttxid = self.mortgage_coin()
-            result = self.snode0.redeemmortgagecoinstatement(morttxid)
+            result = self.snode0.redeemmortgagecoinstatement(self.mortgage_coin())
             results.append(result['txid'])
-            print("result:", result, "morttxid", morttxid)
+            print("result:", result)
             assert_equal(len(self.snode0.listmortgagecoins()), 10 - i - 1)
         assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
         self.sync_all([self.sidenodes]) # sync mempool to snode1
@@ -114,8 +109,10 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.sync_all()
         self.snode1.generate(1)
         self.log.info("after node0 gen blocks,mortgage coins should be redeemed")
-        self.sync_all() # sync header
+        self.sync_all([self.sidenodes])
+        self.sync_all()
         self.node0.generate(2)
+        self.sync_all()
         self.log.info("rebroadcastredeemtransaction should raise a RPC exception,we will catch it")
         for t in results:
             assert_raises_rpc_error(-25, 'Coin is spent', self.snode0.rebroadcastredeemtransaction, t)
