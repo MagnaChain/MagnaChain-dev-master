@@ -9,15 +9,34 @@ testcase for sendtobranchchain rpc
 # Imports should be in PEP8 ordering (std library first, then third party
 # libraries then local imports).
 from decimal import Decimal
+import re
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.mininode import MINER_REWARD
+from test_framework.contract import Contract
 from test_framework.util import (
     assert_equal,
     assert_raises_rpc_error,
+    wait_until,
 )
-
+def get_mempool_total_fee(node,only_version = []):
+    '''
+    获取内存池中所有交易的手续费总和
+    :param node:
+    :return:
+    '''
+    total_fee = 0
+    txs = node.getrawmempool(True)
+    for txid in txs:
+        if only_version:
+            if txs[txid]['version'] in only_version:
+                if txs[txid].get('fee',0):
+                    total_fee += txs[txid]['fee']
+        else:
+            if txs[txid].get('fee', 0):
+                total_fee += txs[txid]['fee']
+    return total_fee
 
 class SendToBranchchainTest(MagnaChainTestFramework):
     # Each functional test is a subclass of the MagnaChainTestFramework class.
@@ -131,17 +150,10 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert txid not in self.sidenodes[0].getrawmempool()
         node.generate(2)
         self.sync_all()
-        total_fee = Decimal('0')
         self.sidenodes[0].generate(1)
         # 侧链的区块头是一个交易，侧转主的是一个交易，所以主链的内存池会有2个交易
         assert len(node.getrawmempool()) == 2
-        txs = node.getrawmempool(True)
-        for txid in txs:
-            print(txs[txid]['version'],txs[txid]['fee'])
-            if txs[txid]['version'] == 7:
-                # static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// 跨链交易的接收链方
-                print("Decimal(txs[txid]['fee']):",Decimal(txs[txid]['fee']))
-                total_fee += Decimal(txs[txid]['fee'])
+        total_fee = get_mempool_total_fee(node,only_version=[7])
         node.generate(2)
         self.sync_all()
         print("total fee:",total_fee)
@@ -150,61 +162,103 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(node.getbalance(), Decimal(balance) + Decimal(MINER_REWARD * 4) + Decimal(side_balance - 30) + total_fee)
 
         # batch test
-        transaction_num = 5000
+        transaction_num = 1000
         side_balance = self.sidenodes[0].getbalance()
         saddrs = [self.sidenodes[0].getnewaddress() for i in range(transaction_num)]
         for addr in saddrs:
-            node.sendtobranchchain(sidechain_id, addr, 2)
-        assert_equal(node.getmempoolinfo()['size'], transaction_num)
-        while node.getmempoolinfo()['size'] > 0:
-            node.generate(1)
-            print('node mempool size left', node.getmempoolinfo()['size'])
-        node.generate(8)
+            node.sendtobranchchain(sidechain_id, addr, 10)
+        node.generate(10)
         self.sync_all()
+        self.sync_all([self.sidenodes])
         assert_equal(len(self.sidenodes[0].getrawmempool()), transaction_num)
-        total_fee = 0
-        txs = self.sidenodes[0].getrawmempool(True)
-        for txid in txs:
-            total_fee += Decimal(txs[txid]['fee'])
-        while self.sidenodes[0].getmempoolinfo()['size'] > 0:
-            self.sidenodes[0].generate(1)
-            print('sidenode0 mempool left', self.sidenodes[0].getmempoolinfo()['size'])
-        self.sidenodes[0].generate(1)
+        assert_equal(len(self.sidenodes[1].getrawmempool()), transaction_num)
+        total_fee =  get_mempool_total_fee(self.snode0)
+        self.sidenodes[0].generate(3)
         assert_equal(len(self.sidenodes[0].getrawmempool()), 0)
         for addr in saddrs:
-            assert_equal(self.sidenodes[0].getbalanceof(addr), 2)
-        assert_equal(self.sidenodes[0].getbalance(), side_balance + transaction_num*2 + total_fee)
+            assert_equal(self.sidenodes[0].getbalanceof(addr), 10)
+        assert_equal(self.sidenodes[0].getbalance(), side_balance + transaction_num * 10 + total_fee)
 
+        # side to main batch
+        self.sync_all()
+        node.generate(2)
         balance = node.getbalance()
         side_balance = self.sidenodes[0].getbalance()
         saddrs = [node.getnewaddress() for i in range(transaction_num)]
-        for addr in saddrs:
-            self.sidenodes[0].sendtobranchchain("main", addr, 1)
-        self.sidenodes[0].generate(10)
-        assert_equal(len(node.getrawmempool()), transaction_num + 10)
-        total_fee = 0
-        txs = node.getrawmempool(True)
-        for txid in txs:
-            if txs[txid]['version'] == 7:
-                total_fee += Decimal(txs[txid]['fee'])
-        node.generate(2)
+        done = []
+        err_txid = []
+        for i,addr in enumerate(saddrs):
+            try:
+                self.sidenodes[0].sendtobranchchain("main", addr, 1)
+                done.append(i)
+                # print(self.sidenodes[0].getbalance())
+            except Exception as e:
+                # print(self.sidenodes[0].getbalance(),repr(e))
+                start_index = str(e).index('(')
+                end_index = str(e).index(')')
+                txid = str(e)[start_index + 1:end_index]
+                if len(txid) >= 64:
+                    err_txid.append(str(e)[start_index + 1:end_index])
+        # 放弃无效的交易
+        print(side_balance, self.sidenodes[0].getbalance())
+        for txid in err_txid:
+            self.log.info("abandontransaction tx {}".format(txid))
+            self.snode0.abandontransaction(txid)
+        print("finished transactions:",len(done))
+        self.sidenodes[0].generate(7)
+        print(side_balance,self.sidenodes[0].getbalance())
+        self.sync_all([self.sidenodes])
+        self.sync_all()
+        self.node0.generate(1)
+        self.sync_all()
+        self.sidenodes[0].generate(1)
+        print(side_balance, self.sidenodes[0].getbalance())
+        self.sync_all([self.sidenodes])
+        self.sync_all()
+        fee_from_main = get_mempool_total_fee(node)
+        assert_equal(len(node.getrawmempool()), len(done) + 1)
+        total_fee = get_mempool_total_fee(node,only_version=[7])
+        print('total fee:',total_fee,fee_from_main)
+        node.generate(3)
         self.sync_all()
         assert_equal(len(node.getrawmempool()), 0)
-        for addr in saddrs:
-            assert_equal(node.getbalanceof(addr), 1)
-        assert_equal(node.getbalance(), balance + transaction_num + total_fee)
-        assert_equal(self.sidenodes[0].getbalance(), side_balance - transaction_num)
+        for i,addr in enumerate(saddrs):
+            if i in done:
+                assert_equal(node.getbalanceof(addr), 1)
+            else:
+                assert_equal(node.getbalanceof(addr), 0)
+        print("diff:",node.getbalance()- (balance + MINER_REWARD * 4 + len(done) + total_fee))
+        assert_equal(node.getbalance(), balance + MINER_REWARD * 4 + len(done) + total_fee)
+        # 这里还需要减去跨链交易在主链的手续费total_fee
+        print('side diff:',self.sidenodes[0].getbalance() - (side_balance - len(done) - total_fee))
+        assert_equal(self.sidenodes[0].getbalance(), side_balance - len(done) - total_fee)
 
         # delay generate test
+        self.sync_all()
         node.generate(2)
         self.sync_all()
         self.sidenodes[0].generate(2)
         self.sync_all([self.sidenodes])
-        [node.sendtobranchchain(self.sidechain_id, self.sidenodes[0].getnewaddress(), 10) for i in range(1000)]
+        transaction_num = 300
+        [node.sendtobranchchain(self.sidechain_id, self.sidenodes[0].getnewaddress(), 100) for i in range(transaction_num)]
         self.sync_all()
         node.generate(8)
         self.sync_all()
-        [self.sidenodes[0].sendtobranchchain('main', node.getnewaddress(), 1) for i in range(1000)]
+        err_txid = []
+        for i in range(100):
+            try:
+                self.sidenodes[0].sendtobranchchain('main', node.getnewaddress(), 1)
+            except Exception as e:
+                start_index = str(e).index('(')
+                end_index = str(e).index(')')
+                txid = str(e)[start_index + 1:end_index]
+                if len(txid) >= 64:
+                    err_txid.append(str(e)[start_index + 1:end_index])
+        # 放弃无效的交易
+        print(side_balance, self.sidenodes[0].getbalance())
+        for txid in err_txid:
+            self.log.info("abandontransaction tx {}".format(txid))
+            self.snode0.abandontransaction(txid)
         self.sync_all([self.sidenodes])
         self.sidenodes[0].generate(7)
         self.sync_all([self.sidenodes])
@@ -223,8 +277,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         need to add lots of contract transactions to block,then sendtobranch
         because contract's vin is dynamic
         '''
-        for ct in (Contract(self.sidenodes[0], self.options.tmpdir) for i in range(1000)):
-            ct.call_payable(amount=2)
+        print(self.sidenodes[0].getbalance())
+        for ct in (Contract(self.sidenodes[0], self.options.tmpdir,debug = False) for i in range(500)):
+            ct.call_payable(amount=20)
             ct.call_callOtherContractTest(ct.contract_id, 'callOtherContractTest', ct.contract_id, "contractDataTest",
                                           amount=0)
         self.sync_all([self.sidenodes])
@@ -235,6 +290,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(len(self.sidenodes[0].getrawmempool()),0)
         assert_equal(len(self.sidenodes[1].getrawmempool()), 0)
         node.generate(2)
+        self.sync_all()
         self.sidenodes[0].generate(7)
         self.sync_all([self.sidenodes])
         node.generate(8)

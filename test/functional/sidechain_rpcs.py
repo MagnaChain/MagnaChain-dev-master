@@ -21,6 +21,19 @@ from test_framework.util import (
     bytes_to_hex_str,
 )
 
+def get_mempool_total_fee(node):
+    '''
+    获取内存池中所有交易的手续费总和
+    :param node:
+    :return:
+    '''
+    total_fee = 0
+    txs = node.getrawmempool(True)
+    for txid in txs:
+        if txs[txid].get('fee',0):
+            total_fee += txs[txid]['fee']
+    return total_fee
+
 
 class SendToBranchchainTest(MagnaChainTestFramework):
     # Each functional test is a subclass of the MagnaChainTestFramework class.
@@ -47,7 +60,9 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all([self.sidenodes])
 
         for i in range(2):
+            self.log.info('side node {} total fee {}'.format(i,get_mempool_total_fee(self.sidenodes[i])))
             self.sidenodes[i].generate(2)
+            self.log.info('side node {} balance {}'.format(i,self.sidenodes[i].getbalance()))
             self.sync_all([self.sidenodes])
             print(self.node0.getrawmempool(True),self.node1.getrawmempool())
             self.nodes[i].generate(2)
@@ -100,16 +115,19 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.log.info(sys._getframe().f_code.co_name)
         txid = self.node0.getbranchchaininfo(self.sidechain_id)['txid']
         assert_raises_rpc_error(-25, "Invalid branch transaction.", self.node0.getbranchchaintransaction, txid)
-        txid = self.snode0.sendtoaddress(self.snode0.getnewaddress(), 1)
+        txid = self.snode0.sendtoaddress(self.snode0.getnewaddress(), 0.1)
         assert_raises_rpc_error(-25, "Load transaction sendinfo fail.", self.node0.getbranchchaintransaction, txid)
         assert_raises_rpc_error(-25, "Load transaction sendinfo fail.", self.snode0.getbranchchaintransaction, txid)
         txid = self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)['txid']
         self.node0.generate(8)
+        self.sync_all()
+        self.snode0.generate(1)
+        self.sync_all([self.sidenodes])
         ret = self.node0.getbranchchaintransaction(txid)
         print(ret)
         assert_equal(ret['txid'], txid)
         assert_equal(ret['confirmations'], 8)
-        txid = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 1)['txid']
+        txid = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 0.001)['txid']
         self.snode0.generate(7)
         self.node0.generate(1)
         self.snode0.generate(1)
