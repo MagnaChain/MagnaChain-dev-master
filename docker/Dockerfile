@@ -34,7 +34,7 @@ RUN pwd \
 && ./configure --without-gui \
 && make \
 && mkdir -p /root/dist \
-&& perl ./docker_deploy.pl /root/code /root/dist
+&& perl ./docker/docker_deploy.pl /root/code /root/dist
 #ENV done
 # RUN cd /root/code \
 # && sh ./autogen.sh \
@@ -54,7 +54,7 @@ ENV PATH ${APP}:$PATH
 EXPOSE 8332
 #复制所需的依赖库和可执行文件
 COPY --from=builder /root/dist /root/app/
-COPY --from=builder /root/code/docker-entrypoint.sh /usr/local/bin/
+COPY --from=builder /root/code/docker/docker-entrypoint.sh /usr/local/bin/
 # COPY ./app /root/app/
 # COPY docker-entrypoint.sh /usr/local/bin/
 #设置可执行权限，并且建立区块数据存放目录，main为主链数据，side为侧链数据
