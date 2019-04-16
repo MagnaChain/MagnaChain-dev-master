@@ -105,12 +105,19 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.sync_all([self.sidenodes])
         self.sync_all()
         assert_equal(24, len(self.node0.getrawmempool()))  # side chain gen block count
+        fees = 0
+        txs = self.node0.getrawmempool(True)
+        for txid in txs:
+            fees += Decimal(txs[txid]['fee'])
         self.node0.generate(1)
         self.sync_all()
         self.snode1.generate(1)
         self.log.info("after node0 gen blocks,mortgage coins should be redeemed")
         self.sync_all([self.sidenodes])
         self.sync_all()
+        txs = self.node0.getrawmempool(True)
+        for txid in txs:
+            fees += Decimal(txs[txid]['fee'])
         self.node0.generate(2)
         self.sync_all()
         self.log.info("rebroadcastredeemtransaction should raise a RPC exception,we will catch it")
@@ -118,10 +125,13 @@ class RedeemMortgageTest(MagnaChainTestFramework):
             assert_raises_rpc_error(-25, 'Coin is spent', self.snode0.rebroadcastredeemtransaction, t)
             # self.snode0.rebroadcastredeemtransaction(t)
         self.node0.generate(2)
-        print(self.node0.getbalance(), balance, self.node0.getbalance() - balance, origin_mortgage)
+        print("self.node0.getbalance", self.node0.getbalance(), "balance", balance, 
+            "self.node0.getbalance() - balance", self.node0.getbalance() - balance, 
+            "origin_mortgage", origin_mortgage, "fees", fees)
+        print(self.node0.getbalance() - balance - 4 * MINER_REWARD, origin_mortgage + fees)
         # 25 is for fee
         assert self.node0.getbalance() - balance - 4 * MINER_REWARD > origin_mortgage and (
-                    self.node0.getbalance() - balance - 4 * MINER_REWARD < origin_mortgage + 25)
+                    self.node0.getbalance() - balance - 4 * MINER_REWARD < origin_mortgage + fees)
 
     def mortgage_coin(self, spentable=True):
         '''
