@@ -2719,9 +2719,9 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
         if (!DisconnectTip(state, chainparams, &disconnectpool)) {
             // This is likely a fatal error, but keep the mempool consistent,
             // just in case. Only remove from the mempool in this case.
-            mempool.ReacceptTransactions();
             LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
+            mempool.ReacceptTransactions();
             return false;
         }
         fBlocksDisconnected = true;
@@ -2760,9 +2760,9 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
                     // A system error occurred (disk space, database error, ...).
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
-                    mempool.ReacceptTransactions();
                     LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
                     UpdateMempoolForReorg(disconnectpool, false);
+                    mempool.ReacceptTransactions();
                     return false;
                 }
             } else {
@@ -2776,13 +2776,13 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
         }
     }
 
-    mempool.ReacceptTransactions();
     if (fBlocksDisconnected) {
         // If any blocks were disconnected, disconnectpool may be non empty.  Add
         // any disconnected transactions back to the mempool.
         LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
         UpdateMempoolForReorg(disconnectpool, true);
     }
+    mempool.ReacceptTransactions();
     mempool.Check(pcoinsTip);
 
     // Callbacks/notifications for a new best chain.

@@ -710,6 +710,8 @@ void MCTxMemPool::RemoveFromContractLinks(txiter it)
 
 void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
 {
+    //LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, it->GetTx().GetHash().ToString());
+
     NotifyEntryRemoved(it->GetSharedTx(), reason);
     const uint256 hash = it->GetTx().GetHash();
     for (const MCTxIn& txin : it->GetTx().vin)
@@ -1239,6 +1241,7 @@ void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
 
 void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool)
 {
+    int64_t nTime = GetTimeMicros();
     for (const auto& tx : vtx)
     {
         uint256 txid = GetOriTxHash(*tx, fFromMemPool);// remove Transaction that has be modified, as IsBranchChainTransStep2
@@ -1247,9 +1250,12 @@ void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool
             setEntries stage;
             stage.insert(it);
             RemoveStaged(stage, true, MemPoolRemovalReason::BLOCK);
+            LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
         }
         RemoveConflicts(*tx);
+        LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
         ClearPrioritisation(txid);
+        LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
     }
 }
 /**
@@ -1718,6 +1724,7 @@ int MCTxMemPool::Expire(int64_t time) {
 
 void MCTxMemPool::ReacceptTransactions()
 {
+    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
     LOCK(cs);
     std::vector<MCTransactionRef> vecRemoves;
     mpContractDb->contractContext.ClearAll();
@@ -1773,6 +1780,7 @@ void MCTxMemPool::ReacceptTransactions()
     for (const MCTransactionRef pTx : vecRemoves) {
         RemoveRecursive(*pTx, MemPoolRemovalReason::BLOCK);
     }
+    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
 }
 
 bool MCTxMemPool::AddUnchecked(const uint256&hash, const MCTxMemPoolEntry &entry, bool validFeeEstimate)

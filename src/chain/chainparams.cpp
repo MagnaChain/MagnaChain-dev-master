@@ -182,7 +182,7 @@ int GetBranchInitDefaultPort(bool fTestNet, bool fRegTest)
 class CMainParams : public MCChainParams {
 public:
     CMainParams() {
-        strNetworkID = "main";
+        strNetworkID = MCBaseChainParams::MAIN;
 		consensus.BigBoomHeight = 1000;
         consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 210000 * 40;
@@ -280,7 +280,7 @@ public:
 class CTestNetParams : public MCChainParams {
 public:
     CTestNetParams() {
-        strNetworkID = "test";
+        strNetworkID = MCBaseChainParams::TESTNET;
 		consensus.BigBoomHeight = 1000;
 		consensus.BigBoomValue = 2600000 * COIN;
 		consensus.nSubsidyHalvingInterval = 210000 * 20;
@@ -365,7 +365,7 @@ public:
 class CRegTestParams : public MCChainParams {
 public:
     CRegTestParams() {
-        strNetworkID = "regtest";
+        strNetworkID = MCBaseChainParams::REGTEST;
 		consensus.BigBoomHeight = 1000;
 		consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 150;
@@ -434,7 +434,7 @@ public:
 class MCBranchParams : public MCChainParams {
 public:
 	MCBranchParams(const std::string& strBranchIdParams = "") {
-		strNetworkID = "branch";
+		strNetworkID = MCBaseChainParams::BRANCH;
 		consensus.BigBoomHeight = 0;
 		consensus.BigBoomValue = 0 * COIN;
 		consensus.nSubsidyHalvingInterval = 210000 * 20;

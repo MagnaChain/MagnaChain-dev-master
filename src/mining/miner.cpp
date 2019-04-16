@@ -345,6 +345,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             }
         }
         if (ptx->IsSmartContract()) {
+            groupId = std::min(contract2group[entry->GetTx().pContractData->address], groupId);
             for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     groupId = std::min(contract2group[contractAddr], groupId);
@@ -480,7 +481,6 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         }
         pblock->groupSize.emplace_back(finalGroup[i]->second.size());
     }
-    LogPrint(BCLog::MINING, "%s:%d %d:%d\n", __FUNCTION__, __LINE__, total, vtx.size());
     assert(total == vtx.size());
 }
 
@@ -833,7 +833,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 			// Erase from the modified set, if present
 			mapModifiedTx.erase(sortedEntries[i]);
             blockTxEntries.emplace_back(&*sortedEntries[i]);
-		}
+        }
 
 		++nPackagesSelected;
 

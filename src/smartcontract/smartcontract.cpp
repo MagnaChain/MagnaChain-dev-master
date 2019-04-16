@@ -603,6 +603,7 @@ bool static CallContractReal(SmartLuaState* sls, MagnaChainAddress& contractAddr
     contractAddr.GetContractID(contractId);
     ContractInfo contractInfo;
     if (!sls->GetContractInfo(contractId, contractInfo)) {
+        //PrintStacktrace();
         LogPrintf("%s:%d GetContractInfo fail %s %s\n", __FUNCTION__, __LINE__, contractId.ToString(), contractAddr.ToString());
         throw std::runtime_error(strprintf("%s => GetContractInfo fail, contractid is %s", __FUNCTION__, contractAddr.ToString()));
     }

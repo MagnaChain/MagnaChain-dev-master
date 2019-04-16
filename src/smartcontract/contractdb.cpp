@@ -112,7 +112,8 @@ void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
 
 void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData)
 {
-    auto it = threadId2SmartLuaState.find(boost::this_thread::get_id());
+    boost::thread::id threadId = boost::this_thread::get_id();
+    auto it = threadId2SmartLuaState.find(threadId);
     if (it == threadId2SmartLuaState.end()) {
         throw std::runtime_error(strprintf("%s:%d it == threadId2SmartLuaState.end()\n", __FUNCTION__, __LINE__));
     }
@@ -122,9 +123,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
         throw std::runtime_error(strprintf("%s:%d sls == nullptr\n", __FUNCTION__, __LINE__));
     }
 
-#ifndef _DEBUG
     try {
-#endif
         bool mainChain = Params().IsMainChain();
         if (!mainChain) {
             threadData->contractContext.txFinalData.resize(threadData->groupSize);
@@ -161,7 +160,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
 
             UniValue ret(UniValue::VARR);
             if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-                LogPrintf("%s:%d tx %s publishcontract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
+                //LogPrintf("%s:%d => %s publish contract %s\n", __FUNCTION__, __LINE__, threadId, tx->pContractData->address.ToString());
                 std::string rawCode = tx->pContractData->codeOrFunc;
                 sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr,
                     &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
@@ -170,8 +169,9 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                     interrupt = true;
                     return;
                 }
-            } else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-                LogPrintf("%s:%d tx %s callcontract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
+            }
+            else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+                //LogPrintf("%s:%d => %s call contract %s\n", __FUNCTION__, __LINE__, threadId, tx->pContractData->address.ToString());
                 const std::string& strFuncName = tx->pContractData->codeOrFunc;
                 UniValue args;
                 args.read(tx->pContractData->args);
@@ -253,12 +253,10 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
             threadData->contractContext.Commit();
             sls->contractDataFrom.clear();
         }
-#ifndef _DEBUG
     } catch (std::exception e) {
         LogPrintf("%s:%d => unknown exception %s\n", __FUNCTION__, __LINE__, e.what());
         interrupt = true;
     }
-#endif
 }
 
 bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
