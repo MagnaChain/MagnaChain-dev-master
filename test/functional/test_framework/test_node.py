@@ -72,7 +72,7 @@ class TestNode():
         self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest",
                      "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb",
                      "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i, "-powtargetspacing=1",
-                     "-regtestmaturity=1", "-regtestbcmaturity=1","-printtoconsole=0"]
+                     "-regtestmaturity=1", "-regtestbcmaturity=1","-printtoconsole=0","-disablesafemode"]
 
         cli_binary = os.getenv("MAGNACHAINCLI", "magnachain-cli")
         if not os.path.exists(cli_binary):

@@ -101,7 +101,9 @@ class RedeemMortgageTest(MagnaChainTestFramework):
             assert_equal(len(self.snode0.listmortgagecoins()), 10 - i - 1)
         assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
         self.sync_all([self.sidenodes]) # sync mempool to snode1
-        self.snode1.generate(7)
+        besthash = self.snode1.getbestblockhash()
+        best_height = self.snode1.getblockcount()
+        badhash = self.snode1.generate(7)[0]
         self.sync_all([self.sidenodes])
         self.sync_all()
         assert_equal(24, len(self.node0.getrawmempool()))  # side chain gen block count
@@ -116,12 +118,19 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.log.info("rebroadcastredeemtransaction should raise a RPC exception,we will catch it")
         for t in results:
             assert_raises_rpc_error(-25, 'Coin is spent', self.snode0.rebroadcastredeemtransaction, t)
-            # self.snode0.rebroadcastredeemtransaction(t)
         self.node0.generate(2)
         print(self.node0.getbalance(), balance, self.node0.getbalance() - balance, origin_mortgage)
         # 25 is for fee
         assert self.node0.getbalance() - balance - 4 * MINER_REWARD > origin_mortgage and (
                     self.node0.getbalance() - balance - 4 * MINER_REWARD < origin_mortgage + 25)
+
+        # try to invalidateblock some blocks and snode0 generate again
+        self.snode0.invalidateblock(badhash)
+        assert_equal(self.snode0.getbestblockhash(),besthash)
+        assert_equal(self.snode0.getblockcount(), best_height)
+        assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
+
+
 
     def mortgage_coin(self, spentable=True):
         '''
