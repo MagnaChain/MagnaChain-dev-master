@@ -30,6 +30,7 @@ RUN pwd \
 && apt-get install libminiupnpc-dev -y \
 && apt-get install libzmq3-dev -y \
 && cd /root/code \
+&& ls -al \
 && sh ./autogen.sh \
 && ./configure --without-gui \
 && make \
