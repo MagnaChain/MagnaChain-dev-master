@@ -10,6 +10,7 @@ COPY . /root/code
 
 # setup ENV
 RUN pwd \ 
+&& ls -al \
 # && mv /etc/apt/sources.list /etc/apt/sources.list.bak \
 # && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic main restricted universe multiverse" >> /etc/apt/sources.list \
 # && echo "deb http://mirrors.aliyun.com/ubuntu/ bionic-security main restricted universe multiverse" >> /etc/apt/sources.list \
@@ -29,13 +30,13 @@ RUN pwd \
 && apt-get install libdb4.8-dev libdb4.8++-dev -y \
 && apt-get install libminiupnpc-dev -y \
 && apt-get install libzmq3-dev -y \
-&& cd /root/code \
-&& ls -al \
+#&& cd /root/code \
+#&& ls -al \
 && sh ./autogen.sh \
 && ./configure --without-gui \
 && make \
 && mkdir -p /root/dist \
-&& perl ./docker/docker_deploy.pl /root/code /root/dist
+&& perl ./docker/docker_deploy.pl /root /root/dist
 #ENV done
 # RUN cd /root/code \
 # && sh ./autogen.sh \
@@ -55,7 +56,7 @@ ENV PATH ${APP}:$PATH
 EXPOSE 8332
 #复制所需的依赖库和可执行文件
 COPY --from=builder /root/dist /root/app/
-COPY --from=builder /root/code/docker/docker-entrypoint.sh /usr/local/bin/
+COPY --from=builder /root/docker/docker-entrypoint.sh /usr/local/bin/
 # COPY ./app /root/app/
 # COPY docker-entrypoint.sh /usr/local/bin/
 #设置可执行权限，并且建立区块数据存放目录，main为主链数据，side为侧链数据
