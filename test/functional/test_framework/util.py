@@ -296,7 +296,7 @@ def p2p_port(n):
 
 
 def rpc_port(n):
-    return PORT_MIN + PORT_RANGE + n + (MAX_NODES * PortSeed.n) % (PORT_RANGE - 1 - MAX_NODES)
+        return PORT_MIN + PORT_RANGE + n + (MAX_NODES * PortSeed.n) % (PORT_RANGE - 1 - MAX_NODES)
 
 
 def rpc_url(datadir, i, rpchost=None):
@@ -1022,3 +1022,21 @@ def get_chainwork(node):
     :return:
     '''
     return int(node.getchaintipwork(), 16)
+
+def get_mempool_total_fee(node,only_version = []):
+    '''
+    获取内存池中所有交易的手续费总和
+    :param node:
+    :return:
+    '''
+    total_fee = 0
+    txs = node.getrawmempool(True)
+    for txid in txs:
+        if only_version:
+            if txs[txid]['version'] in only_version:
+                if txs[txid].get('fee',0):
+                    total_fee += txs[txid]['fee']
+        else:
+            if txs[txid].get('fee', 0):
+                total_fee += txs[txid]['fee']
+    return total_fee
