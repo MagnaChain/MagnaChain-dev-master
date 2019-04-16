@@ -1,0 +1,5 @@
+{
+    "require": {
+        "brick/math": "^0.5.4"
+    }
+}

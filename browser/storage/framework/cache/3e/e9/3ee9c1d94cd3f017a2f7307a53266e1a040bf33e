@@ -1,0 +1,64 @@
+1555316297a:1:{s:12:"mgc-date.htm";a:6:{s:8:"fileName";s:12:"mgc-date.htm";s:7:"content";s:1147:"[localePicker]
+forceUrl = 0
+==
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/bootstrap.min.css">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/mgc.css">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/bootstrap-datepicker3.min.css">
+	<script type="text/javascript" src="/themes/magnachain/assets/js/jquery.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/date.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/bootstrap-datepicker.js"></script>
+	
+	<title>{{ 'MGC浏览器'|_ }}</title>
+</head>
+<body>
+
+	<div class="header">{% partial "header-date.htm" %}</div>
+
+	<div class="container-fluid" style="min-height: 575px; margin-top: 82px;">
+
+		{% page %}
+
+	</div>
+
+	<div class="footer" style="margin-top: 131px;">{% partial "footer.htm" %}</div>
+	{% framework extras %}
+
+</body>
+</html>";s:5:"mtime";i:1555309968;s:6:"markup";s:1113:"<!DOCTYPE html>
+<html lang="en">
+<head>
+	
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/bootstrap.min.css">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/mgc.css">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/bootstrap-datepicker3.min.css">
+	<script type="text/javascript" src="/themes/magnachain/assets/js/jquery.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/date.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/bootstrap-datepicker.js"></script>
+	
+	<title>{{ 'MGC浏览器'|_ }}</title>
+</head>
+<body>
+
+	<div class="header">{% partial "header-date.htm" %}</div>
+
+	<div class="container-fluid" style="min-height: 575px; margin-top: 82px;">
+
+		{% page %}
+
+	</div>
+
+	<div class="footer" style="margin-top: 131px;">{% partial "footer.htm" %}</div>
+	{% framework extras %}
+
+</body>
+</html>";s:4:"code";N;s:12:"localePicker";a:1:{s:8:"forceUrl";s:1:"0";}}}

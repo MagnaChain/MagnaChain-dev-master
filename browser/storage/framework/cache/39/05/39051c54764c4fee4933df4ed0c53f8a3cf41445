@@ -1,0 +1,53 @@
+1555316329a:1:{s:7:"404.htm";a:10:{s:8:"fileName";s:7:"404.htm";s:7:"content";s:488:"title = 404
+url = "/404/:error?"
+layout = "mgc"
+is_hidden = 0
+
+[localePicker]
+forceUrl = 0
+==
+
+<?php
+
+function onStart() {
+	
+	if($this->param('error')){
+
+		$this['error'] = $this->param('error');
+
+	}
+
+}
+
+?>
+
+==
+{% if error %}
+<h1 style="margin-top: 100px; margin-bottom: 437px;">{{ ':error'|_({ error: error }) }}</h1>
+{% else %}
+<h1 style="margin-top: 100px; margin-bottom: 437px;">{{ '网页君迷路了~'|_ }}</h1>
+{% endif %}
+
+<script>
+	
+	
+
+</script>";s:5:"mtime";i:1555296264;s:6:"markup";s:253:"{% if error %}
+<h1 style="margin-top: 100px; margin-bottom: 437px;">{{ ':error'|_({ error: error }) }}</h1>
+{% else %}
+<h1 style="margin-top: 100px; margin-bottom: 437px;">{{ '网页君迷路了~'|_ }}</h1>
+{% endif %}
+
+<script>
+	
+	
+
+</script>";s:4:"code";s:108:"function onStart() {
+	
+	if($this->param('error')){
+
+		$this['error'] = $this->param('error');
+
+	}
+
+}";s:5:"title";s:3:"404";s:3:"url";s:12:"/404/:error?";s:6:"layout";s:3:"mgc";s:9:"is_hidden";s:1:"0";s:12:"localePicker";a:1:{s:8:"forceUrl";s:1:"0";}}}

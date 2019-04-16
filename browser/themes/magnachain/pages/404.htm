@@ -1,0 +1,35 @@
+title = 404
+url = "/404/:error?"
+layout = "mgc"
+is_hidden = 0
+
+[localePicker]
+forceUrl = 0
+==
+
+<?php
+
+function onStart() {
+	
+	if($this->param('error')){
+
+		$this['error'] = $this->param('error');
+
+	}
+
+}
+
+?>
+
+==
+{% if error %}
+<h1 style="margin-top: 100px; margin-bottom: 437px;">{{ ':error'|_({ error: error }) }}</h1>
+{% else %}
+<h1 style="margin-top: 100px; margin-bottom: 437px;">{{ '网页君迷路了~'|_ }}</h1>
+{% endif %}
+
+<script>
+	
+	
+
+</script>

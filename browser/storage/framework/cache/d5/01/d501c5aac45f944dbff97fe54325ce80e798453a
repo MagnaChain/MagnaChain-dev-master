@@ -1,0 +1,1258 @@
+1555316468a:1:{s:9:"block.htm";a:9:{s:8:"fileName";s:9:"block.htm";s:7:"content";s:21231:"title = "block"
+url = "/block/:blockhash?"
+layout = "mgc"
+is_hidden = 0
+==
+<?php
+
+function onStart() {
+
+	use Brick\Math\BigInteger;
+	use Brick\Math\BigDecimal;
+	use Brick\Math\RoundingMode;
+
+	$str_blockhash = $this->param('blockhash');
+	$str_blockhash = strval($str_blockhash);
+
+	if (ctype_digit($str_blockhash)) {
+
+		//块高，纯数字
+		$blockhash = Db::connection('magnachain')->table('block')->select('blockhash')->where('height', $str_blockhash)->get();
+		$blockhash = $blockhash->toArray();
+
+		if ($blockhash) {
+			header("Location: /block/".$blockhash[0]->blockhash);
+		} else {
+			header("Location: /404/请正确输入块高~");
+		}
+
+		exit();
+
+	} elseif ($str_blockhash == false) {
+
+		//块高，纯数字
+		$blockhash = Db::connection('magnachain')->table('block')->select('blockhash')->where('height', "0")->get();
+		$blockhash = $blockhash->toArray();
+
+		if ($blockhash) {
+			header("Location: /block/".$blockhash[0]->blockhash);
+		} else {
+			header("Location: /404/请正确输入块高~");
+		}
+
+		exit();
+
+	}
+	
+	if($this->param('blockhash')){
+
+		$records = array();  //该地址所有交易记录
+		$index = 0;  //记录的脚标
+		$in_index = 0;  //输入记录的脚标
+		
+		$in = array();  //存地址和输入、输出
+		$out = array();
+
+		$block = Db::connection('magnachain')->table('block')->select('blockhash', 'height', 'time', 'hashmerkleroot', 'nonce', 'bits', 'version', 'blocksize')->where('blockhash', $this->param('blockhash'))->get();
+		$block = $block->toArray();
+
+		if(empty($block)){
+
+			header("Location: /404/找不到块~");		//404处理
+			exit();
+
+		}
+
+		$difficulty = self::getDifficutly($block[0]->bits);
+
+		$difficulty = strval($difficulty);
+
+		$block[0]->difficulty = BigDecimal::of($difficulty);
+
+		$num = Db::connection('magnachain')->table('transaction')->select('version')->where('blockhash', $block[0]->blockhash)->get();
+		$num = $num->toArray();
+
+		$block[0]->num = count($num);
+		$block[0]->time = date("Y-m-d H:i:s", $block[0]->time);
+		
+		$this['block'] = $block;
+
+		//查找块下所有交易哈希
+		$tx = Db::connection('magnachain')->table('transaction')->select('txhash')->where('blockhash', $this->param('blockhash'))->get();
+		$tx = $tx->toArray();
+		
+		for($i=0; $i < count($tx); $i++){  //for循环取出所有该交易的收入
+
+			$tx_array[$index] = $tx[$i]->txhash;
+			$records[$index]['txhash'] = $tx[$i]->txhash;
+			$records[$index]['allOut'] = BigDecimal::of('0');
+			$records[$index]['allIn'] = BigDecimal::of('0');
+
+			//用交易哈希去找块哈希
+			$block = Db::connection('magnachain')->table('transaction')->select('blockhash')->where('txhash', $tx[$i]->txhash)->get();
+			$block = $block->toArray();
+
+			//查询交易时间
+			$txtime = Db::connection('magnachain')->table('block')->select('time')->where('blockhash', $block[0]->blockhash)->get();
+			$txtime = $txtime->toArray();
+			
+			$records[$index]['time'] = date("Y-m-d H:i:s", $txtime[0]->time);
+
+			//查询该交易哈希下的输出地址，去重
+			$distinct_address = Db::connection('magnachain')->table('txoutpubkey')->select('solution')->where('txhash', $tx[$i]->txhash)->distinct()->get();
+			$distinct_address = $distinct_address->toArray();
+
+			for($j = 0; $j < count($distinct_address); $j++){
+
+				$out[$j]['address'] = $distinct_address[$j]->solution;
+				$out[$j]['outNum'] = '0';
+			
+			}
+
+			//获取交易详情
+			$txoutpubkey = Db::connection('magnachain')->table('txoutpubkey')
+		    ->join('txout', function ($join) {
+		        $join->on('txoutpubkey.txindex', '=', 'txout.txindex')->on('txoutpubkey.txhash', '=', 'txout.txhash');
+		    })
+		    ->select('txoutpubkey.solution', 'txoutpubkey.txindex', 'txout.value')
+		    ->where('txoutpubkey.txhash', '=', $tx[$i]->txhash)
+		    ->get();
+
+			$txoutpubkey = $txoutpubkey->toArray();
+			
+			for($k = 0; $k < count($txoutpubkey); $k++){
+
+				for($x = 0; $x < count($out); $x++){
+
+					if($txoutpubkey[$k]->solution == $out[$x]['address']){
+
+						$out[$x]['outNum'] = BigDecimal::of($out[$x]['outNum'])->plus(BigDecimal::of($txoutpubkey[$k]->value)->dividedBy('100000000', 2, RoundingMode::HALF_DOWN));
+						$out[$x]['outNum'] = strval($out[$x]['outNum']);
+
+						$records[$index]['allOut'] = $records[$index]['allOut']->plus($txoutpubkey[$k]->value);
+		
+					}
+
+				}
+
+			}
+
+			$txin = Db::connection('magnachain')->table('txin')->select('outpointhash', 'outpointindex')->where('txhash', $tx[$i]->txhash)->get();
+			$txin = $txin->toArray();
+
+			if(empty($txin)){
+				
+				$this['reward'] = true;
+
+				$blockreward = $records[$index]['allOut']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+				$blockreward = strval($blockreward);
+
+				$this['blockreward'] = $blockreward;
+
+				$records[$index]['blockreward'] = true;
+
+				$records[$index]['allIn'] = null;
+				$records[$index]['in'] = null;
+				$in_address = null;
+
+
+			} else {	
+
+				for($y=0; $y < count($txin); $y++){  //将所有输入存入in
+					
+					$in[$in_index]['address'] = "";
+					$in[$in_index]['inNum'] = "0";
+
+					$previous_txin = Db::connection('magnachain')->table('txout')->select('value', 'txhash', 'txindex')->where('txhash', $txin[$y]->outpointhash)->where('txindex', $txin[$y]->outpointindex)->get();
+					$previous_txin = $previous_txin->toArray();
+
+					$in[$in_index]['inNum'] = $previous_txin[$y]->value;
+			
+					$previous_address = Db::connection('magnachain')->table('txoutpubkey')->select('solution')->where('txhash', $txin[$y]->outpointhash)->where('txindex', $txin[$y]->outpointindex)->get();
+					$previous_address = $previous_address->toArray();
+
+					$in[$in_index]['address'] = $previous_address[0]->solution;
+					
+					$in_index++;
+
+				}
+
+				
+
+				$in_index = 0;
+
+				$in_address = array();  //存放所有in地址、余额,无重
+
+				$in_address = self::assoc_unique($in, 'address');
+
+				for ($p=0; $p < count($in); $p++) {
+
+					for ($q=0; $q < count($in_address); $q++) {
+						
+						if($in[$p]['address'] == $in_address[$q]['address']){
+
+							$in_address[$q]['inNum'] = BigDecimal::of($in_address[$q]['inNum'])->plus(BigDecimal::of($in[$p]['inNum'])->dividedBy('100000000', 2, RoundingMode::HALF_DOWN));
+							$in_address[$q]['inNum'] = strval($in_address[$q]['inNum']);
+
+							$records[$index]['allIn'] = $records[$index]['allIn']->plus($in[$p]['inNum']);
+
+						}
+
+					}
+
+				}
+		
+			}
+
+			if (count($out) > 5) {
+
+				$out = array_slice($out, 0, 5);
+				$records[$index]['more_output'] = true;
+				
+			}
+
+			if (count($in) > 5) {
+
+				$in = array_slice($in, 0, 5);
+				$records[$index]['more_input'] = true;
+				
+			}
+
+			if ($records[$index]['allIn'] != null) {
+
+				$records[$index]['allOut'] = $records[$index]['allOut']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+				$records[$index]['allIn'] = $records[$index]['allIn']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+
+				$records[$index]['reward'] = $records[$index]['allIn']->minus($records[$index]['allOut']);
+
+				$records[$index]['reward'] = BigDecimal::of($records[$index]['reward'])->dividedBy('1', 8, RoundingMode::HALF_DOWN);
+				$records[$index]['reward'] = strval($records[$index]['reward']);
+
+				$records[$index]['allOut'] = strval($records[$index]['allOut']);
+				$records[$index]['allIn'] = strval($records[$index]['allIn']);
+
+				$records[$index]['out'] = $out;  //把输出存在记录中
+				$records[$index]['in'] = $in_address;  //把输入存在记录中
+
+			} else {
+
+				$records[$index]['allOut'] = $records[$index]['allOut']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+
+				$records[$index]['allOut'] = strval($records[$index]['allOut']);
+
+				$records[$index]['out'] = $out;  //把输出存在记录中
+				$records[$index]['in'] = $in_address;  //把输入存在记录中
+
+			}
+
+			$index++;
+
+		}
+		
+		$this['records'] = $records;
+
+	} else {
+
+		header("Location: /404/请正确输入块哈希~");
+
+	}
+
+}
+
+function assoc_unique($arr, $key) {
+
+$tmp_arr = array();
+
+foreach ($arr as $k => $v) {
+
+if (in_array($v[$key], $tmp_arr)) {//搜索$v[$key]是否在$tmp_arr数组中存在，若存在返回true
+
+unset($arr[$k]);
+
+} else {
+
+$tmp_arr[] = $v[$key];
+
+}
+
+}
+
+sort($arr); //sort函数对数组进行排序
+
+for ($i=0; $i < count($arr); $i++) { 
+	$arr[$i]['inNum'] = "0";
+}
+
+return $arr;
+
+}
+
+function getDifficutly($nBits){
+
+	$nShift = ($nBits >> 24) & 0xff;
+
+    $dDiff = (double)0x0000ffff / (double)($nBits & 0x00ffffff);
+
+    while ($nShift < 29) {
+        $dDiff *= 256.0;
+        $nShift++;
+    }
+
+    while ($nShift > 29) {
+        $dDiff /= 256.0;
+        $nShift--;
+    }
+
+    return $dDiff;
+
+}
+
+?>
+==
+<div class="container content">
+
+	<div class="row block-detail">
+		
+		{% for info in block %}
+
+		<div class="col-md-6">
+			
+			<table class="table">
+
+				<span class="ng-scope" style="font-size: 24px; float: left; margin-top: -20px; margin-bottom: 20px;">{{ '区块'|_ }} #{{ info.height }}</span>
+
+				<tbody class="tbody-left">
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '块哈希'|_ }}</span></td>
+				        <td>
+				        	<span class="hidden-sm hidden-xs" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 380px; text-align: right;">{{ info.blockhash }}</span>
+				        	<span class="hidden-md hidden-lg" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 220px; text-align: right;">{{ info.blockhash }}</span>
+				        </td>
+				     </tr>
+
+					 <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '高度'|_ }}</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ info.height }}</span></td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '块奖励'|_ }}</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ blockreward }} MGC</span></td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '时间'|_ }}</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ info.time }}</span></td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '梅克莱根'|_ }}</span></td>
+				        <td>
+				        	<span class="hidden-sm hidden-xs" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 380px; text-align: right;">{{ info.hashmerkleroot }}</span>
+				        	<span class="hidden-md hidden-lg" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 220px; text-align: right;">{{ info.hashmerkleroot }}</span>
+				        </td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">Nonce</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ info.nonce }}</span></td>
+				     </tr>
+
+				  </tbody>
+
+			</table>
+
+		</div>
+
+		<div class="col-md-6">
+			
+			<table class="table">
+
+				<span class="ng-scope" style="visibility:hidden; font-size: 24px; float: left; margin-top: -20px; margin-bottom: 20px;">{{ '交易详情'|_ }}</span>
+				
+				<tbody class="tbody-right">
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '交易数量'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.num }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '块大小'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.blocksize }} Bytes</span></td>
+			     </tr>
+
+				 <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '难度'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.difficulty }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ 'Bits'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.bits }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px;float: left; font-weight: bold;">{{ '版本'|_ }}</span></td>
+			        <td><span style="margin-top: 5px;float: right;">{{ info.version }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '上一个块'|_ }}</span></td>
+			        <td>
+			        	{% if info.height > 0 %}
+			        	<a href="/block/{{ info.height-1 }}" style="float: right; margin-top: 5px;">
+							<span class="ellipsis ng-binding"> {{ info.height-1 }}  </span>
+						</a>
+						{% elseif info.height == 0 %}
+						<a href="javascript:void(0);" style="pointer-events:none; float: right; margin-top: 5px; color: #333;">
+							<span class="ellipsis ng-binding"> {{ '无'|_ }} </span>
+						</a>
+						{% endif %}
+					</td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '下一个块'|_ }}</span></td>
+			        <td>
+			        	<a href="/block/{{ info.height+1 }}" style="float: right; margin-top: 5px;">
+							<span class="ellipsis ng-binding">{% if info.height > 0 %} {{ info.height+1 }} {% elseif info.height == 0 %} 1 {% endif %}</span>
+						</a>
+					</td>
+			     </tr>
+
+			  </tbody>
+
+			</table>
+
+		</div>
+
+		{% endfor %}
+
+	</div>
+
+	<h1 style="font-size: 24px; text-align: left; margin-bottom: 20px; margin-top: 40px;">{{ '交易记录'|_ }}</h1>
+
+	<div class="tx-record" >
+
+		{% for record in records %}
+		<div class="box row line-mid ng-scope" style="margin-top: 20px; border: 1px solid #ebebeb;">
+			
+			<a class="hidden-xs hidden-sm" href="/tx/{{ record.txhash }}" style="float: left; margin-top: 14px; margin-bottom: 14px; margin-left: 40px;">
+				<span class="ellipsis">{{ record.txhash }}</span>
+			</a>
+		
+			<a class="hidden-md hidden-lg" href="/tx/{{ record.txhash }}" style="float: left; margin-top: 14px; margin-bottom: 14px; margin-left: 20px; overflow: hidden; text-overflow:ellipsis; white-space: nowrap; width: 200px;">
+				<span class="ellipsis">{{ record.txhash }}</span>
+			</a>
+			
+			<span class="hidden-xs hidden-sm" style="float: right; margin-top: 14px; margin-bottom: 14px; margin-right: 60px;">{{ '完成时间'|_ }} {{ record.time }}</span>
+		
+			<span class="hidden-md hidden-lg" style="float: right; margin-top: 14px; margin-bottom: 14px; margin-right: 20px;">{{ '完成时间'|_ }} {{ record.time }}</span>
+
+			<div style="margin-top: 49px; height: 1px; background-color: #ebebeb;"></div>
+		
+			<div class="row">
+				{% if record.in %}
+
+				<div class="col-md-5 col-xs-12 hidden-xs hidden-sm" style="margin-top: 20px; margin-left: 40px; float: left;">
+
+				<div id="input_div_{{ record.txhash }}">
+					{% for txin in record.in %}
+
+					<div class="panel panel-default" id="input" style="background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><a href="/address/{{ txin.address }}" style="float: left;">{{ txin.address }}</a><p>{{ txin.inNum }} MGC</p></div>
+
+					{% endfor %}
+				</div>
+
+				{% if record.more_in %}
+
+				<button class="btn btn-default btn-md" id="btn_input_{{ record.txhash }}" style="float: left;" status="1">显示更多</button>
+
+				{% endif %}
+
+				</div>
+		
+				<div class="col-md-5 col-xs-12 hidden-md hidden-lg" style="margin-top: 20px;">
+
+					<div id="input_div_{{ record.txhash }}">
+						{% for txin in record.in %}
+
+						<div class="panel panel-default" id="input" style="background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><a href="/address/{{ txin.address }}" style="float: left;">{{ txin.address }}</a><p>{{ txin.inNum }} MGC</p></div>
+
+						{% endfor %}
+					</div> 
+
+					{% if record.more_in %}
+
+					<button class="btn btn-default btn-md" id="btn_input_{{ record.txhash }}" style="float: left;" data-status="1">显示更多</button>
+
+					{% endif %}
+
+				</div>
+
+				{% else %}
+
+				<div class="col-md-5 col-xs-12 hidden-xs hidden-sm" style="margin-top: 20px; margin-left: 40px;">
+
+					<div class="panel panel-default" style=" background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><p>{{ '没有交易输入'|_ }}</p></div>
+
+				</div>
+
+				<div class="col-md-5 col-xs-12 hidden-md hidden-lg" style="margin-top: 20px;">
+
+					<div class="panel panel-default" style=" background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><p>{{ '没有交易输入'|_ }}</p></div>
+
+				</div>
+
+				{% endif %}
+
+				<div class="col-md-1 col-xs-12" style="text-align: center; margin-top: 10px;">
+
+					<div class="hidden-xs hidden-sm"><span style="font-size: 34px; color: #ebebeb;">＞</span></div>
+
+					<div class="hidden-md hidden-lg"><span style="font-size: 34px; color: #ebebeb;">∨</span></div>
+
+				</div>
+
+				<div class="col-md-5 col-xs-12" style="margin-top: 20px;">
+
+					<div id="output_div_{{ record.txhash }}">
+						{% for out in record.out %}
+
+						<div class="panel panel-default" style="background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><a href="/address/{{ out.address }}" style="float: left;">{{ out.address }}</a><p>{{ out.outNum }} MGC</p></div>
+
+						{% endfor %}
+					</div>
+
+					{% if record.more_output %}
+
+					<button class="btn btn-default btn-md" id="btn_output_{{ record.txhash }}" style="float: left;">显示更多</button>
+
+					{% endif %}
+
+				</div>
+					
+			</div>
+		
+			<div style="border-top: 1px solid #ebebeb; margin-top: 10px;">
+				{% if record.reward %}
+					<div>
+						<button type="button" class="btn btn-default btn-sm" disabled="disabled" style="float: left; margin-left: 10px; margin-bottom: 10px; margin-top: 10px;">{{ '矿工费'|_ }}： {{ record.reward }} MGC</button>
+					</div>
+				{% endif %}
+				<div>
+					<button type="button" class="btn btn-default btn-sm" disabled="disabled" style="float: right; margin-right: 10px; margin-bottom: 10px; margin-top: 10px;">{{ record.allOut }} MGC</button>
+				</div>
+			</div>
+		
+		</div>
+		{% endfor %}
+
+	</div>
+
+</div>
+
+<script>
+	
+	$("button[id^='btn_input_'").bind("click", function(event){
+
+		event.stopImmediatePropagation();
+
+		var txhash = event.target.id;
+		var txhash = txhash.substring(10);
+
+		var input_div = '#input_div_' + txhash;
+
+		var text = $('#btn_input_'+txhash).text();
+
+		if (text == "显示更多") {
+
+			$.post("/more_input", {txhash:txhash}, function (data, status) {
+
+				var data = JSON.parse(data);
+				
+				$('#btn_input_'+txhash).text('显示更少');
+
+				for(var i = 0; i < data.length; i++){
+
+					$(input_div).append("<div class='panel panel-default' id='more_input_" + txhash + "' style='background-color: #ebebeb; padding-top: 12px; padding-left: 12px;'><a href='/address/" + data[i]['address'] + "' style='float: left;'>" + data[i]['address'] + "</a><p>" + data[i]['inNum'] + " MGC</p></div>");
+
+				}
+		   		
+			});
+
+		} else {
+
+			$("div[id^='more_input_'").css('display', 'none').attr('id', 'input_hidden');
+			$('#btn_input_'+txhash).text('显示更多');
+
+		}
+		
+	});
+
+	$("button[id^='btn_output_'").bind("click", function(event){
+
+		event.stopImmediatePropagation();
+
+		var txhash = event.target.id;
+		var txhash = txhash.substring(11);
+
+		var output_div = '#output_div_' + txhash;
+
+		var text = $('#btn_output_'+txhash).text();
+
+		if (text == "显示更多") {
+
+			$.post("/more_output", {txhash:txhash}, function (data, status) {
+
+				var data = JSON.parse(data);
+
+				$('#btn_output_'+txhash).text('显示更少');
+
+				for(var i = 0; i < data.length; i++){
+
+					console.log(data[i]['address']);
+
+					$(output_div).append("<div class='panel panel-default' id='more_output_" + txhash + "' style='background-color: #ebebeb; padding-top: 12px; padding-left: 12px;'><a href='/address/" + data[i]['address'] + "' style='float: left;'>" + data[i]['address'] + "</a><p>" + data[i]['outNum'] + " MGC</p></div>");
+
+				}
+		   		
+
+			});
+
+		} else {
+
+			$("div[id^='more_output_'").css('display', 'none').attr('id', 'input_hidden');
+			$('#btn_output_'+txhash).text('显示更多');
+
+		}
+		
+	});
+
+
+</script>";s:5:"mtime";i:1555315225;s:6:"markup";s:12374:"<div class="container content">
+
+	<div class="row block-detail">
+		
+		{% for info in block %}
+
+		<div class="col-md-6">
+			
+			<table class="table">
+
+				<span class="ng-scope" style="font-size: 24px; float: left; margin-top: -20px; margin-bottom: 20px;">{{ '区块'|_ }} #{{ info.height }}</span>
+
+				<tbody class="tbody-left">
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '块哈希'|_ }}</span></td>
+				        <td>
+				        	<span class="hidden-sm hidden-xs" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 380px; text-align: right;">{{ info.blockhash }}</span>
+				        	<span class="hidden-md hidden-lg" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 220px; text-align: right;">{{ info.blockhash }}</span>
+				        </td>
+				     </tr>
+
+					 <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '高度'|_ }}</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ info.height }}</span></td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '块奖励'|_ }}</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ blockreward }} MGC</span></td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '时间'|_ }}</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ info.time }}</span></td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '梅克莱根'|_ }}</span></td>
+				        <td>
+				        	<span class="hidden-sm hidden-xs" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 380px; text-align: right;">{{ info.hashmerkleroot }}</span>
+				        	<span class="hidden-md hidden-lg" style="margin-top: 5px; float: right; word-break:normal; width:auto; display:block; white-space:pre-wrap;word-wrap : break-word ;overflow: hidden; width: 220px; text-align: right;">{{ info.hashmerkleroot }}</span>
+				        </td>
+				     </tr>
+
+				     <tr style="height: 50px;">
+				        <td><span style="margin-top: 5px; float: left; font-weight: bold;">Nonce</span></td>
+				        <td><span style="margin-top: 5px; float: right;">{{ info.nonce }}</span></td>
+				     </tr>
+
+				  </tbody>
+
+			</table>
+
+		</div>
+
+		<div class="col-md-6">
+			
+			<table class="table">
+
+				<span class="ng-scope" style="visibility:hidden; font-size: 24px; float: left; margin-top: -20px; margin-bottom: 20px;">{{ '交易详情'|_ }}</span>
+				
+				<tbody class="tbody-right">
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '交易数量'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.num }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '块大小'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.blocksize }} Bytes</span></td>
+			     </tr>
+
+				 <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '难度'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.difficulty }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ 'Bits'|_ }}</span></td>
+			        <td><span style="margin-top: 5px; float: right;">{{ info.bits }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px;float: left; font-weight: bold;">{{ '版本'|_ }}</span></td>
+			        <td><span style="margin-top: 5px;float: right;">{{ info.version }}</span></td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '上一个块'|_ }}</span></td>
+			        <td>
+			        	{% if info.height > 0 %}
+			        	<a href="/block/{{ info.height-1 }}" style="float: right; margin-top: 5px;">
+							<span class="ellipsis ng-binding"> {{ info.height-1 }}  </span>
+						</a>
+						{% elseif info.height == 0 %}
+						<a href="javascript:void(0);" style="pointer-events:none; float: right; margin-top: 5px; color: #333;">
+							<span class="ellipsis ng-binding"> {{ '无'|_ }} </span>
+						</a>
+						{% endif %}
+					</td>
+			     </tr>
+
+			     <tr style="height: 50px;">
+			        <td><span style="margin-top: 5px; float: left; font-weight: bold;">{{ '下一个块'|_ }}</span></td>
+			        <td>
+			        	<a href="/block/{{ info.height+1 }}" style="float: right; margin-top: 5px;">
+							<span class="ellipsis ng-binding">{% if info.height > 0 %} {{ info.height+1 }} {% elseif info.height == 0 %} 1 {% endif %}</span>
+						</a>
+					</td>
+			     </tr>
+
+			  </tbody>
+
+			</table>
+
+		</div>
+
+		{% endfor %}
+
+	</div>
+
+	<h1 style="font-size: 24px; text-align: left; margin-bottom: 20px; margin-top: 40px;">{{ '交易记录'|_ }}</h1>
+
+	<div class="tx-record" >
+
+		{% for record in records %}
+		<div class="box row line-mid ng-scope" style="margin-top: 20px; border: 1px solid #ebebeb;">
+			
+			<a class="hidden-xs hidden-sm" href="/tx/{{ record.txhash }}" style="float: left; margin-top: 14px; margin-bottom: 14px; margin-left: 40px;">
+				<span class="ellipsis">{{ record.txhash }}</span>
+			</a>
+		
+			<a class="hidden-md hidden-lg" href="/tx/{{ record.txhash }}" style="float: left; margin-top: 14px; margin-bottom: 14px; margin-left: 20px; overflow: hidden; text-overflow:ellipsis; white-space: nowrap; width: 200px;">
+				<span class="ellipsis">{{ record.txhash }}</span>
+			</a>
+			
+			<span class="hidden-xs hidden-sm" style="float: right; margin-top: 14px; margin-bottom: 14px; margin-right: 60px;">{{ '完成时间'|_ }} {{ record.time }}</span>
+		
+			<span class="hidden-md hidden-lg" style="float: right; margin-top: 14px; margin-bottom: 14px; margin-right: 20px;">{{ '完成时间'|_ }} {{ record.time }}</span>
+
+			<div style="margin-top: 49px; height: 1px; background-color: #ebebeb;"></div>
+		
+			<div class="row">
+				{% if record.in %}
+
+				<div class="col-md-5 col-xs-12 hidden-xs hidden-sm" style="margin-top: 20px; margin-left: 40px; float: left;">
+
+				<div id="input_div_{{ record.txhash }}">
+					{% for txin in record.in %}
+
+					<div class="panel panel-default" id="input" style="background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><a href="/address/{{ txin.address }}" style="float: left;">{{ txin.address }}</a><p>{{ txin.inNum }} MGC</p></div>
+
+					{% endfor %}
+				</div>
+
+				{% if record.more_in %}
+
+				<button class="btn btn-default btn-md" id="btn_input_{{ record.txhash }}" style="float: left;" status="1">显示更多</button>
+
+				{% endif %}
+
+				</div>
+		
+				<div class="col-md-5 col-xs-12 hidden-md hidden-lg" style="margin-top: 20px;">
+
+					<div id="input_div_{{ record.txhash }}">
+						{% for txin in record.in %}
+
+						<div class="panel panel-default" id="input" style="background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><a href="/address/{{ txin.address }}" style="float: left;">{{ txin.address }}</a><p>{{ txin.inNum }} MGC</p></div>
+
+						{% endfor %}
+					</div> 
+
+					{% if record.more_in %}
+
+					<button class="btn btn-default btn-md" id="btn_input_{{ record.txhash }}" style="float: left;" data-status="1">显示更多</button>
+
+					{% endif %}
+
+				</div>
+
+				{% else %}
+
+				<div class="col-md-5 col-xs-12 hidden-xs hidden-sm" style="margin-top: 20px; margin-left: 40px;">
+
+					<div class="panel panel-default" style=" background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><p>{{ '没有交易输入'|_ }}</p></div>
+
+				</div>
+
+				<div class="col-md-5 col-xs-12 hidden-md hidden-lg" style="margin-top: 20px;">
+
+					<div class="panel panel-default" style=" background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><p>{{ '没有交易输入'|_ }}</p></div>
+
+				</div>
+
+				{% endif %}
+
+				<div class="col-md-1 col-xs-12" style="text-align: center; margin-top: 10px;">
+
+					<div class="hidden-xs hidden-sm"><span style="font-size: 34px; color: #ebebeb;">＞</span></div>
+
+					<div class="hidden-md hidden-lg"><span style="font-size: 34px; color: #ebebeb;">∨</span></div>
+
+				</div>
+
+				<div class="col-md-5 col-xs-12" style="margin-top: 20px;">
+
+					<div id="output_div_{{ record.txhash }}">
+						{% for out in record.out %}
+
+						<div class="panel panel-default" style="background-color: #ebebeb; padding-top: 12px; padding-left: 12px;"><a href="/address/{{ out.address }}" style="float: left;">{{ out.address }}</a><p>{{ out.outNum }} MGC</p></div>
+
+						{% endfor %}
+					</div>
+
+					{% if record.more_output %}
+
+					<button class="btn btn-default btn-md" id="btn_output_{{ record.txhash }}" style="float: left;">显示更多</button>
+
+					{% endif %}
+
+				</div>
+					
+			</div>
+		
+			<div style="border-top: 1px solid #ebebeb; margin-top: 10px;">
+				{% if record.reward %}
+					<div>
+						<button type="button" class="btn btn-default btn-sm" disabled="disabled" style="float: left; margin-left: 10px; margin-bottom: 10px; margin-top: 10px;">{{ '矿工费'|_ }}： {{ record.reward }} MGC</button>
+					</div>
+				{% endif %}
+				<div>
+					<button type="button" class="btn btn-default btn-sm" disabled="disabled" style="float: right; margin-right: 10px; margin-bottom: 10px; margin-top: 10px;">{{ record.allOut }} MGC</button>
+				</div>
+			</div>
+		
+		</div>
+		{% endfor %}
+
+	</div>
+
+</div>
+
+<script>
+	
+	$("button[id^='btn_input_'").bind("click", function(event){
+
+		event.stopImmediatePropagation();
+
+		var txhash = event.target.id;
+		var txhash = txhash.substring(10);
+
+		var input_div = '#input_div_' + txhash;
+
+		var text = $('#btn_input_'+txhash).text();
+
+		if (text == "显示更多") {
+
+			$.post("/more_input", {txhash:txhash}, function (data, status) {
+
+				var data = JSON.parse(data);
+				
+				$('#btn_input_'+txhash).text('显示更少');
+
+				for(var i = 0; i < data.length; i++){
+
+					$(input_div).append("<div class='panel panel-default' id='more_input_" + txhash + "' style='background-color: #ebebeb; padding-top: 12px; padding-left: 12px;'><a href='/address/" + data[i]['address'] + "' style='float: left;'>" + data[i]['address'] + "</a><p>" + data[i]['inNum'] + " MGC</p></div>");
+
+				}
+		   		
+			});
+
+		} else {
+
+			$("div[id^='more_input_'").css('display', 'none').attr('id', 'input_hidden');
+			$('#btn_input_'+txhash).text('显示更多');
+
+		}
+		
+	});
+
+	$("button[id^='btn_output_'").bind("click", function(event){
+
+		event.stopImmediatePropagation();
+
+		var txhash = event.target.id;
+		var txhash = txhash.substring(11);
+
+		var output_div = '#output_div_' + txhash;
+
+		var text = $('#btn_output_'+txhash).text();
+
+		if (text == "显示更多") {
+
+			$.post("/more_output", {txhash:txhash}, function (data, status) {
+
+				var data = JSON.parse(data);
+
+				$('#btn_output_'+txhash).text('显示更少');
+
+				for(var i = 0; i < data.length; i++){
+
+					console.log(data[i]['address']);
+
+					$(output_div).append("<div class='panel panel-default' id='more_output_" + txhash + "' style='background-color: #ebebeb; padding-top: 12px; padding-left: 12px;'><a href='/address/" + data[i]['address'] + "' style='float: left;'>" + data[i]['address'] + "</a><p>" + data[i]['outNum'] + " MGC</p></div>");
+
+				}
+		   		
+
+			});
+
+		} else {
+
+			$("div[id^='more_output_'").css('display', 'none').attr('id', 'input_hidden');
+			$('#btn_output_'+txhash).text('显示更多');
+
+		}
+		
+	});
+
+
+</script>";s:4:"code";s:8756:"function onStart() {
+
+	use Brick\Math\BigInteger;
+	use Brick\Math\BigDecimal;
+	use Brick\Math\RoundingMode;
+
+	$str_blockhash = $this->param('blockhash');
+	$str_blockhash = strval($str_blockhash);
+
+	if (ctype_digit($str_blockhash)) {
+
+		//块高，纯数字
+		$blockhash = Db::connection('magnachain')->table('block')->select('blockhash')->where('height', $str_blockhash)->get();
+		$blockhash = $blockhash->toArray();
+
+		if ($blockhash) {
+			header("Location: /block/".$blockhash[0]->blockhash);
+		} else {
+			header("Location: /404/请正确输入块高~");
+		}
+
+		exit();
+
+	} elseif ($str_blockhash == false) {
+
+		//块高，纯数字
+		$blockhash = Db::connection('magnachain')->table('block')->select('blockhash')->where('height', "0")->get();
+		$blockhash = $blockhash->toArray();
+
+		if ($blockhash) {
+			header("Location: /block/".$blockhash[0]->blockhash);
+		} else {
+			header("Location: /404/请正确输入块高~");
+		}
+
+		exit();
+
+	}
+	
+	if($this->param('blockhash')){
+
+		$records = array();  //该地址所有交易记录
+		$index = 0;  //记录的脚标
+		$in_index = 0;  //输入记录的脚标
+		
+		$in = array();  //存地址和输入、输出
+		$out = array();
+
+		$block = Db::connection('magnachain')->table('block')->select('blockhash', 'height', 'time', 'hashmerkleroot', 'nonce', 'bits', 'version', 'blocksize')->where('blockhash', $this->param('blockhash'))->get();
+		$block = $block->toArray();
+
+		if(empty($block)){
+
+			header("Location: /404/找不到块~");		//404处理
+			exit();
+
+		}
+
+		$difficulty = self::getDifficutly($block[0]->bits);
+
+		$difficulty = strval($difficulty);
+
+		$block[0]->difficulty = BigDecimal::of($difficulty);
+
+		$num = Db::connection('magnachain')->table('transaction')->select('version')->where('blockhash', $block[0]->blockhash)->get();
+		$num = $num->toArray();
+
+		$block[0]->num = count($num);
+		$block[0]->time = date("Y-m-d H:i:s", $block[0]->time);
+		
+		$this['block'] = $block;
+
+		//查找块下所有交易哈希
+		$tx = Db::connection('magnachain')->table('transaction')->select('txhash')->where('blockhash', $this->param('blockhash'))->get();
+		$tx = $tx->toArray();
+		
+		for($i=0; $i < count($tx); $i++){  //for循环取出所有该交易的收入
+
+			$tx_array[$index] = $tx[$i]->txhash;
+			$records[$index]['txhash'] = $tx[$i]->txhash;
+			$records[$index]['allOut'] = BigDecimal::of('0');
+			$records[$index]['allIn'] = BigDecimal::of('0');
+
+			//用交易哈希去找块哈希
+			$block = Db::connection('magnachain')->table('transaction')->select('blockhash')->where('txhash', $tx[$i]->txhash)->get();
+			$block = $block->toArray();
+
+			//查询交易时间
+			$txtime = Db::connection('magnachain')->table('block')->select('time')->where('blockhash', $block[0]->blockhash)->get();
+			$txtime = $txtime->toArray();
+			
+			$records[$index]['time'] = date("Y-m-d H:i:s", $txtime[0]->time);
+
+			//查询该交易哈希下的输出地址，去重
+			$distinct_address = Db::connection('magnachain')->table('txoutpubkey')->select('solution')->where('txhash', $tx[$i]->txhash)->distinct()->get();
+			$distinct_address = $distinct_address->toArray();
+
+			for($j = 0; $j < count($distinct_address); $j++){
+
+				$out[$j]['address'] = $distinct_address[$j]->solution;
+				$out[$j]['outNum'] = '0';
+			
+			}
+
+			//获取交易详情
+			$txoutpubkey = Db::connection('magnachain')->table('txoutpubkey')
+		    ->join('txout', function ($join) {
+		        $join->on('txoutpubkey.txindex', '=', 'txout.txindex')->on('txoutpubkey.txhash', '=', 'txout.txhash');
+		    })
+		    ->select('txoutpubkey.solution', 'txoutpubkey.txindex', 'txout.value')
+		    ->where('txoutpubkey.txhash', '=', $tx[$i]->txhash)
+		    ->get();
+
+			$txoutpubkey = $txoutpubkey->toArray();
+			
+			for($k = 0; $k < count($txoutpubkey); $k++){
+
+				for($x = 0; $x < count($out); $x++){
+
+					if($txoutpubkey[$k]->solution == $out[$x]['address']){
+
+						$out[$x]['outNum'] = BigDecimal::of($out[$x]['outNum'])->plus(BigDecimal::of($txoutpubkey[$k]->value)->dividedBy('100000000', 2, RoundingMode::HALF_DOWN));
+						$out[$x]['outNum'] = strval($out[$x]['outNum']);
+
+						$records[$index]['allOut'] = $records[$index]['allOut']->plus($txoutpubkey[$k]->value);
+		
+					}
+
+				}
+
+			}
+
+			$txin = Db::connection('magnachain')->table('txin')->select('outpointhash', 'outpointindex')->where('txhash', $tx[$i]->txhash)->get();
+			$txin = $txin->toArray();
+
+			if(empty($txin)){
+				
+				$this['reward'] = true;
+
+				$blockreward = $records[$index]['allOut']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+				$blockreward = strval($blockreward);
+
+				$this['blockreward'] = $blockreward;
+
+				$records[$index]['blockreward'] = true;
+
+				$records[$index]['allIn'] = null;
+				$records[$index]['in'] = null;
+				$in_address = null;
+
+
+			} else {	
+
+				for($y=0; $y < count($txin); $y++){  //将所有输入存入in
+					
+					$in[$in_index]['address'] = "";
+					$in[$in_index]['inNum'] = "0";
+
+					$previous_txin = Db::connection('magnachain')->table('txout')->select('value', 'txhash', 'txindex')->where('txhash', $txin[$y]->outpointhash)->where('txindex', $txin[$y]->outpointindex)->get();
+					$previous_txin = $previous_txin->toArray();
+
+					$in[$in_index]['inNum'] = $previous_txin[$y]->value;
+			
+					$previous_address = Db::connection('magnachain')->table('txoutpubkey')->select('solution')->where('txhash', $txin[$y]->outpointhash)->where('txindex', $txin[$y]->outpointindex)->get();
+					$previous_address = $previous_address->toArray();
+
+					$in[$in_index]['address'] = $previous_address[0]->solution;
+					
+					$in_index++;
+
+				}
+
+				
+
+				$in_index = 0;
+
+				$in_address = array();  //存放所有in地址、余额,无重
+
+				$in_address = self::assoc_unique($in, 'address');
+
+				for ($p=0; $p < count($in); $p++) {
+
+					for ($q=0; $q < count($in_address); $q++) {
+						
+						if($in[$p]['address'] == $in_address[$q]['address']){
+
+							$in_address[$q]['inNum'] = BigDecimal::of($in_address[$q]['inNum'])->plus(BigDecimal::of($in[$p]['inNum'])->dividedBy('100000000', 2, RoundingMode::HALF_DOWN));
+							$in_address[$q]['inNum'] = strval($in_address[$q]['inNum']);
+
+							$records[$index]['allIn'] = $records[$index]['allIn']->plus($in[$p]['inNum']);
+
+						}
+
+					}
+
+				}
+		
+			}
+
+			if (count($out) > 5) {
+
+				$out = array_slice($out, 0, 5);
+				$records[$index]['more_output'] = true;
+				
+			}
+
+			if (count($in) > 5) {
+
+				$in = array_slice($in, 0, 5);
+				$records[$index]['more_input'] = true;
+				
+			}
+
+			if ($records[$index]['allIn'] != null) {
+
+				$records[$index]['allOut'] = $records[$index]['allOut']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+				$records[$index]['allIn'] = $records[$index]['allIn']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+
+				$records[$index]['reward'] = $records[$index]['allIn']->minus($records[$index]['allOut']);
+
+				$records[$index]['reward'] = BigDecimal::of($records[$index]['reward'])->dividedBy('1', 8, RoundingMode::HALF_DOWN);
+				$records[$index]['reward'] = strval($records[$index]['reward']);
+
+				$records[$index]['allOut'] = strval($records[$index]['allOut']);
+				$records[$index]['allIn'] = strval($records[$index]['allIn']);
+
+				$records[$index]['out'] = $out;  //把输出存在记录中
+				$records[$index]['in'] = $in_address;  //把输入存在记录中
+
+			} else {
+
+				$records[$index]['allOut'] = $records[$index]['allOut']->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
+
+				$records[$index]['allOut'] = strval($records[$index]['allOut']);
+
+				$records[$index]['out'] = $out;  //把输出存在记录中
+				$records[$index]['in'] = $in_address;  //把输入存在记录中
+
+			}
+
+			$index++;
+
+		}
+		
+		$this['records'] = $records;
+
+	} else {
+
+		header("Location: /404/请正确输入块哈希~");
+
+	}
+
+}
+
+function assoc_unique($arr, $key) {
+
+$tmp_arr = array();
+
+foreach ($arr as $k => $v) {
+
+if (in_array($v[$key], $tmp_arr)) {//搜索$v[$key]是否在$tmp_arr数组中存在，若存在返回true
+
+unset($arr[$k]);
+
+} else {
+
+$tmp_arr[] = $v[$key];
+
+}
+
+}
+
+sort($arr); //sort函数对数组进行排序
+
+for ($i=0; $i < count($arr); $i++) { 
+	$arr[$i]['inNum'] = "0";
+}
+
+return $arr;
+
+}
+
+function getDifficutly($nBits){
+
+	$nShift = ($nBits >> 24) & 0xff;
+
+    $dDiff = (double)0x0000ffff / (double)($nBits & 0x00ffffff);
+
+    while ($nShift < 29) {
+        $dDiff *= 256.0;
+        $nShift++;
+    }
+
+    while ($nShift > 29) {
+        $dDiff /= 256.0;
+        $nShift--;
+    }
+
+    return $dDiff;
+
+}";s:5:"title";s:5:"block";s:3:"url";s:18:"/block/:blockhash?";s:6:"layout";s:3:"mgc";s:9:"is_hidden";s:1:"0";}}
