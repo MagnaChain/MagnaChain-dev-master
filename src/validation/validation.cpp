@@ -485,8 +485,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool, bool f
         MCTransactionRef ptx = *it;
         bool modify = false;
         if (fAddToMempool) {
-            if ((ptx->IsBranchChainTransStep2() && ptx->fromBranchId != MCBaseChainParams::MAIN) ||
-                (ptx->IsSmartContract() && ptx->pContractData->contractCoinsOut.size() > 0)) {
+            if (ptx->IsDynamicTx()) {
                 // revert transaction data
                 MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr, true);
                 ptx = MakeTransactionRef(mtx);
@@ -661,9 +660,9 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                 // reject dynamic txout tx
                 MCTxMemPool::txiter prevTx = mempool.mapTx.find(txin.prevout.hash);
                 if (prevTx != mempool.mapTx.end()) {
-                    if ((prevTx->GetTx().IsBranchChainTransStep2() && prevTx->GetTx().fromBranchId != MCBaseChainParams::MAIN) ||
-                        (prevTx->GetTx().IsSmartContract() && prevTx->GetTx().pContractData->contractCoinsOut.size() > 0)) {
-                        state.Invalid(false, REJECT_INVALID, "vin-can-not-be-dynamic-tx-in-mempool");
+                    if (prevTx->GetTx().IsDynamicTx()) {
+                        LogPrintf("%s:%d %s:%d\n", __FUNCTION__, __LINE__, txin.prevout.hash.ToString(), txin.prevout.n);
+                        return state.Invalid(false, REJECT_INVALID, "vin-can-not-be-dynamic-tx-in-mempool");
                     }
                 }
 
@@ -1740,6 +1739,7 @@ static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex
         const MCTransactionRef& ptx = block.vtx[i];
         const MCTransaction& tx = *(block.vtx[i]);
         uint256 hash = tx.GetHash();
+        //LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, hash.ToString());
         bool is_coinbase = tx.IsCoinBase();
         const bool isBranch2ndBlockTx = (i == 1 && pindex->nHeight == 1 && !Params().IsMainChain()); //2nd branch block's stake tx
 
@@ -3319,6 +3319,7 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
         pPreBlockIndex = mapBlockIndex[block.hashPrevBlock];
     }
     for (unsigned int i = 1; i < block.vtx.size(); i++) {
+        //LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, block.vtx[i]->GetHash().ToString());
         if (block.vtx[i]->IsCoinBase())
             return state.DoS(100, false, REJECT_INVALID, "bad-cb-multiple", false, "more than one coinbase");
         if (block.vtx[i]->IsBranchCreate()) {

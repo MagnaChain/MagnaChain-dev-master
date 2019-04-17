@@ -201,7 +201,7 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCTransactionRef tx = iter->GetSharedTx();
-    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->contractCoinsOut.size() > 0)) {
+    if (tx->IsDynamicTx()) {
         if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
         pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
@@ -811,8 +811,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             MCTxMemPool::txiter entry = sortedEntries[i];
             const MCTransactionRef& entryTx = entry->GetSharedTx();
 
-            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
-                (entryTx->IsSmartContract() && entryTx->pContractData->contractCoinsOut.size() > 0)) {
+            if (entryTx->IsDynamicTx()) {
                 if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {
@@ -2078,8 +2077,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
 	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        strErr = strprintf("%s:%d TestBlockValidity fail\n", __FUNCTION__, __LINE__);
-        error(strErr.c_str());
+        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
         pblocktemplate.release();
         return nullptr;
 	}

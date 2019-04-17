@@ -37,8 +37,11 @@ bool IsFinalTx(const MCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
     if ((int64_t)tx.nLockTime < ((int64_t)tx.nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
         return true;
     for (const auto& txin : tx.vin) {
-        if (!(txin.nSequence == MCTxIn::SEQUENCE_FINAL))
+        if (txin.nSequence != MCTxIn::SEQUENCE_FINAL) {
+            LogPrintf("%s:%d %s is not final(locktime=%d, blockheight = %d)\n", __FUNCTION__, __LINE__, 
+                tx.GetHash().ToString(), tx.nLockTime, nBlockHeight);
             return false;
+        }
     }
     return true;
 }

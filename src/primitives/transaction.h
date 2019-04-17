@@ -658,6 +658,11 @@ public:
         return nVersion == REPORT_REWARD;
     }
 
+    bool IsDynamicTx() const {
+        return (IsBranchChainTransStep2() && fromBranchId != MCBaseChainParams::MAIN) ||
+            (IsSmartContract() && pContractData->contractCoinsOut.size() > 0);
+    }
+
     bool IsLockMortgageMineCoin() const {
         return nVersion == LOCK_MORTGAGE_MINE_COIN;
     }
