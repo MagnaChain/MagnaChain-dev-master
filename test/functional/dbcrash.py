@@ -262,7 +262,8 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             block_hashes = []
             while current_height + 1 > self.nodes[3].getblockcount():
                 block_hashes.extend(self.nodes[3].generate(min(10, current_height + 1 - self.nodes[3].getblockcount())))
-            print("new chaintipwork", self.nodes[3].getchaintipwork(), "old chaintipwork", chaintipwork)
+            print("new chaintipwork", self.nodes[3].getchaintipwork(), "old chaintipwork", chaintipwork, 
+                "new work bigger" if int(self.nodes[3].getchaintipwork(), 16) > int(chaintipwork,16) else "new work smaller_eq")
             self.log.debug("Syncing %d new blocks...", len(block_hashes))
             self.sync_node3blocks(block_hashes)
             utxo_list = self.nodes[3].listunspent()
