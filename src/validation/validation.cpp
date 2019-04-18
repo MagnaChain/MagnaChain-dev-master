@@ -4298,7 +4298,7 @@ static bool RollforwardBlock(const MCBlockIndex* pindex, MCCoinsViewCache& input
     }
 
     for (const MCTransactionRef& tx : block.vtx) {
-        if (!tx->IsCoinBase()) {
+        if (!(tx->IsCoinBase() || (tx->IsBranchChainTransStep2() && tx->fromBranchId == MCBaseChainParams::MAIN))) {
             for (const MCTxIn& txin : tx->vin) {
                 inputs.SpendCoin(txin.prevout);
             }
