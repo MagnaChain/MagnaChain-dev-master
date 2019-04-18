@@ -180,6 +180,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         self.log.info("Verifying utxo hash matches for all nodes")
 
         for i in range(3):
+            print("verify_utxo_hash i", i)
             try:
                 nodei_utxo_hash = self.nodes[i].gettxoutsetinfo()['hash_serialized_2']
             except OSError:
