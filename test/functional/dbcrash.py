@@ -247,6 +247,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             self.generate_small_transactions(self.nodes[3], 360, utxo_list) # TODO should be 2500
             # Pick a random block between current tip, and starting tip
             current_height = self.nodes[3].getblockcount()
+            chaintipwork = self.nodes[3].getchaintipwork()
             random_height = random.randint(starting_tip_height, current_height)
             self.log.debug("At height %d, considering height %d", current_height, random_height)
             if random_height > starting_tip_height:
@@ -261,6 +262,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             block_hashes = []
             while current_height + 1 > self.nodes[3].getblockcount():
                 block_hashes.extend(self.nodes[3].generate(min(10, current_height + 1 - self.nodes[3].getblockcount())))
+            print("new chaintipwork", self.nodes[3].getchaintipwork(), "old chaintipwork", chaintipwork)
             self.log.debug("Syncing %d new blocks...", len(block_hashes))
             self.sync_node3blocks(block_hashes)
             utxo_list = self.nodes[3].listunspent()
