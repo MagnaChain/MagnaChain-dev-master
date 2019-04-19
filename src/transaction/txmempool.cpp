@@ -1251,12 +1251,9 @@ void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool
             setEntries stage;
             stage.insert(it);
             RemoveStaged(stage, true, MemPoolRemovalReason::BLOCK);
-            LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
         }
         RemoveConflicts(*tx);
-        LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
         ClearPrioritisation(txid);
-        LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
     }
 }
 /**
