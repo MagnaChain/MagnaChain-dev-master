@@ -880,6 +880,8 @@ void static GenerateSleep()
 	boost::this_thread::interruption_point();
 }
 
+extern UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries);
+
 void static MagnaChainMiner(const MCChainParams& chainparams)
 {
     LogPrintf("MagnaChainMiner started\n");
@@ -891,42 +893,11 @@ void static MagnaChainMiner(const MCChainParams& chainparams)
 
 	while (!ShutdownRequested()) {
 		try {
-            std::set<MCTxDestination> setAddress;
-            std::vector<MCOutput> vecOutputs;
-			{
-				assert(pwallet != nullptr);
-
-				LOCK2(cs_main, pwallet->cs_wallet);
-
-                if (Params().IsMainChain())
-                    pwallet->AvailableCoins(vecOutputs, nullptr, false);
-                else
-                    pwallet->AvailableMortgageCoins(vecOutputs, false);
-				//for (const MCOutput& out : vecOutputs) {
-				//	MCTxDestination address;
-				//	const MCScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-				//	bool fValidAddress = ExtractDestination(scriptPubKey, address);
-
-				//	if (setAddress.count(address))
-				//		continue;
-
-				//	if (fValidAddress) {
-				//		if (!scriptPubKey.IsPayToScriptHash()) {
-				//			setAddress.insert(address);
-				//		}
-				//	}
-				//}
-
-			}
-            //std::vector< MCScript> vecScript;
-            //BOOST_FOREACH(const MCTxDestination& addr, setAddress) {
-			//	vecScript.push_back(GetScriptForDestination(addr));
-			//}
-			generateBlocks(pwallet, vecOutputs, vecOutputs.size(), vecOutputs.size(), true, GenerateSleep);
-
+            int num_generate = 10000;
+            uint64_t max_tries = 1000000;
+            generateblockcommon(pwallet, num_generate, max_tries);
 			// Check for stop or if block needs to be rebuilt
-			boost::this_thread::interruption_point();
-
+			
 		}
 		catch (const UniValue& objError) {
 			UniValue err = find_value(objError, "message");
