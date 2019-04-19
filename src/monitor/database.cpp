@@ -77,16 +77,12 @@ void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, co
     blocks[hashBlock] = std::move(DatabaseBlock{ hashBlock, hashPrevBlock, hashSkipBlock, height });
 
     // clean cache
-    std::vector<std::map<uint256, DatabaseBlock>::iterator> iters;
     int maturityHeight = std::max(height - COINBASE_MATURITY, 0);
     for (auto iter = blocks.begin(); iter != blocks.end();) {
         if (iter->second.height < maturityHeight) {
             iter = blocks.erase(iter);
         }
         else {
-            if (iter->second.height == height) {
-                iters.emplace_back(iter);
-            }
             ++iter;
         }
     }
