@@ -249,20 +249,20 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             current_height = self.nodes[3].getblockcount()
             chaintipwork = self.nodes[3].getchaintipwork()
             random_height = random.randint(starting_tip_height, current_height)
-            self.log.debug("At height %d, considering height %d", current_height, random_height)
+            self.log.info("At height %d, considering height %d", current_height, random_height)
             if random_height > starting_tip_height:
                 # Randomly reorg from this point with some probability (1/4 for
                 # tip, 1/5 for tip-1, ...)
                 if random.random() < 1.0 / (current_height + 4 - random_height):
-                    self.log.debug("Invalidating block at height %d", random_height)
+                    self.log.info("Invalidating block at height %d", random_height)
                     self.nodes[3].invalidateblock(self.nodes[3].getblockhash(random_height))
 
             # Now generate new blocks until we pass the old tip height
-            self.log.debug("Mining longer tip")
+            self.log.info("Mining longer tip")
             block_hashes = []
             while current_height + 1 > self.nodes[3].getblockcount():
                 block_hashes.extend(self.nodes[3].generate(min(10, current_height + 1 - self.nodes[3].getblockcount())))
-            print("new chaintipwork", self.nodes[3].getchaintipwork(), "old chaintipwork", chaintipwork, 
+            self.log.info("new chaintipwork %s old chaintipwork %s, %s", self.nodes[3].getchaintipwork(), chaintipwork, 
                 "new work bigger" if int(self.nodes[3].getchaintipwork(), 16) > int(chaintipwork,16) else "new work smaller_eq")
             self.log.debug("Syncing %d new blocks...", len(block_hashes))
             self.sync_node3blocks(block_hashes)
