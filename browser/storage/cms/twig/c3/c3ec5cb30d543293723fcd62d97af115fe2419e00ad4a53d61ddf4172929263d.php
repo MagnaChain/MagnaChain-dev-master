@@ -23,7 +23,10 @@ class __TwigTemplate_193530d11e9e6907d78890731f018115055a42e097a5eeace30c208d8d6
         echo "<div class=\"container content\">
 \t
 \t<div class=\"block\">
-\t\t
+\t\t<p id=\"web_language\" language=\"";
+        // line 4
+        echo twig_escape_filter($this->env, ($context["language"] ?? null), "html", null, true);
+        echo "\" style=\"visibility: hidden; position: absolute;\">aaaaaaaa</p>
 \t\t<span class=\"ng-scope\" style=\"font-size: 24px; float: left;\">";
         // line 5
         echo call_user_func_array($this->env->getFilter('_')->getCallable(), ["最新区块"]);
@@ -142,9 +145,11 @@ class __TwigTemplate_193530d11e9e6907d78890731f018115055a42e097a5eeace30c208d8d6
 \t
 \t\$(function(){
 
+\t\tvar language = \$('#web_language').attr('language');
+
 \t\tvar interval = setInterval(function(){
 
-\t\t\t\$.get(\"/mgcBlock\", function (data, status) {
+\t\t\t\$.get(\"/mgcBlock\", {language:language}, function (data, status) {
 
 \t\t\t\tif (data != null) {
 
@@ -227,7 +232,7 @@ class __TwigTemplate_193530d11e9e6907d78890731f018115055a42e097a5eeace30c208d8d6
 
     public function getDebugInfo()
     {
-        return array (  126 => 69,  116 => 62,  112 => 61,  102 => 54,  85 => 40,  60 => 18,  56 => 17,  52 => 16,  48 => 15,  44 => 14,  34 => 7,  29 => 5,  23 => 1,);
+        return array (  129 => 69,  119 => 62,  115 => 61,  105 => 54,  88 => 40,  63 => 18,  59 => 17,  55 => 16,  51 => 15,  47 => 14,  37 => 7,  32 => 5,  28 => 4,  23 => 1,);
     }
 
     public function getSourceContext()
@@ -235,7 +240,7 @@ class __TwigTemplate_193530d11e9e6907d78890731f018115055a42e097a5eeace30c208d8d6
         return new Twig_Source("<div class=\"container content\">
 \t
 \t<div class=\"block\">
-\t\t
+\t\t<p id=\"web_language\" language=\"{{ language }}\" style=\"visibility: hidden; position: absolute;\">aaaaaaaa</p>
 \t\t<span class=\"ng-scope\" style=\"font-size: 24px; float: left;\">{{ '最新区块'|_ }}</span>
 \t\t
 \t\t<a href=\"/all-blocks\" class=\"btn btn-default see-all-blocks\" translate style=\"visibility: hidden;\" ><span class=\"ng-scope\">{{ '查看所有区块'|_ }}/span></a>
@@ -318,9 +323,11 @@ class __TwigTemplate_193530d11e9e6907d78890731f018115055a42e097a5eeace30c208d8d6
 \t
 \t\$(function(){
 
+\t\tvar language = \$('#web_language').attr('language');
+
 \t\tvar interval = setInterval(function(){
 
-\t\t\t\$.get(\"/mgcBlock\", function (data, status) {
+\t\t\t\$.get(\"/mgcBlock\", {language:language}, function (data, status) {
 
 \t\t\t\tif (data != null) {
 

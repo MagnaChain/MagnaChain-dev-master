@@ -1,5 +1,5 @@
 <?php 
-class Cms5cb43bf138e8c677711073_78277f7f1fc7f76ad347b3877188a37fClass extends Cms\Classes\PageCode
+class Cms5cb944db59056763364942_db13f1c53478380cfa33b9e9467ad8b5Class extends Cms\Classes\PageCode
 {
 public function onStart() {
 	
@@ -93,9 +93,14 @@ public function onStart() {
 
 				$block = array_slice($block, 0, 50);
 
-				$this['more_block'] = "true";
+				//$this['more_block'] = "true";
 
 			}
+
+			$this['count'] = $count;
+			$pagination = ceil($count/50);
+
+			$this['pagination'] = $pagination;
 
 			$this['infos'] = $block;
 
