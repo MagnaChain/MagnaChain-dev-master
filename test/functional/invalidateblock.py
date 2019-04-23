@@ -3,6 +3,7 @@
 # Distributed under the MIT software license, see the accompanying
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the invalidateblock RPC."""
+import time
 
 from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
@@ -58,14 +59,16 @@ class InvalidateTest(MagnaChainTestFramework):
         sync_blocks(self.nodes[1:3])
         assert_equal(self.nodes[2].getblockcount(), 10 * gen_times + genblocks)
         self.log.info("Invalidate block 20 on node 1 so its tip is now at 19")
+        # 最后一个块的工作量有可能好大，使其失效后，会导致节点0的链为最长链
         self.nodes[1].invalidateblock(self.nodes[1].getblockhash(20))
         assert_equal(self.nodes[1].getblockcount(), 19)
         for n in self.nodes:
             print(n.getblockcount(),int(n.getchaintipwork(), 16))
         self.log.info("Invalidate block 3 on node 2, so its tip is now 2")
         self.nodes[2].invalidateblock(self.nodes[2].getblockhash(3))
+        time.sleep(10) #wair for sync
         for n in self.nodes:
-            print(n.getblockcount(),int(n.getchaintipwork(), 16))
+            print(n.getblockcount(),get_chainwork(n))
         if get_chainwork(self.node0) == get_chainwork(self.node2):
             # 节点0的工作量是最大的，到最后节点0的链为主链
             assert_equal(self.nodes[2].getblockcount(), 4)
