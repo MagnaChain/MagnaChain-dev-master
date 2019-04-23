@@ -307,7 +307,9 @@ class MagnaChainTestFramework(object):
                 for j in range(10):
                     addr = self.sidenodes[m[0]].getnewaddress()
                     txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
-                self.nodes[index].generate(10)
+                for i in range(5):
+                    # avoid generate timeout on travis-ci
+                    self.nodes[index].generate(2)
                 self.sync_all()
                 assert self.sidenodes[m[0]].getmempoolinfo()['size'] > 0
         self.sync_all()
