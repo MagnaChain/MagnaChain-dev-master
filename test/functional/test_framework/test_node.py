@@ -124,7 +124,7 @@ class TestNode():
                 '''
                 index = self.index
                 if self.is_sidenode:
-                    index = index + 3
+                    index = index + 4
                 self.rpc = get_rpc_proxy(rpc_url(self.datadir, index, self.rpchost), index, timeout=self.rpc_timeout,
                                          coveragedir=self.coverage_dir)
                 self.rpc.getblockcount()

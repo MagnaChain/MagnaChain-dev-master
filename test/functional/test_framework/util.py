@@ -316,7 +316,7 @@ def rpc_url(datadir, i, rpchost=None):
 ################
 
 def initialize_datadir(dirname, n, sidechain_id=None, mainport=None,main_datadir = None):
-    pn = n if not sidechain_id else n + 3
+    pn = n if not sidechain_id else n + 4
     datadir = os.path.join(dirname, ("sidenode" if sidechain_id else "node") + str(n))
     if not os.path.isdir(datadir):
         os.makedirs(datadir)
@@ -396,7 +396,7 @@ def disconnect_nodes(from_connection, node_num):
 
 def  connect_nodes(from_connection, node_num,sidechain = False):
     if sidechain:
-        node_num += 3
+        node_num += 4
     ip_port = "127.0.0.1:" + str(p2p_port(node_num))
     from_connection.addnode(ip_port, "onetry")
     # poll until version handshake complete to avoid race conditions
