@@ -182,17 +182,8 @@ bool AreInputsStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInput
         txnouttype whichType;
         // get the scriptPubKey corresponding to this input:
         const MCScript& prevScript = prev.scriptPubKey;
-		if (!Solver(prevScript, whichType, vSolutions))
-		{
-			if (tx.IsSmartContract()) {
-				MCContractID kDest;
-				if (!prevScript.GetContractAddr(kDest))
-					return false;
-				if (kDest != tx.pContractData->address)
-					return false;
-			}
-			else
-				return false;
+		if (!Solver(prevScript, whichType, vSolutions)) {
+            return false;
 		}
 
         if (whichType == TX_SCRIPTHASH)
@@ -205,6 +196,13 @@ bool AreInputsStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInput
                 return false;
             MCScript subscript(stack.back().begin(), stack.back().end());
             if (subscript.GetSigOpCount(true) > MAX_P2SH_SIGOPS) {
+                return false;
+            }
+        }
+        else if (whichType == TX_CONTRACT || whichType == TX_CONTRACT_CHANGE) {
+            uint160 hash160(vSolutions[0]);
+            MCContractID contractId(hash160);
+            if (contractId != tx.pContractData->address) {
                 return false;
             }
         }

@@ -233,6 +233,10 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
         else if (typeRet == TX_SCRIPTHASH) {
             address = MagnaChainAddress(MCScriptID(uint160(vSolutionsRet[0])));
         }
+        else if (typeRet == TX_CONTRACT || typeRet == TX_CONTRACT_CHANGE) {
+            address = MagnaChainAddress(MCContractID(uint160(vSolutionsRet[0])));
+            return true;
+        }
         else if (typeRet == TX_NULL_DATA) {
             return true;
         }

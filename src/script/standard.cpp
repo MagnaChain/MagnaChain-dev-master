@@ -79,6 +79,10 @@ bool Solver(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<std::
 
         //redeeem mortgage coin 赎回抵押挖矿的币 OP_HASH256_DATA 是主链上 txid, vout nValue为0
         mTemplates.insert(std::make_pair(TX_REDEEM_MORTGAGE, MCScript() << OP_RETURN << OP_REDEEM_MORTGAGE << OP_HASH256_DATA));
+
+        mTemplates.insert(std::make_pair(TX_CONTRACT, MCScript() << OP_CONTRACT << OP_PUBKEYHASH));
+
+        mTemplates.insert(std::make_pair(TX_CONTRACT_CHANGE, MCScript() << OP_CONTRACT_CHANGE << OP_PUBKEYHASH));
     }
 
     vSolutionsRet.clear();
