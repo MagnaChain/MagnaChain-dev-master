@@ -190,7 +190,8 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         int64_t startTime = GetTimeMillis();
         // check script pubkey
-        MCOutput& out = vecOutput[nTries % vecOutput.size()];
+        size_t indexOutput = nTries % vecOutput.size();
+        MCOutput& out = vecOutput[indexOutput];
         std::shared_ptr<MCReserveKey> pReserveKey = nullptr;
         MCScript scriptPubKey;
         if (out.tx == nullptr) {
@@ -273,6 +274,13 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         ++nTries;
         LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
+
+        // remove mine success coin, which is spent
+        vecOutput.erase(vecOutput.begin() + indexOutput);
+        if (vecOutput.size() == 0){
+            LogPrint(BCLog::MINING, "%s vecOutput is empty\n, ", __FUNCTION__);
+            break;
+        }
     }
     return blockHashes;
 }
