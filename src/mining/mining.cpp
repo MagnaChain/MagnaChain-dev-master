@@ -276,11 +276,14 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
 
         // remove mine success coin, which is spent
-        vecOutput.erase(vecOutput.begin() + indexOutput);
-        if (vecOutput.size() == 0){
-            LogPrint(BCLog::MINING, "%s vecOutput is empty\n, ", __FUNCTION__);
-            break;
+        if (vecOutput[indexOutput].tx != nullptr) {// is not generate for big boom
+            vecOutput.erase(vecOutput.begin() + indexOutput);
+            if (vecOutput.size() == 0) {
+                LogPrint(BCLog::MINING, "%s vecOutput is empty\n, ", __FUNCTION__);
+                break;
+            }
         }
+
     }
     return blockHashes;
 }
