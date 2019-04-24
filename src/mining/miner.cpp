@@ -880,7 +880,7 @@ void static GenerateSleep()
 	boost::this_thread::interruption_point();
 }
 
-extern UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries);
+extern UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash);
 
 void static MagnaChainMiner(const MCChainParams& chainparams)
 {
@@ -893,9 +893,9 @@ void static MagnaChainMiner(const MCChainParams& chainparams)
 
 	while (!ShutdownRequested()) {
 		try {
-            int num_generate = 10000;
-            uint64_t max_tries = 1000000;
-            generateblockcommon(pwallet, num_generate, max_tries);
+            int num_generate = 100;
+            uint64_t max_tries = 10000;
+            generateblockcommon(pwallet, num_generate, max_tries, false);
 			// Check for stop or if block needs to be rebuilt
 			
 		}

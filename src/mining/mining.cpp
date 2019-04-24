@@ -361,7 +361,8 @@ UniValue genforbigboomimp(MCWallet* const pwallet, int num_generate, uint64_t ma
     return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
 }
 
-UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries)
+//fNeedBlockHash false means the block hash is importance
+UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash)
 {
     // branch chain, first gen block
     UniValue genBlockRet(UniValue::VARR);
@@ -382,7 +383,8 @@ UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64
         UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
         if (genBigBoomBlocks.isArray()) {
             num_generate -= genbigboomnum;
-            genBlockRet.push_backV(genBigBoomBlocks.getValues());
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genBigBoomBlocks.getValues());
         }
     }
 
@@ -407,7 +409,8 @@ UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64
         UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
         if (genblocks.isArray()) {
             num_generate -= genblocks.size();
-            genBlockRet.push_backV(genblocks.getValues());
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genblocks.getValues());
         }
     }
     return genBlockRet;
@@ -442,7 +445,7 @@ UniValue generate(const JSONRPCRequest& request)
         max_tries = request.params[1].get_int();
     }
 
-    return generateblockcommon(pwallet, num_generate, max_tries);
+    return generateblockcommon(pwallet, num_generate, max_tries, true);
 }
 
 UniValue generateforbigboom(const JSONRPCRequest& request)
