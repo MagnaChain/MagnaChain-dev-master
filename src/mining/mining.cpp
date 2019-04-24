@@ -376,7 +376,7 @@ UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64
     }
 
     int iTryTimes = 30;
-    while (num_generate > 0 && iTryTimes-- > 0)
+    while (num_generate > 0 && iTryTimes-- > 0 && !ShutdownRequested())
     {
         std::set<MCTxDestination> setAddress;
         std::vector<MCOutput> vecOutputs;
@@ -490,8 +490,8 @@ UniValue setgenerate(const JSONRPCRequest& request )
     if (!Params().IsMainChain() && chainActive.Tip()->nHeight == 0)
         throw JSONRPCError(RPC_VERIFY_ERROR, "Branch chain 2nd block only can mine by `mineblanch2ndblock`");
 
-	if (Params().MineBlocksOnDemand())
-		throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+	//if (Params().MineBlocksOnDemand())
+	//	throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
 
 	bool fGenerate = true;
 	if ( request.params.size() > 0)
