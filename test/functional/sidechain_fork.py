@@ -85,7 +85,7 @@ class SideChainForkTest(MagnaChainTestFramework):
         self.split_sidechain_network()
 
         maddr = self.node0.getnewaddress()
-        txid = self.snode0.sendtobranchchain(self.sidechain_id, maddr, 1)['txid']
+        txid = self.snode0.sendtobranchchain('main', maddr, 1)['txid']
         self.sync_sidechain()
         self.snode0.generate(7)
         self.sync_sidechain()
