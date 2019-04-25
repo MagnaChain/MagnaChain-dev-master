@@ -279,8 +279,8 @@ def main():
     parser.add_argument('--runtag', help="specify the tag scripts to exclude.")
     args, unknown_args = parser.parse_known_args()
 
-    # sidechain test is too memory to use,thus parallel jobs is 2
-    if args.runtag == 'sidechain':
+    # sidechain test is too memory to use on CI ,thus parallel jobs is 2
+    if os.getenv('TRAVIS') == 'true' and args.runtag == 'sidechain':
         if args.jobs > 2:
             args.jobs = 2
     # args to be passed on always start with two dashes; tests are the remaining unknown args
