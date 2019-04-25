@@ -838,6 +838,21 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
     luaStates.push(L);
 }
 
+SmartLuaState::~SmartLuaState()
+{
+    Clear();
+
+    if (luaStates.size() > 0) {
+        LogPrintf("free lua state %d\n", luaStates.size());
+    }
+    
+    while (luaStates.size()) {
+        lua_State* L = luaStates.back(); 
+        luaStates.pop();
+        lua_close(L);
+    }
+}
+
 void SmartLuaState::Clear()
 {
     saveType = SAVE_TYPE_NONE;
