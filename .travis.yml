@@ -56,10 +56,10 @@ notifications:
 
 jobs:
   include:
-    # - stage: test
-    #   name: contract test
-    #   script: 
-    #     python3 ./test/functional/test_runner.py --runtag contract
+    - stage: test
+      name: contract test
+      script: 
+        python3 ./test/functional/test_runner.py --runtag contract
 
     - stage: test
       name: sidechain test

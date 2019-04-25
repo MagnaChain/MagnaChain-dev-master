@@ -190,7 +190,8 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         int64_t startTime = GetTimeMillis();
         // check script pubkey
-        MCOutput& out = vecOutput[nTries % vecOutput.size()];
+        size_t indexOutput = nTries % vecOutput.size();
+        MCOutput& out = vecOutput[indexOutput];
         std::shared_ptr<MCReserveKey> pReserveKey = nullptr;
         MCScript scriptPubKey;
         if (out.tx == nullptr) {
@@ -273,6 +274,16 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         ++nTries;
         LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
+
+        // remove mine success coin, which is spent
+        if (vecOutput[indexOutput].tx != nullptr) {// is not generate for big boom
+            vecOutput.erase(vecOutput.begin() + indexOutput);
+            if (vecOutput.size() == 0) {
+                LogPrint(BCLog::MINING, "%s vecOutput is empty\n, ", __FUNCTION__);
+                break;
+            }
+        }
+
     }
     return blockHashes;
 }
@@ -350,7 +361,8 @@ UniValue genforbigboomimp(MCWallet* const pwallet, int num_generate, uint64_t ma
     return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
 }
 
-UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries)
+//fNeedBlockHash false means the block hash is importance
+UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash)
 {
     // branch chain, first gen block
     UniValue genBlockRet(UniValue::VARR);
@@ -371,7 +383,8 @@ UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64
         UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
         if (genBigBoomBlocks.isArray()) {
             num_generate -= genbigboomnum;
-            genBlockRet.push_backV(genBigBoomBlocks.getValues());
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genBigBoomBlocks.getValues());
         }
     }
 
@@ -396,7 +409,8 @@ UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64
         UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
         if (genblocks.isArray()) {
             num_generate -= genblocks.size();
-            genBlockRet.push_backV(genblocks.getValues());
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genblocks.getValues());
         }
     }
     return genBlockRet;
@@ -431,7 +445,7 @@ UniValue generate(const JSONRPCRequest& request)
         max_tries = request.params[1].get_int();
     }
 
-    return generateblockcommon(pwallet, num_generate, max_tries);
+    return generateblockcommon(pwallet, num_generate, max_tries, true);
 }
 
 UniValue generateforbigboom(const JSONRPCRequest& request)
