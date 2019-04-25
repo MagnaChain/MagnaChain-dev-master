@@ -29,7 +29,7 @@ class SideChainSetupTest(MagnaChainTestFramework):
         This method must be overridden and num_nodes must be exlicitly set."""
         self.setup_clean_chain = True
         self.num_nodes = 2
-        self.side_extra_args = [['-printtoconsole=1'], ['-printtoconsole=1']]
+        # self.side_extra_args = [['-printtoconsole=1'], ['-printtoconsole=1']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes

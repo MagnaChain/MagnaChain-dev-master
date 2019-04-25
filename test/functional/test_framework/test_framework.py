@@ -32,6 +32,7 @@ from .util import (
     set_node_times,
     sync_blocks,
     sync_mempools,
+    system_info,
 )
 
 
@@ -150,6 +151,7 @@ class MagnaChainTestFramework(object):
             pdb.set_trace()
 
         if not self.options.noshutdown:
+            system_info()
             self.log.info("Stopping nodes")
             if self.nodes:
                 self.stop_nodes()

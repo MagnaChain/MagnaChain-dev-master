@@ -1040,3 +1040,15 @@ def get_mempool_total_fee(node,only_version = []):
             if txs[txid].get('fee', 0):
                 total_fee += txs[txid]['fee']
     return total_fee
+
+def system_info():
+    '''
+    捕获当前的系统性能信息，方便追踪系统资源问题导致的问题
+    :return:
+    '''
+    print('*' * 30)
+    print("system info:")
+    os.system("w")
+    print("\n")
+    os.system("free -h")
+    print('*' * 30)

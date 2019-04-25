@@ -37,6 +37,8 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_MINE_MORTGAGE: return "mine_mortgage";
     case TX_MORTGAGE_COIN: return "mortgage_coin";
     case TX_REDEEM_MORTGAGE: return "redeem_mortgage";
+    case TX_CONTRACT: return "contract";
+    case TX_CONTRACT_CHANGE: return "contract_change";
     }
     return nullptr;
 }
@@ -229,8 +231,7 @@ bool ExtractDestination(const MCScript& scriptPubKey, MCTxDestination& addressRe
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
-    if (whichType == TX_PUBKEY)
-    {
+    if (whichType == TX_PUBKEY) {
         MCPubKey pubKey(vSolutions[0]);
         if (!pubKey.IsValid())
             return false;
@@ -238,19 +239,20 @@ bool ExtractDestination(const MCScript& scriptPubKey, MCTxDestination& addressRe
         addressRet = pubKey.GetID();
         return true;
     }
-    else if (whichType == TX_PUBKEYHASH)
-    {
+    else if (whichType == TX_PUBKEYHASH) {
         addressRet = MCKeyID(uint160(vSolutions[0]));
         return true;
     }
-    else if (whichType == TX_SCRIPTHASH)
-    {
+    else if (whichType == TX_SCRIPTHASH) {
         addressRet = MCScriptID(uint160(vSolutions[0]));
         return true;
     }
-    else if (whichType == TX_CREATE_BRANCH || whichType == TX_MINE_MORTGAGE || whichType == TX_MORTGAGE_COIN)
-    {
+    else if (whichType == TX_CREATE_BRANCH || whichType == TX_MINE_MORTGAGE || whichType == TX_MORTGAGE_COIN) {
         addressRet = MCKeyID(uint160(vSolutions[0]));
+        return true;
+    }
+    else if (whichType == TX_CONTRACT || whichType == TX_CONTRACT_CHANGE) {
+        addressRet = MCContractID(uint160(vSolutions[0]));
         return true;
     }
     // Multisig txns have more than one address...
@@ -264,12 +266,12 @@ bool ExtractDestinations(const MCScript& scriptPubKey, txnouttype& typeRet, std:
     std::vector<valtype> vSolutions;
     if (!Solver(scriptPubKey, typeRet, vSolutions))
         return false;
-    if (typeRet == TX_NULL_DATA){
+
+    if (typeRet == TX_NULL_DATA) {
         // This is data, not addresses
         return false;
     }
-
-    if (typeRet == TX_MULTISIG)
+    else if (typeRet == TX_MULTISIG)
     {
         nRequiredRet = vSolutions.front()[0];
         for (unsigned int i = 1; i < vSolutions.size()-1; i++)
@@ -289,8 +291,9 @@ bool ExtractDestinations(const MCScript& scriptPubKey, txnouttype& typeRet, std:
     {
         nRequiredRet = 1;
         MCTxDestination address;
-        if (!ExtractDestination(scriptPubKey, address))
-           return false;
+        if (!ExtractDestination(scriptPubKey, address)) {
+            return false;
+        }
         addressRet.push_back(address);
     }
 
