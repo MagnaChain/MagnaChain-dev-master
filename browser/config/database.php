@@ -68,7 +68,7 @@ return [
             'driver'    => 'mysql',
             'host'      => 'localhost',
             'port'      => 3306,
-            'database'  => 'mgc',
+            'database'  => 'magnachain',
             'username'  => 'root',
             'password'  => '123456',
             'charset'   => 'utf8mb4',
