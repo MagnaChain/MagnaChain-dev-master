@@ -837,7 +837,7 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
     lua_gc(L, LUA_GCCOLLECT, 0); /* stop collector during initialization */
     luaStates.push(L);
 }
-
+/*
 SmartLuaState::~SmartLuaState()
 {
     Clear();
@@ -852,7 +852,7 @@ SmartLuaState::~SmartLuaState()
         lua_close(L);
     }
 }
-
+*/
 void SmartLuaState::Clear()
 {
     saveType = SAVE_TYPE_NONE;

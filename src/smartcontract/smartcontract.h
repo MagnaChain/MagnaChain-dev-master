@@ -39,7 +39,7 @@ public:
     static const int SAVE_TYPE_DATA = 2;
     static const int MAX_INTERNAL_CALL_NUM = 30;
 
-    ~SmartLuaState();
+    //~SmartLuaState();
 
     std::vector<MCTxOut> recipients;
     std::set<MCContractID> contractIds; // lua执行期间所有调用过的合约
