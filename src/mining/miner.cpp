@@ -1954,7 +1954,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
             strErr = "Make stake transaction return fail";
             error(strErr.c_str());
-            pblocktemplate.release();
             return nullptr;
         }
 
@@ -2032,7 +2031,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         // CheckBlockWork will fail, break follow
         strErr = "Check block work fail, bnOutHash > bTarget";
         error(strErr.c_str());
-        pblocktemplate.release();
         return nullptr;
     }
 
@@ -2041,15 +2039,14 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn)){
         strErr = strprintf("%s:%d sign coin base transaction error\n", __FUNCTION__, __LINE__);
         error(strErr.c_str());
-        pblocktemplate.release();
         return nullptr;
     }
 	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
 	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
-        pblocktemplate.release();
+        strErr = strprintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
+        LogPrintf(strErr.c_str());
         return nullptr;
 	}
 
@@ -2059,7 +2056,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
     if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
         strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
         error(strErr.c_str());
-        pblocktemplate.release();
         return nullptr;
     }
 

@@ -170,7 +170,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         pcoinsCache = ::pcoinsTip;
     }
 
-    static const int nInnerLoopCount = 0x10000;
     int nHeightEnd = 0;
     int nHeight = 0;
 
