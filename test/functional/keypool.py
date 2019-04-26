@@ -62,7 +62,7 @@ class KeyPoolTest(MagnaChainTestFramework):
         try:
             Contract(nodes[0], self.options.tmpdir)
         except Exception as e:
-            assert "Keypool ran out" in repr(e)
+            assert "GetSenderAddr fail" in repr(e)
 
         # refill keypool with three new addresses
         nodes[0].walletpassphrase('test', 1)

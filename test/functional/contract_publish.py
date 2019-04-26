@@ -54,7 +54,7 @@ class ContractPublishTest(MagnaChainTestFramework):
             contract = generate_contract(self.options.tmpdir)
             result = node.publishcontract(contract)
         except Exception as e:
-            assert "GetSenderAddr" in repr(e)
+            assert "This transaction requires a transaction fee" in repr(e)
 
         # make sure not in mempool when the tx failed
         assert_equal([],node.getrawmempool())
@@ -168,7 +168,9 @@ class ContractPublishTest(MagnaChainTestFramework):
         connect_nodes_bi(self.nodes, 0, 1)
         node.walletpassphrase("test", 1)
         time.sleep(2) # wait for timeout
-        assert_raises_rpc_error(-13,'Please enter the wallet passphrase with walletpassphrase first',node.publishcontract,contract)
+        # assert_raises_rpc_error(-13,'Please enter the wallet passphrase with walletpassphrase first',node.publishcontract,contract)
+        assert_raises_rpc_error(-1, 'Keypool ran out',
+                                node.publishcontract, contract)
         node.walletpassphrase("test", 300)
         payfee = node.getinfo()['paytxfee']
         relayfee = node.getinfo()['relayfee']

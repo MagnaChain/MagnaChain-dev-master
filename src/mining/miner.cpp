@@ -201,7 +201,7 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCTransactionRef tx = iter->GetSharedTx();
-    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->contractCoinsOut.size() > 0)) {
+    if (tx->IsDynamicTx()) {
         if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
         pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
@@ -811,8 +811,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             MCTxMemPool::txiter entry = sortedEntries[i];
             const MCTransactionRef& entryTx = entry->GetSharedTx();
 
-            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
-                (entryTx->IsSmartContract() && entryTx->pContractData->contractCoinsOut.size() > 0)) {
+            if (entryTx->IsDynamicTx()) {
                 if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {
@@ -881,6 +880,8 @@ void static GenerateSleep()
 	boost::this_thread::interruption_point();
 }
 
+extern UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash);
+
 void static MagnaChainMiner(const MCChainParams& chainparams)
 {
     LogPrintf("MagnaChainMiner started\n");
@@ -892,42 +893,11 @@ void static MagnaChainMiner(const MCChainParams& chainparams)
 
 	while (!ShutdownRequested()) {
 		try {
-            std::set<MCTxDestination> setAddress;
-            std::vector<MCOutput> vecOutputs;
-			{
-				assert(pwallet != nullptr);
-
-				LOCK2(cs_main, pwallet->cs_wallet);
-
-                if (Params().IsMainChain())
-                    pwallet->AvailableCoins(vecOutputs, nullptr, false);
-                else
-                    pwallet->AvailableMortgageCoins(vecOutputs, false);
-				//for (const MCOutput& out : vecOutputs) {
-				//	MCTxDestination address;
-				//	const MCScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-				//	bool fValidAddress = ExtractDestination(scriptPubKey, address);
-
-				//	if (setAddress.count(address))
-				//		continue;
-
-				//	if (fValidAddress) {
-				//		if (!scriptPubKey.IsPayToScriptHash()) {
-				//			setAddress.insert(address);
-				//		}
-				//	}
-				//}
-
-			}
-            //std::vector< MCScript> vecScript;
-            //BOOST_FOREACH(const MCTxDestination& addr, setAddress) {
-			//	vecScript.push_back(GetScriptForDestination(addr));
-			//}
-			generateBlocks(pwallet, vecOutputs, vecOutputs.size(), vecOutputs.size(), true, GenerateSleep);
-
+            int num_generate = 100;
+            uint64_t max_tries = 10000;
+            generateblockcommon(pwallet, num_generate, max_tries, false);
 			// Check for stop or if block needs to be rebuilt
-			boost::this_thread::interruption_point();
-
+			
 		}
 		catch (const UniValue& objError) {
 			UniValue err = find_value(objError, "message");
@@ -1984,7 +1954,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
             strErr = "Make stake transaction return fail";
             error(strErr.c_str());
-            pblocktemplate.release();
             return nullptr;
         }
 
@@ -2062,7 +2031,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         // CheckBlockWork will fail, break follow
         strErr = "Check block work fail, bnOutHash > bTarget";
         error(strErr.c_str());
-        pblocktemplate.release();
         return nullptr;
     }
 
@@ -2071,16 +2039,14 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn)){
         strErr = strprintf("%s:%d sign coin base transaction error\n", __FUNCTION__, __LINE__);
         error(strErr.c_str());
-        pblocktemplate.release();
         return nullptr;
     }
 	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
 	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        strErr = strprintf("%s:%d TestBlockValidity fail\n", __FUNCTION__, __LINE__);
-        error(strErr.c_str());
-        pblocktemplate.release();
+        strErr = strprintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
+        LogPrintf(strErr.c_str());
         return nullptr;
 	}
 
@@ -2090,7 +2056,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
     if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
         strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
         error(strErr.c_str());
-        pblocktemplate.release();
         return nullptr;
     }
 

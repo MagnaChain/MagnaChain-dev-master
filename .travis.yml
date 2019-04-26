@@ -59,29 +59,29 @@ jobs:
     - stage: test
       name: contract test
       script: 
-        python3 ./test/functional/test_runner.py --runtag contract
+        free -h && python3 ./test/functional/test_runner.py --runtag contract
 
     - stage: test
       name: sidechain test
       script: 
-        python3 ./test/functional/test_runner.py --runtag sidechain
+        free -h && python3 ./test/functional/test_runner.py --runtag sidechain
 
     - stage: test
       name: wallet test
       script: 
-        python3 ./test/functional/test_runner.py --runtag wallet
+        free -h && python3 ./test/functional/test_runner.py --runtag wallet
 
     - stage: test
       name: mempool test
       script: 
-        python3 ./test/functional/test_runner.py --runtag mempool
+        free -h && python3 ./test/functional/test_runner.py --runtag mempool
 
     - stage: test
       name: rpc test
       script: 
-        python3 ./test/functional/test_runner.py --runtag rpc
+        free -h && python3 ./test/functional/test_runner.py --runtag rpc
 
     - stage: test
       name: feature test
       script: 
-        python3 ./test/functional/test_runner.py --runtag feature
+        free -h && python3 ./test/functional/test_runner.py --runtag feature

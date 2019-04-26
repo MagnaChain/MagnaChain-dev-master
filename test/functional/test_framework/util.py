@@ -296,7 +296,7 @@ def p2p_port(n):
 
 
 def rpc_port(n):
-    return PORT_MIN + PORT_RANGE + n + (MAX_NODES * PortSeed.n) % (PORT_RANGE - 1 - MAX_NODES)
+        return PORT_MIN + PORT_RANGE + n + (MAX_NODES * PortSeed.n) % (PORT_RANGE - 1 - MAX_NODES)
 
 
 def rpc_url(datadir, i, rpchost=None):
@@ -316,7 +316,7 @@ def rpc_url(datadir, i, rpchost=None):
 ################
 
 def initialize_datadir(dirname, n, sidechain_id=None, mainport=None,main_datadir = None):
-    pn = n if not sidechain_id else n + 3
+    pn = n if not sidechain_id else n + 4
     datadir = os.path.join(dirname, ("sidenode" if sidechain_id else "node") + str(n))
     if not os.path.isdir(datadir):
         os.makedirs(datadir)
@@ -396,7 +396,7 @@ def disconnect_nodes(from_connection, node_num):
 
 def  connect_nodes(from_connection, node_num,sidechain = False):
     if sidechain:
-        node_num += 3
+        node_num += 4
     ip_port = "127.0.0.1:" + str(p2p_port(node_num))
     from_connection.addnode(ip_port, "onetry")
     # poll until version handshake complete to avoid race conditions
@@ -1022,3 +1022,33 @@ def get_chainwork(node):
     :return:
     '''
     return int(node.getchaintipwork(), 16)
+
+def get_mempool_total_fee(node,only_version = []):
+    '''
+    获取内存池中所有交易的手续费总和
+    :param node:
+    :return:
+    '''
+    total_fee = 0
+    txs = node.getrawmempool(True)
+    for txid in txs:
+        if only_version:
+            if txs[txid]['version'] in only_version:
+                if txs[txid].get('fee',0):
+                    total_fee += txs[txid]['fee']
+        else:
+            if txs[txid].get('fee', 0):
+                total_fee += txs[txid]['fee']
+    return total_fee
+
+def system_info():
+    '''
+    捕获当前的系统性能信息，方便追踪系统资源问题导致的问题
+    :return:
+    '''
+    print('*' * 30)
+    print("system info:")
+    os.system("w")
+    print("\n")
+    os.system("free -h")
+    print('*' * 30)

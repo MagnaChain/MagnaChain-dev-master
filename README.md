@@ -1,6 +1,11 @@
 [![Build Status](https://travis-ci.org/MagnaChain/MagnaChain-dev-master.svg?branch=master)](https://travis-ci.org/MagnaChain/MagnaChain-dev-master)  
 # Getting Started
 
+## How to build
+Detail see doc directory, there are many doc files for build different OS.
+Build on windows, see build-windows.md, another choise use msvc, location to directory build-msvc.
+There are many other build manuals, as build-unix.md、build-osx.md、build-centos.md...
+
 ## Download
 
 To publish the game on MagnaChain, you need an RPC client, which can be downloaded at:

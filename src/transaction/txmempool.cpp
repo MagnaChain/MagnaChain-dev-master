@@ -489,6 +489,8 @@ void MCTxMemPool::AddTransactionsUpdated(unsigned int n)
 
 bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entry, setEntries &setAncestors, bool validFeeEstimate)
 {
+    //LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, hash.ToString());
+
     NotifyEntryAdded(entry.GetSharedTx());
     // Add to memory pool without checking anything.
     // Used by AcceptToMemoryPool(), which DOES do
@@ -1081,21 +1083,20 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
 uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
 {
     uint256 txHash = tx.GetHash();
-    if ((tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && fFromMempool) ||
-        (tx.IsSmartContract() && tx.pContractData->contractCoinsOut.size() > 0)) {
-        auto it = mapFinalTx2OriTx.find(txHash);
-        if (it == mapFinalTx2OriTx.end()) {
-            uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
-            mapFinalTx2OriTx[txHash] = oriTxHash;
-            return oriTxHash;
-        }
-        return it->second;
-    }
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && !fFromMempool){
+    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && !fFromMempool) {
         auto it = mapFinalTx2OriTx2.find(txHash);
         if (it == mapFinalTx2OriTx2.end()) {
             uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
             mapFinalTx2OriTx2[txHash] = oriTxHash;
+            return oriTxHash;
+        }
+        return it->second;
+    }
+    else if (tx.IsDynamicTx()) {
+        auto it = mapFinalTx2OriTx.find(txHash);
+        if (it == mapFinalTx2OriTx.end()) {
+            uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
+            mapFinalTx2OriTx[txHash] = oriTxHash;
             return oriTxHash;
         }
         return it->second;
@@ -1250,12 +1251,9 @@ void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool
             setEntries stage;
             stage.insert(it);
             RemoveStaged(stage, true, MemPoolRemovalReason::BLOCK);
-            LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
         }
         RemoveConflicts(*tx);
-        LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
         ClearPrioritisation(txid);
-        LogPrintf("%s:%d %lld\n", __FUNCTION__, __LINE__, GetTimeMicros() - nTime);
     }
 }
 /**

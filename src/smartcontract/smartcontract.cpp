@@ -170,18 +170,14 @@ bool GetPubKey(const MCWallet* pWallet, const MagnaChainAddress& addr, MCPubKey&
     return pWallet->GetPubKey(key, pubKey);
 }
 
-bool GenerateContractSender(const MCWallet* pWallet, MagnaChainAddress& sendAddr)
+bool GenerateContractSender(MCWallet* pWallet, MagnaChainAddress& sendAddr)
 {
-    std::vector<MCOutput> coins;
-    pWallet->AvailableCoins(coins);
-    if (coins.size() == 0)
+    MCPubKey newKey;
+    if (!pWallet->GetKeyFromPool(newKey)) {
         return false;
-
-    MCTxDestination dest;
-    const MCOutput& out = coins[0];
-    const MCTxOut& txo = out.tx->tx->vout[out.i];
-    ExtractDestination(txo.scriptPubKey, dest);
-    sendAddr.Set(dest);
+    }
+    MCKeyID keyID = newKey.GetID();
+    sendAddr.Set(keyID);
     return true;
 }
 
@@ -206,8 +202,9 @@ bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaCha
         }
     }
 
-    if (ret)
+    if (ret) {
         pWallet->_senderAddr = senderAddr;
+    }
 
     return ret;
 }
@@ -469,8 +466,9 @@ bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::s
 bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret)
 {
     MagnaChainAddress senderAddr;
-    if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr))
+    if (!GetSenderAddr(pWallet, strSenderAddr, senderAddr)) {
         throw std::runtime_error("GetSenderAddr fail.");
+    }
 
     MCKeyID senderKey;
     MCPubKey senderPubKey;
@@ -838,6 +836,21 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
     contractAddrs.resize(contractAddrs.size() - 1);
     lua_gc(L, LUA_GCCOLLECT, 0); /* stop collector during initialization */
     luaStates.push(L);
+}
+
+SmartLuaState::~SmartLuaState()
+{
+    Clear();
+
+    if (luaStates.size() > 0) {
+        LogPrintf("free lua state %d\n", luaStates.size());
+    }
+    
+    while (luaStates.size()) {
+        lua_State* L = luaStates.back(); 
+        luaStates.pop();
+        lua_close(L);
+    }
 }
 
 void SmartLuaState::Clear()

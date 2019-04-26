@@ -32,6 +32,7 @@ from .util import (
     set_node_times,
     sync_blocks,
     sync_mempools,
+    system_info,
 )
 
 
@@ -150,6 +151,7 @@ class MagnaChainTestFramework(object):
             pdb.set_trace()
 
         if not self.options.noshutdown:
+            system_info()
             self.log.info("Stopping nodes")
             if self.nodes:
                 self.stop_nodes()
@@ -307,7 +309,9 @@ class MagnaChainTestFramework(object):
                 for j in range(10):
                     addr = self.sidenodes[m[0]].getnewaddress()
                     txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
-                self.nodes[index].generate(10)
+                for i in range(5):
+                    # avoid generate timeout on travis-ci
+                    self.nodes[index].generate(2)
                 self.sync_all()
                 assert self.sidenodes[m[0]].getmempoolinfo()['size'] > 0
         self.sync_all()
@@ -419,20 +423,29 @@ class MagnaChainTestFramework(object):
     def wait_for_node_exit(self, i, timeout):
         self.nodes[i].process.wait(timeout)
 
-    def split_network(self):
+    def split_network(self,sidechain = False):
         """
         Split the network of four nodes into nodes 0/1 and 2/3.
         """
-        disconnect_nodes(self.nodes[1], 2)
-        disconnect_nodes(self.nodes[2], 1)
-        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        if not sidechain:
+            disconnect_nodes(self.nodes[1], 2)
+            disconnect_nodes(self.nodes[2], 1)
+            self.sync_all([self.nodes[:2], self.nodes[2:]])
+        else:
+            disconnect_nodes(self.sidenodes[1], 2)
+            disconnect_nodes(self.sidenodes[2], 1)
+            self.sync_all([self.sidenodes[:2], self.sidenodes[2:]])
 
-    def join_network(self, timeout=60):
+    def join_network(self, sidechain = False,timeout=60):
         """
         Join the (previously split) network halves together.
         """
-        connect_nodes_bi(self.nodes, 1, 2)
-        self.sync_all(timeout=timeout)
+        if not sidechain:
+            connect_nodes_bi(self.nodes, 1, 2)
+            self.sync_all(timeout=timeout)
+        else:
+            connect_nodes_bi(self.sidenodes, 1, 2)
+            self.sync_all([self.sidenodes],timeout=timeout)
 
     """make a chain have more work than b"""
 

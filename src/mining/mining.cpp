@@ -170,7 +170,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         pcoinsCache = ::pcoinsTip;
     }
 
-    static const int nInnerLoopCount = 0x10000;
     int nHeightEnd = 0;
     int nHeight = 0;
 
@@ -190,7 +189,8 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         int64_t startTime = GetTimeMillis();
         // check script pubkey
-        MCOutput& out = vecOutput[nTries % vecOutput.size()];
+        size_t indexOutput = nTries % vecOutput.size();
+        MCOutput& out = vecOutput[indexOutput];
         std::shared_ptr<MCReserveKey> pReserveKey = nullptr;
         MCScript scriptPubKey;
         if (out.tx == nullptr) {
@@ -273,6 +273,16 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         ++nTries;
         LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
+
+        // remove mine success coin, which is spent
+        if (vecOutput[indexOutput].tx != nullptr) {// is not generate for big boom
+            vecOutput.erase(vecOutput.begin() + indexOutput);
+            if (vecOutput.size() == 0) {
+                LogPrint(BCLog::MINING, "%s vecOutput is empty\n, ", __FUNCTION__);
+                break;
+            }
+        }
+
     }
     return blockHashes;
 }
@@ -343,27 +353,66 @@ UniValue genforbigboomimp(MCWallet* const pwallet, int num_generate, uint64_t ma
 
         EnsureWalletIsUnlocked(pwallet);
         pwallet->TopUpKeyPool(num_generate);
-
-        //for (int i = 0; i < num_generate; ++i)
-        //{
-        //	// Generate a new key that is added to wallet
-        //	MCPubKey newKey;
-        //	if (!pwallet->GetKeyFromPool(newKey)) {
-        //		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-        //	}
-        //	MCKeyID keyID = newKey.GetID();
-
-        //	pwallet->SetAddressBook(keyID, "", "receive");
-
-        //	MCTxDestination kDest(keyID);
-        //	MCScript kScript = GetScriptForDestination(kDest);
-        //	vecScript.push_back(kScript);
-        //}
     }
     std::vector< MCOutput> vecOutputs;
     MCOutput dummyOut(nullptr, 0, 0, false, false, false);
     vecOutputs.push_back(dummyOut);
     return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+}
+
+//fNeedBlockHash false means the block hash is importance
+UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash)
+{
+    // branch chain, first gen block
+    UniValue genBlockRet(UniValue::VARR);
+    if (!Params().IsMainChain() && chainActive.Height() == 0) {
+        num_generate--;
+        genBlockRet = generateBranch2ndBlock(*pwallet);
+        if (!genBlockRet.isArray())
+            return genBlockRet;// may be gen fail.
+    }
+
+    if (num_generate <= 0)
+        return genBlockRet;
+
+    if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
+    {
+        int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
+        genbigboomnum = std::min(num_generate, genbigboomnum);
+        UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
+        if (genBigBoomBlocks.isArray()) {
+            num_generate -= genbigboomnum;
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genBigBoomBlocks.getValues());
+        }
+    }
+
+    int iTryTimes = 30;
+    while (num_generate > 0 && iTryTimes-- > 0 && !ShutdownRequested())
+    {
+        std::set<MCTxDestination> setAddress;
+        std::vector<MCOutput> vecOutputs;
+        {
+            assert(pwallet != nullptr);
+
+            LOCK2(cs_main, pwallet->cs_wallet);
+            EnsureWalletIsUnlocked(pwallet);
+
+            if (Params().IsMainChain())
+                pwallet->AvailableCoins(vecOutputs, nullptr, false);
+            else
+                pwallet->AvailableMortgageCoins(vecOutputs, false);
+
+            std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
+        }
+        UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+        if (genblocks.isArray()) {
+            num_generate -= genblocks.size();
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genblocks.getValues());
+        }
+    }
+    return genBlockRet;
 }
 
 UniValue generate(const JSONRPCRequest& request)
@@ -395,54 +444,7 @@ UniValue generate(const JSONRPCRequest& request)
         max_tries = request.params[1].get_int();
     }
 
-    // branch chain, first gen block
-    UniValue genBlockRet(UniValue::VARR);
-    if (!Params().IsMainChain() && chainActive.Height() == 0){
-        num_generate--;
-        genBlockRet = generateBranch2ndBlock(*pwallet);
-        if (!genBlockRet.isArray())
-            return genBlockRet;// may be gen fail.
-    }
-
-    if (num_generate <= 0)
-        return genBlockRet;
-
-    if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
-    {
-        int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
-        genbigboomnum = std::min(num_generate, genbigboomnum);
-        UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
-        if (genBigBoomBlocks.isArray()){
-            num_generate -= genbigboomnum;
-            genBlockRet.push_backV(genBigBoomBlocks.getValues());
-        }
-    }
-
-    int iTryTimes = 30;
-    while (num_generate > 0 && iTryTimes-- > 0)
-    {
-        std::set<MCTxDestination> setAddress;
-        std::vector<MCOutput> vecOutputs;
-        {
-            assert(pwallet != nullptr);
-
-            LOCK2(cs_main, pwallet->cs_wallet);
-            EnsureWalletIsUnlocked(pwallet);
-
-            if (Params().IsMainChain())
-                pwallet->AvailableCoins(vecOutputs, nullptr, false);
-            else
-                pwallet->AvailableMortgageCoins(vecOutputs, false);
-
-            std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
-        }
-        UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
-        if (genblocks.isArray()) {
-            num_generate -= genblocks.size();
-            genBlockRet.push_backV(genblocks.getValues());
-        }
-    }
-    return genBlockRet;
+    return generateblockcommon(pwallet, num_generate, max_tries, true);
 }
 
 UniValue generateforbigboom(const JSONRPCRequest& request)
@@ -501,8 +503,8 @@ UniValue setgenerate(const JSONRPCRequest& request )
     if (!Params().IsMainChain() && chainActive.Tip()->nHeight == 0)
         throw JSONRPCError(RPC_VERIFY_ERROR, "Branch chain 2nd block only can mine by `mineblanch2ndblock`");
 
-	if (Params().MineBlocksOnDemand())
-		throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+	//if (Params().MineBlocksOnDemand())
+	//	throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
 
 	bool fGenerate = true;
 	if ( request.params.size() > 0)

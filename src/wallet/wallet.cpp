@@ -2209,6 +2209,9 @@ void MCWallet::AvailableCoins(std::vector<MCOutput> &vCoins, const MCTxDestinati
             if (nDepth == 0 && !pcoin->InMempool())
                 continue;
 
+            if (nDepth == 0 && pcoin->tx->IsDynamicTx())
+                continue;
+
             bool safeTx = pcoin->IsTrusted();
 
             // We should not consider coins from transactions that are replacing

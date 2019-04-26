@@ -60,6 +60,8 @@ enum txnouttype
     TX_MINE_MORTGAGE,
     TX_MORTGAGE_COIN,
     TX_REDEEM_MORTGAGE,
+    TX_CONTRACT,
+    TX_CONTRACT_CHANGE
 };
 
 class MCNoDestination {

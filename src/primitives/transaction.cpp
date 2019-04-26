@@ -10,6 +10,7 @@
 #include "misc/tinyformat.h"
 #include "utils/utilstrencodings.h"
 #include "block.h"
+#include "chain/chainparamsbase.h"
 
 std::string MCOutPoint::ToString() const
 {

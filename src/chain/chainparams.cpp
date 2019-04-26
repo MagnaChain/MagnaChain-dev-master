@@ -504,8 +504,9 @@ public:
         else if (fRegTest)
             InitRegtestBase58Prefixes();
 
-		vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
-
+        vSeeds.clear();
+        vFixedSeeds.clear();
+		//vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
 		fDefaultConsistencyChecks = false;
 		fRequireStandard = true;

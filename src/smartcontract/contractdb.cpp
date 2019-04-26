@@ -289,6 +289,13 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     if (!mainChain) {
         pBlock->prevContractData.resize(size);
     }
+
+    if (pBlock->groupSize.size() == 0) {
+        std::string error = strprintf("%s:%d => groupsize == 0", __FUNCTION__, __LINE__);
+        LogPrintf("%s\n", error);
+        throw std::runtime_error(error);
+    }
+
     for (int i = 0; i < pBlock->groupSize.size(); ++i) {
         threadData[i].offset = offset;
         threadData[i].groupSize = pBlock->groupSize[i];
@@ -438,6 +445,12 @@ bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
         for (auto heightIt = contractInfo.items.begin(); heightIt != contractInfo.items.end();) {
             // 将小于确认区块以下的不属于该链的区块数据移除掉
             if (heightIt->blockHeight <= confirmBlockHeight) {
+                if (heightIt->vecBlockHash.size() == 0) {
+                    MCHashWriter keyHeightHash(SER_GETHASH, 0);
+                    keyHeightHash << ci.first << heightIt->blockHeight;
+                    db.Read(keyHeightHash.GetHash(), heightIt->vecBlockHash);
+                }
+
                 for (int i = 0; i < heightIt->vecBlockHash.size();) {
                     BlockMap::iterator bi = mapBlockIndex.find(heightIt->vecBlockHash[i]);
                     if (bi == mapBlockIndex.end() ||
@@ -448,11 +461,20 @@ bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
 
                         heightIt->dirty = true;
                         heightIt->vecBlockHash.erase(heightIt->vecBlockHash.begin() + i);
-                        heightIt->vecBlockContractData.erase(heightIt->vecBlockContractData.begin() + i);
+                        if (heightIt->vecBlockContractData.size() > 0) {
+                            heightIt->vecBlockContractData.erase(heightIt->vecBlockContractData.begin() + i);
+                        }
                         continue;
                     } else {
                         ++i;
                     }
+                }
+
+                if (heightIt->vecBlockHash.size() == 1 && heightIt->vecBlockContractData.size() == 0) {
+                    heightIt->vecBlockContractData.resize(1);
+                    MCHashWriter keyHash(SER_GETHASH, 0);
+                    keyHash << ci.first << heightIt->vecBlockHash[0];
+                    db.Read(keyHash.GetHash(), heightIt->vecBlockContractData[0]);
                 }
                 assert(heightIt->vecBlockHash.size() == 1 && heightIt->vecBlockContractData.size() == 1);
             }
@@ -473,8 +495,9 @@ bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
                 }
                 saveIt = heightIt;
 
-                if (contractInfo.items.size() == 1)
+                if (contractInfo.items.size() == 1) {
                     removes.emplace_back(ci.first);
+                }
             }
 
             if (heightIt->dirty) {
@@ -483,8 +506,9 @@ bool ContractDataDB::UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex)
                 keyHeightHash << ci.first << heightIt->blockHeight;
                 writeBatch.Write(keyHeightHash.GetHash(), heightIt->vecBlockHash);
                 if (writeBatch.SizeEstimate() > maxBatchSize) {
-                    if (!WriteBatch(writeBatch))
+                    if (!WriteBatch(writeBatch)) {
                         return false;
+                    }
                 }
             }
 

@@ -277,13 +277,18 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         need to add lots of contract transactions to block,then sendtobranch
         because contract's vin is dynamic
         '''
+        self.sync_all([self.sidenodes])
         print(self.sidenodes[0].getbalance())
-        for ct in (Contract(self.sidenodes[0], self.options.tmpdir,debug = False) for i in range(500)):
+        for ct in (Contract(self.sidenodes[0], self.options.tmpdir,debug = False) for i in range(200)):
             ct.call_payable(amount=20)
             ct.call_callOtherContractTest(ct.contract_id, 'callOtherContractTest', ct.contract_id, "contractDataTest",
                                           amount=0)
+        print(self.sidenodes[0].getbalance())
         self.sync_all([self.sidenodes])
-        self.sidenodes[0].sendtobranchchain('main',node.getnewaddress(),self.sidenodes[0].getbalance() - 233)
+        self.sidenodes[0].generate(2)
+        assert_equal(len(self.snode0.getrawmempool()),0)
+        self.sync_all([self.sidenodes])
+        self.sidenodes[0].sendtobranchchain('main',node.getnewaddress(),int(self.sidenodes[0].getbalance()/2))
         self.sync_all([self.sidenodes])
         self.sidenodes[0].generate(7)
         self.sync_all([self.sidenodes])

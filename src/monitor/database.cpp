@@ -77,16 +77,12 @@ void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, co
     blocks[hashBlock] = std::move(DatabaseBlock{ hashBlock, hashPrevBlock, hashSkipBlock, height });
 
     // clean cache
-    std::vector<std::map<uint256, DatabaseBlock>::iterator> iters;
     int maturityHeight = std::max(height - COINBASE_MATURITY, 0);
     for (auto iter = blocks.begin(); iter != blocks.end();) {
         if (iter->second.height < maturityHeight) {
             iter = blocks.erase(iter);
         }
         else {
-            if (iter->second.height == height) {
-                iters.emplace_back(iter);
-            }
             ++iter;
         }
     }
@@ -236,6 +232,10 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
         }
         else if (typeRet == TX_SCRIPTHASH) {
             address = MagnaChainAddress(MCScriptID(uint160(vSolutionsRet[0])));
+        }
+        else if (typeRet == TX_CONTRACT || typeRet == TX_CONTRACT_CHANGE) {
+            address = MagnaChainAddress(MCContractID(uint160(vSolutionsRet[0])));
+            return true;
         }
         else if (typeRet == TX_NULL_DATA) {
             return true;
