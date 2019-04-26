@@ -81,4 +81,7 @@
   'RainLab\\Translate\\Models\\MessageExport' => 'plugins\\rainlab\\translate\\models\\MessageExport.php',
   'rainlab\\translate\\Controllers\\locales' => 'plugins\\rainlab\\translate\\controllers\\locales.php',
   'RainLab\\Translate\\Classes\\ThemeScanner' => 'plugins\\rainlab\\translate\\classes\\ThemeScanner.php',
+  'RainLab\\Builder\\Classes\\ComponentHelper' => 'plugins\\rainlab\\builder\\classes\\ComponentHelper.php',
+  'RainLab\\Builder\\Classes\\ModelFileParser' => 'plugins\\rainlab\\builder\\classes\\ModelFileParser.php',
+  'RainLab\\Builder\\Classes\\PhpSourceStream' => 'plugins\\rainlab\\builder\\classes\\PhpSourceStream.php',
 );

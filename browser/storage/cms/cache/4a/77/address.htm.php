@@ -1,5 +1,5 @@
 <?php 
-use Brick\Math\BigInteger;use Brick\Math\BigDecimal;use Brick\Math\RoundingMode;class Cms5cb43bdf98d13864844189_66d57b148c43956b6a20e9ac176b0578Class extends Cms\Classes\PageCode
+use Brick\Math\BigInteger;use Brick\Math\BigDecimal;use Brick\Math\RoundingMode;class Cms5cb71a2331c6a390298800_a7646123fe7a989780f08fc6d8dd2bcaClass extends Cms\Classes\PageCode
 {
 
 
@@ -7,6 +7,8 @@ use Brick\Math\BigInteger;use Brick\Math\BigDecimal;use Brick\Math\RoundingMode;
 public function onStart(){
 
 	if($this->param('address')){
+
+		self::getBalance($this->param('address'));
 
 		// 1.去outpub表找输出是的哈希
 		$whenouttx = Db::connection('magnachain')->table('txoutpubkey')->select('txhash')->where('solution', $this->param('address'))->distinct()->get();
@@ -19,7 +21,7 @@ public function onStart(){
 
 		}
 
-		//连接查询输入时的哈希
+		//连接查询所有哈希
 		$txinpubkey = Db::connection('magnachain')->table('txoutpubkey')
 		    ->join('txout', function ($join) {
 		        $join->on('txoutpubkey.txindex', '=', 'txout.txindex')->on('txoutpubkey.txhash', '=', 'txout.txhash');
@@ -44,7 +46,15 @@ public function onStart(){
 
 		$all_tx = self::assoc_unique($all_tx, 'txhash');
 
-		$all_tx = array_slice($all_tx, 0, 10);
+		$this['address_transaction'] = count($all_tx);
+
+		if (count($all_tx) > 20) {
+			
+			$this['pagination'] = ceil(count($all_tx)/20);
+
+			$all_tx = array_slice($all_tx, 0, 20);
+
+		}
 
 		$all_tx = self::getInfo($all_tx);
 
@@ -67,9 +77,6 @@ public function getInfo($all_txhash) {
 	$in_index = 0;  //输入记录的脚标
 
 	$address = $this->param('address');		//地址	
-
-	$address_allIn = BigDecimal::of('0'); 	//存该地址的总输入和总输出
-	$address_allOut = BigDecimal::of('0');
 
 	for($i=0; $i < count($all_txhash); $i++){  //for循环取出所有该地址的收入
 
@@ -122,12 +129,6 @@ public function getInfo($all_txhash) {
 					$out[$x]['outNum'] = strval($out[$x]['outNum']);
 
 					$records[$index]['allOut'] = $records[$index]['allOut']->plus($txoutpubkey[$k]->value);
-
-					if ($txoutpubkey[$k]->solution == $address) {
-						
-						$address_allOut = $address_allOut->plus($txoutpubkey[$k]->value);
-
-					}
 	
 				}
 
@@ -148,7 +149,7 @@ public function getInfo($all_txhash) {
 			$records[$index]['allIn'] = null;
 
 		} else {
-
+		
 			for($y=0; $y < count($txin); $y++){
 
 				$in[$in_index]['address'] = "";
@@ -184,12 +185,6 @@ public function getInfo($all_txhash) {
 						$in_address[$q]['inNum'] = strval($in_address[$q]['inNum']);
 
 						$records[$index]['allIn'] = $records[$index]['allIn']->plus($in[$p]['inNum']);
-						
-						if ($in[$p]['address'] == $address) {
-						
-							$address_allIn = $address_allIn->plus($in[$p]['inNum']);
-
-						}
 
 					}
 
@@ -244,6 +239,52 @@ public function getInfo($all_txhash) {
 
 	}
 
+	return $records;
+
+}
+public function getBalance($address) {
+
+	$address_allOut = BigDecimal::of('0'); //存该地址的总输入和总输出
+	$address_allIn = BigDecimal::of('0'); 	
+
+	//连接查询所有输出
+	$allOut = Db::connection('magnachain')->table('txout')
+	    ->join('txoutpubkey', function ($join) {
+	        $join->on('txoutpubkey.txindex', '=', 'txout.txindex')->on('txoutpubkey.txhash', '=', 'txout.txhash');
+	    })
+	    ->select('txout.value', 'txoutpubkey.solution', 'txoutpubkey.txhash', 'txoutpubkey.txindex')
+	    ->where('txoutpubkey.solution', '=', $this->param('address'))
+	    ->get();
+
+	$allOut = $allOut->toArray();
+
+	for ($i=0; $i < count($allOut); $i++) { 
+		
+		$address_allOut = $address_allOut->plus($allOut[$i]->value);
+
+	}
+
+	//连接查询所有输入
+	$allIn = Db::connection('magnachain')->table('txin')
+	    ->join('txoutpubkey', function ($join) {
+	        $join->on('txin.outpointindex', '=', 'txoutpubkey.txindex')->on('txin.outpointhash', '=', 'txoutpubkey.txhash');
+	    })
+	    ->join('txout', function ($join) {
+	        $join->on('txin.outpointindex', '=', 'txout.txindex')->on('txin.outpointhash', '=', 'txout.txhash');
+	    })
+	    ->select('txout.value')
+	    ->where('txoutpubkey.solution', '=', $this->param('address'))
+	    ->get();
+
+	$allIn = $allIn->toArray();
+
+	for ($i=0; $i < count($allIn); $i++) { 
+		
+		$address_allIn = $address_allIn->plus($allIn[$i]->value);
+
+	}
+
+
 	$address_allIn = $address_allIn->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
 	$address_allOut = $address_allOut->dividedBy('100000000', 2, RoundingMode::HALF_DOWN);
 
@@ -257,9 +298,6 @@ public function getInfo($all_txhash) {
 	$this['address_allIn'] = $address_allIn;
 	$this['address_allOut'] = $address_allOut;
 	$this['address_balance'] = $address_balance;
-	$this['address_transaction'] = count($records);
-
-	return $records;
 
 }
 public function arraySort($array, $keys, $sort = SORT_DESC) {

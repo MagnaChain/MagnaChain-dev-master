@@ -1,5 +1,9 @@
 <?php 
-class Cms5cb43bac217b0158042497_701835a60bd59a2bba6e77ff60ebbdbeClass extends Cms\Classes\PageCode
+class Cms5cb452bfb6a56261421177_9d83d4df97a2092c2fc4c6040e22ca8dClass extends Cms\Classes\PageCode
 {
+public function onStart() {
+	
+	$this['language'] = $this->activeLocaleName;
 
+}
 }

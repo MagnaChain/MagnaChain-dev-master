@@ -458,6 +458,9 @@ $(function() {
 			//所有日的点击事件
     		$("a[id^='day_'").bind("click", function(event){
 
+    			$('#no-block').hide();
+    			$('#div-loader').show();
+
    				event.stopImmediatePropagation();
 
    				var day = event.target.id;
@@ -473,21 +476,24 @@ $(function() {
 
    				if (day.length == 2) {
    					history.pushState("", "", '/all-blocks/' + year + '-' + month + '-' + day);
+   					$("#web_date").attr("year", year);
+   					$("#web_date").attr("month", month);
+   					$("#web_date").attr("day", day);
    				} else {
    					history.pushState("", "", '/all-blocks/' + year + '-' + month + '-0' + day);
+   					$("#web_date").attr("year", year);
+   					$("#web_date").attr("month", month);
+   					$("#web_date").attr("day", "0"+day);
    				}
 
    				$.post("/date_block", {year:year, month:month, day:day}, function (data, status) {
-
-        	       if (data != 0) {
+   					console.log(year+"--"+month+"--"+day);
+        	       	if (data != 0) {
 
 						$('.tbody-block').empty();
-
-						$('#no-block').hide();
+						$('#div-loader').hide();
 
 						var data = JSON.parse(data);
-
-						$('#show-more').remove();
 
 						for (var i = 0; i < data['block'].length; i++) {
 
@@ -506,21 +512,66 @@ $(function() {
 															"</td>"+
 													    "</tr>" );
 						}
+						
+						if (data['pagination']!=null) {console.log(data['pagination']);data['pagination'] = parseInt(data['pagination']);console.log(data['pagination']);}
 
-						if (data['more_block'] == 1) {
-							$(".block").append("<button class='btn btn-default btn-md' id='show-more' date='"+data['date']+"' style='float: left;'>显示更多</button>");
-							console.log(data['date']);
-						}
+						if (data['pagination']>1) {
+
+							$("#web_page").attr('page', '');
+							$("#web_page").attr('page', data['pagination']);
+
+							$('#pagination').find('li').empty();
+							$("#pagination p:first").text("");
+							$("#pagination p:first").text('共'+data['pagination']+"页 跳到")
+
+							if (data['pagination']>4) {
+								
+								for(var i = 1; i <= 5; i++){
+
+									if (i==1) {
+										$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_1' page='1' style='background-color: #ebebeb; color: #777777'>1</a></li>"); 
+										test("#pagination_1");
+									}else{
+										$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_"+i+"' page='"+i+"' style='color: #777777'>"+i+"</a></li>"); 
+										test("#pagination_"+i);
+									}
+
+								}
+	
+								$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_next' page='2' style='color: #777777'>&raquo;</a></li>"); 
+								test("#pagination_next");
+								
+							} else {
+
+								for(var i = 1; i <= data['pagination']; i++){
+									if (i==1) {
+										$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_1' page='1' class='avtive' style='background-color: #ebebeb; color: #777777'>"+i+"</a></li>");
+										test("#pagination_1");
+									} else {
+										$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_"+i+"' page="+i+" style='color: #777777'>"+i+"</a></li>"); 
+										test("#pagination_"+i);
+									}
+								}
+
+							}
+
+							$('#pagination').show();
+
+						} 
 
 					} else {
 						
+						$("#pagination").hide();
 						$('.tbody-block').empty();
 						$('#show-more').remove();
 						$('#no-block').show();
+						$('#div-loader').hide();
 
 					}
 
    				});
+
+   				registerPageClick();
    				
    			});
 

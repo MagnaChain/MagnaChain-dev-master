@@ -3,10 +3,18 @@ url = "/"
 layout = "mgc"
 is_hidden = 0
 ==
+
+function onStart() {
+	
+	$this['language'] = $this->activeLocaleName;
+
+}
+
+==
 <div class="container content">
 	
 	<div class="block">
-		
+		<p id="web_language" language="{{ language }}" style="visibility: hidden; position: absolute;">aaaaaaaa</p>
 		<span class="ng-scope" style="font-size: 24px; float: left;">{{ '最新区块'|_ }}</span>
 		
 		<a href="/all-blocks" class="btn btn-default see-all-blocks" translate style="visibility: hidden;" ><span class="ng-scope">{{ '查看所有区块'|_ }}/span></a>
@@ -89,9 +97,11 @@ is_hidden = 0
 	
 	$(function(){
 
+		var language = $('#web_language').attr('language');
+
 		var interval = setInterval(function(){
 
-			$.get("/mgcBlock", function (data, status) {
+			$.get("/mgcBlock", {language:language}, function (data, status) {
 
 				if (data != null) {
 

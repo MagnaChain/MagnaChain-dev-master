@@ -1,4 +1,4 @@
-1555316329a:1:{s:6:"tx.htm";a:9:{s:8:"fileName";s:6:"tx.htm";s:7:"content";s:14555:"title = "tx"
+1555896687a:1:{s:6:"tx.htm";a:9:{s:8:"fileName";s:6:"tx.htm";s:7:"content";s:14555:"title = "tx"
 url = "/tx/:txhash?"
 layout = "mgc"
 is_hidden = 0
