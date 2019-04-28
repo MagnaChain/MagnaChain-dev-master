@@ -284,7 +284,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
             ct.call_callOtherContractTest(ct.contract_id, 'callOtherContractTest', ct.contract_id, "contractDataTest",
                                           amount=0)
         print(self.sidenodes[0].getbalance())
-        self.sync_all([self.sidenodes])
+        self.sync_all([self.sidenodes], timeout=180)# there 600 transactions need to sync, takes time.
         self.sidenodes[0].generate(2)
         assert_equal(len(self.snode0.getrawmempool()),0)
         self.sync_all([self.sidenodes])
