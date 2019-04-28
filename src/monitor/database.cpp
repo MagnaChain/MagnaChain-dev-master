@@ -548,13 +548,11 @@ bool WriteBlockToDatabase(const MCBlock& block, const std::shared_ptr<DatabaseBl
     }
     catch (sql::SQLException e) {
         Clear();
-        LogPrintf("%s:%d => %d:%s\n", __FUNCTION__, __LINE__, e.getErrorCode(), e.what());
-        if (e.getErrorCode() != 1062) {
-            throw e;
+        if (e.getErrorCode() == 1062) {
+            return true;
         }
-        else {
-            return false;
-        }
+        LogPrintf("%s:%d => %d:%s(%s:%d)\n", __FUNCTION__, __LINE__, e.getErrorCode(), e.what(), block.GetHash().ToString(), dbBlock->height);
+        throw e;
     }
 
     return true;

@@ -69,7 +69,7 @@ const char* sqls[] = {
     "CREATE TABLE IF NOT EXISTS `contract` ("
     "`txhash` VARCHAR(64) NOT NULL"
     ", `contractid` VARCHAR(64) NOT NULL"
-    ", `sender` VARCHAR(64) NOT NULL"
+    ", `sender` VARCHAR(128) NOT NULL"
     ", `codeorfunc` TEXT NOT NULL"
     ", `args` VARCHAR(512) NOT NULL"
     ", `amountout` BIGINT NOT NULL"
