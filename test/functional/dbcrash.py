@@ -238,6 +238,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
 
         starting_tip_height = self.nodes[3].getblockcount()
 
+        biggestwork = 0
         # Main test loop:
         # each time through the loop, generate a bunch of transactions,
         # and then either mine a single new block on the tip, or some-sized reorg.
@@ -265,8 +266,14 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             while current_height + 1 > self.nodes[3].getblockcount():
                 block_hashes.extend(self.nodes[3].generate(min(10, current_height + 1 - self.nodes[3].getblockcount())))
             if hasinvalidate:
+                oldwork = int(chaintipwork,16)
+                newwork = int(self.nodes[3].getchaintipwork(), 16)
                 self.log.info("new chaintipwork %s old chaintipwork %s, %s", self.nodes[3].getchaintipwork(), chaintipwork, 
-                    "new work bigger" if int(self.nodes[3].getchaintipwork(), 16) > int(chaintipwork,16) else "new work smaller_eq")
+                    "new work bigger" if newwork > oldwork else "new work smaller_eq")
+                if newwork > biggestwork:
+                    biggestwork = newwork
+                else:
+                    self.log.info("warning: nework smaller than biggestwork")
             self.log.debug("Syncing %d new blocks...", len(block_hashes))
             self.sync_node3blocks(block_hashes)
             utxo_list = self.nodes[3].listunspent()
