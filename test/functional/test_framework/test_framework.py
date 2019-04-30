@@ -33,6 +33,7 @@ from .util import (
     sync_blocks,
     sync_mempools,
     system_info,
+    wait_until,
 )
 
 
@@ -651,3 +652,97 @@ class SkipTest(Exception):
 
     def __init__(self, message):
         self.message = message
+
+
+class MutiSideChainTestFramework(MagnaChainTestFramework):
+    """Test framework for doing muti sidechain testing"""
+
+    def set_test_params(self):
+        self.setup_clean_chain = True
+        # 多侧链的话，可以一个主节点上挂载多条侧链
+        self.num_nodes = 1
+        self.num_sidenodes = 2
+
+    def setup_network(self, sidechain=False):
+        """Override this method to customize test network topology"""
+        self.setup_nodes(sidechain=sidechain)
+
+        # Connect the nodes as a "chain".  This allows us
+        # to split the network between nodes 1 and 2 to get
+        # two halves that can work on competing chains.
+        node_num = (self.num_nodes if not sidechain else self.num_sidenodes)
+        nodes = self.nodes if not sidechain else self.sidenodes
+        '''
+        不同的侧链节点不需要链接起来，也不会链接起来
+        for i in range(node_num - 1):
+            connect_nodes_bi(nodes, i, i + 1, sidechain=sidechain)
+        self.sync_all([nodes])
+        '''
+
+    def setup_sidechain(self):
+        '''
+        Override this method to customize test sidenode setup
+        :return:
+        '''
+        self.log.info("setup sidechain")
+        # 创建抵押币
+        # for convince
+        node = self.nodes[0]
+        logger = self.log.info
+        node.generate(2)
+        self.sidechain_id_one = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
+                                              node.getnewaddress())['branchid']
+        node.generate(1)
+        self.sidechain_id_two = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
+                                              node.getnewaddress())['branchid']
+        node.generate(1)
+        logger("sidechain ids:\n\t{}\n\t{}".format(self.sidechain_id_one,self.sidechain_id_two))
+        # 创建magnachaind的软链接，为了区分主链和侧链
+        if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
+            try:
+                os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
+                           os.path.join(self.options.srcdir, 'magnachaind-side'))
+            except Exception as e:
+                pass
+
+        # Set env vars
+        if "MAGNACHAIND_SIDE" not in os.environ:
+            os.environ["MAGNACHAIND_SIDE"] = os.path.join(self.options.srcdir, 'magnachaind-side')
+
+        # 初始化侧链目录
+        logger("create sidechains datadir")
+        # sidechain one
+        sidechain_one_dir = initialize_datadir(self.options.tmpdir, 0, sidechain_id=self.sidechain_id_one,
+                           mainport=self.nodes[0].rpcport,
+                           main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(0)))
+        sidechain_two_dir = initialize_datadir(self.options.tmpdir, 1, sidechain_id=self.sidechain_id_two,
+                           mainport=self.nodes[0].rpcport,
+                           main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(0)))
+        print('datadirs:',sidechain_one_dir,sidechain_two_dir)
+        logger("setup sidechains network and start side nodes")
+        self.setup_network(sidechain=True)
+        logger("sidechain attach to mainchains")
+        self.nodes[0].generate(2)  # make some coins
+        # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
+        ret = self.nodes[0].addbranchnode(self.sidechain_id_one, '127.0.0.1', self.sidenodes[0].rpcport, '', '',
+                                              '', sidechain_one_dir)
+        if ret != 'ok':
+            raise Exception(ret)
+        ret = self.nodes[0].addbranchnode(self.sidechain_id_two, '127.0.0.1', self.sidenodes[1].rpcport, '', '',
+                                              '', sidechain_two_dir)
+        if ret != 'ok':
+            raise Exception(ret)
+
+        for m in [0,1]:
+            logger("mortgage coins to sidenode{}".format(m))
+            sidechain_id = self.sidechain_id_one if m == 0 else self.sidechain_id_two
+            for j in range(10):
+                addr = self.sidenodes[m].getnewaddress()
+                txid = self.nodes[0].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
+            for i in range(5):
+                # avoid generate timeout on travis-ci
+                self.nodes[0].generate(2)
+            self.sync_all()
+            wait_until(lambda: self.sidenodes[m].getmempoolinfo()['size'] > 0, timeout=30)
+        self.sync_all()
+        logger("sidechains setup done")
