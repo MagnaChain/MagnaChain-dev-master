@@ -50,6 +50,7 @@ class SideChainForkTest(MagnaChainTestFramework):
             n = self.sidenodes[i]
             print(len(n.getpeerinfo()),n.getpeerinfo())
             print('mainchain',len(self.nodes[i].getpeerinfo()))
+            self.sync_all(self.nodes)
             n.generate(2)  # make some coins
             self.sync_all([self.sidenodes])
             self.log.info("start balance {}".format(n.getbalance()))
