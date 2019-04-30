@@ -1212,7 +1212,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 
     if (kDest.type() != typeid(MCKeyID))
     {
-        LogPrintf("%s: Mine out key type invalid \n", __func__);
+        LogPrint(BCLog::MINING, "%s: Mine out key type invalid \n", __func__);
         return 0;
     }
     MCKeyID kKey = boost::get<MCKeyID>(kDest);
@@ -1240,7 +1240,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 	else {
 		if (iMount == 0) {
 			block_hash = guMaxWork;
-			LogPrintf("%s: block work To MAX WORK, Amount is 0, total %d \n", __func__, total);
+            LogPrint(BCLog::MINING, "%s: block work To MAX WORK, Amount is 0, total %d \n", __func__, total);
 			return 0;
 		}
 	}
