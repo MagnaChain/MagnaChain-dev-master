@@ -389,10 +389,10 @@ void JSONRPCRequest::parse(const UniValue& valRequest)
     if (!valMethod.isStr())
         throw JSONRPCError(RPC_INVALID_REQUEST, "Method must be a string");
     strMethod = valMethod.get_str();
-    LogPrint(BCLog::RPC, "ThreadRPCServer method=%s\n", SanitizeString(strMethod));
 
     // Parse params
     UniValue valParams = find_value(request, "params");
+    LogPrint(BCLog::RPC, "ThreadRPCServer method=%s params=%s\n", SanitizeString(strMethod), !valParams.isNull()?valParams.write():"");
     if (valParams.isArray() || valParams.isObject())
         params = valParams;
     else if (valParams.isNull())
