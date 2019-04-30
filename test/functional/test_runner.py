@@ -90,6 +90,7 @@ BASE_SCRIPTS= [
     'reindex.py',#pass
     # vv Tests less than 30s vv
     'keypool-topup.py',#pass
+    'sidechain_mutisidechain.py',#pass
     # 'zmq_test.py',
     'magnachain_cli.py',#pass
     'mempool_resurrect_test.py',#pass
@@ -199,6 +200,7 @@ TRAVIS_SCRIPTS = {
         'sidechain_redeem.py',
         'sidechain_setup.py',
         'sidechain_reverttransaction.py',#pass
+        'sidechain_mutisidechain.py',#pass
     ],
     'mempool':[
         'mempool_packages.py', #pass
