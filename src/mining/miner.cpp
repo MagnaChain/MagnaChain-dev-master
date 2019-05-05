@@ -2041,14 +2041,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         error(strErr.c_str());
         return nullptr;
     }
-	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
-
-	MCValidationState state;
-	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-        strErr = strprintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
-        LogPrintf(strErr.c_str());
-        return nullptr;
-	}
+    pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
     CoinAmountDB coinAmountDB;
     CoinAmountCache coinAmountCache(&coinAmountDB);
@@ -2058,6 +2051,19 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         error(strErr.c_str());
         return nullptr;
     }
+
+    if (!Params().IsMainChain()) {
+        pblock->prevContractData.resize(pblock->vtx.size());
+        assert(pContractContext->txPrevData.size() == pblock->vtx.size());
+        pblock->prevContractData = std::move(pContractContext->txPrevData);
+    }
+
+	MCValidationState state;
+	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
+        strErr = strprintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
+        LogPrintf(strErr.c_str());
+        return nullptr;
+	}
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
