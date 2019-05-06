@@ -216,7 +216,6 @@ bool ContractDataDB::ExecutiveContract(const MCBlock* pBlock, int index, SmartCo
                 uint160 key = uint160(vch);
                 MCContractID contractId = MCContractID(key);
                 threadData->pCoinAmountCache->IncAmount(contractId, vout[i].nValue);
-                LogPrintf("%s:%d %s %s %lld\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), contractId.ToString(), vout[i].nValue);
             }
         }
     }
@@ -249,7 +248,10 @@ void ContractDataDB::ExecutiveTransactionContract(const MCBlock* pBlock, SmartCo
                 return;
             }
 
-            ExecutiveContract(pBlock, i, threadData, sls);
+            if (!ExecutiveContract(pBlock, i, threadData, sls)) {
+                interrupt = true;
+                return;
+            }
 
             if (!mainChain) {
                 for (auto it : sls->contractDataFrom) {
@@ -299,6 +301,12 @@ bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pC
         throw std::runtime_error(strprintf("%s:%d => groupsize == 0", __FUNCTION__, __LINE__));
     }
 
+    bool mainChain = Params().IsMainChain();
+    if (!mainChain) {
+        pContractContext->txPrevData.resize(pBlock->vtx.size());
+        pContractContext->txFinalData.resize(pBlock->vtx.size());
+    }
+
     for (int i = 0; i < pBlock->groupSize.size(); ++i) {
         threadData[i].offset = offset;
         threadData[i].groupSize = pBlock->groupSize[i];
@@ -317,7 +325,6 @@ bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pC
     offset = 0;
     pContractContext->ClearCache();
 
-    bool mainChain = Params().IsMainChain();
     std::set<uint256> finalTransactions;
     for (int i = 0; i < threadData.size(); ++i) {
         // 检查是否有关联交易交叉
@@ -325,7 +332,9 @@ bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pC
             if (finalTransactions.count(item) == 0) {
                 finalTransactions.insert(item);
             } else {
-                throw std::runtime_error(strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__));
+                std::string err = strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__);
+                LogPrintf("%s\n", err);
+                throw std::runtime_error(err);
             }
         }
 
@@ -333,8 +342,11 @@ bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pC
         for (auto item : threadData[i].contractContext.data) {
             if (pContractContext->cache.count(item.first) == 0) {
                 pContractContext->SetCache(item.first, item.second);
-            } else {
-                throw std::runtime_error(strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__));
+            }
+            else {
+                std::string err = strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__);
+                LogPrintf("%s\n", err);
+                throw std::runtime_error(err);
             }
         }
 

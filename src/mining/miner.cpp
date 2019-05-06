@@ -2043,19 +2043,25 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
     }
     pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
-    CoinAmountDB coinAmountDB;
-    CoinAmountCache coinAmountCache(&coinAmountDB);
-    LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
-    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
-        strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
-        error(strErr.c_str());
-        return nullptr;
-    }
+    try {
+        CoinAmountDB coinAmountDB;
+        CoinAmountCache coinAmountCache(&coinAmountDB);
+        LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+        if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
+            strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
+            error(strErr.c_str());
+            return nullptr;
+        }
 
-    if (!Params().IsMainChain()) {
-        pblock->prevContractData.resize(pblock->vtx.size());
-        assert(pContractContext->txPrevData.size() == pblock->vtx.size());
-        pblock->prevContractData = std::move(pContractContext->txPrevData);
+        if (!Params().IsMainChain()) {
+            pblock->prevContractData.resize(pblock->vtx.size());
+            assert(pContractContext->txPrevData.size() == pblock->vtx.size());
+            pblock->prevContractData = std::move(pContractContext->txPrevData);
+        }
+    }
+    catch (std::exception e) {
+        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, e.what());
+        return nullptr;
     }
 
 	MCValidationState state;
