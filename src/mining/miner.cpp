@@ -2041,7 +2041,28 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         error(strErr.c_str());
         return nullptr;
     }
-	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
+    pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
+
+    try {
+        CoinAmountDB coinAmountDB;
+        CoinAmountCache coinAmountCache(&coinAmountDB);
+        LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+        if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
+            strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
+            error(strErr.c_str());
+            return nullptr;
+        }
+
+        if (!Params().IsMainChain()) {
+            pblock->prevContractData.resize(pblock->vtx.size());
+            assert(pContractContext->txPrevData.size() == pblock->vtx.size());
+            pblock->prevContractData = std::move(pContractContext->txPrevData);
+        }
+    }
+    catch (std::exception e) {
+        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, e.what());
+        return nullptr;
+    }
 
 	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
@@ -2049,15 +2070,6 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         LogPrintf(strErr.c_str());
         return nullptr;
 	}
-
-    CoinAmountDB coinAmountDB;
-    CoinAmountCache coinAmountCache(&coinAmountDB);
-    LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
-    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
-        strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
-        error(strErr.c_str());
-        return nullptr;
-    }
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));

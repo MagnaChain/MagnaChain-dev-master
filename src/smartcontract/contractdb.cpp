@@ -105,12 +105,125 @@ void ContractDataDB::InitializeThread(ContractDataDB* contractDB)
 {
     {
         LOCK(contractDB->cs_cache);
-        contractDB->threadId2SmartLuaState.insert(std::make_pair(boost::this_thread::get_id(), new SmartLuaState()));
+        contractDB->threadId2SmartLuaState.insert(std::make_pair(boost::this_thread::get_id(), std::make_shared<SmartLuaState>()));
     }
     boost::this_thread::sleep(boost::posix_time::milliseconds(200));
 }
 
-void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData)
+bool ContractDataDB::ExecutiveContract(const MCBlock* pBlock, int index, SmartContractThreadData* threadData, std::shared_ptr<SmartLuaState> sls)
+{
+    const MCTransactionRef tx = pBlock->vtx[index];
+    if (tx->IsNull()) {
+        LogPrintf("%s:%d => tx is null\n", __FUNCTION__, __LINE__);
+        return false;
+    }
+
+    threadData->associationTransactions.insert(tx->GetHash());
+    for (int j = 0; j < tx->vin.size(); ++j) {
+        if (!tx->vin[j].prevout.hash.IsNull() && !tx->IsStake()) { // branch first block's stake tx's input is from the same block(支链第一个块的stake交易的输入来自同一区块中的交易，其他情况下stake的输入不可能来自同一区块)
+            threadData->associationTransactions.insert(tx->vin[j].prevout.hash);
+        }
+    }
+
+    if (!tx->IsSmartContract()) {
+        return true;
+    }
+
+    MCContractID contractId = tx->pContractData->address;
+    MagnaChainAddress contractAddr(contractId);
+    MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
+    MCAmount amount = GetTxContractOut(*tx);
+
+    UniValue ret(UniValue::VARR);
+    if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
+        LogPrintf("%s:%d => %s publish contract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
+        std::string rawCode = tx->pContractData->codeOrFunc;
+        sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, index, senderAddr,
+            &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
+        if (!PublishContract(&(*sls), contractAddr, rawCode, ret, true) || tx->pContractData->contractCoinsOut.size() > 0 || tx->pContractData->contractCoinsOut != sls->contractCoinsOut) {
+            LogPrintf("%s:%d => publish contract fail\n", __FUNCTION__, __LINE__);
+            return false;
+        }
+    }
+    else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+        LogPrintf("%s:%d => %s call contract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
+        const std::string& strFuncName = tx->pContractData->codeOrFunc;
+        UniValue args;
+        args.read(tx->pContractData->args);
+
+        sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, index, senderAddr, &threadData->contractContext,
+            threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
+        if (!CallContract(&(*sls), contractAddr, amount, strFuncName, args, ret)) {
+            LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);
+            return false;
+        }
+
+        if (tx->pContractData->contractCoinsOut != sls->contractCoinsOut) {
+            LogPrintf("%s:%d => contract coins out not match\n", __FUNCTION__, __LINE__);
+            return false;
+        }
+
+        if (tx->pContractData->contractCoinsOut.size() > 0 && sls->recipients.size() == 0) {
+            LogPrintf("%s:%d => tx->pContractData->amountOut > 0 && sls->recipients.size() == 0\n", __FUNCTION__, __LINE__);
+            return false;
+        }
+
+        MCAmount totalRecv = 0;
+        for (int j = 0; j < sls->recipients.size(); ++j) {
+            if (!tx->IsExistVout(sls->recipients[j])) {
+                LogPrintf("%s:%d => vout not exist\n", __FUNCTION__, __LINE__);
+                return false;
+            }
+            totalRecv += sls->recipients[j].nValue;
+        }
+
+        MCAmount totalSend = 0;
+        for (auto it : tx->pContractData->contractCoinsOut) {
+            totalSend += it.second;
+        }
+
+        if (totalRecv != totalSend) {
+            LogPrintf("%s:%d => amount not match\n", __FUNCTION__, __LINE__);
+            return false;
+        }
+
+        bool mainChain = Params().IsMainChain();
+        if (!mainChain) {
+            for (auto it : tx->pContractData->contractCoinsOut) {
+                threadData->contractContext.txFinalData[index].contractCoins[it.first] = threadData->pCoinAmountCache->GetAmount(it.first);
+            }
+        }
+
+        if (tx->pContractData->contractCoinsOut.size() > 0) {
+            for (auto it : tx->pContractData->contractCoinsOut) {
+                threadData->pCoinAmountCache->DecAmount(it.first, it.second);
+            }
+        }
+
+        const std::vector<MCTxOut>& vout = tx->vout;
+        for (int i = 0; i < vout.size(); ++i) {
+            const MCScript& scriptPubKey = vout[i].scriptPubKey;
+            if (scriptPubKey.IsContract()) {
+                opcodetype opcode;
+                std::vector<unsigned char> vch;
+                MCScript::const_iterator pc = scriptPubKey.begin();
+                MCScript::const_iterator end = scriptPubKey.end();
+                scriptPubKey.GetOp(pc, opcode, vch);
+
+                assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
+                vch.clear();
+                vch.assign(pc + 1, end);
+                uint160 key = uint160(vch);
+                MCContractID contractId = MCContractID(key);
+                threadData->pCoinAmountCache->IncAmount(contractId, vout[i].nValue);
+            }
+        }
+    }
+
+    return true;
+}
+
+void ContractDataDB::ExecutiveTransactionContract(const MCBlock* pBlock, SmartContractThreadData* threadData)
 {
     boost::thread::id threadId = boost::this_thread::get_id();
     auto it = threadId2SmartLuaState.find(threadId);
@@ -118,7 +231,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
         throw std::runtime_error(strprintf("%s:%d it == threadId2SmartLuaState.end()\n", __FUNCTION__, __LINE__));
     }
 
-    SmartLuaState* sls = it->second;
+    std::shared_ptr<SmartLuaState> sls = it->second;
     if (sls == nullptr) {
         throw std::runtime_error(strprintf("%s:%d sls == nullptr\n", __FUNCTION__, __LINE__));
     }
@@ -135,121 +248,19 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
                 return;
             }
 
-            const MCTransactionRef tx = pBlock->vtx[i];
-            if (tx->IsNull()) {
-                LogPrintf("%s:%d => tx is null\n", __FUNCTION__, __LINE__);
+            if (!ExecutiveContract(pBlock, i, threadData, sls)) {
                 interrupt = true;
                 return;
             }
 
-            threadData->associationTransactions.insert(tx->GetHash());
-            for (int j = 0; j < tx->vin.size(); ++j) {
-                if (!tx->vin[j].prevout.hash.IsNull() && !tx->IsStake()) { // branch first block's stake tx's input is from the same block(支链第一个块的stake交易的输入来自同一区块中的交易，其他情况下stake的输入不可能来自同一区块)
-                    threadData->associationTransactions.insert(tx->vin[j].prevout.hash);
-                }
-            }
-
-            if (!tx->IsSmartContract()) {
-                continue;
-            }
-
-            MCContractID contractId = tx->pContractData->address;
-            MagnaChainAddress contractAddr(contractId);
-            MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
-            MCAmount amount = GetTxContractOut(*tx);
-
-            UniValue ret(UniValue::VARR);
-            if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-                //LogPrintf("%s:%d => %s publish contract %s\n", __FUNCTION__, __LINE__, threadId, tx->pContractData->address.ToString());
-                std::string rawCode = tx->pContractData->codeOrFunc;
-                sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr,
-                    &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
-                if (!PublishContract(sls, contractAddr, rawCode, ret, true) || tx->pContractData->contractCoinsOut.size() > 0 || tx->pContractData->contractCoinsOut != sls->contractCoinsOut) {
-                    LogPrintf("%s:%d => publish contract fail\n", __FUNCTION__, __LINE__);
-                    interrupt = true;
-                    return;
-                }
-            }
-            else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-                //LogPrintf("%s:%d => %s call contract %s\n", __FUNCTION__, __LINE__, threadId, tx->pContractData->address.ToString());
-                const std::string& strFuncName = tx->pContractData->codeOrFunc;
-                UniValue args;
-                args.read(tx->pContractData->args);
-
-                sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, i, senderAddr, &threadData->contractContext,
-                    threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
-                if (!CallContract(sls, contractAddr, amount, strFuncName, args, ret) || tx->pContractData->contractCoinsOut != sls->contractCoinsOut) {
-                    LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);
-                    interrupt = true;
-                    return;
-                }
-
-                if (tx->pContractData->contractCoinsOut.size() > 0 && sls->recipients.size() == 0) {
-                    LogPrintf("%s:%d => tx->pContractData->amountOut > 0 && sls->recipients.size() == 0\n", __FUNCTION__, __LINE__);
-                    interrupt = true;
-                    return;
-                }
-
-                MCAmount totalRecv = 0;
-                for (int j = 0; j < sls->recipients.size(); ++j) {
-                    if (!tx->IsExistVout(sls->recipients[j])) {
-                        LogPrintf("%s:%d => vout not exist\n", __FUNCTION__, __LINE__);
-                        interrupt = true;
-                        return;
-                    }
-                    totalRecv += sls->recipients[j].nValue;
-                }
-
-                MCAmount totalSend = 0;
-                for (auto it : tx->pContractData->contractCoinsOut) {
-                    totalSend += it.second;
-                }
-
-                if (totalRecv != totalSend) {
-                    LogPrintf("%s:%d => amount not match\n", __FUNCTION__, __LINE__);
-                    interrupt = true;
-                    return;
-                }
-
-                if (!mainChain) {
-                    for (auto it : tx->pContractData->contractCoinsOut) {
-                        threadData->contractContext.txFinalData[i].contractCoins[it.first] = threadData->pCoinAmountCache->GetAmount(it.first);
-                    }
-                }
-
-                if (tx->pContractData->contractCoinsOut.size() > 0) {
-                    for (auto it : tx->pContractData->contractCoinsOut) {
-                        threadData->pCoinAmountCache->DecAmount(it.first, it.second);
-                    }
-                }
-
-                const std::vector<MCTxOut>& vout = tx->vout;
-                for (int i = 0; i < vout.size(); ++i) {
-                    const MCScript& scriptPubKey = vout[i].scriptPubKey;
-                    if (scriptPubKey.IsContract()) {
-                        opcodetype opcode;
-                        std::vector<unsigned char> vch;
-                        MCScript::const_iterator pc = scriptPubKey.begin();
-                        MCScript::const_iterator end = scriptPubKey.end();
-                        scriptPubKey.GetOp(pc, opcode, vch);
-
-                        assert(opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
-                        vch.clear();
-                        vch.assign(pc + 1, end);
-                        uint160 key = uint160(vch);
-                        MCContractID contractId = MCContractID(key);
-                        threadData->pCoinAmountCache->IncAmount(contractId, vout[i].nValue);
-                    }
-                }
-            }
-
             if (!mainChain) {
                 for (auto it : sls->contractDataFrom) {
-                    pBlock->prevContractData[i].items[it.first].blockHash = it.second.blockHash;
-                    pBlock->prevContractData[i].items[it.first].txIndex = it.second.txIndex;
+                    threadData->contractContext.txPrevData[i].items[it.first].blockHash = it.second.blockHash;
+                    threadData->contractContext.txPrevData[i].items[it.first].txIndex = it.second.txIndex;
                 }
                 threadData->contractContext.txFinalData[i - threadData->offset].data = threadData->contractContext.cache;
             }
+
             threadData->contractContext.Commit();
             sls->contractDataFrom.clear();
         }
@@ -259,7 +270,7 @@ void ContractDataDB::ExecutiveTransactionContract(MCBlock* pBlock, SmartContract
     }
 }
 
-bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
+bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
 {
     auto it = mapBlockIndex.find(pBlock->hashPrevBlock);
     if (it == mapBlockIndex.end()) {
@@ -285,15 +296,15 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
     interrupt = false;
     std::vector<SmartContractThreadData> threadData(pBlock->groupSize.size(), SmartContractThreadData());
     int size = pBlock->vtx.size();
-    bool mainChain = Params().IsMainChain();
-    if (!mainChain) {
-        pBlock->prevContractData.resize(size);
-    }
 
     if (pBlock->groupSize.size() == 0) {
-        std::string error = strprintf("%s:%d => groupsize == 0", __FUNCTION__, __LINE__);
-        LogPrintf("%s\n", error);
-        throw std::runtime_error(error);
+        throw std::runtime_error(strprintf("%s:%d => groupsize == 0", __FUNCTION__, __LINE__));
+    }
+
+    bool mainChain = Params().IsMainChain();
+    if (!mainChain) {
+        pContractContext->txPrevData.resize(pBlock->vtx.size());
+        pContractContext->txFinalData.resize(pBlock->vtx.size());
     }
 
     for (int i = 0; i < pBlock->groupSize.size(); ++i) {
@@ -313,9 +324,7 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
 
     offset = 0;
     pContractContext->ClearCache();
-    if (!mainChain) {
-        pContractContext->txFinalData.resize(pBlock->vtx.size());
-    }
+
     std::set<uint256> finalTransactions;
     for (int i = 0; i < threadData.size(); ++i) {
         // 检查是否有关联交易交叉
@@ -323,7 +332,9 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
             if (finalTransactions.count(item) == 0) {
                 finalTransactions.insert(item);
             } else {
-                throw std::runtime_error(strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__));
+                std::string err = strprintf("%s:%d => association transactions have cross", __FUNCTION__, __LINE__);
+                LogPrintf("%s\n", err);
+                throw std::runtime_error(err);
             }
         }
 
@@ -331,8 +342,11 @@ bool ContractDataDB::RunBlockContract(MCBlock* pBlock, ContractContext* pContrac
         for (auto item : threadData[i].contractContext.data) {
             if (pContractContext->cache.count(item.first) == 0) {
                 pContractContext->SetCache(item.first, item.second);
-            } else {
-                throw std::runtime_error(strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__));
+            }
+            else {
+                std::string err = strprintf("%s:%d => contract context have cross", __FUNCTION__, __LINE__);
+                LogPrintf("%s\n", err);
+                throw std::runtime_error(err);
             }
         }
 

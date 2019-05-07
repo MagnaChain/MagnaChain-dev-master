@@ -402,7 +402,8 @@ bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int s
                 return (tx.pContractData->contractCoinsOut.size() == 0 && sls->contractCoinsOut.size() == 0);
             }
         }
-    } else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
+    }
+    else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         sls->Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
         if (CallContract(sls, contractAddr, amount, strFuncName, args, ret)) {
             if (CheckContractVinVout(tx, sls)) {
@@ -2187,6 +2188,29 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
     if (fJustCheck)
         return true;
 
+    if (pindex->nHeight > 0) {
+        ContractContext contractContext;
+        CoinAmountDB coinAmountDB;
+        CoinAmountCache coinAmountCache(&coinAmountDB);
+        if (!mpContractDb->RunBlockContract(&block, &contractContext, &coinAmountCache)) {
+            return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
+        }
+
+        if (!Params().IsMainChain()) {
+            if (block.prevContractData != contractContext.txPrevData) {
+                return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
+            }
+        }
+
+        // Write block ContractInfo to db
+        if (!mpContractDb->WriteBlockContractInfoToDisk(pindex, &contractContext)) {
+            return error("out of disk space");
+        }
+        if (!mpContractDb->UpdateBlockContractToDisk(pindex)) {
+            return error("out of disk space");
+        }
+    }
+
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull() || !pindex->IsValid(BLOCK_VALID_SCRIPTS)) {
         if (pindex->GetUndoPos().IsNull()) {
@@ -2719,7 +2743,6 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
         if (!DisconnectTip(state, chainparams, &disconnectpool)) {
             // This is likely a fatal error, but keep the mempool consistent,
             // just in case. Only remove from the mempool in this case.
-            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
             mempool.ReacceptTransactions();
             return false;
@@ -2760,7 +2783,6 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
                     // A system error occurred (disk space, database error, ...).
                     // Make the mempool consistent with the current tip, just in case
                     // any observers try to use it before shutdown.
-                    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
                     UpdateMempoolForReorg(disconnectpool, false);
                     mempool.ReacceptTransactions();
                     return false;
@@ -2779,7 +2801,6 @@ static bool ActivateBestChainStep(MCValidationState& state, const MCChainParams&
     if (fBlocksDisconnected) {
         // If any blocks were disconnected, disconnectpool may be non empty.  Add
         // any disconnected transactions back to the mempool.
-        LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
         UpdateMempoolForReorg(disconnectpool, true);
     }
     mempool.ReacceptTransactions();
@@ -2828,7 +2849,6 @@ bool ActivateBestChain(MCValidationState& state, const MCChainParams& chainparam
     // far from a guarantee. Things in the P2P/RPC will often end up calling
     // us in the middle of ProcessNewBlock - do not assume pblock is set
     // sanely for performance or correctness!
-
     MCBlockIndex* pindexMostWork = nullptr;
     MCBlockIndex* pindexNewTip = nullptr;
     int nStopAtHeight = gArgs.GetArg("-stopatheight", DEFAULT_STOPATHEIGHT);
@@ -2848,8 +2868,9 @@ bool ActivateBestChain(MCValidationState& state, const MCChainParams& chainparam
                 pindexMostWork = FindMostWorkChain();
 
             // Whether we have anything to do at all.
-            if (pindexMostWork == nullptr || pindexMostWork == chainActive.Tip())
+            if (pindexMostWork == nullptr || pindexMostWork == chainActive.Tip()) {
                 return true;
+            }
 
             bool fInvalidFound = false;
             std::shared_ptr<const MCBlock> nullBlockPtr;
@@ -3657,7 +3678,7 @@ bool ProcessNewBlockHeaders(const std::vector<MCBlockHeader>& headers, MCValidat
 }
 
 /** Store block on disk. If dbp is non-nullptr, the file is known to already reside on disk */
-static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationState& state, const MCChainParams& chainparams, MCBlockIndex** ppindex, bool fRequested, const MCDiskBlockPos* dbp, bool* fNewBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache)
+static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationState& state, const MCChainParams& chainparams, MCBlockIndex** ppindex, bool fRequested, const MCDiskBlockPos* dbp, bool* fNewBlock)
 {
     MCBlock& block = *pblock;
 
@@ -3716,12 +3737,6 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
         return error("%s: %s", __func__, FormatStateMessage(state));
     }
 
-    if (pindex->nHeight > 0) {
-        LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
-        if (!mpContractDb->RunBlockContract(&block, pContractContext, pCoinAmountCache))
-            return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
-    }
-
     // Header is valid/has work, merkle tree and segwit merkle tree are good...RELAY NOW
     // (but if it does not build on our best tip, let the SendMessages loop relay it)
     if (!IsInitialBlockDownload() && chainActive.Tip() == pindex->pprev)
@@ -3740,11 +3755,6 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
                 AbortNode(state, "Failed to write block");
         if (!ReceivedBlockTransactions(block, state, pindex, blockPos, chainparams.GetConsensus()))
             return error("AcceptBlock(): ReceivedBlockTransactions failed");
-        // Write block ContractInfo to db
-        if (!mpContractDb->WriteBlockContractInfoToDisk(pindex, pContractContext))
-            return error("out of disk space");
-        if (!mpContractDb->UpdateBlockContractToDisk(pindex))
-            return error("out of disk space");
     } catch (const std::runtime_error& e) {
         return AbortNode(state, std::string("System error: ") + e.what());
     }
@@ -3773,10 +3783,9 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
 
         LOCK(cs_main);
         if (ret) {
-            CoinAmountDB coinAmountDB;
-            CoinAmountCache coinAmountCache(&coinAmountDB);
             // Store to disk
-            ret = AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock, pContractContext, &coinAmountCache);
+            LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+            ret = AcceptBlock(pblock, state, chainparams, &pindex, fForceProcessing, nullptr, fNewBlock);
         }
         CheckBlockIndex(chainparams.GetConsensus());
         if (!ret) {
@@ -3811,9 +3820,11 @@ bool TestBlockValidity(MCValidationState& state, const MCChainParams& chainparam
     AssertLockHeld(cs_main);
     assert(pindexPrev && pindexPrev == chainActive.Tip());
     MCCoinsViewCache viewNew(pcoinsTip);
+    uint256 block_hash(block.GetHash());
     MCBlockIndex indexDummy(block);
     indexDummy.pprev = pindexPrev;
     indexDummy.nHeight = pindexPrev->nHeight + 1;
+    indexDummy.phashBlock = &block_hash;
 
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev, GetAdjustedTime()))
@@ -4562,10 +4573,6 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
 
     int nLoaded = 0;
     try {
-        ContractContext contractContext;
-        CoinAmountDB coinAmountDB;
-        CoinAmountCache coinAmountCache(&coinAmountDB);
-
         // This takes over fileIn and calls fclose() on it in the MCBufferedFile destructor
         MCBufferedFile blkdat(fileIn, 2 * MAX_BLOCK_SERIALIZED_SIZE, MAX_BLOCK_SERIALIZED_SIZE + 8, SER_DISK, CLIENT_VERSION);
         uint64_t nRewind = blkdat.GetPos();
@@ -4618,7 +4625,7 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                 if (mapBlockIndex.count(hash) == 0 || (mapBlockIndex[hash]->nStatus & BLOCK_HAVE_DATA) == 0) {
                     LOCK(cs_main);
                     MCValidationState state;
-                    if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr, &contractContext, &coinAmountCache))
+                    if (AcceptBlock(pblock, state, chainparams, nullptr, true, dbp, nullptr))
                         nLoaded++;
                     if (state.IsError())
                         break;
@@ -4652,7 +4659,7 @@ bool LoadExternalBlockFile(const MCChainParams& chainparams, FILE* fileIn, MCDis
                             LOCK(cs_main);
 
                             MCValidationState dummy;
-                            if (AcceptBlock(pblockrecursive, dummy, chainparams, nullptr, true, &it->second, nullptr, &contractContext, &coinAmountCache)) {
+                            if (AcceptBlock(pblockrecursive, dummy, chainparams, nullptr, true, &it->second, nullptr)) {
                                 nLoaded++;
                                 queue.push_back(pblockrecursive->GetHash());
                             }

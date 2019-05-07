@@ -73,6 +73,7 @@ public:
     CONTRACT_DATA data;
     CONTRACT_DATA prevData;
     std::vector<ContractTxFinalData> txFinalData;
+    std::vector<ContractPrevData> txPrevData;
 
 public:
     void SetCache(const MCContractID& contractId, ContractInfo& contractInfo);
@@ -109,7 +110,7 @@ private:
     MCDBBatch removeBatch;
     std::vector<uint160> removes;
     boost::threadpool::pool threadPool;
-    std::map<boost::thread::id, SmartLuaState*> threadId2SmartLuaState;
+    std::map<boost::thread::id, std::shared_ptr<SmartLuaState>> threadId2SmartLuaState;
     mutable MCCriticalSection cs_cache;
 
     // 合约缓存，同时包含多个合约对应的多个块合约数据快照
@@ -129,8 +130,9 @@ public:
 
     int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex);
 
-    bool RunBlockContract(MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
-    void ExecutiveTransactionContract(MCBlock* pBlock, SmartContractThreadData* threadData);
+    bool RunBlockContract(const MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
+    bool ExecutiveContract(const MCBlock* pBlock, int index, SmartContractThreadData* threadData, std::shared_ptr<SmartLuaState> sls);
+    void ExecutiveTransactionContract(const MCBlock* pBlock, SmartContractThreadData* threadData);
 
     bool WriteBatch(MCDBBatch& batch);
     bool WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* contractContext);

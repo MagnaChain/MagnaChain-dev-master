@@ -250,7 +250,6 @@ public:
     MCPartialMerkleTree pmt;
 
     ADD_SERIALIZE_METHODS;
-
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
@@ -310,6 +309,16 @@ public:
         READWRITE(blockHash);
         READWRITE(txIndex);
     }
+
+    friend inline bool operator==(const ContractPrevDataItem& lhs, const ContractPrevDataItem& rhs)
+    {
+        return (lhs.blockHash == rhs.blockHash && lhs.txIndex == rhs.txIndex);
+    }
+
+    friend inline bool operator!=(const ContractPrevDataItem& lhs, const ContractPrevDataItem& rhs)
+    {
+        return !(lhs == rhs);
+    }
 };
 
 class ContractPrevData
@@ -323,6 +332,16 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(coins);
         READWRITE(items);
+    }
+
+    friend inline bool operator==(const ContractPrevData& lhs, const ContractPrevData& rhs)
+    {
+        return (lhs.coins == rhs.coins && lhs.items == rhs.items);
+    }
+
+    friend inline bool operator!=(const ContractPrevData& lhs, const ContractPrevData& rhs)
+    {
+        return !(lhs == rhs);
     }
 };
 
