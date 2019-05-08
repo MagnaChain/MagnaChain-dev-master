@@ -54,6 +54,7 @@ bool ContractContext::GetData(const MCContractID& contractId, ContractInfo& cont
     if (cache.size() > 0) {
         auto it = cache.find(contractId);
         if (it != cache.end()) {
+            contractInfo.txIndex = it->second.txIndex;
             contractInfo.code = it->second.code;
             contractInfo.data = it->second.data;
             return true;
@@ -62,6 +63,7 @@ bool ContractContext::GetData(const MCContractID& contractId, ContractInfo& cont
 
     auto it = data.find(contractId);
     if (it != data.end()) {
+        contractInfo.txIndex = it->second.txIndex;
         contractInfo.code = it->second.code;
         contractInfo.data = it->second.data;
         return true;
@@ -239,6 +241,7 @@ void ContractDataDB::ExecutiveTransactionContract(const MCBlock* pBlock, SmartCo
     try {
         bool mainChain = Params().IsMainChain();
         if (!mainChain) {
+            threadData->contractContext.txPrevData.resize(pBlock->vtx.size());
             threadData->contractContext.txFinalData.resize(threadData->groupSize);
         }
 
@@ -253,7 +256,7 @@ void ContractDataDB::ExecutiveTransactionContract(const MCBlock* pBlock, SmartCo
                 return;
             }
 
-            if (!mainChain) {
+            if (!mainChain && pBlock-> vtx[i]->IsSmartContract()) {
                 for (auto it : sls->contractDataFrom) {
                     threadData->contractContext.txPrevData[i].items[it.first].blockHash = it.second.blockHash;
                     threadData->contractContext.txPrevData[i].items[it.first].txIndex = it.second.txIndex;
@@ -353,6 +356,7 @@ bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pC
         // 支链保存交易最后的数据以便在需要时提供证明使用
         if (!mainChain) {
             for (int j = offset; j < offset + pBlock->groupSize[i]; ++j) {
+                pContractContext->txPrevData[j] = std::move(threadData[i].contractContext.txPrevData[j - offset]);
                 pContractContext->txFinalData[j].contractCoins = std::move(threadData[i].contractContext.txFinalData[j - offset].contractCoins);
                 pContractContext->txFinalData[j].data = std::move(threadData[i].contractContext.txFinalData[j - offset].data);
             }

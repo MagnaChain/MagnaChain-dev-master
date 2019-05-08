@@ -888,8 +888,10 @@ bool SmartLuaState::GetContractInfo(const MCContractID& contractId, ContractInfo
 
     // 直接从快照缓存中读取
     if (!pContractContext->GetData(contractId, contractInfo)) {
-        if (mpContractDb->GetContractInfo(contractId, contractInfo, pPrevBlockIndex) < 0)
+        if (mpContractDb->GetContractInfo(contractId, contractInfo, pPrevBlockIndex) < 0) {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             return false;
+        }
     }
 
     if (contractDataFrom.count(contractId) == 0) {
