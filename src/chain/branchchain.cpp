@@ -1190,7 +1190,7 @@ bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, Branc
             ;
         } else if (tx.pReportData->reporttype == ReportType::REPORT_CONTRACT_DATA) {
             if (!CheckProveContractData(tx, state, pBranchCache))
-                return state.DoS(100, false, REJECT_INVALID, "CheckProveContractData fail");
+                return false;
         } else
             return state.DoS(100, false, REJECT_INVALID, "Invalid report type!");
     }
@@ -1258,8 +1258,6 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
                 if (!scriptPubKey.GetContractAddr(kDestKey)) {
                     return state.DoS(0, false, REJECT_NONSTANDARD, "check smartcontract sign fail, contract addr fail");
                 }
-                if (kDestKey != pProveTx->pContractData->address)
-                    return state.DoS(0, false, REJECT_INVALID, "check smartcontract sign fail, contract addr error");
                 checkok = true;
             }
             if (!checkok)
@@ -1340,7 +1338,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
         return false;
     }
 
-    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData[txIndex].data);
+    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData[txIndex]);
     int txIndexFinal = CheckSpvProof(pBlockData->header.hashMerkleRootWithData, pProveData->contractData->dataSPV, hashWithData);
     if (txIndexFinal < 0 || txIndexFinal != txIndex) {
         return false;
@@ -1462,55 +1460,66 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
 
 bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA)
-        return false;
+    if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA) {
+        return state.DoS(0, false, REJECT_INVALID, "Invalid params");
+    }
 
     const uint256& branchId = tx.pReportData->reportedBranchId;
-    if (!pBranchCache->HasBranchData(branchId))
-        return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no branchid data");
-    BranchData branchData = pBranchCache->GetBranchData(branchId);
+    if (!pBranchCache->HasBranchData(branchId)) {
+        return state.DoS(0, false, REJECT_INVALID, "Prove coinbase tx no branchid data");
+    }
 
     // 先验证被举报交易及对应合约数据属于指定区块
+    BranchData branchData = pBranchCache->GetBranchData(branchId);
     BranchBlockData* pReportedBlockData = branchData.GetBranchBlockData(tx.pReportData->reportedBlockHash);
-    if (pReportedBlockData == nullptr)
+    if (pReportedBlockData == nullptr) {
         return state.DoS(0, false, REJECT_INVALID, "Get branch reported block data fail");
+    }
 
     uint256 reportedTxHashWithPrevData = GetTxHashWithPrevData(tx.pReportData->reportedTxHash, tx.pReportData->contractData->reportedContractPrevData);
     int reportedTxIndex = CheckSpvProof(pReportedBlockData->header.hashMerkleRootWithPrevData, tx.pReportData->contractData->reportedSpvProof.pmt, reportedTxHashWithPrevData);
-    if (reportedTxIndex < 0)
-        return false;
+    if (reportedTxIndex < 0) {
+        return state.DoS(0, false, REJECT_INVALID, "Check tx prev data fail");
+    }
 
     // 再验证替换的交易数据是否属于指定区块
     BranchBlockData* pProveBlockData = branchData.GetBranchBlockData(tx.pReportData->contractData->proveSpvProof.blockhash);
-    if (pProveBlockData == nullptr)
-        return state.DoS(0, false, REJECT_INVALID, "prove coinbase tx no block data");
+    if (pProveBlockData == nullptr) {
+        return state.DoS(0, false, REJECT_INVALID, "Prove coinbase tx no block data");
+    }
 
     uint256 proveTxHashWithData = GetTxHashWithData(tx.pReportData->contractData->proveTxHash, tx.pReportData->contractData->proveContractData);
     int proveTxIndex = CheckSpvProof(pProveBlockData->header.hashMerkleRootWithData, tx.pReportData->contractData->proveSpvProof.pmt, proveTxHashWithData);
-    if (proveTxIndex < 0)
-        return false;
+    if (proveTxIndex < 0) {
+        return state.DoS(0, false, REJECT_INVALID, "Check tx contract data fail");
+    }
 
-    if (pReportedBlockData->nHeight < pProveBlockData->nHeight)
-        return false;
+    if (pReportedBlockData->nHeight < pProveBlockData->nHeight) {
+        return state.DoS(0, false, REJECT_INVALID, "Report block height less than prove block height");
+    }
 
     const BranchBlockData* proveAncestorBlockData = branchData.GetAncestor(pReportedBlockData, pProveBlockData->nHeight);
-    if (proveAncestorBlockData->mBlockHash != pProveBlockData->mBlockHash)
-        return false;
+    if (proveAncestorBlockData->mBlockHash != pProveBlockData->mBlockHash) {
+        return state.DoS(0, false, REJECT_INVALID, "Report block and prove block are not in the same chain");
+    }
 
     for (auto& item : tx.pReportData->contractData->proveContractData) {
         auto it = tx.pReportData->contractData->reportedContractPrevData.items.find(item.first);
         if (it != tx.pReportData->contractData->reportedContractPrevData.items.end()) {
             BranchBlockData& targetBlockData = branchData.mapHeads[it->second.blockHash];
             const BranchBlockData* subAncestorBlockData = branchData.GetAncestor(pReportedBlockData, targetBlockData.nHeight);
-            if (subAncestorBlockData->mBlockHash != targetBlockData.mBlockHash)
+            if (subAncestorBlockData->mBlockHash != targetBlockData.mBlockHash) {
                 return true;
+            }
 
-            if (pProveBlockData->nHeight > targetBlockData.nHeight || (pProveBlockData->nHeight == targetBlockData.nHeight && proveTxIndex > it->second.txIndex && proveTxIndex < reportedTxIndex))
+            if (pProveBlockData->nHeight > targetBlockData.nHeight || 
+                (pProveBlockData->nHeight == targetBlockData.nHeight && proveTxIndex > it->second.txIndex && proveTxIndex < reportedTxIndex)) {
                 return true;
+            }
         }
     }
 
-    return false;
+    return state.DoS(0, false, REJECT_INVALID, "The reported target do not have any problem");
 }
 
 bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)

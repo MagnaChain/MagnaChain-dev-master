@@ -1595,7 +1595,7 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
     setTxids.insert(reportedTxHash);
     mtx.pPMT.reset(NewSpvProof(reportedBlock, setTxids));
 
-    ReportData* pReportData = new ReportData;
+    ReportData* pReportData = new ReportData();
     mtx.pReportData.reset(pReportData);
     pReportData->reporttype = ReportType::REPORT_CONTRACT_DATA;
     pReportData->reportedBranchId = Params().GetBranchHash();
@@ -1619,7 +1619,7 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
     contractContext.txFinalData.resize(proveBlock.vtx.size());
     if (!ExecuteBlock(&sls, &proveBlock, pProveBlockIndex->pprev, 0, proveTxIndex + 1, &contractContext))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "executive contract fail");
-    pReportData->contractData->proveContractData = contractContext.txFinalData[proveTxIndex].data;
+    pReportData->contractData->proveContractData = contractContext.txFinalData[proveTxIndex];
 
     std::vector<bool> proveMatch(proveBlock.vtx.size(), false);
     proveMatch[proveTxIndex] = true;
@@ -1841,9 +1841,9 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     uint256 blockHash = ParseHashV(request.params[0], "parameter 1");
     if (!mapBlockIndex.count(blockHash))
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-    MCBlockIndex*  pBlockIndex = mapBlockIndex[blockHash];
 
     MCBlock block;
+    MCBlockIndex*  pBlockIndex = mapBlockIndex[blockHash];
     if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 

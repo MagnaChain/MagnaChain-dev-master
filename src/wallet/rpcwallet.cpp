@@ -667,7 +667,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue ret(UniValue::VARR);
-    sls.Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, nullptr);
+    sls.Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, 0, senderAddr, nullptr, nullptr, 0, nullptr);
     if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
         throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
 
@@ -760,8 +760,8 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     bool sendCall = request.params[0].get_any_bool();
 
-    MCAmount amount = AmountFromValue(request.params[1]);
-    if (amount < 0)
+    MCAmount payment = AmountFromValue(request.params[1]);
+    if (payment < 0)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
     std::string strContractAddr = request.params[2].get_str();
@@ -795,8 +795,8 @@ UniValue callcontract(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
+    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, payment, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, strFuncName, args, callRet);
     if (success) {
         UniValue ret(UniValue::VType::VOBJ);
         if (sendCall) {
@@ -817,7 +817,7 @@ UniValue callcontract(const JSONRPCRequest& request)
             bool subtractFeeFromAmount = false;
             MCCoinControl coinCtrl;
             EnsureWalletIsUnlocked(pwallet);
-            SendMoney(pwallet, scriptPubKey, amount, subtractFeeFromAmount, wtx, coinCtrl, &sls);
+            SendMoney(pwallet, scriptPubKey, payment, subtractFeeFromAmount, wtx, coinCtrl, &sls);
             ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
         }
         ret.push_back(Pair("return", callRet));
@@ -890,8 +890,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain fund address");
 
 	// Amount
-	MCAmount amount = AmountFromValue(request.params[2]);
-	if (amount < 0)
+	MCAmount payment = AmountFromValue(request.params[2]);
+	if (payment < 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
 	std::vector<unsigned char> data(ParseHex(request.params[3].get_str()));
@@ -922,8 +922,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
     SmartLuaState sls;
     UniValue callRet(UniValue::VARR);
-    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, amount, strFuncName, args, callRet);
+    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, payment ,senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
+    bool success = CallContract(&sls, contractAddr, strFuncName, args, callRet);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("return", callRet));
@@ -943,7 +943,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
             wtx.pContractData->args = args.write();
             wtx.pContractData->address = contractID;
             wtx.pContractData->contractCoinsOut = std::move(sls.contractCoinsOut);
-            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
+            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, payment, 0, &sls);
 
             ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
             UniValue coins(UniValue::VARR);

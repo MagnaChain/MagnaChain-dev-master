@@ -134,13 +134,13 @@ bool ContractDataDB::ExecutiveContract(const MCBlock* pBlock, int index, SmartCo
     MCContractID contractId = tx->pContractData->address;
     MagnaChainAddress contractAddr(contractId);
     MagnaChainAddress senderAddr(tx->pContractData->sender.GetID());
-    MCAmount amount = GetTxContractOut(*tx);
+    MCAmount payment = GetTxContractOut(*tx);
 
     UniValue ret(UniValue::VARR);
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-        LogPrintf("%s:%d => %s publish contract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
+        //LogPrintf("%s:%d => %s publish contract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
         std::string rawCode = tx->pContractData->codeOrFunc;
-        sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, index, senderAddr,
+        sls->Initialize(true, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, index, payment, senderAddr,
             &threadData->contractContext, threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, nullptr);
         if (!PublishContract(&(*sls), contractAddr, rawCode, ret, true) || tx->pContractData->contractCoinsOut.size() > 0 || tx->pContractData->contractCoinsOut != sls->contractCoinsOut) {
             LogPrintf("%s:%d => publish contract fail\n", __FUNCTION__, __LINE__);
@@ -148,14 +148,14 @@ bool ContractDataDB::ExecutiveContract(const MCBlock* pBlock, int index, SmartCo
         }
     }
     else if (tx->nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        LogPrintf("%s:%d => %s call contract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
+        //LogPrintf("%s:%d => %s call contract %s\n", __FUNCTION__, __LINE__, tx->GetHash().ToString(), tx->pContractData->address.ToString());
         const std::string& strFuncName = tx->pContractData->codeOrFunc;
         UniValue args;
         args.read(tx->pContractData->args);
 
-        sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, index, senderAddr, &threadData->contractContext,
+        sls->Initialize(false, threadData->pPrevBlockIndex->GetBlockTime(), threadData->blockHeight, index, payment, senderAddr, &threadData->contractContext,
             threadData->pPrevBlockIndex, SmartLuaState::SAVE_TYPE_CACHE, threadData->pCoinAmountCache);
-        if (!CallContract(&(*sls), contractAddr, amount, strFuncName, args, ret)) {
+        if (!CallContract(&(*sls), contractAddr, strFuncName, args, ret)) {
             LogPrintf("%s:%d => call contract fail\n", __FUNCTION__, __LINE__);
             return false;
         }
@@ -187,13 +187,6 @@ bool ContractDataDB::ExecutiveContract(const MCBlock* pBlock, int index, SmartCo
         if (totalRecv != totalSend) {
             LogPrintf("%s:%d => amount not match\n", __FUNCTION__, __LINE__);
             return false;
-        }
-
-        bool mainChain = Params().IsMainChain();
-        if (!mainChain) {
-            for (auto it : tx->pContractData->contractCoinsOut) {
-                threadData->contractContext.txFinalData[index].contractCoins[it.first] = threadData->pCoinAmountCache->GetAmount(it.first);
-            }
         }
 
         if (tx->pContractData->contractCoinsOut.size() > 0) {
@@ -241,7 +234,7 @@ void ContractDataDB::ExecutiveTransactionContract(const MCBlock* pBlock, SmartCo
     try {
         bool mainChain = Params().IsMainChain();
         if (!mainChain) {
-            threadData->contractContext.txPrevData.resize(pBlock->vtx.size());
+            threadData->contractContext.txPrevData.resize(threadData->groupSize);
             threadData->contractContext.txFinalData.resize(threadData->groupSize);
         }
 
@@ -258,14 +251,14 @@ void ContractDataDB::ExecutiveTransactionContract(const MCBlock* pBlock, SmartCo
 
             if (!mainChain && pBlock-> vtx[i]->IsSmartContract()) {
                 for (auto it : sls->contractDataFrom) {
-                    threadData->contractContext.txPrevData[i].items[it.first].blockHash = it.second.blockHash;
-                    threadData->contractContext.txPrevData[i].items[it.first].txIndex = it.second.txIndex;
+                    threadData->contractContext.txPrevData[i - threadData->offset].items[it.first].blockHash = it.second.blockHash;
+                    threadData->contractContext.txPrevData[i - threadData->offset].items[it.first].txIndex = it.second.txIndex;
                 }
-                threadData->contractContext.txFinalData[i - threadData->offset].data = threadData->contractContext.cache;
+                threadData->contractContext.txFinalData[i - threadData->offset] = threadData->contractContext.cache;
             }
 
-            threadData->contractContext.Commit();
             sls->contractDataFrom.clear();
+            threadData->contractContext.Commit();
         }
     } catch (std::exception e) {
         LogPrintf("%s:%d => unknown exception %s\n", __FUNCTION__, __LINE__, e.what());
@@ -357,8 +350,7 @@ bool ContractDataDB::RunBlockContract(const MCBlock* pBlock, ContractContext* pC
         if (!mainChain) {
             for (int j = offset; j < offset + pBlock->groupSize[i]; ++j) {
                 pContractContext->txPrevData[j] = std::move(threadData[i].contractContext.txPrevData[j - offset]);
-                pContractContext->txFinalData[j].contractCoins = std::move(threadData[i].contractContext.txFinalData[j - offset].contractCoins);
-                pContractContext->txFinalData[j].data = std::move(threadData[i].contractContext.txFinalData[j - offset].data);
+                pContractContext->txFinalData[j] = std::move(threadData[i].contractContext.txFinalData[j - offset]);
             }
         }
         offset += pBlock->groupSize[i];

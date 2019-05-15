@@ -57,13 +57,6 @@ public:
 class MCContractID;
 typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
 
-struct ContractTxFinalData
-{
-public:
-    std::map<MCContractID, MCAmount> contractCoins;
-    CONTRACT_DATA data;
-};
-
 class ContractContext
 {
     friend class ContractDataDB;
@@ -72,7 +65,7 @@ public:
     CONTRACT_DATA cache;    // 数据缓存，用于回滚
     CONTRACT_DATA data;
     CONTRACT_DATA prevData;
-    std::vector<ContractTxFinalData> txFinalData;
+    std::vector<CONTRACT_DATA> txFinalData;
     std::vector<ContractPrevData> txPrevData;
 
 public:

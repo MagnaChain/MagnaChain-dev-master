@@ -39,8 +39,9 @@ public:
     static const int SAVE_TYPE_DATA = 2;
     static const int MAX_INTERNAL_CALL_NUM = 30;
 
-    //~SmartLuaState();
+    ~SmartLuaState();
 
+    MCAmount payment;
     std::vector<MCTxOut> recipients;
     std::set<MCContractID> contractIds; // lua执行期间所有调用过的合约
     std::vector<MagnaChainAddress> contractAddrs;   // 以栈形式表示当前调用合约的合约地址
@@ -64,6 +65,7 @@ private:
     ContractContext* pContractContext = nullptr;
     MCBlockIndex* pPrevBlockIndex = nullptr;
     std::queue<lua_State*> luaStates;
+    std::map<MagnaChainAddress, lua_State*> usingLuaStates;
     MCTransactionRef tx;
 
 public:
@@ -73,9 +75,9 @@ public:
     MCAmount GetContractCoinOut(const MCContractID& contractId);
     void AddContractCoinsOut(const MCContractID& contractId, MCAmount delta);
 
-    void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, 
+    void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, const MCAmount payment, MagnaChainAddress& callerAddr,
         ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
-    lua_State* GetLuaState(MagnaChainAddress& contractAddr);
+    lua_State* GetLuaState(MagnaChainAddress& contractAddr, bool* exist);
     void ReleaseLuaState(lua_State* L);
 
     void Clear();
@@ -103,14 +105,14 @@ std::string TrimCode(const std::string& rawCode);
 
 bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
 bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret, bool decompress);
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, UniValue& ret);
+bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args, UniValue& ret);
 
 bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
 bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);
 
 uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
 uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData);
-bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractTxFinalData>& contractData, std::vector<uint256>& leaves);
+bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<CONTRACT_DATA>& contractData, std::vector<uint256>& leaves);
 bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves);
 uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool* mutated = nullptr);
 uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated = nullptr);

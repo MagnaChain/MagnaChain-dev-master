@@ -284,12 +284,15 @@ public:
     std::string code;
     std::string data;
 
-    ContractInfo() {};
+    ContractInfo() : txIndex(-1)
+    {
+    }
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
+        READWRITE(txIndex);
         READWRITE(code);
         READWRITE(blockHash);
         READWRITE(data);
