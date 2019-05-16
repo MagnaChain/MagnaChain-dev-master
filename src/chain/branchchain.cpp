@@ -1312,7 +1312,7 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
     return true;
 }
 
-bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData, const BranchBlockData* pPrevBlockData)
+int CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData, const BranchBlockData* pPrevBlockData)
 {
     ContractPrevData prevData;
     for (auto item : pProveData->contractData->contractPrevData) {
@@ -1324,7 +1324,7 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
     uint256 hashWithPrevData = GetTxHashWithPrevData(proveTx->GetHash(), prevData);
     int txIndex = CheckSpvProof(pBlockData->header.hashMerkleRootWithPrevData, pProveData->contractData->prevDataSPV, hashWithPrevData);
     if (txIndex < 0) {
-        return false;
+        return -1;
     }
 
     ContractContext contractContext;
@@ -1335,30 +1335,37 @@ bool CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, 
     SmartLuaState sls;
     contractContext.txFinalData.resize(txIndex + 1);
     if (!ExecuteContract(&sls, proveTx, txIndex, prevData.coins, pPrevBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext)) {
-        return false;
+        return -1;
     }
 
     uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData[txIndex]);
     int txIndexFinal = CheckSpvProof(pBlockData->header.hashMerkleRootWithData, pProveData->contractData->dataSPV, hashWithData);
-    if (txIndexFinal < 0 || txIndexFinal != txIndex) {
-        return false;
+    if (txIndexFinal < 0) {
+        return -1;
     }
 
-    return true;
+    if (txIndex != txIndexFinal) {
+        return -1;
+    }
+
+    return txIndex;
 }
 
 bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX)
+    if (!tx.IsProve() || tx.pProveData == nullptr || tx.pProveData->provetype != ReportType::REPORT_TX) {
         return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx param fail");
+    }
 
     const uint256 branchId = tx.pProveData->branchId;
-    if (!pBranchCache->HasBranchData(branchId))
+    if (!pBranchCache->HasBranchData(branchId)) {
         return state.DoS(0, false, REJECT_INVALID, "Branch data missing");
+    }
 
     const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vectProveData;
-    if (vectProveData.size() < 1)
+    if (vectProveData.size() < 1) {
         return state.DoS(0, false, REJECT_INVALID, "vectProveData size invalid can not zero");
+    }
 
     // unserialize prove tx
     MCTransactionRef pProveTx;
@@ -1366,26 +1373,31 @@ bool CheckProveReportTx(const MCTransaction& tx, MCValidationState& state, Branc
     cds >> (pProveTx);
 
     //check txid
-    if (pProveTx->GetHash() != tx.pProveData->txHash)
+    if (pProveTx->GetHash() != tx.pProveData->txHash) {
         return state.DoS(0, false, REJECT_INVALID, "Prove tx data error, first tx's hasdid is not eq proved txid");
+    }
 
     // spv check
     BranchData branchData = pBranchCache->GetBranchData(branchId);
     MCSpvProof spvProof(vectProveData[0].pCSP);
     BranchBlockData* pBlockData = branchData.GetBranchBlockData(spvProof.blockhash);
-    if (pBlockData == nullptr)
+    if (pBlockData == nullptr) {
         return state.DoS(0, false, REJECT_INVALID, "pBlockData == nullptr");
-    if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pProveTx->GetHash()) < 0)
+    }
+    int txIndex = CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pProveTx->GetHash());
+    if (txIndex < 0) {
         return state.DoS(0, false, REJECT_INVALID, "Check Prove ReportTx spv check fail");
+    }
 
     //check input/output/sign
     MCAmount fee;
-    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, fee, true))
+    if (!CheckTransactionProveWithProveData(pProveTx, state, vectProveData, branchData, fee, true)) {
         return false;
+    }
 
     if (pProveTx->IsSmartContract()) {
         BranchBlockData* pPrevBlockData = branchData.GetBranchBlockData(pBlockData->header.hashPrevBlock);
-        if (!CheckProveSmartContract(tx.pProveData, pProveTx, pBlockData, pPrevBlockData)) {
+        if (CheckProveSmartContract(tx.pProveData, pProveTx, pBlockData, pPrevBlockData) != txIndex) {
             return state.DoS(0, false, REJECT_INVALID, "CheckProveSmartContract fail");
         }
     }
