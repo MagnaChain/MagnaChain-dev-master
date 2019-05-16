@@ -120,7 +120,7 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 		data = cmsgpack.unpack(data)                                            \n\
 	end                                                                         \n\
                                                                                 \n\
-	local myenv = createSafeEnv()                                               \n\
+	myenv = createSafeEnv()                                                     \n\
     if myenv[funcname] ~= nil then                                              \n\
         return false, 'can not call lua internal function directly'             \n\
     end                                                                         \n\
@@ -162,7 +162,11 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 end                                                                             \n\
                                                                                 \n\
 function callExistContract(funcname, ...)	                                    \n\
-	local func = _G[funcname]                                                   \n\
+    local temp = createSafeEnv()                                                \n\
+    if temp[funcname] ~= nil then                                               \n\
+        return false, 'can not call lua internal function directly'             \n\
+    end                                                                         \n\
+	local func = myenv[funcname]                                                \n\
 	if type(func) == 'function' and funcname ~= 'init' then                     \n\
 		ret = { pcall(func, ...) }							                    \n\
 		if not ret[1] then                                                      \n\
