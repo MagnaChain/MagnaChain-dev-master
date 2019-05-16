@@ -1251,17 +1251,7 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
         PrecomputedTransactionData txdata(*pProveTx);
         CScriptCheck check(scriptPubKey, amount, *pProveTx, i, flags, fCacheResults, &txdata);
         if (!check()) {
-            bool checkok = true;
-            if (pProveTx->IsCallContract()) { //智能合约转币不用签名的
-                checkok = false;
-                MCContractID kDestKey;
-                if (!scriptPubKey.GetContractAddr(kDestKey)) {
-                    return state.DoS(0, false, REJECT_NONSTANDARD, "check smartcontract sign fail, contract addr fail");
-                }
-                checkok = true;
-            }
-            if (!checkok)
-                return state.DoS(0, false, REJECT_INVALID, "CheckProveReportTx scriptcheck fail");
+            return state.DoS(0, false, REJECT_NONSTANDARD, "check sign fail, contract addr fail");
         }
     }
 
