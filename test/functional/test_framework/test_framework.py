@@ -73,6 +73,7 @@ class MagnaChainTestFramework(object):
         # mapped，侧链对主链的映射，eg.[[0],[],[],[1]],表示侧链的0节点attach在主链的节点0；侧链1节点attach在主链的节点3
         self.mapped = []
         # self.mortgage_coins = [] #抵押币的txid，赎回抵押币时会用到
+        self.with_gdb = False
         self.set_test_params()
 
         assert hasattr(self, "num_nodes"), "Test must set self.num_nodes in set_test_params()"
@@ -336,7 +337,7 @@ class MagnaChainTestFramework(object):
         for i in range(num_nodes):
             n = TestNode(i, self.options.tmpdir, extra_args[i], rpchost, timewait=timewait, binary=binary[i],
                          stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir,
-                         sidechain=sidechain)
+                         sidechain=sidechain,with_gdb=self.with_gdb)
             if not sidechain:
                 self.nodes.append(n)
             else:

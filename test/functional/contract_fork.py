@@ -60,6 +60,8 @@ class ContractForkTest(MagnaChainTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 4
         self.extra_args = [["-txindex"],["-txindex"],["-txindex"],["-txindex"]]
+        # 这里开启GDB模式，主要用来catch crash，gdb的log放在datadir下的gdb-{pid}.log文件
+        # self.with_gdb = True
 
     def run_test(self):
         """Main test logic"""

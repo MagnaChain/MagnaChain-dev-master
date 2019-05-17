@@ -39,8 +39,9 @@ class TestNode():
     Any unrecognised messages will be dispatched to the RPC connection."""
 
     def __init__(self, i, dirname, extra_args, rpchost, timewait, binary, stderr, mocktime, coverage_dir,
-                 sidechain=False):
+                 sidechain=False, with_gdb=False):
         self.is_sidenode = sidechain
+        self.with_gdb = with_gdb
         self.index = i
         self.datadir = os.path.join(dirname, ("sidenode" if sidechain else "node") + str(i))
         self.rpchost = rpchost
@@ -72,7 +73,7 @@ class TestNode():
         self.args = [self.binary, "-datadir=" + self.datadir, "-server", "-keypool=1", "-discover=0", "-rest",
                      "-logtimemicros", "-debug", "-debugexclude=libevent", "-debugexclude=leveldb",
                      "-mocktime=" + str(mocktime), "-uacomment=testnode%d" % i, "-powtargetspacing=1",
-                     "-regtestmaturity=1", "-regtestbcmaturity=1","-printtoconsole=0","-disablesafemode"]
+                     "-regtestmaturity=1", "-regtestbcmaturity=1", "-printtoconsole=0", "-disablesafemode"]
 
         cli_binary = os.getenv("MAGNACHAINCLI", "magnachain-cli")
         if not os.path.exists(cli_binary):
@@ -94,6 +95,7 @@ class TestNode():
         self.rpc = None
         self.url = None
         self.log = logging.getLogger('TestFramework.{}{}'.format('sidenode' if sidechain else 'node', i))
+        self.gdb_process = None
 
     def __getattr__(self, *args, **kwargs):
         """Dispatches any unrecognised messages to the RPC connection."""
@@ -109,6 +111,18 @@ class TestNode():
         self.process = subprocess.Popen(self.args + extra_args, stderr=stderr)
         self.running = True
         self.log.debug("magnachaind started, waiting for RPC to come up")
+        if self.with_gdb:
+            cur_dir = os.path.abspath(os.path.dirname(__file__))
+            # print(os.path.join(os.path.dirname(cur_dir),'test_framework','gdb.py'))
+            sudo_pwd = os.getenv('SUDO_PASSWORD',None)  #通过环境变量获取sudo密码，用来启动gdb
+            if sudo_pwd is None:
+                self.log.error("To use gdb,please set the sudo password in EVN with key `SUDO_PASSWORD` first!!! Config file is /etc/profile")
+                return
+            gdb_cmd = "echo '{}'|sudo -S gdb -p {} -x {}".format(sudo_pwd, self.process.pid,
+                                                                 os.path.join(os.path.dirname(cur_dir),
+                                                                              'test_framework', 'gdb.py'))
+            gdb_out = open(os.path.join(self.datadir, 'gdb-{}.log'.format(self.process.pid)), 'w')
+            self.gdb_process = subprocess.Popen(gdb_cmd, shell=True, stdout=gdb_out, stderr=gdb_out)
 
     def wait_for_rpc_connection(self):
         """Sets up an RPC connection to the magnachaind process. Returns False if unable to connect."""
@@ -158,17 +172,18 @@ class TestNode():
         self.log.debug("Stopping node")
         try:
             self.stop()
-        except http.client.CannotSendRequest:
+        # except http.client.CannotSendRequest:
+        except Exception as e:
+            self.log.info("Unable to stop node by RPC.Reason {}.Retry by Kill".format(e))
             try:
-                self.log.info("Unable to stop node by RPC.Retry by CLI")
-                self.cli.stop()
-            except Exception as e:
-                self.log.info("Unable to stop node by CLI.Retry by Kill")
-                try:
-                    self.process.terminate()
-                except Exception as err:
-                    self.log.info("Kill process error for {}".format(err))
-                    self.log.exception("Unable to stop node.")
+                self.process.terminate()
+            except Exception as err:
+                self.log.info("Kill process error for {}".format(err))
+                self.log.exception("Unable to stop node.")
+        finally:
+            if self.with_gdb:
+                if self.gdb_process:
+                    self.gdb_process.terminate()
 
     def is_node_stopped(self):
         """Checks whether the node has stopped.
@@ -233,7 +248,7 @@ class TestNodeCLI():
         pos_args = [str(arg) for arg in args]
         named_args = [str(key) + "=" + str(value) for (key, value) in kwargs.items()]
         assert not (
-                    pos_args and named_args), "Cannot use positional arguments and named arguments in the same magnachain-cli call"
+                pos_args and named_args), "Cannot use positional arguments and named arguments in the same magnachain-cli call"
         p_args = [self.binary, "-datadir=" + self.datadir] + self.args
         if named_args:
             p_args += ["-named"]
