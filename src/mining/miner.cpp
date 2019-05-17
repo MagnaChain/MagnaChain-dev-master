@@ -1100,7 +1100,7 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 static uint256 guMaxWork = uint256S("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // 如有修改,同时也需修改 GetBlockHeaderWork
-uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins)
+uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins, const Consensus::Params& params)
 {
 	block_hash  = guMaxWork;
 	BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
@@ -1246,7 +1246,19 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 	}
 //	LogPrintf("%s: block work %s , Amount:%d \n", __func__, iTmp.GetHex(), iMount);
 
+    uint32_t iRunTime = 1;
+    int64_t timediff = block.nTime - pPreIndex->nTime;
+    if (timediff > params.nPowTargetSpacing * 2) {
+        iRunTime = timediff - params.nPowTargetSpacing * 2;
+        if (iRunTime > NMaxRunTime)
+            iRunTime = NMaxRunTime;
+        iRunTime /= 10;
+        if (iRunTime < 1)
+            iRunTime = 1;
+    }
+
 	uint32_t iComp = iTmp.GetCompact();
+    iComp /= iRunTime;
 	iTmp.SetCompact(iComp);
 	block_hash = ArithToUint256(iTmp);
 
@@ -1258,7 +1270,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash, pcoinsTip); //TODO: should pcoinsTip use a CoinViewCache parameter to replace?
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash, pcoinsTip, consensusParams); //TODO: should pcoinsTip use a CoinViewCache parameter to replace?
 
 	// check
 	bool fNegative;
@@ -1302,6 +1314,7 @@ inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const u
 //核心算法需要和 GetBlockWork 一致
 uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
+    const Consensus::Params& consensusparams = params.GetConsensus();
     ///// get and check data
     const MCOutPoint& out = block.prevoutStake;
     MCDataStream cds(block.vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
@@ -1342,7 +1355,7 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
     if (block.blockHeight != iPrevHeight + 1)
         return 0;
 
-    const bool isBigBoom = iPrevHeight < params.GetConsensus().BigBoomHeight;
+    const bool isBigBoom = iPrevHeight < consensusparams.BigBoomHeight;
 
     const int iMatureDepth = COINBASE_MATURITY - 1;
     MCAmount total = 0;
@@ -1449,7 +1462,19 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
         }
     }
 
+    uint32_t iRunTime = 1;
+    int64_t timediff = block.nTime - pPreIndex->GetBlockTime();
+    if (timediff > consensusparams.nPowTargetSpacing * 2) {
+        iRunTime = timediff - consensusparams.nPowTargetSpacing * 2;
+        if (iRunTime > NMaxRunTime)
+            iRunTime = NMaxRunTime;
+        iRunTime /= 10;
+        if (iRunTime < 1)
+            iRunTime = 1;
+    }
+
     uint32_t iComp = iTmp.GetCompact();
+    iComp /= iRunTime;
     iTmp.SetCompact(iComp);
     block_hash = ArithToUint256(iTmp);
 
@@ -1544,6 +1569,7 @@ bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& s
 	return true;
 }
 
+// if this fucntion imp change, GetBranchNextWorkRequired also need to be changed.
 unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHeader* pblock, const Consensus::Params& params)
 {
 	unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
@@ -1560,14 +1586,14 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 		return iMaxWorkBits;
 
 	uint32_t iRunTime = 1;
-    if (timediff > params.nPowTargetSpacing * 2) {
-        iRunTime = timediff - params.nPowTargetSpacing * 2;
-        if (iRunTime > NMaxRunTime)
-            iRunTime = NMaxRunTime;
-        iRunTime /= 10;
-        if (iRunTime < 1)
-            iRunTime = 1;
-    }
+    //if (timediff > params.nPowTargetSpacing * 2) {
+    //    iRunTime = timediff - params.nPowTargetSpacing * 2;
+    //    if (iRunTime > NMaxRunTime)
+    //        iRunTime = NMaxRunTime;
+    //    iRunTime /= 10;
+    //    if (iRunTime < 1)
+    //        iRunTime = 1;
+    //}
 
     bool fNegative;
     bool fOverflow;
@@ -1591,7 +1617,7 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 
     //	LogPrintf("%s: Average Target %s , count :%d \n", __func__, nMostWork.GetHex(), iCount );
 
-    nMostWork *= 2 * iRunTime;
+    nMostWork *= 2 * iRunTime; //TODO: Is necessary to remove 2
     arith_uint256 nTarget;
     uint512 uPowLimit;
     uPowLimit.SetHex(params.powLimit.GetHex());
@@ -1625,14 +1651,14 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
         return iMaxWorkBits;
 
     uint32_t iRunTime = 1;
-    if (timediff > consensusParams.nPowTargetSpacing * 2) {
-        iRunTime = timediff - consensusParams.nPowTargetSpacing * 2;
-        if (iRunTime > NMaxRunTime)
-            iRunTime = NMaxRunTime;
-        iRunTime /= 10;
-        if (iRunTime < 1)
-            iRunTime = 1;
-    }
+    //if (timediff > consensusParams.nPowTargetSpacing * 2) {
+    //    iRunTime = timediff - consensusParams.nPowTargetSpacing * 2;
+    //    if (iRunTime > NMaxRunTime)
+    //        iRunTime = NMaxRunTime;
+    //    iRunTime /= 10;
+    //    if (iRunTime < 1)
+    //        iRunTime = 1;
+    //}
 
     bool fNegative;
     bool fOverflow;
@@ -2017,17 +2043,17 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
 	// 如果block work大于要求，将NBITS设为实际值
 	uint256 out_hash;
-	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache);
+	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache, chainparams.GetConsensus());
 	arith_uint256 bTarget;
 	bTarget.SetCompact(pblock->nBits);
     const arith_uint256 bnOutHash = UintToArith256(out_hash);
-	if (bnOutHash < bTarget)
-	{
-		pblock->nBits = bnOutHash.GetCompact();
-		bTarget.SetCompact(pblock->nBits);
-		LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
-	}
-    else if (bnOutHash > bTarget) {
+	//if (bnOutHash < bTarget)
+	//{
+		//pblock->nBits = bnOutHash.GetCompact(); // don't adjust right now
+		//bTarget.SetCompact(pblock->nBits);
+		//LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
+	//} else 
+    if (bnOutHash > bTarget) {
         // CheckBlockWork will fail, break follow
         strErr = "Check block work fail, bnOutHash > bTarget";
         LogPrint(BCLog::MINING, strErr.c_str());
