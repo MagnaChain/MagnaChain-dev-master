@@ -1256,6 +1256,8 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
         if (iRunTime < 1)
             iRunTime = 1;
     }
+    iRunTime = (iRunTime / 5) * 5;
+    iRunTime = std::max<uint32_t>(iRunTime, 1);
 
 	uint32_t iComp = iTmp.GetCompact();
     iComp /= iRunTime;
@@ -1472,6 +1474,8 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
         if (iRunTime < 1)
             iRunTime = 1;
     }
+    iRunTime = (iRunTime / 5) * 5;
+    iRunTime = std::max<uint32_t>(iRunTime, 1);
 
     uint32_t iComp = iTmp.GetCompact();
     iComp /= iRunTime;
