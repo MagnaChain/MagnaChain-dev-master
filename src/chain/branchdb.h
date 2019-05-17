@@ -49,6 +49,9 @@ public:
 
     void InitDataFromTx(const MCTransaction& tx);
 
+    MCBlockHeader GetBlockHeader(void) const { return header; }
+    uint32_t GetBlockTime(void) const { return header.nTime; }
+
     ADD_SERIALIZE_METHODS;
 
     template <typename Stream, typename Operation>
