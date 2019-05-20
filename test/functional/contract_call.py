@@ -114,6 +114,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert txid not in node2.getrawmempool()
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
+
         # doubleSpendTest
         self.test_double_spend(mineblock=False)
         self.test_double_spend()
@@ -219,7 +220,7 @@ class ContractCallTest(MagnaChainTestFramework):
         # assert_equal([], node.getrawmempool())  # make sure mempool is empty
         # maxContractCallTest
         call_contract("maxContractCallTest", 15)  # 15 is the limit
-        assert_contains(call_contract("maxContractCallTest", 16), "run out of limit instruction")
+        assert_contains(call_contract("maxContractCallTest", 19), "run out of limit instruction")
         # callOtherContractTest
         # cycle call
         # step1 create contracts
