@@ -17,6 +17,11 @@
 #include "wallet/rpcwallet.h"
 #include "wallet/wallet.h"
 
+extern "C"
+{
+#include "lua/ldebug.h"
+}
+
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/device/back_inserter.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
@@ -122,6 +127,7 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
                                                                                 \n\
 	myenv = createSafeEnv()                                                     \n\
     if myenv[funcname] ~= nil then                                              \n\
+        myenv = nil                                                             \n\
         return false, 'can not call lua internal function directly'             \n\
     end                                                                         \n\
                                                                                 \n\
@@ -130,6 +136,7 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 	setfenv(contract, myenv)                                                    \n\
 	local success, err = pcall(contract)							            \n\
 	if not success then                                                         \n\
+        myenv = nil                                                             \n\
 		return false, err                                                       \n\
 	end                                                                         \n\
                                                                                 \n\
@@ -138,6 +145,7 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 	if type(func) == 'function' and funcname ~= 'init' then                     \n\
 		ret = { pcall(func, ...) }							                    \n\
 		if not ret[1] then                                                      \n\
+            myenv = nil                                                         \n\
 			return false, ret[2]  			                                    \n\
 		else																	\n\
 			local temp = {}														\n\
@@ -147,6 +155,7 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 			ret = temp														    \n\
 		end																		\n\
 	else                                                                        \n\
+        myenv = nil                                                             \n\
 		return false, string.format('can not find function %s.', funcname)      \n\
 	end                                                                         \n\
 	                                                                            \n\
@@ -155,9 +164,11 @@ function callContract(maxDataLen, code, data, funcname, ...)	                \n\
 		strPackData = cmsgpack.pack(myenv.PersistentData)                       \n\
 		local dataLen = string.len(strPackData)									\n\
 		if dataLen > maxDataLen then											\n\
+            myenv = nil                                                         \n\
 			return false, 'Lua:callContract dataLen > maxDataLen'				\n\
 		end																		\n\
 	end                                                                         \n\
+    myenv = nil                                                                 \n\
 	return true, strPackData, unpack(ret)				                        \n\
 end                                                                             \n\
                                                                                 \n\
@@ -760,22 +771,22 @@ int static InternalCallContract(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
     if (sls == nullptr) {
-        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
+        luaG_runerror(L, "%s => smartLuaState == nullptr", __FUNCTION__);
     }
 
     if (sls->isPublish) {
-        throw std::runtime_error(strprintf("%s => can't call callcontract when publishcontract", __FUNCTION__));
+        luaG_runerror(L, "%s => can't call callcontract when publishcontract", __FUNCTION__);
     }
 
     std::string strContractAddr = lua_tostring(L, 1);
     MagnaChainAddress contractAddr(strContractAddr);
     if (!contractAddr.IsValid()) {
-        throw std::runtime_error(strprintf("%s => contractAddr is invalid", __FUNCTION__));
+        luaG_runerror(L, "%s => contractAddr is invalid", __FUNCTION__);
     }
 
     std::string strFuncName = lua_tostring(L, 2);
     if (strFuncName.empty()) {
-        throw std::runtime_error(strprintf("%s => function name is empty", __FUNCTION__));
+        luaG_runerror(L, "%s => function name is empty", __FUNCTION__);
     }
 
     int top = lua_gettop(L);
@@ -800,8 +811,8 @@ int static InternalCallContract(lua_State* L)
     long maxCallNum = L->limit_instruction;
     bool success = CallContractReal(sls, contractAddr, strFuncName, args, maxCallNum, ret);
     L->limit_instruction = maxCallNum;
-    if (!success) {
-        throw std::runtime_error(ret[0].get_str().c_str());
+    if (!success) { 
+        luaG_runerror(L, ret[0].get_str().c_str());
     }
 
     lua_pushboolean(L, (int)success);
@@ -828,32 +839,35 @@ int static InternalCallContract(lua_State* L)
 int static SendCoins(lua_State* L)
 {
     SmartLuaState* sls = (SmartLuaState*)L->userData;
-    if (sls == nullptr)
-        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
-
-    if (sls->isPublish) {
-        throw std::runtime_error(strprintf("%s => can't call send when publishcontract", __FUNCTION__));
+    if (sls == nullptr) {
+        luaG_runerror(L, "%s => smartLuaState == nullptr", __FUNCTION__);
     }
 
-    if (!lua_isstring(L, 1))
-        throw std::runtime_error(strprintf("%s => param1 is not a string", __FUNCTION__));
+    if (sls->isPublish) {
+        luaG_runerror(L, "%s => can't call send when publishcontract", __FUNCTION__);
+    }
 
-    if (!lua_isnumber(L, 2))
-        throw std::runtime_error(strprintf("%s => param2 is not a number", __FUNCTION__));
+    if (!lua_isstring(L, 1)) {
+        luaG_runerror(L, "%s => param1 is not a string", __FUNCTION__);
+    }
+
+    if (!lua_isnumber(L, 2)) {
+        luaG_runerror(L, "%s => param2 is not a number", __FUNCTION__);
+    }
 
     MCAmount amount = lua_tonumber(L, 2);
     if (amount <= 0) {
-        throw std::runtime_error(strprintf("%s => amount(%d) out of range", __FUNCTION__, amount));
+        luaG_runerror(L, "%s => amount(%d) out of range", __FUNCTION__, amount);
     }
 
     if (sls->pCoinAmountCache == nullptr) {
-        throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
+        luaG_runerror(L, "%s => smartLuaState == nullptr", __FUNCTION__);
     }
 
     std::string strDest(lua_tostring(L, 1));
     MagnaChainAddress kDest(strDest);
     if (kDest.IsContractID() || !kDest.IsValid()) {
-        throw std::runtime_error(strprintf("%s => Invalid destination address", __FUNCTION__));
+        luaG_runerror(L, "%s => Invalid destination address", __FUNCTION__);
     }
 
     MCContractID contractId;
@@ -861,7 +875,7 @@ int static SendCoins(lua_State* L)
     MCAmount totalAmount = sls->pCoinAmountCache->GetAmount(contractId);
     MCAmount coinsOut = sls->GetContractCoinOut(contractId);
     if (coinsOut + amount > totalAmount) {
-        throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, sls->contractAddrs[0].ToString()));
+        luaG_runerror(L, "%s => Contract %s has not enough amount", __FUNCTION__, sls->contractAddrs[0].ToString().c_str());
     }
 
     MCTxOut out;
@@ -958,11 +972,13 @@ void SmartLuaState::ReleaseLuaState(lua_State* L)
     for (int i = 0; i < contractAddrs.size() - 1; ++i) {
         if (contractAddrs[i] == contractAddr) {
             found = true;
+            break;
         }
     }
 
     if (!found) {
         usingLuaStates.erase(contractAddr);
+        lua_settop(L, 0);
         lua_gc(L, LUA_GCCOLLECT, 0); /* stop collector during initialization */
         luaStates.push(L);
     }
@@ -973,13 +989,10 @@ SmartLuaState::~SmartLuaState()
 {
     Clear();
 
-    if (luaStates.size() > 0) {
-        LogPrintf("free lua state %d\n", luaStates.size());
-    }
-    
     while (luaStates.size()) {
-        lua_State* L = luaStates.back(); 
+        lua_State* L = luaStates.front();
         luaStates.pop();
+        L->userData = nullptr;
         lua_close(L);
     }
 }

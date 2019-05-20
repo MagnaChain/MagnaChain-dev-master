@@ -10,7 +10,6 @@ extern "C"
 #include "lua/lstate.h"
 #include "lua/lualib.h"
 #include "lua/lauxlib.h"
-//#include "lua/ldebug.h"
 }
 
 #include <set>
