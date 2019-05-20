@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/MagnaChain/MagnaChain-dev-master.svg?branch=master)](https://travis-ci.org/MagnaChain/MagnaChain-dev-master)  
+# [![Build Status](https://travis-ci.org/MagnaChain/MagnaChain-dev-master.svg?branch=master)](https://travis-ci.org/MagnaChain/MagnaChain-dev-master)  
 # Getting Started
 
 ## How to build
