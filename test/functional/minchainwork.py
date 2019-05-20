@@ -28,7 +28,7 @@ class MinimumChainWorkTest(MagnaChainTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 3
 
-        self.extra_args = [[], ["-minimumchainwork=0xfff"], ["-minimumchainwork=0xfff"]]
+        self.extra_args = [[], ["-minimumchainwork=0x50"], ["-minimumchainwork=0x50"]]
         self.node_min_work = [0, 101, 101]
 
     def setup_network(self):
@@ -72,10 +72,10 @@ class MinimumChainWorkTest(MagnaChainTestFramework):
         assert_equal(self.nodes[2].getblockcount(), starting_blockcount)
 
         self.log.info("Generating more blocks")
-        target_work = int(0xfff)
+        target_work = int(0x50)
         while(int(self.node0.getchaintipwork(), 16) <= target_work):
             self.nodes[0].generate(5)
-            self.log.info("Node0 current chain work: %s",int(self.node0.getchaintipwork(), 16))
+            self.log.info("Node0 current chain work: %s,target work is %s",int(self.node0.getchaintipwork(), 16),target_work)
 
         self.log.info("Verifying nodes are all synced")
 
