@@ -14,17 +14,16 @@ import time
 
 def stop_handler(event):
     print('catch event:',event)
-    if isinstance(event, gdb.BreakpointEvent): return
+    if isinstance(event, gdb.BreakpointEvent):
+        # handle BreakpointEvent
+        pass
     # handle SignalEvent
-    log_path = os.path.join( tempfile.gettempdir(),'test-gdb-{}.log'.format(os.getpid()))
     gdb.execute('bt')
-    # with open(log_path, 'w') as fh:
-    #     fh.write(bt + "\n")
     gdb.execute('kill')
     gdb.execute('q')
 
 def exit_handler(event):
-    print("event type: exit")
+    print("handle ExitEvent")
     gdb.execute('kill')
 
 @atexit.register
