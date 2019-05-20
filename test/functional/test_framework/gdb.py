@@ -17,10 +17,11 @@ def stop_handler(event):
     if isinstance(event, gdb.BreakpointEvent):
         # handle BreakpointEvent
         pass
-    # handle SignalEvent
-    gdb.execute('bt')
-    gdb.execute('kill')
-    gdb.execute('q')
+    else:
+	    # handle SignalEvent
+	    gdb.execute('bt')
+	    gdb.execute('kill')
+	    gdb.execute('q')
 
 def exit_handler(event):
     print("handle ExitEvent")
