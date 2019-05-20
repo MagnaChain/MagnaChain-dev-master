@@ -4149,6 +4149,23 @@ UniValue listmortgagecoins(const JSONRPCRequest& request)
     return results;
 }
 
+UniValue test(const JSONRPCRequest& request)
+{
+    LogPrintf("=============================\n");
+    fLogTimestamps = false;
+    extern uint32_t CalcTimeFactor(int64_t timediff, int64_t nBlockTargetSpace);
+    for (int i = 0; i < 864000; i++)
+    {
+        arith_uint256 iTmp("000000002a936ca763904c3c35fce2f3556c559c0214345d31b1bcebf76acb70");
+        uint32_t iRunTime = CalcTimeFactor(i, 15);
+        iTmp = iTmp * (864000 - iRunTime) / 864000;
+        LogPrintf("%d :: %f\n", iRunTime, iTmp.ToString());
+    }
+    fLogTimestamps = true;
+    UniValue ret;
+    return ret;
+}
+
 extern UniValue abortrescan(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumpprivkey(const JSONRPCRequest& request); // in rpcdump.cpp
 extern UniValue dumppubkey(const JSONRPCRequest& request);
@@ -4228,6 +4245,7 @@ static const CRPCCommand commands[] =
 
     { "wallet",             "listmortgagecoins",        &listmortgagecoins,        false,{ "minconf","maxconf","addresses","include_unsafe","query_options" } },
   //  { "wallet",             "posttransaction",          &posttransaction,       false,{ "hextx", } },
+//{ "wallet",             "test",          &test,       false,{ } },
 };
 
 void RegisterWalletRPCCommands(CRPCTable &t)

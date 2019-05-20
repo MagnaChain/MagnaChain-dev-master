@@ -1097,6 +1097,22 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 	//return true;
 }
 
+uint32_t CalcTimeFactor(int64_t timediff, int64_t nBlockTargetSpace)
+{
+    uint32_t iRunTime = 0;
+    if (timediff > nBlockTargetSpace * 2) {
+        iRunTime = timediff - nBlockTargetSpace * 2;
+        if (iRunTime > NMaxRunTime)
+            iRunTime = NMaxRunTime;
+        //iRunTime /= 10;
+        iRunTime = (iRunTime / 10) * 10; // 50?
+        //iRunTime = 2 * (NMaxRunTime - iRunTime) / NMaxRunTime;
+        //if (iRunTime < 1)
+        //    iRunTime = 1;
+    }
+    return iRunTime;
+}
+
 static uint256 guMaxWork = uint256S("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // 如有修改,同时也需修改 GetBlockHeaderWork
@@ -1248,20 +1264,12 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 
     uint32_t iRunTime = 1;
     int64_t timediff = block.nTime - pPreIndex->nTime;
-    if (timediff > params.nPowTargetSpacing * 2) {
-        iRunTime = timediff - params.nPowTargetSpacing * 2;
-        if (iRunTime > NMaxRunTime)
-            iRunTime = NMaxRunTime;
-        iRunTime /= 10;
-        if (iRunTime < 1)
-            iRunTime = 1;
-    }
-    iRunTime = (iRunTime / 5) * 5;
-    iRunTime = std::max<uint32_t>(iRunTime, 1);
-
-	uint32_t iComp = iTmp.GetCompact();
-    iComp /= iRunTime;
-	iTmp.SetCompact(iComp);
+    iRunTime = CalcTimeFactor(timediff, params.nPowTargetSpacing);
+    
+    iTmp = iTmp * (NMaxRunTime - iRunTime) / NMaxRunTime;// time 
+	//uint32_t iComp = iTmp.GetCompact();
+    //iComp /= iRunTime;
+	//iTmp.SetCompact(iComp);
 	block_hash = ArithToUint256(iTmp);
 
 //	LogPrintf("%s: Compat block work %s \n", __func__, iTmp.GetHex());
@@ -1466,20 +1474,12 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
 
     uint32_t iRunTime = 1;
     int64_t timediff = block.nTime - pPreIndex->GetBlockTime();
-    if (timediff > consensusparams.nPowTargetSpacing * 2) {
-        iRunTime = timediff - consensusparams.nPowTargetSpacing * 2;
-        if (iRunTime > NMaxRunTime)
-            iRunTime = NMaxRunTime;
-        iRunTime /= 10;
-        if (iRunTime < 1)
-            iRunTime = 1;
-    }
-    iRunTime = (iRunTime / 5) * 5;
-    iRunTime = std::max<uint32_t>(iRunTime, 1);
+    iRunTime = CalcTimeFactor(timediff, consensusparams.nPowTargetSpacing);
 
-    uint32_t iComp = iTmp.GetCompact();
-    iComp /= iRunTime;
-    iTmp.SetCompact(iComp);
+    iTmp = iTmp * (NMaxRunTime - iRunTime) / NMaxRunTime;
+    //uint32_t iComp = iTmp.GetCompact();
+    //iComp /= iRunTime;
+    //iTmp.SetCompact(iComp);
     block_hash = ArithToUint256(iTmp);
 
     return total;
@@ -1590,14 +1590,6 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 		return iMaxWorkBits;
 
 	uint32_t iRunTime = 1;
-    //if (timediff > params.nPowTargetSpacing * 2) {
-    //    iRunTime = timediff - params.nPowTargetSpacing * 2;
-    //    if (iRunTime > NMaxRunTime)
-    //        iRunTime = NMaxRunTime;
-    //    iRunTime /= 10;
-    //    if (iRunTime < 1)
-    //        iRunTime = 1;
-    //}
 
     bool fNegative;
     bool fOverflow;
@@ -1655,14 +1647,6 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
         return iMaxWorkBits;
 
     uint32_t iRunTime = 1;
-    //if (timediff > consensusParams.nPowTargetSpacing * 2) {
-    //    iRunTime = timediff - consensusParams.nPowTargetSpacing * 2;
-    //    if (iRunTime > NMaxRunTime)
-    //        iRunTime = NMaxRunTime;
-    //    iRunTime /= 10;
-    //    if (iRunTime < 1)
-    //        iRunTime = 1;
-    //}
 
     bool fNegative;
     bool fOverflow;
