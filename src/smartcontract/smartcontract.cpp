@@ -299,7 +299,7 @@ void static SetContractMsg(lua_State* L, const std::string& contractAddr, const 
     lua_setfield(L, -2, "timestamp");
     lua_pushnumber(L, blockHeight);
     lua_setfield(L, -2, "blockheight");
-    lua_pop(L, 1);
+    lua_pop(L, -1);
 }
 
 std::string TrimCode(const std::string& rawCode)
@@ -924,7 +924,7 @@ lua_State* SmartLuaState::GetLuaState(MagnaChainAddress& contractAddr, bool* exi
     }
     else {
         if (luaStates.size() > 0) {
-            L = luaStates.back();
+            L = luaStates.front();
             luaStates.pop();
             lua_settop(L, 0);
         }
