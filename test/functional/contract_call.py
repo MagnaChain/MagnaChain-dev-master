@@ -219,7 +219,7 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # assert_equal([], node.getrawmempool())  # make sure mempool is empty
         # maxContractCallTest
-        call_contract("maxContractCallTest", 15)  # 15 is the limit
+        call_contract("maxContractCallTest", 18,throw_exception = True)  # 18 is the limit
         assert_contains(call_contract("maxContractCallTest", 19), "run out of limit instruction")
         # callOtherContractTest
         # cycle call
@@ -253,9 +253,9 @@ class ContractCallTest(MagnaChainTestFramework):
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "reentrancyTest",
                           new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest",
-                          new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
+                          new_address,throw_exception = True)  # after called,size should be 126,because of the same lua vm
             node.generate(nblocks=1)
-            assert_equal(caller_b("get", "size")['return'][0], 127)
+            assert_equal(caller_b("get", "size")['return'][0], 126)
         print("step done")
 
         # lots of dust vin in contract's send transaction
@@ -311,7 +311,7 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             caller_last("reentrancyTest")
             node.generate(nblocks=1)
-            assert_equal(caller_last("get", "this")['return'], [])
+            assert_equal(caller_last("get", "this")['return'], [None])
 
         # 疲劳测试
         if not SKIP:
