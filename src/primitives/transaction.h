@@ -973,8 +973,6 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     }
 }
 
-extern bool IsCoinBranchTranScript(const MCScript& script);
-
 template<typename Stream, typename TxType>
 inline void SerializeTransaction(const TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);

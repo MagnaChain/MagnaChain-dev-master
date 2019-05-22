@@ -713,4 +713,7 @@ public:
     virtual ~CReserveScript() {}
 };
 
+bool IsCoinCreateBranchScript(const MCScript& script);
+bool IsCoinBranchTranScript(const MCScript& script);
+
 #endif // MAGNACHAIN_SCRIPT_SCRIPT_H

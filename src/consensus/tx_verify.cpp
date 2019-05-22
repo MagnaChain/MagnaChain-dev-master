@@ -28,8 +28,6 @@
 
 #include "chain/branchdb.h"
 
-extern bool IsCoinBranchTranScript(const MCScript& script);
-
 bool IsFinalTx(const MCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
     if (tx.nLockTime == 0)

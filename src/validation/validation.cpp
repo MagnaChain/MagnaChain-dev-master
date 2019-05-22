@@ -348,24 +348,6 @@ bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp, bool
     return EvaluateSequenceLocks(index, lockPair);
 }
 
-bool IsCoinCreateBranchScript(const MCScript& script)
-{
-    opcodetype opcode;
-    MCScript::const_iterator pc1 = script.begin();
-    if (script.GetOp(pc1, opcode) && opcode == OP_CREATE_BRANCH)
-        return true;
-    return false;
-}
-
-bool IsCoinBranchTranScript(const MCScript& script)
-{
-    opcodetype opcode;
-    MCScript::const_iterator pc1 = script.begin();
-    if (script.GetOp(pc1, opcode) && opcode == OP_TRANS_BRANCH)
-        return true;
-    return false;
-}
-
 bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls)
 {
     if (sls == nullptr)

@@ -226,9 +226,6 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 // Setting the target to > than 550MB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
-bool IsCoinCreateBranchScript(const MCScript& script);
-bool IsCoinBranchTranScript(const MCScript& script);
-
 bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
 /** 
  * Process an incoming block. This only returns after the best known valid
