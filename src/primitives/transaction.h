@@ -973,6 +973,8 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     }
 }
 
+extern bool IsCoinBranchTranScript(const MCScript& script);
+
 template<typename Stream, typename TxType>
 inline void SerializeTransaction(const TxType& tx, Stream& s) {
     const bool fAllowWitness = !(s.GetVersion() & SERIALIZE_TRANSACTION_NO_WITNESS);
@@ -992,8 +994,49 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << vinDummy;
         s << flags;
     }
-    s << tx.vin;
-    s << tx.vout;
+
+    const bool fIsSerGetHash = s.GetType() & SER_GETHASH;
+    const bool fIsOnlyGetHash = s.GetType() == SER_GETHASH;
+    if (fIsSerGetHash && tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
+        static std::vector<MCTxIn> vinOri;
+        if (vinOri.size() == 0) {
+            vinOri.resize(1);
+            vinOri[0].prevout.hash.SetNull();
+            vinOri[0].prevout.n = 0;
+            vinOri[0].scriptSig.clear();
+        }
+        std::vector<MCTxOut> voutOri = tx.vout;
+        for (int i = voutOri.size() - 1; i >= 0; i--) {
+            const MCScript& scriptPubKey = voutOri[i].scriptPubKey;
+            if (IsCoinBranchTranScript(scriptPubKey)) {
+                voutOri.erase(voutOri.begin() + i);
+            }
+        }
+        s << vinOri;
+        s << voutOri;
+    }
+    else if (fIsSerGetHash && (tx.IsSmartContract() && tx.pContractData->contractCoinsOut.size() > 0)) {
+        std::vector<MCTxIn> vinOri = tx.vin;
+        for (int i = vinOri.size() - 1; i >= 0; i--) {
+            if (vinOri[i].scriptSig.IsContract()) {
+                vinOri.erase(vinOri.begin() + i);
+            }
+        }
+        std::vector<MCTxOut> voutOri = tx.vout;
+        for (int i = voutOri.size() - 1; i >= 0; i--) {
+            const MCScript& scriptPubKey = voutOri[i].scriptPubKey;
+            if (scriptPubKey.IsContractChange()) {
+                voutOri.erase(voutOri.begin() + i);
+            }
+        }
+        s << vinOri;
+        s << voutOri;
+    }
+    else {// default
+        s << tx.vin;
+        s << tx.vout;
+    }
+
     if (flags & 1) {
         for (size_t i = 0; i < tx.vin.size(); i++) {
             s << tx.vin[i].scriptWitness.stack;
@@ -1001,6 +1044,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
 
+    static std::shared_ptr<MCSpvProof> pPMTEmpty = std::make_shared<MCSpvProof>();
     if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         s << *tx.pContractData;
     }
@@ -1012,7 +1056,10 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << tx.sendToBranchid;
         s << tx.sendToTxHexData;
         if (tx.sendToBranchid == "main") {
-            s << *tx.pPMT;
+            if (fIsSerGetHash)
+                s << *pPMTEmpty;
+            else
+                s << *tx.pPMT;
         }
     }
     else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
@@ -1020,7 +1067,10 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << tx.fromTx;
         s << tx.inAmount;
         if (tx.fromBranchId != "main") {
-            s << *tx.pPMT;
+            if (fIsSerGetHash)
+                s << *pPMTEmpty;
+            else
+                s << *tx.pPMT;
         }
     }
     else if (tx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE) {
@@ -1032,15 +1082,21 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
         s << *tx.pReportData;
-        s << *tx.pPMT;
+        if (fIsSerGetHash)
+            s << *pPMTEmpty;
+        else
+            s << *tx.pPMT;
     }
     else if (tx.nVersion == MCTransaction::PROVE) {
         s << *tx.pProveData;
     }
-    else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
+    else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE && !fIsSerGetHash) {
         s << tx.fromBranchId;
         s << tx.fromTx;
-        s << *tx.pPMT;
+        if (fIsSerGetHash)
+            s << *pPMTEmpty;
+        else
+            s << *tx.pPMT;
     }
     else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
         s << tx.reporttxid;

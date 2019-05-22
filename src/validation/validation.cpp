@@ -490,7 +490,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool, bool f
                 // revert transaction data
                 MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr, true);
                 ptx = MakeTransactionRef(mtx);
-                modify = true;
+                modify = mtx.GetHash() != (*it)->GetHash();// revert transaction make txid change? need to remove *it(original tx) correctly from mempool 
             }
         }
         uint64_t order = orders[ptx->GetHash()];

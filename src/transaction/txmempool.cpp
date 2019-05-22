@@ -1082,7 +1082,9 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransact
 //
 uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
 {
-    uint256 txHash = tx.GetHash();
+    const uint256& txHash = tx.GetHash();
+    if (tx.IsBranchChainTransStep2() || tx.IsDynamicTx()) // TODO: remove this function
+        return txHash;
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && !fFromMempool) {
         auto it = mapFinalTx2OriTx2.find(txHash);
         if (it == mapFinalTx2OriTx2.end()) {
@@ -1101,7 +1103,7 @@ uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
         }
         return it->second;
     }
-    return tx.GetHash();
+    return txHash;
 }
 
 // Calculates descendants of entry that are not already in setDescendants, and adds to
