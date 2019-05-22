@@ -317,7 +317,7 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             to_list = [node.getnewaddress() for i in range(1000)]
             for i,to in enumerate(to_list):
-                caller_last(PAYABLE, amount=10)
+                caller_last(PAYABLE, amount=100)
                 caller_last(CYCLE_CALL, last_id, "contractDataTest",amount=0)
                 caller_last(CYCLE_CALL, last_id, "dustChangeTest",to,amount=0)
                 caller_last(CYCLE_CALL, last_id, "addWithdrawList",to,amount=0)

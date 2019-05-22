@@ -456,8 +456,20 @@ class ContractForkTest(MagnaChainTestFramework):
             bal = 2000- 10  #这里20是因为send都从第一个合约里边去扣了
         assert_equal(self.node1.getbalanceof(ct.contract_id), bal)  # 减去合约的send调用
         assert_equal(self.node0.getbalanceof(ct.contract_id), bal)  # 减去合约的send调用
-        assert_equal(ct.call_get('counter', broadcasting=False,amount = 0)['return'][0], 5)  # 因为本节点mempool有合约交易，所以应该为5
-        assert_equal(ct.call_get('counter', broadcasting=False, exec_node=self.node2,amount = 0)['return'][0],
+        if with_send:
+            if crash_point == 2:
+                assert_equal(ct.call_get('counter', broadcasting=False,amount = 0)['return'][0], 4)  # 因为本节点mempool有合约交易，所以应该为4
+                assert_equal(ct.call_get('counter', broadcasting=False, exec_node=self.node2, amount=0)['return'][0],
+                             2)  # 该节点内存池中没有交易哦，所以应该为2
+            else:
+                assert_equal(ct.call_get('counter', broadcasting=False, amount=0)['return'][0],
+                             5)  # 因为本节点mempool有合约交易，所以应该为5
+                assert_equal(ct.call_get('counter', broadcasting=False, exec_node=self.node2, amount=0)['return'][0],
+                             3)  # 该节点内存池中没有交易哦，所以应该为3
+        else:
+            assert_equal(ct.call_get('counter', broadcasting=False, amount=0)['return'][0],
+                         4)  # 因为本节点mempool有合约交易，所以应该为4
+            assert_equal(ct.call_get('counter', broadcasting=False, exec_node=self.node2,amount = 0)['return'][0],
                      2)  # 该节点内存池中没有交易哦，所以应该为2
         for i in range(4):
             print("node{} ct2 get_balance:{}".format(i, ct2.get_balance(exec_node=self.nodes[i])))
@@ -505,8 +517,13 @@ class ContractForkTest(MagnaChainTestFramework):
 
         # In bestchain,ensure contract data is correct
         for i in range(4):
-            assert_equal(
-                ct.call_get('counter', exec_node=self.nodes[i], sender=self.nodes[i].getnewaddress(),amount = 0)['return'][0], 4)
+            if with_send and crash_point == 1:
+                assert_equal(
+                    ct.call_get('counter', exec_node=self.nodes[i], sender=self.nodes[i].getnewaddress(),amount = 0)['return'][0], 5)
+            else:
+                assert_equal(
+                    ct.call_get('counter', exec_node=self.nodes[i], sender=self.nodes[i].getnewaddress(), amount=0)[
+                        'return'][0], 4)
 
         # 未完成的用例，下面的有问题，先屏蔽
         # '''
