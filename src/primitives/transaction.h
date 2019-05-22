@@ -1013,23 +1013,6 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << vinOri;
         s << voutOri;
     }
-    else if (fIsSerGetHash && (tx.IsSmartContract() && tx.pContractData->contractCoinsOut.size() > 0)) {
-        std::vector<MCTxIn> vinOri = tx.vin;
-        for (int i = vinOri.size() - 1; i >= 0; i--) {
-            if (vinOri[i].scriptSig.IsContract()) {
-                vinOri.erase(vinOri.begin() + i);
-            }
-        }
-        std::vector<MCTxOut> voutOri = tx.vout;
-        for (int i = voutOri.size() - 1; i >= 0; i--) {
-            const MCScript& scriptPubKey = voutOri[i].scriptPubKey;
-            if (scriptPubKey.IsContractChange()) {
-                voutOri.erase(voutOri.begin() + i);
-            }
-        }
-        s << vinOri;
-        s << voutOri;
-    }
     else {// default
         s << tx.vin;
         s << tx.vout;
