@@ -149,6 +149,7 @@ enum
     SER_DISK            = (1 << 1),
     SER_GETHASH         = (1 << 2),
 	SER_WITHOUT_SIGN    = (1 << 3),
+    SER_GET_RAW_HASH    = (1 << 4), //TODO: place holder for the transactions change vin and vout after mined in block(like send to main chain transaction step2) 
 };
 
 #define READWRITE(obj)      (::SerReadWrite(s, (obj), ser_action))

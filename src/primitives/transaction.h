@@ -993,8 +993,8 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
         s << flags;
     }
 
-    const bool fIsSerGetHash = s.GetType() & SER_GETHASH;
-    const bool fIsOnlyGetHash = s.GetType() == SER_GETHASH;
+    const bool fIsSerGetHash = s.GetType() == SER_GET_RAW_HASH;//s.GetType() & SER_GET_RAW_HASH
+    //const bool fIsOnlyGetHash = s.GetType() == SER_GET_RAW_HASH;
     if (fIsSerGetHash && tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
         static std::vector<MCTxIn> vinOri;
         if (vinOri.size() == 0) {
