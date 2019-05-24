@@ -635,12 +635,12 @@ public:
 
 	bool IsBranchCreate() const
 	{
-		return nVersion == CREATE_BRANCH_VERSION && !branchVSeeds.empty();
+		return nVersion == CREATE_BRANCH_VERSION;
 	}
 
 	bool IsBranchChainTransStep1() const
 	{
-		return nVersion == TRANS_BRANCH_VERSION_S1 && !sendToBranchid.empty() && !sendToTxHexData.empty();
+		return nVersion == TRANS_BRANCH_VERSION_S1;
 	}
 
 	bool IsBranchChainTransStep2() const
@@ -785,12 +785,12 @@ struct MCMutableTransaction
 
 	bool IsBranchCreate() const
 	{
-		return nVersion == MCTransaction::CREATE_BRANCH_VERSION && !branchVSeeds.empty();
+		return nVersion == MCTransaction::CREATE_BRANCH_VERSION;
 	}
 
 	bool IsBranchChainTransStep1() const
 	{
-		return nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 && !sendToBranchid.empty() && !sendToTxHexData.empty();
+		return nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1;
 	}
 
 	bool IsBranchChainTransStep2() const
