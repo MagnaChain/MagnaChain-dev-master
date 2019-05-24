@@ -1071,7 +1071,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     else if (tx.nVersion == MCTransaction::PROVE) {
         s << *tx.pProveData;
     }
-    else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE && !fIsSerGetHash) {
+    else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         s << tx.fromBranchId;
         s << tx.fromTx;
         if (fIsSerGetHash)
