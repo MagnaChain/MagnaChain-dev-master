@@ -2155,7 +2155,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 //获取举报交易数据
 UniValue getreporttxdata(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
                 "getreporttxdata \"txid\" \n"
                 "\nGet report transaction data by txid.\n"
@@ -2288,7 +2288,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 //
 UniValue getprovetxdata(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 2)
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
         throw std::runtime_error(
                 "getprovetxdata \"txid\" \n"
                 "\nGet prove transaction data by txid.\n"
@@ -2343,6 +2343,38 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
     return ret;
 }
 
+//get step 2 txid by step 1 txid. 
+// for IsBranchChainTransStep2 IsRedeemMortgage transaction.
+UniValue getvarietytxid(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+        throw std::runtime_error(
+            "getvarietytxid \"txid\" \n"
+            "\nGet prove transaction data by txid.\n"
+            "\nArguments:\n"
+            "1. \"txid\"             (string, required) The variety txid.\n"
+            "\nResult:\n"
+            "txid\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getvarietytxid", "7de1dc8ae60b924ed68d9088b376e185cabfde330db625a6ec2234def965600a")
+            + HelpExampleRpc("getvarietytxid", "7de1dc8ae60b924ed68d9088b376e185cabfde330db625a6ec2234def965600a")
+        );
+
+    uint256 txid = ParseHashV(request.params[0], "parameter 0");
+    if (!g_pBranchChainTxRecordsDb)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "db not init!\n");
+
+    uint256 vtxid = g_pBranchChainTxRecordsDb->GetBlockTxid(txid);
+    if (vtxid.IsNull())
+    {// from mempool
+        if (g_pBranchTxRecordCache) {
+            vtxid = g_pBranchTxRecordCache->GetBlockTxid(txid);
+        }
+    }
+    UniValue uvret(vtxid.GetHex());
+    return uvret;
+}
+
 static const CRPCCommand commands[] =
 { //  category              name                         actor (function)              okSafeMode
     //  --------------------- ------------------------     -----------------------       ----------
@@ -2379,6 +2411,8 @@ static const CRPCCommand commands[] =
     { "branchchain",        "getreporttxdata",           &getreporttxdata,             false, { "txid" } },
     { "branchchain",        "unlockmortgageminecoin",    &unlockmortgageminecoin,      false,{ "txid", "coinpreouthash", "provetxid" } }, 
     { "branchchain",        "getprovetxdata",            &getprovetxdata,              false,{ "txid" } },
+
+    { "branchchain",        "getvarietytxid",            &getvarietytxid,              false, { "txid"} },
 };
 
 void RegisterBranchChainRPCCommands(CRPCTable &t)

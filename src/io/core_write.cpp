@@ -322,6 +322,15 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         tx.pBranchBlockData->GetBlockHeader(block);
         entry.pushKV("branchblockhash", block.GetHash().GetHex());
     }
+    if (tx.IsRedeemMortgage()) {
+        entry.pushKV("fromBranchId", tx.fromBranchId);
+        entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+        MCTransactionRef pfromtx;
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pfromtx);
+        entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
+    }
+
 
     if (include_hex) {
         entry.pushKV("hex", EncodeHexTx(tx, serialize_flags)); // the hex-encoded transaction. used the name "hex" to be consistent with the verbose output of "getrawtransaction".
