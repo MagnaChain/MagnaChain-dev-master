@@ -1240,7 +1240,7 @@ void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
     }
 }
 
-void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool)
+void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool, MemPoolRemovalReason reason)
 {
     int64_t nTime = GetTimeMicros();
     for (const auto& tx : vtx)
@@ -1250,7 +1250,7 @@ void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool
         if (it != mapTx.end()) {
             setEntries stage;
             stage.insert(it);
-            RemoveStaged(stage, true, MemPoolRemovalReason::BLOCK);
+            RemoveStaged(stage, true, reason);
         }
         RemoveConflicts(*tx);
         ClearPrioritisation(txid);
@@ -1286,7 +1286,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
 
     // Before the txs in the new block have been removed from the mempool, update policy estimates
     if (minerPolicyEstimator) { minerPolicyEstimator->ProcessBlock(nBlockHeight, entries); }
-    RemoveForVector(vtx, true);
+    RemoveForVector(vtx, true, MemPoolRemovalReason::BLOCK);
 
     // remove all duplicate branch block header info tx.
     if (bIsMainChain && !setHeaderMixHash.empty())
@@ -1308,7 +1308,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
                 }
             }
         }
-        RemoveForVector(vRemove, true);
+        RemoveForVector(vRemove, true, MemPoolRemovalReason::BLOCK);
     }
 
     lastRollingFeeUpdate = GetTime();

@@ -566,7 +566,7 @@ public:
     void RemoveForReorg(const MCCoinsViewCache* pcoins, unsigned int nMemPoolHeight, int flags);
     void RemoveConflicts(const MCTransaction& tx);
     void RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsigned int nBlockHeight);
-    void RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool);
+    void RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool, MemPoolRemovalReason reason);
 
     void Clear();
     void DoClear(); //lock free
