@@ -95,8 +95,6 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
 		mpContractDb = new ContractDataDB(GetDataDir() / "contract", 1 << 23, false, false);
 		g_pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", 1 << 23, false, false);
         g_pBranchTxRecordCache = new BranchChainTxRecordsCache();
-        pCoinAmountDB = new CoinAmountDB();
-        pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
         if (!LoadGenesisBlock(chainparams)) {
             throw std::runtime_error("LoadGenesisBlock failed.");
         }
@@ -153,17 +151,16 @@ extern MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmou
 // Create a new block with just given transactions, coinbase paying to
 // scriptPubKey, and try to add it to the current chain.
 //
-MCBlock
-TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns, const MCScript& scriptPubKey)
+MCBlock TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns, const MCScript& scriptPubKey)
 {
     const MCChainParams& chainparams = Params();
 	MCWallet tempWallet;
 	tempWallet.AddKey(coinbaseKey);
 
     //std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
-    ContractContext contractContext;
+    std::vector<VMOut> vmOuts;
     std::string strErr;
-	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext, true, &tempWallet, pcoinsTip, strErr);
+	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, vmOuts, true, &tempWallet, pcoinsTip, strErr);
     MCBlock& block = pblocktemplate->block;
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
@@ -200,7 +197,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
     std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(block);
-    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr);
+    ProcessNewBlock(chainparams, shared_pblock, true, nullptr);
 
     MCBlock result = block;
     return result;

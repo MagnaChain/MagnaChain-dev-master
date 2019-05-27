@@ -142,8 +142,6 @@ const char* GetOpName(opcodetype opcode)
     case OP_NOP9                   : return "OP_NOP9";
     case OP_NOP10                  : return "OP_NOP10";
 
-    case OP_CONTRACT               : return "OP_CONTRACT";
-    case OP_CONTRACT_CHANGE        : return "OP_CONTRACT_CHANGE";
     case OP_CREATE_BRANCH          : return "OP_CREATE_BRANCH";
     case OP_TRANS_BRANCH           : return "OP_TRANS_BRANCH";
     case OP_MINE_BRANCH_MORTGAGE   : return "OP_MINE_BRANCH_MORTGAGE";
@@ -161,42 +159,6 @@ const char* GetOpName(opcodetype opcode)
         return "OP_UNKNOWN";
     }
 }
-
-bool MCScript::IsContract() const
-{
-    opcodetype opcode;
-    std::vector<unsigned char> vch;
-    MCScript::const_iterator pc1 = begin();
-    GetOp(pc1, opcode, vch);
-    return (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE);
-}
-
-bool MCScript::IsContractChange() const
-{
-    opcodetype opcode;
-    std::vector<unsigned char> vch;
-    MCScript::const_iterator pc1 = begin();
-    GetOp(pc1, opcode, vch);
-    return (opcode == OP_CONTRACT_CHANGE);
-}
-
-
-bool MCScript::GetContractAddr(MCContractID& contractId) const
-{
-	opcodetype opcode;
-	std::vector<unsigned char> vch;
-	MCScript::const_iterator pc1 = begin();
-	GetOp(pc1, opcode, vch);
-
-	if (opcode != OP_CONTRACT && opcode != OP_CONTRACT_CHANGE)
-		return false;
-
-	vch.clear();
-	vch.assign(pc1 + 1, end());
-    contractId = MCContractID(uint160(vch));
-	return true;
-}
-
 
 unsigned int MCScript::GetSigOpCount(bool fAccurate) const
 {

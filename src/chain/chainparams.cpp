@@ -71,12 +71,12 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
     genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
     if (!isMainChain) {
-        ContractContext contractContext;
-        contractContext.txFinalData.resize(1);
+        std::vector<uint256> leaves;
+        std::vector<VMOut> vmOuts;
+        vmOuts.resize(1);
         genesis.groupSize.resize(1);
-        genesis.prevContractData.resize(1);
-        genesis.hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(genesis);
-        genesis.hashMerkleRootWithData = BlockMerkleRootWithData(genesis, contractContext);
+        genesis.hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(&genesis, vmOuts, leaves, nullptr);
+        genesis.hashMerkleRootWithData = BlockMerkleLeavesWithFinalData(&genesis, vmOuts, leaves, nullptr);
     }
 
     return genesis;

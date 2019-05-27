@@ -42,10 +42,6 @@
 #include <boost/iostreams/filter/gzip.hpp>
 
 static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
-
-void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls = nullptr);
-void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls = nullptr);
-
 MCWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request)
 {
     if (request.URI.substr(0, WALLET_ENDPOINT_BASE.size()) == WALLET_ENDPOINT_BASE) {
@@ -137,6 +133,183 @@ std::string AccountFromValue(const UniValue& value)
     if (strAccount == "*")
         throw JSONRPCError(RPC_WALLET_INVALID_ACCOUNT_NAME, "Invalid account name");
     return strAccount;
+}
+
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, VMOut* vmOut)
+{
+    //	if (fromaddress.Get().type() != typeid(MCKeyID))
+    //	{
+    //		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
+    //	}
+
+    MCKeyID kFromKeyId;
+    if (!fromaddress.GetKeyID(kFromKeyId)) {
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
+    }
+
+    CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
+
+    std::set<MCOutPoint> setInOutPoints;
+    std::vector<Coin> vCoin;
+    MCAmount nValue = 0;
+    if (plist != nullptr) {
+        BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
+            const Coin& coin = pcoinsTip->AccessCoin(outpoint);
+            if (coin.IsSpent()) {
+                continue;
+            }
+            if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
+                continue;
+            }
+
+            nValue += coin.out.nValue;
+            setInOutPoints.insert(outpoint);
+            vCoin.push_back(coin);
+            // TODO 
+            //	if ((nUserFee > 0 && nValue >= nAmount + nUserFee)) {// include more fee to make sure later success
+            //		break;
+            //	}
+        }
+    }
+
+    if (nUserFee > 0 && nValue < nAmount + nUserFee)
+    {
+        throw JSONRPCError(RPC_VERIFY_REJECTED, "Not enough spendable coin for send and fee");
+    }
+
+    MCAmount curBalance = nValue;
+    bool fSubtractFeeFromAmount = false;
+
+    std::vector<MCRecipient> vecSend;
+    if (nAmount > 0)
+    {
+        MCRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
+        vecSend.push_back(recip);
+    }
+
+    MCFakeWallet fakeWallet;
+    fakeWallet.m_ownKeys.insert(kFromKeyId);
+
+    MCCoinControl coin_control;
+    coin_control.destChange = changeaddress.Get();
+    coin_control.fAllowOtherInputs = false;
+    for (MCOutPoint outpoint : setInOutPoints)
+    {
+        //coin_control.Select(outpoint);//select by MCWallet later ,AvailableCoins 有问题 
+        MCWalletTx wtxIn;
+        MCTransactionRef txOutpoint;
+        uint256 hash = outpoint.hash;
+        uint256 hashBlock;
+        if (GetTransaction(hash, txOutpoint, Params().GetConsensus(), hashBlock, true))
+        {
+            wtxIn.tx = txOutpoint;
+            wtxIn.hashBlock = hashBlock;
+            wtxIn.nIndex = 0;//just for cheat //wtxIn.SetMerkleBranch();
+            wtxIn.BindWallet(&fakeWallet);
+            std::pair<std::map<uint256, MCWalletTx>::iterator, bool> ret = fakeWallet.mapWallet.insert(std::make_pair(hash, wtxIn));
+        }
+    }
+
+    MCReserveKey reservekey(&fakeWallet);
+    int nChangePosRet = -1;
+    MCAmount nFeeRequired;
+    std::string strError;
+    if (!fakeWallet.CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, false, vmOut)) {
+        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+}
+
+//构造一个交易，从一个地址上的转币到另外一个地址，尚未签名 
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, VMOut* vmOut)
+{
+    MCScript scriptPubKey = GetScriptForDestination(toaddress.Get());
+    SendFromToOther(wtxNew, fromaddress, scriptPubKey, changeaddress, nAmount, nUserFee, vmOut);
+}
+
+void SendMoney(MCWallet* const pwallet, const MCTxDestination* address, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coin_control, VMOut* vmOut, bool commit = true, bool sign = true)
+{
+    // Check amount
+    if (nValue < 0)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
+
+    MCAmount curBalance = pwallet->GetBalance();
+    if (nValue > curBalance)
+        throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
+
+    if (pwallet->GetBroadcastTransactions() && !g_connman)
+        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+
+    // Create and send the transaction
+    std::vector<MCRecipient> vecSend;
+    if (nValue > 0 && address != nullptr && !boost::get<MCNoDestination>(address)) {
+        const MCScript& scriptPubKey = GetScriptForDestination(*address);
+        MCRecipient recipient{ scriptPubKey, nValue, fSubtractFeeFromAmount };
+        vecSend.push_back(recipient);
+    }
+
+    MCReserveKey reservekey(pwallet);
+    MCAmount nFeeRequired;
+    std::string strError;
+    int nChangePosRet = -1;
+    sign = commit ? true : sign;
+    if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, sign, vmOut)) {
+        if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
+            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+    }
+
+    if (commit) {
+        MCValidationState state;
+        if (!pwallet->CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
+            strError = strprintf("Error: The transaction was rejected! Reason given: %s. txid %s, you can call abandontransaction to remove it", state.GetRejectReason(), wtxNew.tx->GetHash().GetHex());
+            throw JSONRPCError(RPC_WALLET_ERROR, strError);
+        }
+    }
+}
+
+bool PublishContract(MCWallet* pWallet, MCAmount payment, std::string& strVMCaller, const std::string& rawCode, VMOut* vmOut)
+{
+    MagnaChainAddress vmCaller;
+    if (!GetSenderAddr(pWallet, strVMCaller, vmCaller)) {
+        throw std::runtime_error("GetSenderAddr fail.");
+    }
+
+    MCKeyID senderKey;
+    MCPubKey senderPubKey;
+    if (!vmCaller.GetKeyID(senderKey) || !pWallet->GetPubKey(senderKey, senderPubKey)) {
+        throw std::runtime_error("Get Key or PubKey fail.");
+    }
+
+    // temp addresss, replace in MCWallet::CreateTransaction
+    std::string trimRawCode = TrimCode(rawCode);
+    MCContractID contractId = GenerateContractAddress(pWallet, vmCaller, trimRawCode);
+    MagnaChainAddress contractAddr(contractId);
+
+    VMIn vmIn{ -1, payment, vmCaller, chainActive.Tip() };
+    bool success = mempool.PublishContract(&vmIn, vmOut, contractAddr, trimRawCode, false);
+    if (success) {
+        MCWalletTx wtx;
+        wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
+        wtx.pContractData.reset(new ContractData());
+        wtx.pContractData->codeOrFunc = vmOut->txFinalData[contractId].code;
+        wtx.pContractData->sender = senderPubKey;
+        wtx.pContractData->address = contractId;
+        wtx.pContractData->contractCoinsIn = payment;
+
+        MCCoinControl coinCtrl;
+        EnsureWalletIsUnlocked(pWallet);
+        SendMoney(pWallet, nullptr, 0, false, wtx, coinCtrl, vmOut);
+
+        vmOut->ret.setObject();
+        vmOut->ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
+        vmOut->ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
+        vmOut->ret.push_back(Pair("senderaddress", vmCaller.ToString()));
+        LogPrintf("%s:%d %s %s\n", __FUNCTION__, __LINE__, contractId.ToString(), wtx.tx->pContractData->address.ToString());
+    }
+
+    return success;
 }
 
 UniValue getnewaddress(const JSONRPCRequest& request)
@@ -382,49 +555,6 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-void SendMoney(MCWallet * const pwallet, const MCScript &scriptPubKey, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coin_control, SmartLuaState* sls)
-{
-	MCAmount curBalance = pwallet->GetBalance();
-
-	// Check amount
-	if (nValue < 0)
-		throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid amount");
-
-	if (nValue > curBalance)
-		throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Insufficient funds");
-
-	if (pwallet->GetBroadcastTransactions() && !g_connman)
-		throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
-
-	// Create and send the transaction
-	MCReserveKey reservekey(pwallet);
-	MCAmount nFeeRequired;
-	std::string strError;
-	std::vector<MCRecipient> vecSend;
-    if (nValue > 0) {
-        MCRecipient recipient = { scriptPubKey, nValue, fSubtractFeeFromAmount };
-        vecSend.push_back(recipient);
-    }
-    int nChangePosRet = -1;
-	if (!pwallet->CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true, sls)) {
-		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
-			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
-		throw JSONRPCError(RPC_WALLET_ERROR, strError);
-	}
-
-	MCValidationState state;
-	if (!pwallet->CommitTransaction(wtxNew, reservekey, g_connman.get(), state)) {
-		strError = strprintf("Error: The transaction was rejected! Reason given: %s. txid %s, you can call abandontransaction to remove it", state.GetRejectReason(), wtxNew.tx->GetHash().GetHex());
-		throw JSONRPCError(RPC_WALLET_ERROR, strError);
-	}
-}
-
-void SendMoney(MCWallet * const pwallet, const MCTxDestination &address, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coin_control)
-{
-	MCScript scriptPubKey = GetScriptForDestination(address);
-	SendMoney(pwallet, scriptPubKey, nValue, fSubtractFeeFromAmount, wtxNew, coin_control);
-}
-
 UniValue sendtoaddress(const JSONRPCRequest& request)
 {
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -502,8 +632,9 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
         }
     }
 
+    const MCTxDestination& dest = address.Get();
     EnsureWalletIsUnlocked(pwallet);
-    SendMoney(pwallet, address.Get(), nAmount, fSubtractFeeFromAmount, wtx, coin_control);
+    SendMoney(pwallet, &dest, nAmount, fSubtractFeeFromAmount, wtx, coin_control, nullptr);
 
     return wtx.GetHash().GetHex();
 }
@@ -546,18 +677,23 @@ UniValue publishcontract(const JSONRPCRequest& request)
 	std::string rawCode;
     rawCode.resize(fileLen);
 	fread(&rawCode[0], fileLen, 1, file);
-	fclose(file);
+    fclose(file);
+
+    MCAmount payment = 0;
+    if (request.params.size() > 1) {
+        payment = AmountFromValue(request.params[1]);
+    }
 
     std::string strSenderAddr;
-    if (request.params.size() > 1)
-        strSenderAddr = request.params[1].get_str();
+    if (request.params.size() > 2) {
+        strSenderAddr = request.params[2].get_str();
+    }
 
-    SmartLuaState sls;
-    UniValue ret(UniValue::VARR);
-	if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
-        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
+    VMOut vmOut;
+	if (!PublishContract(pwallet, payment, strSenderAddr, rawCode, &vmOut))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
 
-    return ret;
+    return vmOut.ret;
 }
 
 UniValue publishcontractcode(const JSONRPCRequest& request)
@@ -592,15 +728,21 @@ UniValue publishcontractcode(const JSONRPCRequest& request)
 	std::vector<unsigned char> vCode = ParseHex(strCodeDataHex);
     std::string rawCode(vCode.begin(), vCode.end());
 
-    std::string strSenderAddr;
-    if (request.params.size() > 1)
-        strSenderAddr = request.params[1].get_str();
+    MCAmount payment;
+    if (request.params.size() > 1) {
+        payment = AmountFromValue(request.params[1]);
+    }
 
-    SmartLuaState sls;
-    UniValue ret(UniValue::VARR);
-    if (!PublishContract(&sls, pwallet, strSenderAddr, rawCode, ret))
-        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
-    return ret;
+    std::string strSenderAddr;
+    if (request.params.size() > 2) {
+        strSenderAddr = request.params[2].get_str();
+    }
+
+    VMOut vmOut;
+    if (!PublishContract(pwallet, payment, strSenderAddr, rawCode, &vmOut)) {
+        throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
+    }
+    return vmOut.ret;
 }
 
 //sdk调用，编译代码，预先生成交易
@@ -648,8 +790,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	if (!senderAddr.IsValid())
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain sender address");
 
-	MCAmount amount = AmountFromValue(request.params[3]);
-	if (amount < 0)
+	MCAmount payment = AmountFromValue(request.params[3]);
+	if (payment < 0)
 		throw JSONRPCError(RPC_TYPE_ERROR, "Invalid amount for send");
 
 	MagnaChainAddress changeAddr;
@@ -665,25 +807,21 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, trimRawCode);
 	MagnaChainAddress contractAddr(contractId);
 
-    SmartLuaState sls;
-    UniValue ret(UniValue::VARR);
-    sls.Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, 0, senderAddr, nullptr, nullptr, 0, nullptr);
-    if (!PublishContract(&sls, contractAddr, trimRawCode, ret, false))
-        throw JSONRPCError(RPC_CONTRACT_ERROR, ret[0].get_str());
+    VMIn vmIn{ -1, payment, senderAddr, chainActive.Tip() };
+    VMOut vmOut;
+    if (!mempool.PublishContract(&vmIn, &vmOut, contractAddr, trimRawCode, false))
+        throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
 
-    MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
-
-    sls.contractIds.erase(contractId);
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::PUBLISH_CONTRACT_VERSION;
     wtx.pContractData.reset(new ContractData);
-    wtx.pContractData->codeOrFunc = trimRawCode;
+    wtx.pContractData->codeOrFunc = vmOut.txFinalData[contractId].code;
     wtx.pContractData->sender = senderPubKey;
     wtx.pContractData->address = contractId;
-    wtx.pContractData->contractCoinsOut.clear();
-    SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, amount, 0, &sls);
+    wtx.pContractData->contractCoinsIn = payment;
+    SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut);
 
-    ret.setObject();
+    UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
     
     //for debug
@@ -717,8 +855,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     //}
 
     UniValue uvalCoins(UniValue::VARR);
-    for (MCTxIn txin : wtx.tx->vin)
-    {
+    for (MCTxIn txin : wtx.tx->vin) {
         const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
         UniValue uvalCoin((UniValue::VOBJ));
         uvalCoin.push_back(Pair("txhash", txin.prevout.hash.GetHex()));
@@ -793,40 +930,35 @@ UniValue callcontract(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
     }
 
-    SmartLuaState sls;
-    UniValue callRet(UniValue::VARR);
-    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, payment, senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, strFuncName, args, callRet);
-    if (success) {
-        UniValue ret(UniValue::VType::VOBJ);
-        if (sendCall) {
-            MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
-
-            MCContractID contractId;
-            contractAddr.GetContractID(contractId);
-
-            MCWalletTx wtx;
-            wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
-            wtx.pContractData.reset(new ContractData);
-            wtx.pContractData->sender = senderPubKey;
-            wtx.pContractData->codeOrFunc = strFuncName;
-            wtx.pContractData->args = args.write();
-            wtx.pContractData->address = contractId;
-            wtx.pContractData->contractCoinsOut = std::move(sls.contractCoinsOut);
-
-            bool subtractFeeFromAmount = false;
-            MCCoinControl coinCtrl;
-            EnsureWalletIsUnlocked(pwallet);
-            SendMoney(pwallet, scriptPubKey, payment, subtractFeeFromAmount, wtx, coinCtrl, &sls);
-            ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
-        }
-        ret.push_back(Pair("return", callRet));
-        return ret;
+    VMOut vmOut;
+    VMIn vmIn{ -1, payment, senderAddr, chainActive.Tip() };
+    if (!mempool.CallContract(&vmIn, &vmOut, contractAddr, strFuncName, args)) {
+        throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
     }
-    else
-        throw JSONRPCError(RPC_CONTRACT_ERROR, callRet[0].get_str());
 
-    return NullUniValue;
+    UniValue ret(UniValue::VType::VOBJ);
+    if (sendCall) {
+        MCContractID contractId;
+        contractAddr.GetContractID(contractId);
+
+        MCWalletTx wtx;
+        wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
+        wtx.pContractData.reset(new ContractData);
+        wtx.pContractData->sender = senderPubKey;
+        wtx.pContractData->codeOrFunc = strFuncName;
+        wtx.pContractData->args = args.write();
+        wtx.pContractData->address = contractId;
+        wtx.pContractData->contractCoinsIn = payment;
+        wtx.pContractData->contractCoinsOut = std::move(vmOut.contractCoinsOut);
+
+        bool subtractFeeFromAmount = false;
+        MCCoinControl coinCtrl;
+        EnsureWalletIsUnlocked(pwallet);
+        SendMoney(pwallet, nullptr, 0, subtractFeeFromAmount, wtx, coinCtrl, &vmOut);
+        ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
+    }
+    ret.push_back(Pair("return", vmOut.ret));
+    return ret;
 }
 
 UniValue getcontractcode(const JSONRPCRequest& request)
@@ -920,51 +1052,44 @@ UniValue precallcontract(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
     }
 
-    SmartLuaState sls;
-    UniValue callRet(UniValue::VARR);
-    sls.Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, payment ,senderAddr, nullptr, nullptr, 0, pCoinAmountCache);
-    bool success = CallContract(&sls, contractAddr, strFuncName, args, callRet);
+    VMIn vmIn{ -1, payment, senderAddr, chainActive.Tip() };
+    VMOut vmOut;
+    ContractVM vm;
+    vm.Initialize(&vmIn, &vmOut);
+    if (!vm.CallContract(contractAddr, strFuncName, args)) {
+        throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
+    }
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("return", callRet));
-    if (success) {
-        if (bSendCall) {
-            //MCKeyID contractId;
-            //contractAddr.GetKeyID(contractId);
+    ret.push_back(Pair("return", vmOut.ret));
+    if (bSendCall) {
+        MCWalletTx wtx;
+        wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
+        wtx.pContractData.reset(new ContractData);
+        wtx.pContractData->sender = senderPubKey;
+        wtx.pContractData->codeOrFunc = strFuncName;
+        wtx.pContractData->args = args.write();
+        wtx.pContractData->address = contractID;
+        wtx.pContractData->contractCoinsIn = payment;
+        wtx.pContractData->contractCoinsOut = std::move(vmOut.contractCoinsOut);
+        SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut);
 
-            MCScript scriptPubKey = GetScriptForDestination(contractAddr.Get());
+        ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
+        UniValue coins(UniValue::VARR);
+        for (MCTxIn txin : wtx.tx->vin)
+        {
+            const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
 
-            sls.contractIds.erase(contractID);
-            MCWalletTx wtx;
-            wtx.nVersion = MCTransaction::CALL_CONTRACT_VERSION;
-            wtx.pContractData.reset(new ContractData);
-            wtx.pContractData->sender = senderPubKey;
-            wtx.pContractData->codeOrFunc = strFuncName;
-            wtx.pContractData->args = args.write();
-            wtx.pContractData->address = contractID;
-            wtx.pContractData->contractCoinsOut = std::move(sls.contractCoinsOut);
-            SendFromToOther(wtx, fundAddr, scriptPubKey, changeAddr, payment, 0, &sls);
-
-            ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
-            UniValue coins(UniValue::VARR);
-            for (MCTxIn txin : wtx.tx->vin)
-            {
-                const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
-
-                UniValue uvalCoin((UniValue::VOBJ));
-                uvalCoin.push_back(Pair("txhash", txin.prevout.hash.GetHex()));
-                uvalCoin.push_back(Pair("outn", int(txin.prevout.n)));
-                uvalCoin.push_back(Pair("value", ValueFromAmount(coin.out.nValue)));
-                uvalCoin.push_back(Pair("script", HexStr(coin.out.scriptPubKey.begin(), coin.out.scriptPubKey.end())));
-                coins.push_back(uvalCoin);
-            }
-            ret.push_back(Pair("coins", coins));
+            UniValue uvalCoin((UniValue::VOBJ));
+            uvalCoin.push_back(Pair("txhash", txin.prevout.hash.GetHex()));
+            uvalCoin.push_back(Pair("outn", int(txin.prevout.n)));
+            uvalCoin.push_back(Pair("value", ValueFromAmount(coin.out.nValue)));
+            uvalCoin.push_back(Pair("script", HexStr(coin.out.scriptPubKey.begin(), coin.out.scriptPubKey.end())));
+            coins.push_back(uvalCoin);
         }
-	}
-    else
-        throw JSONRPCError(RPC_CONTRACT_ERROR, callRet[0].get_str());
-
-	return ret;
+        ret.push_back(Pair("coins", coins));
+    }
+    return ret;
 }
 
 UniValue listaddressgroupings(const JSONRPCRequest& request)
@@ -1389,8 +1514,9 @@ UniValue sendfrom(const JSONRPCRequest& request)
     if (nAmount > nBalance)
         throw JSONRPCError(RPC_WALLET_INSUFFICIENT_FUNDS, "Account has insufficient funds");
 
+    const MCTxDestination& dest = address.Get();
     MCCoinControl no_coin_control; // This is a deprecated API
-    SendMoney(pwallet, address.Get(), nAmount, false, wtx, no_coin_control);
+    SendMoney(pwallet, &dest, nAmount, false, wtx, no_coin_control, nullptr);
 
     return wtx.GetHash().GetHex();
 }
@@ -3354,7 +3480,7 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 	LOCK2(cs_main, pwallet->cs_wallet);
 
     if (request.params.size() == 0) {
-        return  ValueFromAmount(pwallet->GetBalance());
+        return ValueFromAmount(pwallet->GetBalance());
     }
 
 	const std::string& account_param = request.params[0].get_str();
@@ -3377,23 +3503,33 @@ UniValue getbalanceof(const JSONRPCRequest& request)
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
 	}
 
-    const uint160& key = GetUint160(addr.Get());
-
-    MCAmount nValue = 0;
-	CoinListPtr plist = pcoinListDb->GetList(key);
-	if (plist != nullptr) {
-		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
-			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
-			if (coin.IsSpent()) {
-				continue;
-			}
-			if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
-				continue;
-			}
-			nValue += coin.out.nValue;
-		}
-	}
-	return ValueFromAmount(nValue);
+    if (addr.IsContractID()) {
+        MCContractID contractId;
+        addr.GetContractID(contractId);
+        ContractInfo contractInfo;
+        if (mpContractDb->GetContractInfo(contractId, contractInfo, chainActive.Tip()) < 0) {
+            return 0;
+        }
+        return ValueFromAmount(contractInfo.coins);
+    }
+    else {
+        MCAmount nValue = 0;
+        const uint160& key = GetUint160(addr.Get());
+        CoinListPtr plist = pcoinListDb->GetList(key);
+        if (plist != nullptr) {
+            BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
+                const Coin& coin = pcoinsTip->AccessCoin(outpoint);
+                if (coin.IsSpent()) {
+                    continue;
+                }
+                if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
+                    continue;
+                }
+                nValue += coin.out.nValue;
+            }
+        }
+        return ValueFromAmount(nValue);
+    }
 }
 
 UniValue fundrawtransaction(const JSONRPCRequest& request)
@@ -3818,99 +3954,6 @@ UniValue posttransaction(const std::string& strHexTx)
 	return "";
 }
 
-//构造一个交易，从一个地址上的转币到另外一个地址，尚未签名 
-void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls)
-{
-	MCScript scriptPubKey = GetScriptForDestination(toaddress.Get());
-	SendFromToOther(wtxNew, fromaddress, scriptPubKey, changeaddress, nAmount, nUserFee, sls);
-}
-
-void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, SmartLuaState* sls)
-{
-//	if (fromaddress.Get().type() != typeid(MCKeyID))
-//	{
-//		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
-//	}
-
-    MCKeyID kFromKeyId;
-    if (!fromaddress.GetKeyID(kFromKeyId)){
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
-    }
-
-	CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
-
-	std::set<MCOutPoint> setInOutPoints;
-	std::vector<Coin> vCoin;
-	MCAmount nValue = 0;
-	if (plist != nullptr) {
-		BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
-			const Coin& coin = pcoinsTip->AccessCoin(outpoint);
-			if (coin.IsSpent()) {
-				continue;
-			}
-			if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
-				continue;
-			}
-
-			nValue += coin.out.nValue;
-			setInOutPoints.insert(outpoint);
-			vCoin.push_back(coin);
-			// TODO 
-			//	if ((nUserFee > 0 && nValue >= nAmount + nUserFee)) {// include more fee to make sure later success
-			//		break;
-			//	}
-		}
-	}
-
-	if (nUserFee > 0 && nValue < nAmount + nUserFee)
-	{
-		throw JSONRPCError(RPC_VERIFY_REJECTED, "Not enough spendable coin for send and fee");
-	}
-
-	MCAmount curBalance = nValue;
-	bool fSubtractFeeFromAmount = false;
-	
-	std::vector<MCRecipient> vecSend;
-    if (nAmount > 0)
-    {
-        MCRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
-        vecSend.push_back(recip);
-    }
-
-	MCFakeWallet fakeWallet;
-	fakeWallet.m_ownKeys.insert(kFromKeyId);
-
-	MCCoinControl coin_control;
-	coin_control.destChange = changeaddress.Get();
-	coin_control.fAllowOtherInputs = false;
-	for (MCOutPoint outpoint : setInOutPoints)
-	{
-		//coin_control.Select(outpoint);//select by MCWallet later ,AvailableCoins 有问题 
-		MCWalletTx wtxIn;
-		MCTransactionRef txOutpoint;
-		uint256 hash = outpoint.hash;
-		uint256 hashBlock;
-		if (GetTransaction(hash, txOutpoint, Params().GetConsensus(), hashBlock, true))
-		{
-			wtxIn.tx = txOutpoint;
-			wtxIn.hashBlock = hashBlock;
-			wtxIn.nIndex = 0;//just for cheat //wtxIn.SetMerkleBranch();
-			wtxIn.BindWallet(&fakeWallet);
-			std::pair<std::map<uint256, MCWalletTx>::iterator, bool> ret = fakeWallet.mapWallet.insert(std::make_pair(hash, wtxIn));
-		}
-	}
-
-	MCReserveKey reservekey(&fakeWallet);
-	int nChangePosRet = -1;
-	MCAmount nFeeRequired;
-	std::string strError;
-	if (!fakeWallet.CreateTransaction(vecSend, wtxNew, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, false, sls)) {
-		if (!fSubtractFeeFromAmount && nValue + nFeeRequired > curBalance)
-			strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
-		throw JSONRPCError(RPC_WALLET_ERROR, strError);
-	}
-}
-
 UniValue premaketransaction(const JSONRPCRequest& request)
 {
 	if (request.fHelp || request.params.size() < 4 || request.params.size() > 5)
@@ -3967,7 +4010,7 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 
 	MCWalletTx wtxNew;
 	///////////////////////////////////////////////////////
-	SendFromToOther(wtxNew, fromaddress, toaddress, changeaddress, nAmount, nUserFee);
+	SendFromToOther(wtxNew, fromaddress, toaddress, changeaddress, nAmount, nUserFee, nullptr);
 	
 	UniValue ret(UniValue::VOBJ);
 	ret.push_back(Pair("txhex", EncodeHexTx(*wtxNew.tx, RPCSerializationFlags())));

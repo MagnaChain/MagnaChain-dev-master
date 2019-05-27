@@ -23,6 +23,7 @@
 #include "smartcontract/contractdb.h"
 #include "thread/sync.h"
 #include "transaction/txdb.h"
+#include "smartcontract/smartcontract.h"
 
 #include "boost/multi_index/hashed_index.hpp"
 #include "boost/multi_index/ordered_index.hpp"
@@ -140,7 +141,7 @@ public:
     // Update the LockPoints after a reorg
     void UpdateLockPoints(const LockPoints& lp);
     // Update contract data
-    void UpdateContract(SmartLuaState* sls);
+    void UpdateContract(const VMOut* vmOut);
 
     uint64_t GetCountWithDescendants() const { return nCountWithDescendants; }
     uint64_t GetSizeWithDescendants() const { return nSizeWithDescendants; }
@@ -502,6 +503,7 @@ public:
     std::vector<std::pair<uint256, txiter>> vTxHashes; //!< All tx witness hashes/entries in mapTx, in random order
     std::map<uint256, uint256> mapFinalTx2OriTx;
     std::map<uint256, uint256> mapFinalTx2OriTx2;
+    ContractVM vm;
 
     struct CompareIteratorByHash {
         bool operator()(const txiter& a, const txiter& b) const
@@ -553,6 +555,9 @@ public:
     void Check(const MCCoinsViewCache* pcoins) const;
     void SetSanityCheck(double dFrequency = 1.0) { nCheckFrequency = dFrequency * 4294967295.0; }
 
+    bool PublishContract(const VMIn* vmIn, VMOut* vmOut, const MagnaChainAddress& contractAddr, const std::string& rawCode, bool decompress);
+    bool CallContract(const VMIn* vmIn, VMOut* vmOut, const MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args);
+    bool ExecuteContract(VMOut* vmOut, const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex);
     void ReacceptTransactions();
 
     // AddUnchecked must updated state for all ancestors of a given transaction,
@@ -589,7 +594,7 @@ public:
     uint256 GetOriTxHash(const MCTransaction& tx, bool fFromMempool);
 
     // Update contract data
-    void CheckContract(txiter titer, SmartLuaState* sls);
+    void CheckContract(const txiter titer, const VMOut* vmOut);
 
 public:
     /** Remove a set of transactions from the mempool.

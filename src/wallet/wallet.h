@@ -84,9 +84,11 @@ class MCScheduler;
 class MCTxMemPool;
 class MCBlockPolicyEstimator;
 class MCWalletTx;
+class ContractVM;
+
+struct VMOut;
 struct FeeCalculation;
 enum class FeeEstimateMode;
-class LuaStateExtraData;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -990,7 +992,7 @@ public:
      * @note passing nChangePosInOut as -1 will result in setting a random position
      */
     bool CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWalletTx& wtxNew, MCReserveKey& reservekey, MCAmount& nFeeRet, int& nChangePosInOut,
-                           std::string& strFailReason, const MCCoinControl& coin_control, bool sign = true, SmartLuaState* sls = nullptr );
+                           std::string& strFailReason, const MCCoinControl& coin_control, bool sign = true, const VMOut* vmOut = nullptr);
     bool CommitTransaction(MCWalletTx& wtxNew, MCReserveKey& reservekey, MCConnman* connman, MCValidationState& state);
 
     void ListAccountCreditDebit(const std::string& strAccount, std::list<MCAccountingEntry>& entries);

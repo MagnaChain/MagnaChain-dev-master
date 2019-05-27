@@ -93,7 +93,6 @@ public:
     // network and disk
     std::vector<MCTransactionRef> vtx;
     std::vector<uint16_t> groupSize;
-    std::vector<ContractPrevData> prevContractData;
 
     // memory only
     mutable bool fChecked;
@@ -116,7 +115,6 @@ public:
         READWRITE(*(MCBlockHeader*)this);
         READWRITE(vtx);
         READWRITE(groupSize);
-        READWRITE(prevContractData);
     }
 
     void SetNull()
@@ -124,7 +122,6 @@ public:
         MCBlockHeader::SetNull();
         vtx.clear();
         groupSize.clear();
-        prevContractData.clear();
         fChecked = false;
     }
 

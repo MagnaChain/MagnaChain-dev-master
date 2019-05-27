@@ -163,6 +163,12 @@ MCAmount MCTransaction::GetValueOut() const
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
+    if (IsSmartContract()) {
+        nValueOut += pContractData->contractCoinsIn;
+        if (!MoneyRange(pContractData->contractCoinsIn) || !MoneyRange(nValueOut))
+            throw std::runtime_error(std::string(__func__) + ": value out of range");
+
+    }
     return nValueOut;
 }
 

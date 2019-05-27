@@ -1164,8 +1164,6 @@ public:
     /** Serialize an input of txTo */
     template<typename S>
     void SerializeInput(S &s, unsigned int nInput) const {
-        if (txTo.vin[nInput].scriptSig.IsContract())
-            return;
         // In case of SIGHASH_ANYONECANPAY, only the input being signed is serialized
         if (fAnyoneCanPay)
             nInput = nIn;
@@ -1188,8 +1186,6 @@ public:
     /** Serialize an output of txTo */
     template<typename S>
     void SerializeOutput(S &s, unsigned int nOutput) const {
-        if (txTo.vout[nOutput].scriptPubKey.IsContractChange())
-            return;
         if (fHashSingle && nOutput != nIn)
             // Do not lock-in the txout payee at other indices as txin
             ::Serialize(s, MCTxOut());
@@ -1206,8 +1202,7 @@ public:
         unsigned int nInputs = fAnyoneCanPay ? 1 : txTo.vin.size();
         unsigned int nRealInputs = 0;
         for (unsigned int nInput = 0; nInput < nInputs; nInput++)
-            if (!txTo.vin[nInput].scriptSig.IsContract())
-                nRealInputs++;
+            nRealInputs++;
         ::WriteCompactSize(s, nRealInputs);
         for (unsigned int nInput = 0; nInput < nInputs; nInput++)
             SerializeInput(s, nInput);
@@ -1215,8 +1210,7 @@ public:
         unsigned int nOutputs = fHashNone ? 0 : (fHashSingle ? nIn + 1 : txTo.vout.size());
         unsigned int nRealOutputs = 0;
         for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
-            if (!txTo.vout[nOutput].scriptPubKey.IsContractChange())
-                nRealOutputs++;
+            nRealOutputs++;
         ::WriteCompactSize(s, nRealOutputs);
         for (unsigned int nOutput = 0; nOutput < nOutputs; nOutput++)
              SerializeOutput(s, nOutput);
@@ -1231,8 +1225,7 @@ public:
 uint256 GetPrevoutHash(const MCTransaction& txTo) {
     MCHashWriter ss(SER_GETHASH, 0);
     for (const auto& txin : txTo.vin) {
-        if (!txin.scriptSig.IsContract())
-            ss << txin.prevout;
+        ss << txin.prevout;
     }
     return ss.GetHash();
 }
@@ -1240,8 +1233,7 @@ uint256 GetPrevoutHash(const MCTransaction& txTo) {
 uint256 GetSequenceHash(const MCTransaction& txTo) {
     MCHashWriter ss(SER_GETHASH, 0);
     for (const auto& txin : txTo.vin) {
-        if (!txin.scriptSig.IsContract())
-            ss << txin.nSequence;
+        ss << txin.nSequence;
     }
     return ss.GetHash();
 }
@@ -1249,8 +1241,7 @@ uint256 GetSequenceHash(const MCTransaction& txTo) {
 uint256 GetOutputsHash(const MCTransaction& txTo) {
     MCHashWriter ss(SER_GETHASH, 0);
     for (const auto& txout : txTo.vout) {
-        if (!txout.scriptPubKey.IsContractChange())
-            ss << txout;
+        ss << txout;
     }
     return ss.GetHash();
 }

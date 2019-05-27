@@ -214,8 +214,6 @@ MCCoinsViewDB* pcoinsdbview = nullptr;
 MCCoinsViewCache* pcoinsTip = nullptr;
 MCBlockTreeDB* pblocktree = nullptr;
 CoinListDB* pcoinListDb = nullptr;
-CoinAmountDB* pCoinAmountDB = nullptr;
-CoinAmountCache* pCoinAmountCache = nullptr;
 
 enum FlushStateMode {
     FLUSH_STATE_NONE,
@@ -348,53 +346,43 @@ bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp, bool
     return EvaluateSequenceLocks(index, lockPair);
 }
 
-bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls)
+bool CheckContractCoins(const MCTransactionRef& tx, const VMOut* vmOut)
 {
-    if (sls == nullptr)
+    if (tx == nullptr || vmOut == nullptr)
         return false;
 
-    if (sls->contractCoinsOut.size() == 0 && sls->recipients.size() == 0)
+    if (vmOut->contractCoinsOut.size() == 0 && vmOut->recipients.size() == 0)
         return true;
 
-    for (size_t i = 0; i < sls->recipients.size(); ++i) {
-        if (!tx.IsExistVout(sls->recipients[i]))
+    for (size_t i = 0; i < vmOut->recipients.size(); ++i) {
+        if (!tx->IsExistVout(vmOut->recipients[i]))
             return false;
     }
-    return true;
-}
 
-bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int saveType, CoinAmountCache* pCoinAmountCache)
-{
-    const MCTransaction& tx = entry.GetTx();
-    MagnaChainAddress contractAddr;
-    contractAddr.Set(tx.pContractData->address);
-    MagnaChainAddress senderAddr;
-    senderAddr.Set(tx.pContractData->sender.GetID());
-    UniValue args;
-    args.read(tx.pContractData->args);
-    const std::string& strFuncName = tx.pContractData->codeOrFunc;
-    MCAmount payment = GetTxContractOut(tx);
-
-    UniValue ret(UniValue::VARR);
-    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
-        std::string rawCode = tx.pContractData->codeOrFunc;
-        sls->Initialize(true, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, payment, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (PublishContract(sls, contractAddr, rawCode, ret, true)) {
-            if (CheckContractVinVout(tx, sls)) {
-                return (tx.pContractData->contractCoinsOut.size() == 0 && sls->contractCoinsOut.size() == 0);
-            }
-        }
-    }
-    else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
-        sls->Initialize(false, chainActive.Tip()->GetBlockTime(), chainActive.Height() + 1, -1, payment, senderAddr, nullptr, nullptr, saveType, pCoinAmountCache);
-        if (CallContract(sls, contractAddr, strFuncName, args, ret)) {
-            if (CheckContractVinVout(tx, sls)) {
-                return (tx.pContractData->contractCoinsOut == sls->contractCoinsOut);
-            }
-        }
+    if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION && tx->pContractData->contractCoinsOut.size() != 0) {
+        return false;
     }
 
-    return false;
+    if (tx->pContractData->contractCoinsOut.size() > 0 && vmOut->recipients.size() == 0)
+        return false;
+
+    MCAmount totalSend = 0;
+    for (auto& it : tx->pContractData->contractCoinsOut) {
+        totalSend += it.second;
+    }
+
+    MCAmount totalRecv = 0;
+    for (int j = 0; j < vmOut->recipients.size(); ++j) {
+        if (!tx->IsExistVout(vmOut->recipients[j]))
+            return false;
+        totalRecv += vmOut->recipients[j].nValue;
+    }
+
+    if (totalSend != totalRecv) {
+        return false;
+    }
+
+    return (tx->pContractData->contractCoinsOut == vmOut->contractCoinsOut);
 }
 
 // Returns the script flags which should be checked for a given block
@@ -718,18 +706,11 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         // execute contract
         if (tx.IsSmartContract()) {
             if (executeSmartContract) {
-                SmartLuaState sls;
-                try {
-                    if (!CheckSmartContract(&sls, entry, SmartLuaState::SAVE_TYPE_CACHE, pCoinAmountCache)) {
-                        mpContractDb->contractContext.ClearCache();
-                        return state.DoS(0, false, REJECT_INVALID, "Invalid smart contract");
-                    }
+                VMOut vmOut;
+                if (!pool.ExecuteContract(&vmOut, entry.GetPtrTx(), -1, chainActive.Tip())) {
+                    return state.DoS(0, false, REJECT_INVALID, "execute-contract-failed");
                 }
-                catch (std::exception& e) {
-                    mpContractDb->contractContext.ClearCache();
-                    return state.DoS(0, false, REJECT_INVALID, e.what());
-                }
-                entry.UpdateContract(&sls);
+                entry.UpdateContract(&vmOut);
             }
         }
 
@@ -766,7 +747,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         size_t nLimitDescendantSize = gArgs.GetArg("-limitdescendantsize", DEFAULT_DESCENDANT_SIZE_LIMIT) * 50000;
         std::string errString;
         if (!pool.CalculateMemPoolAncestors(entry, nullptr, setAncestors, nLimitAncestors, nLimitAncestorSize, nLimitDescendants, nLimitDescendantSize, errString)) {
-            mpContractDb->contractContext.ClearCache();
             return state.DoS(0, false, REJECT_NONSTANDARD, "too-long-mempool-chain", false, errString);
         }
 
@@ -777,7 +757,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         for (MCTxMemPool::txiter ancestorIt : setAncestors) {
             const uint256& hashAncestor = ancestorIt->GetTx().GetHash();
             if (setConflicts.count(hashAncestor)) {
-                mpContractDb->contractContext.ClearCache();
                 return state.DoS(10, false,
                     REJECT_INVALID, "bad-txns-spends-conflicting-tx", false,
                     strprintf("%s spends conflicting transaction %s", hash.ToString(), hashAncestor.ToString()));
@@ -827,7 +806,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                 // mitigating most cases.
                 MCFeeRate oldFeeRate(mi->GetModifiedFee(), mi->GetTxSize());
                 if (newFeeRate <= oldFeeRate) {
-                    mpContractDb->contractContext.ClearCache();
                     return state.DoS(0, false,
                         REJECT_INSUFFICIENTFEE, "insufficient fee", false,
                         strprintf("rejecting replacement %s; new feerate %s <= old feerate %s",
@@ -853,8 +831,8 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                     nConflictingFees += it->GetModifiedFee();
                     nConflictingSize += it->GetTxSize();
                 }
-            } else {
-                mpContractDb->contractContext.ClearCache();
+            }
+            else {
                 return state.DoS(0, false,
                     REJECT_NONSTANDARD, "too many potential replacements", false,
                     strprintf("rejecting replacement %s; too many potential replacements (%d > %d)\n",
@@ -871,7 +849,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                     // it's cheaper to just check if the new input refers to a
                     // tx that's in the mempool.
                     if (pool.mapTx.find(tx.vin[j].prevout.hash) != pool.mapTx.end()) {
-                        mpContractDb->contractContext.ClearCache();
                         return state.DoS(0, false,
                             REJECT_NONSTANDARD, "replacement-adds-unconfirmed", false,
                             strprintf("replacement %s adds unconfirmed input, idx %d",
@@ -884,7 +861,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             // replaces - if we did the bandwidth used by those conflicting
             // transactions would not be paid for.
             if (nModifiedFees < nConflictingFees) {
-                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false,
                     REJECT_INSUFFICIENTFEE, "insufficient fee", false,
                     strprintf("rejecting replacement %s, less fees than conflicting txs; %s < %s",
@@ -895,7 +871,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             // new transaction must pay for its own bandwidth.
             MCAmount nDeltaFees = nModifiedFees - nConflictingFees;
             if (nDeltaFees < ::incrementalRelayFee.GetFee(nSize)) {
-                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false,
                     REJECT_INSUFFICIENTFEE, "insufficient fee", false,
                     strprintf("rejecting replacement %s, not enough additional fees to relay; %s < %s",
@@ -925,7 +900,6 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
                 // Only the witness is missing, so the transaction itself may be fine.
                 state.SetCorruptionPossible();
             }
-            mpContractDb->contractContext.ClearCache();
             return false; // state filled in by CheckInputs
         }
 
@@ -950,15 +924,15 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             // Check if current block has some flags that scriptVerifyFlags
             // does not before printing an ominous warning
             if (!(~scriptVerifyFlags & currentBlockScriptVerifyFlags)) {
-                mpContractDb->contractContext.ClearCache();
                 return error("%s: BUG! PLEASE REPORT THIS! ConnectInputs failed against latest-block but not STANDARD flags %s, %s",
                     __func__, hash.ToString(), FormatStateMessage(state));
-            } else {
+            }
+            else {
                 if (!CheckInputs(tx, state, view, true, MANDATORY_SCRIPT_VERIFY_FLAGS, true, false, txdata)) {
-                    mpContractDb->contractContext.ClearCache();
                     return error("%s: ConnectInputs failed against MANDATORY but not STANDARD flags due to promiscuous mempool %s, %s",
                         __func__, hash.ToString(), FormatStateMessage(state));
-                } else {
+                }
+                else {
                     LogPrintf("Warning: -promiscuousmempool flags set to not include currently enforced soft forks, this may break mining or otherwise cause instability!\n");
                 }
             }
@@ -989,13 +963,11 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         if (!fOverrideMempoolLimit) {
             LimitMempoolSize(pool, gArgs.GetArg("-maxmempool", DEFAULT_MAX_MEMPOOL_SIZE) * 1000000, gArgs.GetArg("-mempoolexpiry", DEFAULT_MEMPOOL_EXPIRY) * 60 * 60);
             if (!pool.Exists(hash)) {
-                mpContractDb->contractContext.ClearCache();
                 return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "mempool full");
             }
         }
     }
 
-    mpContractDb->contractContext.Commit();
     GetMainSignals().TransactionAddedToMempool(ptx);
 
     return true;
@@ -1425,6 +1397,21 @@ bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey)
     return false;
 }
 
+bool CheckBlockGroupSize(const MCBlock* pBlock)
+{
+    if (pBlock->groupSize.size() > MAX_GROUP_NUM) {
+        return false;
+    }
+    int totalSize = 0;
+    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+        totalSize += pBlock->groupSize[i];
+    }
+    if (totalSize == 0 || totalSize != pBlock->vtx.size()) {
+        return false;
+    }
+    return true;
+}
+
 bool CScriptCheck::operator()()
 {
     if (ptxTo->IsBranchChainTransStep2() && ptxTo->fromBranchId != MCBaseChainParams::MAIN) {
@@ -1432,12 +1419,6 @@ bool CScriptCheck::operator()()
         branchid.SetHex(ptxTo->fromBranchId);
 
         return CheckTranBranchScript(branchid, scriptPubKey);
-    } else if (ptxTo->IsSmartContract() && ptxTo->vin[nIn].scriptSig.IsContract()) {
-        MCContractID contractId;
-        if (!ptxTo->vin[nIn].scriptSig.GetContractAddr(contractId)) {
-            return false;
-        }
-        return ptxTo->pContractData->contractCoinsOut.find(contractId) != ptxTo->pContractData->contractCoinsOut.end();
     }
 
     const MCScript& scriptSig = ptxTo->vin[nIn].scriptSig;
@@ -1535,35 +1516,26 @@ bool CheckInputs(const MCTransaction& tx, MCValidationState& state, const MCCoin
                 } else if (tx.IsReportReward()) {
                     // no need to verify signature
                 } else if (!check()) {
-                    if (tx.IsSmartContract()) {
-                        MCContractID kDestKey;
-                        if (!scriptPubKey.GetContractAddr(kDestKey)) {
-                            return state.DoS(0, false, REJECT_NONSTANDARD, "GetContractAddr fail");
-                        }
-                        if (kDestKey != tx.pContractData->address)
-                            return state.DoS(0, false, REJECT_NONSTANDARD, "kDestKey not eq tx.contractAddr");
-                    } else {
-                        if (flags & STANDARD_NOT_MANDATORY_VERIFY_FLAGS) {
-                            // Check whether the failure was caused by a
-                            // non-mandatory script verification check, such as
-                            // non-standard DER encodings or non-null dummy
-                            // arguments; if so, don't trigger DoS protection to
-                            // avoid splitting the network between upgraded and
-                            // non-upgraded nodes.
-                            CScriptCheck check2(scriptPubKey, amount, tx, i,
-                                flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheSigStore, &txdata);
-                            if (check2())
-                                return state.Invalid(false, REJECT_NONSTANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
-                        }
-                        // Failures of other flags indicate a transaction that is
-                        // invalid in new blocks, e.g. an invalid P2SH. We DoS ban
-                        // such nodes as they are not following the protocol. That
-                        // said during an upgrade careful thought should be taken
-                        // as to the correct behavior - we may want to continue
-                        // peering with non-upgraded nodes even after soft-fork
-                        // super-majority signaling has occurred.
-                        return state.DoS(100, false, REJECT_INVALID, strprintf("mandatory-script-verify-flag-failed (%s)", ScriptErrorString(check.GetScriptError())));
+                    if (flags & STANDARD_NOT_MANDATORY_VERIFY_FLAGS) {
+                        // Check whether the failure was caused by a
+                        // non-mandatory script verification check, such as
+                        // non-standard DER encodings or non-null dummy
+                        // arguments; if so, don't trigger DoS protection to
+                        // avoid splitting the network between upgraded and
+                        // non-upgraded nodes.
+                        CScriptCheck check2(scriptPubKey, amount, tx, i,
+                            flags & ~STANDARD_NOT_MANDATORY_VERIFY_FLAGS, cacheSigStore, &txdata);
+                        if (check2())
+                            return state.Invalid(false, REJECT_NONSTANDARD, strprintf("non-mandatory-script-verify-flag (%s)", ScriptErrorString(check.GetScriptError())));
                     }
+                    // Failures of other flags indicate a transaction that is
+                    // invalid in new blocks, e.g. an invalid P2SH. We DoS ban
+                    // such nodes as they are not following the protocol. That
+                    // said during an upgrade careful thought should be taken
+                    // as to the correct behavior - we may want to continue
+                    // peering with non-upgraded nodes even after soft-fork
+                    // super-majority signaling has occurred.
+                    return state.DoS(100, false, REJECT_INVALID, strprintf("mandatory-script-verify-flag-failed (%s)", ScriptErrorString(check.GetScriptError())));
                 }
             }
 
@@ -2160,6 +2132,9 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
     if (!CheckCoinbaseTx(block, pindex, nFees, chainparams))
         return state.DoS(100, error("%s: CheckCoinbaseTx failed", __func__), REJECT_INVALID, "block-cb-tx-failed");
 
+    if (!CheckBlockGroupSize(&block)) {
+        return state.DoS(100, error("%s: CheckBlockGroupSize failed", __func__), REJECT_INVALID, "block-group-size-failed");
+    }
 
     if (!control.Wait())
         return state.DoS(100, error("%s: CheckQueue failed", __func__), REJECT_INVALID, "block-validation-failed");
@@ -2171,21 +2146,19 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         return true;
 
     if (pindex->nHeight > 0) {
-        ContractContext contractContext;
-        CoinAmountDB coinAmountDB;
-        CoinAmountCache coinAmountCache(&coinAmountDB);
-        if (!mpContractDb->RunBlockContract(&block, &contractContext, &coinAmountCache)) {
-            return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
+        static MultiContractVM mvm;
+        std::vector<VMOut> vmOuts;
+        if (!mvm.Execute(&block, pindex->pprev, &vmOuts)) {
+            return error("%s:%d => Execute block contracts failed", __FUNCTION__, __LINE__);
         }
 
-        if (!Params().IsMainChain()) {
-            if (block.prevContractData != contractContext.txPrevData) {
-                return error("%s:%d => RunBlockContract failed", __FUNCTION__, __LINE__);
-            }
+        CONTRACT_DATA contractData;
+        if (!mvm.CheckCross(&block, contractData)) {
+            return error("%s:%d => Block contracts have cross", __FUNCTION__, __LINE__);
         }
 
         // Write block ContractInfo to db
-        if (!mpContractDb->WriteBlockContractInfoToDisk(pindex, &contractContext)) {
+        if (!mpContractDb->WriteBlockContractInfoToDisk(pindex, contractData)) {
             return error("out of disk space");
         }
         if (!mpContractDb->UpdateBlockContractToDisk(pindex)) {
@@ -2600,6 +2573,7 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
         nTime3 = GetTimeMicros();
         nTimeConnectTotal += nTime3 - nTime2;
         LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
+        LogPrintf("%s:%d %d\n", __FUNCTION__, __LINE__, pindexNew->nHeight);
         bool flushed = view.Flush();
         assert(flushed);
         g_pBranchChainTxRecordsDb->Flush(bccache);
@@ -2951,9 +2925,8 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
         if (!DisconnectTip(state, chainparams, &disconnectpool)) {
             // It's probably hopeless to try to make the mempool consistent
             // here if DisconnectTip failed, but we can try.
-            mempool.ReacceptTransactions();
-            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             UpdateMempoolForReorg(disconnectpool, false);
+            mempool.ReacceptTransactions();
             return false;
         }
     }
@@ -2975,9 +2948,8 @@ bool InvalidateBlock(MCValidationState& state, const MCChainParams& chainparams,
 
     // DisconnectTip will add transactions to disconnectpool; try to add these
     // back to the mempool.
-    mempool.ReacceptTransactions();
-    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
     UpdateMempoolForReorg(disconnectpool, true);
+    mempool.ReacceptTransactions();
 
     // The resulting new best tip may not be in setBlockIndexCandidates anymore, so
     // add it again.
@@ -3309,8 +3281,7 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, "size limits failed");
     const unsigned int blockSeriSize = ::GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
     const unsigned int groupSerSize = ::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
-    const unsigned int contractDataSerSize = ::GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
-    if (blockSeriSize - groupSerSize - contractDataSerSize > MAX_BLOCK_WEIGHT) // Exclude the ser size of groupSize and prevContractData
+    if (blockSeriSize - groupSerSize > MAX_BLOCK_WEIGHT) // Exclude the ser size of groupSize and prevContractData
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-length", false, strprintf("size limits %d failed2", blockSeriSize));
 
     // First transaction must be coinbase, the rest must not be
@@ -3571,9 +3542,7 @@ static bool ContextualCheckBlock(const MCBlock& block, MCValidationState& state,
     const unsigned int blockWeight = GetBlockWeight(block);
     //::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
     const unsigned int groupSerSize = ::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(block.groupSize, SER_NETWORK, PROTOCOL_VERSION);
-    //GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * WITNESS_SCALE_FACTOR;
-    const unsigned int contractDataSerSize = ::GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS) * (WITNESS_SCALE_FACTOR - 1) + ::GetSerializeSize(block.prevContractData, SER_NETWORK, PROTOCOL_VERSION);
-    if (blockWeight - groupSerSize - contractDataSerSize > MAX_BLOCK_WEIGHT) {
+    if (blockWeight - groupSerSize > MAX_BLOCK_WEIGHT) {
         return state.DoS(100, false, REJECT_INVALID, "bad-blk-weight", false, strprintf("%s : weight limit failed", __func__));
     }
 
@@ -3747,7 +3716,7 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
     return true;
 }
 
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool ismining)
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, bool fForceProcessing, bool* fNewBlock, bool ismining)
 {
     int64_t start = GetTimeMillis();
 
@@ -3783,7 +3752,6 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
         return error("%s: ActivateBestChain failed", __func__);
     }
 
-    pContractContext->ClearAll();
     ProcessBlockBranchChain();
 
     // check and remove invalid contract transaction
@@ -5220,11 +5188,6 @@ bool GetTxVinBlockData(const MCBlock& block, const MCTransactionRef& ptx, std::v
         const MCBlockIndex* pinblockindex = chainActive[coin.nHeight];
         MCBlock inblock;
         if (ReadBlockFromDisk(inblock, pinblockindex, consensusParams)) {
-            if (coin.out.scriptPubKey.IsContract()) {
-                MCContractID contractId;
-                coin.out.scriptPubKey.GetContractAddr(contractId);
-            }
-
             MCTransactionRef tmpTx;
             for (size_t j = 0; j < inblock.vtx.size(); j++) {
                 if (inblock.vtx[j]->GetHash() == ptx->vin[i].prevout.hash) {
@@ -5275,7 +5238,6 @@ bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBloc
     if (tx->IsCoinBase())
         return false;
 
-    CoinAmountTemp amountTemp;
     bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
     return success;
 }

@@ -143,7 +143,6 @@ private:
     static const int SHORTTXIDS_LENGTH = 6;
 protected:
     std::vector<uint16_t> groupSize;
-    std::vector<ContractPrevData> prevContractData;
     std::vector<uint64_t> shorttxids;
     std::vector<PrefilledTransaction> prefilledtxn;
 
@@ -166,7 +165,6 @@ public:
         READWRITE(header);
         READWRITE(nonce);
         READWRITE(groupSize);
-        READWRITE(prevContractData);
 
         uint64_t shorttxids_size = (uint64_t)shorttxids.size();
         READWRITE(COMPACTSIZE(shorttxids_size));
@@ -207,7 +205,6 @@ protected:
 public:
     MCBlockHeader header;
     std::vector<uint16_t> groupSize;
-    std::vector<ContractPrevData> prevContractData;
     PartiallyDownloadedBlock(MCTxMemPool* poolIn, BranchDb* pBranchDb);
 
     // extra_txn is a list of extra transactions to look at, in <witness hash, reference> form

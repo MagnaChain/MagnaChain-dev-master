@@ -167,7 +167,7 @@ class ContractForkTest(MagnaChainTestFramework):
         assert_equal(self.node2.getbestblockhash(), block_b13 if not blocks else blocks[-1])
         self.node0.gettransaction(txid_a1)
         # 确认分叉上的合约在主链上不能被调用
-        assert_raises_rpc_error(-1, "CallContractReal => GetContractInfo fail, contractid is " + contract_a1,
+        assert_raises_rpc_error(-1, "CallContract => GetContractInfo fail, contractid is " + contract_a1,
                                 self.node0.callcontract, True,
                                 1, contract_a1, self.node0.getnewaddress(), "payable")
         # 主链合约是可以调用的
@@ -376,8 +376,8 @@ class ContractForkTest(MagnaChainTestFramework):
         # join network
         more_work_blocks = self.make_more_work_than(3, 1)
         for i in range(4):
-            print("before join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
-            print("mempool:", self.nodes[i].getrawmempool())
+            print("before join", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+            print("mempool", self.nodes[i].getrawmempool())
 
         print("ct balance at node3:", ct.get_balance(exec_node=self.node3))
         print("ct balance at node1:", ct.get_balance(exec_node=self.node1))
@@ -389,8 +389,8 @@ class ContractForkTest(MagnaChainTestFramework):
         print("ct balance at node3:", ct.get_balance(exec_node=self.node3))
 
         for i in range(4):
-            print("mempool:", self.nodes[i].getrawmempool())
-            print("after join:", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+            print("after join", i, self.nodes[i].getblockcount(), int(self.nodes[i].getchaintipwork(), 16))
+            print("mempool", self.nodes[i].getrawmempool())
         if with_send:
             print("assert_equal(len(self.node1.getrawmempool()), 5),should {} == 5".format(len(self.node1.getrawmempool())))
             with_send_crash_point2 = len(self.node1.getrawmempool())

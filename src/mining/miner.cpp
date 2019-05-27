@@ -492,6 +492,10 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
         BranchUTXOCache cache;
         if (pcoinlist != nullptr)
             cache.coinlist = *pcoinlist;// copy
+        LogPrintf("%s:%d %s %d\n", __FUNCTION__, __LINE__, key.ToString(), cache.coinlist.coins.size());
+        if (cache.coinlist.coins.size() == 0) {
+            nAmount += 0;
+        }
         mapBranchCoins.insert(std::make_pair(key, cache));
     }
     BranchUTXOCache& utxoCache = mapBranchCoins[key];
@@ -503,10 +507,14 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
     for (int i = 0; i < utxoCache.coinlist.coins.size(); i++) {
         const MCOutPoint& outpoint = utxoCache.coinlist.coins[i];
         const Coin& coin = pcoinsTip->AccessCoin(outpoint);// MCCoinsViewCache
-        if (coin.IsSpent())
+        if (coin.IsSpent()) {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             continue;
-        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
+        }
+        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             continue;
+        }
 
         nValue += coin.out.nValue;
         vInOutPoints.push_back(outpoint);
@@ -611,18 +619,6 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
         newTx.vin.clear();
         success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
-    }
-    if (newTx.IsSmartContract() && newTx.pContractData->contractCoinsOut.size() > 0) {
-        for (auto it : newTx.pContractData->contractCoinsOut) {
-            const MCContractID& contractId = it.first;
-            MCScript contractScript = GetScriptForDestination(contractId);
-            MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
-            success = utxoMaker.MakeTxUTXO(newTx, contractId, it.second, contractScript, contractChangeScript);
-            if (!success) {
-                break;
-            }
-            keys.push_back(it.first);
-        }
     }
 
     if (success) {
@@ -742,6 +738,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
                     mapModifiedTx.get<ancestor_score>().erase(modit);
                     failedTx.insert(iter);
                 }
+                LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
                 continue;
             }
         }
@@ -765,6 +762,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 		}
 
 		if (!TestPackage(iter, packageSize, packageSigOpsCost)) {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
 			if (fUsingModified) {
 				// Since we always look at the best entry in mapModifiedTx,
 				// we must erase failed entries so that we can consider the
@@ -791,7 +789,8 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 		ancestors.insert(iter);
 
 		// Test if all tx's are Final
-		if (!TestPackageTransactions(ancestors)) {
+        if (!TestPackageTransactions(ancestors)) {
+            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
 			if (fUsingModified) {
 				mapModifiedTx.get<ancestor_score>().erase(modit);
 				failedTx.insert(iter);
@@ -819,6 +818,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
                         failedTx.insert(entry);
                     }
                     fail = true;
+                    LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
                     break;//next
                 }
             }
@@ -1934,12 +1934,11 @@ bool CheckCoinbaseTx(const MCBlock& block, MCBlockIndex* pindex, MCAmount nFees,
 }
 
 
-std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, 
+std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, std::vector<VMOut>& vmOuts, 
     bool fMineWitnessTx, const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr)
 {
     strErr.clear();
-    if (pcoinsCache == nullptr)
-    {
+    if (pcoinsCache == nullptr) {
         pcoinsCache = ::pcoinsTip;
     }
 	int64_t nTimeStart = GetTimeMicros();
@@ -2057,24 +2056,11 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
     }
     pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
-    try {
-        CoinAmountDB coinAmountDB;
-        CoinAmountCache coinAmountCache(&coinAmountDB);
-        LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
-        if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
-            strErr = strprintf("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
-            error(strErr.c_str());
-            return nullptr;
-        }
-
-        if (!Params().IsMainChain()) {
-            pblock->prevContractData.resize(pblock->vtx.size());
-            assert(pContractContext->txPrevData.size() == pblock->vtx.size());
-            pblock->prevContractData = std::move(pContractContext->txPrevData);
-        }
-    }
-    catch (std::exception e) {
-        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, e.what());
+    LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+    static MultiContractVM mvm;
+    if (!mvm.Execute(pblock, chainActive.Tip(), &vmOuts)) {
+        strErr = strprintf("%s:%d Execute block contracts fail\n", __FUNCTION__, __LINE__);
+        error(strErr.c_str());
         return nullptr;
     }
 

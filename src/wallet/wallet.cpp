@@ -2872,25 +2872,27 @@ static bool MoveTransactionData(MCWalletTx& fromWtx, MCMutableTransaction& toTx)
 
 // 交易至少要有一个输出,当isDataTransaction=true的情况下,至少有个找零输出 
 bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWalletTx& wtxNew, MCReserveKey& reservekey, MCAmount& nFeeRet,
-                                int& nChangePosInOut, std::string& strFailReason, const MCCoinControl& coin_control, bool sign, SmartLuaState* sls)
+                                int& nChangePosInOut, std::string& strFailReason, const MCCoinControl& coin_control, bool sign, const VMOut* vmOut)
 {
     MCAmount nValue = 0;
     int nChangePosRequest = nChangePosInOut;
     unsigned int nSubtractFeeFromAmount = 0;
-    for (const auto& recipient : vecSend)
-    {
-        if (nValue < 0 || recipient.nAmount < 0)
-        {
+    for (const auto& recipient : vecSend) {
+        if (nValue < 0 || recipient.nAmount < 0) {
             strFailReason = _("Transaction amounts must not be negative");
             return false;
         }
         nValue += recipient.nAmount;
 
-        if (recipient.fSubtractFeeFromAmount)
+        if (recipient.fSubtractFeeFromAmount) {
             nSubtractFeeFromAmount++;
+        }
     }
-    if (vecSend.empty() && !wtxNew.isDataTransaction && !wtxNew.IsSmartContract())
-    {
+    if (wtxNew.IsSmartContract()) {
+        nValue += wtxNew.pContractData->contractCoinsIn;
+    }
+    
+    if (vecSend.empty() && !wtxNew.isDataTransaction && !wtxNew.IsSmartContract()) {
         strFailReason = _("Transaction must have at least one recipient");
         return false;
     }
@@ -2959,7 +2961,8 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
             // coin control: send change to custom address
             if (!boost::get<MCNoDestination>(&coin_control.destChange)) {
                 scriptChange = GetScriptForDestination(coin_control.destChange);
-            } else { // no coin control: send change to newly generated address
+            }
+            else { // no coin control: send change to newly generated address
                 // Note: We use a new key here to keep it from being obvious which side is the change.
                 //  The drawback is that by not reusing a previous key, the change may be lost if a
                 //  backup is restored, if the backup doesn't have the new private key for the change.
@@ -2971,14 +2974,14 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 MCPubKey vchPubKey;
                 bool ret;
                 ret = reservekey.GetReservedKey(vchPubKey, true);
-                if (!ret)
-                {
+                if (!ret) {
                     strFailReason = _("Keypool ran out, please call keypoolrefill first");
                     return false;
                 }
 
                 scriptChange = GetScriptForDestination(vchPubKey.GetID());
             }
+
             MCTxOut change_prototype_txout(0, scriptChange);
             size_t change_prototype_size = GetSerializeSize(change_prototype_txout, SER_DISK, 0);
 
@@ -3034,47 +3037,46 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                     txNew.vout.push_back(txout);
                 }
 
+                // add contract out recipients
+                if (vmOut != nullptr) {
+                    txNew.pContractData->address = wtxNew.pContractData->address;
+                    for (int i = 0; i < vmOut->recipients.size(); ++i) {
+                        txNew.vout.push_back(vmOut->recipients[i]);
+                    }
+                }
+
                 // Choose coins to use
                 if (pick_new_inputs) {
                     nValueIn = 0;
                     setCoins.clear();
-                    if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, &coin_control))
-                    {
+                    if (!SelectCoins(vAvailableCoins, nValueToSelect, setCoins, nValueIn, &coin_control)) {
                         strFailReason = _("Insufficient funds");
                         return false;
                     }
                 }
 
-				// 求找零数额 
                 const MCAmount nChange = nValueIn - nValueToSelect;
-                if (nChange > 0)
-                {
+                if (nChange > 0) {
                     // Fill a vout to ourself
                     MCTxOut newTxOut(nChange, scriptChange);
 
                     // Never create dust outputs; if we would, just
                     // add the dust to the fee.
-                    if (IsDust(newTxOut, discard_rate))
-                    {
-						// 如果是微额交易，则移除找零，同时将找零费用加到交易费用里 
+                    if (IsDust(newTxOut, discard_rate)) {
                         nChangePosInOut = -1;
                         nFeeRet += nChange;
                     }
-                    else
-                    {
-						// 在随机位置插入找零输出
-                        if (nChangePosInOut == -1)
-                        {
+                    else {
+                        if (nChangePosInOut == -1) {
                             // Insert change txn at random position:
                             nChangePosInOut = GetRandInt(txNew.vout.size()+1);
                         }
-                        else if ((unsigned int)nChangePosInOut > txNew.vout.size())
-                        {
+                        else if ((unsigned int)nChangePosInOut > txNew.vout.size()) {
                             strFailReason = _("Change index out of range");
                             return false;
                         }
 
-                        std::vector<MCTxOut>::iterator position = txNew.vout.begin()+nChangePosInOut;
+                        std::vector<MCTxOut>::iterator position = txNew.vout.begin() + nChangePosInOut;
                         txNew.vout.insert(position, newTxOut);
                     }
                 } else {
@@ -3092,57 +3094,31 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 // and in the spirit of "smallest possible change from prior
                 // behavior."
                 const uint32_t nSequence = coin_control.signalRbf ? MAX_BIP125_RBF_SEQUENCE : (MCTxIn::SEQUENCE_FINAL - 1);
-                for (const auto& coin : setCoins)
-                    txNew.vin.push_back(MCTxIn(coin.outpoint,MCScript(),
-                                              nSequence));
+                for (const auto& coin : setCoins) {
+                    txNew.vin.push_back(MCTxIn(coin.outpoint, MCScript(), nSequence));
+                }
 
-				// 虚拟签名 
                 // Fill in dummy signatures for fee calculation.
                 if (!DummySignTx(txNew, setCoins)) {
                     strFailReason = _("Signing transaction failed");
                     return false;
                 }
 
-                if (sls != nullptr && sls->recipients.size() > 0) {
-                    for (auto iter : txNew.pContractData->contractCoinsOut) {
-                        txNew.vin.emplace_back(uint256(), 0);
-                    }
-                    for (int i = 0; i < sls->recipients.size(); ++i) {
-                        txNew.vout.emplace_back(sls->recipients[i]);
-                    }
-                }
-
-				// 获取交易字节大小
                 int32_t runningTimes = 0;
                 int32_t deltaDataLen = 0;
-                if (sls != nullptr) {
-                    runningTimes = sls->runningTimes;
-                    deltaDataLen = sls->deltaDataLen;
+                if (vmOut != nullptr) {
+                    runningTimes = vmOut->runningTimes;
+                    deltaDataLen = GetDeltaDataLen(vmOut);
                 }
                 nBytes = GetVirtualTransactionSize(txNew, 0, runningTimes, deltaDataLen);
 
-                if (sls != nullptr && sls->recipients.size() > 0) {
-                    txNew.vin.resize(txNew.vin.size() - txNew.pContractData->contractCoinsOut.size());
-                    txNew.vout.resize(txNew.vout.size() - sls->recipients.size());
-                }
-
-				// 移除虚拟签名数据
                 // Remove scriptSigs to eliminate the fee calculation dummy signatures
                 for (auto& vin : txNew.vin) {
                     vin.scriptSig = MCScript();
                     vin.scriptWitness.SetNull();
                 }
 
-                // check lsdata
-                if (sls != nullptr) {
-                    for (size_t i = 0; i < sls->recipients.size(); ++i) {
-                        txNew.vout.push_back(sls->recipients[i]);
-                    }
-                    txNew.pContractData->address = wtxNew.pContractData->address;
-                }
-
                 nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew);
-				
                 // If we made it here and we aren't even able to meet the relay fee on the next pass, give up
                 // because we must be at the maximum allowed fee.
                 if (nFeeNeeded < ::minRelayTxFee.GetFee(nBytes))
@@ -3152,7 +3128,6 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 }
 
                 if (nFeeRet >= nFeeNeeded) {
-					// 预测的费用大于实际需要的费用时 
                     // Reduce fee to only the needed amount if possible. This
                     // prevents potential overpayment in fees if the coins
                     // selected to meet nFeeNeeded result in a transaction that
@@ -3164,7 +3139,6 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                     // (because of reduced tx size) and so we should add a
                     // change output. Only try this once.
                     if (nChangePosInOut == -1 && nSubtractFeeFromAmount == 0 && pick_new_inputs) {
-						// 没有找零输出，则创建找零并计算相关费用 
                         unsigned int tx_size_with_change = nBytes + change_prototype_size + 2; // Add 2 as a buffer in case increasing # of outputs changes compact size
                         MCAmount fee_needed_with_change = GetMinimumFee(tx_size_with_change, coin_control, ::mempool, ::feeEstimator, nullptr, &txNew);
                         MCAmount minimum_value_for_change = GetDustThreshold(change_prototype_txout, discard_rate);
@@ -3221,21 +3195,8 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
 
 
 		//generate contract address
-		if (txNew.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
-		{
-			//replace
-			MCContractID oldKey = txNew.pContractData->address;
-            MCScript oldScript = GetScriptForDestination(MagnaChainAddress(oldKey).Get());
-
+		if (txNew.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {
 			txNew.pContractData->address = GenerateContractAddressByTx(txNew);
-			//replace vout
-            MCScript newScript = GetScriptForDestination(MagnaChainAddress(txNew.pContractData->address).Get());
-			for (auto &out : txNew.vout)
-			{
-				if (out.scriptPubKey == oldScript){
-					out.scriptPubKey = newScript;
-                }
-			}
 		}
 
         if (sign)

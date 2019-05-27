@@ -5,23 +5,6 @@
 #define CONTRACT_DB_H
 
 #include "transaction/txdb.h"
-#include <boost/threadpool.hpp>
-
-// 合约某高度存盘数据项
-class ContractDataSave
-{
-public:
-    uint256 blockHash;
-    boost::optional<std::string> data;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(blockHash);
-        READWRITE(data);
-    }
-};
 
 // 合约某高度存盘数据
 class DBContractInfoByHeight
@@ -30,7 +13,7 @@ public:
     bool dirty = false;
     int32_t blockHeight;
     std::vector<uint256> vecBlockHash;
-    std::vector<std::string> vecBlockContractData;
+    std::vector<std::pair<MCAmount, std::string>> vecBlockContractData;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -55,85 +38,28 @@ public:
 };
 
 class MCContractID;
-typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
 
-class ContractContext
-{
-    friend class ContractDataDB;
-
-public:
-    CONTRACT_DATA cache;    // 数据缓存，用于回滚
-    CONTRACT_DATA data;
-    CONTRACT_DATA prevData;
-    std::vector<CONTRACT_DATA> txFinalData;
-    std::vector<ContractPrevData> txPrevData;
-
-public:
-    void SetCache(const MCContractID& contractId, ContractInfo& contractInfo);
-    void SetData(const MCContractID& contractId, ContractInfo& contractInfo);
-    bool GetData(const MCContractID& contractId, ContractInfo& contractInfo);
-    void Commit();
-    void ClearCache();
-    void ClearData();
-    void ClearAll();
-};
-
-class SmartLuaState;
-class MagnaChainAddress;
-
-struct SmartContractThreadData
-{
-    int offset;
-    uint16_t groupSize;
-    int blockHeight;
-    std::vector<MCAmount> coins;
-    ContractContext contractContext;
-    MCBlockIndex* pPrevBlockIndex;
-    CoinAmountCache* pCoinAmountCache;
-    std::set<uint256> associationTransactions;
-};
-
-typedef std::map<uint256, std::vector<std::map<MCContractID, ContractInfo>>> BLOCK_CONTRACT_DATA;
 class ContractDataDB
 {
 private:
-    std::atomic<bool> interrupt;
     MCDBWrapper db;
-    MCDBBatch writeBatch;
     MCDBBatch removeBatch;
     std::vector<uint160> removes;
-    boost::threadpool::pool threadPool;
-    std::map<boost::thread::id, std::shared_ptr<SmartLuaState>> threadId2SmartLuaState;
-    mutable MCCriticalSection cs_cache;
-
-    // 合约缓存，同时包含多个合约对应的多个块合约数据快照
     std::map<MCContractID, DBContractInfo> contractData;
-    BLOCK_CONTRACT_DATA blockContractData;
-    std::map<int, std::vector<std::pair<uint256, bool>>> mapHeightHash;
-
-public:
-    ContractContext contractContext;
 
 public:
     ContractDataDB() = delete;
     ContractDataDB(const ContractDataDB&) = delete;
     ContractDataDB& operator=(const ContractDataDB&) = delete;
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
-    static void InitializeThread(ContractDataDB* contractDB);
 
-    int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, MCBlockIndex* currentPrevBlockIndex);
-
-    bool RunBlockContract(const MCBlock* pBlock, ContractContext* pContractContext, CoinAmountCache* pCoinAmountCache);
-    bool ExecutiveContract(const MCBlock* pBlock, int index, SmartContractThreadData* threadData, std::shared_ptr<SmartLuaState> sls);
-    void ExecutiveTransactionContract(const MCBlock* pBlock, SmartContractThreadData* threadData);
+    int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, const MCBlockIndex* currentPrevBlockIndex);
 
     bool WriteBatch(MCDBBatch& batch);
-    bool WriteBlockContractInfoToDisk(MCBlockIndex* pBlockIndex, ContractContext* contractContext);
-    bool UpdateBlockContractToDisk(MCBlockIndex* pBlockIndex);
+    bool WriteBlockContractInfoToDisk(const MCBlockIndex* pBlockIndex, const CONTRACT_DATA& contractContext);
+    bool UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex);
     void PruneContractInfo();
 };
 extern ContractDataDB* mpContractDb;
-
-extern MCAmount GetTxContractOut(const MCTransaction& tx);
 
 #endif

@@ -61,7 +61,6 @@ public:
         EXT_PUBLIC_KEY,
         EXT_SECRET_KEY,
         CONTRACT_ADDRESS,
-
         MAX_BASE58_TYPES
     };
 

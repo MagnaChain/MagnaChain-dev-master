@@ -45,12 +45,13 @@ class MCBlockPolicyEstimator;
 class MCTxMemPool;
 class MCTxMemPoolEntry;
 class MCValidationState;
-class SmartLuaState;
+class ContractVM;
 struct ChainTxData;
 class BranchCache;
 class ContractContext;
 class CoinAmountCache;
 
+struct VMOut;
 struct PrecomputedTransactionData;
 struct LockPoints;
 
@@ -246,7 +247,7 @@ bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
  * @param[out]  fNewBlock A boolean which is set to indicate if the block was first received via this call
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool ismining = false);
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, bool fForceProcessing, bool* fNewBlock, bool ismining = false);
 
 /**
  * Process incoming block headers.
@@ -379,9 +380,7 @@ bool TestLockPointValidity(const LockPoints* lp);
  */
 bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp = nullptr, bool useExistingLockPoints = false);
 
-bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls);
-
-bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int saveType, CoinAmountCache* pCoinAmountCache);
+bool CheckContractCoins(const MCTransactionRef& tx, const VMOut* vmOut);
 
 /**
  * Closure representing one script verification
@@ -488,10 +487,6 @@ extern MCCoinsViewCache* pcoinsTip;
 extern MCBlockTreeDB* pblocktree;
 
 extern CoinListDB* pcoinListDb;
-
-extern CoinAmountDB* pCoinAmountDB;
-
-extern CoinAmountCache* pCoinAmountCache;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

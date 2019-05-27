@@ -435,12 +435,10 @@ uint256 GetContractHash(const MCTransaction& txTo) {
 	ss << txTo.nLockTime;
 
 	for (const auto& txin : txTo.vin) {
-        if (!txin.scriptSig.IsContract())
-		    ss << txin;
+        ss << txin;
 	}
 	for (const auto& txout : txTo.vout) {
-        if (!txout.scriptPubKey.IsContractChange())
-		    ss << txout;
+        ss << txout;
 	}
 
 	if (txTo.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
@@ -448,6 +446,7 @@ uint256 GetContractHash(const MCTransaction& txTo) {
         ss << txTo.pContractData->sender;
 		ss << txTo.pContractData->codeOrFunc;
         ss << txTo.pContractData->args;
+        ss << txTo.pContractData->contractCoinsIn;
         ss << txTo.pContractData->contractCoinsOut;
 	}
 
@@ -461,8 +460,8 @@ bool SignContract(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, MCS
 		return true;
 	}
 
+    MCKey key;
 	MCKeyID keyAddr = txToIn->pContractData->sender.GetID();
-	MCKey key;
 	if (!keystoreIn->GetKey(keyAddr, key))
 		return false;
 
@@ -470,9 +469,8 @@ bool SignContract(const MCKeyStore* keystoreIn, const MCTransaction* txToIn, MCS
 	if (!key.IsCompressed())
 		return false;
 
+    std::vector<unsigned char> vchSig;
 	uint256 hash = GetContractHash(*txToIn);
-
-	std::vector<unsigned char> vchSig;
 	if (!key.Sign(hash, vchSig))
 		return false;
 

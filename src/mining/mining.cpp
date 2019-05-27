@@ -232,21 +232,22 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
             outpoint.n = out.i;
         }
 
-        ContractContext contractContext;
+        std::vector<VMOut> vmOuts;
         BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params());
         options.outpoint = outpoint;
         std::string strCreateBlockError;
-        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache, strCreateBlockError));
+        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, vmOuts, true, keystoreIn, pcoinsCache, strCreateBlockError));
         if (!pblocktemplate.get()) {
             nTries++;
             continue;
         }
 
+        std::vector<uint256> leaves;
         MCBlock *pblock = &pblocktemplate->block;
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
         if (!Params().IsMainChain()) {
-            pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
-            pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
+            pblock->hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(pblock, vmOuts, leaves, nullptr);
+            pblock->hashMerkleRootWithData = BlockMerkleLeavesWithPrevData(pblock, vmOuts, leaves, nullptr);
         }
 
         // 如果有修改头部的值，需要重新签名
@@ -263,7 +264,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
             std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
-            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr, true))
+            if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr, true))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
             ++nHeight;
             blockHashes.push_back(pblock->GetHash().GetHex());
@@ -935,11 +936,11 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             scriptForMine = GetScriptForDestination(keyID);
         }
 
-        ContractContext contractContext;
+        std::vector<VMOut> vmOuts;
         MCCoinsView viewDummy;
         MCCoinsViewCache view(&viewDummy);
         std::string strCreateBlockError;
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view, strCreateBlockError);
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, vmOuts, fSupportsSegwit, pwallet, &view, strCreateBlockError);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, strCreateBlockError);
 
@@ -1172,8 +1173,7 @@ UniValue submitblock(const JSONRPCRequest& request)
 
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    ContractContext contractContext;
-    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr);
+    bool fAccepted = ProcessNewBlock(Params(), blockptr, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found) {

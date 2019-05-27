@@ -28,6 +28,8 @@
 
 #include "chain/branchdb.h"
 
+extern bool IsCoinBranchTranScript(const MCScript& script);
+
 bool IsFinalTx(const MCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
 {
     if (tx.nLockTime == 0)
@@ -422,10 +424,6 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
 
     MCAmount nValueIn = 0;
     MCAmount nFees = 0;
-    MCScript contractScript;
-    std::map<MCContractID, MCAmount> contractCoinsOut;
-    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-        contractScript = GetScriptForDestination(tx.pContractData->address);
 
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
@@ -453,12 +451,6 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
-        if (tx.vin[i].scriptSig.IsContract()) {
-            MCContractID contractId;
-            tx.vin[i].scriptSig.GetContractAddr(contractId);
-            contractCoinsOut[contractId] += coin.out.nValue;
-        }
-
         // Check input types
         branch_script_type bst = QuickGetBranchScriptType(coin.out.scriptPubKey);
         if ((bst == BST_MORTGAGE_MINE && !tx.IsRedeemMortgage() && !tx.IsBranchChainTransStep2())) // 除了赎回抵押币
@@ -481,12 +473,15 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         }
     }
 
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && contractCoinsOut.size() == 0 && tx.pContractData->contractCoinsOut.size() > 0) {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION && tx.pContractData->contractCoinsOut.size() > 0) {
+        return state.DoS(100, false, REJECT_INVALID, "publish-contract-cannot-send-coins");
+    }
+
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         for (auto& it : tx.pContractData->contractCoinsOut) {
             nValueIn += it.second;
             if (!MoneyRange(it.second) || !MoneyRange(nValueIn))
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-            contractCoinsOut[it.first] = it.second;
         }
     }
 
@@ -496,21 +491,12 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         nValueOut += tx_out.nValue;
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+    }
 
-        if (tx_out.scriptPubKey.IsContract()) {
-            MCContractID contractId;
-            if (!tx_out.scriptPubKey.GetContractAddr(contractId)) {
-                return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
-            }
-            if (tx_out.scriptPubKey.IsContractChange()) {
-                // 合约输出只能有一个找零
-                auto it = contractChange.find(contractId);
-                if (it != contractChange.end()) {
-                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_amount_change");
-                }
-                contractChange.insert(std::make_pair(contractId, tx_out.nValue));
-            }
-        }
+    if (tx.IsSmartContract()) {
+        nValueOut += tx.pContractData->contractCoinsIn;
+        if (!MoneyRange(tx.pContractData->contractCoinsIn) || !MoneyRange(nValueOut))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
     }
 
     if (nValueIn < nValueOut)
@@ -520,8 +506,7 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN)
     {
         MCAmount nInValueBranch = 0;
-        for (unsigned int i = 0; i < tx.vin.size(); i++)
-        {
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
             const MCOutPoint &prevout = tx.vin[i].prevout;
             const Coin& coin = inputs.AccessCoin(prevout);// coin type has check in 
             nInValueBranch += coin.out.nValue;
@@ -543,21 +528,6 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         }
         if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount) {
             return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
-        }
-    }
-
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->contractCoinsOut.size() > 0) {
-        MCAmount txContractCoinsOut = 0;
-        for (auto it : tx.pContractData->contractCoinsOut) {
-            if (contractCoinsOut[it.first] - contractChange[it.first] != it.second) {
-                return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
-            }
-            contractCoinsOut.erase(it.first);
-            contractChange.erase(it.first);
-        }
-
-        if (contractCoinsOut.size() != 0 || contractChange.size() != 0) {
-            return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
         }
     }
 

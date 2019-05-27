@@ -923,14 +923,13 @@ int luaopen_create(lua_State *L) {
 }
 
 LUALIB_API int luaopen_cmsgpack(lua_State *L) {
+    int top = lua_gettop(L);
     luaopen_create(L);
-
 #if LUA_VERSION_NUM < 502
     /* Register name globally for 5.1 */
-    lua_pushvalue(L, -1);
     lua_setglobal(L, LUACMSGPACK_NAME);
 #endif
-
+    lua_settop(L, top);
     return 1;
 }
 

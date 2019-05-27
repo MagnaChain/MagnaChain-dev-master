@@ -37,8 +37,6 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_MINE_MORTGAGE: return "mine_mortgage";
     case TX_MORTGAGE_COIN: return "mortgage_coin";
     case TX_REDEEM_MORTGAGE: return "redeem_mortgage";
-    case TX_CONTRACT: return "contract";
-    case TX_CONTRACT_CHANGE: return "contract_change";
     }
     return nullptr;
 }
@@ -81,10 +79,6 @@ bool Solver(const MCScript& scriptPubKey, txnouttype& typeRet, std::vector<std::
 
         //redeeem mortgage coin 赎回抵押挖矿的币 OP_HASH256_DATA 是主链上 txid, vout nValue为0
         mTemplates.insert(std::make_pair(TX_REDEEM_MORTGAGE, MCScript() << OP_RETURN << OP_REDEEM_MORTGAGE << OP_HASH256_DATA));
-
-        mTemplates.insert(std::make_pair(TX_CONTRACT, MCScript() << OP_CONTRACT << OP_PUBKEYHASH));
-
-        mTemplates.insert(std::make_pair(TX_CONTRACT_CHANGE, MCScript() << OP_CONTRACT_CHANGE << OP_PUBKEYHASH));
     }
 
     vSolutionsRet.clear();
@@ -251,10 +245,6 @@ bool ExtractDestination(const MCScript& scriptPubKey, MCTxDestination& addressRe
         addressRet = MCKeyID(uint160(vSolutions[0]));
         return true;
     }
-    else if (whichType == TX_CONTRACT || whichType == TX_CONTRACT_CHANGE) {
-        addressRet = MCContractID(uint160(vSolutions[0]));
-        return true;
-    }
     // Multisig txns have more than one address...
     return false;
 }
@@ -316,8 +306,7 @@ namespace
 
         bool operator()(const MCContractID &contractID) const {
             script->clear();
-            *script << OP_CONTRACT << ToByteVector(contractID);
-            return true;
+            return false;
         }
 
         bool operator()(const MCKeyID &keyID) const {

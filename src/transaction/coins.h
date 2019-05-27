@@ -306,48 +306,6 @@ private:
     MCCoinsViewCache(const MCCoinsViewCache &);
 };
 
-class CoinAmountCacheBase
-{
-public:
-    virtual MCAmount GetAmount(const uint160& key) const
-    {
-        return 0;
-    }
-};
-
-class CoinAmountDB : public CoinAmountCacheBase
-{
-public:
-    MCAmount GetAmount(const uint160& key) const override;
-};
-
-class CoinAmountTemp : public CoinAmountCacheBase
-{
-public:
-    MCAmount GetAmount(const uint160& key) const override;
-    void IncAmount(const uint160& key, MCAmount delta);
-
-private:
-    std::map<uint160, MCAmount> coinAmountCache;
-};
-
-class CoinAmountCache
-{
-public:
-    CoinAmountCache(CoinAmountCacheBase* amountBase) : base(amountBase) {}
-
-    bool HasKeyInCache(const uint160& key) const;
-    MCAmount GetAmount(const uint160& key);
-    bool IncAmount(const uint160& key, MCAmount delta);
-    bool DecAmount(const uint160& key, MCAmount delta);
-    void Clear();
-
-private:
-    CoinAmountCacheBase* base;
-    std::map<uint160, MCAmount> coinAmountCache;
-    mutable MCCriticalSection cs;
-};
-
 //! Utility function to add all of a transaction's outputs to a cache.
 // When check is false, this assumes that overwrites are only possible for coinbase transactions.
 // When check is true, the underlying view may be queried to determine whether an addition is

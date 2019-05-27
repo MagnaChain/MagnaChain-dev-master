@@ -233,10 +233,6 @@ bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& 
         else if (typeRet == TX_SCRIPTHASH) {
             address = MagnaChainAddress(MCScriptID(uint160(vSolutionsRet[0])));
         }
-        else if (typeRet == TX_CONTRACT || typeRet == TX_CONTRACT_CHANGE) {
-            address = MagnaChainAddress(MCContractID(uint160(vSolutionsRet[0])));
-            return true;
-        }
         else if (typeRet == TX_NULL_DATA) {
             return true;
         }
@@ -367,20 +363,6 @@ void WritePMT(const MCTransactionRef tx)
     sqlPMT += sql;
 }
 
-void WriteContractPrevDataItem(const std::string& txHash, const std::string& contractId, const ContractPrevDataItem& item)
-{
-    const char sqlBase[] = "INSERT INTO `contractprevdataitem`(`txhash`, `contractid`, `blockhash`, `txindex`) VALUES";
-    if (sqlContractPrevDataItem.empty()) {
-        sqlContractPrevDataItem = sqlBase;
-    }
-
-    const std::string& blockHash = item.blockHash.ToString();
-
-    std::string sql = strprintf("('%s', '%s', '%s', %d),", 
-        txHash, contractId, blockHash, item.txIndex);
-    sqlContractPrevDataItem += sql;
-}
-
 void WriteContractInfo(const std::string& txHash, const std::string& contractId, const ContractInfo& info)
 {
     char sqlBase[] = "INSERT INTO `contractinfo`(`txhash`, `contractid`, `txindex`, `blockhash`, `code`, `data`) VALUES";
@@ -412,23 +394,23 @@ bool WriteReportData(const MCTransactionRef tx)
 
     MCDataStream contractReportedSpvProofData(SER_DISK, CLIENT_VERSION);
     MCDataStream contractProveSpvProofData(SER_DISK, CLIENT_VERSION);
-    if (reportData->contractData != nullptr) {
+    /*if (reportData->contractData != nullptr) {
         reportData->contractData->reportedSpvProof.Serialize(contractReportedSpvProofData);
         reportData->contractData->proveSpvProof.Serialize(contractProveSpvProofData);
-    }
+    }*/
 
     const std::string& txHash = tx->GetHash().ToString();
     const std::string& reportedbranchId = reportData->reportedBranchId.ToString();
     const std::string& reportedBlockHash = reportData->reportedBlockHash.ToString();
     const std::string& reportedTxHash = reportData->reportedTxHash.ToString();
     const std::string& contractReportedSpvProof = HexStr(contractReportedSpvProofData.begin(), contractReportedSpvProofData.end());
-    const std::string& proveTxHash = reportData->contractData->proveTxHash.ToString();
+    //const std::string& proveTxHash = reportData->contractData->proveTxHash.ToString();
     const std::string& contractProveSpvProof = HexStr(contractProveSpvProofData.begin(), contractProveSpvProofData.end());
 
-    std::string sql = strprintf("('%s', %d, '%s', '%s', '%s', %lld, '%s', '%s', '%s'),",
+    /*std::string sql = strprintf("('%s', %d, '%s', '%s', '%s', %lld, '%s', '%s', '%s'),",
         txHash, reportData->reporttype, reportedbranchId, reportedBlockHash, reportedTxHash,
         reportData->contractData->reportedContractPrevData.coins, contractReportedSpvProof, proveTxHash, contractProveSpvProof);
-    sqlReportData += sql;
+    sqlReportData += sql;*/
 }
 
 void WriteTransaction(const MCBlock& block)

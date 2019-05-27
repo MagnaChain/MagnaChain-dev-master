@@ -614,24 +614,6 @@ MCAmount GetBranchChainOut(const MCTransaction& tx)
     return 0;
 }
 
-MCAmount GetContractAmountOut(const MCTransaction& tx)
-{
-    MCAmount amount = 0;
-    std::vector<unsigned char> vch;
-    for (int i = 0; i < tx.vout.size(); ++i) {
-        MCTxOut txout = tx.vout[i];
-
-        opcodetype opcode;
-        MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
-        if (!txout.scriptPubKey.GetOp(pc1, opcode, vch))
-            continue;
-
-        if (opcode == OP_CONTRACT)
-            amount += txout.nValue;
-    }
-    return amount;
-}
-
 //copy from merkleblock.cpp
 MCSpvProof* NewSpvProof(const MCBlock& block, const std::set<uint256>& txids)
 {
@@ -1210,7 +1192,6 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
 
     MCAmount nInAmount = 0;
     std::map<MCContractID, MCAmount> contractCoinsOut;
-    MCScript contractScript = GetScriptForDestination(pProveTx->pContractData->address);
     for (size_t i = 0; i < pProveTx->vin.size(); ++i) {
         const ProveDataItem& provDataItem = vectProveData[i + baseIndex];
         if (branchData.mapHeads.count(provDataItem.blockHash) == 0)
@@ -1239,12 +1220,6 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
         const MCAmount amount = pTx->vout[outpoint.n].nValue;
         nInAmount += amount;
 
-        if (scriptPubKey.IsContract()) {
-            MCContractID contractId;
-            scriptPubKey.GetContractAddr(contractId);
-            contractCoinsOut[contractId] += amount;
-        }
-
         bool fCacheResults = false;
         unsigned int flags = SCRIPT_VERIFY_P2SH | SCRIPT_VERIFY_DERSIG | SCRIPT_VERIFY_CHECKLOCKTIMEVERIFY | SCRIPT_VERIFY_CHECKSEQUENCEVERIFY | SCRIPT_VERIFY_WITNESS | SCRIPT_VERIFY_NULLDUMMY;
 
@@ -1257,7 +1232,6 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
 
     //check input >= output value
     MCAmount nValueOut = 0;
-    std::map<MCContractID, MCAmount> contractChange;
     for (const auto& txout : pProveTx->vout) {
         if (txout.nValue < 0)
             return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-vout-negative");
@@ -1266,30 +1240,6 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
         nValueOut += txout.nValue;
         if (!MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "CheckProveReportTx bad-txns-txouttotal-toolarge");
-
-        if (txout.scriptPubKey.IsContractChange()) {
-            MCContractID contractId;
-            if (!txout.scriptPubKey.GetContractAddr(contractId)) {
-                return state.DoS(0, false, REJECT_INVALID, "Invalid contract out public key");
-            }
-            if (contractChange.find(contractId) != contractChange.end()) {
-                return state.DoS(0, false, REJECT_INVALID, "Dumplicate contract change");
-            }
-            contractChange[contractId] = txout.nValue;
-        }
-    }
-    if (pProveTx->IsSmartContract()) {
-        for (auto it : pProveTx->pContractData->contractCoinsOut) {
-            if (contractCoinsOut[it.first] - contractChange[it.first] != it.second) {
-                return state.DoS(0, false, REJECT_INVALID, "contract coins out not match");
-            }
-            contractCoinsOut.erase(it.first);
-            contractChange.erase(it.first);
-        }
-
-        if (contractCoinsOut.size() != 0 || contractChange.size() != 0) {
-            return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
-        }
     }
 
     if (!MoneyRange(nValueOut))
@@ -1302,33 +1252,29 @@ bool CheckTransactionProveWithProveData(const MCTransactionRef& pProveTx, MCVali
     return true;
 }
 
-int CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData, const BranchBlockData* pPrevBlockData)
+int CheckProveSmartContract(const std::shared_ptr<const ProveData> pProveData, const MCTransactionRef proveTx, const BranchBlockData* pBlockData, const BranchBlockData* prevBlockData)
 {
-    ContractPrevData prevData;
-    for (auto item : pProveData->contractData->contractPrevData) {
-        prevData.items[item.first].blockHash = item.second.blockHash;
-        prevData.items[item.first].txIndex = item.second.txIndex;
-    }
-    prevData.coins = pProveData->contractData->coins;
-
-    uint256 hashWithPrevData = GetTxHashWithPrevData(proveTx->GetHash(), prevData);
+    uint256 hashWithPrevData = GetTxHashWithData(proveTx->GetHash(), pProveData->contractData->prevData);
     int txIndex = CheckSpvProof(pBlockData->header.hashMerkleRootWithPrevData, pProveData->contractData->prevDataSPV, hashWithPrevData);
     if (txIndex < 0) {
         return -1;
     }
 
-    ContractContext contractContext;
-    for (auto item : pProveData->contractData->contractPrevData) {
-        contractContext.data[item.first] = std::move(item.second);
+    ContractVM vm;
+    for (auto item : pProveData->contractData->prevData) {
+        vm.SetContractInfo(item.first, item.second);
     }
+    vm.CommitData();
 
-    SmartLuaState sls;
-    contractContext.txFinalData.resize(txIndex + 1);
-    if (!ExecuteContract(&sls, proveTx, txIndex, prevData.coins, pPrevBlockData->header.GetBlockTime(), pBlockData->nHeight, nullptr, &contractContext)) {
+    MCBlockIndex prevBlockIndex(prevBlockData->GetBlockHeader());
+    prevBlockIndex.nHeight = prevBlockData->nHeight;
+    
+    VMOut vmOut;
+    if (!vm.ExecuteContract(proveTx, txIndex, &prevBlockIndex, &vmOut)) {
         return -1;
     }
 
-    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), contractContext.txFinalData[txIndex]);
+    uint256 hashWithData = GetTxHashWithData(proveTx->GetHash(), vmOut.txFinalData);
     int txIndexFinal = CheckSpvProof(pBlockData->header.hashMerkleRootWithData, pProveData->contractData->dataSPV, hashWithData);
     if (txIndexFinal < 0) {
         return -1;
@@ -1462,7 +1408,7 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
 
 bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)
 {
-    if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA) {
+    /*if (!tx.IsReport() || tx.pReportData == nullptr || tx.pReportData->reporttype != ReportType::REPORT_CONTRACT_DATA) {
         return state.DoS(0, false, REJECT_INVALID, "Invalid params");
     }
 
@@ -1478,7 +1424,7 @@ bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, B
         return state.DoS(0, false, REJECT_INVALID, "Get branch reported block data fail");
     }
 
-    uint256 reportedTxHashWithPrevData = GetTxHashWithPrevData(tx.pReportData->reportedTxHash, tx.pReportData->contractData->reportedContractPrevData);
+    uint256 reportedTxHashWithPrevData = GetTxHashWithData(tx.pReportData->reportedTxHash, tx.pReportData->contractData->reportedContractPrevData);
     int reportedTxIndex = CheckSpvProof(pReportedBlockData->header.hashMerkleRootWithPrevData, tx.pReportData->contractData->reportedSpvProof.pmt, reportedTxHashWithPrevData);
     if (reportedTxIndex < 0) {
         return state.DoS(0, false, REJECT_INVALID, "Check tx prev data fail");
@@ -1506,8 +1452,8 @@ bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, B
     }
 
     for (auto& item : tx.pReportData->contractData->proveContractData) {
-        auto it = tx.pReportData->contractData->reportedContractPrevData.items.find(item.first);
-        if (it != tx.pReportData->contractData->reportedContractPrevData.items.end()) {
+        auto it = tx.pReportData->contractData->reportedContractPrevData.find(item.first);
+        if (it != tx.pReportData->contractData->reportedContractPrevData.end()) {
             BranchBlockData& targetBlockData = branchData.mapHeads[it->second.blockHash];
             const BranchBlockData* subAncestorBlockData = branchData.GetAncestor(pReportedBlockData, targetBlockData.nHeight);
             if (subAncestorBlockData->mBlockHash != targetBlockData.mBlockHash) {
@@ -1521,7 +1467,8 @@ bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, B
         }
     }
 
-    return state.DoS(0, false, REJECT_INVALID, "The reported target do not have any problem");
+    return state.DoS(0, false, REJECT_INVALID, "The reported target do not have any problem");*/
+    return false;
 }
 
 bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache)

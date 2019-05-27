@@ -542,26 +542,7 @@ static inline bool GetCoinDest(const MCOutPoint& outpoint, const Coin& coin, MCT
     }
 
     if (!ExtractDestination(pScript, kDest)) {
-        opcodetype opcode;
-        std::vector<unsigned char> vch;
-        MCScript::const_iterator pc = pScript.begin();
-        MCScript::const_iterator end = pScript.end();
-        pScript.GetOp(pc, opcode, vch);
-
-        if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE) {
-            vch.clear();
-            vch.assign(pc + 1, end);
-            uint160 key = uint160(vch);
-            kDest = MCContractID(key);
-        }
-        else if (opcode == OP_TRANS_BRANCH){
-            if (!pScript.GetOp(pc, opcode, vch) || vch.size() != sizeof(uint256))
-                return false;
-            
-            uint256 branchhash(vch);
-            kDest = MCKeyID(Hash160(branchhash.begin(), branchhash.end()));// branch coin address
-        } else
-            return false;
+        return false;
     }
 
     MagnaChainAddress kAddr(kDest);
@@ -585,6 +566,7 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
 
             CoinListPtr pList = nullptr;
             const uint160& key = GetUint160(dest);
+            LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, key.ToString());
             MCCoinListMap::iterator mit = cache.find(key);
             if (mit == cache.end()) {
                 pList.reset(new CoinList());

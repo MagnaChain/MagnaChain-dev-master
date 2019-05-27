@@ -241,10 +241,6 @@ void Shutdown()
         g_pBranchDataMemCache = nullptr;
         delete g_pBranchDb;
         g_pBranchDb = nullptr;
-        delete pCoinAmountCache;
-        pCoinAmountCache = nullptr;
-        delete pCoinAmountDB;
-        pCoinAmountDB = nullptr;
     }
 #ifdef ENABLE_WALLET
     for (CWalletRef pwallet : vpwallets) {
@@ -1517,10 +1513,6 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
-                // The on-disk coinsdb is now in a good state, create the cache
-                pCoinAmountDB = new CoinAmountDB();
-                pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
-                
                 if (Params().IsMainChain()) //only in main chain
                 {
                     if (g_pBranchDb == nullptr) { // cache size calculations

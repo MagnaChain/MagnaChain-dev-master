@@ -26,7 +26,6 @@ enum ReportType {
     REPORT_CONTRACT_DATA,
 };
 
-
 /** An outpoint - a combination of a transaction hash and an index n into its vout */
 class MCOutPoint
 {
@@ -279,12 +278,13 @@ public:
 class ContractInfo
 {
 public:
-    int txIndex;
     uint256 blockHash;
+    int txIndex;
+    MCAmount coins;
     std::string code;
     std::string data;
 
-    ContractInfo() : txIndex(-1)
+    ContractInfo() : txIndex(-1), coins(0)
     {
     }
 
@@ -292,82 +292,31 @@ public:
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        READWRITE(txIndex);
-        READWRITE(code);
         READWRITE(blockHash);
+        READWRITE(txIndex);
+        READWRITE(coins);
+        READWRITE(code);
         READWRITE(data);
     }
 };
 
-class ContractPrevDataItem
+class MCContractID;
+typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
+
+class ReplaceContractData
 {
 public:
-    uint256 blockHash;
-    int32_t txIndex;
+    uint256 txHash;
+    CONTRACT_DATA contractData;
+    MCSpvProof spvProof;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action)
     {
-        READWRITE(blockHash);
-        READWRITE(txIndex);
-    }
-
-    friend inline bool operator==(const ContractPrevDataItem& lhs, const ContractPrevDataItem& rhs)
-    {
-        return (lhs.blockHash == rhs.blockHash && lhs.txIndex == rhs.txIndex);
-    }
-
-    friend inline bool operator!=(const ContractPrevDataItem& lhs, const ContractPrevDataItem& rhs)
-    {
-        return !(lhs == rhs);
-    }
-};
-
-class ContractPrevData
-{
-public:
-    MCAmount coins;   // 执行合约时该合约的币数量
-    std::map<MCContractID, ContractPrevDataItem> items;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(coins);
-        READWRITE(items);
-    }
-
-    friend inline bool operator==(const ContractPrevData& lhs, const ContractPrevData& rhs)
-    {
-        return (lhs.coins == rhs.coins && lhs.items == rhs.items);
-    }
-
-    friend inline bool operator!=(const ContractPrevData& lhs, const ContractPrevData& rhs)
-    {
-        return !(lhs == rhs);
-    }
-};
-
-class ReportContractData
-{
-public:
-    ContractPrevData reportedContractPrevData;  // 有错误数据的交易合约数据
-    MCSpvProof reportedSpvProof;
-
-    uint256 proveTxHash;
-    std::map<MCContractID, ContractInfo> proveContractData;       // 被替换的数据
-    MCSpvProof proveSpvProof;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(reportedContractPrevData);
-        READWRITE(reportedSpvProof);
-
-        READWRITE(proveTxHash);
-        READWRITE(proveContractData);
-        READWRITE(proveSpvProof);
+        READWRITE(txHash);
+        READWRITE(contractData);
+        READWRITE(spvProof);
     }
 };
 
@@ -379,7 +328,7 @@ public:
     uint256 reportedBranchId;
     uint256 reportedBlockHash;
     uint256 reportedTxHash;
-    std::shared_ptr<ReportContractData> contractData;
+    std::shared_ptr<ReplaceContractData> replaceContractData;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -391,8 +340,8 @@ public:
         READWRITE(reportedTxHash);
         if (reporttype == ReportType::REPORT_CONTRACT_DATA) {
             if (ser_action.ForRead())
-                contractData.reset(new ReportContractData);
-            READWRITE(*contractData);
+                replaceContractData.reset(new ReplaceContractData());
+            READWRITE(*replaceContractData);
         }
     }
 };
@@ -400,16 +349,14 @@ public:
 class ContractProveData
 {
 public:
-    MCAmount coins;
-    std::map<MCContractID, ContractInfo> contractPrevData;
+    CONTRACT_DATA prevData;
     MCPartialMerkleTree prevDataSPV;
     MCPartialMerkleTree dataSPV;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
     inline void SerializationOp(Stream& s, Operation ser_action) {
-        READWRITE(coins);
-        READWRITE(contractPrevData);
+        READWRITE(prevData);
         READWRITE(prevDataSPV);
         READWRITE(dataSPV);
     }
@@ -460,14 +407,16 @@ public:
     std::string codeOrFunc;
     std::string args;
     MCScript signature;
+    MCAmount contractCoinsIn;
     std::map<MCContractID, MCAmount> contractCoinsOut;
 
-    ContractData()
+    ContractData() : contractCoinsIn(0)
     {
     }
 
     ContractData(const ContractData& from)
-        : address(from.address), sender(from.sender), codeOrFunc(from.codeOrFunc), args(from.args), contractCoinsOut(from.contractCoinsOut), signature(from.signature)
+        : address(from.address), sender(from.sender), codeOrFunc(from.codeOrFunc), args(from.args), 
+        contractCoinsIn(from.contractCoinsIn), contractCoinsOut(from.contractCoinsOut), signature(from.signature)
     {
     }
 
@@ -478,6 +427,7 @@ public:
         READWRITE(sender);
         READWRITE(codeOrFunc);
         READWRITE(args);
+        READWRITE(contractCoinsIn);
         READWRITE(contractCoinsOut);
         READWRITE(signature);
     }
@@ -681,8 +631,7 @@ public:
     }
 
     bool IsDynamicTx() const {
-        return (IsBranchChainTransStep2() && fromBranchId != MCBaseChainParams::MAIN) ||
-            (IsSmartContract() && pContractData->contractCoinsOut.size() > 0);
+        return (IsBranchChainTransStep2() && fromBranchId != MCBaseChainParams::MAIN);
     }
 
     bool IsLockMortgageMineCoin() const {

@@ -500,7 +500,6 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
             vRecv >> headers[n];
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
             ReadCompactSize(vRecv); // groupSize is 0
-            ReadCompactSize(vRecv); // prevContractData is 0
         }
 
         // Headers received via a HEADERS message should be valid, and reflect

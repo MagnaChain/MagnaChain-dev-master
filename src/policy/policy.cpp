@@ -76,12 +76,6 @@ bool IsStandard(const MCScript& scriptPubKey, txnouttype& whichType, const bool 
 {
     std::vector<std::vector<unsigned char> > vSolutions;
 	if (!Solver(scriptPubKey, whichType, vSolutions)) {
-		opcodetype opcode;
-		std::vector<unsigned char> vch;
-		MCScript::const_iterator pc = scriptPubKey.begin();
-		scriptPubKey.GetOp(pc, opcode, vch);
-		if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE)
-			return true;
 		return false;
 	}
 
@@ -196,13 +190,6 @@ bool AreInputsStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInput
                 return false;
             MCScript subscript(stack.back().begin(), stack.back().end());
             if (subscript.GetSigOpCount(true) > MAX_P2SH_SIGOPS) {
-                return false;
-            }
-        }
-        else if (whichType == TX_CONTRACT || whichType == TX_CONTRACT_CHANGE) {
-            uint160 hash160(vSolutions[0]);
-            MCContractID contractId(hash160);
-            if (contractId != tx.pContractData->address) {
                 return false;
             }
         }
