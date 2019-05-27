@@ -114,6 +114,7 @@ void BranchChainTxRecordsCache::AddToCache(const MCTransactionRef& ptx, const ui
     }
 }
 
+//call in DisconnectBlock
 void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
 {
     if (ptx->IsPregnantTx() || ptx->IsBranchCreate()) {
@@ -156,17 +157,32 @@ uint256 BranchChainTxRecordsCache::GetBlockTxid(const uint256& txid)
     return uint256();
 }
 
-void BranchChainTxRecordsCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
+//void BranchChainTxRecordsCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
+//{
+//    for (int i=0; i<vtx.size(); i++)// use foreach shuang(cool?) but 
+//    {
+//        //erase not remove as RemoveFromCache
+//        const MCTransactionRef& ptx = vtx[i];
+//        if (ptx->IsBranchChainTransStep2()){
+//            uint256 txid = mempool.GetOriTxHash(*ptx, false);
+//            BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
+//            m_mapRecvRecord.erase(key);
+//        }
+//    }
+//}
+
+void BranchChainTxRecordsCache::RemoveFromMempool(const MCTransaction& tx)
 {
-    for (int i=0; i<vtx.size(); i++)// use foreach shuang(cool?) but 
-    {
-        //erase not remove as RemoveFromCache
-        const MCTransactionRef& ptx = vtx[i];
-        if (ptx->IsBranchChainTransStep2()){
-            uint256 txid = mempool.GetOriTxHash(*ptx, false);
-            BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
-            m_mapRecvRecord.erase(key);
-        }
+    if (tx.IsBranchChainTransStep2()) {
+        uint256 txid = mempool.GetOriTxHash(tx, false);
+        BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
+        m_mapRecvRecord.erase(key);
+    }
+    if (tx.IsBranchChainTransStep2() || tx.IsRedeemMortgage()) {
+        MCTransactionRef pFromTx;
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pFromTx);
+        m_mapTxidMapping.erase(pFromTx->GetHash());
     }
 }
 

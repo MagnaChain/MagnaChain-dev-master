@@ -2620,9 +2620,9 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
     disconnectpool.RemoveForBlock(blockConnecting.vtx);
     if (g_pBranchDataMemCache)
         g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
-    if (g_pBranchTxRecordCache){
-        g_pBranchTxRecordCache->RemoveFromBlock(blockConnecting.vtx);
-    }
+    //if (g_pBranchTxRecordCache){
+    //    g_pBranchTxRecordCache->RemoveFromBlock(blockConnecting.vtx);
+    //}
     // Update chainActive & related variables.
     UpdateTip(pindexNew, chainparams);
 

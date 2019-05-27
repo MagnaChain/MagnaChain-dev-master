@@ -176,7 +176,8 @@ public:
     void RemoveFromCache(const MCTransactionRef& ptx);
 
     bool HasInCache(const MCTransaction& tx);
-    void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
+    //void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
+    void RemoveFromMempool(const MCTransaction& tx);
 
     uint256 GetBlockTxid(const uint256& txid);
     //锁币解锁

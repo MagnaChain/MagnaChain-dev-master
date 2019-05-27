@@ -715,6 +715,8 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
     //LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, it->GetTx().GetHash().ToString());
 
     NotifyEntryRemoved(it->GetSharedTx(), reason);
+    g_pBranchTxRecordCache->RemoveFromMempool(*it->GetSharedTx());
+
     const uint256 hash = it->GetTx().GetHash();
     for (const MCTxIn& txin : it->GetTx().vin)
         mapNextTx.erase(txin.prevout);
