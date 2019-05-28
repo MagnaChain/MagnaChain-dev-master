@@ -2494,8 +2494,14 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
     }
 
 
-    else if (strCommand == NetMsgType::HEADERS && !fImporting && !fReindex) // Ignore headers received while importing
+    else if (strCommand == NetMsgType::HEADERS)
     {
+        // Ignore headers received while importing
+        if (fImporting || fReindex) {
+            LogPrint(BCLog::NET, "Unexpected headers message received from peer %d\n", pfrom->GetId());
+            return true;
+        }
+
         std::vector<MCBlockHeader> headers;
 
         // Bypass the normal MCBlock deserialization, as we don't want to risk deserializing 2000 full blocks.
@@ -2520,8 +2526,14 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         return ProcessHeadersMessage(pfrom, connman, headers, chainparams, should_punish);
     }
 
-    else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::BLOCK)
     {
+        // Ignore blocks received while importing
+        if (fImporting || fReindex) {
+            LogPrint(BCLog::NET, "Unexpected block message received from peer %d\n", pfrom->GetId());
+            return true;
+        }
+
         std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
         vRecv >> *pblock;
 

@@ -107,6 +107,9 @@ MCScript COINBASE_FLAGS;
 
 const std::string strMessageMagic = "MagnaChain Signed Message:\n";
 
+uint32_t MAX_FORK_BACK_BLOCKS = 480; // 2hours
+uint64_t g_minForkBackHeight = 0;// the min fork height can allow, use to forbid Long Range Attack
+
 // Internal stuff
 namespace
 {
@@ -208,6 +211,17 @@ MCBlockIndex* FindForkInGlobalIndex(const MCChain& chain, const MCBlockLocator& 
         }
     }
     return chain.Genesis();
+}
+
+// need to put an eye on RPC call invalidateblock.
+void UpdateForkBackHeight(uint64_t newBlockHeight)
+{
+    if (newBlockHeight < g_minForkBackHeight + MAX_FORK_BACK_BLOCKS)
+        return;
+
+    uint64_t newvalue = newBlockHeight - MAX_FORK_BACK_BLOCKS;
+    if (newvalue > g_minForkBackHeight)
+        g_minForkBackHeight = newvalue;
 }
 
 MCCoinsViewDB* pcoinsdbview = nullptr;
@@ -3036,6 +3050,7 @@ MCBlockIndex* AddToBlockIndex(const MCBlockHeader& block)
 
     setDirtyBlockIndex.insert(pindexNew);
 
+    UpdateForkBackHeight(pindexNew->nHeight);
     return pindexNew;
 }
 
@@ -3597,6 +3612,10 @@ static bool AcceptBlockHeader(const MCBlockHeader& block, MCValidationState& sta
                 }
             }
         }
+
+        // dynamic check fork back
+        if (pindexPrev->nHeight < g_minForkBackHeight)
+            return error("%s: Maybe under long range attack", __func__);
     }
     if (pindex == nullptr)
         pindex = AddToBlockIndex(block);
@@ -4010,6 +4029,7 @@ MCBlockIndex* InsertBlockIndex(uint256 hash)
     mi = mapBlockIndex.insert(std::make_pair(hash, pindexNew)).first;
     pindexNew->phashBlock = &((*mi).first);
 
+    UpdateForkBackHeight(pindexNew->nHeight);
     return pindexNew;
 }
 
