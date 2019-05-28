@@ -492,7 +492,6 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
         BranchUTXOCache cache;
         if (pcoinlist != nullptr)
             cache.coinlist = *pcoinlist;// copy
-        LogPrintf("%s:%d %s %d\n", __FUNCTION__, __LINE__, key.ToString(), cache.coinlist.coins.size());
         if (cache.coinlist.coins.size() == 0) {
             nAmount += 0;
         }
@@ -508,11 +507,9 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
         const MCOutPoint& outpoint = utxoCache.coinlist.coins[i];
         const Coin& coin = pcoinsTip->AccessCoin(outpoint);// MCCoinsViewCache
         if (coin.IsSpent()) {
-            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             continue;
         }
         if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
-            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
             continue;
         }
 

@@ -957,7 +957,9 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         bool validForFeeEstimation = !fReplacementTransaction && IsCurrentForFeeEstimation() && pool.HasNoInputsOf(tx);
 
         // Store transaction in memory
-        pool.AddUnchecked(hash, entry, setAncestors, validForFeeEstimation);
+        if (!pool.AddUnchecked(hash, entry, setAncestors, validForFeeEstimation)) {
+            return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "AddUnchecked fail");
+        }
 
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) {

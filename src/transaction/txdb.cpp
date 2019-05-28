@@ -566,7 +566,6 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
 
             CoinListPtr pList = nullptr;
             const uint160& key = GetUint160(dest);
-            LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, key.ToString());
             MCCoinListMap::iterator mit = cache.find(key);
             if (mit == cache.end()) {
                 pList.reset(new CoinList());
