@@ -262,7 +262,10 @@ class MagnaChainTestFramework(object):
         # 创建magnachaind的软链接，为了区分主链和侧链
         if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
             try:
-                os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
+                # os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
+                #            os.path.join(self.options.srcdir, 'magnachaind-side'))
+                # use copy to instead
+                shutil.copy(os.path.join(self.options.srcdir, 'magnachaind'),
                            os.path.join(self.options.srcdir, 'magnachaind-side'))
             except Exception as e:
                 pass

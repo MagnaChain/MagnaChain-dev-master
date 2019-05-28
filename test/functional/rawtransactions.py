@@ -225,7 +225,9 @@ class RawTransactionsTest(MagnaChainTestFramework):
         decrawtx= self.nodes[0].decoderawtransaction(rawtx)
         assert_equal(decrawtx['vin'][0]['sequence'], 4294967294)
 
+        '''
         # 普通交易不能使用合约的UTXO
+        # 因为取消了合约的UTXO模型，这里没用了
         node = self.nodes[0]
         ct = Contract(node)
         txid = ct.call_payable(amount = 100).txid
@@ -240,6 +242,7 @@ class RawTransactionsTest(MagnaChainTestFramework):
         signed = self.nodes[0].signrawtransaction(self.nodes[0].createrawtransaction(inputs, outputs))
         assert_raises_rpc_error(-26, 'mandatory-script-verify-flag-failed (Opcode missing or not understood)',
                                 self.nodes[0].sendrawtransaction, signed["hex"])
+        '''
 
 if __name__ == '__main__':
     RawTransactionsTest().main()
