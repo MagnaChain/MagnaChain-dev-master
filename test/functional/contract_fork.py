@@ -79,6 +79,8 @@ class ContractForkTest(MagnaChainTestFramework):
         self.test_publish_fork_with_utxo(is_contract_output=True)
         self.log.info("start double publish on both chain")
         self.test_double_publish()
+        self.log.info("start test_double_sendcoins")
+        self.test_double_sendcoins()
         self.log.info("start test_callcontract_fork,without send")
         self.test_callcontract_fork()
         self.log.info("start test_callcontract_fork,with send, crash point 1")
@@ -276,6 +278,80 @@ class ContractForkTest(MagnaChainTestFramework):
         for tx in lsbres['removed']:
             if tx['txid'] == txid1['txid']:
                 assert_equal(tx['confirmations'], 2 + gen_blocks)
+
+    def test_double_sendcoins(self):
+        '''
+        测试同一个合约，分别在主链与分叉链上转走全部金额到不同的地址
+        理论短链的交易不应该打回到内存池，因为合约没钱
+        ab0[contract_ab]
+          /         \
+        aa1 [cca1]   bb1 [ccb1]
+         |           |
+        aa2         bb2
+         |           |
+        aa3         bb3
+                     |
+                    bb4
+                     |
+                    ...
+        :return:
+        '''
+        self.sync_all()
+        self.node0.generate(2)
+        assert_equal(self.node0.getrawmempool(), [])  # make sure mempool empty
+        assert_equal(self.node1.getrawmempool(), [])  # make sure mempool empty
+        ct = Contract(self.node1,self.options.tmpdir,debug=False)
+        ct.call_payable(amount = 100)
+        print(ct.publish_txid)
+        self.sync_all()
+        self.node0.generate(2)
+        self.sync_all()
+        blocks_num = self.node1.getblockcount()
+        contract_balance = 100
+
+        # split mgc network
+        self.split_network()
+        self.node1.generate(2)  # fork
+        self.node3.generate(8)  # fork
+
+        # in group 1
+        addr_N1 = self.node1.getnewaddress()
+        txid1 = ct.call_sendCoinTest(addr_N1,contract_balance,amount = 0).txid
+        self.node1.generate(2)
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        assert_equal(self.node1.getbalanceof(addr_N1), 100)
+        assert_equal(ct.get_balance(), 0)
+
+        # in group 2
+        addr_N3 = self.node3.getnewaddress()
+        txid2 = ct.call_sendCoinTest(addr_N3,contract_balance,amount = 0,exec_node = self.node3).txid
+        self.node3.generate(3)
+        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        assert_equal(self.node3.getbalanceof(addr_N3), 100)
+        assert_equal(ct.get_balance(exec_node=self.node3), 0)
+
+        # join network
+        print("join network")
+        connect_nodes_bi(self.nodes, 1, 2)
+        sync_blocks(self.nodes)
+
+        for i in range(4):
+            print("mempool:", self.nodes[i].getrawmempool())
+        # 确认存在分叉存在
+        tips = self.nodes[1].getchaintips()
+        print(tips)
+        assert_equal(len(tips), self.tips_num + 1)
+        self.tips_num += 1
+
+        # assert
+        assert_equal(self.node1.getbalanceof(addr_N1),0)
+        assert_equal(self.node3.getbalanceof(addr_N3), contract_balance)
+        assert_equal(ct.get_balance(), 0)
+        assert_equal(ct.get_balance(exec_node=self.node3), 0)
+        assert txid1 not in self.node1.getrawmempool()
+
+
+
 
     def test_callcontract_fork(self, with_send=False, crash_point=1):
         '''
