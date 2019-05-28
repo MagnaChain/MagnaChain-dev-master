@@ -284,5 +284,6 @@ int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, i
         factor = 50;
     if (tx.IsBranchChainTransStep2())
         factor = 100;
-    return GetVirtualTransactionSize(GetTransactionWeight(tx), nSigOpCost, runningTimes, deltaDataLen, factor);
+    size_t nTxWeight = GetTransactionWeight(tx);
+    return GetVirtualTransactionSize(nTxWeight, nSigOpCost, runningTimes, deltaDataLen, factor);
 }

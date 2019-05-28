@@ -196,6 +196,8 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                                 self.snode0.rebroadcastchaintransaction, txid)
         self.snode0.generate(1)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
+        
+        
         txid = self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)['txid']
         self.node0.generate(1)
         assert_raises_rpc_error(-25, 'can not broadcast because no enough confirmations',
@@ -205,12 +207,16 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         txs = self.snode0.getrawmempool(True)
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
+        print(self.node0.getrawmempool())
         assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.node0.rebroadcastchaintransaction, txid)
+        print(self.node0.getrawmempool())
         if gen_blocks:
             self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
+        print(self.node0.getrawmempool())
         self.node0.generate(2)
+        print(self.node0.getrawmempool())
         assert_equal(len(self.node0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 1)['txid']
         self.snode0.generate(1)

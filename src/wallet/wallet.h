@@ -1248,13 +1248,11 @@ bool MCWallet::DummySignTx(MCMutableTransaction &txNew, const ContainerType &coi
 {
     // Fill in dummy signatures for fee calculation.
     int nIn = 0;
-    for (const auto& coin : coins)
-    {
+    for (const auto& coin : coins) {
         const MCScript& scriptPubKey = coin.txout.scriptPubKey;
         SignatureData sigdata;
 
-        if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata) && !fFakeWallet)
-        {
+        if (!ProduceSignature(DummySignatureCreator(this), scriptPubKey, sigdata) && !fFakeWallet) {
             return false;
         } else {
             UpdateTransaction(txNew, nIn, sigdata);
@@ -1262,6 +1260,25 @@ bool MCWallet::DummySignTx(MCMutableTransaction &txNew, const ContainerType &coi
 
         nIn++;
     }
+
+    if (txNew.IsSmartContract()) {
+        std::vector<unsigned char> vchSig;
+        vchSig.assign(72, '\000');
+        vchSig[0] = 0x30;
+        vchSig[1] = 69;
+        vchSig[2] = 0x02;
+        vchSig[3] = 33;
+        vchSig[4] = 0x01;
+        vchSig[4 + 33] = 0x02;
+        vchSig[5 + 33] = 32;
+        vchSig[6 + 33] = 0x01;
+        vchSig[6 + 33 + 32] = SIGHASH_ALL;
+
+        MCScript signature;
+        signature << vchSig;
+        txNew.pContractData->signature = signature;
+    }
+
     return true;
 }
 

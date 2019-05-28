@@ -3106,7 +3106,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
 
                 int32_t runningTimes = 0;
                 int32_t deltaDataLen = 0;
-                if (vmOut != nullptr) {
+                if (txNew.IsSmartContract()) {
                     runningTimes = vmOut->runningTimes;
                     deltaDataLen = GetDeltaDataLen(vmOut);
                 }
@@ -3116,6 +3116,9 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 for (auto& vin : txNew.vin) {
                     vin.scriptSig = MCScript();
                     vin.scriptWitness.SetNull();
+                }
+                if (txNew.IsSmartContract()) {
+                    txNew.pContractData->signature = MCScript();
                 }
 
                 nFeeNeeded = GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc, &txNew);
