@@ -58,7 +58,7 @@ class MovingCheckPointTest(MagnaChainTestFramework):
         """Main test logic"""
         self.tips_num = 1
         self.test_long_range_attack()
-        # self.test_long_range_attack(in_range = True)
+        self.test_invalidateblock()
 
 
 
@@ -67,94 +67,106 @@ class MovingCheckPointTest(MagnaChainTestFramework):
         blockcount = self.node0.getblockcount()
         # 分割网络，制造分叉
         self.split_network()
-        for i in range(10):
+        for i in range(9):
             for n in range(self.num_nodes):
                 self.nodes[n].generate(25)
             self.log.info('mainchain block height {}'.format(self.node2.getblockcount()))
 
         self.node2.generate(20)
+        self.node3.generate(20)
         self.sync_all([self.nodes[:2], self.nodes[2:]])
 
         # 合并分叉
-        self.join_network()
+        self.join_network(timeout=120)
 
         # assert
         tips = self.node0.getchaintips()
-        assert_equal(len(tips), 1)
+        assert_equal(len(tips), 2)
         tips = self.node3.getchaintips()
         assert_equal(len(tips), 1)
-        assert_equal(self.node2.getblockcount(), blockcount + 520)
-        assert_equal(self.node0.getblockcount(), blockcount + 520)
-
-        return
-
-
+        assert_equal(self.node2.getblockcount(), blockcount + 490)
+        assert_equal(self.node0.getblockcount(), blockcount + 490)
 
     def test_invalidateblock(self):
-        '''
-        侧链某个区块被标记为失效时，再重新打包
-        :return:
-        '''
-        self.log.info(sys._getframe().f_code.co_name)
-        self.log.info("snode0 mortgage coins num {}".format(len(self.snode0.listmortgagecoins())))
-        self.snode0.generate(1)
-        assert_equal(self.snode0.getrawmempool(), [])
-        hash = self.snode0.getbestblockhash()
-        block_height = self.snode0.getblockcount()
-        # self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
-        addr = self.snode0.getnewaddress()
-        txid1 = self.snode0.sendtoaddress(addr, 10)
-        txid2 = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 10)['txid']
-        self.snode0.generate(7)
-        self.node0.generate(1)
-        self.snode0.generate(3)
-        bad_hash = self.snode0.getblockhash(block_height + 1)
-        before_work = int(self.snode0.getchaintipwork(), 16)
-        before_height = self.snode0.getblockcount()
-        before_besthash = self.snode0.getbestblockhash()
-        for n in self.sidenodes:
-            self.log.info("before invalidateblock {},{}".format(n.getblockcount(), int(n.getchaintipwork(), 16)))
-        self.snode0.invalidateblock(bad_hash)
-        for n in self.sidenodes:
-            self.log.info("after invalidateblock {},{}".format(n.getblockcount(), int(n.getchaintipwork(), 16)))
-        # self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
-        new_height = self.snode0.getblockcount()
-        new_hash = self.snode0.getbestblockhash()
-        if (new_height != block_height or new_hash != hash):
-            raise AssertionError("Wrong tip for snode0, hash %s, height %d" % (new_hash, new_height))
-        assert txid1 in self.snode0.getrawmempool()
-        assert txid2 in self.snode0.getrawmempool()
-        assert len(self.snode0.getrawmempool()) == 2
-        self.snode0.generate(7)
-        assert_equal(self.snode0.getblockcount(), new_height + 7)
-        self.node0.generate(1)
-        for i in range(3):
-            # avoid generate timeout
-            for j in range(8):
-                self.snode0.generate(1)
-        self.node0.generate(1)
-        self.sync_all()
-        for n in self.sidenodes:
-            self.log.info(
-                "before test_getbranchchainheight {},{}".format(n.getblockcount(), int(n.getchaintipwork(), 16)))
-        gens = self.make_more_work_than(0, 1, True)
-        self.node0.generate(1)
-        self.test_getbranchchainheight()
-        assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
-        self.sync_all()
-        # self.sync_all([self.sidenodes])
-        self.test_getbranchchainheight()
-        self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
-        # todo: we need reconsiderblock previous tip
-        besthash = self.snode0.getbestblockhash()
-        block_height = self.snode0.getblockcount()
-        self.snode0.reconsiderblock(bad_hash)
-        if int(self.snode0.getchaintipwork(), 16) <= before_work:
-            assert_equal(self.snode0.getblockcount(), before_height)
-            assert_equal(self.snode0.getbestblockhash(), before_besthash)
-        else:
-            assert_equal(self.snode0.getblockcount(), block_height)
-            assert_equal(self.snode0.getbestblockhash(), besthash)
+        bad_hash = self.node0.getblockhash(5)
+        best_hash = self.node0.getbestblockhash()
+        blockcount = self.node0.getblockcount()
+        self.node0.invalidateblock(bad_hash)
+        self.node0.generate(5)
+        self.node0.reconsiderblock(bad_hash)
+        print(self.node0.getchaintips())
+
+        assert_equal(self.node0.getbestblockhash(),best_hash)
+        assert_equal(self.node0.getblockcount(), blockcount)
+
+
+
+
+    # def test_invalidateblock(self):
+    #     '''
+    #     侧链某个区块被标记为失效时，再重新打包
+    #     :return:
+    #     '''
+    #     self.log.info(sys._getframe().f_code.co_name)
+    #     self.log.info("snode0 mortgage coins num {}".format(len(self.snode0.listmortgagecoins())))
+    #     self.snode0.generate(1)
+    #     assert_equal(self.snode0.getrawmempool(), [])
+    #     hash = self.snode0.getbestblockhash()
+    #     block_height = self.snode0.getblockcount()
+    #     # self.log.info("before invalidateblock,besthash {} , heiht {},balance {}".format(hash, block_height,self.snode0.getbalance()))
+    #     addr = self.snode0.getnewaddress()
+    #     txid1 = self.snode0.sendtoaddress(addr, 10)
+    #     txid2 = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 10)['txid']
+    #     self.snode0.generate(7)
+    #     self.node0.generate(1)
+    #     self.snode0.generate(3)
+    #     bad_hash = self.snode0.getblockhash(block_height + 1)
+    #     before_work = int(self.snode0.getchaintipwork(), 16)
+    #     before_height = self.snode0.getblockcount()
+    #     before_besthash = self.snode0.getbestblockhash()
+    #     for n in self.sidenodes:
+    #         self.log.info("before invalidateblock {},{}".format(n.getblockcount(), int(n.getchaintipwork(), 16)))
+    #     self.snode0.invalidateblock(bad_hash)
+    #     for n in self.sidenodes:
+    #         self.log.info("after invalidateblock {},{}".format(n.getblockcount(), int(n.getchaintipwork(), 16)))
+    #     # self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
+    #     new_height = self.snode0.getblockcount()
+    #     new_hash = self.snode0.getbestblockhash()
+    #     if (new_height != block_height or new_hash != hash):
+    #         raise AssertionError("Wrong tip for snode0, hash %s, height %d" % (new_hash, new_height))
+    #     assert txid1 in self.snode0.getrawmempool()
+    #     assert txid2 in self.snode0.getrawmempool()
+    #     assert len(self.snode0.getrawmempool()) == 2
+    #     self.snode0.generate(7)
+    #     assert_equal(self.snode0.getblockcount(), new_height + 7)
+    #     self.node0.generate(1)
+    #     for i in range(3):
+    #         # avoid generate timeout
+    #         for j in range(8):
+    #             self.snode0.generate(1)
+    #     self.node0.generate(1)
+    #     self.sync_all()
+    #     for n in self.sidenodes:
+    #         self.log.info(
+    #             "before test_getbranchchainheight {},{}".format(n.getblockcount(), int(n.getchaintipwork(), 16)))
+    #     gens = self.make_more_work_than(0, 1, True)
+    #     self.node0.generate(1)
+    #     self.test_getbranchchainheight()
+    #     assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
+    #     self.sync_all()
+    #     # self.sync_all([self.sidenodes])
+    #     self.test_getbranchchainheight()
+    #     self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
+    #     # todo: we need reconsiderblock previous tip
+    #     besthash = self.snode0.getbestblockhash()
+    #     block_height = self.snode0.getblockcount()
+    #     self.snode0.reconsiderblock(bad_hash)
+    #     if int(self.snode0.getchaintipwork(), 16) <= before_work:
+    #         assert_equal(self.snode0.getblockcount(), before_height)
+    #         assert_equal(self.snode0.getbestblockhash(), before_besthash)
+    #     else:
+    #         assert_equal(self.snode0.getblockcount(), block_height)
+    #         assert_equal(self.snode0.getbestblockhash(), besthash)
 
 
 if __name__ == '__main__':
