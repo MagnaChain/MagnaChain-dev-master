@@ -971,7 +971,9 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
         bool validForFeeEstimation = !fReplacementTransaction && IsCurrentForFeeEstimation() && pool.HasNoInputsOf(tx);
 
         // Store transaction in memory
-        pool.AddUnchecked(hash, entry, setAncestors, validForFeeEstimation);
+        if (!pool.AddUnchecked(hash, entry, setAncestors, validForFeeEstimation)) {
+            return state.DoS(0, false, REJECT_INSUFFICIENTFEE, "AddUnchecked fail");
+        }
 
         // trim mempool and check if tx was trimmed
         if (!fOverrideMempoolLimit) {
@@ -2587,7 +2589,6 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
         nTime3 = GetTimeMicros();
         nTimeConnectTotal += nTime3 - nTime2;
         LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
-        LogPrintf("%s:%d %d\n", __FUNCTION__, __LINE__, pindexNew->nHeight);
         bool flushed = view.Flush();
         assert(flushed);
         g_pBranchChainTxRecordsDb->Flush(bccache);

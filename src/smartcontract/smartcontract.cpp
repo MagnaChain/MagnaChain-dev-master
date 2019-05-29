@@ -1110,7 +1110,7 @@ int ContractVM::ExecuteBlockContract(const MCBlock* pBlock, const MCBlockIndex* 
     return -1;
 }
 
-MultiContractVM::MultiContractVM() : threadPool(boost::thread::hardware_concurrency())
+MultiContractVM::MultiContractVM() : threadPool(MAX_GROUP_NUM)
 {
     for (int i = 0; i < threadPool.size(); ++i) {
         threadPool.schedule(boost::bind(&MultiContractVM::InitializeThread, this));

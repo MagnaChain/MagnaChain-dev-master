@@ -306,7 +306,6 @@ bool PublishContract(MCWallet* pWallet, MCAmount payment, std::string& strVMCall
         vmOut->ret.push_back(Pair("txid", wtx.tx->GetHash().ToString()));
         vmOut->ret.push_back(Pair("contractaddress", MagnaChainAddress(wtx.tx->pContractData->address).ToString()));
         vmOut->ret.push_back(Pair("senderaddress", vmCaller.ToString()));
-        LogPrintf("%s:%d %s %s\n", __FUNCTION__, __LINE__, contractId.ToString(), wtx.tx->pContractData->address.ToString());
     }
 
     return success;
