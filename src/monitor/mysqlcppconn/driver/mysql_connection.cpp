@@ -204,7 +204,7 @@ static bool read_connection_flag(ConnectOptionsMap::const_iterator &cit, int &fl
 
       try {
         value = (cit->second).get< bool >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         std::ostringstream msg;
         msg << "Wrong type passed for " << flagsOptions[i].key <<
             " expected bool";
@@ -284,7 +284,7 @@ bool process_connection_option(ConnectOptionsMap::const_iterator &option,
     if (!option->first.compare(options_map[i].key) && !options_map[i].skip_list) {
       try {
         value = (option->second).get<T>();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         std::ostringstream msg;
         msg << "Wrong type passed for " << options_map[i].key <<
             " expected " << typeid(value).name();
@@ -426,7 +426,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
   if (it != properties.end())	{
     try {
       p_s = (it->second).get< sql::SQLString >();
-    } catch (sql::InvalidArgumentException& e) {
+    } catch (sql::InvalidArgumentException&) {
       throw sql::InvalidArgumentException("Wrong type passed for userName expected sql::SQLString");
     }
     if (p_s) {
@@ -446,7 +446,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     if (!it->first.compare("userName")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for userName expected sql::SQLString");
       }
       if (p_s) {
@@ -457,7 +457,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("password")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for password expected sql::SQLString");
       }
       if (p_s) {
@@ -468,7 +468,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("port")) {
       try {
         p_i = (it->second).get< int >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for port expected int");
       }
       if (p_i) {
@@ -479,7 +479,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("socket")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for socket expected sql::SQLString");
       }
       if (p_s) {
@@ -490,7 +490,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("pipe")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for pipe expected sql::SQLString");
       }
       if (p_s) {
@@ -501,7 +501,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("schema")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for schema expected sql::SQLString");
       }
       if (p_s) {
@@ -512,7 +512,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("characterSetResults")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for characterSetResults expected sql::SQLString");
       }
       if (p_s) {
@@ -523,7 +523,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("sslKey")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for sslKey expected sql::SQLString");
       }
       if (p_s) {
@@ -535,7 +535,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("sslCert")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for sslCert expected sql::SQLString");
       }
       if (p_s) {
@@ -547,7 +547,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("sslCA")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for sslCA expected sql::SQLString");
       }
       if (p_s) {
@@ -559,7 +559,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("sslCAPath")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for sslCAPath expected sql::SQLString");
       }
       if (p_s) {
@@ -571,7 +571,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("sslCipher")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for sslCipher expected sql::SQLString");
       }
       if (p_s) {
@@ -583,7 +583,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("defaultStatementResultType")) {
       try {
         p_i = (it->second).get< int >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for defaultStatementResultType expected sql::SQLString");
       }
       if (!p_i) {
@@ -635,7 +635,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("metadataUseInfoSchema")) {
       try {
         p_b = (it->second).get<bool>();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for metadataUseInfoSchema expected bool");
       }
       if (p_b) {
@@ -646,7 +646,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("OPT_RECONNECT")) {
       try {
         p_b = (it->second).get<bool>();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for OPT_RECONNECT expected bool");
       }
       if (!(p_b)) {
@@ -657,7 +657,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("OPT_CHARSET_NAME")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for OPT_CHARSET_NAME expected sql::SQLString");
       }
       if (!p_s) {
@@ -670,7 +670,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("OPT_CAN_HANDLE_EXPIRED_PASSWORDS")) {
       try {
         p_b = (it->second).get<bool>();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for OPT_CAN_HANDLE_EXPIRED_PASSWORDS expected bool");
       }
       if (!(p_b)) {
@@ -686,7 +686,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("postInit")) {
       try {
         p_s = (it->second).get< sql::SQLString >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for postInit expected sql::SQLString");
       }
       if (p_s) {
@@ -697,7 +697,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
     } else if (!it->first.compare("useLegacyAuth")) {
       try {
         p_b = (it->second).get< bool >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for useLegacyAuth expected sql::SQLString");
       }
       if (p_b) {
@@ -709,7 +709,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
       const std::map< sql::SQLString, sql::SQLString > *conVal;
       try {
         conVal= (it->second).get< std::map< sql::SQLString, sql::SQLString > >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for OPT_CONNECT_ATTR_ADD expected std::map< sql::SQLString, sql::SQLString >");
       }
       std::map< sql::SQLString, sql::SQLString >::const_iterator conn_attr_it;
@@ -725,7 +725,7 @@ void MySQL_Connection::init(ConnectOptionsMap & properties)
       const std::list< sql::SQLString > *conVal;
       try {
         conVal= (it->second).get< std::list< sql::SQLString > >();
-      } catch (sql::InvalidArgumentException& e) {
+      } catch (sql::InvalidArgumentException&) {
         throw sql::InvalidArgumentException("Wrong type passed for OPT_CONNECT_ATTR_DELETE expected std::list< sql::SQLString >");
       }
       std::list< sql::SQLString >::const_iterator conn_attr_it;

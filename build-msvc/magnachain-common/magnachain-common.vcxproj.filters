@@ -406,9 +406,6 @@
     <ClCompile Include="..\..\src\smartcontract\contractdb.cpp">
       <Filter>src\smartcontract</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\lua_cjson.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\address\addrdb.cpp">
       <Filter>src\address</Filter>
     </ClCompile>

@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
     uint32_t preblockH = 0;
     MCBlockHeader preHeader = genesisblock;
     MCBlockHeader forkHeader;
-    uint32_t forkHeight;
+    uint32_t forkHeight = 0;
     uint256 mainpreblockhash;
     int mainblockheight = 1;
     MCBlockIndex* pprev = nullptr;
@@ -363,7 +363,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
     uint32_t preblockH = 0;
     MCBlockHeader preHeader = genesisblock;
     MCBlockHeader forkHeader;
-    uint32_t forkHeight;
+    uint32_t forkHeight = 0;
     uint256 mainpreblockhash = genesisblock.GetHash();
     int mainblockheight = 1;
     MCBlockIndex* pprev = nullptr;

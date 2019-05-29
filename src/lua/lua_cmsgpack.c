@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include "lua.h"
+#include "ldebug.h"
 #include "lauxlib.h"
 
 #define LUACMSGPACK_NAME        "cmsgpack"

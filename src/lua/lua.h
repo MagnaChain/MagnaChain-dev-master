@@ -384,6 +384,5 @@ struct lua_Debug {
 ******************************************************************************/
 
 LUALIB_API int luaopen_cmsgpack(lua_State *L);
-LUALIB_API int luaopen_cjson(lua_State *l);
 
 #endif
