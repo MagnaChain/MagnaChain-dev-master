@@ -491,8 +491,6 @@ void MCTxMemPool::AddTransactionsUpdated(unsigned int n)
 
 bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entry, setEntries &setAncestors, bool validFeeEstimate)
 {
-    //LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, hash.ToString());
-
     NotifyEntryAdded(entry.GetSharedTx());
     // Add to memory pool without checking anything.
     // Used by AcceptToMemoryPool(), which DOES do
@@ -533,7 +531,7 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
         //}
     }
     // 设置内存池中与合约关联地址的交易
-    if (entry.contractData != nullptr) {
+    if (entry.GetPtrTx()->IsSmartContract()) {
         for (const MCContractID& contractId : entry.contractData->contractAddrs) {
             auto& links = contractLinksMap[contractId];
             auto next = links.end();
@@ -628,7 +626,9 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
 
     UpdateAncestorsOf(true, newit, setAncestors);
     UpdateEntryForAncestors(newit, setAncestors);
-    vm.CommitData();
+    if (entry.GetPtrTx()->IsSmartContract()) {
+        vm.CommitData();
+    }
 
     nTransactionsUpdated++;
     totalTxSize += entry.GetTxSize();
