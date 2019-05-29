@@ -240,7 +240,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sidenodes[0].generate(2)
         self.sync_all([self.sidenodes])
         transaction_num = 300
-        [node.sendtobranchchain(self.sidechain_id, self.sidenodes[0].getnewaddress(), 100) for i in range(transaction_num)]
+        [node.sendtobranchchain(self.sidechain_id, self.sidenodes[0].getnewaddress(), 10000) for i in range(transaction_num)]
         self.sync_all()
         node.generate(8)
         self.sync_all()
