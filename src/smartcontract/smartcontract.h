@@ -114,7 +114,6 @@ MCContractID GenerateContractAddressByTx(TxType& tx)
 {
     MCHashWriter ss(SER_GETHASH, 0);
     for (const MCTxIn& v : tx.vin) {
-        LogPrintf("%s:%d %s\n", __FUNCTION__, __LINE__, v.prevout.ToString());
         ss << v.prevout << v.nSequence << v.scriptWitness.ToString();
     }
     for (const MCTxOut& v : tx.vout) {

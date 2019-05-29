@@ -75,7 +75,6 @@ bool MCCoinsViewCache::GetCoin(const MCOutPoint &outpoint, Coin &coin) const {
 }
 
 void MCCoinsViewCache::AddCoin(const MCOutPoint &outpoint, Coin&& coin, bool possible_overwrite) {
-	//LogPrintf("AddCoin %s %d\n", outpoint.hash.ToString().c_str(), outpoint.n);
 	assert(!coin.IsSpent());
     if (coin.out.scriptPubKey.IsUnspendable()) return;
     MCCoinsMap::iterator it;
@@ -94,15 +93,9 @@ void MCCoinsViewCache::AddCoin(const MCOutPoint &outpoint, Coin&& coin, bool pos
     it->second.coin = std::move(coin);
     it->second.flags |= MCCoinsCacheEntry::DIRTY | (fresh ? MCCoinsCacheEntry::FRESH : 0);
     cachedCoinsUsage += it->second.coin.DynamicMemoryUsage();
-
-	// add to first trans point
-	//if (this == pcoinsTip) {
-	//	pcoinListDb->OnAddCoin(outpoint, it->second.coin, possible_overwrite);
-	//}
 }
 
 void AddCoins(MCCoinsViewCache& cache, const MCTransaction &tx, int nHeight, bool check) {
-	//LogPrintf("AddCoins tx %s\n", tx.GetHash().ToString().c_str());
     bool fCoinbase = tx.IsCoinBase();
     const uint256& txid = tx.GetHash();
     for (size_t i = 0; i < tx.vout.size(); ++i) {

@@ -1619,9 +1619,6 @@ bool MCCoinsViewMemPool::GetCoin(const MCOutPoint &outpoint, Coin &coin) const {
     MCTransactionRef ptx = mempool.Get(outpoint.hash);
     if (ptx) {
         if (outpoint.n < ptx->vout.size()) {
-            if (ptx->IsSmartContract() && ptx->pContractData->contractCoinsOut.size() > 0) {
-                return false;
-            }
             coin = Coin(ptx->vout[outpoint.n], MEMPOOL_HEIGHT, false);
             return true;
         }
