@@ -260,15 +260,24 @@ class MagnaChainTestFramework(object):
         self.sync_all()
         logger("sidechain id is {}".format(sidechain_id))
         # 创建magnachaind的软链接，为了区分主链和侧链
-        if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
+        magnachain_side_path = os.path.join(self.options.srcdir, 'magnachaind-side')
+        if not os.path.exists(magnachain_side_path):
             try:
                 # os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
                 #            os.path.join(self.options.srcdir, 'magnachaind-side'))
                 # use copy to instead
-                shutil.copy(os.path.join(self.options.srcdir, 'magnachaind'),
-                           os.path.join(self.options.srcdir, 'magnachaind-side'))
+                shutil.copy(os.path.join(self.options.srcdir, 'magnachaind'),magnachain_side_path)
             except Exception as e:
                 pass
+        else:
+            # if exist
+            if not os.path.islink(magnachain_side_path):
+                try:
+                    os.unlink(magnachain_side_path)
+                    shutil.copy(os.path.join(self.options.srcdir, 'magnachaind'), magnachain_side_path)
+                except Exception as e:
+                    pass
+
 
         # Set env vars
         if "MAGNACHAIND_SIDE" not in os.environ:
