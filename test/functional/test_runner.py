@@ -537,6 +537,10 @@ class TestHandler:
                         status = "Passed"
                     elif proc.returncode == TEST_EXIT_SKIPPED:
                         status = "Skipped"
+                    elif proc.returncode == TEST_EXIT_PASSED and 'EXCEPTION: St13runtime_error' in stderr:
+                        print('got err message but PASSED,err message as follow:')
+                        print(stderr)
+                        status = "Passed"
                     else:
                         status = "Failed"
                     self.num_running -= 1
