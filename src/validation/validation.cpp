@@ -2589,7 +2589,6 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
         nTime3 = GetTimeMicros();
         nTimeConnectTotal += nTime3 - nTime2;
         LogPrint(BCLog::BENCH, "  - Connect total: %.2fms [%.2fs]\n", (nTime3 - nTime2) * 0.001, nTimeConnectTotal * 0.000001);
-        LogPrintf("%s:%d %d\n", __FUNCTION__, __LINE__, pindexNew->nHeight);
         bool flushed = view.Flush();
         assert(flushed);
         g_pBranchChainTxRecordsDb->Flush(bccache);

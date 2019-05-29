@@ -542,7 +542,19 @@ static inline bool GetCoinDest(const MCOutPoint& outpoint, const Coin& coin, MCT
     }
 
     if (!ExtractDestination(pScript, kDest)) {
-        return false;
+        opcodetype opcode;
+        std::vector<unsigned char> vch;
+        MCScript::const_iterator pc = pScript.begin();
+        pScript.GetOp(pc, opcode, vch);
+        if (opcode == OP_TRANS_BRANCH) {
+            if (!pScript.GetOp(pc, opcode, vch) || vch.size() != sizeof(uint256))
+                return false;
+
+            uint256 branchhash(vch);
+            kDest = MCKeyID(Hash160(branchhash.begin(), branchhash.end()));// branch coin address
+        }
+        else
+            return false;
     }
 
     MagnaChainAddress kAddr(kDest);
