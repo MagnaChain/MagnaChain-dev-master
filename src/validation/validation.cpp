@@ -3613,7 +3613,7 @@ static bool AcceptBlockHeader(const MCBlockHeader& block, MCValidationState& sta
 
         // dynamic check fork back
         if (pindexPrev->nHeight < g_minForkBackHeight)
-            return error("%s: Maybe under long range attack", __func__);
+            return state.DoS(0, error("%s: Maybe under long range attack", __func__), REJECT_INVALID, "bad-fork-back");
     }
     if (pindex == nullptr)
         pindex = AddToBlockIndex(block);
