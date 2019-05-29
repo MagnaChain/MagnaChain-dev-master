@@ -2039,7 +2039,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	//} else 
     if (bnOutHash > bTarget) {
         // CheckBlockWork will fail, break follow
-        strErr = "Check block work fail, bnOutHash > bTarget";
+        strErr = "Check block work fail, bnOutHash > bTarget\n";
         LogPrint(BCLog::MINING, strErr.c_str());
         return nullptr;
     }
