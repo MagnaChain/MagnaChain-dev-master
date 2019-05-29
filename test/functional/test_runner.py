@@ -57,6 +57,7 @@ BASE_SCRIPTS= [
     # Longest test should go first, to favor running tests in parallel
     'wallet-hd.py',#pass
     'walletbackup.py',#pass
+    'feature_moving_checkpoint.py', #pass
     'contract_publish.py',
     'contract_call.py',
     'sidechain_sendtobranchchain.py',
@@ -230,6 +231,7 @@ TRAVIS_SCRIPTS = {
         'uptime.py',#pass
     ],
     'feature':[
+        'feature_moving_checkpoint.py', #pass
         'smartfees.py',#pass
         'dbcrash.py',#pass
         # 'getblocktemplate_longpoll.py',#pass
