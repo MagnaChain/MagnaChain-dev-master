@@ -62,7 +62,7 @@ class MempoolLimitTest(MagnaChainTestFramework):
                                              throw_exception=False).reason()
             if reason:
                 # 这里表示mempool满了，把payable的交易都移除了，call_doubleSpendTest里边有send调用，所以没钱
-                assert_contains(reason, "not enough amount")
+                assert_contains(reason, "mempool full")
 
 
 if __name__ == '__main__':
