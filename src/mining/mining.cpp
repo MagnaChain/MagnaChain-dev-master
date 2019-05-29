@@ -232,11 +232,10 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
             outpoint.n = out.i;
         }
 
-        std::vector<VMOut> vmOuts;
         BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params());
         options.outpoint = outpoint;
         std::string strCreateBlockError;
-        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, vmOuts, true, keystoreIn, pcoinsCache, strCreateBlockError));
+        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, true, keystoreIn, pcoinsCache, strCreateBlockError));
         if (!pblocktemplate.get()) {
             nTries++;
             continue;
@@ -245,10 +244,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         std::vector<uint256> leaves;
         MCBlock *pblock = &pblocktemplate->block;
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
-        if (!Params().IsMainChain()) {
-            pblock->hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(pblock, vmOuts, leaves, nullptr);
-            pblock->hashMerkleRootWithData = BlockMerkleLeavesWithPrevData(pblock, vmOuts, leaves, nullptr);
-        }
 
         // 如果有修改头部的值，需要重新签名
         if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
@@ -936,11 +931,10 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             scriptForMine = GetScriptForDestination(keyID);
         }
 
-        std::vector<VMOut> vmOuts;
         MCCoinsView viewDummy;
         MCCoinsViewCache view(&viewDummy);
         std::string strCreateBlockError;
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, vmOuts, fSupportsSegwit, pwallet, &view, strCreateBlockError);
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, fSupportsSegwit, pwallet, &view, strCreateBlockError);
         if (!pblocktemplate)
             throw JSONRPCError(RPC_OUT_OF_MEMORY, strCreateBlockError);
 

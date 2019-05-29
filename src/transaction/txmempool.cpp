@@ -232,7 +232,7 @@ bool MCTxMemPool::CalculateMemPoolAncestorsRecursive(const MCTxMemPoolEntry &ent
                 parentHashes.insert(phash);
             }
             if (parentHashes.size() + setAncestors.size() + 1 > limitAncestorCount) {
-                errString = strprintf("too many unconfirmed ancestors [limit: %u]", limitAncestorCount);
+                errString = strprintf("too many unconfirmed ancestors %u[limit: %u]", parentHashes.size() + setAncestors.size() + 1, limitAncestorCount);
                 return false;
             }
         }

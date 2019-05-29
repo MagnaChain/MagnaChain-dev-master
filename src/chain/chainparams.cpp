@@ -70,14 +70,12 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
     genesis.hashPrevBlock.SetNull();
     genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
-    if (!isMainChain) {
-        std::vector<uint256> leaves;
-        std::vector<VMOut> vmOuts;
-        vmOuts.resize(1);
-        genesis.groupSize.resize(1);
-        genesis.hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(&genesis, vmOuts, leaves, nullptr);
-        genesis.hashMerkleRootWithData = BlockMerkleLeavesWithFinalData(&genesis, vmOuts, leaves, nullptr);
-    }
+    std::vector<uint256> leaves;
+    std::vector<VMOut> vmOuts;
+    vmOuts.resize(1);
+    genesis.groupSize.resize(1);
+    genesis.hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(&genesis, vmOuts, leaves, nullptr);
+    genesis.hashMerkleRootWithData = BlockMerkleLeavesWithFinalData(&genesis, vmOuts, leaves, nullptr);
 
     return genesis;
 }

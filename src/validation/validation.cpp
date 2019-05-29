@@ -2164,12 +2164,21 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         static MultiContractVM mvm;
         std::vector<VMOut> vmOuts;
         if (!mvm.Execute(&block, pindex->pprev, &vmOuts)) {
-            return error("%s:%d => Execute block contracts failed", __FUNCTION__, __LINE__);
+            return state.DoS(100, error("%s: Execute block contracts failed", __func__), REJECT_INVALID, "execute-block-contracts-failed");
         }
 
         CONTRACT_DATA contractData;
         if (!mvm.CheckCross(&block, contractData)) {
-            return error("%s:%d => Block contracts have cross", __FUNCTION__, __LINE__);
+            return state.DoS(100, error("%s: Block contracts have cross", __func__), REJECT_INVALID, "block-contracts-have-cross");
+        }
+
+        std::vector<uint256> leaves;
+        if (block.hashMerkleRootWithPrevData.IsNull() || block.hashMerkleRootWithPrevData != BlockMerkleLeavesWithPrevData(&block, vmOuts, leaves, nullptr)) {
+            return state.DoS(100, error("%s: Merkle root of the block contracts' prev data of not match", __func__), REJECT_INVALID, "block-prev-data-merkle-root-not-match");
+        }
+
+        if (block.hashMerkleRootWithData.IsNull() || block.hashMerkleRootWithData != BlockMerkleLeavesWithFinalData(&block, vmOuts, leaves, nullptr)) {
+            return state.DoS(100, error("%s: Merkle root of the block contracts' final data of not match", __func__), REJECT_INVALID, "block-final-data-merkle-root-not-match");
         }
 
         // Write block ContractInfo to db

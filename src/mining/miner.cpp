@@ -1931,8 +1931,8 @@ bool CheckCoinbaseTx(const MCBlock& block, MCBlockIndex* pindex, MCAmount nFees,
 }
 
 
-std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, std::vector<VMOut>& vmOuts, 
-    bool fMineWitnessTx, const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr)
+std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, bool fMineWitnessTx, 
+    const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr)
 {
     strErr.clear();
     if (pcoinsCache == nullptr) {
@@ -2054,6 +2054,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
     pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
 
     LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+    std::vector<VMOut> vmOuts;
     static MultiContractVM mvm;
     if (!mvm.Execute(pblock, chainActive.Tip(), &vmOuts)) {
         strErr = strprintf("%s:%d Execute block contracts fail\n", __FUNCTION__, __LINE__);
@@ -2066,7 +2067,11 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         strErr = strprintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
         LogPrintf(strErr.c_str());
         return nullptr;
-	}
+    }
+
+    std::vector<uint256> leaves;
+    pblock->hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(pblock, vmOuts, leaves, nullptr);
+    pblock->hashMerkleRootWithData = BlockMerkleLeavesWithFinalData(pblock, vmOuts, leaves, nullptr);
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
