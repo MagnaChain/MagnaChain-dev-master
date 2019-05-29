@@ -279,7 +279,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         '''
         self.sync_all([self.sidenodes])
         print(self.sidenodes[0].getbalance())
-        for ct in (Contract(self.sidenodes[0], self.options.tmpdir,debug = False) for i in range(200)):
+        for ct in (Contract(self.sidenodes[0], self.options.tmpdir,debug = False) for i in range(100)):
             ct.call_payable(amount=20)
             ct.call_callOtherContractTest(ct.contract_id, 'callOtherContractTest', ct.contract_id, "contractDataTest",
                                           amount=0)
