@@ -767,7 +767,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
         return error("%s sendToTxHexData is not a valid transaction data.\n", __func__);
     }
 
-    MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, pFromTx, false);
+    MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, false);
     
     //Revert other fields exclude in txTrans1
     mtxTrans2my.fromTx.clear();

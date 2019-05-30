@@ -733,7 +733,7 @@ public:
     }
 };
 
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fFromMempool);
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempool);
 
 /** 
  * MCCoinsView that brings transactions from a memorypool into view.
