@@ -5,7 +5,6 @@
 #include <assert.h>
 
 #include "lua.h"
-#include "ldebug.h"
 #include "lauxlib.h"
 
 #define LUACMSGPACK_NAME        "cmsgpack"
@@ -485,7 +484,7 @@ int sc = 0;
 void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level) {
     if (++sc >= LUACMSGPACK_MAX_NESTING) {
         sc = 0;
-        luaG_runerror(L, "cmsgpack => sc >= LUACMSGPACK_MAX_NESTING");
+        luaL_error(L, "cmsgpack => sc >= LUACMSGPACK_MAX_NESTING");
     }
 
     int t = lua_type(L,-1);

@@ -416,7 +416,7 @@ public:
 
     ContractData(const ContractData& from)
         : address(from.address), sender(from.sender), codeOrFunc(from.codeOrFunc), args(from.args), 
-        contractCoinsIn(from.contractCoinsIn), contractCoinsOut(from.contractCoinsOut), signature(from.signature)
+        signature(from.signature), contractCoinsIn(from.contractCoinsIn), contractCoinsOut(from.contractCoinsOut)
     {
     }
 
