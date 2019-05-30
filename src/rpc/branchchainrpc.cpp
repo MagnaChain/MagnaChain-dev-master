@@ -410,7 +410,6 @@ UniValue addbranchnode(const JSONRPCRequest& request)
     //test connect
     UniValue params(UniValue::VARR);
     UniValue reply = CallRPC(rpcconfig, "getblockcount", params);
-    const UniValue& result = find_value(reply, "result");
     const UniValue& errorVal = find_value(reply, "error");
     if (!errorVal.isNull()){
         return errorVal.write();
@@ -704,7 +703,6 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
 
     LOCK(cs_main);
 
-    const MCChainParams& chainparams = Params();
     MCValidationState state;
     MCAmount maxTxFee = DEFAULT_TRANSACTION_MAXFEE;
     bool ret = AcceptToMemoryPool(mempool, state, tx2, true, nullptr, nullptr, false, maxTxFee, true, 0);
@@ -806,7 +804,7 @@ UniValue rebroadcastchaintransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_VERIFY_ERROR, std::string("Invalid branch transaction!"));
     }
 
-    const uint32_t maturity = BRANCH_CHAIN_MATURITY;
+    const int32_t maturity = BRANCH_CHAIN_MATURITY;
     int confirmations = chainActive.Height() - pblockindex->nHeight + 1;
     if (confirmations < maturity + 1)
     {
@@ -1399,7 +1397,6 @@ UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
     uint256 txhash = ParseHashV(request.params[0], "parameter 1");
     MCTransactionRef tx;
     MCBlockIndex* pblockindex = nullptr;
-    uint32_t tx_vtx_index = 0;
     MCBlock block;
     uint256 hashBlock;
     //LOCK(cs_main);
@@ -1424,7 +1421,7 @@ UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_VERIFY_ERROR, "Read Block From Disk fail when rebroadcast redeem.");
     }
 
-    const uint32_t maturity = BRANCH_CHAIN_MATURITY;
+    const int32_t maturity = BRANCH_CHAIN_MATURITY;
     int confirmations = chainActive.Height() - pblockindex->nHeight + 1;
     if (confirmations < maturity + 1){
         throw JSONRPCError(RPC_VERIFY_ERROR, "can not broadcast because no enough confirmations");
@@ -1472,11 +1469,9 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
 
     uint256 txHash = ParseHashV(request.params[1], "parameter 2");
     //check tx is a normal transaction
-    int txIndex = -1;
     MCTransactionRef pReportTx;
-    for (int i = 0; i < block.vtx.size(); ++i) {
+    for (size_t i = 0; i < block.vtx.size(); ++i) {
         if (block.vtx[i]->GetHash() == txHash) {
-            txIndex = i;
             pReportTx = block.vtx[i];
             break;
         }
@@ -1558,7 +1553,7 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
     int reportedTxIndex = -1;
     uint256 reportedTxHash = ParseHashV(request.params[1], "parameter 2");
     //check tx is a normal transaction
-    for (int i = 0; i < reportedBlock.vtx.size(); ++i) {
+    for (size_t i = 0; i < reportedBlock.vtx.size(); ++i) {
         if (reportedBlock.vtx[i]->GetHash() == reportedTxHash) {
             reportedTxIndex = i;
             break;
@@ -1579,7 +1574,7 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
     int proveTxIndex = -1;
     uint256 proveTxHash = ParseHashV(request.params[3], "parameter 3");
     //check tx is a normal transaction
-    for (int i = 0; i < proveBlock.vtx.size(); ++i) {
+    for (size_t i = 0; i < proveBlock.vtx.size(); ++i) {
         if (proveBlock.vtx[i]->GetHash() == proveTxHash) {
             proveTxIndex = i;
             break;
@@ -1842,7 +1837,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
 
     int targetTxIndex = -1;
     MCTransactionRef pProveTx;
-    for (int i = 0; i < block.vtx.size(); ++i)
+    for (uint32_t i = 0; i < block.vtx.size(); ++i)
     {
         if (block.vtx[i]->GetHash() == txHash)
         {
@@ -2169,7 +2164,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
     MCTransactionRef ptxReport;
     uint256 hashBlock;
     bool retflag;
-    bool retval = ReadTxDataByTxIndex(reporttxid, ptxReport, hashBlock, retflag);
+    ReadTxDataByTxIndex(reporttxid, ptxReport, hashBlock, retflag);
     if (ptxReport == nullptr)
         throw JSONRPCError(RPC_INVALID_REQUEST, "read tx data fail");
 
@@ -2302,7 +2297,7 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
     MCTransactionRef ptxProve;
     uint256 hashBlock;
     bool retflag;
-    bool retval = ReadTxDataByTxIndex(provetxid, ptxProve, hashBlock, retflag);
+    ReadTxDataByTxIndex(provetxid, ptxProve, hashBlock, retflag);
     if (ptxProve == nullptr)
         throw JSONRPCError(RPC_INVALID_REQUEST, "read tx data fail");
 

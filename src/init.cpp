@@ -839,6 +839,14 @@ void InitLogging()
     LogPrintf("MagnaChain version %s\n", FormatFullVersion());
 }
 
+namespace { // Variables internal to initialization process only
+    ServiceFlags nRelevantServices = NODE_NONE;
+    int nMaxConnections;
+    int nUserMaxConnections;
+    int nFD;
+    ServiceFlags nLocalServices = NODE_NONE;
+} // namespace
+
 [[noreturn]] static void new_handler_terminate()
 {
     // Rather than throwing std::bad-alloc if allocation fails, terminate

@@ -62,6 +62,9 @@ isminetype IsMine(const MCKeyStore &keystore, const MCScript& scriptPubKey, bool
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
+    case TX_TRANS_BRANCH:
+    case TX_SEND_BRANCH:
+    case TX_REDEEM_MORTGAGE:
         break;
     case TX_PUBKEY:
         keyID = MCPubKey(vSolutions[0]).GetID();

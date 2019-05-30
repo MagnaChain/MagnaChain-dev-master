@@ -646,8 +646,8 @@ void MCWallet::AddToSpends(const uint256& wtxid)
     MCWalletTx& thisTx = mapWallet[wtxid];
     if (thisTx.IsCoinBase()) // Coinbases don't spend anything!
         return;
-	if (thisTx.tx->IsBranchChainTransStep2() && thisTx.tx->fromBranchId == MCBaseChainParams::MAIN)
-		return;
+    if (thisTx.tx->IsBranchChainTransStep2() && thisTx.tx->fromBranchId == MCBaseChainParams::MAIN)
+        return;
 
     for (const MCTxIn& txin : thisTx.tx->vin)
         AddToSpends(txin.prevout, wtxid);
@@ -3040,7 +3040,7 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
                 // add contract out recipients
                 if (vmOut != nullptr) {
                     txNew.pContractData->address = wtxNew.pContractData->address;
-                    for (int i = 0; i < vmOut->recipients.size(); ++i) {
+                    for (size_t i = 0; i < vmOut->recipients.size(); ++i) {
                         txNew.vout.push_back(vmOut->recipients[i]);
                     }
                 }
@@ -4641,14 +4641,14 @@ int MCMerkleTx::GetBlocksToMaturity() const
 {
     if (!IsCoinBase())
         return 0;
-    return std::max(0, (COINBASE_MATURITY+1) - GetDepthInMainChain());
+    return std::max(COINBASE_MATURITY + 1 - GetDepthInMainChain(), 0);
 }
 
 int MCMerkleTx::GetBlocksToMaturityForCoinCreateBranch() const
 {
     if (!tx->IsBranchCreate())
         return 0;
-    return std::max(0, (BRANCH_CHAIN_CREATE_COIN_MATURITY + 1) - GetDepthInMainChain());
+    return std::max(BRANCH_CHAIN_CREATE_COIN_MATURITY + 1 - GetDepthInMainChain(), 0);
 }
 
 bool MCMerkleTx::AcceptToMemoryPool(const MCAmount& nAbsurdFee, MCValidationState& state, bool executeSmartContract, int* pNMissingInputs)

@@ -17,7 +17,6 @@
 #include <cppconn/prepared_statement.h>
 #include <cppconn/resultset.h>
 #include <cppconn/statement.h>
-#include <strstream>
 
 std::map<uint256, DatabaseBlock> blocks;
 
@@ -72,7 +71,7 @@ std::shared_ptr<DatabaseBlock> GetDatabaseBlock(const uint256& hashBlock)
     }
 }
 
-void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, const uint256& hashSkipBlock, const int height)
+void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, const uint256& hashSkipBlock, int height)
 {
     blocks[hashBlock] = std::move(DatabaseBlock{ hashBlock, hashPrevBlock, hashSkipBlock, height });
 
@@ -379,11 +378,11 @@ void WriteContractInfo(const std::string& txHash, const std::string& contractId,
     sqlContractInfo += sql;
 }
 
-bool WriteReportData(const MCTransactionRef tx)
+void WriteReportData(const MCTransactionRef tx)
 {
     const std::shared_ptr<const ReportData> reportData = tx->pReportData;
     if (reportData == nullptr) {
-        return true;
+        return;
     }
 
     const char sqlBase[] = "INSERT INTO `reportdata`(`txhash`, `reporttype`, `reportedbranchid`, `reportedblockhash`, "

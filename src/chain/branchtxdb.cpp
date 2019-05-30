@@ -12,7 +12,7 @@ namespace {
         char key;
         uint256 hash;// coin prevout tx hash
                      //uint32_t n; // n default is zero, so no need
-        MineCoinEntry(const uint256& txid) :hash(txid), key(DB_MINE_COIN_LOCK) {}
+        MineCoinEntry(const uint256& txid) : key(DB_MINE_COIN_LOCK), hash(txid) {}
 
         template <typename Stream>
         void Serialize(Stream& s) const
@@ -402,7 +402,7 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
             batch.Erase(key);
         }
     }
-    bool ret = m_db.WriteBatch(batch);// final batch
+    m_db.WriteBatch(batch);// final batch
     batch.Clear();
     cache.m_mapTxidMapping.clear();
     LogPrint(BCLog::COINDB, "finsh flush branch tx data.\n");

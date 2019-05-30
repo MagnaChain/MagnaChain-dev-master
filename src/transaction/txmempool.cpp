@@ -97,7 +97,7 @@ size_t MCTxMemPoolEntry::GetTxSize() const
 // Update the given tx for any in-mempool descendants.
 // Assumes that setMemPoolChildren is correct for the given tx and all
 // descendants.
-void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendants, const std::map<uint256, int> &setExclude)
+void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescendants, const std::map<uint256, uint32_t> &setExclude)
 {
     setEntries stageEntries, setAllDescendants;
     stageEntries = GetMemPoolChildren(updateIt);
@@ -127,7 +127,7 @@ void MCTxMemPool::UpdateForDescendants(txiter updateIt, cacheMap &cachedDescenda
     int64_t modifySize = 0;
     MCAmount modifyFee = 0;
     int64_t modifyCount = 0;
-    int index = setExclude.find(updateIt->GetTx().GetHash())->second;
+    uint32_t index = setExclude.find(updateIt->GetTx().GetHash())->second;
     for (txiter cit : setAllDescendants) {
         bool modify = true;
         auto iter = setExclude.find(cit->GetTx().GetHash());
@@ -164,8 +164,8 @@ void MCTxMemPool::UpdateTransactionsFromBlock(const std::vector<uint256> &vHashe
 
     // Use a set for lookups into vHashesToUpdate (these entries are already
     // accounted for in the state of their ancestors)
-    std::map<uint256, int> setAlreadyIncluded;
-    for (int i = 0; i < vHashesToUpdate.size(); ++i) {
+    std::map<uint256, uint32_t> setAlreadyIncluded;
+    for (uint32_t i = 0; i < vHashesToUpdate.size(); ++i) {
         setAlreadyIncluded[vHashesToUpdate[i]] = i;
     }
 
@@ -542,7 +542,7 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
                     break;
                 }
                 else {
-                    for (int i = 0; i < (*liter)->GetTx().vin.size(); ++i) {
+                    for (size_t i = 0; i < (*liter)->GetTx().vin.size(); ++i) {
                         const uint256& lhash = (*liter)->GetTx().vin[i].prevout.hash;
                         txiter piter = mapTx.find(lhash);
                         if (piter != mapTx.end()) {
@@ -568,7 +568,7 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
 
                 if (next != links.end()) {
                     bool remove = true;
-                    for (int i = 0; i < (*next)->GetTx().vin.size(); ++i) {
+                    for (size_t i = 0; i < (*next)->GetTx().vin.size(); ++i) {
                         if ((*next)->GetTx().vin[i].prevout.hash == (*prev)->GetTx().GetHash()) {
                             remove = false;
                             break;
@@ -726,14 +726,13 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
 void MCTxMemPool::CheckContract(const txiter titer, const VMOut* vmOut)
 {
     assert(titer->contractData != nullptr);
-    const uint256& txHash = titer->GetTx().GetHash();
 
     int64_t oldSize = titer->GetTxSize();
     int64_t oldModifiedFee = titer->GetModifiedFee();
     int64_t oldSigOpsCost = titer->GetSigOpCost();
 
     bool resize = false;
-    int deltaDataLen = GetDeltaDataLen(vmOut);
+    int32_t deltaDataLen = GetDeltaDataLen(vmOut);
     if (vmOut->runningTimes != titer->contractData->runningTimes || deltaDataLen != titer->contractData->deltaDataLen) {
         titer->contractData->runningTimes = vmOut->runningTimes;
         titer->contractData->deltaDataLen = deltaDataLen;
@@ -1075,7 +1074,7 @@ void MCTxMemPool::CalculateDescendants(txiter entryit, setEntries &setDescendant
                     // 仅有合约依赖的不加入
                     if (citer->contractData != nullptr) {
                         MCTransactionRef ptx = citer->GetSharedTx();
-                        for (int i = 0; i < ptx->vin.size(); ++i) {
+                        for (size_t i = 0; i < ptx->vin.size(); ++i) {
                             if (ptx->vin[i].prevout.hash == txHash) {
                                 add = true;
                                 break;
@@ -1183,7 +1182,6 @@ void MCTxMemPool::RemoveConflicts(const MCTransaction &tx)
 
 void MCTxMemPool::RemoveForVector(const std::vector<MCTransactionRef>& vtx, bool fFromMemPool, MemPoolRemovalReason reason)
 {
-    int64_t nTime = GetTimeMicros();
     for (const auto& tx : vtx)
     {
         uint256 txid = GetOriTxHash(*tx, fFromMemPool);// remove Transaction that has be modified, as IsBranchChainTransStep2
@@ -1685,7 +1683,7 @@ void MCTxMemPool::ReacceptTransactions()
     vm.ClearData(false);
 
     auto entries = mempool.GetSortedDepthAndScore();
-    for (int i = 0; i < entries.size(); ++i) {
+    for (size_t i = 0; i < entries.size(); ++i) {
         const MCTransactionRef tx = entries[i]->GetPtrTx();
         if (tx->IsSmartContract()) {
             try {
@@ -1738,7 +1736,6 @@ void MCTxMemPool::PreCalculateTxOrder(const DisconnectedBlockTransactions& disco
         MCTransactionRef ptx = *it++;
         const uint256& hash = ptx->GetHash();
         txiter before = mapTx.end();
-        uint64_t order = std::numeric_limits<uint64_t>::max();
 
         // before any tx in mempool?
         auto iter = mapNextTx.lower_bound(MCOutPoint(hash, 0));
@@ -1763,7 +1760,7 @@ void MCTxMemPool::PreCalculateTxOrder(const DisconnectedBlockTransactions& disco
         }
 
         // is vin's prevout in this block?
-        for (int i = 0; i < ptx->vin.size(); ++i) {
+        for (size_t i = 0; i < ptx->vin.size(); ++i) {
             auto piter = txOrders.find(ptx->vin[i].prevout.hash);
             if (piter != txOrders.end()) {
                 auto temp = piter;

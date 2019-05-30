@@ -46,7 +46,7 @@ struct VMIn
 struct VMOut
 {
     UniValue ret;
-    uint32_t runningTimes = 0;
+    int32_t runningTimes = 0;
     CONTRACT_DATA txPrevData;
     CONTRACT_DATA txFinalData;
     std::vector<MCTxOut> recipients;

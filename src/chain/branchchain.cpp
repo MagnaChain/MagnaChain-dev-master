@@ -530,7 +530,9 @@ bool GetMortgageMineData(const MCScript& scriptPubKey, uint256* pBranchHash /*= 
     }
 
     //OP_2DROP OP_DUP OP_HASH160
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160)
+    if ((!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP) || 
+        (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP) || 
+        (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160))
         return false;
 
     if (!scriptPubKey.GetOp(pc1, opcode, vch))
@@ -571,7 +573,9 @@ bool GetMortgageCoinData(const MCScript& scriptPubKey, uint256* pFromTxid /*= nu
     }
 
     //OP_2DROP OP_DUP OP_HASH160
-    if (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP || !scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160)
+    if ((!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_2DROP) || 
+        (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_DUP) || 
+        (!scriptPubKey.GetOp(pc1, opcode, vch) && opcode != OP_HASH160))
         return false;
 
     if (!scriptPubKey.GetOp(pc1, opcode, vch))
@@ -710,7 +714,7 @@ void ProcessBlockBranchChain()
             std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
             MCBlock& block = *pblock;
             if (ReadBlockFromDisk(block, pbi, Params().GetConsensus())) {
-                for (int i = 1; i < block.vtx.size(); i++) {
+                for (size_t i = 1; i < block.vtx.size(); i++) {
                     const MCTransactionRef& tx = block.vtx[i];
                     if (tx->IsBranchChainTransStep1() || tx->IsMortgage()) {
                         BranchChainTransStep2(tx, block, nullptr);
@@ -853,7 +857,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }
 
-    const uint32_t maturity = BRANCH_CHAIN_MATURITY;
+    const int32_t maturity = BRANCH_CHAIN_MATURITY;
     if (!confirmations.isNum() || confirmations.get_int() < maturity + 1) {
         return error(" %s RPC confirmations not satisfy.\n", __func__);
     }
@@ -1387,7 +1391,7 @@ bool CheckProveCoinbaseTx(const MCTransaction& tx, MCValidationState& state, Bra
 
     // check tx and collect input/output, calc fees
     MCAmount totalFee = 0;
-    for (int i = 2; i < vtx.size(); i++) {
+    for (size_t i = 2; i < vtx.size(); i++) {
         const MCTransactionRef& toProveTx = vtx[i];
         const std::vector<ProveDataItem>& vectProveData = tx.pProveData->vecBlockTxProve[i - 2];
 
@@ -1510,7 +1514,7 @@ bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& st
     MCTransactionRef ptxReport;
     uint256 reporthashBlock;
     bool retflag;
-    bool retval = ReadTxDataByTxIndex(tx.reporttxid, ptxReport, reporthashBlock, retflag);
+    ReadTxDataByTxIndex(tx.reporttxid, ptxReport, reporthashBlock, retflag);
     if (ptxReport == nullptr)
         return false; // report tx not exist
 
@@ -1550,12 +1554,11 @@ bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& st
     if (tx.vin[0].prevout.hash != coinfromtxid || tx.vin[0].prevout.n != 0)
         return state.DoS(100, false, REJECT_INVALID, "Invalid-report-reward-input");
 
-    MCAmount nValueIn = blockdata.pStakeTx->vout[0].nValue;
 
     // 举报者地址
+    MCAmount nValueIn = blockdata.pStakeTx->vout[0].nValue;
     const MCScript reporterAddress = ptxReport->vout[0].scriptPubKey;
     MCAmount nReporterValue = nValueIn / 2;
-    MCAmount nMinerValue = nValueIn - nReporterValue;
     if (tx.vout[0].scriptPubKey != reporterAddress)
         return state.DoS(100, false, REJECT_INVALID, "vout[0]-must-to-reporter");
     if (tx.vout[0].nValue < nReporterValue)

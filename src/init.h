@@ -25,14 +25,6 @@ static const bool DEFAULT_REST_ENABLE = false;
 static const bool DEFAULT_DISABLE_SAFEMODE = false;
 static const bool DEFAULT_STOPAFTERBLOCKIMPORT = false;
 
-namespace { // Variables internal to initialization process only
-    extern ServiceFlags nRelevantServices;
-    extern int nMaxConnections;
-    extern int nUserMaxConnections;
-    extern int nFD;
-    extern ServiceFlags nLocalServices;
-} // namespace
-
 extern std::unique_ptr<MCConnman> g_connman;
 extern std::unique_ptr<PeerLogicValidation> peerLogic;
 

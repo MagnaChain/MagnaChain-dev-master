@@ -63,8 +63,8 @@ class MCTxMemPoolEntryContractData
 {
 public:
     std::set<MCContractID> contractAddrs;
-    uint32_t runningTimes;
-    uint32_t deltaDataLen;
+    int32_t runningTimes;
+    int32_t deltaDataLen;
 };
 
 /** \class MCTxMemPoolEntry
@@ -117,7 +117,7 @@ public:
 
     MCTxMemPoolEntry(const MCTxMemPoolEntry& other);
 
-    const uint64_t GetOrder() const { return this->entryOrder; }
+    uint64_t GetOrder() const { return this->entryOrder; }
     const MCTransaction& GetTx() const { return *this->tx; }
     const MCTransactionRef& GetPtrTx() const { return this->tx; }
     MCTransactionRef GetSharedTx() const { return this->tx; }
@@ -701,7 +701,7 @@ private:
      */
     void UpdateForDescendants(txiter updateIt,
         cacheMap& cachedDescendants,
-        const std::map<uint256, int>& setExclude);
+        const std::map<uint256, uint32_t>& setExclude);
     /** Update ancestors of hash to add/remove it as a descendant transaction. */
     void UpdateAncestorsOf(bool add, txiter hash, setEntries& setAncestors);
     /** Set ancestor state for an entry */

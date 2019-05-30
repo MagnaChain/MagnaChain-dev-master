@@ -241,7 +241,6 @@ BOOST_AUTO_TEST_CASE(versionbits_computeblockversion_need_rewrite)
     const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
     const Consensus::Params &mainnetParams = chainParams->GetConsensus();
     const uint32_t confirmWindow = mainnetParams.nMinerConfirmationWindow;
-    const uint32_t activationThreshold = mainnetParams.nRuleChangeActivationThreshold;
 
     // Use the TESTDUMMY deployment for testing purposes.
     int64_t bit = mainnetParams.vDeployments[Consensus::DEPLOYMENT_TESTDUMMY].bit;
@@ -266,7 +265,7 @@ BOOST_AUTO_TEST_CASE(versionbits_computeblockversion_need_rewrite)
     BOOST_CHECK_EQUAL(ComputeBlockVersion(lastBlock, mainnetParams) & (1<<bit), 0);
 
     // Mine 2011 more blocks at the old time, and check that CBV isn't setting the bit yet.
-    for (int i=1; i<confirmWindow-4; i++) {
+    for (uint32_t i=1; i<confirmWindow-4; i++) {
         lastBlock = firstChain.Mine(confirmWindow +i, nTime, VERSIONBITS_LAST_OLD_BLOCK_VERSION).Tip();
         // This works because VERSIONBITS_LAST_OLD_BLOCK_VERSION happens
         // to be 4, and the bit we're testing happens to be bit 28.
@@ -275,7 +274,7 @@ BOOST_AUTO_TEST_CASE(versionbits_computeblockversion_need_rewrite)
     // Now mine 5 more blocks at the start time -- MTP should not have passed yet, so
     // CBV should still not yet set the bit.
     nTime = nStartTime;
-    for (int i= confirmWindow-4; i<= confirmWindow; i++) {
+    for (uint32_t i= confirmWindow-4; i<= confirmWindow; i++) {
         lastBlock = firstChain.Mine(confirmWindow +i, nTime, VERSIONBITS_LAST_OLD_BLOCK_VERSION).Tip();
         BOOST_CHECK_EQUAL(ComputeBlockVersion(lastBlock, mainnetParams) & (1<<bit), 0);
     }
@@ -304,7 +303,7 @@ BOOST_AUTO_TEST_CASE(versionbits_computeblockversion_need_rewrite)
     nTime = nTimeout;
     // FAILED is only triggered at the end of a period, so CBV should be setting
     // the bit until the period transition.
-    for (int i=0; i<confirmWindow-1; i++) {
+    for (uint32_t i=0; i<confirmWindow-1; i++) {
         lastBlock = firstChain.Mine(nHeight+1, nTime, VERSIONBITS_LAST_OLD_BLOCK_VERSION).Tip();
         BOOST_CHECK((ComputeBlockVersion(lastBlock, mainnetParams) & (1<<bit)) != 0);
         nHeight += 1;

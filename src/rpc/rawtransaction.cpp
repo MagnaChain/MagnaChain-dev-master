@@ -198,7 +198,7 @@ UniValue getbytxdiskpos(const JSONRPCRequest& request)
     MCTransactionRef tx;
     uint256 hashBlock;
     bool retflag;
-    bool retval = ReadTxDataByTxIndex(hash, tx, hashBlock, retflag);
+    ReadTxDataByTxIndex(hash, tx, hashBlock, retflag);
     if (tx == nullptr)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Read transaction data fail");
 

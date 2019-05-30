@@ -107,8 +107,8 @@ MCScript COINBASE_FLAGS;
 
 const std::string strMessageMagic = "MagnaChain Signed Message:\n";
 
-uint32_t MAX_FORK_BACK_BLOCKS = 480; // 2hours
-uint64_t g_minForkBackHeight = 0;// the min fork height can allow, use to forbid Long Range Attack
+int32_t MAX_FORK_BACK_BLOCKS = 480; // 2hours
+int32_t g_minForkBackHeight = 0;// the min fork height can allow, use to forbid Long Range Attack
 
 // Internal stuff
 namespace
@@ -214,12 +214,12 @@ MCBlockIndex* FindForkInGlobalIndex(const MCChain& chain, const MCBlockLocator& 
 }
 
 // need to put an eye on RPC call invalidateblock.
-void UpdateForkBackHeight(uint64_t newBlockHeight)
+void UpdateForkBackHeight(int32_t newBlockHeight)
 {
     if (newBlockHeight < g_minForkBackHeight + MAX_FORK_BACK_BLOCKS)
         return;
 
-    uint64_t newvalue = newBlockHeight - MAX_FORK_BACK_BLOCKS;
+    int32_t newvalue = newBlockHeight - MAX_FORK_BACK_BLOCKS;
     if (newvalue > g_minForkBackHeight)
         g_minForkBackHeight = newvalue;
 }
@@ -386,7 +386,7 @@ bool CheckContractCoins(const MCTransactionRef& tx, const VMOut* vmOut)
     }
 
     MCAmount totalRecv = 0;
-    for (int j = 0; j < vmOut->recipients.size(); ++j) {
+    for (size_t j = 0; j < vmOut->recipients.size(); ++j) {
         if (!tx->IsExistVout(vmOut->recipients[j]))
             return false;
         totalRecv += vmOut->recipients[j].nValue;
@@ -1417,8 +1417,8 @@ bool CheckBlockGroupSize(const MCBlock* pBlock)
     if (pBlock->groupSize.size() > MAX_GROUP_NUM) {
         return false;
     }
-    int totalSize = 0;
-    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+    size_t totalSize = 0;
+    for (size_t i = 0; i < pBlock->groupSize.size(); ++i) {
         totalSize += pBlock->groupSize[i];
     }
     if (totalSize == 0 || totalSize != pBlock->vtx.size()) {
@@ -2057,7 +2057,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
             nSigOpsCost += GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
         else
             nSigOpsCost += GetTransactionSigOpCost(tx, view, flags);
-        if (nSigOpsCost > MAX_BLOCK_SIGOPS_COST)
+        if ((uint64_t)nSigOpsCost > MAX_BLOCK_SIGOPS_COST)
             return state.DoS(100, error("ConnectBlock(): too many sigops"),
                 REJECT_INVALID, "bad-blk-sigops");
 
@@ -3110,7 +3110,7 @@ static bool ReceivedBlockTransactions(const MCBlock& block, MCValidationState& s
     return true;
 }
 
-static bool FindBlockPos(MCValidationState& state, MCDiskBlockPos& pos, unsigned int nAddSize, unsigned int nHeight, uint64_t nTime, bool fKnown = false)
+static bool FindBlockPos(MCValidationState& state, MCDiskBlockPos& pos, unsigned int nAddSize, int nHeight, uint64_t nTime, bool fKnown = false)
 {
     LOCK(cs_LastBlockFile);
 
@@ -3621,7 +3621,7 @@ static bool AcceptBlockHeader(const MCBlockHeader& block, MCValidationState& sta
         }
 
         // dynamic check fork back
-        if (pindexPrev->nHeight < g_minForkBackHeight)
+        if (pindexPrev->nHeight < (int32_t)g_minForkBackHeight)
             return state.DoS(0, error("%s: Maybe under long range attack", __func__), REJECT_INVALID, "bad-fork-back");
     }
     if (pindex == nullptr)
@@ -3887,7 +3887,7 @@ static void FindFilesToPruneManual(std::set<int>& setFilesToPrune, int nManualPr
         return;
 
     // last block to prune is the lesser of (user-specified height, MIN_BLOCKS_TO_KEEP from the tip)
-    unsigned int nLastBlockWeCanPrune = std::min((unsigned)nManualPruneHeight, chainActive.Tip()->nHeight - MIN_BLOCKS_TO_KEEP);
+    int32_t nLastBlockWeCanPrune = (int32_t)std::min((uint32_t)nManualPruneHeight, (uint32_t)(chainActive.Tip()->nHeight - MIN_BLOCKS_TO_KEEP));
     int count = 0;
     for (int fileNumber = 0; fileNumber < nLastBlockFile; fileNumber++) {
         if (vinfoBlockFile[fileNumber].nSize == 0 || vinfoBlockFile[fileNumber].nHeightLast > nLastBlockWeCanPrune)
@@ -3952,7 +3952,7 @@ static void FindFilesToPrune(std::set<int>& setFilesToPrune, uint64_t nPruneAfte
                 break;
 
             // don't prune files that could have a block within MIN_BLOCKS_TO_KEEP of the main chain's tip but keep scanning
-            if (vinfoBlockFile[fileNumber].nHeightLast > nLastBlockWeCanPrune)
+            if ((uint32_t)vinfoBlockFile[fileNumber].nHeightLast > nLastBlockWeCanPrune)
                 continue;
 
             PruneOneBlockFile(fileNumber);
@@ -5251,8 +5251,6 @@ bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBloc
     std::set<uint256> setTxids;
     setTxids.insert(tx->GetHash());
 
-    uint256 hashBlock = uint256();
-
     if (tx == nullptr)
         return error("%s did not find tx in block.\n", __func__);
 
@@ -5281,7 +5279,7 @@ bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block)
 
     //create vtx transaction's prove data
     //exclude coinbase, stake transaction
-    for (int i = 2; i < block.vtx.size(); i++) {
+    for (size_t i = 2; i < block.vtx.size(); i++) {
         const MCTransactionRef& ptx = block.vtx[i];
         pProveData->vecBlockTxProve.emplace_back();
         std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();

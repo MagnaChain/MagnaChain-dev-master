@@ -24,7 +24,7 @@
  * script supports up to 75 for single byte push
  */
 
-const unsigned int BIP32_EXTKEY_SIZE = 74;
+const size_t BIP32_EXTKEY_SIZE = 74;
 
 /** A reference to a MCContract: the Hash160 of its serialization (see script.h) */
 class MCContractID : public uint160

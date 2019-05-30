@@ -142,6 +142,7 @@ typedef std::map<uint256, BranchData> MAPBRANCHS_DATA;
 class BrandchDataView
 {
 public:
+    virtual ~BrandchDataView() {}
     virtual bool HasBranchData(const uint256& branchHash) const;
     virtual uint256 GetBranchTipHash(const uint256& branchid);
     virtual uint32_t GetBranchHeight(const uint256& branchid);

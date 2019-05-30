@@ -54,7 +54,7 @@ bool ContractDataDB::WriteBlockContractInfoToDisk(const MCBlockIndex* pBlockInde
             insertPoint->blockHeight = pBlockIndex->nHeight;
         }
 
-        for (int i = 0; i < insertPoint->vecBlockHash.size(); ++i) {
+        for (size_t i = 0; i < insertPoint->vecBlockHash.size(); ++i) {
             if (insertPoint->vecBlockHash[i] == ci.second.blockHash) {
                 insertPoint->vecBlockHash.erase(insertPoint->vecBlockHash.begin() + i);
                 insertPoint->vecBlockContractData.erase(insertPoint->vecBlockContractData.begin() + i);
@@ -71,7 +71,6 @@ bool ContractDataDB::WriteBlockContractInfoToDisk(const MCBlockIndex* pBlockInde
         MCHashWriter keyHash(SER_GETHASH, 0);
         keyHash << ci.first << ci.second.blockHash;
         writeBatch.Write(keyHash.GetHash(), std::make_pair(ci.second.coins, ci.second.data));
-        LogPrintf("%s:%d %s %s:%d\n", __FUNCTION__, __LINE__, ci.first.ToString(), pBlockIndex->GetBlockHash().ToString(), pBlockIndex->nHeight);
         if (writeBatch.SizeEstimate() > maxBatchSize) {
             if (!WriteBatch(writeBatch))
                 return false;
@@ -114,7 +113,7 @@ bool ContractDataDB::UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex)
                     db.Read(keyHeightHash.GetHash(), heightIt->vecBlockHash);
                 }
 
-                for (int i = 0; i < heightIt->vecBlockHash.size();) {
+                for (size_t i = 0; i < heightIt->vecBlockHash.size();) {
                     BlockMap::iterator bi = mapBlockIndex.find(heightIt->vecBlockHash[i]);
                     if (bi == mapBlockIndex.end() ||
                         newConfirmBlock->GetAncestor(heightIt->blockHeight)->GetBlockHash() != heightIt->vecBlockHash[i]) {
@@ -220,7 +219,6 @@ int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo
     // 遍历获取相应节点的数据(链表最末尾存储最高的区块)
     for (auto it = di->second.items.rbegin(); it != di->second.items.rend(); ++it) {
         if (prevBlockIndex->nHeight >= it->blockHeight) {
-            LogPrintf("%s:%d %d\n", __FUNCTION__, __LINE__, prevBlockIndex->nHeight);
             const MCBlockIndex* targetBlockIndex = prevBlockIndex->GetAncestor(it->blockHeight);
             // get all hash of blocks at the same height if not initialize
             if (it->vecBlockHash.size() == 0) {
@@ -230,9 +228,8 @@ int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo
                 it->vecBlockContractData.resize(it->vecBlockHash.size());
             }
             // find the contract info from the target block
-            for (int i = 0; i < it->vecBlockHash.size(); ++i) {
+            for (size_t i = 0; i < it->vecBlockHash.size(); ++i) {
                 if (it->vecBlockHash[i] == targetBlockIndex->GetBlockHash()) {
-                    LogPrintf("%s:%d %s:%d\n", __FUNCTION__, __LINE__, targetBlockIndex->GetBlockHash().ToString(), it->blockHeight);
                     if (it->vecBlockContractData[i].second.empty()) {
                         MCHashWriter keyHash(SER_GETHASH, 0);
                         keyHash << contractId << it->vecBlockHash[i];

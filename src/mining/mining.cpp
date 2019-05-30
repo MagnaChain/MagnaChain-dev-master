@@ -180,7 +180,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
     }
 
 	uint64_t nTries = 0;
-    unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
     while (nHeight < nHeightEnd && nTries < nMaxTries && !ShutdownRequested())
     {
@@ -312,7 +311,7 @@ UniValue generateBranch2ndBlock(MCWallet& wallet)
 }
 UniValue mineblanch2ndblock(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 0 || request.params.size() > 0)
+    if (request.fHelp || request.params.size() == 0 || request.params.size() > 0)
         throw std::runtime_error(
             "mineBlanch2ndBlock \n"
             "\nTry to mine the 2nd block for branch chain.\n"
@@ -477,45 +476,44 @@ UniValue generateforbigboom(const JSONRPCRequest& request)
 
 UniValue setgenerate(const JSONRPCRequest& request )
 {
-	if ( request.fHelp || request.params.size() < 1 || request.params.size() > 1)
-		throw std::runtime_error(
-			"setgenerate generate ( genproclimit )\n"
-			"\nSet 'generate' true or false to turn generation on or off.\n"
-			"Generation is limited to 'genproclimit' processors, -1 is unlimited.\n"
-			"See the getgenerate call for the current setting.\n"
-			"\nArguments:\n"
-			"1. generate         (boolean, required) Set to true to turn on generation, off to turn off.\n"
-			"\nExamples:\n"
-			"\nSet the generation on with a limit of one processor\n"
-			+ HelpExampleCli("setgenerate", "true 1") +
-			"\nCheck the setting\n"
-			+ HelpExampleCli("getgenerate", "") +
-			"\nTurn off generation\n"
-			+ HelpExampleCli("setgenerate", "false") +
-			"\nUsing json rpc\n"
-			+ HelpExampleRpc("setgenerate", "true, 1")
-		);
+    if ( request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+        throw std::runtime_error(
+            "setgenerate generate ( genproclimit )\n"
+            "\nSet 'generate' true or false to turn generation on or off.\n"
+            "Generation is limited to 'genproclimit' processors, -1 is unlimited.\n"
+            "See the getgenerate call for the current setting.\n"
+            "\nArguments:\n"
+            "1. generate         (boolean, required) Set to true to turn on generation, off to turn off.\n"
+            "\nExamples:\n"
+            "\nSet the generation on with a limit of one processor\n"
+            + HelpExampleCli("setgenerate", "true 1") +
+            "\nCheck the setting\n"
+            + HelpExampleCli("getgenerate", "") +
+            "\nTurn off generation\n"
+            + HelpExampleCli("setgenerate", "false") +
+            "\nUsing json rpc\n"
+            + HelpExampleRpc("setgenerate", "true, 1")
+        );
 
     if (!Params().IsMainChain() && chainActive.Tip()->nHeight == 0)
         throw JSONRPCError(RPC_VERIFY_ERROR, "Branch chain 2nd block only can mine by `mineblanch2ndblock`");
 
-	//if (Params().MineBlocksOnDemand())
-	//	throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+    //if (Params().MineBlocksOnDemand())
+    //	throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+    
+    bool fGenerate = true;
+    if (request.params.size() > 0) {
+        fGenerate = request.params[0].get_bool();
+    }
+    
+    int nGenProcLimit = 1;
+    MCWallet* pwallet = GetWalletForJSONRPCRequest(request);
+    EnsureWalletIsUnlocked(pwallet);
 
-	bool fGenerate = true;
-	if ( request.params.size() > 0)
-		fGenerate = request.params[0].get_bool();
+    GenerateMCs(fGenerate, nGenProcLimit, Params());
 
-	int nGenProcLimit = 1;
-
-	MCWallet *  pwallet = GetWalletForJSONRPCRequest(request);
-	EnsureWalletIsUnlocked(pwallet);
-
-	GenerateMCs(fGenerate, nGenProcLimit, Params());
-
-	return NullUniValue;
+    return NullUniValue;
 }
-
 
 UniValue generatetoaddress(const JSONRPCRequest& request)
 {
@@ -542,7 +540,7 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
     int nGenerate = request.params[0].get_int();
     uint64_t nMaxTries = 1000000;
     if (!request.params[2].isNull()) {
-        nMaxTries = request.params[2].get_int();
+        nMaxTries = (uint64_t)request.params[2].get_int64();
     }
 
     MagnaChainAddress address(request.params[1].get_str());

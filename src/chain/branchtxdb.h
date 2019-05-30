@@ -15,11 +15,11 @@ static const char DB_MINE_COIN_LOCK = 'c';
 
 class BranchChainTxEntry {
 public:
-    char key;
     uint256 txhash;
+    char key;
 
     BranchChainTxEntry(const uint256& hash, char dkey)
-        : key(dkey), txhash(hash) {}
+        : txhash(hash), key(dkey) {}
 
     template<typename Stream>
     void Serialize(Stream &s) const {

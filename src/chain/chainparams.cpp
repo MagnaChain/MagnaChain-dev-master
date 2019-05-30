@@ -40,7 +40,7 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
 
 		size_t iCodeSize = strlen(pszTimestamp) -1;
 		unsigned char code[BIP32_EXTKEY_SIZE];
-		for (int i = 0; i < BIP32_EXTKEY_SIZE; ++i) {
+		for (size_t i = 0; i < BIP32_EXTKEY_SIZE; ++i) {
 			code[i] = (unsigned char)pszTimestamp[i%iCodeSize];
 		}
 

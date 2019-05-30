@@ -287,8 +287,8 @@ std::string TrimCode(const std::string& rawCode)
     std::string line;
     std::string codeOut;
 
-    int lineCount = 0;
-    int leftCount = 0;
+    size_t lineCount = 0;
+    size_t leftCount = 0;
     size_t lastCodeOffset = 0;
     while (true) {
         size_t newCodeOffset = rawCode.find('\n', lastCodeOffset);
@@ -303,10 +303,10 @@ std::string TrimCode(const std::string& rawCode)
         lastCodeOffset = newCodeOffset + 1;
 
         char symbol = 0;
-        size_t pos = 0, start = 0;
+        size_t start = 0;
         for (size_t pos = 0; pos < line.length(); ++pos) {
             size_t len = line.length();
-            if (leftCount == 0 && line[pos] == '\"' || line[pos] == '\'') {
+            if (leftCount == 0 && (line[pos] == '\"' || line[pos] == '\'')) {
                 if (symbol == line[pos])
                     symbol = 0;
                 else
@@ -334,11 +334,11 @@ std::string TrimCode(const std::string& rawCode)
             line = line.replace(start, line.length() - start, "");
 
         int i = 0;
-        for (; i < line.length(); ++i) {
+        for (; i < (int)line.length(); ++i) {
             if (line[i] != ' ' && line[i] != '\t')
                 break;
         }
-        int j = line.length() - 1;
+        int j = (int)line.length() - 1;
         for (; j >= 0; --j) {
             if (line[j] != ' ' && line[j] != '\t')
                 break;
@@ -464,7 +464,7 @@ static bool CallContract(lua_State* L, const std::string& rawCode, const std::st
     int argc = 4;
 
     /* other use params */
-    for (int i = 0; i < args.size(); ++i) {
+    for (size_t i = 0; i < args.size(); ++i) {
         UniValue v = args[i];
         switch (v.type()) {
         case UniValue::VSTR:
@@ -533,7 +533,7 @@ static bool CallExistContract(lua_State* L, const std::string& strFuncName, cons
     int argc = 1;
 
     /* other use params */
-    for (int i = 0; i < args.size(); ++i) {
+    for (size_t i = 0; i < args.size(); ++i) {
         UniValue v = args[i];
         switch (v.type()) {
         case UniValue::VSTR:
@@ -639,7 +639,7 @@ int ContractVM::InternalCallContract(lua_State* L)
     UniValue& ret = vm->vmOut->ret;
     size_t sz = ret.size() + 1;
     lua_pushboolean(L, (int)success);
-    for (int i = 0; i < ret.size(); ++i) {
+    for (size_t i = 0; i < ret.size(); ++i) {
         switch (ret[i].type()) {
         case UniValue::VNUM:
             lua_pushnumber(L, ret[i].get_int64());
@@ -926,7 +926,7 @@ void ContractVM::ReleaseLuaState(lua_State* L)
     MagnaChainAddress& contractAddr = contractAddrs[contractAddrs.size() - 1];
 
     bool found = false;
-    for (int i = 0; i < contractAddrs.size() - 1; ++i) {
+    for (size_t i = 0; i < contractAddrs.size() - 1; ++i) {
         if (contractAddrs[i] == contractAddr) {
             found = true;
             break;
@@ -1112,7 +1112,7 @@ int ContractVM::ExecuteBlockContract(const MCBlock* pBlock, const MCBlockIndex* 
 
 MultiContractVM::MultiContractVM() : threadPool(MAX_GROUP_NUM)
 {
-    for (int i = 0; i < threadPool.size(); ++i) {
+    for (size_t i = 0; i < threadPool.size(); ++i) {
         threadPool.schedule(boost::bind(&MultiContractVM::InitializeThread, this));
     }
     threadPool.wait();
@@ -1122,7 +1122,7 @@ void MultiContractVM::InitializeThread()
 {
     {
         LOCK(cs);
-        ContractVM& vm = threadIdToVM[boost::this_thread::get_id()];
+        threadIdToVM.insert(std::make_pair(boost::this_thread::get_id(), std::move(ContractVM())));
     }
     boost::this_thread::sleep(boost::posix_time::milliseconds(200));
 }
@@ -1139,9 +1139,9 @@ bool MultiContractVM::Execute(const MCBlock* pBlock, const MCBlockIndex* prevBlo
         item.second.ClearData(false);
     }
 
-    int offset = 0;
+    size_t offset = 0;
     interrupt = false;
-    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+    for (size_t i = 0; i < pBlock->groupSize.size(); ++i) {
         threadPool.schedule(boost::bind(&MultiContractVM::DoExecute, this, pBlock, offset, pBlock->groupSize[i]));
         offset += pBlock->groupSize[i];
     }
@@ -1180,15 +1180,15 @@ bool MultiContractVM::CheckCross(const MCBlock* pBlock, CONTRACT_DATA& finalData
     finalData.clear();
 
     // check if group have txin cross
-    int offset = 0;
+    size_t offset = 0;
     std::set<uint256> blockDependencies;
-    for (int i = 0; i < pBlock->groupSize.size(); ++i) {
+    for (size_t i = 0; i < pBlock->groupSize.size(); ++i) {
         int groupSize = pBlock->groupSize[i];
         std::set<uint256> groupDependencies;
-        for (int j = offset; j < offset + groupSize; ++j) {
+        for (size_t j = offset; j < offset + groupSize; ++j) {
             const MCTransactionRef& tx = pBlock->vtx[j];
             groupDependencies.insert(tx->GetHash());
-            for (int k = 0; k < tx->vin.size(); ++k) {
+            for (size_t k = 0; k < tx->vin.size(); ++k) {
                 if (!tx->vin[k].prevout.hash.IsNull() && !tx->IsStake()) { // branch first block's stake tx's input is from the same block(支链第一个块的stake交易的输入来自同一区块中的交易，其他情况下stake的输入不可能来自同一区块)
                     groupDependencies.insert(tx->vin[k].prevout.hash);
                 }

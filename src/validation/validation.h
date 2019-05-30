@@ -212,10 +212,10 @@ extern bool fPruneMode;
 /** Number of MiB of block files that we're trying to stay below. */
 extern uint64_t nPruneTarget;
 /** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
-static const unsigned int MIN_BLOCKS_TO_KEEP = 288;
+static const int32_t MIN_BLOCKS_TO_KEEP = 288;
 
-static const signed int DEFAULT_CHECKBLOCKS = 1800; // 这里改为多少秒以内，以适配主链与支链的不同出块时间
-static const unsigned int DEFAULT_CHECKLEVEL = 3;
+static const int32_t DEFAULT_CHECKBLOCKS = 1800; // 这里改为多少秒以内，以适配主链与支链的不同出块时间
+static const uint32_t DEFAULT_CHECKLEVEL = 3;
 
 // Require that user allocate at least 550MB for block & undo files (blk???.dat and rev???.dat)
 // At 1MB per block, 288 blocks = 288MB.

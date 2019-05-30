@@ -32,13 +32,13 @@ static const int64_t TIMESTAMP_WINDOW = MAX_FUTURE_BLOCK_TIME;
 class MCBlockFileInfo
 {
 public:
-    unsigned int nBlocks;      //!< number of blocks stored in file
-    unsigned int nSize;        //!< number of used bytes of block file
-    unsigned int nUndoSize;    //!< number of used bytes in the undo file
-    unsigned int nHeightFirst; //!< lowest height of block in file
-    unsigned int nHeightLast;  //!< highest height of block in file
-    uint64_t nTimeFirst;       //!< earliest time of block in file
-    uint64_t nTimeLast;        //!< latest time of block in file
+    unsigned int nBlocks;       //!< number of blocks stored in file
+    unsigned int nSize;         //!< number of used bytes of block file
+    unsigned int nUndoSize;     //!< number of used bytes in the undo file
+    int32_t nHeightFirst;       //!< lowest height of block in file
+    int32_t nHeightLast;        //!< highest height of block in file
+    uint64_t nTimeFirst;        //!< earliest time of block in file
+    uint64_t nTimeLast;         //!< latest time of block in file
 
     ADD_SERIALIZE_METHODS;
 
@@ -47,8 +47,8 @@ public:
         READWRITE(VARINT(nBlocks));
         READWRITE(VARINT(nSize));
         READWRITE(VARINT(nUndoSize));
-        READWRITE(VARINT(nHeightFirst));
-        READWRITE(VARINT(nHeightLast));
+        READWRITE(nHeightFirst);
+        READWRITE(nHeightLast);
         READWRITE(VARINT(nTimeFirst));
         READWRITE(VARINT(nTimeLast));
     }
@@ -70,7 +70,7 @@ public:
      std::string ToString() const;
 
      /** update statistics (does not update nSize) */
-     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
+     void AddBlock(int nHeightIn, uint64_t nTimeIn) {
          if (nBlocks==0 || nHeightFirst > nHeightIn)
              nHeightFirst = nHeightIn;
          if (nBlocks==0 || nTimeFirst > nTimeIn)

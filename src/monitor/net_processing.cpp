@@ -147,7 +147,7 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
 
     // Download as much as possible, from earliest to latest.
     std::vector<MCInv> vGetData;
-    for (int i = 0; i < headers.size(); ++i) {
+    for (size_t i = 0; i < headers.size(); ++i) {
         const MCBlockHeader& header = headers[i];
 
         /*if (txSync.size() == 0 && vGetData.size() < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
@@ -193,6 +193,7 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
     if (lastCommon == nullptr) {
         lastCommon = GetDatabaseBlock2(chainActive.Tip()->GetBlockHash());
     }
+    return true;
 }
 
 bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& vRecv, int64_t nTimeReceived, const MCChainParams& chainparams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc)
@@ -641,7 +642,6 @@ void FindNextBlocksToDownload(unsigned int count, std::vector<std::shared_ptr<Da
     std::shared_ptr<DatabaseBlock> pWalk = lastCommon;
     int nWindowEnd = pWalk->height + BLOCK_DOWNLOAD_WINDOW;
     int nMaxHeight = std::min<int>(bestKnownBlockHeader->height, nWindowEnd + 1);
-    NodeId waitingfor = -1;
     while (pWalk->height < nMaxHeight) {
         // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
         // pindexBestKnownBlock) into vToFetch. We fetch 128, because MCBlockIndex::GetAncestor may be as expensive

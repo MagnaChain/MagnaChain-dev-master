@@ -1085,7 +1085,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     if (coin.nHeight == MEMPOOL_HEIGHT) {
         ret.push_back(Pair("confirmations", 0));
     } else {
-        ret.push_back(Pair("confirmations", (int64_t)(pindex->nHeight - coin.nHeight + 1)));
+        ret.push_back(Pair("confirmations", pindex->nHeight - coin.nHeight + 1));
     }
     ret.push_back(Pair("value", ValueFromAmount(coin.out.nValue)));
     UniValue o(UniValue::VOBJ);

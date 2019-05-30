@@ -136,8 +136,7 @@ TestChain100Setup::TestChain100Setup() : TestingSetup(MCBaseChainParams::REGTEST
     // Generate a 100-block chain:
     coinbaseKey.MakeNewKey(true);
     MCScript scriptPubKey = MCScript() <<  ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
-    for (int i = 0; i < COINBASE_MATURITY; i++)
-    {
+    for (int i = 0; i < COINBASE_MATURITY; i++) {
         std::vector<MCMutableTransaction> noTxns;
         MCBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
         coinbaseTxns.push_back(*b.vtx[0]);
@@ -171,8 +170,7 @@ MCBlock TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTran
     {
         MCAmount nFees = 0;
         MCCoinsViewCache view(pcoinsTip);
-        for (int i=1; i < block.vtx.size(); i++)
-        {
+        for (size_t i = 1; i < block.vtx.size(); i++) {
             const MCTransactionRef& ptx = block.vtx[i];
             nFees += view.GetValueIn(*ptx) - ptx->GetValueOut();
         }

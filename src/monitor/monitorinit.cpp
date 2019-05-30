@@ -20,6 +20,13 @@
 
 #include <assert.h>
 
+namespace { // Variables internal to initialization process only
+    ServiceFlags nRelevantServices = NODE_NONE;
+    int nMaxConnections;
+    int nFD;
+    ServiceFlags nLocalServices = NODE_NONE;
+} // namespace
+
 bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
     const MCChainParams& chainparams = Params();
