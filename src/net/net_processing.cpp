@@ -685,7 +685,7 @@ void Misbehaving(NodeId pnode, int howmuch)
 //
 
 PeerLogicValidation::PeerLogicValidation(MCConnman* connmanIn, MCScheduler &scheduler, ProcessMessageFunc processMessageFunc, GetLocatorFunc getLocatorFunc)
-    : connman(connmanIn), m_stale_tip_check_time(0), processMessageFunc(processMessageFunc), getLocatorFunc(getLocatorFunc) {
+    : connman(connmanIn), processMessageFunc(processMessageFunc), getLocatorFunc(getLocatorFunc), m_stale_tip_check_time(0) {
     // Initialize global variables that cannot be constructed at startup.
     recentRejects.reset(new MCRollingBloomFilter(120000, 0.000001));
 

@@ -313,8 +313,8 @@ bool MCBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams,
                 pindexNew->nUndoPos = diskindex.nUndoPos;
                 pindexNew->nVersion = diskindex.nVersion;
                 pindexNew->hashMerkleRoot = diskindex.hashMerkleRoot;
-                pindexNew->hashMerkleRootWithData = diskindex.hashMerkleRootWithData;
                 pindexNew->hashMerkleRootWithPrevData = diskindex.hashMerkleRootWithPrevData;
+                pindexNew->hashMerkleRootWithData = diskindex.hashMerkleRootWithData;
                 pindexNew->nTime = diskindex.nTime;
                 pindexNew->nBits = diskindex.nBits;
                 pindexNew->nNonce = diskindex.nNonce;

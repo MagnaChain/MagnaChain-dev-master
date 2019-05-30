@@ -315,7 +315,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     }
 
     int nextGroupId = 1;
-    for (int i = offset; i < pblock->vtx.size(); ++i) {
+    for (uint32_t i = offset; i < pblock->vtx.size(); ++i) {
         mergeGroups.clear();
         int groupId = nextGroupId;
         const MCTransactionRef ptx = pblock->vtx[i];
@@ -326,7 +326,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         }
 
         std::set<uint256> parentHash;
-        for (int j = 0; j < ptx->vin.size(); ++j) {
+        for (uint32_t j = 0; j < ptx->vin.size(); ++j) {
             const MCOutPoint& preOutPoint = ptx->vin[j].prevout;
             if (!preOutPoint.hash.IsNull()) {
                 parentHash.insert(ptx->vin[j].prevout.hash);
@@ -431,8 +431,8 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
 
     if (iter != group2trans.end()) {
         // 将超出最大分组数量的分组交易合并到现有的分组中
-        int minGroupIndex = 0;
-        int minGroupSize = iter->second.size();
+        uint32_t minGroupIndex = 0;
+        uint32_t minGroupSize = iter->second.size();
         while (iter != group2trans.end()) {
             for (int i = iter->second.size() - 1; i >= 0; --i) {
                 if (iter->second[i].second == std::numeric_limits<int>::max()) {
@@ -451,7 +451,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
 
             minGroupIndex = 0;
             minGroupSize = finalGroup[0]->second.size();
-            for (int i = 1; i < finalGroup.size(); ++i) {
+            for (uint32_t i = 1; i < finalGroup.size(); ++i) {
                 size_t sz = finalGroup[i]->second.size();
                 if (sz < minGroupSize) {
                     minGroupSize = sz;
@@ -466,13 +466,13 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     }
 
     // 将分组好的交易重新打入包中
-    int total = 0;
+    uint32_t total = 0;
     pblock->groupSize.clear();
-    for (int i = 0; i < finalGroup.size(); ++i) {
+    for (uint32_t i = 0; i < finalGroup.size(); ++i) {
         assert(finalGroup[i]->second.size() > 0);
         total += finalGroup[i]->second.size();
         std::sort(finalGroup[i]->second.begin(), finalGroup[i]->second.end(), GroupTransactionComparer);
-        for (int j = 0; j < finalGroup[i]->second.size(); ++j) {
+        for (uint32_t j = 0; j < finalGroup[i]->second.size(); ++j) {
             std::pair<uint256, int>& item = finalGroup[i]->second[j];
             assert(item.second < std::numeric_limits<int>::max());
             pblock->vtx.emplace_back(vtx[item.second]);
@@ -503,7 +503,7 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
     std::vector<int> usedIndex;//用来删除已使用的币
     //first get from db list
     //优先使用较老的币
-    for (int i = 0; i < utxoCache.coinlist.coins.size(); i++) {
+    for (uint32_t i = 0; i < utxoCache.coinlist.coins.size(); i++) {
         const MCOutPoint& outpoint = utxoCache.coinlist.coins[i];
         const Coin& coin = pcoinsTip->AccessCoin(outpoint);// MCCoinsViewCache
         if (coin.IsSpent()) {
@@ -620,7 +620,7 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
 
     if (success) {
         uint256 newHash = newTx.GetHash();
-        for (int i = vOutSize; i < newTx.vout.size(); ++i) {
+        for (uint32_t i = vOutSize; i < newTx.vout.size(); ++i) {
             BranchUTXOCache& utxoCache = utxoMaker.mapBranchCoins[keys[i - vOutSize]];
             utxoCache.mapCacheCoin.insert(std::make_pair(MCOutPoint(newHash, i), newTx.vout[i]));
         }
@@ -835,10 +835,6 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 
 		// Update transactions that depend on each of these
 		nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
-
-        if (pblock->vtx.size() >= gArgs.GetArg("-maxtxnuminblock", std::numeric_limits<int64_t>::max())) {
-            break;
-        }
     }
 
     // 默认使用分片重新排列交易
@@ -883,8 +879,6 @@ void static MagnaChainMiner(const MCChainParams& chainparams)
 {
     LogPrintf("MagnaChainMiner started\n");
 	RenameThread("magnachain-miner");
-
-	unsigned int nExtraNonce = 0;
 
     MCWallet* const pwallet = ::vpwallets[0];
 

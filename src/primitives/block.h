@@ -48,8 +48,8 @@ public:
         READWRITE(this->nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
-        READWRITE(hashMerkleRootWithData);
         READWRITE(hashMerkleRootWithPrevData);
+        READWRITE(hashMerkleRootWithData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -131,8 +131,8 @@ public:
         block.nVersion = nVersion;
         block.hashPrevBlock = hashPrevBlock;
         block.hashMerkleRoot = hashMerkleRoot;
-        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;

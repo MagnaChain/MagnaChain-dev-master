@@ -201,9 +201,11 @@ MCBranchBlockInfo::MCBranchBlockInfo()
 }
 
 MCBranchBlockInfo::MCBranchBlockInfo(const MCBranchBlockInfo& r)
-    : nVersion(r.nVersion), hashPrevBlock(r.hashPrevBlock), hashMerkleRoot(r.hashMerkleRoot), hashMerkleRootWithData(r.hashMerkleRootWithData),
-      hashMerkleRootWithPrevData(r.hashMerkleRootWithPrevData), nTime(r.nTime), nBits(r.nBits), nNonce(r.nNonce), vchBlockSig(r.vchBlockSig),
-      prevoutStake(r.prevoutStake), branchID(r.branchID),blockHeight(r.blockHeight), vchStakeTxData(r.vchStakeTxData)
+    : nVersion(r.nVersion), hashPrevBlock(r.hashPrevBlock), hashMerkleRoot(r.hashMerkleRoot),
+    hashMerkleRootWithPrevData(r.hashMerkleRootWithPrevData), hashMerkleRootWithData(r.hashMerkleRootWithData),
+    nTime(r.nTime), nBits(r.nBits), nNonce(r.nNonce),
+    prevoutStake(r.prevoutStake), vchBlockSig(r.vchBlockSig),
+    branchID(r.branchID), blockHeight(r.blockHeight), vchStakeTxData(r.vchStakeTxData)
 {
 }
 
@@ -212,8 +214,8 @@ void MCBranchBlockInfo::SetNull()
     nVersion = 0;
     hashPrevBlock.SetNull();
     hashMerkleRoot.SetNull();
-    hashMerkleRootWithData.SetNull();
     hashMerkleRootWithPrevData.SetNull();
+    hashMerkleRootWithData.SetNull();
     nTime = 0;
     nBits = 0;
     nNonce = 0;
@@ -231,8 +233,8 @@ void MCBranchBlockInfo::GetBlockHeader(MCBlockHeader& block) const
     block.nVersion = nVersion;
     block.hashPrevBlock = hashPrevBlock;
     block.hashMerkleRoot = hashMerkleRoot;
-    block.hashMerkleRootWithData = hashMerkleRootWithData;
     block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+    block.hashMerkleRootWithData = hashMerkleRootWithData;
     block.nTime = nTime;
     block.nBits = nBits;
     block.nNonce = nNonce;
@@ -245,8 +247,8 @@ void MCBranchBlockInfo::SetBlockHeader(const MCBlockHeader& block)
     nVersion = block.nVersion;
     hashPrevBlock = block.hashPrevBlock;
     hashMerkleRoot = block.hashMerkleRoot;
-    hashMerkleRootWithData = block.hashMerkleRootWithData;
     hashMerkleRootWithPrevData = block.hashMerkleRootWithPrevData;
+    hashMerkleRootWithData = block.hashMerkleRootWithData;
     nTime = block.nTime;
     nBits = block.nBits;
     nNonce = block.nNonce;

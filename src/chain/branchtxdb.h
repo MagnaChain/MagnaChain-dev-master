@@ -18,7 +18,8 @@ public:
     char key;
     uint256 txhash;
 
-    BranchChainTxEntry(const uint256& hash, char dkey) : txhash(hash), key(dkey) {}
+    BranchChainTxEntry(const uint256& hash, char dkey)
+        : key(dkey), txhash(hash) {}
 
     template<typename Stream>
     void Serialize(Stream &s) const {
@@ -63,7 +64,8 @@ public:
     MCCreateBranchChainInfo()
     {}
     MCCreateBranchChainInfo(const MCCreateBranchChainInfo& from)
-        :txid(from.txid), blockhash(from.blockhash), branchVSeeds(from.branchVSeeds), branchSeedSpec6(from.branchSeedSpec6)
+        : txid(from.txid), blockhash(from.blockhash), 
+        branchVSeeds(from.branchVSeeds), branchSeedSpec6(from.branchSeedSpec6)
     {
     }
 
@@ -87,7 +89,8 @@ class BranchChainTxInfo :public DbDataFlag
 {
 public:
     BranchChainTxInfo() :txindex(0) { blockhash.SetNull(); }
-    BranchChainTxInfo(const BranchChainTxInfo& from) :blockhash(from.blockhash), txindex(from.txindex), txnVersion(from.txnVersion) {}
+    BranchChainTxInfo(const BranchChainTxInfo& from)
+        : DbDataFlag(), blockhash(from.blockhash), txindex(from.txindex), txnVersion(from.txnVersion) {}
 
     uint256 blockhash;
     uint32_t txindex;
@@ -126,7 +129,8 @@ class CoinReportInfo : public DbDataFlag
 {
 public:
     CoinReportInfo() {}
-    CoinReportInfo(const uint256& txid, unsigned char flag) :reporttxid(txid),DbDataFlag(flag) {}
+    CoinReportInfo(const uint256& txid, unsigned char flag)
+        : DbDataFlag(flag), reporttxid(txid) {}
 
     uint256 reporttxid;
 
@@ -142,7 +146,8 @@ class CTxidMapping : public DbDataFlag
 {
 public:
     CTxidMapping() {}
-    CTxidMapping(const uint256& changedtxid, unsigned char flag) :txid(changedtxid) {}
+    CTxidMapping(const uint256& changedtxid, unsigned char flag)
+        : DbDataFlag(), txid(changedtxid) {}
     
     uint256 txid;
 

@@ -201,8 +201,8 @@ public:
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
-    uint256 hashMerkleRootWithData;
     uint256 hashMerkleRootWithPrevData;
+    uint256 hashMerkleRootWithData;
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
@@ -221,8 +221,8 @@ public:
         READWRITE(nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
-        READWRITE(hashMerkleRootWithData);
         READWRITE(hashMerkleRootWithPrevData);
+        READWRITE(hashMerkleRootWithData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -682,7 +682,7 @@ struct MCMutableTransaction
 	//branch trans end (step 2)
 	std::string fromBranchId;
     std::vector<unsigned char> fromTx;
-	uint64_t inAmount;
+	MCAmount inAmount;
 
     std::shared_ptr<ContractData> pContractData;
 	std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
@@ -1046,47 +1046,60 @@ typedef std::shared_ptr<const MCTransaction> MCTransactionRef;
 static inline MCTransactionRef MakeTransactionRef() { return std::make_shared<const MCTransaction>(); }
 template <typename Tx> static inline MCTransactionRef MakeTransactionRef(Tx&& txIn) { return std::make_shared<const MCTransaction>(std::forward<Tx>(txIn)); }
 
-inline MCTransaction::MCTransaction() : nVersion(MCTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
+inline MCTransaction::MCTransaction()
+    : nVersion(MCTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
     branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(),
-    fromBranchId(), fromTx(), inAmount(0), pBranchBlockData(), pPMT(),
-    pContractData(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash() {}
+    fromBranchId(), fromTx(), inAmount(0), 
+    pContractData(), pBranchBlockData(), pPMT(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash() {}
 
-inline MCTransaction::MCTransaction(const MCMutableTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
+inline MCTransaction::MCTransaction(const MCMutableTransaction& tx)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), 
+    sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)), 
-    pPMT(tx.pPMT == nullptr? nullptr: new MCSpvProof(*tx.pPMT)),
     pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pPMT(tx.pPMT == nullptr? nullptr: new MCSpvProof(*tx.pPMT)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
-    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)),
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 
-inline MCTransaction::MCTransaction(MCMutableTransaction&& tx) : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
-    branchVSeeds(std::move(tx.branchVSeeds)), branchSeedSpec6(std::move(tx.branchSeedSpec6)), sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
+inline MCTransaction::MCTransaction(MCMutableTransaction&& tx)
+    : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
+    branchVSeeds(std::move(tx.branchVSeeds)), branchSeedSpec6(std::move(tx.branchSeedSpec6)), 
+    sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(std::move(tx.fromBranchId)), fromTx(std::move(tx.fromTx)), inAmount(tx.inAmount),
-    pBranchBlockData(std::move(tx.pBranchBlockData)), pPMT(std::move(tx.pPMT)),
-    pContractData(std::move(tx.pContractData)), pReportData(std::move(tx.pReportData)), pProveData(std::move(tx.pProveData)),
+    pContractData(std::move(tx.pContractData)),
+    pBranchBlockData(std::move(tx.pBranchBlockData)),
+    pPMT(std::move(tx.pPMT)),
+    pReportData(std::move(tx.pReportData)),
+    pProveData(std::move(tx.pProveData)),
     reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)), hash(ComputeHash()) {}
 
 // add copy constructor, 添加了不可复制成员变量pBranchBlockData后，默认复制构造函数被删除了
 inline MCTransaction::MCTransaction(const MCTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
+    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6),
+    sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
     pPMT(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT)),
-    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
-    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)),
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
 
 inline MCMutableTransaction::MCMutableTransaction(const MCMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
-    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6), sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
+    branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6),
+    sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
     pPMT(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT)),
-    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
-    pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)), reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
+    pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)),
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
 
 inline MCMutableTransaction& MCMutableTransaction::operator=(const MCMutableTransaction& tx)
 {

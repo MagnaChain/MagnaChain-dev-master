@@ -158,10 +158,12 @@ int64_t GetTransactionSigOpCost(const MCTransaction& tx, const MCCoinsViewCache&
 {
     int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
 
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase()) {
         return nSigOps;
-	if (tx.IsBranchChainTransStep2())
-		return nSigOps;
+    }
+    if (tx.IsBranchChainTransStep2()) {
+        return nSigOps;
+    }
 
     if (flags & SCRIPT_VERIFY_P2SH) {
         nSigOps += GetP2SHSigOpCount(tx, inputs) * WITNESS_SCALE_FACTOR;

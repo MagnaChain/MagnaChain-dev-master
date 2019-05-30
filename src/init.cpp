@@ -155,10 +155,11 @@ void Shutdown()
     LogPrintf("%s: In progress...\n", __func__);
     static MCCriticalSection cs_Shutdown;
     TRY_LOCK(cs_Shutdown, lockShutdown);
-    if (!lockShutdown)
+    if (!lockShutdown) {
         return;
-
-	GenerateMCs(false, 1, Params());
+    }
+    
+    GenerateMCs(false, 1, Params());
 
     /// Note: Shutdown() must be able to handle cases in which initialization failed part of the way,
     /// for example if the data directory was found to be locked.

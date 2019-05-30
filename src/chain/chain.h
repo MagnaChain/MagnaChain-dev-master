@@ -262,8 +262,8 @@ public:
 
         nVersion       = block.nVersion;
         hashMerkleRoot = block.hashMerkleRoot;
-        hashMerkleRootWithData = block.hashMerkleRootWithData;
         hashMerkleRootWithPrevData = block.hashMerkleRootWithPrevData;
+        hashMerkleRootWithData = block.hashMerkleRootWithData;
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
@@ -296,8 +296,8 @@ public:
         if (pprev)
             block.hashPrevBlock = pprev->GetBlockHash();
         block.hashMerkleRoot = hashMerkleRoot;
-        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
@@ -342,8 +342,8 @@ public:
         return strprintf("MCBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithData=%s, merkleRootWithPrevData=%s, hashBlock=%s)",
             pprev, nHeight,
             hashMerkleRoot.ToString(),
-            hashMerkleRootWithData.ToString(),
             hashMerkleRootWithPrevData.ToString(),
+            hashMerkleRootWithData.ToString(),
             GetBlockHash().ToString());
     }
 
@@ -424,8 +424,8 @@ public:
         READWRITE(this->nVersion);
         READWRITE(hashPrev);
         READWRITE(hashMerkleRoot);
-        READWRITE(hashMerkleRootWithData);
         READWRITE(hashMerkleRootWithPrevData);
+        READWRITE(hashMerkleRootWithData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -440,8 +440,8 @@ public:
         block.nVersion        = nVersion;
         block.hashPrevBlock   = hashPrev;
         block.hashMerkleRoot = hashMerkleRoot;
-        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.nTime           = nTime;
         block.nBits           = nBits;
         block.nNonce          = nNonce;

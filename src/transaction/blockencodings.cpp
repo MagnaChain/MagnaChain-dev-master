@@ -17,10 +17,9 @@
 #include "chain/branchdb.h"
 #include <unordered_map>
 
-MCBlockHeaderAndShortTxIDs::MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID) :
-    nonce(GetRand(std::numeric_limits<uint64_t>::max())),
-    shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block),
-    groupSize(block.groupSize)
+MCBlockHeaderAndShortTxIDs::MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID)
+    : nonce(GetRand(std::numeric_limits<uint64_t>::max())), groupSize(block.groupSize),
+    shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block)
 {
     FillShortTxIDSelector();
     //TODO: Use our mempool prior to block acceptance to predictively fill more than just the coinbase
