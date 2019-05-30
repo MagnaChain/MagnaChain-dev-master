@@ -472,7 +472,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool, bool f
         if (fAddToMempool) {
             if (ptx->IsDynamicTx()) {
                 // revert transaction data
-                MCMutableTransaction mtx = RevertTransaction(*ptx, nullptr, true);
+                MCMutableTransaction mtx = RevertTransaction(*ptx, true);
                 ptx = MakeTransactionRef(mtx);
                 modify = mtx.GetHash() != (*it)->GetHash();// revert transaction make txid change? need to remove *it(original tx) correctly from mempool 
             }

@@ -991,9 +991,8 @@ void MCTxMemPool::CheckContract(const txiter titer, const VMOut* vmOut)
 //Revert Transaction for follow situations:
 // 1. Step2 transaction duplicate check, it should exclude pPMT data field to get the hash identify.
 // 2. Re-add to mempool or remove from mempool should keep the pPMT data field.
-MCMutableTransaction RevertTransaction(const MCTransaction& tx, const MCTransactionRef &pFromTx, bool fFromMempool)
+MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempool)
 {
-    MCTransactionRef pfromtx = pFromTx;
     MCMutableTransaction mtx(tx);
  
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
@@ -1028,7 +1027,7 @@ uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && !fFromMempool) {
         auto it = mapFinalTx2OriTx2.find(txHash);
         if (it == mapFinalTx2OriTx2.end()) {
-            uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
+            uint256 oriTxHash = RevertTransaction(tx, fFromMempool).GetHash();
             mapFinalTx2OriTx2[txHash] = oriTxHash;
             return oriTxHash;
         }
@@ -1037,7 +1036,7 @@ uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
     else if (tx.IsDynamicTx()) {
         auto it = mapFinalTx2OriTx.find(txHash);
         if (it == mapFinalTx2OriTx.end()) {
-            uint256 oriTxHash = RevertTransaction(tx, nullptr, fFromMempool).GetHash();
+            uint256 oriTxHash = RevertTransaction(tx, fFromMempool).GetHash();
             mapFinalTx2OriTx[txHash] = oriTxHash;
             return oriTxHash;
         }
