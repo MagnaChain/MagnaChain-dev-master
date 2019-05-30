@@ -27,8 +27,8 @@ public:
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
-    uint256 hashMerkleRootWithData;
     uint256 hashMerkleRootWithPrevData;
+    uint256 hashMerkleRootWithData;
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
@@ -64,8 +64,8 @@ public:
         nVersion = 0;
         hashPrevBlock.SetNull();
         hashMerkleRoot.SetNull();
-        hashMerkleRootWithData.SetNull();
         hashMerkleRootWithPrevData.SetNull();
+        hashMerkleRootWithData.SetNull();
         nTime = 0;
         nBits = 0;
         nNonce = 0;

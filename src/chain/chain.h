@@ -210,8 +210,8 @@ public:
     //! block header
     int nVersion;
     uint256 hashMerkleRoot;
-    uint256 hashMerkleRootWithData;
     uint256 hashMerkleRootWithPrevData;
+    uint256 hashMerkleRootWithData;
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
@@ -242,8 +242,8 @@ public:
 
         nVersion       = 0;
         hashMerkleRoot = uint256();
-        hashMerkleRootWithData = uint256();
         hashMerkleRootWithPrevData = uint256();
+        hashMerkleRootWithData = uint256();
         nTime          = 0;
         nBits          = 0;
         nNonce         = 0;
@@ -339,7 +339,7 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("MCBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithData=%s, merkleRootWithPrevData=%s, hashBlock=%s)",
+        return strprintf("MCBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithPrevData=%s, merkleRootWithData=%s, hashBlock=%s)",
             pprev, nHeight,
             hashMerkleRoot.ToString(),
             hashMerkleRootWithPrevData.ToString(),
