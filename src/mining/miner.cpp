@@ -325,6 +325,7 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
             groupId = trans2group[ptx->GetHash()];
         }
 
+        // collect parents
         std::set<uint256> parentHash;
         for (size_t j = 0; j < ptx->vin.size(); ++j) {
             const MCOutPoint& preOutPoint = ptx->vin[j].prevout;
@@ -332,7 +333,6 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
                 parentHash.insert(ptx->vin[j].prevout.hash);
             }
         }
-
         if (ptx->IsSyncBranchInfo()) {
             const uint256& hash = g_pBranchDataMemCache->GetParent(*ptx);
             parentHash.insert(hash);
@@ -345,7 +345,6 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
             }
         }
         if (ptx->IsSmartContract()) {
-            groupId = std::min(contract2group[entry->GetTx().pContractData->address], groupId);
             for (auto& contractAddr : entry->contractData->contractAddrs) {
                 if (contract2group.find(contractAddr) != contract2group.end()) {
                     groupId = std::min(contract2group[contractAddr], groupId);
@@ -411,10 +410,10 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
     std::vector<MCAmount> vTxSigOpsCost(pblocktemplate->vTxSigOpsCost);
     pblocktemplate->vTxSigOpsCost.clear();
 
-    // 限制了分组的数量
     std::vector<MAPGROUP::iterator> finalGroup;
     MAPGROUP::iterator iter = group2trans.begin();
     for (; iter != group2trans.end(); ++iter) {
+        // filter tx not in mempool
         for (int i = iter->second.size() - 1; i >= 0; --i) {
             if (iter->second[i].second == std::numeric_limits<int>::max()) {
                 iter->second.erase(iter->second.begin() + i);
@@ -423,6 +422,7 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
         
         assert(iter->second.size() > 0);
         finalGroup.emplace_back(iter);
+        // limit group number
         if (finalGroup.size() >= MAX_GROUP_NUM) {
             ++iter;
             break;
@@ -430,27 +430,10 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
     }
 
     if (iter != group2trans.end()) {
-        // 将超出最大分组数量的分组交易合并到现有的分组中
-        size_t minGroupIndex = 0;
-        size_t minGroupSize = iter->second.size();
         while (iter != group2trans.end()) {
-            for (int i = iter->second.size() - 1; i >= 0; --i) {
-                if (iter->second[i].second == std::numeric_limits<int>::max()) {
-                    iter->second.erase(iter->second.begin() + i);
-                }
-            }
-
-            assert(iter->second.size() > 0);
-            if (minGroupSize + iter->second.size() > std::numeric_limits<uint16_t>::max()) {
-                return;
-            }
-
-            finalGroup[minGroupIndex]->second.insert(finalGroup[minGroupIndex]->second.end(),
-                iter->second.begin(), iter->second.end());
-            iter = group2trans.erase(iter);
-
-            minGroupIndex = 0;
-            minGroupSize = finalGroup[0]->second.size();
+            // select the min group for merge
+            size_t minGroupIndex = 0;
+            size_t minGroupSize = finalGroup[0]->second.size();
             for (size_t i = 1; i < finalGroup.size(); ++i) {
                 size_t sz = finalGroup[i]->second.size();
                 if (sz < minGroupSize) {
@@ -459,27 +442,45 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
                 }
             }
 
-            if (minGroupSize <= 0 || minGroupSize > std::numeric_limits<uint16_t>::max()) {
+            if (minGroupSize > std::numeric_limits<uint16_t>::max()) {
                 return;
             }
+
+            // filter tx not in mempool
+            for (int i = iter->second.size() - 1; i >= 0; --i) {
+                if (iter->second[i].second == std::numeric_limits<int>::max()) {
+                    iter->second.erase(iter->second.begin() + i);
+                }
+            }
+
+            // limit to 65536 every group
+            assert(iter->second.size() > 0);
+            if (minGroupSize + iter->second.size() > std::numeric_limits<uint16_t>::max()) {
+                return;
+            }
+
+            finalGroup[minGroupIndex]->second.insert(finalGroup[minGroupIndex]->second.end(),
+                iter->second.begin(), iter->second.end());
+            iter = group2trans.erase(iter);
         }
     }
 
-    // 将分组好的交易重新打入包中
+    // repackage txs to block
     size_t total = 0;
     pblock->groupSize.clear();
     for (size_t i = 0; i < finalGroup.size(); ++i) {
-        assert(finalGroup[i]->second.size() > 0);
-        total += finalGroup[i]->second.size();
-        std::sort(finalGroup[i]->second.begin(), finalGroup[i]->second.end(), GroupTransactionComparer);
-        for (size_t j = 0; j < finalGroup[i]->second.size(); ++j) {
-            std::pair<uint256, int>& item = finalGroup[i]->second[j];
+        MAPGROUP::iterator group = finalGroup[i];
+        assert(group->second.size() > 0);
+        total += group->second.size();
+        std::sort(group->second.begin(), group->second.end(), GroupTransactionComparer);
+        for (size_t j = 0; j < group->second.size(); ++j) {
+            std::pair<uint256, int>& item = group->second[j];
             assert(item.second < std::numeric_limits<int>::max());
             pblock->vtx.emplace_back(vtx[item.second]);
             pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
             pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
         }
-        pblock->groupSize.emplace_back(finalGroup[i]->second.size());
+        pblock->groupSize.emplace_back(group->second.size());
     }
     assert(total == vtx.size());
 }
