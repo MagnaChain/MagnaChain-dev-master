@@ -6,7 +6,8 @@
       <ObjectFileName>$(IntDir)\%(RelativeDir)</ObjectFileName>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <DisableSpecificWarnings>4018;4244;4267;4715;4805;</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4018;4221;4244;4267;4334;4477;4715;4805;</DisableSpecificWarnings>
+      <TreatWarningAsError>true</TreatWarningAsError>
       <AdditionalIncludeDirectories>..\..\src;..\..\src\config\msvc;..\..\src\univalue\include;..\..\src\secp256k1\include;..\..\src\leveldb\include;..\..\src\leveldb\helpers\memenv;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
 	<Link>

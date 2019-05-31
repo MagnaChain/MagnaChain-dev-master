@@ -9,10 +9,6 @@
 #include <assert.h>
 #include <string.h>
 
-extern "C" {
-#include "crypto/ctaes/ctaes.c"
-}
-
 AES128Encrypt::AES128Encrypt(const unsigned char key[16])
 {
     AES128_init(&ctx, key);

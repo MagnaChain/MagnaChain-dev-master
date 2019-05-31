@@ -1,0 +1,56 @@
+1555896687a:1:{s:7:"mgc.htm";a:6:{s:8:"fileName";s:7:"mgc.htm";s:7:"content";s:859:"[localePicker]
+forceUrl = 0
+==
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/bootstrap.min.css">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/mgc.css">
+	<script type="text/javascript" src="/themes/magnachain/assets/js/jquery.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/bootstrap.min.js"></script>
+	
+	<title>{{ 'MGC浏览器'|_ }}</title>
+</head>
+<body>
+	
+	<div class="header">{% partial "header.htm" %}</div>
+
+	<div class="container-fluid" style="min-height: 575px; margin-top: 82px;">
+
+		{% page %}
+
+	</div>
+
+	<div class="footer" style="margin-top: 131px;">{% partial "footer.htm" %}</div>
+	{% framework extras %}
+
+</body>
+</html>";s:5:"mtime";i:1555063996;s:6:"markup";s:825:"<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/bootstrap.min.css">
+	<link rel="stylesheet" href="/themes/magnachain/assets/css/mgc.css">
+	<script type="text/javascript" src="/themes/magnachain/assets/js/jquery.js"></script>
+	<script type="text/javascript" src="/themes/magnachain/assets/js/bootstrap.min.js"></script>
+	
+	<title>{{ 'MGC浏览器'|_ }}</title>
+</head>
+<body>
+	
+	<div class="header">{% partial "header.htm" %}</div>
+
+	<div class="container-fluid" style="min-height: 575px; margin-top: 82px;">
+
+		{% page %}
+
+	</div>
+
+	<div class="footer" style="margin-top: 131px;">{% partial "footer.htm" %}</div>
+	{% framework extras %}
+
+</body>
+</html>";s:4:"code";N;s:12:"localePicker";a:1:{s:8:"forceUrl";s:1:"0";}}}

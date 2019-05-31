@@ -10,6 +10,7 @@
 #include "misc/tinyformat.h"
 #include "utils/utilstrencodings.h"
 #include "block.h"
+#include "chain/chainparamsbase.h"
 
 std::string MCOutPoint::ToString() const
 {
@@ -56,8 +57,14 @@ std::string MCTxOut::ToString() const
     return strprintf("MCTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
 
-MCMutableTransaction::MCMutableTransaction() : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0) {}
-MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx) : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime) {
+MCMutableTransaction::MCMutableTransaction()
+    : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0), inAmount(0)
+{
+}
+
+MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), inAmount(tx.inAmount)
+{
 	if (nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION)
         pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
 	else if (nVersion == MCTransaction::CREATE_BRANCH_VERSION)
@@ -156,6 +163,12 @@ MCAmount MCTransaction::GetValueOut() const
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             throw std::runtime_error(std::string(__func__) + ": value out of range");
     }
+    if (IsSmartContract()) {
+        nValueOut += pContractData->contractCoinsIn;
+        if (!MoneyRange(pContractData->contractCoinsIn) || !MoneyRange(nValueOut))
+            throw std::runtime_error(std::string(__func__) + ": value out of range");
+
+    }
     return nValueOut;
 }
 
@@ -188,9 +201,11 @@ MCBranchBlockInfo::MCBranchBlockInfo()
 }
 
 MCBranchBlockInfo::MCBranchBlockInfo(const MCBranchBlockInfo& r)
-    : nVersion(r.nVersion), hashPrevBlock(r.hashPrevBlock), hashMerkleRoot(r.hashMerkleRoot), hashMerkleRootWithData(r.hashMerkleRootWithData),
-      hashMerkleRootWithPrevData(r.hashMerkleRootWithPrevData), nTime(r.nTime), nBits(r.nBits), nNonce(r.nNonce), vchBlockSig(r.vchBlockSig),
-      prevoutStake(r.prevoutStake), branchID(r.branchID),blockHeight(r.blockHeight), vchStakeTxData(r.vchStakeTxData)
+    : nVersion(r.nVersion), hashPrevBlock(r.hashPrevBlock), hashMerkleRoot(r.hashMerkleRoot),
+    hashMerkleRootWithPrevData(r.hashMerkleRootWithPrevData), hashMerkleRootWithData(r.hashMerkleRootWithData),
+    nTime(r.nTime), nBits(r.nBits), nNonce(r.nNonce),
+    prevoutStake(r.prevoutStake), vchBlockSig(r.vchBlockSig),
+    branchID(r.branchID), blockHeight(r.blockHeight), vchStakeTxData(r.vchStakeTxData)
 {
 }
 
@@ -199,8 +214,8 @@ void MCBranchBlockInfo::SetNull()
     nVersion = 0;
     hashPrevBlock.SetNull();
     hashMerkleRoot.SetNull();
-    hashMerkleRootWithData.SetNull();
     hashMerkleRootWithPrevData.SetNull();
+    hashMerkleRootWithData.SetNull();
     nTime = 0;
     nBits = 0;
     nNonce = 0;
@@ -218,8 +233,8 @@ void MCBranchBlockInfo::GetBlockHeader(MCBlockHeader& block) const
     block.nVersion = nVersion;
     block.hashPrevBlock = hashPrevBlock;
     block.hashMerkleRoot = hashMerkleRoot;
-    block.hashMerkleRootWithData = hashMerkleRootWithData;
     block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+    block.hashMerkleRootWithData = hashMerkleRootWithData;
     block.nTime = nTime;
     block.nBits = nBits;
     block.nNonce = nNonce;
@@ -232,8 +247,8 @@ void MCBranchBlockInfo::SetBlockHeader(const MCBlockHeader& block)
     nVersion = block.nVersion;
     hashPrevBlock = block.hashPrevBlock;
     hashMerkleRoot = block.hashMerkleRoot;
-    hashMerkleRootWithData = block.hashMerkleRootWithData;
     hashMerkleRootWithPrevData = block.hashMerkleRootWithPrevData;
+    hashMerkleRootWithData = block.hashMerkleRootWithData;
     nTime = block.nTime;
     nBits = block.nBits;
     nNonce = block.nNonce;

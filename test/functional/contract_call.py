@@ -114,6 +114,7 @@ class ContractCallTest(MagnaChainTestFramework):
         assert txid not in node2.getrawmempool()
         assert_equal(node.getbalanceof(contract_id), 1000)  # 确认合约余额
 
+
         # doubleSpendTest
         self.test_double_spend(mineblock=False)
         self.test_double_spend()
@@ -218,8 +219,8 @@ class ContractCallTest(MagnaChainTestFramework):
 
         # assert_equal([], node.getrawmempool())  # make sure mempool is empty
         # maxContractCallTest
-        call_contract("maxContractCallTest", 15)  # 15 is the limit
-        assert_contains(call_contract("maxContractCallTest", 16), "run out of limit instruction")
+        call_contract("maxContractCallTest", 18,throw_exception = True)  # 18 is the limit
+        assert_contains(call_contract("maxContractCallTest", 19), "run out of limit instruction")
         # callOtherContractTest
         # cycle call
         # step1 create contracts
@@ -228,17 +229,23 @@ class ContractCallTest(MagnaChainTestFramework):
         cc_id = node.publishcontract(contract)["contractaddress"]
         caller_b = caller_factory(self, cb_id, sender)
         caller_c = caller_factory(self, cc_id, sender)
-        caller_b("payable",1000)
-        caller_c("payable", 1000)
-        node.generate(nblocks=1)
+        caller_b("payable",10000,amount = 10000)
+        caller_c("payable", 10000,amount = 10000)
+        node.generate(nblocks=2)
+        print(node.getbalanceof(cb_id),node.getbalanceof(cc_id))
+        balofca = node.getbalanceof(ca_id)
 
         # step2  a->b->c->a(send will be call in last a)
         new_address = node.getnewaddress()
         if not SKIP:
-            call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, ca_id, "sendCoinTest", new_address,throw_exception = True)
+            call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, ca_id, "sendCoinTest", new_address,amount = 0,throw_exception = True)
             node.generate(nblocks=1)
+            self.sync_all()
             assert_equal(node.getbalanceof(new_address), 1)
-
+            assert_equal(node.getbalanceof(cb_id), 10000 - 10)
+            assert_equal(node.getbalanceof(cc_id), 10000 - 10)
+            assert_equal(node.getbalanceof(ca_id), balofca - 10 - 1)
+        print("step2 done")
         # step3 a->b->c->b,modify PersistentData
         if not SKIP:
             caller_b("contractDataTest")  # after called,size should be 127
@@ -246,9 +253,10 @@ class ContractCallTest(MagnaChainTestFramework):
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "reentrancyTest",
                           new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
             call_contract(CYCLE_CALL, cb_id, CYCLE_CALL, cc_id, CYCLE_CALL, cb_id, "contractDataTest",
-                          new_address,throw_exception = True)  # after called,size should be 127,because of replace dump
+                          new_address,throw_exception = True)  # after called,size should be 126,because of the same lua vm
             node.generate(nblocks=1)
-            assert_equal(caller_b("get", "size")['return'][0], 127)
+            assert_equal(caller_b("get", "size")['return'][0], 126)
+        print("step done")
 
         # lots of dust vin in contract's send transaction
         # TODO:maybe  need to set payfee param in magnachaind
@@ -303,13 +311,13 @@ class ContractCallTest(MagnaChainTestFramework):
         if not SKIP:
             caller_last("reentrancyTest")
             node.generate(nblocks=1)
-            assert_equal(caller_last("get", "this")['return'], [])
+            assert_equal(caller_last("get", "this")['return'], [None])
 
         # 疲劳测试
         if not SKIP:
             to_list = [node.getnewaddress() for i in range(1000)]
             for i,to in enumerate(to_list):
-                caller_last(PAYABLE, amount=10)
+                caller_last(PAYABLE, amount=100)
                 caller_last(CYCLE_CALL, last_id, "contractDataTest",amount=0)
                 caller_last(CYCLE_CALL, last_id, "dustChangeTest",to,amount=0)
                 caller_last(CYCLE_CALL, last_id, "addWithdrawList",to,amount=0)
@@ -324,7 +332,6 @@ class ContractCallTest(MagnaChainTestFramework):
                         print("trigger size limit mempoolsize: {}".format(node.getmempoolinfo()['size']))
                         print(node.getrawmempool())
                         node.generate(nblocks=1)
-        assert False
 
     def test_double_spend(self,mineblock = True):
         self.log.info("test double spend")

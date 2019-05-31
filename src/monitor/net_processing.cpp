@@ -39,8 +39,85 @@
 # error "MagnaChain monitor cannot be compiled without assertions."
 #endif
 
+typedef std::map<uint256, std::shared_ptr<DatabaseBlock>> BlockHeaderMap;
+BlockHeaderMap txSync;
+std::shared_ptr<DatabaseBlock> bestKnownBlockHeader;
+std::shared_ptr<DatabaseBlock> lastCommon;
+std::set<uint256> blockSynced;
+
+std::shared_ptr<DatabaseBlock> GetDatabaseBlock2(const uint256& hash)
+{
+    BlockHeaderMap::iterator it = txSync.find(hash);
+    if (it != txSync.end()) {
+        return it->second;
+    }
+    else {
+        return GetDatabaseBlock(hash);
+    }
+}
+
+std::shared_ptr<DatabaseBlock> GetAncestor(const std::shared_ptr<DatabaseBlock> child, int height)
+{
+    if (height > child->height || height < 0) {
+        return nullptr;
+    }
+
+    std::shared_ptr<DatabaseBlock> parent = child;
+    int heightWalk = child->height;
+    while (heightWalk > height) {
+        int heightSkip = GetSkipHeight(heightWalk);
+        int heightSkipPrev = GetSkipHeight(heightWalk - 1);
+        std::shared_ptr<DatabaseBlock> temp;
+        if (!parent->hashSkipBlock.IsNull() && (heightSkip == height ||
+            (heightSkip > height && !(heightSkipPrev < heightSkip - 2 && heightSkipPrev >= height)))) {
+            //LogPrintf("%s:%d %d=>%d\n", __FUNCTION__, __LINE__, parent->height, GetSkipHeight(parent->height));
+            temp = GetDatabaseBlock2(parent->hashSkipBlock);
+            heightWalk = heightSkip;
+        }
+        else {
+            temp = GetDatabaseBlock2(parent->hashPrevBlock);
+            heightWalk--;
+        }
+
+        parent = temp;
+    }
+    return parent;
+}
+
+MCBlockLocator MonitorGetLocator(const MCBlockIndex *pindex)
+{
+    std::shared_ptr<DatabaseBlock> block = GetDatabaseBlock2(pindex->GetBlockHash());
+
+    int nStep = 1;
+    std::vector<uint256> vHave;
+    vHave.reserve(32);
+    while (true) {
+        vHave.emplace_back(block->hashBlock);
+        // Stop when we have added the genesis block.
+        if (block->height == 0) {
+            break;
+        }
+        // Exponentially larger steps back, plus the genesis block.
+        int height = std::max(block->height - nStep, 0);
+        block = GetAncestor(block, height);
+        if (block == nullptr) {
+            break;
+        }
+        if (vHave.size() > 10) {
+            nStep *= 2;
+        }
+    }
+
+    return MCBlockLocator(vHave);
+}
+
+MCCriticalSection cs_block;
+bool stopSyncHeader = false;
+const int MAX_HALF_TX_SYNC = 2000;
 bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, const std::vector<MCBlockHeader>& headers, const MCChainParams& chainparams, bool punish_duplicate_invalid)
 {
+    static MCBlockIndex blockIndex;
+    static std::shared_ptr<uint256> blockhash;
     const CNetMsgMaker msgMaker(pfrom->GetSendVersion());
     size_t nCount = headers.size();
 
@@ -49,42 +126,74 @@ bool static MonitorProcessHeadersMessage(MCNode *pfrom, MCConnman *connman, cons
         return true;
     }
 
-    bool received_new_header = false;
-    const MCBlockIndex *pindexLast = nullptr;
-    {
-        LOCK(cs_main);
-        MCNodeState *nodestate = State(pfrom->GetId());
+    LOCK(cs_block);
+    MCNodeState *nodestate = State(pfrom->GetId());
 
-        // If this looks like it could be a block announcement (nCount <
-        // MAX_BLOCKS_TO_ANNOUNCE), use special logic for handling headers that
-        // don't connect:
-        // - Send a getheaders message in response to try to connect the chain.
-        // - The peer can send up to MAX_UNCONNECTING_HEADERS in a row that
-        //   don't connect before giving DoS points
-        // - Once a headers message is received that is valid and does connect,
-        //   nUnconnectingHeaders gets reset back to 0.
-        if (GetDatabaseBlock(nullptr, headers[0].hashPrevBlock) < 0 && nCount < MAX_BLOCKS_TO_ANNOUNCE) {
-            nodestate->nUnconnectingHeaders++;
-            connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(pindexBestHeader), uint256()));
-        }
+    // If this looks like it could be a block announcement (nCount <
+    // MAX_BLOCKS_TO_ANNOUNCE), use special logic for handling headers that
+    // don't connect:
+    // - Send a getheaders message in response to try to connect the chain.
+    // - The peer can send up to MAX_UNCONNECTING_HEADERS in a row that
+    //   don't connect before giving DoS points
+    // - Once a headers message is received that is valid and does connect,
+    //   nUnconnectingHeaders gets reset back to 0.
+    std::shared_ptr<DatabaseBlock> prevBlock = GetDatabaseBlock2(headers[0].hashPrevBlock);
+    if (!prevBlock->hashBlock.IsNull() && nCount < MAX_BLOCKS_TO_ANNOUNCE) {
+        nodestate->nUnconnectingHeaders++;
+        const uint256& bestBlockHash = GetMaxHeightBlock();
+        blockIndex.phashBlock = &bestBlockHash;
+        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
     }
 
-    std::vector<MCInv> vGetData;
     // Download as much as possible, from earliest to latest.
-    for (const MCBlockHeader& header : headers) {
-        if (GetDatabaseBlock(nullptr, header.GetHash()) < 0) {
-            uint32_t nFetchFlags = GetFetchFlags(pfrom);
-            vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, header.GetHash()));
-            LogPrint(BCLog::NET, "Requesting block %s from  peer=%d\n", header.GetHash().ToString(), pfrom->GetId());
+    std::vector<MCInv> vGetData;
+    for (size_t i = 0; i < headers.size(); ++i) {
+        const MCBlockHeader& header = headers[i];
+
+        /*if (txSync.size() == 0 && vGetData.size() < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+            if (blockSynced.insert(header.GetHash()).second) {
+                uint32_t nFetchFlags = GetFetchFlags(pfrom);
+                vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, header.GetHash()));
+            }
+        }*/
+
+        std::shared_ptr<DatabaseBlock> blockHeader = std::make_shared<DatabaseBlock>();
+        auto res = txSync.insert(std::make_pair(header.GetHash(), blockHeader));
+        if (res.second) {
+            prevBlock = GetDatabaseBlock2(header.hashPrevBlock);
+            std::shared_ptr<DatabaseBlock> skipBlock = GetAncestor(prevBlock, GetSkipHeight(prevBlock->height + 1));
+            blockHeader->hashBlock = header.GetHash();
+            blockHeader->height = prevBlock->height + 1;
+            blockHeader->hashPrevBlock = header.hashPrevBlock;
+            blockHeader->hashSkipBlock = skipBlock->hashBlock;
+
+            if (bestKnownBlockHeader == nullptr || blockHeader->height > bestKnownBlockHeader->height) {
+                bestKnownBlockHeader = res.first->second;
+            }
         }
+        LogPrint(BCLog::NET, "Receive block header %s from peer=%d\n", header.GetHash().ToString(), pfrom->GetId());
     }
-    if (vGetData.size() > 1) {
-        LogPrint(BCLog::NET, "Downloading blocks toward %s (%d) via headers direct fetch\n",
-            pindexLast->GetBlockHash().ToString(), pindexLast->nHeight);
-    }
+
     if (vGetData.size() > 0) {
         connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETDATA, vGetData));
     }
+
+    if (txSync.size() >= 2 * MAX_HALF_TX_SYNC - 100) {
+        stopSyncHeader = true;
+    }
+    if (!stopSyncHeader && nCount == MAX_HEADERS_RESULTS) {
+        // Headers message had its maximum size; the peer may have more headers.
+        // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip or pindexBestHeader, continue
+        // from there instead.
+        const uint256& blockHash = bestKnownBlockHeader->hashBlock;
+        blockIndex.phashBlock = &blockHash;
+        connman->PushMessage(pfrom, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
+    }
+
+    if (lastCommon == nullptr) {
+        lastCommon = GetDatabaseBlock2(chainActive.Tip()->GetBlockHash());
+    }
+    return true;
 }
 
 bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& vRecv, int64_t nTimeReceived, const MCChainParams& chainparams, MCConnman* connman, const std::atomic<bool>& interruptMsgProc)
@@ -392,7 +501,6 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
             vRecv >> headers[n];
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
             ReadCompactSize(vRecv); // groupSize is 0
-            ReadCompactSize(vRecv); // prevContractData is 0
         }
 
         // Headers received via a HEADERS message should be valid, and reflect
@@ -406,13 +514,31 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
     else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
     {
         std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
+        size_t start = vRecv.size();
         vRecv >> *pblock;
-
+        size_t sz = start - vRecv.size();
         LogPrint(BCLog::NET, "received block %s peer=%d\n", pblock->GetHash().ToString(), pfrom->GetId());
 
-        MCBlock& block = *pblock;
-        if (WriteBlockToDatabase(block) >= 0) {
-            pfrom->nLastBlockTime = GetTime();
+        {
+            LOCK(cs_block);
+            std::shared_ptr<DatabaseBlock> dbBlock = GetDatabaseBlock2(pblock->GetHash());
+            if (dbBlock == nullptr) {
+                dbBlock = std::make_shared<DatabaseBlock>();
+                dbBlock->hashBlock = pblock->GetHash();
+            }
+
+            MCBlock& block = *pblock;
+            if (WriteBlockToDatabase(block, dbBlock, sz)) {
+                if (lastCommon == nullptr || dbBlock->height > lastCommon->height) {
+                    lastCommon = dbBlock;
+                }
+                if (bestKnownBlockHeader == nullptr || dbBlock->height > bestKnownBlockHeader->height) {
+                    bestKnownBlockHeader = dbBlock;
+                }
+                txSync.erase(pblock->GetHash());
+                blockSynced.erase(block.GetHash());
+                pfrom->nLastBlockTime = GetTime();
+            }
         }
     }
 
@@ -504,4 +630,77 @@ bool MonitorProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataS
     }
 
     return true;
+}
+
+void FindNextBlocksToDownload(unsigned int count, std::vector<std::shared_ptr<DatabaseBlock>>& vBlocks)
+{
+    if (lastCommon == nullptr || count == 0) {
+        return;
+    }
+
+    std::vector<std::shared_ptr<DatabaseBlock>> vToFetch;
+    std::shared_ptr<DatabaseBlock> pWalk = lastCommon;
+    int nWindowEnd = pWalk->height + BLOCK_DOWNLOAD_WINDOW;
+    int nMaxHeight = std::min<int>(bestKnownBlockHeader->height, nWindowEnd + 1);
+    while (pWalk->height < nMaxHeight) {
+        // Read up to 128 (or more, if more blocks than that are needed) successors of pindexWalk (towards
+        // pindexBestKnownBlock) into vToFetch. We fetch 128, because MCBlockIndex::GetAncestor may be as expensive
+        // as iterating over ~100 MCBlockIndex* entries anyway.
+        int nToFetch = std::min(nMaxHeight - pWalk->height, std::max<int>(count - vBlocks.size(), 128));
+        vToFetch.resize(nToFetch);
+        pWalk = GetAncestor(bestKnownBlockHeader, pWalk->height + nToFetch);
+        vToFetch[nToFetch - 1] = pWalk;
+        for (unsigned int i = nToFetch - 1; i > 0; i--) {
+            vToFetch[i - 1] = txSync.find(vToFetch[i]->hashPrevBlock)->second;
+        }
+
+        // Iterate over those blocks in vToFetch (in forward direction), adding the ones that
+        // are not yet downloaded and not in flight to vBlocks. In the mean time, update
+        // pindexLastCommonBlock as long as all ancestors are already downloaded, or if it's
+        // already part of our chain (and therefore don't need it even if pruned).
+        for (const std::shared_ptr<DatabaseBlock> item : vToFetch) {
+            if (blockSynced.count(item->hashBlock) == 0) {
+                // The block is not already downloaded, and not yet in flight.
+                if (item->height > nWindowEnd) {
+                    return;
+                }
+                vBlocks.push_back(item);
+                if (vBlocks.size() == count) {
+                    return;
+                }
+            }
+        }
+    }
+}
+
+MonitorPeerLogicValidation::MonitorPeerLogicValidation(MCConnman* connman, MCScheduler &scheduler, ProcessMessageFunc processMessageFunc, GetLocatorFunc getLocatorFunc)
+    : PeerLogicValidation(connman, scheduler, processMessageFunc, getLocatorFunc)
+{
+}
+
+void MonitorPeerLogicValidation::GetBlockData(MCNode* pto, MCNodeState& state, bool fFetch, std::vector<MCInv>& vGetData)
+{
+    std::vector<std::shared_ptr<DatabaseBlock>> vToDownload;
+    FindNextBlocksToDownload(MAX_BLOCKS_IN_TRANSIT_PER_PEER - blockSynced.size(), vToDownload);
+    for (const std::shared_ptr<DatabaseBlock> item : vToDownload) {
+        if (blockSynced.size() >= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+            break;
+        }
+        uint32_t nFetchFlags = GetFetchFlags(pto);
+        vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, item->hashBlock));
+        blockSynced.insert(item->hashBlock);
+        LogPrint(BCLog::NET, "Requesting block %s (%d)\n", item->hashBlock.ToString(), item->height);
+    }
+
+    if (stopSyncHeader && txSync.size() < MAX_HALF_TX_SYNC) {
+        // Headers message had its maximum size; the peer may have more headers.
+        // TODO: optimize: if pindexLast is an ancestor of chainActive.Tip or pindexBestHeader, continue
+        // from there instead.
+        stopSyncHeader = false;
+        MCBlockIndex blockIndex;
+        const uint256& blockHash = bestKnownBlockHeader->hashBlock;
+        blockIndex.phashBlock = &blockHash;
+        const CNetMsgMaker msgMaker(pto->GetSendVersion());
+        connman->PushMessage(pto, msgMaker.Make(NetMsgType::GETHEADERS, MonitorGetLocator(&blockIndex), uint256()));
+    }
 }

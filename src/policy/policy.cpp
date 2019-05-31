@@ -76,12 +76,6 @@ bool IsStandard(const MCScript& scriptPubKey, txnouttype& whichType, const bool 
 {
     std::vector<std::vector<unsigned char> > vSolutions;
 	if (!Solver(scriptPubKey, whichType, vSolutions)) {
-		opcodetype opcode;
-		std::vector<unsigned char> vch;
-		MCScript::const_iterator pc = scriptPubKey.begin();
-		scriptPubKey.GetOp(pc, opcode, vch);
-		if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE)
-			return true;
 		return false;
 	}
 
@@ -182,17 +176,8 @@ bool AreInputsStandard(const MCTransaction& tx, const MCCoinsViewCache& mapInput
         txnouttype whichType;
         // get the scriptPubKey corresponding to this input:
         const MCScript& prevScript = prev.scriptPubKey;
-		if (!Solver(prevScript, whichType, vSolutions))
-		{
-			if (tx.IsSmartContract()) {
-				MCContractID kDest;
-				if (!prevScript.GetContractAddr(kDest))
-					return false;
-				if (kDest != tx.pContractData->address)
-					return false;
-			}
-			else
-				return false;
+		if (!Solver(prevScript, whichType, vSolutions)) {
+            return false;
 		}
 
         if (whichType == TX_SCRIPTHASH)
@@ -299,5 +284,6 @@ int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, i
         factor = 50;
     if (tx.IsBranchChainTransStep2())
         factor = 100;
-    return GetVirtualTransactionSize(GetTransactionWeight(tx), nSigOpCost, runningTimes, deltaDataLen, factor);
+    size_t nTxWeight = GetTransactionWeight(tx);
+    return GetVirtualTransactionSize(nTxWeight, nSigOpCost, runningTimes, deltaDataLen, factor);
 }

@@ -17,10 +17,9 @@
 #include "chain/branchdb.h"
 #include <unordered_map>
 
-MCBlockHeaderAndShortTxIDs::MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID) :
-    nonce(GetRand(std::numeric_limits<uint64_t>::max())),
-    shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block),
-    groupSize(block.groupSize), prevContractData(block.prevContractData)
+MCBlockHeaderAndShortTxIDs::MCBlockHeaderAndShortTxIDs(const MCBlock& block, bool fUseWTXID)
+    : nonce(GetRand(std::numeric_limits<uint64_t>::max())), groupSize(block.groupSize),
+    shorttxids(block.vtx.size() - 1), prefilledtxn(1), header(block)
 {
     FillShortTxIDSelector();
     //TODO: Use our mempool prior to block acceptance to predictively fill more than just the coinbase
@@ -47,7 +46,10 @@ uint64_t MCBlockHeaderAndShortTxIDs::GetShortID(const uint256& txhash) const {
     return SipHashUint256(shorttxidk0, shorttxidk1, txhash) & 0xffffffffffffL;
 }
 
-
+PartiallyDownloadedBlock::PartiallyDownloadedBlock(MCTxMemPool* poolIn, BranchDb* pBranchDb) : pool(poolIn) 
+{
+    m_pBranchcache = std::make_shared<BranchCache>(pBranchDb);
+}
 
 ReadStatus PartiallyDownloadedBlock::InitData(const MCBlockHeaderAndShortTxIDs& cmpctblock, const std::vector<std::pair<uint256, MCTransactionRef>>& extra_txn) {
     if (cmpctblock.header.IsNull() || (cmpctblock.shorttxids.empty() && cmpctblock.prefilledtxn.empty()))
@@ -60,7 +62,6 @@ ReadStatus PartiallyDownloadedBlock::InitData(const MCBlockHeaderAndShortTxIDs& 
     assert(header.IsNull() && txn_available.empty());
     header = cmpctblock.header;
     groupSize = cmpctblock.groupSize;
-    prevContractData = cmpctblock.prevContractData;
     txn_available.resize(cmpctblock.BlockTxCount());
 
     int32_t lastprefilledindex = -1;
@@ -187,7 +188,6 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(MCBlock& block, const std::vector
     block = header;
     block.vtx.resize(txn_available.size());
     block.groupSize = groupSize;
-    block.prevContractData = prevContractData;
 
     size_t tx_missing_offset = 0;
     for (size_t i = 0; i < txn_available.size(); i++) {
@@ -206,9 +206,9 @@ ReadStatus PartiallyDownloadedBlock::FillBlock(MCBlock& block, const std::vector
     if (vtx_missing.size() != tx_missing_offset)
         return READ_STATUS_INVALID;
 
-    BranchCache branchcache(g_pBranchDb);
     MCValidationState state;
-    if (!CheckBlock(block, state, Params().GetConsensus(), &branchcache, true, true, false, pcoinsTip)) {
+    MCCoinsViewCache coinsview(pcoinsTip);
+    if (!CheckBlock(block, state, Params().GetConsensus(), m_pBranchcache.get(), true, true, false, &coinsview)) {
         // TODO: We really want to just check merkle tree manually here,
         // but that is expensive, and CheckBlock caches a block's
         // "checked-status" (in the MCBlock?). MCBlock should be able to

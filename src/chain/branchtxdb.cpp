@@ -12,7 +12,7 @@ namespace {
         char key;
         uint256 hash;// coin prevout tx hash
                      //uint32_t n; // n default is zero, so no need
-        MineCoinEntry(const uint256& txid) :hash(txid), key(DB_MINE_COIN_LOCK) {}
+        MineCoinEntry(const uint256& txid) : key(DB_MINE_COIN_LOCK), hash(txid) {}
 
         template <typename Stream>
         void Serialize(Stream& s) const
@@ -103,8 +103,18 @@ void BranchChainTxRecordsCache::AddToCache(const MCTransactionRef& ptx, const ui
     if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()){
         UpdateLockMineCoin(ptx, true);
     }
+    if (ptx->IsBranchChainTransStep2() || ptx->IsRedeemMortgage())
+    {
+        MCTransactionRef pFromTx;
+        MCDataStream cds(ptx->fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pFromTx);
+        CTxidMapping& kTxid = m_mapTxidMapping[pFromTx->GetHash()];
+        kTxid.flags = DbDataFlag::eADD;
+        kTxid.txid = ptx->GetHash();
+    }
 }
 
+//call in DisconnectBlock
 void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
 {
     if (ptx->IsPregnantTx() || ptx->IsBranchCreate()) {
@@ -115,6 +125,15 @@ void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
     }
     if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()) {
         UpdateLockMineCoin(ptx, false);
+    }
+    if (ptx->IsBranchChainTransStep2() || ptx->IsRedeemMortgage())
+    {
+        MCTransactionRef pFromTx;
+        MCDataStream cds(ptx->fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pFromTx);
+        CTxidMapping& kTxid = m_mapTxidMapping[pFromTx->GetHash()];
+        kTxid.flags = DbDataFlag::eDELETE;
+        //kTxid.txid = ptx->GetHash();
     }
 }
 
@@ -130,17 +149,40 @@ bool BranchChainTxRecordsCache::HasInCache(const MCTransaction& tx)
     return false;
 }
 
-void BranchChainTxRecordsCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
+uint256 BranchChainTxRecordsCache::GetBlockTxid(const uint256& txid)
 {
-    for (int i=0; i<vtx.size(); i++)// use foreach shuang(cool?) but 
-    {
-        //erase not remove as RemoveFromCache
-        const MCTransactionRef& ptx = vtx[i];
-        if (ptx->IsBranchChainTransStep2()){
-            uint256 txid = mempool.GetOriTxHash(*ptx, false);
+    if (m_mapTxidMapping.count(txid) && m_mapTxidMapping[txid].flags == DbDataFlag::eADD) {
+        return m_mapTxidMapping[txid].txid;
+    }
+    return uint256();
+}
+
+//void BranchChainTxRecordsCache::RemoveFromBlock(const std::vector<MCTransactionRef>& vtx)
+//{
+//    for (int i=0; i<vtx.size(); i++)// use foreach shuang(cool?) but 
+//    {
+//        //erase not remove as RemoveFromCache
+//        const MCTransactionRef& ptx = vtx[i];
+//        if (ptx->IsBranchChainTransStep2()){
+//            uint256 txid = mempool.GetOriTxHash(*ptx, false);
+//            BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
+//            m_mapRecvRecord.erase(key);
+//        }
+//    }
+//}
+
+void BranchChainTxRecordsCache::RemoveFromMempool(const MCTransaction& tx)
+{
+    if (tx.IsBranchChainTransStep2()) {
+        uint256 txid = mempool.GetOriTxHash(tx, false);
             BranchChainTxEntry key(txid, DB_BRANCH_CHAIN_RECV_TX_DATA);
             m_mapRecvRecord.erase(key);
         }
+    if (tx.IsBranchChainTransStep2() || tx.IsRedeemMortgage()) {
+        MCTransactionRef pFromTx;
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pFromTx);
+        m_mapTxidMapping.erase(pFromTx->GetHash());
     }
 }
 
@@ -307,8 +349,6 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
     }
 
     LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing final batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
-    bool ret = m_db.WriteBatch(batch);// final batch
-    batch.Clear();
     cache.m_mapRecvRecord.clear();
 
     for (auto mit = cache.m_mapCoinBeReport.begin(); mit != cache.m_mapCoinBeReport.end(); mit++)
@@ -348,7 +388,23 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
         else
             m_db.Erase(key);
     }
+    cache.m_mapCoinBeReport.clear();
 
+    for (auto mit = cache.m_mapTxidMapping.begin(); mit != cache.m_mapTxidMapping.end(); mit++)
+    {
+        const uint256& origtxid = mit->first;
+        const CTxidMapping& kTxid = mit->second;
+        BranchChainTxEntry key(origtxid, DB_DYNAMIC_TXID_MAPING);
+        if (kTxid.flags == DbDataFlag::eADD) { 
+            batch.Write(key, kTxid);
+        }
+        else if (kTxid.flags == DbDataFlag::eDELETE) {
+            batch.Erase(key);
+        }
+    }
+    m_db.WriteBatch(batch);// final batch
+    batch.Clear();
+    cache.m_mapTxidMapping.clear();
     LogPrint(BCLog::COINDB, "finsh flush branch tx data.\n");
 }
 
@@ -376,4 +432,14 @@ bool BranchChainTxRecordsDb::IsMineCoinLock(const uint256& coinhash) const
         }
     }
     return false;
+}
+
+uint256 BranchChainTxRecordsDb::GetBlockTxid(const uint256& txid)
+{
+    BranchChainTxEntry key(txid, DB_DYNAMIC_TXID_MAPING);
+    CTxidMapping value;
+    if (m_db.Read(key, value)) {
+        return value.txid;
+    }
+    return uint256();
 }

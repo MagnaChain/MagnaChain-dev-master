@@ -32,13 +32,13 @@ static const int64_t TIMESTAMP_WINDOW = MAX_FUTURE_BLOCK_TIME;
 class MCBlockFileInfo
 {
 public:
-    unsigned int nBlocks;      //!< number of blocks stored in file
-    unsigned int nSize;        //!< number of used bytes of block file
-    unsigned int nUndoSize;    //!< number of used bytes in the undo file
-    unsigned int nHeightFirst; //!< lowest height of block in file
-    unsigned int nHeightLast;  //!< highest height of block in file
-    uint64_t nTimeFirst;       //!< earliest time of block in file
-    uint64_t nTimeLast;        //!< latest time of block in file
+    unsigned int nBlocks;       //!< number of blocks stored in file
+    unsigned int nSize;         //!< number of used bytes of block file
+    unsigned int nUndoSize;     //!< number of used bytes in the undo file
+    int32_t nHeightFirst;       //!< lowest height of block in file
+    int32_t nHeightLast;        //!< highest height of block in file
+    uint64_t nTimeFirst;        //!< earliest time of block in file
+    uint64_t nTimeLast;         //!< latest time of block in file
 
     ADD_SERIALIZE_METHODS;
 
@@ -47,8 +47,8 @@ public:
         READWRITE(VARINT(nBlocks));
         READWRITE(VARINT(nSize));
         READWRITE(VARINT(nUndoSize));
-        READWRITE(VARINT(nHeightFirst));
-        READWRITE(VARINT(nHeightLast));
+        READWRITE(nHeightFirst);
+        READWRITE(nHeightLast);
         READWRITE(VARINT(nTimeFirst));
         READWRITE(VARINT(nTimeLast));
     }
@@ -70,7 +70,7 @@ public:
      std::string ToString() const;
 
      /** update statistics (does not update nSize) */
-     void AddBlock(unsigned int nHeightIn, uint64_t nTimeIn) {
+     void AddBlock(int nHeightIn, uint64_t nTimeIn) {
          if (nBlocks==0 || nHeightFirst > nHeightIn)
              nHeightFirst = nHeightIn;
          if (nBlocks==0 || nTimeFirst > nTimeIn)
@@ -210,8 +210,8 @@ public:
     //! block header
     int nVersion;
     uint256 hashMerkleRoot;
-    uint256 hashMerkleRootWithData;
     uint256 hashMerkleRootWithPrevData;
+    uint256 hashMerkleRootWithData;
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
@@ -242,8 +242,8 @@ public:
 
         nVersion       = 0;
         hashMerkleRoot = uint256();
-        hashMerkleRootWithData = uint256();
         hashMerkleRootWithPrevData = uint256();
+        hashMerkleRootWithData = uint256();
         nTime          = 0;
         nBits          = 0;
         nNonce         = 0;
@@ -262,8 +262,8 @@ public:
 
         nVersion       = block.nVersion;
         hashMerkleRoot = block.hashMerkleRoot;
-        hashMerkleRootWithData = block.hashMerkleRootWithData;
         hashMerkleRootWithPrevData = block.hashMerkleRootWithPrevData;
+        hashMerkleRootWithData = block.hashMerkleRootWithData;
         nTime          = block.nTime;
         nBits          = block.nBits;
         nNonce         = block.nNonce;
@@ -296,8 +296,8 @@ public:
         if (pprev)
             block.hashPrevBlock = pprev->GetBlockHash();
         block.hashMerkleRoot = hashMerkleRoot;
-        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
@@ -339,11 +339,11 @@ public:
 
     std::string ToString() const
     {
-        return strprintf("MCBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithData=%s, merkleRootWithPrevData=%s, hashBlock=%s)",
+        return strprintf("MCBlockIndex(pprev=%p, nHeight=%d, merkleRoot=%s, merkleRootWithPrevData=%s, merkleRootWithData=%s, hashBlock=%s)",
             pprev, nHeight,
             hashMerkleRoot.ToString(),
-            hashMerkleRootWithData.ToString(),
             hashMerkleRootWithPrevData.ToString(),
+            hashMerkleRootWithData.ToString(),
             GetBlockHash().ToString());
     }
 
@@ -424,8 +424,8 @@ public:
         READWRITE(this->nVersion);
         READWRITE(hashPrev);
         READWRITE(hashMerkleRoot);
-        READWRITE(hashMerkleRootWithData);
         READWRITE(hashMerkleRootWithPrevData);
+        READWRITE(hashMerkleRootWithData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -440,8 +440,8 @@ public:
         block.nVersion        = nVersion;
         block.hashPrevBlock   = hashPrev;
         block.hashMerkleRoot = hashMerkleRoot;
-        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.nTime           = nTime;
         block.nBits           = nBits;
         block.nNonce          = nNonce;

@@ -7,17 +7,19 @@ from test_framework.test_framework import MagnaChainTestFramework
 from test_framework.util import *
 from test_framework.mininode import MINER_REWARD
 
-def find_spent_index(node,utxos):
+
+def find_spent_index(node, utxos):
     '''
 
     :param node:
     :return: spent index
     '''
-    for i,d in enumerate(node.listunspent()):
+    for i, d in enumerate(node.listunspent()):
         if d['vout'] != i:
             yield i
 
-def get_spent_tx_info(raw_utxos,index):
+
+def get_spent_tx_info(raw_utxos, index):
     '''
 
     :param raw_utxos:
@@ -25,23 +27,23 @@ def get_spent_tx_info(raw_utxos,index):
     :return:
     '''
     # utxos[0]["txid"], utxos[0]["vout"]
-    return raw_utxos[index]['txid'],raw_utxos[index]['vout']
+    return raw_utxos[index]['txid'], raw_utxos[index]['vout']
 
 
 class WalletTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 4
         self.setup_clean_chain = True
-        self.extra_args = [['-usehd={:d}'.format(i%2==0)] for i in range(4)]
+        self.extra_args = [['-usehd={:d}'.format(i % 2 == 0)] for i in range(4)]
 
     def setup_network(self):
         self.add_nodes(4, self.extra_args, timewait=900)
         self.start_node(0)
         self.start_node(1)
         self.start_node(2)
-        connect_nodes_bi(self.nodes,0,1)
-        connect_nodes_bi(self.nodes,1,2)
-        connect_nodes_bi(self.nodes,0,2)
+        connect_nodes_bi(self.nodes, 0, 1)
+        connect_nodes_bi(self.nodes, 1, 2)
+        connect_nodes_bi(self.nodes, 0, 2)
         self.sync_all([self.nodes[0:3]])
 
     def check_fee_amount(self, curr_balance, balance_with_fee, fee_per_byte, tx_size):
@@ -50,7 +52,7 @@ class WalletTest(MagnaChainTestFramework):
         assert_fee_amount(fee, tx_size, fee_per_byte * 1000)
         return curr_balance
 
-    def get_txfee(self,txid,node_index = 0):
+    def get_txfee(self, txid, node_index=0):
         return Decimal(self.nodes[node_index].gettransaction(txid)['fee'])
 
     def run_test(self):
@@ -88,7 +90,7 @@ class WalletTest(MagnaChainTestFramework):
         for d in utxos:
             confirmed_txid, confirmed_index = d["txid"], d["vout"]
             txout = self.nodes[0].gettxout(txid=confirmed_txid, n=confirmed_index, include_mempool=False)
-            assert txout['value'] == 10000 or txout['value'] == 10085 # 因为余额是2600085，肯定有某个交易多出了85的
+            assert txout['value'] == 10000 or txout['value'] == 10085  # 因为余额是2600085，肯定有某个交易多出了85的
             txout = self.nodes[0].gettxout(txid=confirmed_txid, n=confirmed_index, include_mempool=True)
             assert txout['value'] == 10000 or txout['value'] == 10085
 
@@ -101,13 +103,13 @@ class WalletTest(MagnaChainTestFramework):
         mempool_txid = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 10)
         mempootx_fee = self.get_txfee(mempool_txid)
         memory_after = self.nodes[0].getmemoryinfo()
-        assert(memory_before['locked']['used'] + 64 <= memory_after['locked']['used'])
+        assert (memory_before['locked']['used'] + 64 <= memory_after['locked']['used'])
 
         self.log.info("test gettxout (second part)")
         # utxo spent in mempool should be visible if you exclude mempool
         # but invisible if you include mempool
-        spent = next(find_spent_index(self.nodes[0],utxos))
-        confirmed_txid, confirmed_index = get_spent_tx_info(raw_utxos,spent)
+        spent = next(find_spent_index(self.nodes[0], utxos))
+        confirmed_txid, confirmed_index = get_spent_tx_info(raw_utxos, spent)
         txout = self.nodes[0].gettxout(confirmed_txid, confirmed_index, False)
         assert txout['value'] == 10000 or txout['value'] == 10085
         spent_val = txout['value']
@@ -122,7 +124,8 @@ class WalletTest(MagnaChainTestFramework):
         # note the mempool tx will have randomly assigned indices
         # but 10 will go to node2 and the rest will go to node0
         balance = self.nodes[0].getbalance()
-        assert_equal(set([txout1['value'], txout2['value']]), set([10, spent_val - 10  + mempootx_fee])) # fee should be negative,thus add fee
+        assert_equal(set([txout1['value'], txout2['value']]),
+                     set([10, spent_val - 10 + mempootx_fee]))  # fee should be negative,thus add fee
         walletinfo = self.nodes[0].getwalletinfo()
         assert_equal(walletinfo['immature_balance'], 0)
 
@@ -134,7 +137,8 @@ class WalletTest(MagnaChainTestFramework):
         unspent_0 = self.nodes[2].listunspent()[0]
         unspent_0 = {"txid": unspent_0["txid"], "vout": unspent_0["vout"]}
         self.nodes[2].lockunspent(False, [unspent_0])
-        assert_raises_rpc_error(-4, "Insufficient funds", self.nodes[2].sendtoaddress, self.nodes[2].getnewaddress(), 20)
+        assert_raises_rpc_error(-4, "Insufficient funds", self.nodes[2].sendtoaddress, self.nodes[2].getnewaddress(),
+                                20)
         assert_equal([unspent_0], self.nodes[2].listlockunspent())
         self.nodes[2].lockunspent(True, [unspent_0])
         assert_equal(len(self.nodes[2].listlockunspent()), 0)
@@ -145,7 +149,7 @@ class WalletTest(MagnaChainTestFramework):
 
         # node0 should end up with 100 btc in block rewards plus fees, but
         # minus the 21 plus fees sent to node2
-        assert_equal(self.nodes[0].getbalance(), MINER_REWARD * 2 -21)
+        assert_equal(self.nodes[0].getbalance(), MINER_REWARD * 2 - 21)
         assert_equal(self.nodes[2].getbalance(), 21)
 
         # Node0 should have two unspent outputs.
@@ -160,8 +164,8 @@ class WalletTest(MagnaChainTestFramework):
         for utxo in node0utxos:
             inputs = []
             outputs = {}
-            inputs.append({ "txid" : utxo["txid"], "vout" : utxo["vout"]})
-            outputs[self.nodes[2].getnewaddress("from1")] = utxo["amount"] - 3   #10000 - 3
+            inputs.append({"txid": utxo["txid"], "vout": utxo["vout"]})
+            outputs[self.nodes[2].getnewaddress("from1")] = utxo["amount"] - 3  # 10000 - 3
             raw_tx = self.nodes[0].createrawtransaction(inputs, outputs)
             txns_to_send.append(self.nodes[0].signrawtransaction(raw_tx))
             sum_outputs.append(utxo["amount"] - 3)
@@ -183,7 +187,7 @@ class WalletTest(MagnaChainTestFramework):
         fee_per_byte = Decimal('0.1') / 1000
         self.nodes[2].settxfee(fee_per_byte * 1000)
         txid = self.nodes[2].sendtoaddress(address, 10, "", "", False)
-        tx_fee = self.get_txfee(txid,2)
+        tx_fee = self.get_txfee(txid, 2)
         self.nodes[2].generate(1)
         self.sync_all([self.nodes[0:3]])
         # node_2_bal = self.check_fee_amount(self.nodes[2].getbalance(), Decimal('84'), fee_per_byte, count_bytes(self.nodes[2].getrawtransaction(txid)))
@@ -217,7 +221,8 @@ class WalletTest(MagnaChainTestFramework):
         self.sync_all([self.nodes[0:3]])
         node_2_bal -= Decimal('10')
         assert_equal(self.nodes[2].getbalance(), node_2_bal + MINER_REWARD - tx_fee)
-        node_0_bal = self.check_fee_amount(self.nodes[0].getbalance(), node_0_bal + Decimal('10'), fee_per_byte, count_bytes(self.nodes[2].getrawtransaction(txid)))
+        node_0_bal = self.check_fee_amount(self.nodes[0].getbalance(), node_0_bal + Decimal('10'), fee_per_byte,
+                                           count_bytes(self.nodes[2].getrawtransaction(txid)))
 
         # Test ResendWalletTransactions:
         # Create a couple of transactions, then start up a fourth
@@ -235,17 +240,17 @@ class WalletTest(MagnaChainTestFramework):
         assert_equal(set(relayed), {txid1, txid2})
         sync_mempools(self.nodes)
 
-        assert(txid1 in self.nodes[3].getrawmempool())
+        assert (txid1 in self.nodes[3].getrawmempool())
 
         # Exercise balance rpcs
         assert_equal(self.nodes[0].getwalletinfo()["unconfirmed_balance"], 1)
         assert_equal(self.nodes[0].getunconfirmedbalance(), 1)
 
-        #check if we can list zero value tx as available coins
-        #1. create rawtx
-        #2. hex-changed one output to 0.0
-        #3. sign and send
-        #4. check if recipient (node0) can list the zero value tx
+        # check if we can list zero value tx as available coins
+        # 1. create rawtx
+        # 2. hex-changed one output to 0.0
+        # 3. sign and send
+        # 4. check if recipient (node0) can list the zero value tx
         # usp = self.nodes[1].listunspent()
         # inputs = [{"txid":usp[0]['txid'], "vout":usp[0]['vout']}]
         # outputs = {self.nodes[1].getnewaddress(): 10000 - 9990, self.nodes[0].getnewaddress(): 11.11}
@@ -258,7 +263,7 @@ class WalletTest(MagnaChainTestFramework):
         # sendResp = self.nodes[1].sendrawtransaction(signedRawTx['hex'])
 
         self.sync_all()
-        self.nodes[1].generate(1) #mine a block
+        self.nodes[1].generate(1)  # mine a block
         self.sync_all()
 
         # unspentTxs = self.nodes[0].listunspent() #zero value tx must be in listunspents output
@@ -269,24 +274,24 @@ class WalletTest(MagnaChainTestFramework):
         #         assert_equal(uTx['amount'], Decimal('0'))
         # assert(found)
 
-        #do some -walletbroadcast tests
+        # do some -walletbroadcast tests
         self.stop_nodes()
         self.start_node(0, ["-walletbroadcast=0"])
         self.start_node(1, ["-walletbroadcast=0"])
         self.start_node(2, ["-walletbroadcast=0"])
-        connect_nodes_bi(self.nodes,0,1)
-        connect_nodes_bi(self.nodes,1,2)
-        connect_nodes_bi(self.nodes,0,2)
+        connect_nodes_bi(self.nodes, 0, 1)
+        connect_nodes_bi(self.nodes, 1, 2)
+        connect_nodes_bi(self.nodes, 0, 2)
         self.sync_all([self.nodes[0:3]])
 
         node_2_bal = self.nodes[2].getbalance()
-        txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
+        txIdNotBroadcasted = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
         txObjNotBroadcasted = self.nodes[0].gettransaction(txIdNotBroadcasted)
-        self.nodes[1].generate(1) #mine a block, tx should not be in there
+        self.nodes[1].generate(1)  # mine a block, tx should not be in there
         self.sync_all([self.nodes[0:3]])
-        assert_equal(self.nodes[2].getbalance(), node_2_bal) #should not be changed because tx was not broadcasted
+        assert_equal(self.nodes[2].getbalance(), node_2_bal)  # should not be changed because tx was not broadcasted
 
-        #now broadcast from another node, mine a block, sync, and check the balance
+        # now broadcast from another node, mine a block, sync, and check the balance
         self.nodes[1].sendrawtransaction(txObjNotBroadcasted['hex'])
         self.nodes[1].generate(1)
         self.sync_all([self.nodes[0:3]])
@@ -294,42 +299,43 @@ class WalletTest(MagnaChainTestFramework):
         txObjNotBroadcasted = self.nodes[0].gettransaction(txIdNotBroadcasted)
         assert_equal(self.nodes[2].getbalance(), node_2_bal)
 
-        #create another tx
-        txIdNotBroadcasted  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
+        # create another tx
+        txIdNotBroadcasted = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), 2)
 
-        #restart the nodes with -walletbroadcast=1
+        # restart the nodes with -walletbroadcast=1
         self.stop_nodes()
         self.start_node(0)
         self.start_node(1)
         self.start_node(2)
-        connect_nodes_bi(self.nodes,0,1)
-        connect_nodes_bi(self.nodes,1,2)
-        connect_nodes_bi(self.nodes,0,2)
+        connect_nodes_bi(self.nodes, 0, 1)
+        connect_nodes_bi(self.nodes, 1, 2)
+        connect_nodes_bi(self.nodes, 0, 2)
         sync_blocks(self.nodes[0:3])
 
         self.nodes[0].generate(1)
         sync_blocks(self.nodes[0:3])
         node_2_bal += 2
 
-        #tx should be added to balance because after restarting the nodes tx should be broadcastet
+        # tx should be added to balance because after restarting the nodes tx should be broadcastet
         assert_equal(self.nodes[2].getbalance(), node_2_bal)
 
-        #send a tx with value in a string (PR#6380 +)
-        txId  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "2")
+        # send a tx with value in a string (PR#6380 +)
+        txId = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "2")
         txObj = self.nodes[0].gettransaction(txId)
         assert_equal(txObj['amount'], Decimal('-2'))
 
-        txId  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "0.001")
+        txId = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "0.001")
         txObj = self.nodes[0].gettransaction(txId)
         assert_equal(txObj['amount'], Decimal('-0.001'))
 
-        #check if JSON parser can handle scientific notation in strings
-        txId  = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "1e-3")
+        # check if JSON parser can handle scientific notation in strings
+        txId = self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(), "1e-3")
         txObj = self.nodes[0].gettransaction(txId)
         assert_equal(txObj['amount'], Decimal('-0.001'))
 
         # This will raise an exception because the amount type is wrong
-        assert_raises_rpc_error(-3, "Invalid amount", self.nodes[0].sendtoaddress, self.nodes[2].getnewaddress(), "1f-4")
+        assert_raises_rpc_error(-3, "Invalid amount", self.nodes[0].sendtoaddress, self.nodes[2].getnewaddress(),
+                                "1f-4")
 
         # This will raise an exception since generate does not accept a string
         assert_raises_rpc_error(-1, "not an integer", self.nodes[0].generate, "2")
@@ -345,12 +351,12 @@ class WalletTest(MagnaChainTestFramework):
         self.nodes[1].importaddress(address_to_import)
 
         # 3. Validate that the imported address is watch-only on node1
-        assert(self.nodes[1].validateaddress(address_to_import)["iswatchonly"])
+        assert (self.nodes[1].validateaddress(address_to_import)["iswatchonly"])
 
         # 4. Check that the unspents after import are not spendable
         assert_array_result(self.nodes[1].listunspent(),
-                           {"address": address_to_import},
-                           {"spendable": False})
+                            {"address": address_to_import},
+                            {"spendable": False})
 
         # 5. Import private key of the previously imported address on node1
         priv_key = self.nodes[2].dumpprivkey(address_to_import)
@@ -358,8 +364,8 @@ class WalletTest(MagnaChainTestFramework):
 
         # 6. Check that the unspents are now spendable on node1
         assert_array_result(self.nodes[1].listunspent(),
-                           {"address": address_to_import},
-                           {"spendable": True})
+                            {"address": address_to_import},
+                            {"spendable": True})
 
         # Mine a block from node0 to an address from node1
         if False:
@@ -388,8 +394,8 @@ class WalletTest(MagnaChainTestFramework):
                 addr = self.nodes[0].getaccountaddress(s)
                 label = self.nodes[0].getaccount(addr)
                 assert_equal(label, s)
-                assert(s in self.nodes[0].listaccounts().keys())
-        self.nodes[0].ensure_ascii = True # restore to default
+                assert (s in self.nodes[0].listaccounts().keys())
+        self.nodes[0].ensure_ascii = True  # restore to default
 
         # maintenance tests
         maintenance = [
@@ -406,9 +412,9 @@ class WalletTest(MagnaChainTestFramework):
             self.log.info("check " + m)
             self.stop_nodes()
             # set lower ancestor limit for later
-            self.start_node(0, [m, "-limitancestorcount="+str(chainlimit)])
-            self.start_node(1, [m, "-limitancestorcount="+str(chainlimit)])
-            self.start_node(2, [m, "-limitancestorcount="+str(chainlimit)])
+            self.start_node(0, [m, "-limitancestorcount=" + str(chainlimit)])
+            self.start_node(1, [m, "-limitancestorcount=" + str(chainlimit)])
+            self.start_node(2, [m, "-limitancestorcount=" + str(chainlimit)])
             while m == '-reindex' and [block_count] * 3 != [self.nodes[i].getblockcount() for i in range(3)]:
                 # reindex will leave rpc warm up "early"; Wait for it to finish
                 time.sleep(0.1)
@@ -426,14 +432,24 @@ class WalletTest(MagnaChainTestFramework):
 
         # Get all non-zero utxos together
         chain_addrs = [self.nodes[0].getnewaddress(), self.nodes[0].getnewaddress()]
-        self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),(self.nodes[0].getbalance() / 2 - Decimal(0.1)).quantize(Decimal("0.0000")))
+        self.nodes[0].sendtoaddress(self.nodes[2].getnewaddress(),
+                                    (self.nodes[0].getbalance() / 2 - Decimal(0.1)).quantize(Decimal("0.0000")))
         singletxid = self.nodes[0].sendtoaddress(chain_addrs[0], self.nodes[0].getbalance(), "", "", True)
-        tx = self.nodes[0].gettransaction(singletxid,True)
+        tx = self.nodes[0].gettransaction(singletxid, True)
         # self.nodes[0].generate(1)
         node0_balance = self.nodes[0].getbalance()
         # Split into two chains
-        print((node0_balance/2-Decimal('0.01')).quantize(Decimal("0.000000000")))
-        rawtx = self.nodes[0].createrawtransaction([{"txid":singletxid, "vout":0}], {chain_addrs[0]:(node0_balance/2-Decimal('0.01')).quantize(Decimal("0.000000000")), chain_addrs[1]:(node0_balance/2-Decimal('0.01')).quantize(Decimal("0.000000000"))})
+        print((node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.000000000")))
+        tx['hex'] = ''
+        print(tx)
+        if tx['fee'] == Decimal('-100'):
+            rawtx = self.nodes[0].createrawtransaction([{"txid": singletxid, "vout": 0}], {
+                chain_addrs[0]: (node0_balance / 2 - Decimal('50.1')).quantize(Decimal("0.00000")),
+                chain_addrs[1]: (node0_balance / 2 - Decimal('45.1')).quantize(Decimal("0.00000"))})
+        else:
+            rawtx = self.nodes[0].createrawtransaction([{"txid": singletxid, "vout": 0}], {
+                chain_addrs[0]: (node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.00000")),
+                chain_addrs[1]: (node0_balance / 2 - Decimal('0.01')).quantize(Decimal("0.00000"))})
         signedtx = self.nodes[0].signrawtransaction(rawtx)
         singletxid = self.nodes[0].sendrawtransaction(signedtx["hex"])
         self.nodes[0].generate(1)
@@ -453,32 +469,32 @@ class WalletTest(MagnaChainTestFramework):
         # The tx will be stored in the wallet but not accepted to the mempool
         extra_txid = self.nodes[0].sendtoaddress(sending_addr, Decimal('0.01'))
         # here should be in mempool.just take a look blow code at wallet.cpp:
-    #     if (fBroadcastTransactions)
-    #         {
-    #         // Broadcast
-    #         bool
-    #         fMissingInputs = false;
-    #         if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, & fMissingInputs)) {
-    #         LogPrint(BCLog::
-    #             TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs": "");
-    #
-    #         if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
-    #         return false; // zjh add this return false;
-    #     } else {
-    #     wtxNew.RelayWalletTransaction(connman);
-    #
-    # }
-    # }
-        assert(extra_txid in self.nodes[0].getrawmempool())
-        assert(extra_txid in [tx["txid"] for tx in self.nodes[0].listtransactions()])
+        #     if (fBroadcastTransactions)
+        #         {
+        #         // Broadcast
+        #         bool
+        #         fMissingInputs = false;
+        #         if (!wtxNew.AcceptToMemoryPool(maxTxFee, state, true, & fMissingInputs)) {
+        #         LogPrint(BCLog::
+        #             TRANSACTION, "CommitTransaction(): Transaction(%s) cannot be broadcast immediately, %s %s\n", wtxNew.GetHash().ToString(), state.GetRejectReason(), fMissingInputs?",MissingInputs": "");
+        #
+        #         if we expect the failure to be long term or permanent, instead delete wtx from the wallet and return failure.
+        #         return false; // zjh add this return false;
+        #     } else {
+        #     wtxNew.RelayWalletTransaction(connman);
+        #
+        # }
+        # }
+        assert (extra_txid in self.nodes[0].getrawmempool())
+        assert (extra_txid in [tx["txid"] for tx in self.nodes[0].listtransactions()])
         # because tx in mempool,thus cannnot call abandontransaction
         # self.nodes[0].abandontransaction(extra_txid)
-        total_txs = len(self.nodes[0].listtransactions("*",99999))
+        total_txs = len(self.nodes[0].listtransactions("*", 99999))
 
         # Try with walletrejectlongchains
         # Double chain limit but require combining inputs, so we pass SelectCoinsMinConf
         self.stop_node(0)
-        self.start_node(0, extra_args=["-walletrejectlongchains", "-limitancestorcount="+str(chainlimit * 2)])
+        self.start_node(0, extra_args=["-walletrejectlongchains", "-limitancestorcount=" + str(chainlimit * 2)])
 
         # wait for loadmempool
         timeout = 10
@@ -493,7 +509,8 @@ class WalletTest(MagnaChainTestFramework):
         # assert_raises_rpc_error(-4, "Transaction has too long of a mempool chain", self.nodes[0].sendtoaddress, sending_addr, node0_balance - Decimal('0.01'))
 
         # Verify nothing new in wallet
-        assert_equal(total_txs, len(self.nodes[0].listtransactions("*",99999)))
+        assert_equal(total_txs, len(self.nodes[0].listtransactions("*", 99999)))
+
 
 if __name__ == '__main__':
     WalletTest().main()

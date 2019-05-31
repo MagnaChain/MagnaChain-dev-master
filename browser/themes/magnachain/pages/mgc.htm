@@ -1,0 +1,172 @@
+title = "mgc"
+url = "/"
+layout = "mgc"
+is_hidden = 0
+==
+
+function onStart() {
+	
+	$this['language'] = $this->activeLocaleName;
+
+}
+
+==
+<div class="container content">
+	
+	<div class="block">
+		<p id="web_language" language="{{ language }}" style="visibility: hidden; position: absolute;">aaaaaaaa</p>
+		<span class="ng-scope" style="font-size: 24px; float: left;">{{ '最新区块'|_ }}</span>
+		
+		<a href="/all-blocks" class="btn btn-default see-all-blocks" translate style="visibility: hidden;" ><span class="ng-scope">{{ '查看所有区块'|_ }}/span></a>
+
+			<div class="table-responsive">
+
+				<table class="table table-striped">
+
+				  <thead>
+				     <th class="">{{ '高度'|_ }}</th>
+				     <th class="">{{ '时间'|_ }}</th>
+				     <th class="">{{ '交易数'|_ }}</th>
+				     <th class="">{{ '块大小'|_ }}</th>
+				     <th class="">{{ '块哈希'|_ }}</th>
+				  </thead>
+
+				  <tbody class="tbody tbody-block">
+
+				     <!-- <tr>
+				        <td class="">
+				        	<a href="#">
+				     								<span class="ellipsis ng-binding">174,663</span>
+				     							</a></td>
+				        <td class="" style="text-align: left;">a minute ago</td>
+				        <td class="" style="text-align: left;">1</td>
+				        <td class="" style="text-align: left;">312</td>
+				        <td class="" style="text-align: left;">
+				        	<a href="#" style="float: left;">
+				     							<span class="ellipsis ng-binding" style="white-space:nowrap;">00000000428d01b71000494f05ee689</span>
+				     							</a>
+				     						</td>
+				     </tr> -->
+
+					 <tr>
+				        <td class="" style="text-align: left;" colspan="5">
+				        	{{ '等待区块中...'|_ }}
+						</td>
+				     </tr>
+
+				  </tbody>
+
+				</table>
+
+			</div>
+
+	</div>
+
+	<div class="transaction">
+		
+		<span class="ng-scope" style="font-size: 24px; float: left;">{{ '最新交易'|_ }}</span>
+
+		<div class="table-responsive">
+
+			<table class="table table-striped">
+
+			  <thead>
+			     <th class="">{{ '交易哈希'|_ }}</th>
+			     <th class="">{{ '输出MGC'|_ }}</th>
+			  </thead>
+
+			  <tbody class="tbody tbody-transaction">
+
+				<tr>
+			        <td class="" style="text-align: left;" colspan="5">
+			        	{{ '等待交易中...'|_ }}
+					</td>
+			    </tr>
+
+			  </tbody>
+
+			</table>
+
+		</div>
+
+	</div>
+
+</div>
+
+<script>
+	
+	$(function(){
+
+		var language = $('#web_language').attr('language');
+
+		var interval = setInterval(function(){
+
+			$.get("/mgcBlock", {language:language}, function (data, status) {
+
+				if (data != null) {
+
+					//clearInterval(interval);
+
+					var data = JSON.parse(data)
+
+					$('.tbody-block').empty();
+
+					for (var i = 0; i < data.length; i++) {
+
+						$('.tbody-block').append(   "<tr>" +
+												        "<td class=''>"+
+												        	"<a href='/block/"+ data[i]['height'] +"'>"+
+																"<span class='ellipsis ng-binding'>"+ data[i]['height'] +"</span>"+
+															"</a></td>"+
+												        "<td class='' style='text-align: left;'>"+ data[i]['time'] +"</td>"+
+												        "<td class='' style='text-align: left;'>"+ data[i]['num'] +"</td>"+
+												        "<td class='' style='text-align: left;'>"+ data[i]['blocksize'] +"</td>"+
+												        "<td class='' style='text-align: left;'>"+
+												        	"<a href='/block/" + data[i]['blockhash'] + "' style='float: left;'>"+
+															"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data[i]['blockhash'] +"</span>"+
+															"</a>"+
+														"</td>"+
+												    "</tr>"  );
+					}
+
+				}
+
+			});
+		
+		}, 6000);
+
+		//var timestamp = null;
+		//var first
+
+		var interval2 = setInterval(function(){
+
+			//var currentTimestamp = new Date().getTime();
+
+			$.get("/mgcTransaction", function (data, status) {
+				
+				if (data != null) {
+
+					var data = JSON.parse(data);
+
+					$('.tbody-transaction').empty();
+
+					for (var i = 0; i < data.length; i++) {
+
+						$('.tbody-transaction').append(   "<tr>"+
+													        "<td class=''>"+
+													        	"<a href='/tx/" + data[i]['txhash'] + "' style='float: left;'>"+
+																	"<span class='ellipsis ng-binding'>"+ data[i]['txhash'] +"</span>"+
+																"</a></td>"+
+													        "<td class='' style='float: left;'>"+ data[i]['out'] +" MGC</td>"+
+													     "</tr>");
+					}
+
+				}
+
+			});
+		
+		}, 6000);
+
+	});
+
+</script>

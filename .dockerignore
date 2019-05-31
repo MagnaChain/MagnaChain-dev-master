@@ -12,3 +12,6 @@ README.md
 LICENSE
 .vscode
 build-msvc
+browser
+seeder
+.travis

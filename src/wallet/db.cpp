@@ -117,11 +117,11 @@ bool MCDBEnv::Open(const fs::path& pathIn)
         nEnvFlags |= DB_PRIVATE;
 
     dbenv->set_lg_dir(pathLogDir.string().c_str());
-    dbenv->set_cachesize(0, 0x100000, 1); // 1 MiB should be enough for just the wallet
+    dbenv->set_cachesize(0, 0xa00000, 1); // 1 MiB should be enough for just the wallet
     dbenv->set_lg_bsize(0x10000);
     dbenv->set_lg_max(1048576);
-    dbenv->set_lk_max_locks(40000);
-    dbenv->set_lk_max_objects(40000);
+    dbenv->set_lk_max_locks(800000);
+    dbenv->set_lk_max_objects(800000);
     dbenv->set_errfile(fsbridge::fopen(pathErrorFile, "a")); /// debug
     dbenv->set_flags(DB_AUTO_COMMIT, 1);
     dbenv->set_flags(DB_TXN_WRITE_NOSYNC, 1);

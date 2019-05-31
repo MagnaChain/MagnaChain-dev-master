@@ -201,7 +201,7 @@ bool BlockAssembler::TestPackageTransactions(const MCTxMemPool::setEntries& pack
 void BlockAssembler::AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker)
 {
     MCTransactionRef tx = iter->GetSharedTx();
-    if ((chainparams.IsMainChain() && tx->IsBranchChainTransStep2()) || (tx->IsSmartContract() && tx->pContractData->contractCoinsOut.size() > 0)) {
+    if (tx->IsDynamicTx()) {
         if (utxoMaker.mapCache.count(tx->GetHash()) == 0)
             throw std::runtime_error("utxo make did not make target transaction");
         pblock->vtx.emplace_back(utxoMaker.mapCache[tx->GetHash()]);
@@ -289,7 +289,7 @@ bool GroupTransactionComparer(const std::pair<uint256, int>& v1, const std::pair
 }
 
 // 按照输入关联及关联合约地址的分组调用智能合约
-void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries)
+void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries)
 {
     typedef std::map<int, std::vector<std::pair<uint256, int>>> MAPGROUP;
 
@@ -301,7 +301,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     {
         int groupId = 0;
         auto& temp = group2trans[groupId];
-        for (int i = 0; i < offset; ++i) {
+        for (size_t i = 0; i < offset; ++i) {
             uint256 hash;
             if (blockTxEntries[i] != nullptr) {// the offset has init with nullptr, because coinbase tx and stake tx no relative mempool entry
                 hash = blockTxEntries[i]->GetTx().GetHash();
@@ -315,103 +315,88 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     }
 
     int nextGroupId = 1;
-    for (int i = offset; i < pblock->vtx.size(); ++i) {
+    for (size_t i = offset; i < pblock->vtx.size(); ++i) {
         mergeGroups.clear();
         int groupId = nextGroupId;
         const MCTransactionRef ptx = pblock->vtx[i];
+        const MCTxMemPoolEntry* entry = blockTxEntries[i];
 
         if (trans2group.find(ptx->GetHash()) != trans2group.end()) {
             groupId = trans2group[ptx->GetHash()];
         }
 
+        // collect parents
         std::set<uint256> parentHash;
-        for (int j = 0; j < ptx->vin.size(); ++j) {
+        for (size_t j = 0; j < ptx->vin.size(); ++j) {
             const MCOutPoint& preOutPoint = ptx->vin[j].prevout;
             if (!preOutPoint.hash.IsNull()) {
                 parentHash.insert(ptx->vin[j].prevout.hash);
             }
         }
-
         if (ptx->IsSyncBranchInfo()) {
             const uint256& hash = g_pBranchDataMemCache->GetParent(*ptx);
             parentHash.insert(hash);
         }
 
-        int lastGroupId = -1;
+        // decide merge to which group
+        for (const uint256& hash : parentHash) {
+            if (trans2group.find(hash) != trans2group.end()) {
+                groupId = std::min(trans2group[hash], groupId);
+            }
+        }
+        if (ptx->IsSmartContract()) {
+            for (auto& contractAddr : entry->contractData->contractAddrs) {
+                if (contract2group.find(contractAddr) != contract2group.end()) {
+                    groupId = std::min(contract2group[contractAddr], groupId);
+                }
+            }
+        }
+
+        // mark merge
+        auto& targetGroup = group2trans[groupId];
         for (const uint256& hash : parentHash) {
             if (trans2group.find(hash) != trans2group.end()) {
                 int preTransGroupId = trans2group[hash];
-                groupId = std::min(preTransGroupId, groupId);
-                if (lastGroupId != -1) {
-                    groupId = std::min(groupId, lastGroupId);
-                }
-                if (groupId != preTransGroupId) {
+                if (preTransGroupId > groupId) {
                     mergeGroups.insert(preTransGroupId);
                 }
-                if (lastGroupId != -1 && groupId != lastGroupId) {
-                    mergeGroups.insert(lastGroupId);
-                }
-            }
-            else if (lastGroupId == -1 || lastGroupId == groupId) {
-                // 输入不在区块中，标记该交易与当前groupid相同
-                trans2group[hash] = groupId;
-                auto& temp = group2trans[groupId];
-                temp.emplace_back(std::make_pair(hash, std::numeric_limits<int>::max()));
             }
             else {
-                groupId = std::min(lastGroupId, groupId);
-                if (groupId != lastGroupId) {
-                    mergeGroups.insert(lastGroupId);
-                }
+                targetGroup.emplace_back(std::make_pair(hash, std::numeric_limits<int>::max()));
+                trans2group[hash] = groupId;
             }
-            lastGroupId = groupId;
         }
 
         if (ptx->IsSmartContract()) {
-            const MCTxMemPoolEntry* entry = blockTxEntries[i];
-            int finalGroupId = groupId;
-            for (auto& contractAddr : entry->contractData->contractAddrs) {
-                if (contract2group.find(contractAddr) != contract2group.end()) {
-                    int contractGroupId = contract2group[contractAddr];
-                    finalGroupId = std::min(contractGroupId, finalGroupId);
-                }
-                else
-                    contract2group[contractAddr] = groupId;
-            }
-
-            if (finalGroupId != groupId) {
-                mergeGroups.insert(groupId);
-                groupId = finalGroupId;
-            }
-
-            for (auto& contractAddr : entry->contractData->contractAddrs) {
-                if (contract2group.find(contractAddr) != contract2group.end()) {
-                    int contractGroupId = contract2group[contractAddr];
-                    if (finalGroupId != contractGroupId) {
-                        contract2group[contractAddr] = finalGroupId;
+            for (const MCContractID& contractId : entry->contractData->contractAddrs) {
+                if (contract2group.find(contractId) != contract2group.end()) {
+                    int contractGroupId = contract2group[contractId];
+                    if (contractGroupId > groupId) {
                         mergeGroups.insert(contractGroupId);
                     }
                 }
             }
         }
 
-        auto& des = group2trans[groupId];
-        for (auto item : mergeGroups) {
-            auto& src = group2trans[item];
-            for (auto& it : src) {
-                des.emplace_back(it);
-                trans2group[it.first] = groupId;
+        // do merge
+        for (int oldGroupId : mergeGroups) {
+            auto& oldGroup = group2trans[oldGroupId];
+            for (auto& item : oldGroup) {
+                targetGroup.emplace_back(item);
+                trans2group[item.first] = groupId;
             }
-            group2trans.erase(item);
+            group2trans.erase(oldGroupId);
         }
 
-        des.emplace_back(std::make_pair(ptx->GetHash(), i));
-        trans2group[ptx->GetHash()] = groupId;
         if (ptx->IsSmartContract()) {
-            if (!ptx->pContractData->address.IsNull()) {
-                contract2group[ptx->pContractData->address] = groupId;
+            for (const MCContractID& contractId : entry->contractData->contractAddrs) {
+                contract2group[contractId] = groupId;
             }
         }
+
+        // add tx group info
+        targetGroup.emplace_back(std::make_pair(ptx->GetHash(), i));
+        trans2group[ptx->GetHash()] = groupId;
 
         if (groupId == nextGroupId) {
             nextGroupId++;
@@ -425,10 +410,10 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     std::vector<MCAmount> vTxSigOpsCost(pblocktemplate->vTxSigOpsCost);
     pblocktemplate->vTxSigOpsCost.clear();
 
-    // 限制了分组的数量
     std::vector<MAPGROUP::iterator> finalGroup;
     MAPGROUP::iterator iter = group2trans.begin();
     for (; iter != group2trans.end(); ++iter) {
+        // filter tx not in mempool
         for (int i = iter->second.size() - 1; i >= 0; --i) {
             if (iter->second[i].second == std::numeric_limits<int>::max()) {
                 iter->second.erase(iter->second.begin() + i);
@@ -437,6 +422,7 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
         
         assert(iter->second.size() > 0);
         finalGroup.emplace_back(iter);
+        // limit group number
         if (finalGroup.size() >= MAX_GROUP_NUM) {
             ++iter;
             break;
@@ -444,16 +430,30 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
     }
 
     if (iter != group2trans.end()) {
-        // 将超出最大分组数量的分组交易合并到现有的分组中
-        int minGroupIndex = 0;
-        int minGroupSize = iter->second.size();
         while (iter != group2trans.end()) {
+            // select the min group for merge
+            size_t minGroupIndex = 0;
+            size_t minGroupSize = finalGroup[0]->second.size();
+            for (size_t i = 1; i < finalGroup.size(); ++i) {
+                size_t sz = finalGroup[i]->second.size();
+                if (sz < minGroupSize) {
+                    minGroupSize = sz;
+                    minGroupIndex = i;
+                }
+            }
+
+            if (minGroupSize > std::numeric_limits<uint16_t>::max()) {
+                return;
+            }
+
+            // filter tx not in mempool
             for (int i = iter->second.size() - 1; i >= 0; --i) {
                 if (iter->second[i].second == std::numeric_limits<int>::max()) {
                     iter->second.erase(iter->second.begin() + i);
                 }
             }
 
+            // limit to 65536 every group
             assert(iter->second.size() > 0);
             if (minGroupSize + iter->second.size() > std::numeric_limits<uint16_t>::max()) {
                 return;
@@ -462,40 +462,26 @@ void BlockAssembler::GroupingTransaction(int offset, std::vector<const MCTxMemPo
             finalGroup[minGroupIndex]->second.insert(finalGroup[minGroupIndex]->second.end(),
                 iter->second.begin(), iter->second.end());
             iter = group2trans.erase(iter);
-
-            minGroupIndex = 0;
-            minGroupSize = finalGroup[0]->second.size();
-            for (int i = 1; i < finalGroup.size(); ++i) {
-                size_t sz = finalGroup[i]->second.size();
-                if (sz < minGroupSize) {
-                    minGroupSize = sz;
-                    minGroupIndex = i;
-                }
-            }
-
-            if (minGroupIndex == -1 || minGroupSize <= 0 || minGroupSize > std::numeric_limits<uint16_t>::max()) {
-                return;
-            }
         }
     }
 
-    // 将分组好的交易重新打入包中
-    int total = 0;
+    // repackage txs to block
+    size_t total = 0;
     pblock->groupSize.clear();
-    for (int i = 0; i < finalGroup.size(); ++i) {
-        assert(finalGroup[i]->second.size() > 0);
-        total += finalGroup[i]->second.size();
-        std::sort(finalGroup[i]->second.begin(), finalGroup[i]->second.end(), GroupTransactionComparer);
-        for (int j = 0; j < finalGroup[i]->second.size(); ++j) {
-            std::pair<uint256, int>& item = finalGroup[i]->second[j];
+    for (size_t i = 0; i < finalGroup.size(); ++i) {
+        MAPGROUP::iterator group = finalGroup[i];
+        assert(group->second.size() > 0);
+        total += group->second.size();
+        std::sort(group->second.begin(), group->second.end(), GroupTransactionComparer);
+        for (size_t j = 0; j < group->second.size(); ++j) {
+            std::pair<uint256, int>& item = group->second[j];
             assert(item.second < std::numeric_limits<int>::max());
             pblock->vtx.emplace_back(vtx[item.second]);
             pblocktemplate->vTxFees.emplace_back(vTxFees[item.second]);
             pblocktemplate->vTxSigOpsCost.emplace_back(vTxSigOpsCost[item.second]);
         }
-        pblock->groupSize.emplace_back(finalGroup[i]->second.size());
+        pblock->groupSize.emplace_back(group->second.size());
     }
-    LogPrint(BCLog::MINING, "%s:%d %d:%d\n", __FUNCTION__, __LINE__, total, vtx.size());
     assert(total == vtx.size());
 }
 
@@ -507,6 +493,9 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
         BranchUTXOCache cache;
         if (pcoinlist != nullptr)
             cache.coinlist = *pcoinlist;// copy
+        if (cache.coinlist.coins.size() == 0) {
+            nAmount += 0;
+        }
         mapBranchCoins.insert(std::make_pair(key, cache));
     }
     BranchUTXOCache& utxoCache = mapBranchCoins[key];
@@ -515,13 +504,15 @@ MCAmount MakeBranchTxUTXO::UseUTXO(const uint160& key, MCAmount nAmount, std::ve
     std::vector<int> usedIndex;//用来删除已使用的币
     //first get from db list
     //优先使用较老的币
-    for (int i = 0; i < utxoCache.coinlist.coins.size(); i++) {
+    for (size_t i = 0; i < utxoCache.coinlist.coins.size(); i++) {
         const MCOutPoint& outpoint = utxoCache.coinlist.coins[i];
         const Coin& coin = pcoinsTip->AccessCoin(outpoint);// MCCoinsViewCache
-        if (coin.IsSpent())
+        if (coin.IsSpent()) {
             continue;
-        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
+        }
+        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY) {
             continue;
+        }
 
         nValue += coin.out.nValue;
         vInOutPoints.push_back(outpoint);
@@ -627,22 +618,10 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
         success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
-    if (newTx.IsSmartContract() && newTx.pContractData->contractCoinsOut.size() > 0) {
-        for (auto it : newTx.pContractData->contractCoinsOut) {
-            const MCContractID& contractId = it.first;
-            MCScript contractScript = GetScriptForDestination(contractId);
-            MCScript contractChangeScript = MCScript() << OP_CONTRACT_CHANGE << ToByteVector(contractId);
-            success = utxoMaker.MakeTxUTXO(newTx, contractId, it.second, contractScript, contractChangeScript);
-            if (!success) {
-                break;
-            }
-            keys.push_back(it.first);
-        }
-    }
 
     if (success) {
         uint256 newHash = newTx.GetHash();
-        for (int i = vOutSize; i < newTx.vout.size(); ++i) {
+        for (uint32_t i = vOutSize; i < newTx.vout.size(); ++i) {
             BranchUTXOCache& utxoCache = utxoMaker.mapBranchCoins[keys[i - vOutSize]];
             utxoCache.mapCacheCoin.insert(std::make_pair(MCOutPoint(newHash, i), newTx.vout[i]));
         }
@@ -670,7 +649,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         nBlockWeight += 37000;// TODO: coinbase is not init, cannot calc size here. this value get from a true bigboom coinbase tx.
     }
 
-    int offset = pblock->vtx.size();
+    size_t offset = pblock->vtx.size();
     // mapModifiedTx will store sorted packages after they are modified
     // because some of their txs are already in the block
     indexed_modified_transaction_set mapModifiedTx;
@@ -806,7 +785,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 		ancestors.insert(iter);
 
 		// Test if all tx's are Final
-		if (!TestPackageTransactions(ancestors)) {
+        if (!TestPackageTransactions(ancestors)) {
 			if (fUsingModified) {
 				mapModifiedTx.get<ancestor_score>().erase(modit);
 				failedTx.insert(iter);
@@ -826,8 +805,7 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
             MCTxMemPool::txiter entry = sortedEntries[i];
             const MCTransactionRef& entryTx = entry->GetSharedTx();
 
-            if ((chainparams.IsMainChain() && entryTx->IsBranchChainTransStep2()) ||
-                (entryTx->IsSmartContract() && entryTx->pContractData->contractCoinsOut.size() > 0)) {
+            if (entryTx->IsDynamicTx()) {
                 if (!UpdateIncompleteTx(entry, makeBTxHelper)) {
                     //++mi;
                     if (fUsingModified) {
@@ -848,16 +826,12 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
 			// Erase from the modified set, if present
 			mapModifiedTx.erase(sortedEntries[i]);
             blockTxEntries.emplace_back(&*sortedEntries[i]);
-		}
+        }
 
 		++nPackagesSelected;
 
 		// Update transactions that depend on each of these
 		nDescendantsUpdated += UpdatePackagesForAdded(ancestors, mapModifiedTx);
-
-        if (pblock->vtx.size() >= gArgs.GetArg("-maxtxnuminblock", std::numeric_limits<int64_t>::max())) {
-            break;
-        }
     }
 
     // 默认使用分片重新排列交易
@@ -890,59 +864,22 @@ void IncrementExtraNonce(MCBlock* pblock, const MCBlockIndex* pindexPrev, unsign
 
 //////////////////////////////////// modified for pcoin/////////////////////////////////
 
-
-void static GenerateSleep()
-{
-	boost::this_thread::interruption_point();
-}
+extern UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash);
 
 void static MagnaChainMiner(const MCChainParams& chainparams)
 {
     LogPrintf("MagnaChainMiner started\n");
 	RenameThread("magnachain-miner");
 
-	unsigned int nExtraNonce = 0;
-
     MCWallet* const pwallet = ::vpwallets[0];
 
 	while (!ShutdownRequested()) {
 		try {
-            std::set<MCTxDestination> setAddress;
-            std::vector<MCOutput> vecOutputs;
-			{
-				assert(pwallet != nullptr);
-
-				LOCK2(cs_main, pwallet->cs_wallet);
-
-                if (Params().IsMainChain())
-                    pwallet->AvailableCoins(vecOutputs, nullptr, false);
-                else
-                    pwallet->AvailableMortgageCoins(vecOutputs, false);
-				//for (const MCOutput& out : vecOutputs) {
-				//	MCTxDestination address;
-				//	const MCScript& scriptPubKey = out.tx->tx->vout[out.i].scriptPubKey;
-				//	bool fValidAddress = ExtractDestination(scriptPubKey, address);
-
-				//	if (setAddress.count(address))
-				//		continue;
-
-				//	if (fValidAddress) {
-				//		if (!scriptPubKey.IsPayToScriptHash()) {
-				//			setAddress.insert(address);
-				//		}
-				//	}
-				//}
-
-			}
-            //std::vector< MCScript> vecScript;
-            //BOOST_FOREACH(const MCTxDestination& addr, setAddress) {
-			//	vecScript.push_back(GetScriptForDestination(addr));
-			//}
-			generateBlocks(pwallet, vecOutputs, vecOutputs.size(), vecOutputs.size(), true, GenerateSleep);
-
+            int num_generate = 100;
+            uint64_t max_tries = 10000;
+            generateblockcommon(pwallet, num_generate, max_tries, false);
 			// Check for stop or if block needs to be rebuilt
-			boost::this_thread::interruption_point();
-
+			
 		}
 		catch (const UniValue& objError) {
 			UniValue err = find_value(objError, "message");
@@ -992,13 +929,12 @@ namespace BlockExplorer
     {
     public:
         // not safe enough
-        inline static bool FastCheckCoin(const Coin& coin, int iChainHeight, bool fNeedUnmature)
+        inline static bool FastCheckCoin(const Coin& coin, int chainHeight, bool fNeedUnmature)
         {
-            if (coin.IsCoinBase() && fNeedUnmature &&
-                (iChainHeight - coin.nHeight) < COINBASE_MATURITY) {
+            if (coin.IsCoinBase() && fNeedUnmature && chainHeight - coin.nHeight < COINBASE_MATURITY) {
                 return false;
             }
-            if (coin.nHeight > iChainHeight)
+            if (coin.nHeight > chainHeight)
                 return false;
             if (coin.IsSpent())
                 return false;
@@ -1075,7 +1011,7 @@ namespace BlockExplorer
 
 using namespace BlockExplorer;
 const uint32_t iMaxWorkBits = 17760256;
-
+const uint32_t NMaxRunTime = 60 * 60 * 24 * 10;
 
 MCAmount GetBlockSubsidy(int nHeight, const Consensus::Params& consensusParams)
 {
@@ -1142,10 +1078,26 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 	//return true;
 }
 
+uint32_t CalcTimeFactor(int64_t timediff, int64_t nBlockTargetSpace)
+{
+    uint32_t iRunTime = 0;
+    if (timediff > nBlockTargetSpace * 2) {
+        iRunTime = timediff - nBlockTargetSpace * 2;
+        if (iRunTime > NMaxRunTime)
+            iRunTime = NMaxRunTime;
+        //iRunTime /= 10;
+        iRunTime = (iRunTime / 10) * 10; // 50?
+        //iRunTime = 2 * (NMaxRunTime - iRunTime) / NMaxRunTime;
+        //if (iRunTime < 1)
+        //    iRunTime = 1;
+    }
+    return iRunTime;
+}
+
 static uint256 guMaxWork = uint256S("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
 // 如有修改,同时也需修改 GetBlockHeaderWork
-uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins)
+uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& block_hash, MCCoinsViewCache* pCoins, const Consensus::Params& params)
 {
 	block_hash  = guMaxWork;
 	BlockMap::iterator mi = mapBlockIndex.find(block.hashPrevBlock);
@@ -1257,7 +1209,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 
     if (kDest.type() != typeid(MCKeyID))
     {
-        LogPrintf("%s: Mine out key type invalid \n", __func__);
+        LogPrint(BCLog::MINING, "%s: Mine out key type invalid \n", __func__);
         return 0;
     }
     MCKeyID kKey = boost::get<MCKeyID>(kDest);
@@ -1285,14 +1237,20 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 	else {
 		if (iMount == 0) {
 			block_hash = guMaxWork;
-			LogPrintf("%s: block work To MAX WORK, Amount is 0, total %d \n", __func__, total);
+            LogPrint(BCLog::MINING, "%s: block work To MAX WORK, Amount is 0, total %d \n", __func__, total);
 			return 0;
 		}
 	}
 //	LogPrintf("%s: block work %s , Amount:%d \n", __func__, iTmp.GetHex(), iMount);
 
-	uint32_t iComp = iTmp.GetCompact();
-	iTmp.SetCompact(iComp);
+    uint32_t iRunTime = 1;
+    int64_t timediff = block.nTime - pPreIndex->nTime;
+    iRunTime = CalcTimeFactor(timediff, params.nPowTargetSpacing);
+    
+    iTmp = iTmp * (NMaxRunTime - iRunTime) / NMaxRunTime;// time 
+	//uint32_t iComp = iTmp.GetCompact();
+    //iComp /= iRunTime;
+	//iTmp.SetCompact(iComp);
 	block_hash = ArithToUint256(iTmp);
 
 //	LogPrintf("%s: Compat block work %s \n", __func__, iTmp.GetHex());
@@ -1303,7 +1261,7 @@ uint32_t GetBlockWork(const MCBlock& block, const MCOutPoint& out, uint256& bloc
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams)
 {
 	uint256 hash;
-	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash, pcoinsTip); //TODO: should pcoinsTip use a CoinViewCache parameter to replace?
+	uint32_t iBlockWork = GetBlockWork(block, block.prevoutStake, hash, pcoinsTip, consensusParams); //TODO: should pcoinsTip use a CoinViewCache parameter to replace?
 
 	// check
 	bool fNegative;
@@ -1347,6 +1305,7 @@ inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const u
 //核心算法需要和 GetBlockWork 一致
 uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
 {
+    const Consensus::Params& consensusparams = params.GetConsensus();
     ///// get and check data
     const MCOutPoint& out = block.prevoutStake;
     MCDataStream cds(block.vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
@@ -1387,7 +1346,7 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
     if (block.blockHeight != iPrevHeight + 1)
         return 0;
 
-    const bool isBigBoom = iPrevHeight < params.GetConsensus().BigBoomHeight;
+    const bool isBigBoom = iPrevHeight < consensusparams.BigBoomHeight;
 
     const int iMatureDepth = COINBASE_MATURITY - 1;
     MCAmount total = 0;
@@ -1494,8 +1453,14 @@ uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash,
         }
     }
 
-    uint32_t iComp = iTmp.GetCompact();
-    iTmp.SetCompact(iComp);
+    uint32_t iRunTime = 1;
+    int64_t timediff = block.nTime - pPreIndex->GetBlockTime();
+    iRunTime = CalcTimeFactor(timediff, consensusparams.nPowTargetSpacing);
+
+    iTmp = iTmp * (NMaxRunTime - iRunTime) / NMaxRunTime;
+    //uint32_t iComp = iTmp.GetCompact();
+    //iComp /= iRunTime;
+    //iTmp.SetCompact(iComp);
     block_hash = ArithToUint256(iTmp);
 
     return total;
@@ -1589,6 +1554,7 @@ bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& s
 	return true;
 }
 
+// if this fucntion imp change, GetBranchNextWorkRequired also need to be changed.
 unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHeader* pblock, const Consensus::Params& params)
 {
 	unsigned int nProofOfWorkLimit = UintToArith256(params.powLimit).GetCompact();
@@ -1600,19 +1566,11 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 	// time limit
 	if (pblock->nTime < pindexLast->nTime)
 		return iMaxWorkBits;
-	if (pblock->nTime - pindexLast->nTime < params.nPowTargetSpacing)
+    int64_t timediff = pblock->nTime - pindexLast->nTime;
+	if (timediff < params.nPowTargetSpacing)
 		return iMaxWorkBits;
 
 	uint32_t iRunTime = 1;
-    if (pblock->nTime - pindexLast->nTime > params.nPowTargetSpacing * 2) {
-        iRunTime = pblock->nTime - pindexLast->nTime - params.nPowTargetSpacing * 2;
-        if (iRunTime > 60 * 60 * 24 * 10)
-            iRunTime = 60 * 60 * 24 * 10;
-        iRunTime /= 10;
-        if (iRunTime < 1)
-            iRunTime = 1;
-    }
-
 
     bool fNegative;
     bool fOverflow;
@@ -1636,7 +1594,7 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 
     //	LogPrintf("%s: Average Target %s , count :%d \n", __func__, nMostWork.GetHex(), iCount );
 
-    nMostWork *= 2 * iRunTime;
+    nMostWork *= 2 * iRunTime; //TODO: Is necessary to remove 2
     arith_uint256 nTarget;
     uint512 uPowLimit;
     uPowLimit.SetHex(params.powLimit.GetHex());
@@ -1665,18 +1623,11 @@ unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const 
     // time limit
     if (pblock->nTime < pindexLast->header.nTime)
         return iMaxWorkBits;
-    if (pblock->nTime - pindexLast->header.nTime < consensusParams.nPowTargetSpacing)
+    int64_t timediff = pblock->nTime - pindexLast->header.nTime;
+    if (timediff < consensusParams.nPowTargetSpacing)
         return iMaxWorkBits;
 
     uint32_t iRunTime = 1;
-    if (pblock->nTime - pindexLast->header.nTime > consensusParams.nPowTargetSpacing * 2) {
-        iRunTime = pblock->nTime - pindexLast->header.nTime - consensusParams.nPowTargetSpacing * 2;
-        if (iRunTime > 60 * 60 * 24 * 10)
-            iRunTime = 60 * 60 * 24 * 10;
-        iRunTime /= 10;
-        if (iRunTime < 1)
-            iRunTime = 1;
-    }
 
     bool fNegative;
     bool fOverflow;
@@ -1779,15 +1730,14 @@ bool SignatureCoinbaseTransaction(int nHeight, const MCKeyStore* keystoreIn, MCM
     if (keystoreIn == nullptr)
         return false;
 
-    int nIn = 0;
     SignatureData sigdata;
-
     txNew.vin[0].scriptSig = MCScript() << nHeight << OP_0;
 
     MCTransaction txNewConst(txNew);
     if (!ProduceSignature(TransactionSignatureCreator(keystoreIn, &txNewConst, 0, nValue, SIGHASH_ALL), scriptPubKey, sigdata)) {
         return false;
-    } else {
+    }
+    else {
         txNew.vin[0].scriptSig = txNew.vin[0].scriptSig + sigdata.scriptSig;
         return true;
     }
@@ -1964,10 +1914,11 @@ bool CheckCoinbaseTx(const MCBlock& block, MCBlockIndex* pindex, MCAmount nFees,
 }
 
 
-std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx, const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache)
+std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& scriptPubKeyIn, bool fMineWitnessTx, 
+    const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr)
 {
-    if (pcoinsCache == nullptr)
-    {
+    strErr.clear();
+    if (pcoinsCache == nullptr) {
         pcoinsCache = ::pcoinsTip;
     }
 	int64_t nTimeStart = GetTimeMicros();
@@ -1975,9 +1926,10 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	resetBlock();
 
 	pblocktemplate.reset(new MCBlockTemplate());
-
-	if (!pblocktemplate.get())
+	if (!pblocktemplate.get()){
+        strErr = "Out of memory";
 		return nullptr;
+    }
 	pblock = &pblocktemplate->block; // pointer for convenience
 
 	// Add dummy coinbase tx as first transaction
@@ -1993,6 +1945,8 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
         MCMutableTransaction stakeTx;
         stakeTx.nVersion = MCTransaction::STAKE;
         if (!MakeStakeTransaction(*keystoreIn, stakeTx, this->outpoint, pcoinsCache, nHeight)) {
+            strErr = "Make stake transaction return fail";
+            error(strErr.c_str());
             return nullptr;
         }
 
@@ -2056,34 +2010,51 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 
 	// 如果block work大于要求，将NBITS设为实际值
 	uint256 out_hash;
-	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache);
+	pblock->nNonce = GetBlockWork(*pblock, outpoint, out_hash, pcoinsCache, chainparams.GetConsensus());
 	arith_uint256 bTarget;
 	bTarget.SetCompact(pblock->nBits);
-	if (UintToArith256(out_hash) < bTarget) 
-	{
-		pblock->nBits = UintToArith256(out_hash).GetCompact();
-		bTarget.SetCompact(pblock->nBits);
-		LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
-	}
+    const arith_uint256 bnOutHash = UintToArith256(out_hash);
+	//if (bnOutHash < bTarget)
+	//{
+		//pblock->nBits = bnOutHash.GetCompact(); // don't adjust right now
+		//bTarget.SetCompact(pblock->nBits);
+		//LogPrint(BCLog::MINING, "CreateNewBlock(): new target %s \n", bTarget.GetHex());
+	//} else 
+    if (bnOutHash > bTarget) {
+        // CheckBlockWork will fail, break follow
+        strErr = "Check block work fail, bnOutHash > bTarget\n";
+        LogPrint(BCLog::MINING, strErr.c_str());
+        return nullptr;
+    }
 
 	// to verify is mining with the address owner
 	MCMutableTransaction kSignTx(*pblock->vtx[0]);
-	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn))
-		throw std::runtime_error( "sign coin base transaction error");
-	pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
+	if (!SignatureCoinbaseTransaction(nHeight, keystoreIn, kSignTx, nReward, scriptPubKeyIn)){
+        strErr = strprintf("%s:%d sign coin base transaction error\n", __FUNCTION__, __LINE__);
+        error(strErr.c_str());
+        return nullptr;
+    }
+    pblock->vtx[0] = MakeTransactionRef(std::move(kSignTx));
+
+    LogPrint(BCLog::MINING, "%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
+    std::vector<VMOut> vmOuts;
+    static MultiContractVM mvm;
+    if (!mvm.Execute(pblock, chainActive.Tip(), &vmOuts)) {
+        strErr = strprintf("%s:%d Execute block contracts fail\n", __FUNCTION__, __LINE__);
+        error(strErr.c_str());
+        return nullptr;
+    }
 
 	MCValidationState state;
 	if (!TestBlockValidity(state, chainparams, *pblock, pindexPrev, false, false)) {
-		throw std::runtime_error(strprintf("%s: TestBlockValidity failed: %s", __func__, FormatStateMessage(state)));
-	}
-
-    CoinAmountDB coinAmountDB;
-    CoinAmountCache coinAmountCache(&coinAmountDB);
-    LogPrintf("%s:%d => vtx size:%d, group:%d\n", __FUNCTION__, __LINE__, pblock->vtx.size(), pblock->groupSize.size());
-    if (!mpContractDb->RunBlockContract(pblock, pContractContext, &coinAmountCache)) {
-        error("%s:%d RunBlockContract fail\n", __FUNCTION__, __LINE__);
+        strErr = strprintf("%s:%d %s\n", __FUNCTION__, __LINE__, state.GetRejectReason());
+        LogPrintf(strErr.c_str());
         return nullptr;
     }
+
+    std::vector<uint256> leaves;
+    pblock->hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(pblock, vmOuts, leaves, nullptr);
+    pblock->hashMerkleRootWithData = BlockMerkleLeavesWithFinalData(pblock, vmOuts, leaves, nullptr);
 
 	int64_t nTime2 = GetTimeMicros();
 	LogPrint(BCLog::MINING, "CreateNewBlock() packages: %.2fms (%d packages, %d updated descendants), validity: %.2fms (total %.2fms)\n", 0.001 * (nTime1 - nTimeStart), nPackagesSelected, nDescendantsUpdated, 0.001 * (nTime2 - nTime1), 0.001 * (nTime2 - nTimeStart));
@@ -2168,17 +2139,13 @@ void BlockAssembler::addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsVi
 
     uint32_t nOutOfHeight = REPORT_OUTOF_HEIGHT;
     MCBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nOutOfHeight];// assume that create new block after active chain's tip
-    if (pbi != nullptr)
-    {
+    if (pbi != nullptr) {
         std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
         MCBlock& block = *pblock;
-        if (ReadBlockFromDisk(block, pbi, chainparams.GetConsensus()))
-        {
-            for (int i = 1; i < block.vtx.size(); i++)
-            {
+        if (ReadBlockFromDisk(block, pbi, chainparams.GetConsensus())) {
+            for (size_t i = 1; i < block.vtx.size(); i++) {
                 const MCTransactionRef& tx = block.vtx[i];
-                if (tx->IsReport())
-                {
+                if (tx->IsReport()) {
                     this->addReportProofTx(tx, scriptPubKeyIn, pcoinsCache);
                 }
             }

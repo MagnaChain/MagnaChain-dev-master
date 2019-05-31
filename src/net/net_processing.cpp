@@ -32,6 +32,7 @@
 #include "utils/utilmoneystr.h"
 #include "utils/utilstrencodings.h"
 #include "validation/validationinterface.h"
+#include "chain/branchdb.h"
 
 #if defined(NDEBUG) && !defined(SDK_RELEASE)
 # error "MagnaChain cannot be compiled without assertions."
@@ -239,7 +240,7 @@ bool MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const MCBlockIndex*
     MarkBlockAsReceived(hash);
 
     std::list<QueuedBlock>::iterator it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(),
-            {hash, pindex, pindex != nullptr, std::unique_ptr<PartiallyDownloadedBlock>(pit ? new PartiallyDownloadedBlock(&mempool) : nullptr)});
+            {hash, pindex, pindex != nullptr, std::unique_ptr<PartiallyDownloadedBlock>(pit ? new PartiallyDownloadedBlock(&mempool, g_pBranchDb) : nullptr)});
     state->nBlocksInFlight++;
     state->nBlocksInFlightValidHeaders += it->fValidatedHeaders;
     if (state->nBlocksInFlight == 1) {
@@ -684,7 +685,7 @@ void Misbehaving(NodeId pnode, int howmuch)
 //
 
 PeerLogicValidation::PeerLogicValidation(MCConnman* connmanIn, MCScheduler &scheduler, ProcessMessageFunc processMessageFunc, GetLocatorFunc getLocatorFunc)
-    : connman(connmanIn), m_stale_tip_check_time(0), processMessageFunc(processMessageFunc), getLocatorFunc(getLocatorFunc) {
+    : connman(connmanIn), processMessageFunc(processMessageFunc), getLocatorFunc(getLocatorFunc), m_stale_tip_check_time(0) {
     // Initialize global variables that cannot be constructed at startup.
     recentRejects.reset(new MCRollingBloomFilter(120000, 0.000001));
 
@@ -2298,7 +2299,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                 std::list<QueuedBlock>::iterator* queuedBlockIt = nullptr;
                 if (!MarkBlockAsInFlight(pfrom->GetId(), pindex->GetBlockHash(), pindex, &queuedBlockIt)) {
                     if (!(*queuedBlockIt)->partialBlock)
-                        (*queuedBlockIt)->partialBlock.reset(new PartiallyDownloadedBlock(&mempool));
+                        (*queuedBlockIt)->partialBlock.reset(new PartiallyDownloadedBlock(&mempool, g_pBranchDb));
                     else {
                         // The block was already in flight using compact blocks from the same peer
                         LogPrint(BCLog::NET, "Peer sent us compact block we were already syncing!\n");
@@ -2342,7 +2343,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                 // download from.
                 // Optimistically try to reconstruct anyway since we might be
                 // able to without any round trips.
-                PartiallyDownloadedBlock tempBlock(&mempool);
+                PartiallyDownloadedBlock tempBlock(&mempool, g_pBranchDb);
                 ReadStatus status = tempBlock.InitData(cmpctblock, vExtraTxnForCompact);
                 if (status != READ_STATUS_OK) {
                     // TODO: don't ignore failures
@@ -2398,8 +2399,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             // we have a chain with at least nMinimumChainWork), and we ignore
             // compact blocks with less work than our tip, it is safe to treat
             // reconstructed compact blocks as having been requested.
-            ContractContext contractContext;
-            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock);
+            ProcessNewBlock(chainparams, pblock, /*fForceProcessing=*/true, &fNewBlock);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2483,8 +2483,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             // disk-space attacks), but this should be safe due to the
             // protections in the compact block handler -- see related comment
             // in compact block optimistic reconstruction handling.
-            ContractContext contractContext;
-            ProcessNewBlock(chainparams, pblock, &contractContext, /*fForceProcessing=*/true, &fNewBlock);
+            ProcessNewBlock(chainparams, pblock, /*fForceProcessing=*/true, &fNewBlock);
             if (fNewBlock) {
                 pfrom->nLastBlockTime = GetTime();
             } else {
@@ -2495,8 +2494,14 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
     }
 
 
-    else if (strCommand == NetMsgType::HEADERS && !fImporting && !fReindex) // Ignore headers received while importing
+    else if (strCommand == NetMsgType::HEADERS)
     {
+        // Ignore headers received while importing
+        if (fImporting || fReindex) {
+            LogPrint(BCLog::NET, "Unexpected headers message received from peer %d\n", pfrom->GetId());
+            return true;
+        }
+
         std::vector<MCBlockHeader> headers;
 
         // Bypass the normal MCBlock deserialization, as we don't want to risk deserializing 2000 full blocks.
@@ -2511,7 +2516,6 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             vRecv >> headers[n];
             ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
             ReadCompactSize(vRecv); // ignore groupSize count; assume it is 0.
-            ReadCompactSize(vRecv); // ignore prevContractData count; assume it is 0.
         }
 
         // Headers received via a HEADERS message should be valid, and reflect
@@ -2522,8 +2526,14 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
         return ProcessHeadersMessage(pfrom, connman, headers, chainparams, should_punish);
     }
 
-    else if (strCommand == NetMsgType::BLOCK && !fImporting && !fReindex) // Ignore blocks received while importing
+    else if (strCommand == NetMsgType::BLOCK)
     {
+        // Ignore blocks received while importing
+        if (fImporting || fReindex) {
+            LogPrint(BCLog::NET, "Unexpected block message received from peer %d\n", pfrom->GetId());
+            return true;
+        }
+
         std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
         vRecv >> *pblock;
 
@@ -2541,8 +2551,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             mapBlockSource.emplace(hash, std::make_pair(pfrom->GetId(), true));
         }
         bool fNewBlock = false;
-        ContractContext contractContext;
-        ProcessNewBlock(chainparams, pblock, &contractContext, forceProcessing, &fNewBlock);
+        ProcessNewBlock(chainparams, pblock, forceProcessing, &fNewBlock);
         if (fNewBlock) {
             pfrom->nLastBlockTime = GetTime();
         } else {
@@ -3476,9 +3485,11 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
             QueuedBlock &queuedBlock = state.vBlocksInFlight.front();
             int nOtherPeersWithValidatedDownloads = nPeersWithValidatedDownloads - (state.nBlocksInFlightValidHeaders > 0);
             if (nNow > state.nDownloadingSince + consensusParams.nPowTargetSpacing * (BLOCK_DOWNLOAD_TIMEOUT_BASE + BLOCK_DOWNLOAD_TIMEOUT_PER_PEER * nOtherPeersWithValidatedDownloads)) {
-                LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->GetId());
-                pto->fDisconnect = true;
-                return true;
+                if (!Params().IsRegtest()) {
+                    LogPrintf("Timeout downloading block %s from peer=%d, disconnecting\n", queuedBlock.hash.ToString(), pto->GetId());
+                    pto->fDisconnect = true;
+                    return true;
+                }
             }
         }
         // Check for headers sync timeouts
@@ -3522,24 +3533,7 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
         // Message: getdata (blocks)
         //
         std::vector<MCInv> vGetData;
-        if (!pto->fClient && (fFetch || !IsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
-            std::vector<const MCBlockIndex*> vToDownload;
-            NodeId staller = -1;
-            FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller, consensusParams);
-            for (const MCBlockIndex *pindex : vToDownload) {
-                uint32_t nFetchFlags = GetFetchFlags(pto);
-                vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
-                MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), pindex);
-                LogPrint(BCLog::NET, "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
-                    pindex->nHeight, pto->GetId());
-            }
-            if (state.nBlocksInFlight == 0 && staller != -1) {
-                if (State(staller)->nStallingSince == 0) {
-                    State(staller)->nStallingSince = nNow;
-                    LogPrint(BCLog::NET, "Stall started peer=%d\n", staller);
-                }
-            }
-        }
+        GetBlockData(pto, state, fFetch, vGetData);
 
         //
         // Message: getdata (non-blocks)
@@ -3594,6 +3588,30 @@ bool PeerLogicValidation::SendMessages(MCNode* pto, std::atomic<bool>& interrupt
         }
     }
     return true;
+}
+
+void PeerLogicValidation::GetBlockData(MCNode* pto, MCNodeState& state, bool fFetch, std::vector<MCInv>& vGetData)
+{
+    int64_t nNow = GetTimeMicros();
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+    if (!pto->fClient && (fFetch || !IsInitialBlockDownload()) && state.nBlocksInFlight < MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
+        std::vector<const MCBlockIndex*> vToDownload;
+        NodeId staller = -1;
+        FindNextBlocksToDownload(pto->GetId(), MAX_BLOCKS_IN_TRANSIT_PER_PEER - state.nBlocksInFlight, vToDownload, staller, consensusParams);
+        for (const MCBlockIndex *pindex : vToDownload) {
+            uint32_t nFetchFlags = GetFetchFlags(pto);
+            vGetData.push_back(MCInv(MSG_BLOCK | nFetchFlags, pindex->GetBlockHash()));
+            MarkBlockAsInFlight(pto->GetId(), pindex->GetBlockHash(), pindex);
+            LogPrint(BCLog::NET, "Requesting block %s (%d) peer=%d\n", pindex->GetBlockHash().ToString(),
+                pindex->nHeight, pto->GetId());
+        }
+        if (state.nBlocksInFlight == 0 && staller != -1) {
+            if (State(staller)->nStallingSince == 0) {
+                State(staller)->nStallingSince = nNow;
+                LogPrint(BCLog::NET, "Stall started peer=%d\n", staller);
+            }
+        }
+    }
 }
 
 class CNetProcessingCleanup

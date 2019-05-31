@@ -22,7 +22,7 @@ class DisableWalletTest (MagnaChainTestFramework):
         new_address = node.getnewaddress()
         node.generate(2)
         node.sendtoaddress(new_address,100)
-        invalid_address = new_address[:-1] + "P"
+        invalid_address = new_address[:-3] + "OPQ"
         contract = generate_contract(self.options.tmpdir)
         contract_id = node.publishcontract(contract)['contractaddress']
         node.generate(1)

@@ -95,8 +95,6 @@ TestingSetup::TestingSetup(const std::string& chainName) : BasicTestingSetup(cha
 		mpContractDb = new ContractDataDB(GetDataDir() / "contract", 1 << 23, false, false);
 		g_pBranchChainTxRecordsDb = new BranchChainTxRecordsDb(GetDataDir() / "branchchaintx", 1 << 23, false, false);
         g_pBranchTxRecordCache = new BranchChainTxRecordsCache();
-        pCoinAmountDB = new CoinAmountDB();
-        pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
         if (!LoadGenesisBlock(chainparams)) {
             throw std::runtime_error("LoadGenesisBlock failed.");
         }
@@ -138,8 +136,7 @@ TestChain100Setup::TestChain100Setup() : TestingSetup(MCBaseChainParams::REGTEST
     // Generate a 100-block chain:
     coinbaseKey.MakeNewKey(true);
     MCScript scriptPubKey = MCScript() <<  ToByteVector(coinbaseKey.GetPubKey()) << OP_CHECKSIG;
-    for (int i = 0; i < COINBASE_MATURITY; i++)
-    {
+    for (int i = 0; i < COINBASE_MATURITY; i++) {
         std::vector<MCMutableTransaction> noTxns;
         MCBlock b = CreateAndProcessBlock(noTxns, scriptPubKey);
         coinbaseTxns.push_back(*b.vtx[0]);
@@ -153,16 +150,15 @@ extern MCAmount MakeCoinbaseTransaction(MCMutableTransaction& coinbaseTx, MCAmou
 // Create a new block with just given transactions, coinbase paying to
 // scriptPubKey, and try to add it to the current chain.
 //
-MCBlock
-TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns, const MCScript& scriptPubKey)
+MCBlock TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>& txns, const MCScript& scriptPubKey)
 {
     const MCChainParams& chainparams = Params();
 	MCWallet tempWallet;
 	tempWallet.AddKey(coinbaseKey);
 
     //std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet);
-    ContractContext contractContext;
-	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, &contractContext, true, &tempWallet);
+    std::string strErr;
+	std::unique_ptr<MCBlockTemplate> pblocktemplate = BlockAssembler(chainparams).CreateNewBlock(scriptPubKey, true, &tempWallet, pcoinsTip, strErr);
     MCBlock& block = pblocktemplate->block;
 
     // Replace mempool-selected txns with just coinbase plus passed-in txns:
@@ -174,8 +170,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>
     {
         MCAmount nFees = 0;
         MCCoinsViewCache view(pcoinsTip);
-        for (int i=1; i < block.vtx.size(); i++)
-        {
+        for (size_t i = 1; i < block.vtx.size(); i++) {
             const MCTransactionRef& ptx = block.vtx[i];
             nFees += view.GetValueIn(*ptx) - ptx->GetValueOut();
         }
@@ -199,7 +194,7 @@ TestChain100Setup::CreateAndProcessBlock(const std::vector<MCMutableTransaction>
     while (!CheckProofOfWork(block.GetHash(), block.nBits, chainparams.GetConsensus())) ++block.nNonce;
 
     std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(block);
-    ProcessNewBlock(chainparams, shared_pblock, &contractContext, true, nullptr);
+    ProcessNewBlock(chainparams, shared_pblock, true, nullptr);
 
     MCBlock result = block;
     return result;

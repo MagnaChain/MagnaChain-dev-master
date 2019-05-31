@@ -268,26 +268,27 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
     }
     entry.pushKV("vout", vout);
 
-    if (!hashBlock.IsNull())
+    if (!hashBlock.IsNull()) {
         entry.pushKV("blockhash", hashBlock.GetHex());
+    }
 
-	if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-	{
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         UniValue contractdata(UniValue::VOBJ);
         contractdata.pushKV("contractaddress", MagnaChainAddress(tx.pContractData->address).ToString());
         contractdata.pushKV("senderpubkey", tx.pContractData->sender.GetID().ToString());//HexStr(tx.pContractData->sender.begin(), tx.pContractData->sender.end())
 
-        if(tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
+        if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION)
             contractdata.pushKV("codeOrFunc", HexStr(tx.pContractData->codeOrFunc.begin(), tx.pContractData->codeOrFunc.end()));
         else if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
             contractdata.pushKV("codeOrFunc", tx.pContractData->codeOrFunc);
         contractdata.pushKV("args", tx.pContractData->args);
 
+        contractdata.pushKV("contractcoinsin", tx.pContractData->contractCoinsIn);
         UniValue contractCoinsOut(UniValue::VOBJ);
         for (auto it : tx.pContractData->contractCoinsOut) {
             contractCoinsOut.pushKV(it.first.ToString(), it.second);
         }
-        contractdata.pushKV("amountout", contractCoinsOut);
+        contractdata.pushKV("contractcoinsout", contractCoinsOut);
 
         UniValue o(UniValue::VOBJ);
         o.pushKV("asm", ScriptToAsmStr(tx.pContractData->signature, true));
@@ -295,32 +296,37 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         contractdata.pushKV("signature", o);
 
         entry.pushKV("contractdata", contractdata);
-	}
-	if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
-	{
-		entry.pushKV("branchVSeeds", tx.branchVSeeds);
-		entry.pushKV("branchSeedSpec6", tx.branchSeedSpec6);
-	}
-	if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1)
-	{
-		entry.pushKV("sendToBranchid", tx.sendToBranchid);
-		entry.pushKV("sendToTxHexData", tx.sendToTxHexData);
-	}
-	if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
-	{
-		entry.pushKV("fromBranchId", tx.fromBranchId);
-		entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+    }
+    if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
+        entry.pushKV("branchVSeeds", tx.branchVSeeds);
+        entry.pushKV("branchSeedSpec6", tx.branchSeedSpec6);
+    }
+    if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
+        entry.pushKV("sendToBranchid", tx.sendToBranchid);
+        entry.pushKV("sendToTxHexData", tx.sendToTxHexData);
+    }
+    if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
+        entry.pushKV("fromBranchId", tx.fromBranchId);
+        entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
         MCTransactionRef pfromtx;
         MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pfromtx);
         entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
-	}
-    if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO){
+    }
+    if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
         entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());
         entry.pushKV("branchblockheight", tx.pBranchBlockData->blockHeight);
         MCBlockHeader block;
         tx.pBranchBlockData->GetBlockHeader(block);
         entry.pushKV("branchblockhash", block.GetHash().GetHex());
+    }
+    if (tx.IsRedeemMortgage()) {
+        entry.pushKV("fromBranchId", tx.fromBranchId);
+        entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+        MCTransactionRef pfromtx;
+        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        cds >> (pfromtx);
+        entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
     }
 
     if (include_hex) {

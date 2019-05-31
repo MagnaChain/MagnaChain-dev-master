@@ -170,7 +170,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         pcoinsCache = ::pcoinsTip;
     }
 
-    static const int nInnerLoopCount = 0x10000;
     int nHeightEnd = 0;
     int nHeight = 0;
 
@@ -181,7 +180,6 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
     }
 
 	uint64_t nTries = 0;
-    unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
     while (nHeight < nHeightEnd && nTries < nMaxTries && !ShutdownRequested())
     {
@@ -190,7 +188,8 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         int64_t startTime = GetTimeMillis();
         // check script pubkey
-        MCOutput& out = vecOutput[nTries % vecOutput.size()];
+        size_t indexOutput = nTries % vecOutput.size();
+        MCOutput& out = vecOutput[indexOutput];
         std::shared_ptr<MCReserveKey> pReserveKey = nullptr;
         MCScript scriptPubKey;
         if (out.tx == nullptr) {
@@ -232,22 +231,18 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
             outpoint.n = out.i;
         }
 
-        ContractContext contractContext;
         BlockAssembler::Options options = BlockAssembler::DefaultOptions(Params());
         options.outpoint = outpoint;
-        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, &contractContext, true, keystoreIn, pcoinsCache));
+        std::string strCreateBlockError;
+        std::unique_ptr<MCBlockTemplate> pblocktemplate(BlockAssembler(Params(), options).CreateNewBlock(scriptPubKey, true, keystoreIn, pcoinsCache, strCreateBlockError));
         if (!pblocktemplate.get()) {
-            // out of memory or MakeStokeTransaction fail
             nTries++;
             continue;
         }
 
+        std::vector<uint256> leaves;
         MCBlock *pblock = &pblocktemplate->block;
         pblock->hashMerkleRoot = BlockMerkleRoot(*pblock);// 后面不要再修改vtx里面的值
-        if (!Params().IsMainChain()) {
-            pblock->hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(*pblock);
-            pblock->hashMerkleRootWithData = BlockMerkleRootWithData(*pblock, contractContext);
-        }
 
         // 如果有修改头部的值，需要重新签名
         if (!pblock->prevoutStake.IsNull() && pblock->vtx.size() >= 2)//pos
@@ -263,7 +258,7 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
         if (CheckBlockWork(*pblock, val_state, Params().GetConsensus()))
         {
             std::shared_ptr<MCBlock> shared_pblock = std::make_shared<MCBlock>(*pblock);
-            if (!ProcessNewBlock(Params(), shared_pblock, &contractContext, true, nullptr, true))
+            if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr, true))
                 throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
             ++nHeight;
             blockHashes.push_back(pblock->GetHash().GetHex());
@@ -273,6 +268,16 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
 
         ++nTries;
         LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n, ", __FUNCTION__, GetTimeMillis() - startTime, nHeight);
+
+        // remove mine success coin, which is spent
+        if (vecOutput[indexOutput].tx != nullptr) {// is not generate for big boom
+            vecOutput.erase(vecOutput.begin() + indexOutput);
+            if (vecOutput.size() == 0) {
+                LogPrint(BCLog::MINING, "%s vecOutput is empty\n, ", __FUNCTION__);
+                break;
+            }
+        }
+
     }
     return blockHashes;
 }
@@ -306,7 +311,7 @@ UniValue generateBranch2ndBlock(MCWallet& wallet)
 }
 UniValue mineblanch2ndblock(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() < 0 || request.params.size() > 0)
+    if (request.fHelp || request.params.size() > 0)
         throw std::runtime_error(
             "mineBlanch2ndBlock \n"
             "\nTry to mine the 2nd block for branch chain.\n"
@@ -343,27 +348,66 @@ UniValue genforbigboomimp(MCWallet* const pwallet, int num_generate, uint64_t ma
 
         EnsureWalletIsUnlocked(pwallet);
         pwallet->TopUpKeyPool(num_generate);
-
-        //for (int i = 0; i < num_generate; ++i)
-        //{
-        //	// Generate a new key that is added to wallet
-        //	MCPubKey newKey;
-        //	if (!pwallet->GetKeyFromPool(newKey)) {
-        //		throw JSONRPCError(RPC_WALLET_KEYPOOL_RAN_OUT, "Error: Keypool ran out, please call keypoolrefill first");
-        //	}
-        //	MCKeyID keyID = newKey.GetID();
-
-        //	pwallet->SetAddressBook(keyID, "", "receive");
-
-        //	MCTxDestination kDest(keyID);
-        //	MCScript kScript = GetScriptForDestination(kDest);
-        //	vecScript.push_back(kScript);
-        //}
     }
     std::vector< MCOutput> vecOutputs;
     MCOutput dummyOut(nullptr, 0, 0, false, false, false);
     vecOutputs.push_back(dummyOut);
     return generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+}
+
+//fNeedBlockHash false means the block hash is importance
+UniValue generateblockcommon(MCWallet * const pwallet, int &num_generate, uint64_t max_tries, bool fNeedBlockHash)
+{
+    // branch chain, first gen block
+    UniValue genBlockRet(UniValue::VARR);
+    if (!Params().IsMainChain() && chainActive.Height() == 0) {
+        num_generate--;
+        genBlockRet = generateBranch2ndBlock(*pwallet);
+        if (!genBlockRet.isArray())
+            return genBlockRet;// may be gen fail.
+    }
+
+    if (num_generate <= 0)
+        return genBlockRet;
+
+    if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
+    {
+        int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
+        genbigboomnum = std::min(num_generate, genbigboomnum);
+        UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
+        if (genBigBoomBlocks.isArray()) {
+            num_generate -= genbigboomnum;
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genBigBoomBlocks.getValues());
+        }
+    }
+
+    int iTryTimes = 30;
+    while (num_generate > 0 && iTryTimes-- > 0 && !ShutdownRequested())
+    {
+        std::set<MCTxDestination> setAddress;
+        std::vector<MCOutput> vecOutputs;
+        {
+            assert(pwallet != nullptr);
+
+            LOCK2(cs_main, pwallet->cs_wallet);
+            EnsureWalletIsUnlocked(pwallet);
+
+            if (Params().IsMainChain())
+                pwallet->AvailableCoins(vecOutputs, nullptr, false);
+            else
+                pwallet->AvailableMortgageCoins(vecOutputs, false);
+
+            std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
+        }
+        UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
+        if (genblocks.isArray()) {
+            num_generate -= genblocks.size();
+            if (fNeedBlockHash)
+                genBlockRet.push_backV(genblocks.getValues());
+        }
+    }
+    return genBlockRet;
 }
 
 UniValue generate(const JSONRPCRequest& request)
@@ -395,54 +439,7 @@ UniValue generate(const JSONRPCRequest& request)
         max_tries = request.params[1].get_int();
     }
 
-    // branch chain, first gen block
-    UniValue genBlockRet(UniValue::VARR);
-    if (!Params().IsMainChain() && chainActive.Height() == 0){
-        num_generate--;
-        genBlockRet = generateBranch2ndBlock(*pwallet);
-        if (!genBlockRet.isArray())
-            return genBlockRet;// may be gen fail.
-    }
-
-    if (num_generate <= 0)
-        return genBlockRet;
-
-    if (Params().GetConsensus().BigBoomHeight > chainActive.Height())
-    {
-        int genbigboomnum = Params().GetConsensus().BigBoomHeight - chainActive.Height();
-        genbigboomnum = std::min(num_generate, genbigboomnum);
-        UniValue genBigBoomBlocks = genforbigboomimp(pwallet, genbigboomnum, max_tries);
-        if (genBigBoomBlocks.isArray()){
-            num_generate -= genbigboomnum;
-            genBlockRet.push_backV(genBigBoomBlocks.getValues());
-        }
-    }
-
-    int iTryTimes = 30;
-    while (num_generate > 0 && iTryTimes-- > 0)
-    {
-        std::set<MCTxDestination> setAddress;
-        std::vector<MCOutput> vecOutputs;
-        {
-            assert(pwallet != nullptr);
-
-            LOCK2(cs_main, pwallet->cs_wallet);
-            EnsureWalletIsUnlocked(pwallet);
-
-            if (Params().IsMainChain())
-                pwallet->AvailableCoins(vecOutputs, nullptr, false);
-            else
-                pwallet->AvailableMortgageCoins(vecOutputs, false);
-
-            std::sort(vecOutputs.begin(), vecOutputs.end(), CoinsComparer);
-        }
-        UniValue genblocks = generateBlocks(pwallet, vecOutputs, num_generate, max_tries, true);
-        if (genblocks.isArray()) {
-            num_generate -= genblocks.size();
-            genBlockRet.push_backV(genblocks.getValues());
-        }
-    }
-    return genBlockRet;
+    return generateblockcommon(pwallet, num_generate, max_tries, true);
 }
 
 UniValue generateforbigboom(const JSONRPCRequest& request)
@@ -479,45 +476,44 @@ UniValue generateforbigboom(const JSONRPCRequest& request)
 
 UniValue setgenerate(const JSONRPCRequest& request )
 {
-	if ( request.fHelp || request.params.size() < 1 || request.params.size() > 1)
-		throw std::runtime_error(
-			"setgenerate generate ( genproclimit )\n"
-			"\nSet 'generate' true or false to turn generation on or off.\n"
-			"Generation is limited to 'genproclimit' processors, -1 is unlimited.\n"
-			"See the getgenerate call for the current setting.\n"
-			"\nArguments:\n"
-			"1. generate         (boolean, required) Set to true to turn on generation, off to turn off.\n"
-			"\nExamples:\n"
-			"\nSet the generation on with a limit of one processor\n"
-			+ HelpExampleCli("setgenerate", "true 1") +
-			"\nCheck the setting\n"
-			+ HelpExampleCli("getgenerate", "") +
-			"\nTurn off generation\n"
-			+ HelpExampleCli("setgenerate", "false") +
-			"\nUsing json rpc\n"
-			+ HelpExampleRpc("setgenerate", "true, 1")
-		);
+    if ( request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+        throw std::runtime_error(
+            "setgenerate generate ( genproclimit )\n"
+            "\nSet 'generate' true or false to turn generation on or off.\n"
+            "Generation is limited to 'genproclimit' processors, -1 is unlimited.\n"
+            "See the getgenerate call for the current setting.\n"
+            "\nArguments:\n"
+            "1. generate         (boolean, required) Set to true to turn on generation, off to turn off.\n"
+            "\nExamples:\n"
+            "\nSet the generation on with a limit of one processor\n"
+            + HelpExampleCli("setgenerate", "true 1") +
+            "\nCheck the setting\n"
+            + HelpExampleCli("getgenerate", "") +
+            "\nTurn off generation\n"
+            + HelpExampleCli("setgenerate", "false") +
+            "\nUsing json rpc\n"
+            + HelpExampleRpc("setgenerate", "true, 1")
+        );
 
     if (!Params().IsMainChain() && chainActive.Tip()->nHeight == 0)
         throw JSONRPCError(RPC_VERIFY_ERROR, "Branch chain 2nd block only can mine by `mineblanch2ndblock`");
 
-	if (Params().MineBlocksOnDemand())
-		throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+    //if (Params().MineBlocksOnDemand())
+    //	throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+    
+    bool fGenerate = true;
+    if (request.params.size() > 0) {
+        fGenerate = request.params[0].get_bool();
+    }
+    
+    int nGenProcLimit = 1;
+    MCWallet* pwallet = GetWalletForJSONRPCRequest(request);
+    EnsureWalletIsUnlocked(pwallet);
 
-	bool fGenerate = true;
-	if ( request.params.size() > 0)
-		fGenerate = request.params[0].get_bool();
+    GenerateMCs(fGenerate, nGenProcLimit, Params());
 
-	int nGenProcLimit = 1;
-
-	MCWallet *  pwallet = GetWalletForJSONRPCRequest(request);
-	EnsureWalletIsUnlocked(pwallet);
-
-	GenerateMCs(fGenerate, nGenProcLimit, Params());
-
-	return NullUniValue;
+    return NullUniValue;
 }
-
 
 UniValue generatetoaddress(const JSONRPCRequest& request)
 {
@@ -544,7 +540,7 @@ UniValue generatetoaddress(const JSONRPCRequest& request)
     int nGenerate = request.params[0].get_int();
     uint64_t nMaxTries = 1000000;
     if (!request.params[2].isNull()) {
-        nMaxTries = request.params[2].get_int();
+        nMaxTries = (uint64_t)request.params[2].get_int64();
     }
 
     MagnaChainAddress address(request.params[1].get_str());
@@ -669,6 +665,7 @@ std::string gbt_vb_name(const Consensus::DeploymentPos pos) {
     return s;
 }
 
+// this api is use to mining pool, mgc is pos, so it's useless.
 UniValue getblocktemplate(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() > 2)
@@ -932,12 +929,12 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
             scriptForMine = GetScriptForDestination(keyID);
         }
 
-        ContractContext contractContext;
         MCCoinsView viewDummy;
         MCCoinsViewCache view(&viewDummy);
-        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, &contractContext, fSupportsSegwit, pwallet, &view);
+        std::string strCreateBlockError;
+        pblocktemplate = BlockAssembler(Params()).CreateNewBlock(scriptForMine, fSupportsSegwit, pwallet, &view, strCreateBlockError);
         if (!pblocktemplate)
-            throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
+            throw JSONRPCError(RPC_OUT_OF_MEMORY, strCreateBlockError);
 
         // Need to update only after we know CreateNewBlock succeeded
         pindexPrev = pindexPrevNew;
@@ -1168,8 +1165,7 @@ UniValue submitblock(const JSONRPCRequest& request)
 
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    ContractContext contractContext;
-    bool fAccepted = ProcessNewBlock(Params(), blockptr, &contractContext, true, nullptr);
+    bool fAccepted = ProcessNewBlock(Params(), blockptr, true, nullptr);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found) {
@@ -1426,7 +1422,7 @@ static const CRPCCommand commands[] =
     { "mining",             "getnetworkhashps",       &getnetworkhashps,       true,  {"nblocks","height"} },
     { "mining",             "getmininginfo",          &getmininginfo,          true,  {} },
     { "mining",             "prioritisetransaction",  &prioritisetransaction,  true,  {"txid","dummy","fee_delta"} },
-    { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
+ //   { "mining",             "getblocktemplate",       &getblocktemplate,       true,  { "address", "template_request"} },
     { "mining",             "submitblock",            &submitblock,            true,  {"hexdata","dummy"} },
 
     { "generating",         "generate",               &generate,               true,  { "nblocks","maxtries" } },

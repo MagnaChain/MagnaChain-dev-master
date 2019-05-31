@@ -155,10 +155,11 @@ void Shutdown()
     LogPrintf("%s: In progress...\n", __func__);
     static MCCriticalSection cs_Shutdown;
     TRY_LOCK(cs_Shutdown, lockShutdown);
-    if (!lockShutdown)
+    if (!lockShutdown) {
         return;
-
-	GenerateMCs(false, 1, Params());
+    }
+    
+    GenerateMCs(false, 1, Params());
 
     /// Note: Shutdown() must be able to handle cases in which initialization failed part of the way,
     /// for example if the data directory was found to be locked.
@@ -241,10 +242,6 @@ void Shutdown()
         g_pBranchDataMemCache = nullptr;
         delete g_pBranchDb;
         g_pBranchDb = nullptr;
-        delete pCoinAmountCache;
-        pCoinAmountCache = nullptr;
-        delete pCoinAmountDB;
-        pCoinAmountDB = nullptr;
     }
 #ifdef ENABLE_WALLET
     for (CWalletRef pwallet : vpwallets) {
@@ -323,8 +320,8 @@ void OnRPCPreCommand(const CRPCCommand& cmd)
 {
     // Observe safe mode
     std::string strWarning = GetWarnings("rpc");
-    if (strWarning != "" && !gArgs.GetBoolArg("-disablesafemode", DEFAULT_DISABLE_SAFEMODE) &&
-        !cmd.okSafeMode)
+    bool fdisablesm = gArgs.GetBoolArg("-disablesafemode", DEFAULT_DISABLE_SAFEMODE);
+    if (strWarning != "" && !fdisablesm && !cmd.okSafeMode)
         throw JSONRPCError(RPC_FORBIDDEN_BY_SAFE_MODE, std::string("Safe mode: ") + strWarning);
 }
 
@@ -841,6 +838,14 @@ void InitLogging()
     fLogIPs = gArgs.GetBoolArg("-logips", DEFAULT_LOGIPS);
     LogPrintf("MagnaChain version %s\n", FormatFullVersion());
 }
+
+namespace { // Variables internal to initialization process only
+    ServiceFlags nRelevantServices = NODE_NETWORK;
+    int nMaxConnections;
+    int nUserMaxConnections;
+    int nFD;
+    ServiceFlags nLocalServices = NODE_NETWORK;
+} // namespace
 
 [[noreturn]] static void new_handler_terminate()
 {
@@ -1517,10 +1522,6 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
-                // The on-disk coinsdb is now in a good state, create the cache
-                pCoinAmountDB = new CoinAmountDB();
-                pCoinAmountCache = new CoinAmountCache(pCoinAmountDB);
-                
                 if (Params().IsMainChain()) //only in main chain
                 {
                     if (g_pBranchDb == nullptr) { // cache size calculations

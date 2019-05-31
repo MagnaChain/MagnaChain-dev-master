@@ -21,6 +21,19 @@ from test_framework.util import (
     bytes_to_hex_str,
 )
 
+def get_mempool_total_fee(node):
+    '''
+    获取内存池中所有交易的手续费总和
+    :param node:
+    :return:
+    '''
+    total_fee = 0
+    txs = node.getrawmempool(True)
+    for txid in txs:
+        if txs[txid].get('fee',0):
+            total_fee += txs[txid]['fee']
+    return total_fee
+
 
 class SendToBranchchainTest(MagnaChainTestFramework):
     # Each functional test is a subclass of the MagnaChainTestFramework class.
@@ -35,22 +48,21 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.setup_clean_chain = True
         self.num_nodes = 2
         self.extra_args = [['-txindex'],['-txindex']]
-        # self.side_extra_args = [['-txindex']]
-        # self.side_extra_args = [['-disablesafemode=1'],['-disablesafemode=1']]
 
         '''
         self.num_sidenodes here is setting sidechain nodes num，just like self.num_nodes
         and the self.sidenodes like self.nodes
         '''
         self.num_sidenodes = 2
-        # self.rpc_timewait = 900
 
     def run_test(self):
         """Main test logic"""
         self.sync_all([self.sidenodes])
 
         for i in range(2):
+            self.log.info('side node {} total fee {}'.format(i,get_mempool_total_fee(self.sidenodes[i])))
             self.sidenodes[i].generate(2)
+            self.log.info('side node {} balance {}'.format(i,self.sidenodes[i].getbalance()))
             self.sync_all([self.sidenodes])
             print(self.node0.getrawmempool(True),self.node1.getrawmempool())
             self.nodes[i].generate(2)
@@ -103,16 +115,19 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.log.info(sys._getframe().f_code.co_name)
         txid = self.node0.getbranchchaininfo(self.sidechain_id)['txid']
         assert_raises_rpc_error(-25, "Invalid branch transaction.", self.node0.getbranchchaintransaction, txid)
-        txid = self.snode0.sendtoaddress(self.snode0.getnewaddress(), 1)
+        txid = self.snode0.sendtoaddress(self.snode0.getnewaddress(), 0.1)
         assert_raises_rpc_error(-25, "Load transaction sendinfo fail.", self.node0.getbranchchaintransaction, txid)
         assert_raises_rpc_error(-25, "Load transaction sendinfo fail.", self.snode0.getbranchchaintransaction, txid)
         txid = self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)['txid']
         self.node0.generate(8)
+        self.sync_all()
+        self.snode0.generate(1)
+        self.sync_all([self.sidenodes])
         ret = self.node0.getbranchchaintransaction(txid)
         print(ret)
         assert_equal(ret['txid'], txid)
         assert_equal(ret['confirmations'], 8)
-        txid = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 1)['txid']
+        txid = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 0.001)['txid']
         self.snode0.generate(7)
         self.node0.generate(1)
         self.snode0.generate(1)
@@ -181,6 +196,8 @@ class SendToBranchchainTest(MagnaChainTestFramework):
                                 self.snode0.rebroadcastchaintransaction, txid)
         self.snode0.generate(1)
         assert_equal(len(self.snode0.getrawmempool()), 0)  # ensure mempool is empty
+        
+        
         txid = self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)['txid']
         self.node0.generate(1)
         assert_raises_rpc_error(-25, 'can not broadcast because no enough confirmations',
@@ -190,12 +207,16 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         txs = self.snode0.getrawmempool(True)
         for tid in txs:
             assert_equal(txs[tid]['version'], 7)  # here we are
+        print(self.node0.getrawmempool())
         assert_raises_rpc_error(-25, 'Error: accept to memory pool fail: branchchaintransstep2 tx duplicate', self.node0.rebroadcastchaintransaction, txid)
+        print(self.node0.getrawmempool())
         if gen_blocks:
             self.snode0.generate(2)  # 注释后，会导致后面主链的某个generate报错，Branch contextual check block header fail
 
         # to mainchain
+        print(self.node0.getrawmempool())
         self.node0.generate(2)
+        print(self.node0.getrawmempool())
         assert_equal(len(self.node0.getrawmempool()), 0)  # ensure mempool is empty
         txid = self.snode0.sendtobranchchain('main', self.node0.getnewaddress(), 1)['txid']
         self.snode0.generate(1)
@@ -270,7 +291,11 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         before_work = int(self.snode0.getchaintipwork(), 16)
         before_height = self.snode0.getblockcount()
         before_besthash = self.snode0.getbestblockhash()
+        for n in self.sidenodes:
+            self.log.info("before invalidateblock {},{}".format(n.getblockcount(),int(n.getchaintipwork(), 16)))
         self.snode0.invalidateblock(bad_hash)
+        for n in self.sidenodes:
+            self.log.info("after invalidateblock {},{}".format(n.getblockcount(),int(n.getchaintipwork(), 16)))
         # self.log.info("after invalidateblock,balance {}".format(self.snode0.getbalance()))
         new_height = self.snode0.getblockcount()
         new_hash = self.snode0.getbestblockhash()
@@ -283,10 +308,19 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(self.snode0.getblockcount(),new_height + 7)
         self.node0.generate(1)
         for i in range(3):
-            self.snode0.generate(8)
+            # avoid generate timeout
+            for j in range(8):
+                self.snode0.generate(1)
+        self.node0.generate(1)
+        self.sync_all()
+        for n in self.sidenodes:
+            self.log.info("before test_getbranchchainheight {},{}".format(n.getblockcount(),int(n.getchaintipwork(), 16)))
+        gens = self.make_more_work_than(0,1,True)
         self.node0.generate(1)
         self.test_getbranchchainheight()
         assert_raises_rpc_error(-25, 'txn-already-in-records', self.snode0.rebroadcastchaintransaction, txid2)
+        self.sync_all()
+        # self.sync_all([self.sidenodes])
         self.test_getbranchchainheight()
         self.log.info("node0 mempool size {}".format(self.node0.getmempoolinfo()['size']))
         # todo: we need reconsiderblock previous tip

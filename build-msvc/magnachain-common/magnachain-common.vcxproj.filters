@@ -68,9 +68,6 @@
     <Filter Include="src\univalue\lib">
       <UniqueIdentifier>{1e74103a-7db6-4943-beb2-3f95f5fb7c28}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\lua\cjson">
-      <UniqueIdentifier>{32d577cb-ac29-4611-9815-3d0b84a561e4}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\smartcontract">
       <UniqueIdentifier>{1add5529-bf39-4cd6-a785-3e49346de537}</UniqueIdentifier>
     </Filter>
@@ -394,20 +391,8 @@
     <ClCompile Include="..\..\src\zmq\zmqpublishnotifier.cpp">
       <Filter>src\zmq</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\fpconv.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\g_fmt.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\strbuf.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\smartcontract\contractdb.cpp">
       <Filter>src\smartcontract</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\lua_cjson.c">
-      <Filter>src\lua\cjson</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\address\addrdb.cpp">
       <Filter>src\address</Filter>
@@ -881,15 +866,6 @@
     </ClInclude>
     <ClInclude Include="..\..\src\zmq\zmqpublishnotifier.h">
       <Filter>src\zmq</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\lua\cjson\dtoa_config.h">
-      <Filter>src\lua\cjson</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\lua\cjson\fpconv.h">
-      <Filter>src\lua\cjson</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\lua\cjson\strbuf.h">
-      <Filter>src\lua\cjson</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\smartcontract\contractdb.h">
       <Filter>src\smartcontract</Filter>

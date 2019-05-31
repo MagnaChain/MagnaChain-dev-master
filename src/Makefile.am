@@ -301,6 +301,7 @@ libmagnachain_mysqlcppconn_a_SOURCES = \
 crypto_libmagnachain_crypto_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES) $(MAGNACHAIN_CONFIG_INCLUDES)
 crypto_libmagnachain_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 crypto_libmagnachain_crypto_a_SOURCES = \
+  crypto/ctaes/ctaes.c \
   crypto/aes.cpp \
   crypto/aes.h \
   crypto/chacha20.h \
@@ -357,9 +358,6 @@ libmagnachain_lua_a_SOURCES = \
   lua/lvm.c \
   lua/lzio.c \
   lua/print.c \
-  lua/cjson/fpconv.c \
-  lua/cjson/lua_cjson.c \
-  lua/cjson/strbuf.c \
   lua/lua_cmsgpack.c
 
 # consensus: shared between all executables that validate any consensus rules.

@@ -1,0 +1,1302 @@
+1555896687a:1:{s:14:"all-blocks.htm";a:9:{s:8:"fileName";s:14:"all-blocks.htm";s:7:"content";s:22389:"title = "all-blocks"
+url = "/all-blocks/:date?"
+layout = "mgc-date"
+is_hidden = 0
+==
+<?php
+
+function onStart() {
+	
+	if($this->param('date')){
+
+		$date = $this->param('date');                                //现在是写死某一天
+
+		$timestamp = strtotime($date.'00:00:00');
+		$tomorrow_zero = $timestamp + 86400;
+
+		if ($timestamp == false) {
+			header("Location: /404/请正确输入时间信息~");
+			exit();
+		}
+
+		$web_date = explode('-', $this->param('date'));
+
+		if (count($web_date) == 2) {
+			
+			header("Location: /404/请正确输入时间信息~");
+			exit();
+
+		} elseif (count($web_date) == 3) {
+			
+			$day_array = str_split($web_date[2], 1);
+
+			if (count($day_array) == 3) {
+		
+				if ($day_array[0] == '0') {
+	
+					$web_date[2] = $day_array[1].$day_array[2];
+
+				} else {
+
+					header("Location: /404/请正确输入时间信息~");
+					exit();
+
+				}
+
+			} elseif (count($day_array) > 3) {
+
+				header("Location: /404/请正确输入时间信息~");
+				exit();
+
+			}  elseif (count($day_array) == 1) {
+		
+				$web_date[2] = '0' . $day_array[0];
+
+			}
+
+			$this['year'] = $web_date[0];
+			$this['month'] = $web_date[1];
+			$this['day'] = $web_date[2];
+
+			$block = Db::connection('magnachain')->table('block')->select('height', 'time', 'blockhash', 'blocksize','height')->whereBetween('time', [$timestamp, $tomorrow_zero])->orderBy('time', 'esc')->take(50)->get();
+			$block = $block->toArray();
+			
+			if ($block == null) {
+
+				$this['nothing'] = "true";
+				
+			}
+
+			$blockhash_array = array();
+
+			for ($i=0; $i < count($block); $i++) { 
+				$blockhash_array[$i] = $block[$i]->blockhash;
+			}
+
+			$num = Db::connection('magnachain')->table('transaction')->select('version','blockhash')->whereIn('blockhash', $blockhash_array)->get();
+			$num = $num->toArray();
+
+			$tempArr = array();
+
+			foreach($num as $key => $value ){
+
+			    $tempArr[$value->blockhash][] = $value->version;
+
+			}
+			
+			for ($i=0; $i < count($block); $i++) {
+
+				$block[$i]->num = count($tempArr[$block[$i]->blockhash]);
+				$block[$i]->time = date("Y-m-d H:i:s", $block[$i]->time);
+
+			}
+
+			$count = Db::connection('magnachain')->table('block')->select('height')->whereBetween('time', [$timestamp, $tomorrow_zero])->count();
+
+			if ($count>50) {
+
+				$block = array_slice($block, 0, 50);
+
+				//$this['more_block'] = "true";
+
+			}
+
+			$this['count'] = $count;
+			$pagination = ceil($count/50);
+
+			$this['pagination'] = $pagination;
+
+			$this['infos'] = $block;
+
+		}
+
+	}
+	
+}
+
+?>
+==
+<link rel="stylesheet" type="text/css" href="/themes/magnachain/assets/css/all-blocks-loading.css">
+<style>
+   * {margin: 0;padding: 0}
+   #calendar {width: 280px;margin: 0px auto; overflow: hidden; border: 1px solid #000; padding: 20px; position: relative}
+   #calendar h4 {text-align: center;margin-bottom: 10px}
+   #calendar .a1 {position: absolute;top: 20px;left: 20px;}
+   #calendar .a2 {position: absolute;top: 20px;right: 20px;}
+   #calendar .week {height: 30px;line-height: 20px;border-bottom: 1px solid #000;margin-bottom: 10px}
+   #calendar .week li {float: left;width: 30px;height: 30px;text-align: center;list-style: none;}
+   #calendar .dateList {overflow: hidden;clear: both}
+   #calendar .dateList button {float: left;width: 30px;height: 30px;text-align: center;line-height: 30px;list-style: none;}
+   #calendar .dateList .ccc {color: #ccc;}
+   #calendar .dateList .red {background: #F90;color: #fff;}
+   #calendar .dateList .sun {color: #f00;}
+</style>
+
+<div class="container content">
+
+	<div>
+
+		<p id="web_date" year="{{ year }}" month="{{ month }}" day="{{ day }}" date="{{ year }}-{{ month }}-{{ day }}" style="visibility: hidden;"></p>
+
+		<div class="hidden-xs blockList-cal" style="margin-top: -120px;">
+
+			<ul class="ul-date aaa" style="list-style-type: none; text-align: left;">
+
+				<span class="blockList-cal-unit" translate style="float: left;">
+					<span class="ng-scope">{{ '年'|_ }}</span>
+				</span>
+
+				<li class="blockList-cal-row blockList-cal-row-year year" style="margin-bottom: 8px;"> 
+					
+				</li>
+
+				<span class="blockList-cal-unit" translate style="float: left;">
+					<span class="ng-scope">{{ '月'|_ }}</span>
+				</span>
+
+				<li class="blockList-cal-row blockList-cal-row-month month" style="margin-bottom: 8px;">
+					
+				</li>
+
+				<span class="blockList-cal-unit" translate style="display: inline;">
+					<span class="ng-scope">{{ '日'|_ }}</span>
+				</span>
+
+				<li class="blockList-cal-row blockList-cal-row-date day" style="display: inline;">
+					
+				</li>
+
+			</ul>
+
+		</div>
+
+	</div>
+
+	<div class="block">
+		
+		<span class="ng-scope date" style="font-size: 24px; float: left;"></span>
+
+			<div class="table-responsive">
+
+				<table class="table table-striped">
+
+					<thead>
+					   <th class="">{{ '高度'|_ }}</th>
+					   <th class="">{{ '时间'|_ }}</th>
+					   <th class="">{{ '交易数'|_ }}</th>
+					   <th class="">{{ '大小'|_ }}</th>
+					   <th class="">{{ '块哈希'|_ }}</th>
+					</thead>
+					
+					<tbody class="tbody-block">
+						
+						{% for info in infos %}
+
+						<tr> 
+					        <td class="" style="line-height: 51px;">
+					        	<a href="/block/{{ info.height }}">
+									<span class="ellipsis ng-binding"> {{ info.height }}</span>
+								</a></td>
+					        <td class="" style="text-align: left; line-height: 51px;"> {{ info.time }} </td>
+					        <td class="" style="text-align: left; line-height: 51px;"> {{ info.num }} </td>
+					        <td class="" style="text-align: left; line-height: 51px;"> {{ info.blocksize }} </td>
+					        <td class="" style="text-align: left; line-height: 51px;">
+					        	<a href="/block/{{ info.blockhash }}" style="float: left;">
+								<span class="ellipsis ng-binding" style="white-space:nowrap;"> {{ info.blockhash }} </span>
+								</a>
+							</td>
+					    </tr>
+
+					    {% endfor %}
+
+				    </tbody>
+
+				</table>
+
+			</div>
+
+			<!-- pagination -->
+
+			<p id="web_page" page="{{ pagination }}" style="visibility: hidden;"></p>
+
+			{% if pagination > 4 %}
+
+			<ul class="pagination" id="pagination">
+				<!-- <li><a href="javascript:void(0);" id="pagination_previous" style="color: #777777">&laquo;</a></li> -->
+				{% for i in 1..5 %}
+					{% if i == 1 %}
+					<li><a href="javascript:void(0);" id="pagination_1" page="1" style="background-color: #ebebeb; color: #777777">{{ i }}</a></li>
+					{% else %}
+					<li><a href="javascript:void(0);" id="pagination_{{ i }}" page="{{ i }}" style="color: #777777">{{ i }}</a></li>
+					{% endif %}
+				{% endfor %}
+				<li><a href="javascript:void(0);" id="pagination_next" page="2" style="color: #777777">&raquo;</a></li>
+				<p style="display: inline-block;">&nbsp 共{{ pagination }}页  跳到</p>
+				<input type="text" id="page-input" name="page-input" style="width: 54px;">
+				<p style="display: inline-block;">页</p>
+				<button class="btn btn-default" id="confirm-page" onclick="pageInfo();" style="display: inline-block;">确认</button>
+			</ul>
+
+			{% else %}
+
+			<ul class="pagination" id="pagination" style="display: none;">
+				<!-- <li><a href="javascript:void(0);" id="pagination_previous" style="color: #777777">&laquo;</a></li> -->
+				{% for i in 1..pagination %}
+					{% if i == 1 %}
+					<li><a href="javascript:void(0);" id="pagination_1" page="1" class="avtive" style="background-color: #ebebeb; color: #777777">{{ i }}</a></li>
+					{% else %}
+					<li><a href="javascript:void(0);" id="pagination_{{ i }}" page={{ i }} style="color: #777777">{{ i }}</a></li>
+					{% endif %}
+				{% endfor %}
+				<li><a href="javascript:void(0);" id="pagination_next" page="2" style="color: #777777">&raquo;</a></li>
+				<p style="display: inline-block;">&nbsp 共{{ pagination }}页  跳到</p>
+				<input type="text" id="page-input" name="page-input" style="width: 54px;">
+				<p style="display: inline-block;">页</p>
+				<button class="btn btn-default" id="confirm-page" onclick="pageInfo();" style="display: inline-block;">确认</button>
+			</ul>
+
+			{% endif %}
+
+			<!-- pagination end --> 
+			<div id="div-loader" style="height:37px; margin-top: 100px; display: none;">
+				<div class="loader" >Loading...</div>
+			</div>
+
+			{% if nothing %}
+					    
+			<h1 id="no-block" style="margin-top: 100px;">{{ '没有区块产生~'|_ }}</h1>
+
+			{% else %}
+
+			<h1 id="no-block" style="margin-top: 100px; display: none;">{{ '没有区块产生~'|_ }}</h1>
+				
+		    {% endif %}
+
+			<!-- {% if more_block %}
+			
+			<button class="btn btn-default btn-md" id="show-more" date="{{ year }}-{{ month }}-{{ day }}" style="float: left;">{{ '显示更多'|_ }}</button>
+			
+			{% endif %} -->
+
+	</div>
+
+</div>
+
+<script>
+
+	$('.input-daterange input').each(function() {
+	    $(this).datepicker({
+							    format: {
+							        
+							        toDisplay: function (date, format, language) {
+							            var d = new Date(date);
+							            d.setDate(d.getDate());
+							            return d.toISOString();
+							        },
+
+							        toValue: function (date, format, language) {
+							            var d = new Date(date);
+							            d.setDate(d.getDate());
+							            return new Date(d);
+							        }
+							        
+							    }
+							});
+
+	    $(this).on('changeDate', function(){
+
+	    	var timestamp = $('#datepicker').val();
+	    	var date = new Date(timestamp);
+	    	date.setHours('00');
+
+	    	year = date.getFullYear().toString();
+	    	month = (date.getMonth()+1).toString();
+	    	day = date.getDate().toString();
+
+	    	var url = year + '-' + month + '-' + day;
+
+	    	if (day.length == 2) {
+				history.pushState("", "", '/all-blocks/' + year + '-' + month + '-' + day);
+			} else {
+				history.pushState("", "", '/all-blocks/' + year + '-' + month + '-0' + day);
+			}
+
+	    	$.post("/date_block", {year:year, month:month, day:day}, function (data, status) {
+
+    	       if (data != 0) {
+
+					$('.tbody-block').empty();
+					$('#no-block').hide();
+
+					var data = JSON.parse(data);
+
+					for (var i = 0; i < data['block'].length; i++) {
+
+						$('.tbody-block').append(   "<tr>" +
+												        "<td class='' style='line-height: 51px;'>"+
+												        	"<a href='/block/"+data['block'][i]['height']+"'>"+
+																"<span class='ellipsis ng-binding'>"+ data['block'][i]['height']+"</span>"+
+															"</a></td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['time'] +"</td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['num'] +"</td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['blocksize'] +"</td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+
+												        	"<a href='/block/" +data['block'][i]['blockhash']+ "' style='float: left;'>"+
+															"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data['block'][i]['blockhash'] +"</span>"+
+															"</a>"+
+														"</td>"+
+												    "</tr>" );
+					}
+
+					if (data['pagination']!=null) {console.log(data['pagination']);data['pagination'] = parseInt(data['pagination']);console.log(data['pagination']);}
+
+					if (data['pagination']>1) {
+
+						$("#web_page").attr('page', '');
+						$("#web_page").attr('page', data['pagination']);
+
+						$('#pagination').find('li').empty();
+						$("#pagination p:first").text("");
+						$("#pagination p:first").text('共'+data['pagination']+"页 跳到")
+
+						if (data['pagination']>4) {
+							
+							for(var i = 1; i <= 5; i++){
+
+								if (i==1) {
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_1' page='1' style='background-color: #ebebeb; color: #777777'>1</a></li>"); 
+								}else{
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_"+i+"' page='"+i+"' style='color: #777777'>"+i+"</a></li>"); 
+								}
+
+							}
+
+							$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_next' page='2' style='color: #777777'>&raquo;</a></li>"); 
+							
+						} else {
+
+							for(var i = 1; i <= data['pagination']; i++){
+								if (i==1) {
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_1' page='1' class='avtive' style='background-color: #ebebeb; color: #777777'>"+i+"</a></li>"); 
+								} else {
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_"+i+"' page="+i+" style='color: #777777'>"+i+"</a></li>"); 
+								}
+							}
+
+						}
+
+						$('#pagination').show();
+
+					} 
+
+				} else {
+
+					$("#pagination").hide();
+					$('.tbody-block').empty();
+					$('#show-more').remove();
+					$('#no-block').show();
+
+				}
+
+			});
+
+	    });
+
+	});
+
+	$(document).on("click","#show-more",function(){
+
+		$('#show-more').hide();
+		$('#div-loader').show();
+
+		var date = $('#show-more').attr('date');
+
+		$.post('/more_block', {date:date}, function(data,status){
+
+			if (data != null) {
+
+				$('#div-loader').hide();
+
+				var data = JSON.parse(data);
+
+				for (var i = 0; i < data.length; i++) {
+
+					$('.tbody-block').append(   "<tr>" +
+											        "<td class='' style='line-height: 51px;'>"+
+											        	"<a href='/block/"+data[i]['height']+"'>"+
+															"<span class='ellipsis ng-binding'>"+ data[i]['height']+"</span>"+
+														"</a></td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data[i]['time'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data[i]['num'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data[i]['blocksize'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+
+											        	"<a href='/block/" +data[i]['blockhash']+ "' style='float: left;'>"+
+														"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data[i]['blockhash'] +"</span>"+
+														"</a>"+
+													"</td>"+
+											    "</tr>" );
+
+				}
+
+			}
+
+		});
+
+	});
+
+
+	$("#pagination a").bind("click", function(event){
+	
+		event.stopImmediatePropagation();
+
+		var page = $(this).attr('page');
+		var total_page = $("#web_page").attr('page');
+		var date = $('#web_date').attr('date');
+		console.log(page+total_page+date);
+		getPageInfo(page, total_page, date);
+		
+	});
+
+
+	$('#page-input').bind('keydown', function(event){
+
+        if(event.keyCode == "13")    
+        {
+
+        	var page = $(this).val();
+        	var total_page = $("#web_page").attr('page');
+        	var date = $('#web_date').attr('date');
+         	
+         	if (page != null) {
+
+         		getPageInfo(page, total_page, date);
+
+         	}
+
+        }
+
+    });
+
+    function pageInfo(){
+
+    	var page = $('#page-input').val();
+    	var total_page = $("#web_page").attr('page');
+    	var date = $('#web_date').attr('date');
+     	
+     	if (page != null) {
+
+     		getPageInfo(page, total_page, date);
+
+     	}
+
+    }
+
+    function getPageInfo(page, total_page, date){
+    	
+    	$.get("/all_blocks_pagination", {page:page, total_page:total_page, date:date}, function (data, status) {
+   			
+       		if (data != null) {
+
+       			$('.tbody-block').empty();
+
+       			var data = JSON.parse(data);
+
+       			if (total_page <= 5) {
+
+       				$("#pagination").find('li').remove();
+
+       				if (data['page'] > 1) {
+       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+  (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+       					registerClick("#pagination_previous");
+       				}
+				
+       				for(var i = 0; i < total_page; i++){
+
+       					if (data['page'] == i) {
+       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+       						registerClick("#pagination_"+i);
+       					} else {
+       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+       						registerClick("#pagination_"+i);
+       					}  
+
+       				}
+					
+					if (data['page'] < total_page) {
+       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+       					registerClick("#pagination_next");
+       				}
+
+       			} else if (total_page > 5) {
+
+       				if (total_page-data['page']>=2 && data['page']>2) {  //中间情况
+
+       					$("#pagination").find('li').remove();
+
+	       				if (data['page'] > 1) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+ (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+	       					registerClick("#pagination_previous");
+	       				}
+						
+	       				for(var i = data['page']-2; i <= data['page']+2; i++){
+
+	       					if (data['page'] == i) {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					} else {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					}  
+
+	       				}
+						
+						if (data['page'] < total_page) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+	       					registerClick("#pagination_next");
+	       				}
+
+       				} else if (data['page']<=2){ //最左情况
+
+       					$("#pagination").find('li').remove();
+
+	       				if (data['page'] > 1) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+ (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+	       					registerClick("#pagination_previous");
+	       				}
+					
+	       				for(var i = 1; i <= 5; i++){
+
+	       					if (data['page'] == i) {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					} else {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					}  
+
+	       				}
+						
+						if (data['page'] < total_page) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+	       					registerClick("#pagination_next");
+	       				}
+
+
+       				} else if (total_page-data['page']<2){ //最右情况
+
+       					$("#pagination").find('li').remove();
+
+	       				if (data['page'] > 1) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+ (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+	       					registerClick("#pagination_previous");
+	       				}
+					
+	       				for(var i = total_page-4; i <= total_page; i++){
+
+	       					if (data['page'] == i) {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					} else {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					}  
+
+	       				}
+						
+						if (data['page'] < total_page) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+	       					registerClick("#pagination_next");
+	       				}
+
+       				}
+
+       			}
+
+				for (var i = 0; i < data['block'].length; i++) {
+
+					$('.tbody-block').append(   "<tr>" +
+											        "<td class='' style='line-height: 51px;'>"+
+											        	"<a href='/block/"+data['block'][i]['height']+"'>"+
+															"<span class='ellipsis ng-binding'>"+ data['block'][i]['height']+"</span>"+
+														"</a></td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['time'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['num'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['blocksize'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+
+											        	"<a href='/block/" +data['block'][i]['blockhash']+ "' style='float: left;'>"+
+														"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data['block'][i]['blockhash'] +"</span>"+
+														"</a>"+
+													"</td>"+
+											    "</tr>" );
+
+				}
+
+       		}
+
+		});
+
+    }
+
+    function registerClick(id) {
+
+    	$(id).unbind('click');
+
+    	$(id).bind("click", function(event){
+		
+			event.stopImmediatePropagation();
+
+			var page = $(this).attr('page');
+			var total_page = $("#web_page").attr('page');
+			var date = $('#web_date').attr('date');
+			getPageInfo(page, total_page, date);
+			
+		});
+
+    }
+
+</script>";s:5:"mtime";i:1555487850;s:6:"markup";s:19782:"<link rel="stylesheet" type="text/css" href="/themes/magnachain/assets/css/all-blocks-loading.css">
+<style>
+   * {margin: 0;padding: 0}
+   #calendar {width: 280px;margin: 0px auto; overflow: hidden; border: 1px solid #000; padding: 20px; position: relative}
+   #calendar h4 {text-align: center;margin-bottom: 10px}
+   #calendar .a1 {position: absolute;top: 20px;left: 20px;}
+   #calendar .a2 {position: absolute;top: 20px;right: 20px;}
+   #calendar .week {height: 30px;line-height: 20px;border-bottom: 1px solid #000;margin-bottom: 10px}
+   #calendar .week li {float: left;width: 30px;height: 30px;text-align: center;list-style: none;}
+   #calendar .dateList {overflow: hidden;clear: both}
+   #calendar .dateList button {float: left;width: 30px;height: 30px;text-align: center;line-height: 30px;list-style: none;}
+   #calendar .dateList .ccc {color: #ccc;}
+   #calendar .dateList .red {background: #F90;color: #fff;}
+   #calendar .dateList .sun {color: #f00;}
+</style>
+
+<div class="container content">
+
+	<div>
+
+		<p id="web_date" year="{{ year }}" month="{{ month }}" day="{{ day }}" date="{{ year }}-{{ month }}-{{ day }}" style="visibility: hidden;"></p>
+
+		<div class="hidden-xs blockList-cal" style="margin-top: -120px;">
+
+			<ul class="ul-date aaa" style="list-style-type: none; text-align: left;">
+
+				<span class="blockList-cal-unit" translate style="float: left;">
+					<span class="ng-scope">{{ '年'|_ }}</span>
+				</span>
+
+				<li class="blockList-cal-row blockList-cal-row-year year" style="margin-bottom: 8px;"> 
+					
+				</li>
+
+				<span class="blockList-cal-unit" translate style="float: left;">
+					<span class="ng-scope">{{ '月'|_ }}</span>
+				</span>
+
+				<li class="blockList-cal-row blockList-cal-row-month month" style="margin-bottom: 8px;">
+					
+				</li>
+
+				<span class="blockList-cal-unit" translate style="display: inline;">
+					<span class="ng-scope">{{ '日'|_ }}</span>
+				</span>
+
+				<li class="blockList-cal-row blockList-cal-row-date day" style="display: inline;">
+					
+				</li>
+
+			</ul>
+
+		</div>
+
+	</div>
+
+	<div class="block">
+		
+		<span class="ng-scope date" style="font-size: 24px; float: left;"></span>
+
+			<div class="table-responsive">
+
+				<table class="table table-striped">
+
+					<thead>
+					   <th class="">{{ '高度'|_ }}</th>
+					   <th class="">{{ '时间'|_ }}</th>
+					   <th class="">{{ '交易数'|_ }}</th>
+					   <th class="">{{ '大小'|_ }}</th>
+					   <th class="">{{ '块哈希'|_ }}</th>
+					</thead>
+					
+					<tbody class="tbody-block">
+						
+						{% for info in infos %}
+
+						<tr> 
+					        <td class="" style="line-height: 51px;">
+					        	<a href="/block/{{ info.height }}">
+									<span class="ellipsis ng-binding"> {{ info.height }}</span>
+								</a></td>
+					        <td class="" style="text-align: left; line-height: 51px;"> {{ info.time }} </td>
+					        <td class="" style="text-align: left; line-height: 51px;"> {{ info.num }} </td>
+					        <td class="" style="text-align: left; line-height: 51px;"> {{ info.blocksize }} </td>
+					        <td class="" style="text-align: left; line-height: 51px;">
+					        	<a href="/block/{{ info.blockhash }}" style="float: left;">
+								<span class="ellipsis ng-binding" style="white-space:nowrap;"> {{ info.blockhash }} </span>
+								</a>
+							</td>
+					    </tr>
+
+					    {% endfor %}
+
+				    </tbody>
+
+				</table>
+
+			</div>
+
+			<!-- pagination -->
+
+			<p id="web_page" page="{{ pagination }}" style="visibility: hidden;"></p>
+
+			{% if pagination > 4 %}
+
+			<ul class="pagination" id="pagination">
+				<!-- <li><a href="javascript:void(0);" id="pagination_previous" style="color: #777777">&laquo;</a></li> -->
+				{% for i in 1..5 %}
+					{% if i == 1 %}
+					<li><a href="javascript:void(0);" id="pagination_1" page="1" style="background-color: #ebebeb; color: #777777">{{ i }}</a></li>
+					{% else %}
+					<li><a href="javascript:void(0);" id="pagination_{{ i }}" page="{{ i }}" style="color: #777777">{{ i }}</a></li>
+					{% endif %}
+				{% endfor %}
+				<li><a href="javascript:void(0);" id="pagination_next" page="2" style="color: #777777">&raquo;</a></li>
+				<p style="display: inline-block;">&nbsp 共{{ pagination }}页  跳到</p>
+				<input type="text" id="page-input" name="page-input" style="width: 54px;">
+				<p style="display: inline-block;">页</p>
+				<button class="btn btn-default" id="confirm-page" onclick="pageInfo();" style="display: inline-block;">确认</button>
+			</ul>
+
+			{% else %}
+
+			<ul class="pagination" id="pagination" style="display: none;">
+				<!-- <li><a href="javascript:void(0);" id="pagination_previous" style="color: #777777">&laquo;</a></li> -->
+				{% for i in 1..pagination %}
+					{% if i == 1 %}
+					<li><a href="javascript:void(0);" id="pagination_1" page="1" class="avtive" style="background-color: #ebebeb; color: #777777">{{ i }}</a></li>
+					{% else %}
+					<li><a href="javascript:void(0);" id="pagination_{{ i }}" page={{ i }} style="color: #777777">{{ i }}</a></li>
+					{% endif %}
+				{% endfor %}
+				<li><a href="javascript:void(0);" id="pagination_next" page="2" style="color: #777777">&raquo;</a></li>
+				<p style="display: inline-block;">&nbsp 共{{ pagination }}页  跳到</p>
+				<input type="text" id="page-input" name="page-input" style="width: 54px;">
+				<p style="display: inline-block;">页</p>
+				<button class="btn btn-default" id="confirm-page" onclick="pageInfo();" style="display: inline-block;">确认</button>
+			</ul>
+
+			{% endif %}
+
+			<!-- pagination end --> 
+			<div id="div-loader" style="height:37px; margin-top: 100px; display: none;">
+				<div class="loader" >Loading...</div>
+			</div>
+
+			{% if nothing %}
+					    
+			<h1 id="no-block" style="margin-top: 100px;">{{ '没有区块产生~'|_ }}</h1>
+
+			{% else %}
+
+			<h1 id="no-block" style="margin-top: 100px; display: none;">{{ '没有区块产生~'|_ }}</h1>
+				
+		    {% endif %}
+
+			<!-- {% if more_block %}
+			
+			<button class="btn btn-default btn-md" id="show-more" date="{{ year }}-{{ month }}-{{ day }}" style="float: left;">{{ '显示更多'|_ }}</button>
+			
+			{% endif %} -->
+
+	</div>
+
+</div>
+
+<script>
+
+	$('.input-daterange input').each(function() {
+	    $(this).datepicker({
+							    format: {
+							        
+							        toDisplay: function (date, format, language) {
+							            var d = new Date(date);
+							            d.setDate(d.getDate());
+							            return d.toISOString();
+							        },
+
+							        toValue: function (date, format, language) {
+							            var d = new Date(date);
+							            d.setDate(d.getDate());
+							            return new Date(d);
+							        }
+							        
+							    }
+							});
+
+	    $(this).on('changeDate', function(){
+
+	    	var timestamp = $('#datepicker').val();
+	    	var date = new Date(timestamp);
+	    	date.setHours('00');
+
+	    	year = date.getFullYear().toString();
+	    	month = (date.getMonth()+1).toString();
+	    	day = date.getDate().toString();
+
+	    	var url = year + '-' + month + '-' + day;
+
+	    	if (day.length == 2) {
+				history.pushState("", "", '/all-blocks/' + year + '-' + month + '-' + day);
+			} else {
+				history.pushState("", "", '/all-blocks/' + year + '-' + month + '-0' + day);
+			}
+
+	    	$.post("/date_block", {year:year, month:month, day:day}, function (data, status) {
+
+    	       if (data != 0) {
+
+					$('.tbody-block').empty();
+					$('#no-block').hide();
+
+					var data = JSON.parse(data);
+
+					for (var i = 0; i < data['block'].length; i++) {
+
+						$('.tbody-block').append(   "<tr>" +
+												        "<td class='' style='line-height: 51px;'>"+
+												        	"<a href='/block/"+data['block'][i]['height']+"'>"+
+																"<span class='ellipsis ng-binding'>"+ data['block'][i]['height']+"</span>"+
+															"</a></td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['time'] +"</td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['num'] +"</td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['blocksize'] +"</td>"+
+												        "<td class='' style='text-align: left; line-height: 51px;'>"+
+												        	"<a href='/block/" +data['block'][i]['blockhash']+ "' style='float: left;'>"+
+															"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data['block'][i]['blockhash'] +"</span>"+
+															"</a>"+
+														"</td>"+
+												    "</tr>" );
+					}
+
+					if (data['pagination']!=null) {console.log(data['pagination']);data['pagination'] = parseInt(data['pagination']);console.log(data['pagination']);}
+
+					if (data['pagination']>1) {
+
+						$("#web_page").attr('page', '');
+						$("#web_page").attr('page', data['pagination']);
+
+						$('#pagination').find('li').empty();
+						$("#pagination p:first").text("");
+						$("#pagination p:first").text('共'+data['pagination']+"页 跳到")
+
+						if (data['pagination']>4) {
+							
+							for(var i = 1; i <= 5; i++){
+
+								if (i==1) {
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_1' page='1' style='background-color: #ebebeb; color: #777777'>1</a></li>"); 
+								}else{
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_"+i+"' page='"+i+"' style='color: #777777'>"+i+"</a></li>"); 
+								}
+
+							}
+
+							$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_next' page='2' style='color: #777777'>&raquo;</a></li>"); 
+							
+						} else {
+
+							for(var i = 1; i <= data['pagination']; i++){
+								if (i==1) {
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_1' page='1' class='avtive' style='background-color: #ebebeb; color: #777777'>"+i+"</a></li>"); 
+								} else {
+									$('#pagination').append("<li><a href='javascript:void(0);' id='pagination_"+i+"' page="+i+" style='color: #777777'>"+i+"</a></li>"); 
+								}
+							}
+
+						}
+
+						$('#pagination').show();
+
+					} 
+
+				} else {
+
+					$("#pagination").hide();
+					$('.tbody-block').empty();
+					$('#show-more').remove();
+					$('#no-block').show();
+
+				}
+
+			});
+
+	    });
+
+	});
+
+	$(document).on("click","#show-more",function(){
+
+		$('#show-more').hide();
+		$('#div-loader').show();
+
+		var date = $('#show-more').attr('date');
+
+		$.post('/more_block', {date:date}, function(data,status){
+
+			if (data != null) {
+
+				$('#div-loader').hide();
+
+				var data = JSON.parse(data);
+
+				for (var i = 0; i < data.length; i++) {
+
+					$('.tbody-block').append(   "<tr>" +
+											        "<td class='' style='line-height: 51px;'>"+
+											        	"<a href='/block/"+data[i]['height']+"'>"+
+															"<span class='ellipsis ng-binding'>"+ data[i]['height']+"</span>"+
+														"</a></td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data[i]['time'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data[i]['num'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data[i]['blocksize'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+
+											        	"<a href='/block/" +data[i]['blockhash']+ "' style='float: left;'>"+
+														"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data[i]['blockhash'] +"</span>"+
+														"</a>"+
+													"</td>"+
+											    "</tr>" );
+
+				}
+
+			}
+
+		});
+
+	});
+
+
+	$("#pagination a").bind("click", function(event){
+	
+		event.stopImmediatePropagation();
+
+		var page = $(this).attr('page');
+		var total_page = $("#web_page").attr('page');
+		var date = $('#web_date').attr('date');
+		console.log(page+total_page+date);
+		getPageInfo(page, total_page, date);
+		
+	});
+
+
+	$('#page-input').bind('keydown', function(event){
+
+        if(event.keyCode == "13")    
+        {
+
+        	var page = $(this).val();
+        	var total_page = $("#web_page").attr('page');
+        	var date = $('#web_date').attr('date');
+         	
+         	if (page != null) {
+
+         		getPageInfo(page, total_page, date);
+
+         	}
+
+        }
+
+    });
+
+    function pageInfo(){
+
+    	var page = $('#page-input').val();
+    	var total_page = $("#web_page").attr('page');
+    	var date = $('#web_date').attr('date');
+     	
+     	if (page != null) {
+
+     		getPageInfo(page, total_page, date);
+
+     	}
+
+    }
+
+    function getPageInfo(page, total_page, date){
+    	
+    	$.get("/all_blocks_pagination", {page:page, total_page:total_page, date:date}, function (data, status) {
+   			
+       		if (data != null) {
+
+       			$('.tbody-block').empty();
+
+       			var data = JSON.parse(data);
+
+       			if (total_page <= 5) {
+
+       				$("#pagination").find('li').remove();
+
+       				if (data['page'] > 1) {
+       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+  (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+       					registerClick("#pagination_previous");
+       				}
+				
+       				for(var i = 0; i < total_page; i++){
+
+       					if (data['page'] == i) {
+       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+       						registerClick("#pagination_"+i);
+       					} else {
+       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+       						registerClick("#pagination_"+i);
+       					}  
+
+       				}
+					
+					if (data['page'] < total_page) {
+       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+       					registerClick("#pagination_next");
+       				}
+
+       			} else if (total_page > 5) {
+
+       				if (total_page-data['page']>=2 && data['page']>2) {  //中间情况
+
+       					$("#pagination").find('li').remove();
+
+	       				if (data['page'] > 1) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+ (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+	       					registerClick("#pagination_previous");
+	       				}
+						
+	       				for(var i = data['page']-2; i <= data['page']+2; i++){
+
+	       					if (data['page'] == i) {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					} else {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					}  
+
+	       				}
+						
+						if (data['page'] < total_page) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+	       					registerClick("#pagination_next");
+	       				}
+
+       				} else if (data['page']<=2){ //最左情况
+
+       					$("#pagination").find('li').remove();
+
+	       				if (data['page'] > 1) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+ (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+	       					registerClick("#pagination_previous");
+	       				}
+					
+	       				for(var i = 1; i <= 5; i++){
+
+	       					if (data['page'] == i) {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					} else {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					}  
+
+	       				}
+						
+						if (data['page'] < total_page) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+	       					registerClick("#pagination_next");
+	       				}
+
+
+       				} else if (total_page-data['page']<2){ //最右情况
+
+       					$("#pagination").find('li').remove();
+
+	       				if (data['page'] > 1) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_previous' page='"+ (data['page']-1) +"' style='color: #777777'>&laquo;</a></li>");
+	       					registerClick("#pagination_previous");
+	       				}
+					
+	       				for(var i = total_page-4; i <= total_page; i++){
+
+	       					if (data['page'] == i) {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='background-color: #ebebeb; color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					} else {
+	       						$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_"+ i +"' page='"+ i +"' style='color: #777777'>"+ i +"</a></li>");
+	       						registerClick("#pagination_"+i);
+	       					}  
+
+	       				}
+						
+						if (data['page'] < total_page) {
+	       					$("#pagination").append("<li><a href='javascript:void(0);' id='pagination_next' page='"+ (data['page']+1) +"' style='color: #777777'>&raquo;</a></li>");
+	       					registerClick("#pagination_next");
+	       				}
+
+       				}
+
+       			}
+
+				for (var i = 0; i < data['block'].length; i++) {
+
+					$('.tbody-block').append(   "<tr>" +
+											        "<td class='' style='line-height: 51px;'>"+
+											        	"<a href='/block/"+data['block'][i]['height']+"'>"+
+															"<span class='ellipsis ng-binding'>"+ data['block'][i]['height']+"</span>"+
+														"</a></td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['time'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['num'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+ data['block'][i]['blocksize'] +"</td>"+
+											        "<td class='' style='text-align: left; line-height: 51px;'>"+
+											        	"<a href='/block/" +data['block'][i]['blockhash']+ "' style='float: left;'>"+
+														"<span class='ellipsis ng-binding' style='white-space:nowrap;'>"+ data['block'][i]['blockhash'] +"</span>"+
+														"</a>"+
+													"</td>"+
+											    "</tr>" );
+
+				}
+
+       		}
+
+		});
+
+    }
+
+    function registerClick(id) {
+
+    	$(id).unbind('click');
+
+    	$(id).bind("click", function(event){
+		
+			event.stopImmediatePropagation();
+
+			var page = $(this).attr('page');
+			var total_page = $("#web_page").attr('page');
+			var date = $('#web_date').attr('date');
+			getPageInfo(page, total_page, date);
+			
+		});
+
+    }
+
+</script>";s:4:"code";s:2496:"function onStart() {
+	
+	if($this->param('date')){
+
+		$date = $this->param('date');                                //现在是写死某一天
+
+		$timestamp = strtotime($date.'00:00:00');
+		$tomorrow_zero = $timestamp + 86400;
+
+		if ($timestamp == false) {
+			header("Location: /404/请正确输入时间信息~");
+			exit();
+		}
+
+		$web_date = explode('-', $this->param('date'));
+
+		if (count($web_date) == 2) {
+			
+			header("Location: /404/请正确输入时间信息~");
+			exit();
+
+		} elseif (count($web_date) == 3) {
+			
+			$day_array = str_split($web_date[2], 1);
+
+			if (count($day_array) == 3) {
+		
+				if ($day_array[0] == '0') {
+	
+					$web_date[2] = $day_array[1].$day_array[2];
+
+				} else {
+
+					header("Location: /404/请正确输入时间信息~");
+					exit();
+
+				}
+
+			} elseif (count($day_array) > 3) {
+
+				header("Location: /404/请正确输入时间信息~");
+				exit();
+
+			}  elseif (count($day_array) == 1) {
+		
+				$web_date[2] = '0' . $day_array[0];
+
+			}
+
+			$this['year'] = $web_date[0];
+			$this['month'] = $web_date[1];
+			$this['day'] = $web_date[2];
+
+			$block = Db::connection('magnachain')->table('block')->select('height', 'time', 'blockhash', 'blocksize','height')->whereBetween('time', [$timestamp, $tomorrow_zero])->orderBy('time', 'esc')->take(50)->get();
+			$block = $block->toArray();
+			
+			if ($block == null) {
+
+				$this['nothing'] = "true";
+				
+			}
+
+			$blockhash_array = array();
+
+			for ($i=0; $i < count($block); $i++) { 
+				$blockhash_array[$i] = $block[$i]->blockhash;
+			}
+
+			$num = Db::connection('magnachain')->table('transaction')->select('version','blockhash')->whereIn('blockhash', $blockhash_array)->get();
+			$num = $num->toArray();
+
+			$tempArr = array();
+
+			foreach($num as $key => $value ){
+
+			    $tempArr[$value->blockhash][] = $value->version;
+
+			}
+			
+			for ($i=0; $i < count($block); $i++) {
+
+				$block[$i]->num = count($tempArr[$block[$i]->blockhash]);
+				$block[$i]->time = date("Y-m-d H:i:s", $block[$i]->time);
+
+			}
+
+			$count = Db::connection('magnachain')->table('block')->select('height')->whereBetween('time', [$timestamp, $tomorrow_zero])->count();
+
+			if ($count>50) {
+
+				$block = array_slice($block, 0, 50);
+
+				//$this['more_block'] = "true";
+
+			}
+
+			$this['count'] = $count;
+			$pagination = ceil($count/50);
+
+			$this['pagination'] = $pagination;
+
+			$this['infos'] = $block;
+
+		}
+
+	}
+	
+}";s:5:"title";s:10:"all-blocks";s:3:"url";s:18:"/all-blocks/:date?";s:6:"layout";s:8:"mgc-date";s:9:"is_hidden";s:1:"0";}}

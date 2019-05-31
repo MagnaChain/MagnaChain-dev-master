@@ -14,8 +14,9 @@ const char* sqls[] = {
     ", `nonce` INT NOT NULL"
     ", `regtest` BOOL NOT NULL"
     ", `branchid` VARCHAR(64) NOT NULL"
+    ", `blocksize` INT UNSIGNED NOT NULL"
     ", PRIMARY KEY(`blockhash`)"
-    ", INDEX(`hashprevblock`, `height`, `regtest`, `branchid`)"
+    ", INDEX(`hashprevblock`, `height`, `regtest`, `branchid`, `time`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `transaction` ("
@@ -34,6 +35,7 @@ const char* sqls[] = {
     ", `reporttxid` VARCHAR(64) NOT NULL"
     ", `coinpreouthash` VARCHAR(64) NOT NULL"
     ", `provetxid` VARCHAR(64) NOT NULL"
+    ", `txsize` INT NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -42,8 +44,8 @@ const char* sqls[] = {
     ", `txindex` INT NOT NULL"
     ", `outpointhash` VARCHAR(64) NOT NULL"
     ", `outpointindex` INT NOT NULL"
-    ", `sequence` INT NOT NULL"
-    ", `scriptsig` BLOB NOT NULL"
+    ", `sequence` INT UNSIGNED NOT NULL"
+    ", `scriptsig` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -51,18 +53,27 @@ const char* sqls[] = {
     "`txhash` VARCHAR(64) NOT NULL"
     ", `txindex` INT NOT NULL"
     ", `value` BIGINT NOT NULL"
-    ", `scriptpubkey` BLOB NOT NULL"
+    ", `scriptpubkey` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`)"
+    ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
+
+	"CREATE TABLE IF NOT EXISTS `txoutpubkey` ("
+    "`txhash` VARCHAR(64) NOT NULL"
+    ", `txindex` INT NOT NULL"
+    ", `solution` VARCHAR(64) NOT NULL"
+    ", `solutiontype` INT NOT NULL"
+    ", PRIMARY KEY(`txhash`, `txindex`,`solution`)"
+    ", INDEX(`solution`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `contract` ("
     "`txhash` VARCHAR(64) NOT NULL"
     ", `contractid` VARCHAR(64) NOT NULL"
-    ", `sender` VARCHAR(64) NOT NULL"
-    ", `codeorfunc` BLOB NOT NULL"
-    ", `args` BLOB NOT NULL"
+    ", `sender` VARCHAR(128) NOT NULL"
+    ", `codeorfunc` TEXT NOT NULL"
+    ", `args` VARCHAR(512) NOT NULL"
     ", `amountout` BIGINT NOT NULL"
-    ", `signature` BLOB NOT NULL"
+    ", `signature` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
@@ -79,10 +90,10 @@ const char* sqls[] = {
     ", `nonce` INT NOT NULL"
     ", `prevoutstakehash` VARCHAR(64) NOT NULL"
     ", `prevoutstakeindex` INT NOT NULL"
-    ", `blocksig` BLOB NOT NULL"
+    ", `blocksig` VARCHAR(1024) NOT NULL"
     ", `branchid` VARCHAR(64) NOT NULL"
     ", `blockheight` INT NOT NULL"
-    ", `staketxdata` BLOB NOT NULL"
+    ", `staketxdata` TEXT NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -100,9 +111,9 @@ const char* sqls[] = {
     ", `reportedblockhash` VARCHAR(64) NOT NULL"
     ", `reportedtxhash` VARCHAR(64) NOT NULL"
     ", `contractcoins` BIGINT NOT NULL"
-    ", `contractreportedspvproof` BLOB NOT NULL"
+    ", `contractreportedspvproof` TEXT NOT NULL"
     ", `contractprovetxhash` VARCHAR(64) NOT NULL"
-    ", `contractprovespvproof` BLOB NOT NULL"
+    ", `contractprovespvproof` TEXT NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -120,7 +131,7 @@ const char* sqls[] = {
     ", `contractid` VARCHAR(64) NOT NULL"
     ", `txindex` INT NOT NULL"
     ", `blockhash` VARCHAR(64) NOT NULL"
-    ", `code` BLOB NOT NULL"
+    ", `code` TEXT NOT NULL"
     ", `data` BLOB NOT NULL"
     ", PRIMARY KEY(`txhash`, `contractid`)"
     ", INDEX(`contractid`)"

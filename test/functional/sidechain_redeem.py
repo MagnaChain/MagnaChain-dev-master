@@ -18,8 +18,7 @@ from decimal import Decimal
 
 # Avoid wildcard * imports if possible
 from test_framework.test_framework import MagnaChainTestFramework
-from test_framework.mininode import MINER_REWARD, CTransaction
-from test_framework.contract import Contract
+from test_framework.mininode import COIN, MINER_REWARD
 from test_framework.util import (
     assert_equal,
     assert_raises_rpc_error,
@@ -47,25 +46,23 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.num_sidenodes = 2
         self.side_extra_args = [["-regtestrsheight=10"], ["-regtestrsheight=10"]]
         self.rpc_timewait = 900
-        self.protected_mode = [[0],[0]]
+        self.protected_mode = [[0], [0]]
 
     def run_test(self):
         """Main test logic"""
         self.sync_all([self.sidenodes])
-        for i, node in enumerate(self.nodes):
-            # for convenient
-            setattr(self, 'node' + str(i), node)
-
-        for i, node in enumerate(self.sidenodes):
-            # for convenient
-            setattr(self, 'snode' + str(i), node)
-
         for i in range(self.num_nodes):
             self.sidenodes[i].generate(2)
             assert_equal(len(self.sidenodes[i].getrawmempool()), 0)
             self.sync_all([self.sidenodes])
             self.nodes[i].generate(2)
             self.sync_all()
+        # send some coins to branch to use
+        # self.node0.sendtobranchchain(self.sidechain_id, self.snode0.getnewaddress(), 1000)
+        # self.node0.generate(8)
+        # self.snode0.generate(1)
+        # self.sync_all()
+        # self.sync_all([self.sidenodes])
             # // 赎回挖矿币, 步骤
             # // 1).侧链提起赎回请求.(侧链先销毁挖矿币, 防止继续挖矿)
             #       // 2).主链收到, 创造新的交易, 抵押币作为输入, 赎回到正常地址, 需要指定来自那个侧链请求
@@ -89,35 +86,63 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         txid = self.snode0.sendtoaddress(self.node0.getnewaddress(), 1)
         assert_raises_rpc_error(-32603, 'This RPC API Only be called in branch chain',
                                 self.node0.redeemmortgagecoinstatement, txid)
-        assert_raises_rpc_error(-32600, 'Invalid mortgage coin', self.snode0.redeemmortgagecoinstatement, self.available_utxo())
-        assert_raises_rpc_error(-4, 'Coin is spent', self.snode0.redeemmortgagecoinstatement, self.mortgage_coin(),9)
+        assert_raises_rpc_error(-32600, 'Invalid mortgage coin', self.snode0.redeemmortgagecoinstatement,
+                                self.available_utxo())
+        assert_raises_rpc_error(-4, 'Coin is spent', self.snode0.redeemmortgagecoinstatement, self.mortgage_coin(), 9)
         balance = self.node0.getbalance()
         results = []
-        self.sync_all() # TODO: make sure node1 have all branch header tx in mempool.(to be optimize)
+        self.sync_all()  # TODO: make sure node1 have all branch header tx in mempool.(to be optimize)
         self.snode1.generate(10)
+        self.sync_all([self.sidenodes])
         for i in range(10):
             result = self.snode0.redeemmortgagecoinstatement(self.mortgage_coin())
             results.append(result['txid'])
-            print("result:",result)
-            assert_equal(len(self.snode0.listmortgagecoins()), 10- i - 1)
+            print("result:", result)
+            assert_equal(len(self.snode0.listmortgagecoins()), 10 - i - 1)
         assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
-        self.snode1.generate(7)
+        self.sync_all([self.sidenodes]) # sync mempool to snode1
+        besthash = self.snode1.getbestblockhash()
+        best_height = self.snode1.getblockcount()
+        badhash = self.snode1.generate(7)[0]
+        self.sync_all([self.sidenodes])
         self.sync_all()
-        assert_equal(24, len(self.node0.getrawmempool())) # side chain gen block count
+        assert_equal(24, len(self.node0.getrawmempool()))  # side chain gen block count
+        fees = 0
+        txs = self.node0.getrawmempool(True)
+        for txid in txs:
+            fees += Decimal(txs[txid]['fee'])
         self.node0.generate(1)
         self.sync_all()
         self.snode1.generate(1)
+        self.log.info("after node0 gen blocks,mortgage coins should be redeemed")
         self.sync_all([self.sidenodes])
+        self.sync_all()
+        txs = self.node0.getrawmempool(True)
+        for txid in txs:
+            fees += Decimal(txs[txid]['fee'])
         self.node0.generate(2)
-        # for t in results:
-        #     self.snode0.rebroadcastredeemtransaction(t)
+        self.sync_all()
+        self.log.info("rebroadcastredeemtransaction should raise a RPC exception,we will catch it")
+        for t in results:
+            assert_raises_rpc_error(-25, 'Coin is spent', self.snode0.rebroadcastredeemtransaction, t)
         self.node0.generate(2)
-        print(self.node0.getbalance(),balance , self.node0.getbalance() - balance,origin_mortgage)
-        assert False
-        # assert self.node0.getbalance() - balance > origin_mortgage
+        print("self.node0.getbalance", self.node0.getbalance(), "balance", balance, 
+            "self.node0.getbalance() - balance", self.node0.getbalance() - balance, 
+            "origin_mortgage", origin_mortgage, "fees", fees)
+        print(self.node0.getbalance() - balance - 4 * MINER_REWARD, origin_mortgage + fees)
+        # 25 is for fee
+        assert self.node0.getbalance() - balance - 4 * MINER_REWARD > origin_mortgage and (
+                    self.node0.getbalance() - balance - 4 * MINER_REWARD < origin_mortgage + fees)
+
+        # try to invalidateblock some blocks and snode0 generate again
+        self.snode0.invalidateblock(badhash)
+        assert_equal(self.snode0.getbestblockhash(),besthash)
+        assert_equal(self.snode0.getblockcount(), best_height)
+        assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
 
 
-    def mortgage_coin(self,spentable = True):
+
+    def mortgage_coin(self, spentable=True):
         '''
         获取有一个已成熟的抵押币
         :param spentable:

@@ -16,7 +16,7 @@ from test_framework.util import *
 class AbandonConflictTest(MagnaChainTestFramework):
     def set_test_params(self):
         self.num_nodes = 2
-        self.extra_args = [["-minrelaytxfee=0.00001"], []]
+        self.extra_args = [["-minrelaytxfee=0.00001","-disablesafemode"], ["-disablesafemode"]]
 
     def run_test(self):
         self.nodes[1].generate(2)

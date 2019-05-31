@@ -35,7 +35,7 @@ public:
     MCTxOut out;
 
     //! whether containing transaction was a coinbase
-    unsigned int fCoinBase : 1;
+    uint32_t fCoinBase : 1;
 
     //! at which height this containing transaction was included in the active block chain
     uint32_t nHeight : 31;
@@ -304,48 +304,6 @@ private:
      * By making the copy constructor private, we prevent accidentally using it when one intends to create a cache on top of a base cache.
      */
     MCCoinsViewCache(const MCCoinsViewCache &);
-};
-
-class CoinAmountCacheBase
-{
-public:
-    virtual MCAmount GetAmount(const uint160& key) const
-    {
-        return 0;
-    }
-};
-
-class CoinAmountDB : public CoinAmountCacheBase
-{
-public:
-    MCAmount GetAmount(const uint160& key) const override;
-};
-
-class CoinAmountTemp : public CoinAmountCacheBase
-{
-public:
-    MCAmount GetAmount(const uint160& key) const override;
-    void IncAmount(const uint160& key, MCAmount delta);
-
-private:
-    std::map<uint160, MCAmount> coinAmountCache;
-};
-
-class CoinAmountCache
-{
-public:
-    CoinAmountCache(CoinAmountCacheBase* amountBase) : base(amountBase) {}
-
-    bool HasKeyInCache(const uint160& key) const;
-    MCAmount GetAmount(const uint160& key);
-    bool IncAmount(const uint160& key, MCAmount delta);
-    bool DecAmount(const uint160& key, MCAmount delta);
-    void Clear();
-
-private:
-    CoinAmountCacheBase* base;
-    std::map<uint160, MCAmount> coinAmountCache;
-    mutable MCCriticalSection cs;
 };
 
 //! Utility function to add all of a transaction's outputs to a cache.

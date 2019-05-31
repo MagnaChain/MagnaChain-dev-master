@@ -6,20 +6,16 @@
 
 extern "C"
 {
-#include "lua/lvm.h"
 #include "lua/lstate.h"
-#include "lua/lualib.h"
-#include "lua/lauxlib.h"
-//#include "lua/ldebug.h"
 }
 
-#include <set>
-#include <stack>
-#include <unordered_map>
 #include "key/pubkey.h"
 #include "univalue.h"
-#include "smartcontract/contractdb.h"
 #include "coding/base58.h"
+#include "thread/sync.h"
+#include "utils/util.h"
+
+#include <boost/threadpool.hpp>
 
 const int MAX_CONTRACT_FILE_LEN = 65536;
 const int MAX_CONTRACT_CALL = 15000;
@@ -27,56 +23,86 @@ const int MAX_DATA_LEN = 1024 * 1024;
 
 class Coin;
 class MCWallet;
-class MCWalletTx;
+class MCBlockIndex;
 class MagnaChainAddress;
-class MakeBranchTxUTXO;
+class MCCriticalSection;
 
-class SmartLuaState
+struct VMIn
 {
-public:
-    static const int SAVE_TYPE_NONE = 0;
-    static const int SAVE_TYPE_CACHE = 1;
-    static const int SAVE_TYPE_DATA = 2;
-    static const int MAX_INTERNAL_CALL_NUM = 30;
-
-    std::vector<MCTxOut> recipients;
-    std::set<MCContractID> contractIds; // lua执行期间所有调用过的合约
-    std::vector<MagnaChainAddress> contractAddrs;   // 以栈形式表示当前调用合约的合约地址
-    MagnaChainAddress originAddr;   // 当前调用合约的调用者最原始公钥地址
-
-    bool isPublish;
-    int saveType;
-    int64_t timestamp;  // 执行时的时间戳
-    int blockHeight;    // 执行时的区块高度
     int txIndex;
-    uint32_t runningTimes = 0;
-    uint32_t deltaDataLen = 0;
-    uint32_t codeLen = 0;
-    int internalCallNum = 0;
-    CoinAmountCache* pCoinAmountCache;
-    std::map<MCContractID, MCAmount> contractCoinsOut;
-    std::map<MCContractID, ContractInfo> contractDataFrom;
+    MCAmount payment;
+    MagnaChainAddress vmCaller;
+    const MCBlockIndex* prevBlockIndex;
 
+    void Copy(const VMIn& vmIn)
+    {
+        this->txIndex = vmIn.txIndex;
+        this->payment = vmIn.payment;
+        this->vmCaller = vmIn.vmCaller;
+        this->prevBlockIndex = vmIn.prevBlockIndex;
+    }
+};
+
+struct VMOut
+{
+    UniValue ret;
+    int32_t runningTimes = 0;
+    CONTRACT_DATA txPrevData;
+    CONTRACT_DATA txFinalData;
+    std::vector<MCTxOut> recipients;
+    std::map<MCContractID, MCAmount> contractCoinsOut;
+};
+
+class ContractVM
+{
+    static const int MAX_INTERNAL_CALL_NUM = 30;
 private:
-    mutable MCCriticalSection contractCS;
-    ContractContext* pContractContext = nullptr;
-    MCBlockIndex* pPrevBlockIndex = nullptr;
-    std::queue<lua_State*> luaStates;
-    MCTransactionRef tx;
+    VMIn vmIn;
+    VMOut* vmOut;
+    bool isPublish;
+    CONTRACT_DATA data;
+    CONTRACT_DATA cache;
+    std::vector<MagnaChainAddress> contractAddrs;   // call contract stack
+    std::queue<lua_State*> luaStates;   // cache for recycle
+    std::map<MagnaChainAddress, lua_State*> usingLuaStates;
 
 public:
-    void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, bool cache);
+    ~ContractVM();
+
+    void Initialize(const VMIn* vmin, VMOut* vmout);
+
+    bool PublishContract(const MagnaChainAddress& contractAddr, const std::string& rawCode, bool decompress);
+    bool CallContract(const MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args);
+
+    void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
     bool GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
 
-    MCAmount GetContractCoinOut(const MCContractID& contractId);
-    void AddContractCoinsOut(const MCContractID& contractId, MCAmount delta);
+    void CommitData();
+    void ClearData(bool onlyCache);
+    const CONTRACT_DATA& GetAllData() const;
 
-    void Initialize(bool isPublish, int64_t timestamp, int blockHeight, int txIndex, MagnaChainAddress& callerAddr, 
-        ContractContext* pContractContext, MCBlockIndex* pPrevBlockIndex, int saveType, CoinAmountCache* pCoinAmountCache);
-    lua_State* GetLuaState(MagnaChainAddress& contractAddr);
+    bool ExecuteContract(const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex, VMOut* vmOut);
+    int ExecuteBlockContract(const MCBlock* pBlock, const MCBlockIndex* prevBlockIndex, int offset, int count, std::vector<VMOut>* vmOut);
+
+private:
+    bool IsPublish() { return isPublish; }
+    const MCContractID GetCurrentContractID();
+    void AddRecipient(MCAmount amount, const MCScript& scriptPubKey);
+    bool CallContract(const MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args, long& maxCallNum);
+
+    lua_State* GetLuaState(const MagnaChainAddress& contractAddr, bool* exist);
     void ReleaseLuaState(lua_State* L);
+    void SetMsgField(lua_State* L, bool rollBackLast);
 
-    void Clear();
+    MCAmount GetContractCoins(const MCContractID& contractId);
+    MCAmount GetContractCoinOut(const MCContractID& contractId);
+    MCAmount IncContractCoinsOut(const MCContractID& contractId, MCAmount delta);
+
+    void SetData(const MCContractID& contractId, const ContractInfo& contractInfo);
+    bool GetData(const MCContractID& contractId, ContractInfo& contractInfo);
+
+    static int InternalCallContract(lua_State* L);
+    static int SendCoins(lua_State* L);
 };
 
 bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
@@ -87,30 +113,43 @@ template<typename TxType>
 MCContractID GenerateContractAddressByTx(TxType& tx)
 {
     MCHashWriter ss(SER_GETHASH, 0);
-    for (auto v : tx.vin)
-        ss << v.prevout;
-    for (auto v : tx.vout)
-        ss << v.nValue;
+    for (const MCTxIn& v : tx.vin) {
+        ss << v.prevout << v.nSequence << v.scriptWitness.ToString();
+    }
+    for (const MCTxOut& v : tx.vout) {
+        ss << v.nValue << v.scriptPubKey;
+    }
 
-    ss << tx.pContractData->codeOrFunc;
-    ss << tx.pContractData->sender;
+    ss << tx.pContractData->codeOrFunc << tx.pContractData->sender;
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
 std::string TrimCode(const std::string& rawCode);
+int GetDeltaDataLen(const VMOut* vmOut);
 
-bool PublishContract(SmartLuaState* sls, MCWallet* pWallet, const std::string& strSenderAddr, const std::string& rawCode, UniValue& ret);
-bool PublishContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, std::string& rawCode, UniValue& ret, bool decompress);
-bool CallContract(SmartLuaState* sls, MagnaChainAddress& contractAddr, const MCAmount amount, const std::string& strFuncName, const UniValue& args, UniValue& ret);
+class MultiContractVM
+{
+private:
+    mutable MCCriticalSection cs;
 
-bool ExecuteContract(SmartLuaState* sls, const MCTransactionRef tx, int txIndex, MCAmount coins, int64_t blockTime, int blockHeight, MCBlockIndex* pPrevBlockIndex, ContractContext* pContractContext);
-bool ExecuteBlock(SmartLuaState* sls, MCBlock* pBlock, MCBlockIndex* pPrevBlockIndex, int offset, int count, ContractContext* pContractContext);
+    bool interrupt;
+    std::vector<VMOut>* vmOuts;
+    const MCBlockIndex* prevBlockIndex;
+    boost::threadpool::pool threadPool;
+    std::map<boost::thread::id, ContractVM> threadIdToVM;
+
+public:
+    MultiContractVM();
+    bool Execute(const MCBlock* pBlock, const MCBlockIndex* prevBlockIndex, std::vector<VMOut>* vmOut);
+    bool CheckCross(const MCBlock* pBlock, CONTRACT_DATA& finalData);
+
+private:
+    void InitializeThread();
+    void DoExecute(const MCBlock* pBlock, int offset, int count);
+};
 
 uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
-uint256 GetTxHashWithPrevData(const uint256& txHash, const ContractPrevData& contractPrevData);
-bool VecTxMerkleLeavesWithData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractTxFinalData>& contractData, std::vector<uint256>& leaves);
-bool VecTxMerkleLeavesWithPrevData(const std::vector<MCTransactionRef>& vtx, const std::vector<ContractPrevData>& contractData, std::vector<uint256>& leaves);
-uint256 BlockMerkleRootWithData(const MCBlock& block, const ContractContext& contractContext, bool* mutated = nullptr);
-uint256 BlockMerkleRootWithPrevData(const MCBlock& block, bool* mutated = nullptr);
+uint256 BlockMerkleLeavesWithPrevData(const MCBlock* pBlock, const std::vector<VMOut>& vmOuts, std::vector<uint256>& leaves, bool* mutated);
+uint256 BlockMerkleLeavesWithFinalData(const MCBlock* pBlock, const std::vector<VMOut>& vmOuts, std::vector<uint256>& leaves, bool* mutated);
 
 #endif

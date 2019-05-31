@@ -191,12 +191,12 @@ void BranchData::ActivateBestChain(const uint256 &bestTipHash)
 
     std::vector<uint256> forkChain;
     forkChain.push_back(bestTipHash);
-    int64_t besttipeheight = mapHeads[bestTipHash].nHeight;// for debug easy
-    while (besttipeheight < vecChainActive.size())
+    int32_t besttipeheight = mapHeads[bestTipHash].nHeight;// for debug easy
+    while ((uint32_t)besttipeheight < vecChainActive.size())
         vecChainActive.pop_back();
 
     uint256 forkHash = mapHeads[bestTipHash].header.hashPrevBlock;
-    while (mapHeads[forkHash].nHeight >= vecChainActive.size())
+    while ((uint32_t)mapHeads[forkHash].nHeight >= vecChainActive.size())
     {
         assert(mapHeads[forkHash].nHeight > mapHeads[mapHeads[forkHash].header.hashPrevBlock].nHeight);
         forkChain.push_back(forkHash);
@@ -483,7 +483,7 @@ void BranchDataProcesser::OnConnectBlock(const std::shared_ptr<const MCBlock>& p
     }
 
     // after scan finish, save to db
-    bool retdb = WriteModifyToDB(modifyBranch);
+    WriteModifyToDB(modifyBranch);
 }
 
 void BranchDataProcesser::OnDisconnectBlock(const std::shared_ptr<const MCBlock>& pblock)
@@ -513,7 +513,7 @@ void BranchDataProcesser::OnDisconnectBlock(const std::shared_ptr<const MCBlock>
     }
 
     // after scan finish, save to db
-    bool retdb = WriteModifyToDB(modifyBranch);
+    WriteModifyToDB(modifyBranch);
 }
 
 //interface for test easy
@@ -664,9 +664,8 @@ bool BranchDataProcesser::DelProveTxData(MCTransactionRef &tx, std::set<uint256>
     return true;
 }
 
-bool BranchDataProcesser::WriteModifyToDB(const std::set<uint256>& modifyBranch)
+bool BranchDataProcesser::WriteModifyToDB(const std::set<uint256>&)
 {
-    (void*)(&modifyBranch);
     return true;
 }
 
@@ -832,7 +831,7 @@ void BranchCache::RemoveFromCache(const MCTransaction& tx, std::set<uint256> &mo
         uint256 blockHash = blockData.header.GetHash();
         uint256 branchHash = tx.pBranchBlockData->branchID;
 
-        bool bgotdata = FetchDataFromSource(branchHash);
+        FetchDataFromSource(branchHash);
 
         BranchData& bData = mapBranchsData[branchHash];
         if (bData.mapHeads.count(blockHash))//update map data
@@ -887,7 +886,7 @@ std::vector<uint256> BranchCache::GetAncestorsBlocksHash(const MCTransaction& tx
     //uint256 blockHash = blockData.header.GetHash();
     const uint256& branchHash = tx.pBranchBlockData->branchID;
 
-    bool bgotdata = FetchDataFromSource(branchHash);
+    FetchDataFromSource(branchHash);
     
     if (mapBranchsData.count(branchHash))
     {
@@ -925,7 +924,7 @@ uint256 BranchCache::GetParent(const MCTransaction& tx)
     //uint256 blockHash = blockData.header.GetHash();
     const uint256& branchHash = tx.pBranchBlockData->branchID;
 
-    bool bgotdata = FetchDataFromSource(branchHash);
+    FetchDataFromSource(branchHash);
 
     if (mapBranchsData.count(branchHash))
     {
@@ -951,7 +950,7 @@ uint256 BranchCache::GetParent(const MCTransaction& tx)
 
 const BranchBlockData* BranchCache::GetBranchBlockData(const uint256 &branchhash, const uint256 &blockhash)
 {
-    bool bgotdata = FetchDataFromSource(branchhash);
+    FetchDataFromSource(branchhash);
     if (mapBranchsData.count(branchhash)){
         if (mapBranchsData[branchhash].mapHeads.count(blockhash)){
             if (mapBranchsData[branchhash].mapHeads[blockhash].flags == BranchBlockData::eADD)
@@ -992,7 +991,7 @@ void BranchCache::AddBlockInfoTxData(MCTransactionRef &transaction, const uint25
 void BranchCache::DelBlockInfoTxData(MCTransactionRef &transaction, const uint256 &mainBlockHash, const size_t iTxVtxIndex, std::set<uint256>& modifyBranch)
 {
     const uint256& branchHash = transaction->pBranchBlockData->branchID;
-    bool bgotdata = FetchDataFromSource(branchHash);
+    FetchDataFromSource(branchHash);
 
     BranchDataProcesser::DelBlockInfoTxData(transaction, mainBlockHash, iTxVtxIndex, modifyBranch);
 
@@ -1000,7 +999,7 @@ void BranchCache::DelBlockInfoTxData(MCTransactionRef &transaction, const uint25
 bool BranchCache::AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
     const uint256& branchId = tx->pReportData->reportedBranchId;
-    bool bgotdata = FetchDataFromSource(branchId);
+    FetchDataFromSource(branchId);
 
     bool ret = BranchDataProcesser::AddReportTxData(tx, brokenChainBranch);
     return ret;
@@ -1008,7 +1007,7 @@ bool BranchCache::AddReportTxData(MCTransactionRef &tx, std::set<uint256> &broke
 bool BranchCache::AddProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
     const uint256& branchId = tx->pProveData->branchId;
-    bool bgotdata = FetchDataFromSource(branchId);
+    FetchDataFromSource(branchId);
 
     bool ret = BranchDataProcesser::AddProveTxData(tx, brokenChainBranch);
     return ret;
@@ -1016,7 +1015,7 @@ bool BranchCache::AddProveTxData(MCTransactionRef &tx, std::set<uint256> &broken
 bool BranchCache::DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
     const uint256& branchId = tx->pReportData->reportedBranchId;
-    bool bgotdata = FetchDataFromSource(branchId);
+    FetchDataFromSource(branchId);
 
     bool ret = BranchDataProcesser::DelReportTxData(tx, brokenChainBranch, modifyBranch);
     return ret;
@@ -1024,7 +1023,7 @@ bool BranchCache::DelReportTxData(MCTransactionRef &tx, std::set<uint256> &broke
 bool BranchCache::DelProveTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
     const uint256& branchId = tx->pProveData->branchId;
-    bool bgotdata = FetchDataFromSource(branchId);
+    FetchDataFromSource(branchId);
 
     bool ret = BranchDataProcesser::DelProveTxData(tx, brokenChainBranch, modifyBranch);
     return ret;

@@ -37,8 +37,11 @@ bool IsFinalTx(const MCTransaction &tx, int nBlockHeight, int64_t nBlockTime)
     if ((int64_t)tx.nLockTime < ((int64_t)tx.nLockTime < LOCKTIME_THRESHOLD ? (int64_t)nBlockHeight : nBlockTime))
         return true;
     for (const auto& txin : tx.vin) {
-        if (!(txin.nSequence == MCTxIn::SEQUENCE_FINAL))
+        if (txin.nSequence != MCTxIn::SEQUENCE_FINAL) {
+            LogPrintf("%s:%d %s is not final(locktime=%d, blockheight = %d)\n", __FUNCTION__, __LINE__, 
+                tx.GetHash().ToString(), tx.nLockTime, nBlockHeight);
             return false;
+        }
     }
     return true;
 }
@@ -155,10 +158,12 @@ int64_t GetTransactionSigOpCost(const MCTransaction& tx, const MCCoinsViewCache&
 {
     int64_t nSigOps = GetLegacySigOpCount(tx) * WITNESS_SCALE_FACTOR;
 
-    if (tx.IsCoinBase())
+    if (tx.IsCoinBase()) {
         return nSigOps;
-	if (tx.IsBranchChainTransStep2())
-		return nSigOps;
+    }
+    if (tx.IsBranchChainTransStep2()) {
+        return nSigOps;
+    }
 
     if (flags & SCRIPT_VERIFY_P2SH) {
         nSigOps += GetP2SHSigOpCount(tx, inputs) * WITNESS_SCALE_FACTOR;
@@ -421,10 +426,6 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
 
     MCAmount nValueIn = 0;
     MCAmount nFees = 0;
-    MCScript contractScript;
-    std::map<MCContractID, MCAmount> contractCoinsOut;
-    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-        contractScript = GetScriptForDestination(tx.pContractData->address);
 
     for (unsigned int i = 0; i < tx.vin.size(); i++)
     {
@@ -452,12 +453,6 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         if (!MoneyRange(coin.out.nValue) || !MoneyRange(nValueIn))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
 
-        if (tx.vin[i].scriptSig.IsContract()) {
-            MCContractID contractId;
-            tx.vin[i].scriptSig.GetContractAddr(contractId);
-            contractCoinsOut[contractId] += coin.out.nValue;
-        }
-
         // Check input types
         branch_script_type bst = QuickGetBranchScriptType(coin.out.scriptPubKey);
         if ((bst == BST_MORTGAGE_MINE && !tx.IsRedeemMortgage() && !tx.IsBranchChainTransStep2())) // 除了赎回抵押币
@@ -480,12 +475,15 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         }
     }
 
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && contractCoinsOut.size() == 0 && tx.pContractData->contractCoinsOut.size() > 0) {
+    if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION && tx.pContractData->contractCoinsOut.size() > 0) {
+        return state.DoS(100, false, REJECT_INVALID, "publish-contract-cannot-send-coins");
+    }
+
+    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         for (auto& it : tx.pContractData->contractCoinsOut) {
             nValueIn += it.second;
             if (!MoneyRange(it.second) || !MoneyRange(nValueIn))
                 return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
-            contractCoinsOut[it.first] = it.second;
         }
     }
 
@@ -495,21 +493,12 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         nValueOut += tx_out.nValue;
         if (!MoneyRange(tx_out.nValue) || !MoneyRange(nValueOut))
             return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
+    }
 
-        if (tx_out.scriptPubKey.IsContract()) {
-            MCContractID contractId;
-            if (!tx_out.scriptPubKey.GetContractAddr(contractId)) {
-                return state.DoS(100, false, REJECT_INVALID, "bad_contract_pub_key");
-            }
-            if (tx_out.scriptPubKey.IsContractChange()) {
-                // 合约输出只能有一个找零
-                auto it = contractChange.find(contractId);
-                if (it != contractChange.end()) {
-                    return state.DoS(100, false, REJECT_INVALID, "bad_contract_amount_change");
-                }
-                contractChange.insert(std::make_pair(contractId, tx_out.nValue));
-            }
-        }
+    if (tx.IsSmartContract()) {
+        nValueOut += tx.pContractData->contractCoinsIn;
+        if (!MoneyRange(tx.pContractData->contractCoinsIn) || !MoneyRange(nValueOut))
+            return state.DoS(100, false, REJECT_INVALID, "bad-txns-inputvalues-outofrange");
     }
 
     if (nValueIn < nValueOut)
@@ -519,8 +508,7 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
     if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN)
     {
         MCAmount nInValueBranch = 0;
-        for (unsigned int i = 0; i < tx.vin.size(); i++)
-        {
+        for (unsigned int i = 0; i < tx.vin.size(); i++) {
             const MCOutPoint &prevout = tx.vin[i].prevout;
             const Coin& coin = inputs.AccessCoin(prevout);// coin type has check in 
             nInValueBranch += coin.out.nValue;
@@ -542,21 +530,6 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         }
         if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount) {
             return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
-        }
-    }
-
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && tx.pContractData->contractCoinsOut.size() > 0) {
-        MCAmount txContractCoinsOut = 0;
-        for (auto it : tx.pContractData->contractCoinsOut) {
-            if (contractCoinsOut[it.first] - contractChange[it.first] != it.second) {
-                return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
-            }
-            contractCoinsOut.erase(it.first);
-            contractChange.erase(it.first);
-        }
-
-        if (contractCoinsOut.size() != 0 || contractChange.size() != 0) {
-            return state.DoS(100, false, REJECT_INVALID, "contract coins out amount not match");
         }
     }
 

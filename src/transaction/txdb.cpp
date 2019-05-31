@@ -313,8 +313,8 @@ bool MCBlockTreeDB::LoadBlockIndexGuts(const Consensus::Params& consensusParams,
                 pindexNew->nUndoPos = diskindex.nUndoPos;
                 pindexNew->nVersion = diskindex.nVersion;
                 pindexNew->hashMerkleRoot = diskindex.hashMerkleRoot;
-                pindexNew->hashMerkleRootWithData = diskindex.hashMerkleRootWithData;
                 pindexNew->hashMerkleRootWithPrevData = diskindex.hashMerkleRootWithPrevData;
+                pindexNew->hashMerkleRootWithData = diskindex.hashMerkleRootWithData;
                 pindexNew->nTime = diskindex.nTime;
                 pindexNew->nBits = diskindex.nBits;
                 pindexNew->nNonce = diskindex.nNonce;
@@ -482,46 +482,6 @@ struct CoinListEntry {
     }
 };
 
-
-// coin list db
-static void CoinListGetParent(const MCOutPoint& outpoint, const Coin& coin, CoinList& kList)
-{
-    MCTxDestination kChildDest;
-    if (!ExtractDestination(coin.out.scriptPubKey, kChildDest))
-        return;
-
-    MagnaChainAddress kChildAddr(kChildDest);
-    if (!kChildAddr.IsValid() || kChildAddr.IsScript() || coin.IsCoinBase())
-        return;
-
-    MCTransactionRef kTx;
-    uint256 hashBlock;
-    if (!GetTransactionWithCoin(outpoint, coin, kTx, Params().GetConsensus(), hashBlock)) {
-        assert(false);
-        return;
-    }
-    MCTxIn kTxIn = kTx->vin[0];
-    if (kTxIn.prevout.hash.IsNull())
-        return;
-    MCTransactionRef kTrans;
-    if (!GetTransactionWithOutpoint(kTxIn.prevout, kTrans, Params().GetConsensus(), hashBlock)) {
-        assert(false);
-        return;
-    }
-
-    MCTxDestination kParentDest;
-    ExtractDestination(kTrans->vout[kTxIn.prevout.n].scriptPubKey, kParentDest);
-    MagnaChainAddress kParentAddr(kParentDest);
-    if (!kParentAddr.IsValid() || kParentAddr.IsScript())
-        return;
-    //std::string strChildAddr = kChildAddr.ToString();
-    //std::string strParent = kParentAddr.ToString();
-
-    //LogPrintf("%s: Set parent:%s - %s \n", __func__, strChildAddr, strParent);
-    const MCKeyID& kParentKey = boost::get<MCKeyID>(kParentDest);
-    //kList.parent = (const uint160&)kParentKey;
-}
-
 static inline bool GetCoinDest(const MCOutPoint& outpoint, const Coin& coin, MCTxDestination& kDest)
 {
     MCScript pScript = coin.out.scriptPubKey;
@@ -545,22 +505,15 @@ static inline bool GetCoinDest(const MCOutPoint& outpoint, const Coin& coin, MCT
         opcodetype opcode;
         std::vector<unsigned char> vch;
         MCScript::const_iterator pc = pScript.begin();
-        MCScript::const_iterator end = pScript.end();
         pScript.GetOp(pc, opcode, vch);
-
-        if (opcode == OP_CONTRACT || opcode == OP_CONTRACT_CHANGE) {
-            vch.clear();
-            vch.assign(pc + 1, end);
-            uint160 key = uint160(vch);
-            kDest = MCContractID(key);
-        }
-        else if (opcode == OP_TRANS_BRANCH){
+        if (opcode == OP_TRANS_BRANCH) {
             if (!pScript.GetOp(pc, opcode, vch) || vch.size() != sizeof(uint256))
                 return false;
-            
+
             uint256 branchhash(vch);
             kDest = MCKeyID(Hash160(branchhash.begin(), branchhash.end()));// branch coin address
-        } else
+        }
+        else
             return false;
     }
 
@@ -572,7 +525,6 @@ static inline bool GetCoinDest(const MCOutPoint& outpoint, const Coin& coin, MCT
 
 void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
 {
-    MCCoinListMap& map = cache;
     for (MCCoinsMap::iterator it = mapCoins.begin(); it != mapCoins.end(); ++it) {
         if (it->second.flags & MCCoinsCacheEntry::DIRTY) {
             const Coin& coin = it->second.coin;
@@ -616,8 +568,6 @@ void CoinListDB::ImportCoins(MCCoinsMap& mapCoins)
                 }
                 if (!bGot)
                     pList->coins.push_back(outpoint);
-                //if (!pList->parentInited)
-                //    CoinListGetParent(outpoint, coin, *pList);
             }
         }
     }

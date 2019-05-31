@@ -187,7 +187,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
     uint32_t preblockH = 0;
     MCBlockHeader preHeader = genesisblock;
     MCBlockHeader forkHeader;
-    uint32_t forkHeight;
+    uint32_t forkHeight = 0;
     uint256 mainpreblockhash;
     int mainblockheight = 1;
     MCBlockIndex* pprev = nullptr;
@@ -260,8 +260,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size()-1);
         BranchData blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());
-        for (int i = 0; i < expertBranchChain.size(); i++)
-        {
+        for (size_t i = 0; i < expertBranchChain.size(); i++) {
             BOOST_CHECK(expertBranchChain[i] == blockdata.vecChainActive[i]);
         }
         preBlockChain = expertBranchChain;
@@ -315,8 +314,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
 
         BranchData blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());
-        for (int i = 0; i < expertBranchChain.size(); i++)
-        {
+        for (size_t i = 0; i < expertBranchChain.size(); i++) {
             BOOST_CHECK(expertBranchChain[i] == blockdata.vecChainActive[i]);
         }
 
@@ -325,8 +323,7 @@ BOOST_AUTO_TEST_CASE(branchdb_flush)
         BOOST_CHECK(branchdb.GetBranchHeight(branchid) == expertBranchChain.size()-1);
         blockdata = branchdb.GetBranchData(branchid);
         BOOST_CHECK(expertBranchChain.size() == blockdata.vecChainActive.size());
-        for (int i = 0; i < expertBranchChain.size(); i++)
-        {
+        for (size_t i = 0; i < expertBranchChain.size(); i++) {
             BOOST_CHECK(expertBranchChain[i] == blockdata.vecChainActive[i]);
         }
     }
@@ -363,7 +360,6 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
     uint32_t preblockH = 0;
     MCBlockHeader preHeader = genesisblock;
     MCBlockHeader forkHeader;
-    uint32_t forkHeight;
     uint256 mainpreblockhash = genesisblock.GetHash();
     int mainblockheight = 1;
     MCBlockIndex* pprev = nullptr;

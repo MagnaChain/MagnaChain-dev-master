@@ -28,7 +28,6 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #define _SQL_EXCEPTION_H_
 
 #include "build_config.h"
-#include <stdexcept>
 #include <string>
 #include <memory>
 
@@ -36,12 +35,12 @@ namespace sql
 {
 
 #define MEMORY_ALLOC_OPERATORS(Class) \
-	void* operator new(size_t size) throw (std::bad_alloc) { return ::operator new(size); }  \
-	void* operator new(size_t, void*) throw(); \
-	void* operator new(size_t, const std::nothrow_t&) throw(); \
-	void* operator new[](size_t) throw (std::bad_alloc); \
-	void* operator new[](size_t, void*) throw(); \
-	void* operator new[](size_t, const std::nothrow_t&) throw(); \
+	void* operator new(size_t size) { return ::operator new(size); }  \
+	void* operator new(size_t, void*); \
+	void* operator new(size_t, const std::nothrow_t&); \
+	void* operator new[](size_t); \
+	void* operator new[](size_t, void*); \
+	void* operator new[](size_t, const std::nothrow_t&); \
 	void* operator new(size_t N, std::allocator<Class>&);
 
 #ifdef _WIN32

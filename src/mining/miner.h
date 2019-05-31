@@ -197,7 +197,8 @@ public:
     BlockAssembler(const MCChainParams& params, const Options& options);
 
     /** Construct a new block template with coinbase to scriptPubKeyIn */
-    std::unique_ptr<MCBlockTemplate> CreateNewBlock(const MCScript& scriptPubKeyIn, ContractContext* pContractContext, bool fMineWitnessTx=true, const MCKeyStore* keystoreIn = nullptr, MCCoinsViewCache *pcoinsCache = nullptr);
+    std::unique_ptr<MCBlockTemplate> CreateNewBlock(const MCScript& scriptPubKeyIn, bool fMineWitnessTx, 
+        const MCKeyStore* keystoreIn, MCCoinsViewCache *pcoinsCache, std::string& strErr);
 
 private:
     // utility functions
@@ -206,7 +207,7 @@ private:
     /** Add a tx to the block */
     void AddToBlock(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 
-    void GroupingTransaction(int offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries);
+    void GroupingTransaction(size_t offset, std::vector<const MCTxMemPoolEntry*>& blockTxEntries);
 
     // Methods for how to add transactions to a block.
     /** Add transactions based on feerate including unconfirmed ancestors

@@ -50,7 +50,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         # Set -maxmempool=0 to turn off mempool memory sharing with dbcache
         # Set -rpcservertimeout=900 to reduce socket disconnects in this
         # long-running test
-        self.base_args = ["-limitdescendantsize=0", "-maxmempool=0", "-rpcservertimeout=900", "-dbbatchsize=200000"]
+        self.base_args = ["-limitdescendantsize=0", "-maxmempool=0", "-rpcservertimeout=900", "-dbbatchsize=200000","-disablesafemode"]
 
         # Set different crash ratios and cache sizes.  Note that not all of
         # -dbcache goes to pcoinsTip.
@@ -59,7 +59,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         self.node2_args = ["-dbcrashratio=24", "-dbcache=16"] + self.base_args
 
         # Node3 is a normal node with default args, except will mine full blocks
-        self.node3_args = ["-blockmaxweight=4000000"]
+        self.node3_args = ["-blockmaxweight=4000000","-disablesafemode"]
         self.extra_args = [self.node0_args, self.node1_args, self.node2_args, self.node3_args]
 
     def setup_network(self):
@@ -78,6 +78,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         while time.time() - time_start < 240:
             try:
                 # Any of these RPC calls could throw due to node crash
+                self.log.info('start {} with args:{}'.format(node_index, self.nodes[node_index].extra_args))
                 self.start_node(node_index)
                 self.nodes[node_index].waitforblock(expected_tip)
                 utxo_hash = self.nodes[node_index].gettxoutsetinfo()['hash_serialized_2']
@@ -179,6 +180,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
         self.log.info("Verifying utxo hash matches for all nodes")
 
         for i in range(3):
+            print("verify_utxo_hash i", i)
             try:
                 nodei_utxo_hash = self.nodes[i].gettxoutsetinfo()['hash_serialized_2']
             except OSError:
@@ -236,6 +238,7 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
 
         starting_tip_height = self.nodes[3].getblockcount()
 
+        biggestwork = 0
         # Main test loop:
         # each time through the loop, generate a bunch of transactions,
         # and then either mine a single new block on the tip, or some-sized reorg.
@@ -245,20 +248,32 @@ class ChainstateWriteCrashTest(MagnaChainTestFramework):
             self.generate_small_transactions(self.nodes[3], 360, utxo_list) # TODO should be 2500
             # Pick a random block between current tip, and starting tip
             current_height = self.nodes[3].getblockcount()
+            chaintipwork = self.nodes[3].getchaintipwork()
             random_height = random.randint(starting_tip_height, current_height)
-            self.log.debug("At height %d, considering height %d", current_height, random_height)
+            self.log.info("At height %d, considering height %d", current_height, random_height)
+            hasinvalidate = False
             if random_height > starting_tip_height:
                 # Randomly reorg from this point with some probability (1/4 for
                 # tip, 1/5 for tip-1, ...)
                 if random.random() < 1.0 / (current_height + 4 - random_height):
-                    self.log.debug("Invalidating block at height %d", random_height)
+                    self.log.info("Invalidating block at height %d", random_height)
                     self.nodes[3].invalidateblock(self.nodes[3].getblockhash(random_height))
+                    hasinvalidate = True
 
             # Now generate new blocks until we pass the old tip height
-            self.log.debug("Mining longer tip")
+            self.log.info("Mining longer tip")
             block_hashes = []
             while current_height + 1 > self.nodes[3].getblockcount():
                 block_hashes.extend(self.nodes[3].generate(min(10, current_height + 1 - self.nodes[3].getblockcount())))
+            oldwork = int(chaintipwork,16)
+            newwork = int(self.nodes[3].getchaintipwork(), 16)
+            if hasinvalidate:
+                self.log.info("new chaintipwork %s old chaintipwork %s, %s", self.nodes[3].getchaintipwork(), chaintipwork, 
+                    "new work bigger" if newwork > oldwork else "new work smaller_eq")
+            if newwork > biggestwork:
+                biggestwork = newwork
+            else:
+                self.log.info("warning: nework smaller than biggestwork")
             self.log.debug("Syncing %d new blocks...", len(block_hashes))
             self.sync_node3blocks(block_hashes)
             utxo_list = self.nodes[3].listunspent()

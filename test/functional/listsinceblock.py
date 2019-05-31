@@ -65,6 +65,7 @@ class ListSinceBlockTest (MagnaChainTestFramework):
         assert txid in self.nodes[0].getrawmempool()
         blockhash, = self.nodes[2].generate(1)
         blockhash, = self.nodes[2].generate(1)
+        self.sync_all()
         assert txid not in self.nodes[2].getrawmempool()
         assert txid not in self.nodes[0].getrawmempool()
         self.sync_all()

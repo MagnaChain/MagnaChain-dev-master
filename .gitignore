@@ -78,6 +78,7 @@ share/setup.nsi
 share/qt/Info.plist
 
 src/univalue/gen
+src/magnachaind-side
 
 src/qt/*.moc
 src/qt/moc_*.cpp
@@ -151,8 +152,6 @@ win32-build
 test/config.ini
 test/cache/*
 
-!src/leveldb*/Makefile
-
 /doc/doxygen/
 
 libmagnachainconsensus.pc
@@ -160,3 +159,4 @@ contrib/devtools/split-debug.sh
 
 # Output from running db4 installation
 db4/
+ 

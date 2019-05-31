@@ -484,7 +484,7 @@ int sc = 0;
 void mp_encode_lua_type(lua_State *L, mp_buf *buf, int level) {
     if (++sc >= LUACMSGPACK_MAX_NESTING) {
         sc = 0;
-        luaG_runerror(L, "cmsgpack => sc >= LUACMSGPACK_MAX_NESTING");
+        luaL_error(L, "cmsgpack => sc >= LUACMSGPACK_MAX_NESTING");
     }
 
     int t = lua_type(L,-1);
@@ -923,14 +923,13 @@ int luaopen_create(lua_State *L) {
 }
 
 LUALIB_API int luaopen_cmsgpack(lua_State *L) {
+    int top = lua_gettop(L);
     luaopen_create(L);
-
 #if LUA_VERSION_NUM < 502
     /* Register name globally for 5.1 */
-    lua_pushvalue(L, -1);
     lua_setglobal(L, LUACMSGPACK_NAME);
 #endif
-
+    lua_settop(L, top);
     return 1;
 }
 

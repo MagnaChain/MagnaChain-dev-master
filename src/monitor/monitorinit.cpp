@@ -20,6 +20,13 @@
 
 #include <assert.h>
 
+namespace { // Variables internal to initialization process only
+    ServiceFlags nRelevantServices = NODE_NONE;
+    int nMaxConnections;
+    int nFD;
+    ServiceFlags nLocalServices = NODE_NONE;
+} // namespace
+
 bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
 {
     const MCChainParams& chainparams = Params();
@@ -67,7 +74,7 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     MCConnman& connman = *g_connman;
 
     // 这里要取消注释
-    peerLogic.reset(new PeerLogicValidation(&connman, scheduler, &MonitorProcessMessage, &MonitorGetLocator));
+    peerLogic.reset(new MonitorPeerLogicValidation(&connman, scheduler, &MonitorProcessMessage, &MonitorGetLocator));
     RegisterValidationInterface(peerLogic.get());
 
     std::vector<std::string> uacomments;
@@ -173,7 +180,11 @@ bool MonitorInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
     // ********************************************************* Step 7: load block chain
     uint256 bestBlockHash = GetMaxHeightBlock();
     if (bestBlockHash.IsNull()) {
-        WriteBlockToDatabase(chainparams.GenesisBlock());
+        const MCBlock& block = chainparams.GenesisBlock();
+        std::shared_ptr<DatabaseBlock> dbBlock = std::make_shared<DatabaseBlock>();
+        dbBlock->hashBlock = block.GetHash();
+        dbBlock->height = 0;
+        WriteBlockToDatabase(block, dbBlock, GetSerializeSize(block, SER_NETWORK, PROTOCOL_VERSION));
         bestBlockHash = chainparams.GenesisBlock().GetHash();
     }
 

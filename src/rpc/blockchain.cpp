@@ -56,19 +56,22 @@ double GetDifficulty(const MCBlockIndex* blockindex)
         else
             blockindex = chainActive.Tip();
     }
+    assert(blockindex);
+    return GetDifficulty(blockindex->nBits);
+}
 
-    int nShift = (blockindex->nBits >> 24) & 0xff;
+double GetDifficulty(const unsigned int nBits)
+{
+    int nShift = (nBits >> 24) & 0xff;
 
     double dDiff =
-        (double)0x0000ffff / (double)(blockindex->nBits & 0x00ffffff);
+        (double)0x0000ffff / (double)(nBits & 0x00ffffff);
 
-    while (nShift < 29)
-    {
+    while (nShift < 29) {
         dDiff *= 256.0;
         nShift++;
     }
-    while (nShift > 29)
-    {
+    while (nShift > 29) {
         dDiff /= 256.0;
         nShift--;
     }
@@ -1082,7 +1085,7 @@ UniValue gettxout(const JSONRPCRequest& request)
     if (coin.nHeight == MEMPOOL_HEIGHT) {
         ret.push_back(Pair("confirmations", 0));
     } else {
-        ret.push_back(Pair("confirmations", (int64_t)(pindex->nHeight - coin.nHeight + 1)));
+        ret.push_back(Pair("confirmations", pindex->nHeight - (int32_t)coin.nHeight + 1));
     }
     ret.push_back(Pair("value", ValueFromAmount(coin.out.nValue)));
     UniValue o(UniValue::VOBJ);

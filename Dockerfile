@@ -72,9 +72,3 @@ ENTRYPOINT [ "docker-entrypoint.sh","magnachaind"]
 #   printtoconsole just for debug
 # CMD [ "-printtoconsole", "-datadir=/root/app/blocks/main" ]
 CMD [ "-datadir=/root/app/blocks/main" ]
-
-
-
-
-
-

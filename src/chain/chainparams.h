@@ -61,7 +61,6 @@ public:
         EXT_PUBLIC_KEY,
         EXT_SECRET_KEY,
         CONTRACT_ADDRESS,
-
         MAX_BASE58_TYPES
     };
 
@@ -93,9 +92,8 @@ public:
 
 	//void SetBranchId(const std::string& name) { strBranchId = name; }
 	std::string GetBranchId(void) const { return strBranchId; }
-    inline bool IsMainChain() const {
-        return GetBranchId() == MCBaseChainParams::MAIN;
-    }
+    inline bool IsMainChain() const { return GetBranchId() == MCBaseChainParams::MAIN; }
+    inline bool IsRegtest() const { return strNetworkID == MCBaseChainParams::REGTEST; }
     const uint256& GetBranchHash()const { return branchhash; }
 
     void InitMainBase58Prefixes();

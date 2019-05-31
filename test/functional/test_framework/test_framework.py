@@ -32,6 +32,8 @@ from .util import (
     set_node_times,
     sync_blocks,
     sync_mempools,
+    system_info,
+    wait_until,
 )
 
 
@@ -71,6 +73,7 @@ class MagnaChainTestFramework(object):
         # mapped，侧链对主链的映射，eg.[[0],[],[],[1]],表示侧链的0节点attach在主链的节点0；侧链1节点attach在主链的节点3
         self.mapped = []
         # self.mortgage_coins = [] #抵押币的txid，赎回抵押币时会用到
+        self.with_gdb = False
         self.set_test_params()
 
         assert hasattr(self, "num_nodes"), "Test must set self.num_nodes in set_test_params()"
@@ -150,6 +153,7 @@ class MagnaChainTestFramework(object):
             pdb.set_trace()
 
         if not self.options.noshutdown:
+            system_info()
             self.log.info("Stopping nodes")
             if self.nodes:
                 self.stop_nodes()
@@ -215,7 +219,7 @@ class MagnaChainTestFramework(object):
         node_num = (self.num_nodes if not sidechain else self.num_sidenodes)
         nodes = self.nodes if not sidechain else self.sidenodes
         for i in range(node_num - 1):
-            connect_nodes_bi(nodes, i, i + 1,sidechain=sidechain)
+            connect_nodes_bi(nodes, i, i + 1, sidechain=sidechain)
         self.sync_all([nodes])
 
     def setup_nodes(self, sidechain=False):
@@ -227,14 +231,14 @@ class MagnaChainTestFramework(object):
             if not getattr(self, 'rpc_timewait', 0):
                 self.add_nodes(self.num_nodes, extra_args)
             else:
-                self.add_nodes(self.num_nodes, extra_args,timewait=self.rpc_timewait)
+                self.add_nodes(self.num_nodes, extra_args, timewait=self.rpc_timewait)
         else:
             if hasattr(self, "side_extra_args"):
                 extra_args = self.side_extra_args
             if not getattr(self, 'rpc_timewait', 0):
-                self.add_nodes(self.num_sidenodes, extra_args,sidechain=True)
+                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True)
             else:
-                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True,timewait=self.rpc_timewait)
+                self.add_nodes(self.num_sidenodes, extra_args, sidechain=True, timewait=self.rpc_timewait)
         self.start_nodes(sidechain=sidechain)
 
     # 支链相关
@@ -256,9 +260,24 @@ class MagnaChainTestFramework(object):
         self.sync_all()
         logger("sidechain id is {}".format(sidechain_id))
         # 创建magnachaind的软链接，为了区分主链和侧链
-        if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
-            os.system("ln -s {} {}".format(os.path.join(self.options.srcdir, 'magnachaind'),
-                                           os.path.join(self.options.srcdir, 'magnachaind-side')))
+        magnachain_side_path = os.path.join(self.options.srcdir, 'magnachaind-side')
+        if not os.path.exists(magnachain_side_path):
+            try:
+                # os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
+                #            os.path.join(self.options.srcdir, 'magnachaind-side'))
+                # use copy to instead
+                shutil.copy(os.path.join(self.options.srcdir, 'magnachaind'),magnachain_side_path)
+            except Exception as e:
+                pass
+        else:
+            # if exist
+            if not os.path.islink(magnachain_side_path):
+                try:
+                    os.unlink(magnachain_side_path)
+                    shutil.copy(os.path.join(self.options.srcdir, 'magnachaind'), magnachain_side_path)
+                except Exception as e:
+                    pass
+
 
         # Set env vars
         if "MAGNACHAIND_SIDE" not in os.environ:
@@ -268,32 +287,34 @@ class MagnaChainTestFramework(object):
         logger("create sidechain datadir")
         side_datadirs = []
         if not self.mapped:
-            self.mapped = [ [i] for i in range(self.num_sidenodes)]
+            self.mapped = [[i] for i in range(self.num_sidenodes)]
         for i in range(self.num_sidenodes):
             attach_index = None
-                # 处理特定的节点映射
-                # 最多只能是1对1
+            # 处理特定的节点映射
+            # 最多只能是1对1
             all([len(m) == 1 for m in self.mapped])
-            for index,m in enumerate(self.mapped):
+            for index, m in enumerate(self.mapped):
                 if i in m:
                     attach_index = index
                     break
             if not attach_index:
                 attach_index = i
-            logger("sidenode{} attach to mainnode{}".format(i,attach_index))
+            logger("sidenode{} attach to mainnode{}".format(i, attach_index))
             side_datadirs.append(
-                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id, mainport=self.nodes[attach_index].rpcport,
+                initialize_datadir(self.options.tmpdir, i, sidechain_id=sidechain_id,
+                                   mainport=self.nodes[attach_index].rpcport,
                                    main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(attach_index))))
         logger("setup sidechain network and start side nodes")
         self.setup_network(sidechain=True)
         logger("sidechain attach to mainchains")
         for index, m in enumerate(self.mapped):
             if m:
-                #只有主节点有被挂载时才处理
-                self.nodes[index].generate(2) # make some coins
+                # 只有主节点有被挂载时才处理
+                self.nodes[index].generate(2)  # make some coins
                 self.sync_all()
                 # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
-                ret = self.nodes[index].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[m[0]].rpcport, '', '','',side_datadirs[m[0]])
+                ret = self.nodes[index].addbranchnode(sidechain_id, '127.0.0.1', self.sidenodes[m[0]].rpcport, '', '',
+                                                      '', side_datadirs[m[0]])
                 if ret != 'ok':
                     raise Exception(ret)
         for index, m in enumerate(self.mapped):
@@ -301,8 +322,10 @@ class MagnaChainTestFramework(object):
                 logger("mortgage coins to sidenode{}".format(m[0]))
                 for j in range(10):
                     addr = self.sidenodes[m[0]].getnewaddress()
-                    txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']#抵押挖矿币
-                self.nodes[index].generate(10)
+                    txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
+                for i in range(5):
+                    # avoid generate timeout on travis-ci
+                    self.nodes[index].generate(2)
                 self.sync_all()
                 assert self.sidenodes[m[0]].getmempoolinfo()['size'] > 0
         self.sync_all()
@@ -325,8 +348,8 @@ class MagnaChainTestFramework(object):
         assert_equal(len(binary), num_nodes)
         for i in range(num_nodes):
             n = TestNode(i, self.options.tmpdir, extra_args[i], rpchost, timewait=timewait, binary=binary[i],
-                     stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir,
-                     sidechain=sidechain)
+                         stderr=None, mocktime=self.mocktime, coverage_dir=self.options.coveragedir,
+                         sidechain=sidechain,with_gdb=self.with_gdb)
             if not sidechain:
                 self.nodes.append(n)
             else:
@@ -414,30 +437,44 @@ class MagnaChainTestFramework(object):
     def wait_for_node_exit(self, i, timeout):
         self.nodes[i].process.wait(timeout)
 
-    def split_network(self):
+    def split_network(self,sidechain = False):
         """
         Split the network of four nodes into nodes 0/1 and 2/3.
         """
-        disconnect_nodes(self.nodes[1], 2)
-        disconnect_nodes(self.nodes[2], 1)
-        self.sync_all([self.nodes[:2], self.nodes[2:]])
+        if not sidechain:
+            disconnect_nodes(self.nodes[1], 2)
+            disconnect_nodes(self.nodes[2], 1)
+            self.sync_all([self.nodes[:2], self.nodes[2:]])
+        else:
+            disconnect_nodes(self.sidenodes[1], 2)
+            disconnect_nodes(self.sidenodes[2], 1)
+            self.sync_all([self.sidenodes[:2], self.sidenodes[2:]])
 
-    def join_network(self, timeout=60):
+    def join_network(self, sidechain = False,timeout=60):
         """
         Join the (previously split) network halves together.
         """
-        connect_nodes_bi(self.nodes, 1, 2)
-        self.sync_all(timeout=timeout)
+        if not sidechain:
+            connect_nodes_bi(self.nodes, 1, 2)
+            self.sync_all(timeout=timeout)
+        else:
+            connect_nodes_bi(self.sidenodes, 1, 2)
+            self.sync_all([self.sidenodes],timeout=timeout)
 
     """make a chain have more work than b"""
 
-    def make_more_work_than(self, a, b):
-        bwork = int(self.nodes[b].getchaintipwork(), 16)
+    def make_more_work_than(self, a, b,sidechain = False):
+        if sidechain:
+            node_a = self.sidenodes[a]
+            bwork = int(self.sidenodes[b].getchaintipwork(), 16)
+        else:
+            node_a = self.nodes[a]
+            bwork = int(self.nodes[b].getchaintipwork(), 16)
         genblocks = []
-        while int(self.nodes[a].getchaintipwork(), 16) <= bwork:
-            genblocks.append(self.nodes[a].generate(1)[0])
-        if bwork == int(self.nodes[a].getchaintipwork(), 16):
-            genblocks.append(self.nodes[a].generate(1)[0])
+        while int(node_a.getchaintipwork(), 16) <= bwork:
+            genblocks.append(node_a.generate(1)[0])
+        if bwork == int(node_a.getchaintipwork(), 16):
+            genblocks.append(node_a.generate(1)[0])
         if len(genblocks) > 0:
             self.log.info("make more work by gen %d" % (len(genblocks)))
         return genblocks
@@ -628,3 +665,97 @@ class SkipTest(Exception):
 
     def __init__(self, message):
         self.message = message
+
+
+class MutiSideChainTestFramework(MagnaChainTestFramework):
+    """Test framework for doing muti sidechain testing"""
+
+    def set_test_params(self):
+        self.setup_clean_chain = True
+        # 多侧链的话，可以一个主节点上挂载多条侧链
+        self.num_nodes = 1
+        self.num_sidenodes = 2
+
+    def setup_network(self, sidechain=False):
+        """Override this method to customize test network topology"""
+        self.setup_nodes(sidechain=sidechain)
+
+        # Connect the nodes as a "chain".  This allows us
+        # to split the network between nodes 1 and 2 to get
+        # two halves that can work on competing chains.
+        node_num = (self.num_nodes if not sidechain else self.num_sidenodes)
+        nodes = self.nodes if not sidechain else self.sidenodes
+        '''
+        不同的侧链节点不需要链接起来，也不会链接起来
+        for i in range(node_num - 1):
+            connect_nodes_bi(nodes, i, i + 1, sidechain=sidechain)
+        self.sync_all([nodes])
+        '''
+
+    def setup_sidechain(self):
+        '''
+        Override this method to customize test sidenode setup
+        :return:
+        '''
+        self.log.info("setup sidechain")
+        # 创建抵押币
+        # for convince
+        node = self.nodes[0]
+        logger = self.log.info
+        node.generate(2)
+        self.sidechain_id_one = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
+                                              node.getnewaddress())['branchid']
+        node.generate(1)
+        self.sidechain_id_two = node.createbranchchain("clvseeds.com", "00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333",
+                                              node.getnewaddress())['branchid']
+        node.generate(1)
+        logger("sidechain ids:\n\t{}\n\t{}".format(self.sidechain_id_one,self.sidechain_id_two))
+        # 创建magnachaind的软链接，为了区分主链和侧链
+        if not os.path.exists(os.path.join(self.options.srcdir, 'magnachaind-side')):
+            try:
+                os.symlink(os.path.join(self.options.srcdir, 'magnachaind'),
+                           os.path.join(self.options.srcdir, 'magnachaind-side'))
+            except Exception as e:
+                pass
+
+        # Set env vars
+        if "MAGNACHAIND_SIDE" not in os.environ:
+            os.environ["MAGNACHAIND_SIDE"] = os.path.join(self.options.srcdir, 'magnachaind-side')
+
+        # 初始化侧链目录
+        logger("create sidechains datadir")
+        # sidechain one
+        sidechain_one_dir = initialize_datadir(self.options.tmpdir, 0, sidechain_id=self.sidechain_id_one,
+                           mainport=self.nodes[0].rpcport,
+                           main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(0)))
+        sidechain_two_dir = initialize_datadir(self.options.tmpdir, 1, sidechain_id=self.sidechain_id_two,
+                           mainport=self.nodes[0].rpcport,
+                           main_datadir=os.path.join(self.options.tmpdir, 'node{}'.format(0)))
+        print('datadirs:',sidechain_one_dir,sidechain_two_dir)
+        logger("setup sidechains network and start side nodes")
+        self.setup_network(sidechain=True)
+        logger("sidechain attach to mainchains")
+        self.nodes[0].generate(2)  # make some coins
+        # addbranchnode接口会覆盖旧的配置。目前主节点与侧节点只能是1对1关系，不支持1对多
+        ret = self.nodes[0].addbranchnode(self.sidechain_id_one, '127.0.0.1', self.sidenodes[0].rpcport, '', '',
+                                              '', sidechain_one_dir)
+        if ret != 'ok':
+            raise Exception(ret)
+        ret = self.nodes[0].addbranchnode(self.sidechain_id_two, '127.0.0.1', self.sidenodes[1].rpcport, '', '',
+                                              '', sidechain_two_dir)
+        if ret != 'ok':
+            raise Exception(ret)
+
+        for m in [0,1]:
+            logger("mortgage coins to sidenode{}".format(m))
+            sidechain_id = self.sidechain_id_one if m == 0 else self.sidechain_id_two
+            for j in range(10):
+                addr = self.sidenodes[m].getnewaddress()
+                txid = self.nodes[0].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
+            for i in range(5):
+                # avoid generate timeout on travis-ci
+                self.nodes[0].generate(2)
+            self.sync_all()
+            wait_until(lambda: self.sidenodes[m].getmempoolinfo()['size'] > 0, timeout=30)
+        self.sync_all()
+        logger("sidechains setup done")

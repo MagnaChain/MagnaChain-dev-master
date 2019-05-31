@@ -9,15 +9,17 @@
 //跨链交易接收方交易的key 
 static const char DB_BRANCH_CHAIN_TX_DATA = 'b';
 static const char DB_BRANCH_CHAIN_RECV_TX_DATA = 'r';
+static const char DB_DYNAMIC_TXID_MAPING = 'm'; // For dynamic transaction(step2、RedeemMortgage、and may smartcontract txid mapping)
 static const std::string DB_BRANCH_CHAIN_LIST = "chainlist";
 static const char DB_MINE_COIN_LOCK = 'c';
 
 class BranchChainTxEntry {
 public:
-    char key;
     uint256 txhash;
+    char key;
 
-    BranchChainTxEntry(const uint256& hash, char dkey) : txhash(hash), key(dkey) {}
+    BranchChainTxEntry(const uint256& hash, char dkey)
+        : txhash(hash), key(dkey) {}
 
     template<typename Stream>
     void Serialize(Stream &s) const {
@@ -62,7 +64,8 @@ public:
     MCCreateBranchChainInfo()
     {}
     MCCreateBranchChainInfo(const MCCreateBranchChainInfo& from)
-        :txid(from.txid), blockhash(from.blockhash), branchVSeeds(from.branchVSeeds), branchSeedSpec6(from.branchSeedSpec6)
+        : txid(from.txid), blockhash(from.blockhash), 
+        branchVSeeds(from.branchVSeeds), branchSeedSpec6(from.branchSeedSpec6)
     {
     }
 
@@ -86,7 +89,8 @@ class BranchChainTxInfo :public DbDataFlag
 {
 public:
     BranchChainTxInfo() :txindex(0) { blockhash.SetNull(); }
-    BranchChainTxInfo(const BranchChainTxInfo& from) :blockhash(from.blockhash), txindex(from.txindex), txnVersion(from.txnVersion) {}
+    BranchChainTxInfo(const BranchChainTxInfo& from)
+        : DbDataFlag(), blockhash(from.blockhash), txindex(from.txindex), txnVersion(from.txnVersion) {}
 
     uint256 blockhash;
     uint32_t txindex;
@@ -125,7 +129,8 @@ class CoinReportInfo : public DbDataFlag
 {
 public:
     CoinReportInfo() {}
-    CoinReportInfo(uint256 txid, unsigned char flag) :reporttxid(txid),DbDataFlag(flag) {}
+    CoinReportInfo(const uint256& txid, unsigned char flag)
+        : DbDataFlag(flag), reporttxid(txid) {}
 
     uint256 reporttxid;
 
@@ -137,9 +142,27 @@ public:
     }
 };
 
-typedef std::map<BranchChainTxEntry, BranchChainTxInfo> BRANCH_CHAIN_INFO_MAP;// [tx hash, sendinfo]
-typedef std::map<BranchChainTxEntry, BranchChainTxRecvInfo> BRANCH_CHAIN_RECV_MAP; //[key, recvinfo]
+class CTxidMapping : public DbDataFlag
+{
+public:
+    CTxidMapping() {}
+    CTxidMapping(const uint256& changedtxid, unsigned char flag)
+        : DbDataFlag(), txid(changedtxid) {}
+    
+    uint256 txid;
+
+    ADD_SERIALIZE_METHODS;
+
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(txid);
+    }
+};
+
+typedef std::map<BranchChainTxEntry, BranchChainTxInfo> MAP_BRANCH_CHAIN_INFO;// [tx hash, sendinfo]
+typedef std::map<BranchChainTxEntry, BranchChainTxRecvInfo> MAP_BRANCH_CHAIN_RECV; //[key, recvinfo]
 typedef std::map<uint256, std::vector<CoinReportInfo>> COIN_BE_REPORT;// [coinpreouthash,vector<un_prove_reporttxid>] 
+typedef std::map<uint256, CTxidMapping> MAP_TXID_MAPPING; // Original txid to blocked txid(or step 1 id to step 2 id).
 
 // 在connectblock 或者disconnectblock 时,需要数据库操作先写到cache里面,
 // 待整个过程没错后才把cache的数据写到数据库
@@ -158,17 +181,20 @@ public:
     void RemoveFromCache(const MCTransactionRef& ptx);
 
     bool HasInCache(const MCTransaction& tx);
-    void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
+    //void RemoveFromBlock(const std::vector<MCTransactionRef>& vtx);
+    void RemoveFromMempool(const MCTransaction& tx);
 
+    uint256 GetBlockTxid(const uint256& txid);
     //锁币解锁
     /**
      * fBlockConnect is in block connect or block disconnect
      */
     void UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect);
 
-    BRANCH_CHAIN_INFO_MAP m_mapChainTxInfos;
-    BRANCH_CHAIN_RECV_MAP m_mapRecvRecord;//temp record.
+    MAP_BRANCH_CHAIN_INFO m_mapChainTxInfos;
+    MAP_BRANCH_CHAIN_RECV m_mapRecvRecord;//temp record.
     COIN_BE_REPORT m_mapCoinBeReport;
+    MAP_TXID_MAPPING m_mapTxidMapping;
 };
 
 //跨链交易的相关记录 
@@ -193,6 +219,7 @@ public:
     bool IsBranchCreated(const uint256 &branchid) const;
 
     bool IsMineCoinLock(const uint256& coinhash) const;
+    uint256 GetBlockTxid(const uint256& txid);
 private:
     MCDBWrapper m_db;
     CREATE_BRANCH_TX_CONTAINER m_vCreatedBranchTxs;

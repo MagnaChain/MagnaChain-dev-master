@@ -9,8 +9,6 @@
 class CRPCTable;
 class JSONRPCRequest;
 class MCWalletTx;
-class MCCoinControl;
-class SmartLuaState;
 
 void RegisterWalletRPCCommands(CRPCTable &t);
 
@@ -25,6 +23,5 @@ MCWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request);
 std::string HelpRequiringPassphrase(MCWallet *);
 void EnsureWalletIsUnlocked(MCWallet *);
 bool EnsureWalletIsAvailable(MCWallet *, bool avoidException);
-void SendMoney(MCWallet* pWallet, const MCScript& scriptPubKey, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coinCtrl, SmartLuaState* sls = nullptr);
 
 #endif //MAGNACHAIN_WALLET_RPCWALLET_H

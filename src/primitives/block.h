@@ -27,8 +27,8 @@ public:
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
-    uint256 hashMerkleRootWithData;
     uint256 hashMerkleRootWithPrevData;
+    uint256 hashMerkleRootWithData;
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce; // this value in bitcion are added for make different hash, we use to indicate the amount of miner's address
@@ -48,8 +48,8 @@ public:
         READWRITE(this->nVersion);
         READWRITE(hashPrevBlock);
         READWRITE(hashMerkleRoot);
-        READWRITE(hashMerkleRootWithData);
         READWRITE(hashMerkleRootWithPrevData);
+        READWRITE(hashMerkleRootWithData);
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
@@ -64,8 +64,8 @@ public:
         nVersion = 0;
         hashPrevBlock.SetNull();
         hashMerkleRoot.SetNull();
-        hashMerkleRootWithData.SetNull();
         hashMerkleRootWithPrevData.SetNull();
+        hashMerkleRootWithData.SetNull();
         nTime = 0;
         nBits = 0;
         nNonce = 0;
@@ -93,7 +93,6 @@ public:
     // network and disk
     std::vector<MCTransactionRef> vtx;
     std::vector<uint16_t> groupSize;
-    std::vector<ContractPrevData> prevContractData;
 
     // memory only
     mutable bool fChecked;
@@ -116,7 +115,6 @@ public:
         READWRITE(*(MCBlockHeader*)this);
         READWRITE(vtx);
         READWRITE(groupSize);
-        READWRITE(prevContractData);
     }
 
     void SetNull()
@@ -124,7 +122,6 @@ public:
         MCBlockHeader::SetNull();
         vtx.clear();
         groupSize.clear();
-        prevContractData.clear();
         fChecked = false;
     }
 
@@ -134,8 +131,8 @@ public:
         block.nVersion = nVersion;
         block.hashPrevBlock = hashPrevBlock;
         block.hashMerkleRoot = hashMerkleRoot;
-        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.hashMerkleRootWithPrevData = hashMerkleRootWithPrevData;
+        block.hashMerkleRootWithData = hashMerkleRootWithData;
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;

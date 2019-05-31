@@ -55,7 +55,7 @@ BOOST_AUTO_TEST_CASE(manythreads)
 
     boost::mutex counterMutex[10];
     int counter[10] = { 0 };
-    FastRandomContext rng(42);
+    FastRandomContext rng(true);
     auto zeroToNine = [](FastRandomContext& rc) -> int { return rc.randrange(10); }; // [0, 9]
     auto randomMsec = [](FastRandomContext& rc) -> int { return -11 + rc.randrange(1012); }; // [-11, 1000]
     auto randomDelta = [](FastRandomContext& rc) -> int { return -1000 + rc.randrange(2001); }; // [-1000, 1000]

@@ -45,12 +45,13 @@ class MCBlockPolicyEstimator;
 class MCTxMemPool;
 class MCTxMemPoolEntry;
 class MCValidationState;
-class SmartLuaState;
+class ContractVM;
 struct ChainTxData;
 class BranchCache;
 class ContractContext;
 class CoinAmountCache;
 
+struct VMOut;
 struct PrecomputedTransactionData;
 struct LockPoints;
 
@@ -211,10 +212,10 @@ extern bool fPruneMode;
 /** Number of MiB of block files that we're trying to stay below. */
 extern uint64_t nPruneTarget;
 /** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
-static const unsigned int MIN_BLOCKS_TO_KEEP = 288;
+static const int32_t MIN_BLOCKS_TO_KEEP = 288;
 
-static const signed int DEFAULT_CHECKBLOCKS = 1800; // 这里改为多少秒以内，以适配主链与支链的不同出块时间
-static const unsigned int DEFAULT_CHECKLEVEL = 3;
+static const int32_t DEFAULT_CHECKBLOCKS = 1800; // 这里改为多少秒以内，以适配主链与支链的不同出块时间
+static const uint32_t DEFAULT_CHECKLEVEL = 3;
 
 // Require that user allocate at least 550MB for block & undo files (blk???.dat and rev???.dat)
 // At 1MB per block, 288 blocks = 288MB.
@@ -225,9 +226,6 @@ static const unsigned int DEFAULT_CHECKLEVEL = 3;
 // one 128MB block file + added 15% undo data = 147MB greater for a total of 545MB
 // Setting the target to > than 550MB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
-
-bool IsCoinCreateBranchScript(const MCScript& script);
-bool IsCoinBranchTranScript(const MCScript& script);
 
 bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
 /** 
@@ -249,7 +247,7 @@ bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
  * @param[out]  fNewBlock A boolean which is set to indicate if the block was first received via this call
  * @return True if state.IsValid()
  */
-bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, ContractContext* pContractContext, bool fForceProcessing, bool* fNewBlock, bool ismining = false);
+bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> pblock, bool fForceProcessing, bool* fNewBlock, bool ismining = false);
 
 /**
  * Process incoming block headers.
@@ -382,9 +380,7 @@ bool TestLockPointValidity(const LockPoints* lp);
  */
 bool CheckSequenceLocks(const MCTransaction& tx, int flags, LockPoints* lp = nullptr, bool useExistingLockPoints = false);
 
-bool CheckContractVinVout(const MCTransaction& tx, SmartLuaState* sls);
-
-bool CheckSmartContract(SmartLuaState* sls, const MCTxMemPoolEntry& entry, int saveType, CoinAmountCache* pCoinAmountCache);
+bool CheckContractCoins(const MCTransactionRef& tx, const VMOut* vmOut);
 
 /**
  * Closure representing one script verification
@@ -491,10 +487,6 @@ extern MCCoinsViewCache* pcoinsTip;
 extern MCBlockTreeDB* pblocktree;
 
 extern CoinListDB* pcoinListDb;
-
-extern CoinAmountDB* pCoinAmountDB;
-
-extern CoinAmountCache* pCoinAmountCache;
 
 /**
  * Return the spend height, which is one more than the inputs.GetBestBlock().

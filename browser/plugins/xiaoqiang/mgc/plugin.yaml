@@ -1,0 +1,6 @@
+plugin:
+    name: 'xiaoqiang.mgc::lang.plugin.name'
+    description: 'xiaoqiang.mgc::lang.plugin.description'
+    author: xiaoqiang
+    icon: oc-icon-anchor
+    homepage: ''

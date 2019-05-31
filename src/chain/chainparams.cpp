@@ -40,7 +40,7 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
 
 		size_t iCodeSize = strlen(pszTimestamp) -1;
 		unsigned char code[BIP32_EXTKEY_SIZE];
-		for (int i = 0; i < BIP32_EXTKEY_SIZE; ++i) {
+		for (size_t i = 0; i < BIP32_EXTKEY_SIZE; ++i) {
 			code[i] = (unsigned char)pszTimestamp[i%iCodeSize];
 		}
 
@@ -70,14 +70,12 @@ static MCBlock CreateGenesisBlock(const char* pszTimestamp, const MCScript& gene
     genesis.hashPrevBlock.SetNull();
     genesis.hashMerkleRoot = BlockMerkleRoot(genesis);
 
-    if (!isMainChain) {
-        ContractContext contractContext;
-        contractContext.txFinalData.resize(1);
-        genesis.groupSize.resize(1);
-        genesis.prevContractData.resize(1);
-        genesis.hashMerkleRootWithPrevData = BlockMerkleRootWithPrevData(genesis);
-        genesis.hashMerkleRootWithData = BlockMerkleRootWithData(genesis, contractContext);
-    }
+    std::vector<uint256> leaves;
+    std::vector<VMOut> vmOuts;
+    vmOuts.resize(1);
+    genesis.groupSize.resize(1);
+    genesis.hashMerkleRootWithPrevData = BlockMerkleLeavesWithPrevData(&genesis, vmOuts, leaves, nullptr);
+    genesis.hashMerkleRootWithData = BlockMerkleLeavesWithFinalData(&genesis, vmOuts, leaves, nullptr);
 
     return genesis;
 }
@@ -182,7 +180,7 @@ int GetBranchInitDefaultPort(bool fTestNet, bool fRegTest)
 class CMainParams : public MCChainParams {
 public:
     CMainParams() {
-        strNetworkID = "main";
+        strNetworkID = MCBaseChainParams::MAIN;
 		consensus.BigBoomHeight = 1000;
         consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 210000 * 40;
@@ -280,7 +278,7 @@ public:
 class CTestNetParams : public MCChainParams {
 public:
     CTestNetParams() {
-        strNetworkID = "test";
+        strNetworkID = MCBaseChainParams::TESTNET;
 		consensus.BigBoomHeight = 1000;
 		consensus.BigBoomValue = 2600000 * COIN;
 		consensus.nSubsidyHalvingInterval = 210000 * 20;
@@ -365,7 +363,7 @@ public:
 class CRegTestParams : public MCChainParams {
 public:
     CRegTestParams() {
-        strNetworkID = "regtest";
+        strNetworkID = MCBaseChainParams::REGTEST;
 		consensus.BigBoomHeight = 1000;
 		consensus.BigBoomValue = 2600000 * COIN;
         consensus.nSubsidyHalvingInterval = 150;
@@ -434,7 +432,7 @@ public:
 class MCBranchParams : public MCChainParams {
 public:
 	MCBranchParams(const std::string& strBranchIdParams = "") {
-		strNetworkID = "branch";
+		strNetworkID = MCBaseChainParams::BRANCH;
 		consensus.BigBoomHeight = 0;
 		consensus.BigBoomValue = 0 * COIN;
 		consensus.nSubsidyHalvingInterval = 210000 * 20;
@@ -504,8 +502,9 @@ public:
         else if (fRegTest)
             InitRegtestBase58Prefixes();
 
-		vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
-
+        vSeeds.clear();
+        vFixedSeeds.clear();
+		//vFixedSeeds = std::vector<SeedSpec6>(pnSeed6_main, pnSeed6_main + ARRAYLEN(pnSeed6_main));
 
 		fDefaultConsistencyChecks = false;
 		fRequireStandard = true;

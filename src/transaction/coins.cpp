@@ -75,7 +75,6 @@ bool MCCoinsViewCache::GetCoin(const MCOutPoint &outpoint, Coin &coin) const {
 }
 
 void MCCoinsViewCache::AddCoin(const MCOutPoint &outpoint, Coin&& coin, bool possible_overwrite) {
-	//LogPrintf("AddCoin %s %d\n", outpoint.hash.ToString().c_str(), outpoint.n);
 	assert(!coin.IsSpent());
     if (coin.out.scriptPubKey.IsUnspendable()) return;
     MCCoinsMap::iterator it;
@@ -94,15 +93,9 @@ void MCCoinsViewCache::AddCoin(const MCOutPoint &outpoint, Coin&& coin, bool pos
     it->second.coin = std::move(coin);
     it->second.flags |= MCCoinsCacheEntry::DIRTY | (fresh ? MCCoinsCacheEntry::FRESH : 0);
     cachedCoinsUsage += it->second.coin.DynamicMemoryUsage();
-
-	// add to first trans point
-	//if (this == pcoinsTip) {
-	//	pcoinListDb->OnAddCoin(outpoint, it->second.coin, possible_overwrite);
-	//}
 }
 
 void AddCoins(MCCoinsViewCache& cache, const MCTransaction &tx, int nHeight, bool check) {
-	//LogPrintf("AddCoins tx %s\n", tx.GetHash().ToString().c_str());
     bool fCoinbase = tx.IsCoinBase();
     const uint256& txid = tx.GetHash();
     for (size_t i = 0; i < tx.vout.size(); ++i) {
@@ -158,6 +151,7 @@ bool MCCoinsViewCache::HaveCoinInCache(const MCOutPoint &outpoint) const {
 bool MCCoinsViewCache::Flush()
 {
     if (base == pcoinsTip) {
+        LogPrintf("%s:%d %d\n", __FUNCTION__, __LINE__, cacheCoins.size());
         pcoinListDb->ImportCoins(cacheCoins);
     }
 
@@ -255,18 +249,19 @@ MCAmount MCCoinsViewCache::GetValueIn(const MCTransaction& tx) const
     if (tx.IsCoinBase())
         return 0;
 
-    bool includeContract = false;
     MCAmount nResult = 0;
     for (unsigned int i = 0; i < tx.vin.size(); i++) {
-        nResult += AccessCoin(tx.vin[i].prevout).out.nValue;
-        if (tx.vin[i].scriptSig.IsContract())
-            includeContract = true;
+        MCAmount value = AccessCoin(tx.vin[i].prevout).out.nValue;
+        nResult += value;
+        if (!MoneyRange(nResult) || !MoneyRange(value))
+            return 0;
     }
 
-    if (tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION && !includeContract && tx.pContractData->contractCoinsOut.size() > 0) {
+    if (tx.IsSmartContract()) {
         for (auto it : tx.pContractData->contractCoinsOut) {
-            nResult += it.second;
-            if (!MoneyRange(nResult) || !MoneyRange(it.second))
+            MCAmount value = it.second;
+            nResult += value;
+            if (!MoneyRange(nResult) || !MoneyRange(value))
                 return 0;
         }
     }
@@ -284,99 +279,6 @@ bool MCCoinsViewCache::HaveInputs(const MCTransaction& tx) const
         }
     }
     return true;
-}
-
-MCAmount CoinAmountDB::GetAmount(const uint160& key) const
-{
-    MCAmount nValue = 0;
-    CoinListPtr plist = pcoinListDb->GetList(key);
-    for (auto it = plist->coins.begin(); it != plist->coins.end(); ++it) {
-        const MCOutPoint& outpoint = *it;
-        const Coin& coin = pcoinsTip->AccessCoin(outpoint);
-
-        if (coin.IsSpent())
-            continue;
-        if (coin.IsCoinBase() && chainActive.Height() - coin.nHeight < COINBASE_MATURITY)
-            continue;
-
-        nValue += coin.out.nValue;
-    }
-    return nValue;
-}
-
-MCAmount CoinAmountTemp::GetAmount(const uint160& key) const
-{
-    auto it = coinAmountCache.find(key);
-    if (it == coinAmountCache.end())
-        return 0;
-    return it->second;
-}
-
-void CoinAmountTemp::IncAmount(const uint160& key, MCAmount delta)
-{
-    if (delta <= 0)
-        return;
-    MCAmount nValue = GetAmount(key);
-    nValue += delta;
-    coinAmountCache[key] = nValue;
-}
-
-bool CoinAmountCache::HasKeyInCache(const uint160& key) const
-{
-    LOCK(cs);
-    return (coinAmountCache.count(key) > 0);
-}
-
-MCAmount CoinAmountCache::GetAmount(const uint160& key)
-{
-    LOCK(cs);
-    MCAmount value = 0;
-    if (coinAmountCache.count(key) == 0) {
-        if (base != nullptr)
-            value = base->GetAmount(key);
-        coinAmountCache[key] = value;
-    }
-    else
-        value = coinAmountCache[key];
-    return value;
-}
-
-bool CoinAmountCache::IncAmount(const uint160& key, MCAmount delta)
-{
-    if (delta < 0)
-        return false;
-
-    if (delta == 0)
-        return true;
-
-    LOCK(cs);
-    MCAmount value = GetAmount(key);
-    value += delta;
-    coinAmountCache[key] = value;
-    return true;
-}
-
-bool CoinAmountCache::DecAmount(const uint160& key, MCAmount delta)
-{
-    if (delta < 0)
-        return false;
-
-    if (delta == 0)
-        return true;
-
-    LOCK(cs);
-    MCAmount value = GetAmount(key);
-    if (value < delta)
-        return false;
-    value -= delta;
-    coinAmountCache[key] = value;
-    return true;
-}
-
-void CoinAmountCache::Clear()
-{
-    LOCK(cs);
-    coinAmountCache.clear();
 }
 
 static const size_t MIN_TRANSACTION_OUTPUT_WEIGHT = WITNESS_SCALE_FACTOR * ::GetSerializeSize(MCTxOut(), SER_NETWORK, PROTOCOL_VERSION);
