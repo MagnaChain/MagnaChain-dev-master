@@ -840,11 +840,11 @@ void InitLogging()
 }
 
 namespace { // Variables internal to initialization process only
-    ServiceFlags nRelevantServices = NODE_NONE;
+    ServiceFlags nRelevantServices = NODE_NETWORK;
     int nMaxConnections;
     int nUserMaxConnections;
     int nFD;
-    ServiceFlags nLocalServices = NODE_NONE;
+    ServiceFlags nLocalServices = NODE_NETWORK;
 } // namespace
 
 [[noreturn]] static void new_handler_terminate()
