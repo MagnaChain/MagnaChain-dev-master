@@ -311,7 +311,7 @@ UniValue generateBranch2ndBlock(MCWallet& wallet)
 }
 UniValue mineblanch2ndblock(const JSONRPCRequest& request)
 {
-    if (request.fHelp || request.params.size() == 0 || request.params.size() > 0)
+    if (request.fHelp || request.params.size() > 0)
         throw std::runtime_error(
             "mineBlanch2ndBlock \n"
             "\nTry to mine the 2nd block for branch chain.\n"
