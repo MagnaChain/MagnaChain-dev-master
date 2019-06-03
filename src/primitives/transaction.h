@@ -631,7 +631,7 @@ public:
     }
 
     bool IsDynamicTx() const {
-        return (IsBranchChainTransStep2() && fromBranchId != MCBaseChainParams::MAIN);
+        return (IsBranchChainTransStep2() && fromBranchId != "main");
     }
 
     bool IsLockMortgageMineCoin() const {
@@ -944,7 +944,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
 
     const bool fIsSerGetHash = s.GetType() == SER_GET_RAW_HASH;//s.GetType() & SER_GET_RAW_HASH
     //const bool fIsOnlyGetHash = s.GetType() == SER_GET_RAW_HASH;
-    if (fIsSerGetHash && tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
+    if (fIsSerGetHash && tx.IsBranchChainTransStep2() && tx.fromBranchId != "main") {
         static std::vector<MCTxIn> vinOri;
         if (vinOri.size() == 0) {
             vinOri.resize(1);

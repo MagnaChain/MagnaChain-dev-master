@@ -404,7 +404,6 @@ libmagnachain_common_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_common_a_SOURCES = \
   coding/base58.cpp \
   chain/chainparams.cpp \
-  chain/chainparamsbase.cpp \
   transaction/coins.cpp \
   transaction/compressor.cpp \
   io/core_read.cpp \
@@ -428,6 +427,7 @@ libmagnachain_util_a_CPPFLAGS = $(AM_CPPFLAGS) $(MAGNACHAIN_INCLUDES)
 libmagnachain_util_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 libmagnachain_util_a_SOURCES = \
   support/lockedpool.cpp \
+  chain/chainparamsbase.cpp \
   misc/clientversion.cpp \
   compat/glibc_sanity.cpp \
   compat/glibcxx_sanity.cpp \
