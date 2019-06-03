@@ -367,6 +367,7 @@ libmagnachain_consensus_a_SOURCES = \
   misc/amount.h \
   coding/arith_uint256.cpp \
   coding/arith_uint256.h \
+  consensus/consensus.cpp \
   consensus/merkle.cpp \
   consensus/merkle.h \
   consensus/params.h \
