@@ -111,10 +111,10 @@ bool IsStandardTx(const MCTransaction& tx, std::string& reason, const bool witne
     // to MAX_STANDARD_TX_WEIGHT mitigates CPU exhaustion attacks.
     unsigned int sz = GetTransactionWeight(tx);
     if (sz >= MAX_STANDARD_TX_WEIGHT) {
-        if (!tx.IsProve()) {
+        //if (!tx.IsProve()) {
             reason = "tx-size";
             return false;
-        }
+        //}
     }
 
     for (const MCTxIn& txin : tx.vin)
@@ -280,7 +280,7 @@ int64_t GetVirtualTransactionSize(int64_t nWeight, int64_t nSigOpCost, int32_t r
 int64_t GetVirtualTransactionSize(const MCTransaction& tx, int64_t nSigOpCost, int32_t runningTimes, int32_t deltaDataLen)
 {
     int factor = 1;
-    if (tx.IsPregnantTx() || tx.IsBranchCreate() || tx.IsProve() || tx.IsReport())
+    if (tx.IsPregnantTx() || tx.IsBranchCreate() /*|| tx.IsProve() || tx.IsReport()*/)
         factor = 50;
     if (tx.IsBranchChainTransStep2())
         factor = 100;

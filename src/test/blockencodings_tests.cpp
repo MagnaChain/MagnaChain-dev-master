@@ -75,7 +75,7 @@ BOOST_AUTO_TEST_CASE(SimpleRoundTripTest)
         MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
-        PartiallyDownloadedBlock partialBlock(&pool, g_pBranchDb);
+        PartiallyDownloadedBlock partialBlock(&pool/*, g_pBranchDb*/);
         BOOST_CHECK(partialBlock.InitData(shortIDs2, extra_txn) == READ_STATUS_OK);
         BOOST_CHECK( partialBlock.IsTxAvailable(0));
         BOOST_CHECK(!partialBlock.IsTxAvailable(1));
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE(NonCoinbasePreforwardRTTest)
         MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
-        PartiallyDownloadedBlock partialBlock(&pool, g_pBranchDb);
+        PartiallyDownloadedBlock partialBlock(&pool/*, g_pBranchDb*/);
         BOOST_CHECK(partialBlock.InitData(shortIDs2, extra_txn) == READ_STATUS_OK);
         BOOST_CHECK(!partialBlock.IsTxAvailable(0));
         BOOST_CHECK( partialBlock.IsTxAvailable(1));
@@ -247,7 +247,7 @@ BOOST_AUTO_TEST_CASE(SufficientPreforwardRTTest)
         MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
-        PartiallyDownloadedBlock partialBlock(&pool, g_pBranchDb);
+        PartiallyDownloadedBlock partialBlock(&pool/*, g_pBranchDb*/);
         BOOST_CHECK(partialBlock.InitData(shortIDs2, extra_txn) == READ_STATUS_OK);
         BOOST_CHECK( partialBlock.IsTxAvailable(0));
         BOOST_CHECK( partialBlock.IsTxAvailable(1));
@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE(EmptyBlockRoundTripTest)
         MCBlockHeaderAndShortTxIDs shortIDs2;
         stream >> shortIDs2;
 
-        PartiallyDownloadedBlock partialBlock(&pool, g_pBranchDb);
+        PartiallyDownloadedBlock partialBlock(&pool/*, g_pBranchDb*/);
         BOOST_CHECK(partialBlock.InitData(shortIDs2, extra_txn) == READ_STATUS_OK);
         BOOST_CHECK(partialBlock.IsTxAvailable(0));
 

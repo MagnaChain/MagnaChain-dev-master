@@ -478,7 +478,7 @@ void UpdateMempoolForReorg(DisconnectedBlockTransactions& disconnectpool, bool f
             }
         }
         uint64_t order = orders[ptx->GetHash()];
-        if (!fAddToMempool || ptx->IsCoinBase() || ptx->IsStake() || ptx->IsReportReward() // these tx are not accepted in mempool
+        if (!fAddToMempool || ptx->IsCoinBase() || ptx->IsStake() /*|| ptx->IsReportReward()*/ // these tx are not accepted in mempool
             || !AcceptToMemoryPool(mempool, stateDummy, ptx, false, nullptr, nullptr, true, 0, true, order)) {
             // If the transaction doesn't make it in to the mempool, remove any
             // transactions that depend on it (which would now be orphans).
@@ -555,7 +555,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
     if (tx.IsBranchCreate() && pool.GetCreateBranchChainTxCount() != 0)
         return state.DoS(0, false, REJECT_INVALID, "mempool have contain a create branch chain transaction"); //only one Branch create transaction in mempool, for easy calc Mortgage
 
-    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache, pcoinsTip, pNMissingInputs))
+    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, /*g_pBranchDataMemCache, */pcoinsTip, pNMissingInputs))
         return false;
 
     // Coinbase is only valid in a block, not as a loose transaction
@@ -564,8 +564,8 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
 
     if (tx.IsStake())
         return state.DoS(100, false, REJECT_INVALID, "stake transaction");
-    if (tx.IsReportReward())
-        return state.DoS(100, false, REJECT_INVALID, "cannot-accept-report-reward-transaction-to-mempool");
+    //if (tx.IsReportReward())
+    //    return state.DoS(100, false, REJECT_INVALID, "cannot-accept-report-reward-transaction-to-mempool");
 
     // Reject transactions with witness before segregated witness activates (override with -prematurewitness)
     bool witnessEnabled = IsWitnessEnabled(chainActive.Tip(), chainparams.GetConsensus());
@@ -896,7 +896,7 @@ static bool AcceptToMemoryPoolWorker(const MCChainParams& chainparams, MCTxMemPo
             scriptVerifyFlags = gArgs.GetArg("-promiscuousmempoolflags", scriptVerifyFlags);
         }
 
-        if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache, g_pBranchDataMemCache)) {
+        if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache/*, g_pBranchDataMemCache*/)) {
             return false;
         }
 
@@ -1004,9 +1004,9 @@ static bool AcceptToMemoryPoolWithTime(const MCChainParams& chainparams, MCTxMem
     }
     if (res) //accept ok
     {
-        if (g_pBranchDataMemCache){
-            g_pBranchDataMemCache->AddToCache(*tx); //check n add relate cache
-        }
+        //if (g_pBranchDataMemCache){
+        //    g_pBranchDataMemCache->AddToCache(*tx); //check n add relate cache
+        //}
         if (g_pBranchTxRecordCache) {
             g_pBranchTxRecordCache->AddToCache(tx, uint256(), 0);
         }
@@ -1528,7 +1528,7 @@ bool CheckInputs(const MCTransaction& tx, MCValidationState& state, const MCCoin
                 if (pvChecks) {
                     pvChecks->push_back(CScriptCheck());
                     check.swap(pvChecks->back());
-                } else if (tx.IsReportReward()) {
+                //} else if (tx.IsReportReward()) {
                     // no need to verify signature
                 } else if (!check()) {
                         if (flags & STANDARD_NOT_MANDATORY_VERIFY_FLAGS) {
@@ -1684,7 +1684,7 @@ int ApplyTxInUndo(Coin&& undo, MCCoinsViewCache& view, const MCOutPoint& out)
 
 /** Undo the effects of this block (with given index) on the UTXO set represented by coins.
  *  When FAILED is returned, view is left in an indeterminate state. */
-static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex* pindex, MCCoinsViewCache& view, BranchChainTxRecordsCache* pBranchTxRecordCache = nullptr, BranchCache* pBranchCache = nullptr)
+static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex* pindex, MCCoinsViewCache& view, BranchChainTxRecordsCache* pBranchTxRecordCache = nullptr)
 {
     bool fClean = true;
 
@@ -1883,7 +1883,7 @@ static int64_t nTimeTotal = 0;
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins.
  *  Validity checks that depend on the UTXO set are also done; ConnectBlock()
  *  can fail if those validity checks fail (among other reasons). */
-static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlockIndex* pindex, MCCoinsViewCache& view, const MCChainParams& chainparams, bool fJustCheck = false, BranchChainTxRecordsCache* pBranchTxRecordCache = nullptr, BranchCache* pBranchCache = nullptr)
+static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlockIndex* pindex, MCCoinsViewCache& view, const MCChainParams& chainparams, bool fJustCheck = false, BranchChainTxRecordsCache* pBranchTxRecordCache = nullptr/*, BranchCache* pBranchCache = nullptr*/)
 {
     AssertLockHeld(cs_main);
     const uint256 blockhash = block.GetHash();
@@ -1894,9 +1894,9 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
            (*pindex->phashBlock == blockhash));
     int64_t nTimeStart = GetTimeMicros();
 
-    BranchCache branchcache(g_pBranchDb);
+    //BranchCache branchcache(g_pBranchDb);
     // Check it again in case a previous version let a bad block in
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), &branchcache, !fJustCheck, !fJustCheck, false, &view))
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), /*&branchcache,*/ !fJustCheck, !fJustCheck, false, &view))
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
 
     // verify that the view's current state corresponds to the previous block
@@ -2042,12 +2042,12 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         }
 
         //duplicate check and add to cache
-        if (!CheckBranchDuplicateTx(tx, state, pBranchTxRecordCache, pBranchCache)) {
+        if (!CheckBranchDuplicateTx(tx, state, pBranchTxRecordCache/*, pBranchCache*/)) {
             return false;
         }
         //
-        if (pBranchCache)
-            pBranchCache->AddToCache(tx);
+        //if (pBranchCache)
+        //    pBranchCache->AddToCache(tx);
 
         // GetTransactionSigOpCost counts 3 types of sigops:
         // * legacy (always)
@@ -2108,14 +2108,14 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
             if (QuickGetBranchScriptType(coin.out.scriptPubKey) != BST_MORTGAGE_COIN) {
                 return state.DoS(100, error("Invalid mortgage coin"));
             }
-            if (g_pBranchChainTxRecordsDb->IsMineCoinLock(fromhash1)) {
-                return state.DoS(0, error("Mine-coin-is-locked"));
-            }
+            //if (g_pBranchChainTxRecordsDb->IsMineCoinLock(fromhash1)) {
+            //    return state.DoS(0, error("Mine-coin-is-locked"));
+            //}
         }
-        if (tx.IsReportReward()) {
-            if (!CheckReportRewardTransaction(tx, state, pindex, pBranchCache))
-                return false;
-        }
+        //if (tx.IsReportReward()) {
+        //    if (!CheckReportRewardTransaction(tx, state, pindex, pBranchCache))
+        //        return false;
+        //}
 
         MCTxUndo undoDummy;
         if (i > 0) {
@@ -2125,7 +2125,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
 
         if (fTxIndex) // fTxIndex record all
             vPos.push_back(std::make_pair(tx.GetHash(), pos));
-        else if (tx.IsBranchCreate() || tx.IsReport() || tx.IsProve() || tx.IsRedeemMortgageStatement()) // record with filter
+        else if (tx.IsBranchCreate() /*|| tx.IsReport() || tx.IsProve()*/ || tx.IsRedeemMortgageStatement()) // record with filter
             vPos.push_back(std::make_pair(tx.GetHash(), pos));
         pos.nTxOffset += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
 
@@ -2451,8 +2451,8 @@ bool static DisconnectTip(MCValidationState& state, const MCChainParams& chainpa
         bool flushed = view.Flush();
         assert(flushed);
         g_pBranchChainTxRecordsDb->Flush(bccache);
-        if (g_pBranchDb)
-            g_pBranchDb->Flush(pblock, false);
+        //if (g_pBranchDb)
+        //    g_pBranchDb->Flush(pblock, false);
     }
     LogPrint(BCLog::BENCH, "- Disconnect block: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
     // Write the chain state to disk, if necessary.
@@ -2586,8 +2586,8 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
     {
         MCCoinsViewCache view(pcoinsTip);
         BranchChainTxRecordsCache bccache;
-        BranchCache branchcache(g_pBranchDb);
-        bool rv = ConnectBlock(blockConnecting, state, pindexNew, view, chainparams, false, &bccache, &branchcache);
+        //BranchCache branchcache(g_pBranchDb);
+        bool rv = ConnectBlock(blockConnecting, state, pindexNew, view, chainparams, false, &bccache/*, &branchcache*/);
         GetMainSignals().BlockChecked(blockConnecting, state);
         if (!rv) {
             if (state.IsInvalid())
@@ -2600,8 +2600,8 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
         bool flushed = view.Flush();
         assert(flushed);
         g_pBranchChainTxRecordsDb->Flush(bccache);
-        if (g_pBranchDb)
-            g_pBranchDb->Flush(pthisBlock, true);
+        //if (g_pBranchDb)
+        //    g_pBranchDb->Flush(pthisBlock, true);
     }
     int64_t nTime4 = GetTimeMicros();
     nTimeFlush += nTime4 - nTime3;
@@ -2615,8 +2615,8 @@ bool static ConnectTip(MCValidationState& state, const MCChainParams& chainparam
     // Remove conflicting transactions from the mempool.;
     mempool.RemoveForBlock(blockConnecting.vtx, pindexNew->nHeight);
     disconnectpool.RemoveForBlock(blockConnecting.vtx);
-    if (g_pBranchDataMemCache)
-        g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
+    //if (g_pBranchDataMemCache)
+    //    g_pBranchDataMemCache->RemoveFromBlock(blockConnecting.vtx);
     //if (g_pBranchTxRecordCache){
     //    g_pBranchTxRecordCache->RemoveFromBlock(blockConnecting.vtx);
     //}
@@ -3267,7 +3267,7 @@ static bool CheckBlockHeader(const MCBlockHeader& block, MCValidationState& stat
     return true;
 }
 
-bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, bool fCheckPOW, 
+bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, /*BranchCache* pBranchCache,*/ bool fCheckPOW, 
     bool fCheckMerkleRoot, bool fVerifingDB, MCCoinsViewCache* pCoins)
 {
     // These are checks that are independent of context.
@@ -3353,11 +3353,11 @@ bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus:
     //BranchCache tempcache(pBranchCache);//use to duplicate check in one block
     // Check transactions
     for (const auto& tx : block.vtx) {
-        if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, pBranchCache, pCoins, nullptr))
+        if (!CheckTransaction(*tx, state, true, &block, nullptr, fVerifingDB, /*pBranchCache,*/ pCoins, nullptr))
             return state.Invalid(false, state.GetRejectCode(), state.GetRejectReason(),
                 strprintf("Transaction check failed (tx hash %s) %s", tx->GetHash().ToString(), state.GetDebugMessage()));
 
-        pBranchCache->AddToCache(*tx);
+        //pBranchCache->AddToCache(*tx);
 
         if (tx->IsBranchChainTransStep2()) {
             uint256 txid = mempool.GetOriTxHash(*tx, false);
@@ -3706,8 +3706,8 @@ static bool AcceptBlock(const std::shared_ptr<MCBlock>& pblock, MCValidationStat
     }
     if (fNewBlock) *fNewBlock = true;
 
-    BranchCache branchcache(g_pBranchDb);
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), &branchcache, true, true, false, pcoinsTip) ||
+    //BranchCache branchcache(g_pBranchDb);
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), /*&branchcache,*/ true, true, false, pcoinsTip) ||
         !ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -3754,8 +3754,8 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
         MCValidationState state;
         // Ensure that CheckBlock() passes before calling AcceptBlock, as
         // belt-and-suspenders.
-        BranchCache branchcache(g_pBranchDb);
-        bool ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), &branchcache, true, true, false, pcoinsTip);
+        //BranchCache branchcache(g_pBranchDb);
+        bool ret = CheckBlock(*pblock, state, chainparams.GetConsensus(), /*&branchcache,*/ true, true, false, pcoinsTip);
         BlockMap::iterator bi = mapBlockIndex.find(pblock->hashPrevBlock);
         if (bi == mapBlockIndex.end())
             return error("%s: find prev block failed", __func__);
@@ -3783,11 +3783,12 @@ bool ProcessNewBlock(const MCChainParams& chainparams, std::shared_ptr<MCBlock> 
     ProcessBlockBranchChain();
 
     // check and remove invalid contract transaction
-    std::string strErr;
-    if (!Params().IsMainChain() && ismining)
-        SendBranchBlockHeader(pblock, &strErr, false); // when is ismining, that identify this block is mining by myself, so send it's block header unconditionally
-    if (!strErr.empty())
-        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock: %s", strErr.c_str());
+    //if (!Params().IsMainChain() && ismining) {
+    //    std::string strErr;
+    //    SendBranchBlockHeader(pblock, &strErr, false); // when is ismining, that identify this block is mining by myself, so send it's block header unconditionally
+    //    if (!strErr.empty())
+    //        LogPrint(BCLog::BRANCH, "SendBranchBlockHeader fail when ProcessNewBlock: %s", strErr.c_str());
+    //}
 
     LogPrint(BCLog::MINING, "%s useTime:%I, height:%d\n", __FUNCTION__, GetTimeMillis() - start, pindex->nHeight);
     return true;
@@ -3807,13 +3808,13 @@ bool TestBlockValidity(MCValidationState& state, const MCChainParams& chainparam
     // NOTE: CheckBlockHeader is called by CheckBlock
     if (!ContextualCheckBlockHeader(block, state, chainparams, pindexPrev, GetAdjustedTime()))
         return error("%s: Consensus::ContextualCheckBlockHeader: %s", __func__, FormatStateMessage(state));
-    BranchCache branchcache(g_pBranchDb);
-    if (!CheckBlock(block, state, chainparams.GetConsensus(), &branchcache, fCheckPOW, fCheckMerkleRoot, false, &viewNew))
+    //BranchCache branchcache(g_pBranchDb);
+    if (!CheckBlock(block, state, chainparams.GetConsensus(), /*&branchcache,*/ fCheckPOW, fCheckMerkleRoot, false, &viewNew))
         return error("%s: Consensus::CheckBlock: %s", __func__, FormatStateMessage(state));
     if (!ContextualCheckBlock(block, state, chainparams.GetConsensus(), pindexPrev))
         return error("%s: Consensus::ContextualCheckBlock: %s", __func__, FormatStateMessage(state));
-    BranchCache tempCache2(g_pBranchDb);
-    if (!ConnectBlock(block, state, &indexDummy, viewNew, chainparams, true, nullptr, &tempCache2))
+    //BranchCache tempCache2(g_pBranchDb);
+    if (!ConnectBlock(block, state, &indexDummy, viewNew, chainparams, true, nullptr/*, &tempCache2*/))
         return false;
     assert(state.IsValid());
 
@@ -4197,7 +4198,7 @@ bool CVerifyDB::VerifyDB(const MCChainParams& chainparams, MCCoinsView* coinsvie
     int reportDone = 0;
     LogPrintf("[0%%]...");
 
-    BranchCache branchCache(g_pBranchDb);
+    //BranchCache branchCache(g_pBranchDb);
     for (MCBlockIndex* pindex = chainActive.Tip(); pindex && pindex->pprev; pindex = pindex->pprev) {
         boost::this_thread::interruption_point();
         int percentageDone = std::max(1, std::min(99, (int)(((double)(chainActive.Height() - pindex->nHeight)) / (double)nCheckDepth * (nCheckLevel >= 4 ? 50 : 100))));
@@ -4221,10 +4222,10 @@ bool CVerifyDB::VerifyDB(const MCChainParams& chainparams, MCCoinsView* coinsvie
         // check level 1: verify block validity
         if (Params().IsMainChain()) {
             //disconnect branch data(recover data)
-            std::shared_ptr<const MCBlock> pBlock(new MCBlock(block));
-            branchCache.Flush(pBlock, false);
+            //std::shared_ptr<const MCBlock> pBlock(new MCBlock(block));
+            //branchCache.Flush(pBlock, false);
         }
-        if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams.GetConsensus(), &branchCache, true, true, true, &coins))
+        if (nCheckLevel >= 1 && !CheckBlock(block, state, chainparams.GetConsensus(), /*&branchCache,*/ true, true, true, &coins))
             return error("%s: *** found bad block at %d, hash=%s (%s)\n", __func__,
                 pindex->nHeight, pindex->GetBlockHash().ToString(), FormatStateMessage(state));
         // check level 2: verify undo validity
@@ -5036,10 +5037,10 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
         return false;
     }
 
-    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, g_pBranchDataMemCache, pcoinsTip, pNMissingInputs))
+    if (!CheckTransaction(tx, state, true, nullptr, nullptr, false, /*g_pBranchDataMemCache,*/ pcoinsTip, pNMissingInputs))
         return false;
 
-    if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache, g_pBranchDataMemCache)) {
+    if (!CheckBranchDuplicateTx(tx, state, g_pBranchTxRecordCache/*, g_pBranchDataMemCache*/)) {
         return false;
     }
 
@@ -5151,14 +5152,14 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
     return true;
 }
 
-std::string GetBranchTxProof(const MCBlock& block, const std::set<uint256>& setTxids)
-{
-    MCDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-    MCMerkleBlock mb(block, setTxids);
-    ssMB << mb;
-    std::string strHex = HexStr(ssMB.begin(), ssMB.end());
-    return strHex;
-}
+//std::string GetBranchTxProof(const MCBlock& block, const std::set<uint256>& setTxids)
+//{
+//    MCDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+//    MCMerkleBlock mb(block, setTxids);
+//    ssMB << mb;
+//    std::string strHex = HexStr(ssMB.begin(), ssMB.end());
+//    return strHex;
+//}
 
 
 //bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof)
@@ -5244,48 +5245,48 @@ bool GetTxVinBlockData(const MCBlock& block, const MCTransactionRef& ptx, std::v
     return true;
 }
 
-bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData)
-{
-    MCTransactionRef tx = block.vtx[txIndex];
-
-    std::set<uint256> setTxids;
-    setTxids.insert(tx->GetHash());
-
-    if (tx == nullptr)
-        return error("%s did not find tx in block.\n", __func__);
-
-    std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(block, setTxids));
-
-    ProveDataItem pData;
-    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
-    pData.pCSP = *pSpvPf;
-    pData.blockHash = block.GetHash();
-    pProveData->vectProveData.emplace_back(pData);
-
-    if (tx->IsCoinBase())
-        return false;
-
-    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
-    return success;
-}
+//bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData)
+//{
+//    MCTransactionRef tx = block.vtx[txIndex];
+//
+//    std::set<uint256> setTxids;
+//    setTxids.insert(tx->GetHash());
+//
+//    if (tx == nullptr)
+//        return error("%s did not find tx in block.\n", __func__);
+//
+//    std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(block, setTxids));
+//
+//    ProveDataItem pData;
+//    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
+//    pData.pCSP = *pSpvPf;
+//    pData.blockHash = block.GetHash();
+//    pProveData->vectProveData.emplace_back(pData);
+//
+//    if (tx->IsCoinBase())
+//        return false;
+//
+//    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
+//    return success;
+//}
 
 //构建coinbase交易的证明
 //coinbase需要证明block的手续费是正确的，目前设计支链是不产生块奖励，只有收取手续费
 //为了计算手续费，得知道block所有交易的输入输出
-bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block)
-{
-    //write all block.vtx data to pProveData->vtxData
-    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pProveData->vtxData, 0, block.vtx};
-
-    //create vtx transaction's prove data
-    //exclude coinbase, stake transaction
-    for (size_t i = 2; i < block.vtx.size(); i++) {
-        const MCTransactionRef& ptx = block.vtx[i];
-        pProveData->vecBlockTxProve.emplace_back();
-        std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
-        if (!GetTxVinBlockData(block, ptx, vectProveData)) {
-            return false;
-        }
-    }
-    return true;
-}
+//bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block)
+//{
+//    //write all block.vtx data to pProveData->vtxData
+//    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pProveData->vtxData, 0, block.vtx};
+//
+//    //create vtx transaction's prove data
+//    //exclude coinbase, stake transaction
+//    for (size_t i = 2; i < block.vtx.size(); i++) {
+//        const MCTransactionRef& ptx = block.vtx[i];
+//        pProveData->vecBlockTxProve.emplace_back();
+//        std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
+//        if (!GetTxVinBlockData(block, ptx, vectProveData)) {
+//            return false;
+//        }
+//    }
+//    return true;
+//}

@@ -15,8 +15,8 @@ class MCBlockIndex;
 class MCValidationState;
 class MCBlockHeader;
 class MCBlock;
-class BranchCache;
-class BranchData;
+//class BranchCache;
+//class BranchData;
 class BranchChainTxRecordsCache;
 class MCCoinsViewCache;
 
@@ -90,19 +90,19 @@ bool GetRedeemSriptData(const MCScript& scriptPubKey, uint256* pFromTxid);
 
 bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock &block, std::string* pStrErrorMsg);
 
-bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlockHeader, std::string *pStrErr, bool onlySendMy = true);
-bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins, int* pNMissingInputs);
-bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchChainTxRecordsCache* pBranchTxRecordCache, BranchCache* pBranchCache);
+//bool SendBranchBlockHeader(const std::shared_ptr<const MCBlock> pBlockHeader, std::string *pStrErr, bool onlySendMy = true);
+//bool CheckBranchBlockInfoTx(const MCTransaction& tx, MCValidationState& state, BranchCache* pBranchCache, MCCoinsViewCache* pCoins, int* pNMissingInputs);
+bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, BranchChainTxRecordsCache* pBranchTxRecordCache/*, BranchCache* pBranchCache*/);
 
-uint256 GetReportTxHashKey(const MCTransaction& tx);
-uint256 GetProveTxHashKey(const MCTransaction& tx);
+//uint256 GetReportTxHashKey(const MCTransaction& tx);
+//uint256 GetProveTxHashKey(const MCTransaction& tx);
 
-bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
-bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
-bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& state, MCBlockIndex* pindex, BranchCache *pBranchCache);
-bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
-bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
-bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+//bool CheckReportCheatTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+//bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+//bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& state, MCBlockIndex* pindex, BranchCache *pBranchCache);
+//bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
+//bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
+//bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
 
 bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block, std::string *pStrErr = nullptr);
 #endif //  BRANCHCHAIN_H

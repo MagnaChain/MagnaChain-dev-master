@@ -276,7 +276,7 @@ ReadKeyValue(MCWallet* pwallet, MCDataStream& ssKey, MCDataStream& ssValue,
             ssValue >> wtx;
             MCValidationState state;
 			MCBlockIndex *pTxBlockIndex = nullptr;
-            BranchCache branchCache(g_pBranchDb);
+            //BranchCache branchCache(g_pBranchDb);
 			if (wtx.tx->IsBranchCreate())
 			{
 				BranchChainTxInfo chainsendinfo = g_pBranchChainTxRecordsDb->GetBranchChainTxInfo(hash);
@@ -285,7 +285,7 @@ ReadKeyValue(MCWallet* pwallet, MCDataStream& ssKey, MCDataStream& ssValue,
 					pTxBlockIndex = mapBlockIndex[chainsendinfo.blockhash];
 				}
 			}
-            if (!(CheckTransaction(wtx, state, true, nullptr, pTxBlockIndex, false, &branchCache, pcoinsTip, nullptr) && (wtx.GetHash() == hash) && state.IsValid()))
+            if (!(CheckTransaction(wtx, state, true, nullptr, pTxBlockIndex, false, /*&branchCache,*/ pcoinsTip, nullptr) && (wtx.GetHash() == hash) && state.IsValid()))
                 return false;
 
             // Undo serialize changes in 31600

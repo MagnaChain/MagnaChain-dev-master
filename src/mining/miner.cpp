@@ -333,10 +333,10 @@ void BlockAssembler::GroupingTransaction(size_t offset, std::vector<const MCTxMe
                 parentHash.insert(ptx->vin[j].prevout.hash);
             }
         }
-        if (ptx->IsSyncBranchInfo()) {
-            const uint256& hash = g_pBranchDataMemCache->GetParent(*ptx);
-            parentHash.insert(hash);
-        }
+        //if (ptx->IsSyncBranchInfo()) {
+        //    const uint256& hash = g_pBranchDataMemCache->GetParent(*ptx);
+        //    parentHash.insert(hash);
+        //}
 
         // decide merge to which group
         for (const uint256& hash : parentHash) {
@@ -711,34 +711,34 @@ void BlockAssembler::addPackageTxs(int& nPackagesSelected, int& nDescendantsUpda
         // the SyncBranchInfo tx has two type ancestors and descendants: 1 coins relation. 2 branch block connect relation.
         // OP: can we move to ancestors?
         const MCTransactionRef& iterTx = iter->GetSharedTx();
-        if (iterTx->IsSyncBranchInfo()) {//one branch's header transactions should come to block vtx in order
-            std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
-            bool hasAncestorFailed = false;
-            for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
-                MCTxMemPool::txiter it = mempool.mapTx.find(*rit);
-                if (it == mempool.mapTx.end())
-                    continue;//error
-                if (inBlock.count(it)) {// don't skip mapModifiedTx //original code SkipMapTxEntry(it, mapModifiedTx, failedTx)
-                    continue;
-                }
-                if (failedTx.count(it)){// ancestors is fail, so cur
-                    hasAncestorFailed = true;
-                    break;// fail
-                }
-                if (!fUsingModified)
-                    --mi;
-                fUsingModified = mapModifiedTx.count(it);
-                iter = it;
-                break;// ok
-            }
-            if (hasAncestorFailed){
-                if (fUsingModified){
-                    mapModifiedTx.get<ancestor_score>().erase(modit);
-                    failedTx.insert(iter);
-                }
-                continue;
-            }
-        }
+        //if (iterTx->IsSyncBranchInfo()) {//one branch's header transactions should come to block vtx in order
+        //    std::vector<uint256> ancestors = g_pBranchDataMemCache->GetAncestorsBlocksHash(*iterTx);
+        //    bool hasAncestorFailed = false;
+        //    for (std::vector<uint256>::reverse_iterator rit = ancestors.rbegin(); rit != ancestors.rend(); ++rit) {
+        //        MCTxMemPool::txiter it = mempool.mapTx.find(*rit);
+        //        if (it == mempool.mapTx.end())
+        //            continue;//error
+        //        if (inBlock.count(it)) {// don't skip mapModifiedTx //original code SkipMapTxEntry(it, mapModifiedTx, failedTx)
+        //            continue;
+        //        }
+        //        if (failedTx.count(it)){// ancestors is fail, so cur
+        //            hasAncestorFailed = true;
+        //            break;// fail
+        //        }
+        //        if (!fUsingModified)
+        //            --mi;
+        //        fUsingModified = mapModifiedTx.count(it);
+        //        iter = it;
+        //        break;// ok
+        //    }
+        //    if (hasAncestorFailed){
+        //        if (fUsingModified){
+        //            mapModifiedTx.get<ancestor_score>().erase(modit);
+        //            failedTx.insert(iter);
+        //        }
+        //        continue;
+        //    }
+        //}
 
         // We skip mapTx entries that are inBlock, and mapModifiedTx shouldn't
         // contain anything that is inBlock.
@@ -1292,208 +1292,208 @@ bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consen
 }
 
 ////---------------------------------------------------------
-inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const uint256 &blockhash, const uint256 &branchhash, BranchCache *pBranchCache){
-    if (branchdata.mapHeads.count(blockhash))
-        return &branchdata.mapHeads[blockhash];
-    if (pBranchCache)// is get data from mempool
-        return pBranchCache->GetBranchBlockData(branchhash, blockhash);
-    return nullptr;
-}
+//inline const BranchBlockData* GetBranchBlockData(BranchData& branchdata, const uint256 &blockhash, const uint256 &branchhash, BranchCache *pBranchCache){
+//    if (branchdata.mapHeads.count(blockhash))
+//        return &branchdata.mapHeads[blockhash];
+//    if (pBranchCache)// is get data from mempool
+//        return pBranchCache->GetBranchBlockData(branchhash, blockhash);
+//    return nullptr;
+//}
 
 ////---------------------------------------------------------
 //主链获取侧链头工作量
 //核心算法需要和 GetBlockWork 一致
-uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
-{
-    const Consensus::Params& consensusparams = params.GetConsensus();
-    ///// get and check data
-    const MCOutPoint& out = block.prevoutStake;
-    MCDataStream cds(block.vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
-    MCTransactionRef ptx;
-    cds >> ptx;
-    MCKeyID kKey;
-    uint256 fromTxHash;
-    int64_t iPreCoinHeigh;
-    if (!GetMortgageCoinData(ptx->vout[0].scriptPubKey, &fromTxHash, &kKey, &iPreCoinHeigh))
-        return 0;
-    const MCAmount coinValue = ptx->vout[0].nValue;
-
-    //挖矿币-找出抵押币并作相应验证
-    const Coin& fromCoin = pCoins->AccessCoin(MCOutPoint(fromTxHash, 0));
-    {
-        if (fromCoin.IsSpent() || coinValue != fromCoin.out.nValue) 
-            return 0;
-
-        MCKeyID kKeyId;
-        uint256 branchid;
-        int64_t presetHeight;
-        if (!GetMortgageMineData(fromCoin.out.scriptPubKey, &branchid, &kKeyId, &presetHeight))
-            return 0;
-        if (params.GetBranchHash() != branchid)
-            return 0;
-        if (kKey != kKeyId)
-            return 0;
-    }
-
-    ///// calc block work
-    block_hash = guMaxWork;
-    
-    const BranchBlockData* pPreIndex = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-    if (pPreIndex == nullptr)
-        return 0;
-
-    const int iPrevHeight = pPreIndex->nHeight;
-    if (block.blockHeight != iPrevHeight + 1)
-        return 0;
-
-    const bool isBigBoom = iPrevHeight < consensusparams.BigBoomHeight;
-
-    const int iMatureDepth = COINBASE_MATURITY - 1;
-    MCAmount total = 0;
-
-    if (isBigBoom)
-        total = 0;
-    else if (!params.IsMainChain() && iPrevHeight == 0)//侧链第2个块,即传世块后的第1个块
-    {
-        int iRun = 1;
-        total = (coinValue / COIN) * iRun;
-    }
-    else {
-        MCAmount v = coinValue;
-        // 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
-        int iHeight = iPreCoinHeigh;
-        iHeight += iMatureDepth;
-        if (!params.IsMainChain() && iPrevHeight < 2 * COINBASE_MATURITY) {// 侧链前 COINBASE_MATURITY 块的高度处理
-            iHeight = -COINBASE_MATURITY;
-        }
-        int iRun = iPrevHeight - iHeight;
-        if (iRun > 0) {
-            total += (v / COIN) * iRun;
-        }
-    }
-
-    if (total >= std::numeric_limits<uint32_t>::max()) {
-        total = std::numeric_limits<uint32_t>::max();
-    }
-
-    // 计算前100个区块的平均值
-    {
-        MCAmount iAvg = 0;
-        const BranchBlockData* ptest = pPreIndex;
-        int i = 0;
-        for (; i < 100; ++i)
-        {
-            if (ptest == NULL)
-            {
-                break;
-            }
-            iAvg += ptest->header.nNonce;
-
-            ptest = GetBranchBlockData(branchdata, ptest->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-        }
-        iAvg /= i;
-        if (iAvg > 100 && total > iAvg + iAvg / 20) {
-            total = iAvg + iAvg / 20;
-        }
-    }
-
-    // 计算HASH
-    int nType = SER_GETHASH;
-    int nVersion = PROTOCOL_VERSION;
-    MCHashWriter sheader(nType, nVersion);
-    MCHashWriter snum(nType, nVersion);
-
-    int iCheck2 = 2;
-    int iCheck3 = 3;
-    const BranchBlockData* pNextIndex = pPreIndex;
-    for (int i = 0; i < 1000; ++i)
-    {
-        if (pNextIndex == NULL)
-        {
-            break;
-        }
-        if (i == iCheck2)
-        {
-            iCheck2 *= 2;
-            sheader << pNextIndex->header.GetHash();
-        }
-        if (i == iCheck3)
-        {
-            iCheck3 *= 3;
-            snum << pNextIndex->header.GetHash();
-        }
-
-        pNextIndex = GetBranchBlockData(branchdata, pNextIndex->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-    }
-
-    sheader << (uint160)kKey;
-    sheader << out.hash;
-    sheader << out.n;
-
-    snum << (uint160)kKey;
-    block_hash = sheader.GetHash();
-    uint256 num_hash = snum.GetHash();
-
-    // percent 
-    uint64_t iPercent = num_hash.GetCheapHash() % 100;
-    MCAmount iMount = total * iPercent / 100;
-    arith_uint256 iTmp = UintToArith256(block_hash);
-
-    // 计算经过币龄加权之后的HASH
-    if (iMount > 1 && iMount <= total)
-        iTmp /= iMount;
-    if (isBigBoom) {
-        iTmp /= 16;
-    }
-    else {
-        if (iMount == 0) {
-            block_hash = guMaxWork;
-            LogPrintf("%s: block work To MAX WORK, Amount is 0, total %d \n", __func__, total);
-            return 0;
-        }
-    }
-
-    uint32_t iRunTime = 1;
-    int64_t timediff = block.nTime - pPreIndex->GetBlockTime();
-    iRunTime = CalcTimeFactor(timediff, consensusparams.nPowTargetSpacing);
-
-    iTmp = iTmp * (NMaxRunTime - iRunTime) / NMaxRunTime;
-    //uint32_t iComp = iTmp.GetCompact();
-    //iComp /= iRunTime;
-    //iTmp.SetCompact(iComp);
-    block_hash = ArithToUint256(iTmp);
-
-    return total;
-}
+//uint32_t GetBlockHeaderWork(const MCBranchBlockInfo& block, uint256& block_hash, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
+//{
+//    const Consensus::Params& consensusparams = params.GetConsensus();
+//    ///// get and check data
+//    const MCOutPoint& out = block.prevoutStake;
+//    MCDataStream cds(block.vchStakeTxData, SER_NETWORK, INIT_PROTO_VERSION);
+//    MCTransactionRef ptx;
+//    cds >> ptx;
+//    MCKeyID kKey;
+//    uint256 fromTxHash;
+//    int64_t iPreCoinHeigh;
+//    if (!GetMortgageCoinData(ptx->vout[0].scriptPubKey, &fromTxHash, &kKey, &iPreCoinHeigh))
+//        return 0;
+//    const MCAmount coinValue = ptx->vout[0].nValue;
+//
+//    //挖矿币-找出抵押币并作相应验证
+//    const Coin& fromCoin = pCoins->AccessCoin(MCOutPoint(fromTxHash, 0));
+//    {
+//        if (fromCoin.IsSpent() || coinValue != fromCoin.out.nValue) 
+//            return 0;
+//
+//        MCKeyID kKeyId;
+//        uint256 branchid;
+//        int64_t presetHeight;
+//        if (!GetMortgageMineData(fromCoin.out.scriptPubKey, &branchid, &kKeyId, &presetHeight))
+//            return 0;
+//        if (params.GetBranchHash() != branchid)
+//            return 0;
+//        if (kKey != kKeyId)
+//            return 0;
+//    }
+//
+//    ///// calc block work
+//    block_hash = guMaxWork;
+//    
+//    const BranchBlockData* pPreIndex = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
+//    if (pPreIndex == nullptr)
+//        return 0;
+//
+//    const int iPrevHeight = pPreIndex->nHeight;
+//    if (block.blockHeight != iPrevHeight + 1)
+//        return 0;
+//
+//    const bool isBigBoom = iPrevHeight < consensusparams.BigBoomHeight;
+//
+//    const int iMatureDepth = COINBASE_MATURITY - 1;
+//    MCAmount total = 0;
+//
+//    if (isBigBoom)
+//        total = 0;
+//    else if (!params.IsMainChain() && iPrevHeight == 0)//侧链第2个块,即传世块后的第1个块
+//    {
+//        int iRun = 1;
+//        total = (coinValue / COIN) * iRun;
+//    }
+//    else {
+//        MCAmount v = coinValue;
+//        // 计算深度时从上一次挖矿的时候开始算，同时要减去一个成熟时间
+//        int iHeight = iPreCoinHeigh;
+//        iHeight += iMatureDepth;
+//        if (!params.IsMainChain() && iPrevHeight < 2 * COINBASE_MATURITY) {// 侧链前 COINBASE_MATURITY 块的高度处理
+//            iHeight = -COINBASE_MATURITY;
+//        }
+//        int iRun = iPrevHeight - iHeight;
+//        if (iRun > 0) {
+//            total += (v / COIN) * iRun;
+//        }
+//    }
+//
+//    if (total >= std::numeric_limits<uint32_t>::max()) {
+//        total = std::numeric_limits<uint32_t>::max();
+//    }
+//
+//    // 计算前100个区块的平均值
+//    {
+//        MCAmount iAvg = 0;
+//        const BranchBlockData* ptest = pPreIndex;
+//        int i = 0;
+//        for (; i < 100; ++i)
+//        {
+//            if (ptest == NULL)
+//            {
+//                break;
+//            }
+//            iAvg += ptest->header.nNonce;
+//
+//            ptest = GetBranchBlockData(branchdata, ptest->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
+//        }
+//        iAvg /= i;
+//        if (iAvg > 100 && total > iAvg + iAvg / 20) {
+//            total = iAvg + iAvg / 20;
+//        }
+//    }
+//
+//    // 计算HASH
+//    int nType = SER_GETHASH;
+//    int nVersion = PROTOCOL_VERSION;
+//    MCHashWriter sheader(nType, nVersion);
+//    MCHashWriter snum(nType, nVersion);
+//
+//    int iCheck2 = 2;
+//    int iCheck3 = 3;
+//    const BranchBlockData* pNextIndex = pPreIndex;
+//    for (int i = 0; i < 1000; ++i)
+//    {
+//        if (pNextIndex == NULL)
+//        {
+//            break;
+//        }
+//        if (i == iCheck2)
+//        {
+//            iCheck2 *= 2;
+//            sheader << pNextIndex->header.GetHash();
+//        }
+//        if (i == iCheck3)
+//        {
+//            iCheck3 *= 3;
+//            snum << pNextIndex->header.GetHash();
+//        }
+//
+//        pNextIndex = GetBranchBlockData(branchdata, pNextIndex->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
+//    }
+//
+//    sheader << (uint160)kKey;
+//    sheader << out.hash;
+//    sheader << out.n;
+//
+//    snum << (uint160)kKey;
+//    block_hash = sheader.GetHash();
+//    uint256 num_hash = snum.GetHash();
+//
+//    // percent 
+//    uint64_t iPercent = num_hash.GetCheapHash() % 100;
+//    MCAmount iMount = total * iPercent / 100;
+//    arith_uint256 iTmp = UintToArith256(block_hash);
+//
+//    // 计算经过币龄加权之后的HASH
+//    if (iMount > 1 && iMount <= total)
+//        iTmp /= iMount;
+//    if (isBigBoom) {
+//        iTmp /= 16;
+//    }
+//    else {
+//        if (iMount == 0) {
+//            block_hash = guMaxWork;
+//            LogPrintf("%s: block work To MAX WORK, Amount is 0, total %d \n", __func__, total);
+//            return 0;
+//        }
+//    }
+//
+//    uint32_t iRunTime = 1;
+//    int64_t timediff = block.nTime - pPreIndex->GetBlockTime();
+//    iRunTime = CalcTimeFactor(timediff, consensusparams.nPowTargetSpacing);
+//
+//    iTmp = iTmp * (NMaxRunTime - iRunTime) / NMaxRunTime;
+//    //uint32_t iComp = iTmp.GetCompact();
+//    //iComp /= iRunTime;
+//    //iTmp.SetCompact(iComp);
+//    block_hash = ArithToUint256(iTmp);
+//
+//    return total;
+//}
 
 ////---------------------------------------------------------
 //主链检查侧链头工作量
 //核心和 CheckBlockWork 相同
-bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
-{
-    const Consensus::Params& consensusParams = params.GetConsensus();
-
-    uint256 hash;
-    uint32_t iAmount = GetBlockHeaderWork(block, hash, params, branchdata, pBranchCache, pCoins);
-
-    // check
-    bool fNegative;
-    bool fOverflow;
-    arith_uint256 bnTarget;
-
-    bnTarget.SetCompact(block.nBits, &fNegative, &fOverflow);
-
-    //// Check range
-    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensusParams.powLimit))
-        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, range check fail");;
-
-    if (UintToArith256(hash) > bnTarget)
-        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, target check fail");;
-
-    if (iAmount != block.nNonce)
-        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, nonce check fail");;
-    return true;
-}
+//bool CheckBlockHeaderWork(const MCBranchBlockInfo& block, MCValidationState& state, const MCChainParams &params, BranchData& branchdata, BranchCache *pBranchCache, MCCoinsViewCache* pCoins)
+//{
+//    const Consensus::Params& consensusParams = params.GetConsensus();
+//
+//    uint256 hash;
+//    uint32_t iAmount = GetBlockHeaderWork(block, hash, params, branchdata, pBranchCache, pCoins);
+//
+//    // check
+//    bool fNegative;
+//    bool fOverflow;
+//    arith_uint256 bnTarget;
+//
+//    bnTarget.SetCompact(block.nBits, &fNegative, &fOverflow);
+//
+//    //// Check range
+//    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(consensusParams.powLimit))
+//        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, range check fail");;
+//
+//    if (UintToArith256(hash) > bnTarget)
+//        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, target check fail");;
+//
+//    if (iAmount != block.nNonce)
+//        return state.DoS(100, false, REJECT_INVALID, "CheckBlockHeaderWork fail, nonce check fail");;
+//    return true;
+//}
 
 bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, const MCBlockIndex* pindexPrev, int64_t nAdjustedTime)
 {
@@ -1502,8 +1502,8 @@ bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& s
 
 	// Check proof of work
 	const Consensus::Params& consensusParams = params.GetConsensus();
-	// if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
-	// return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
+	if (block.nBits != GetNextWorkRequired(pindexPrev, &block, consensusParams))
+	    return state.DoS(100, false, REJECT_INVALID, "bad-diffbits", false, "incorrect proof of work");
 	arith_uint256 nBlockWork;
 	bool fNegative;
 	bool fOverflow;
@@ -1536,21 +1536,22 @@ bool ContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& s
 	}
 
 	// Check timestamp against prev
-	if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast())
+	if (block.GetBlockTime() <= pindexPrev->GetMedianTimePast()) {
 		return state.Invalid(false, REJECT_INVALID, "time-too-old", "block's timestamp is too early");
+    }
 
 	// Check timestamp
-	if (block.GetBlockTime() > nAdjustedTime + MAX_FUTURE_BLOCK_TIME)
+	if (block.GetBlockTime() > nAdjustedTime + MAX_FUTURE_BLOCK_TIME) {
 		return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
-
+    }
 	// Reject outdated version blocks when 95% (75% on testnet) of the network has upgraded:
 	// check for version 2, 3 and 4 upgrades
 	if ((block.nVersion < 2 && nHeight >= consensusParams.BIP34Height) ||
 		(block.nVersion < 3 && nHeight >= consensusParams.BIP66Height) ||
-		(block.nVersion < 4 && nHeight >= consensusParams.BIP65Height))
+		(block.nVersion < 4 && nHeight >= consensusParams.BIP65Height)) { 
 		return state.Invalid(false, REJECT_OBSOLETE, strprintf("bad-version(0x%08x)", block.nVersion),
 			strprintf("rejected nVersion=0x%08x block", block.nVersion));
-
+    }
 	return true;
 }
 
@@ -1611,118 +1612,118 @@ unsigned int GetNextWorkRequired(const MCBlockIndex* pindexLast, const MCBlockHe
 }
 ////---------------------------------------------------------
 //主链上获取侧链的nextwork
-unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const MCBlockHeader* pblock, const MCChainParams& params, BranchData &branchdata, BranchCache *pBranchCache)
-{
-    const Consensus::Params& consensusParams = params.GetConsensus();
-    unsigned int nProofOfWorkLimit = UintToArith256(consensusParams.powLimit).GetCompact();
-
-    // Genesis block
-    if (pindexLast == NULL)
-        return nProofOfWorkLimit;
-
-    // time limit
-    if (pblock->nTime < pindexLast->header.nTime)
-        return iMaxWorkBits;
-    int64_t timediff = pblock->nTime - pindexLast->header.nTime;
-    if (timediff < consensusParams.nPowTargetSpacing)
-        return iMaxWorkBits;
-
-    uint32_t iRunTime = 1;
-
-    bool fNegative;
-    bool fOverflow;
-    uint512 nMostWork;
-
-    int iCount = 0;
-    for (int i = 0; i < 100; ++i) {
-        if (pindexLast == NULL)
-            break;
-        arith_uint256 nWork;
-        nWork.SetCompact(pindexLast->header.nBits, &fNegative, &fOverflow);
-        if (!fNegative && !fOverflow && nWork > 0) {
-            uint512 tmp;
-            tmp.SetHex(nWork.GetHex());
-            nMostWork += tmp;
-            iCount++;
-        }
-        pindexLast = GetBranchBlockData(branchdata, pindexLast->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-    }
-    nMostWork /= iCount;
-
-    nMostWork *= 2 * iRunTime;
-    arith_uint256 nTarget;
-    uint512 uPowLimit;
-    uPowLimit.SetHex(consensusParams.powLimit.GetHex());
-    if (nMostWork > uPowLimit) {
-        nTarget = UintToArith256(consensusParams.powLimit);
-    }
-    else {
-        nTarget.SetHex(nMostWork.GetHex());
-    }
-
-    return nTarget.GetCompact();
-}
+//unsigned int GetBranchNextWorkRequired(const BranchBlockData* pindexLast, const MCBlockHeader* pblock, const MCChainParams& params, BranchData &branchdata, BranchCache *pBranchCache)
+//{
+//    const Consensus::Params& consensusParams = params.GetConsensus();
+//    unsigned int nProofOfWorkLimit = UintToArith256(consensusParams.powLimit).GetCompact();
+//
+//    // Genesis block
+//    if (pindexLast == NULL)
+//        return nProofOfWorkLimit;
+//
+//    // time limit
+//    if (pblock->nTime < pindexLast->header.nTime)
+//        return iMaxWorkBits;
+//    int64_t timediff = pblock->nTime - pindexLast->header.nTime;
+//    if (timediff < consensusParams.nPowTargetSpacing)
+//        return iMaxWorkBits;
+//
+//    uint32_t iRunTime = 1;
+//
+//    bool fNegative;
+//    bool fOverflow;
+//    uint512 nMostWork;
+//
+//    int iCount = 0;
+//    for (int i = 0; i < 100; ++i) {
+//        if (pindexLast == NULL)
+//            break;
+//        arith_uint256 nWork;
+//        nWork.SetCompact(pindexLast->header.nBits, &fNegative, &fOverflow);
+//        if (!fNegative && !fOverflow && nWork > 0) {
+//            uint512 tmp;
+//            tmp.SetHex(nWork.GetHex());
+//            nMostWork += tmp;
+//            iCount++;
+//        }
+//        pindexLast = GetBranchBlockData(branchdata, pindexLast->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
+//    }
+//    nMostWork /= iCount;
+//
+//    nMostWork *= 2 * iRunTime;
+//    arith_uint256 nTarget;
+//    uint512 uPowLimit;
+//    uPowLimit.SetHex(consensusParams.powLimit.GetHex());
+//    if (nMostWork > uPowLimit) {
+//        nTarget = UintToArith256(consensusParams.powLimit);
+//    }
+//    else {
+//        nTarget.SetHex(nMostWork.GetHex());
+//    }
+//
+//    return nTarget.GetCompact();
+//}
 ////---------------------------------------------------------
 //主链上验证侧链
-bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData &branchdata, 
-    int64_t nAdjustedTime, BranchCache *pBranchCache, int* pNMissingInputs)
-{
-    const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-    if (pindexPrev == nullptr) {
-        if (pNMissingInputs){
-            *pNMissingInputs = *pNMissingInputs | eMissingInputTypes::eMissingBranchPreHeadTx;
-        }
-        return state.DoS(0, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");// sync branch transaction maybe in disorder
-    }
-    // Check proof of work
-    arith_uint256 nBlockWork;
-    bool fNegative;
-    bool fOverflow;
-    nBlockWork.SetCompact(block.nBits, &fNegative, &fOverflow);
-    if (fNegative || fOverflow || nBlockWork == 0)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, nBlockWork error!");
-
-    arith_uint256 nWorkdRequired;
-    nWorkdRequired.SetCompact(GetBranchNextWorkRequired(pindexPrev, &block, params, branchdata, pBranchCache), &fNegative, &fOverflow);
-    if (fNegative || fOverflow || nWorkdRequired == 0)
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of required work, nWorkedRequired error!");
-
-    if (nBlockWork > nWorkdRequired) {
-        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits, incorrect proof of work");
-    }
-
-    // Check against checkpoints
-    //...
-
-    // Check timestamp against prev
-    // GetMedianTimePast
-    int64_t mediantime = std::numeric_limits<int64_t>::max();
-    {
-        const int nMedianTimeSpan = 11;
-        int64_t pmedian[nMedianTimeSpan];
-        int64_t* pbegin = &pmedian[nMedianTimeSpan];
-        int64_t* pend = &pmedian[nMedianTimeSpan];
-
-        const BranchBlockData* pindex = pindexPrev;
-        for (int i = 0; i < nMedianTimeSpan && pindex; ){
-            *(--pbegin) = (int64_t)pindex->header.nTime;
-
-            pindex = GetBranchBlockData(branchdata, pindex->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
-            i++;
-        }
-        std::sort(pbegin, pend);
-        mediantime = pbegin[(pend - pbegin) / 2];
-    }
-
-    if (block.GetBlockTime() <= mediantime)
-        return state.Invalid(false, REJECT_INVALID, "time-too-old", "block's timestamp is too early");
-
-    // Check timestamp
-    if (block.GetBlockTime() > nAdjustedTime + MAX_FUTURE_BLOCK_TIME)
-        return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
-
-    return true;
-}
+//bool BranchContextualCheckBlockHeader(const MCBlockHeader& block, MCValidationState& state, const MCChainParams& params, BranchData &branchdata, 
+//    int64_t nAdjustedTime, BranchCache *pBranchCache, int* pNMissingInputs)
+//{
+//    const BranchBlockData* pindexPrev = GetBranchBlockData(branchdata, block.hashPrevBlock, params.GetBranchHash(), pBranchCache);
+//    if (pindexPrev == nullptr) {
+//        if (pNMissingInputs){
+//            *pNMissingInputs = *pNMissingInputs | eMissingInputTypes::eMissingBranchPreHeadTx;
+//        }
+//        return state.DoS(0, false, REJECT_INVALID, "bad-diffbits of block work, pindexPrev is null");// sync branch transaction maybe in disorder
+//    }
+//    // Check proof of work
+//    arith_uint256 nBlockWork;
+//    bool fNegative;
+//    bool fOverflow;
+//    nBlockWork.SetCompact(block.nBits, &fNegative, &fOverflow);
+//    if (fNegative || fOverflow || nBlockWork == 0)
+//        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of block work, nBlockWork error!");
+//
+//    arith_uint256 nWorkdRequired;
+//    nWorkdRequired.SetCompact(GetBranchNextWorkRequired(pindexPrev, &block, params, branchdata, pBranchCache), &fNegative, &fOverflow);
+//    if (fNegative || fOverflow || nWorkdRequired == 0)
+//        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits of required work, nWorkedRequired error!");
+//
+//    if (nBlockWork > nWorkdRequired) {
+//        return state.DoS(100, false, REJECT_INVALID, "bad-diffbits, incorrect proof of work");
+//    }
+//
+//    // Check against checkpoints
+//    //...
+//
+//    // Check timestamp against prev
+//    // GetMedianTimePast
+//    int64_t mediantime = std::numeric_limits<int64_t>::max();
+//    {
+//        const int nMedianTimeSpan = 11;
+//        int64_t pmedian[nMedianTimeSpan];
+//        int64_t* pbegin = &pmedian[nMedianTimeSpan];
+//        int64_t* pend = &pmedian[nMedianTimeSpan];
+//
+//        const BranchBlockData* pindex = pindexPrev;
+//        for (int i = 0; i < nMedianTimeSpan && pindex; ){
+//            *(--pbegin) = (int64_t)pindex->header.nTime;
+//
+//            pindex = GetBranchBlockData(branchdata, pindex->header.hashPrevBlock, params.GetBranchHash(), pBranchCache);
+//            i++;
+//        }
+//        std::sort(pbegin, pend);
+//        mediantime = pbegin[(pend - pbegin) / 2];
+//    }
+//
+//    if (block.GetBlockTime() <= mediantime)
+//        return state.Invalid(false, REJECT_INVALID, "time-too-old", "block's timestamp is too early");
+//
+//    // Check timestamp
+//    if (block.GetBlockTime() > nAdjustedTime + MAX_FUTURE_BLOCK_TIME)
+//        return state.Invalid(false, REJECT_INVALID, "time-too-new", "block timestamp too far in the future");
+//
+//    return true;
+//}
 
 ////---------------------------------------------------------
 bool SignatureCoinbaseTransaction(int nHeight, const MCKeyStore* keystoreIn, MCMutableTransaction& txNew, MCAmount nValue, const MCScript& scriptPubKey)
@@ -1979,7 +1980,7 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
 	// transaction (which in most cases can be a no-op).
 	fIncludeWitness = IsWitnessEnabled(pindexPrev, chainparams.GetConsensus()) && fMineWitnessTx;
 
-    this->addReportProofTxs(scriptPubKeyIn, pcoinsCache);
+    //this->addReportProofTxs(scriptPubKeyIn, pcoinsCache);
 
 	int nPackagesSelected = 0;
 	int nDescendantsUpdated = 0;
@@ -2066,89 +2067,89 @@ std::unique_ptr<MCBlockTemplate> BlockAssembler::CreateNewBlock(const MCScript& 
  * minerpkey 矿工地址
  * pCoinsCache 一个block的cache或者是pcoinsTip
  */
-void BlockAssembler::addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache)
-{
-    if (!chainparams.IsMainChain())
-        return;
-
-    if (!ptxReport->IsReport() || ptxReport->pReportData == nullptr)
-        return;
-
-    // 检查ptxReport是否满足高度 REPORT_OUTOF_HEIGHT
-
-    //get data from ptxReport
-    uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
-    uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
-    if (!g_pBranchDb->HasBranchData(reportbranchid))
-        return;
-
-    BranchData branchdata = g_pBranchDb->GetBranchData(reportbranchid);
-    if (!branchdata.mapHeads.count(reportblockhash))// best chain check?
-        return;
-    
-    // 从stake交易取出prevout(抵押币)
-    BranchBlockData blockdata = branchdata.mapHeads[reportblockhash];
-    uint256 coinfromtxid;
-    if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
-        return;
-
-    // 检查ptxReport有没有被证明
-    uint256 reportFlagHash = GetReportTxHashKey(*ptxReport);
-    if (blockdata.mapReportStatus.count(reportFlagHash) == 0 || blockdata.mapReportStatus[reportFlagHash] == RP_FLAG_PROVED){
-        return;
-    }
-
-    MCOutPoint prevout(coinfromtxid, 0);// 抵押币放在vout[0]位
-    const Coin& coin = pCoinsCache->AccessCoin(prevout);
-    if (coin.IsSpent())
-        return;
-    
-    const MCAmount& nValueIn = coin.out.nValue;   
-    const MCScript& reporterAddress = ptxReport->vout[0].scriptPubKey;
-
-    // 不用留手续费, 因为这个是矿工自己创建的交易
-    MCMutableTransaction mtx;
-    mtx.nVersion = MCTransaction::REPORT_REWARD;
-    mtx.reporttxid = ptxReport->GetHash();
-    
-    mtx.vin.resize(1);
-    mtx.vin[0].prevout = prevout;
-
-    MCAmount nReporterValue = nValueIn / 2;
-    MCAmount nMinerValue = nValueIn - nReporterValue;
-
-    mtx.vout.resize(2);
-    mtx.vout[0].nValue = nReporterValue;
-    mtx.vout[0].scriptPubKey = reporterAddress;
-    mtx.vout[1].nValue = nMinerValue;
-    mtx.vout[1].scriptPubKey = minerpkey;
-
-    // add to block
-    pblock->vtx.emplace_back(MakeTransactionRef(mtx));
-    pblocktemplate->vTxFees.push_back(-1);
-    pblocktemplate->vTxSigOpsCost.push_back(-1);
-}
+//void BlockAssembler::addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache)
+//{
+//    if (!chainparams.IsMainChain())
+//        return;
+//
+//    if (!ptxReport->IsReport() || ptxReport->pReportData == nullptr)
+//        return;
+//
+//    // 检查ptxReport是否满足高度 REPORT_OUTOF_HEIGHT
+//
+//    //get data from ptxReport
+//    uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
+//    uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
+//    if (!g_pBranchDb->HasBranchData(reportbranchid))
+//        return;
+//
+//    BranchData branchdata = g_pBranchDb->GetBranchData(reportbranchid);
+//    if (!branchdata.mapHeads.count(reportblockhash))// best chain check?
+//        return;
+//    
+//    // 从stake交易取出prevout(抵押币)
+//    BranchBlockData blockdata = branchdata.mapHeads[reportblockhash];
+//    uint256 coinfromtxid;
+//    if (!GetMortgageCoinData(blockdata.pStakeTx->vout[0].scriptPubKey, &coinfromtxid))
+//        return;
+//
+//    // 检查ptxReport有没有被证明
+//    uint256 reportFlagHash = GetReportTxHashKey(*ptxReport);
+//    if (blockdata.mapReportStatus.count(reportFlagHash) == 0 || blockdata.mapReportStatus[reportFlagHash] == RP_FLAG_PROVED){
+//        return;
+//    }
+//
+//    MCOutPoint prevout(coinfromtxid, 0);// 抵押币放在vout[0]位
+//    const Coin& coin = pCoinsCache->AccessCoin(prevout);
+//    if (coin.IsSpent())
+//        return;
+//    
+//    const MCAmount& nValueIn = coin.out.nValue;   
+//    const MCScript& reporterAddress = ptxReport->vout[0].scriptPubKey;
+//
+//    // 不用留手续费, 因为这个是矿工自己创建的交易
+//    MCMutableTransaction mtx;
+//    mtx.nVersion = MCTransaction::REPORT_REWARD;
+//    mtx.reporttxid = ptxReport->GetHash();
+//    
+//    mtx.vin.resize(1);
+//    mtx.vin[0].prevout = prevout;
+//
+//    MCAmount nReporterValue = nValueIn / 2;
+//    MCAmount nMinerValue = nValueIn - nReporterValue;
+//
+//    mtx.vout.resize(2);
+//    mtx.vout[0].nValue = nReporterValue;
+//    mtx.vout[0].scriptPubKey = reporterAddress;
+//    mtx.vout[1].nValue = nMinerValue;
+//    mtx.vout[1].scriptPubKey = minerpkey;
+//
+//    // add to block
+//    pblock->vtx.emplace_back(MakeTransactionRef(mtx));
+//    pblocktemplate->vTxFees.push_back(-1);
+//    pblocktemplate->vTxSigOpsCost.push_back(-1);
+//}
 
 // 监控举报交易,发现超过证明时间还没证明成功的,就把抵押币
 // simple imp. miner can be as an report-outtime hunter check some miner miss transaction
 // OP:对所有report记录下来，按块高度排序，对超时的进行处理
-void BlockAssembler::addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache)
-{
-    if (!chainparams.IsMainChain())
-        return;
-
-    uint32_t nOutOfHeight = REPORT_OUTOF_HEIGHT;
-    MCBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nOutOfHeight];// assume that create new block after active chain's tip
-    if (pbi != nullptr) {
-        std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
-        MCBlock& block = *pblock;
-        if (ReadBlockFromDisk(block, pbi, chainparams.GetConsensus())) {
-            for (size_t i = 1; i < block.vtx.size(); i++) {
-                const MCTransactionRef& tx = block.vtx[i];
-                if (tx->IsReport()) {
-                    this->addReportProofTx(tx, scriptPubKeyIn, pcoinsCache);
-                }
-            }
-        }
-    }
-}
+//void BlockAssembler::addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache)
+//{
+//    if (!chainparams.IsMainChain())
+//        return;
+//
+//    uint32_t nOutOfHeight = REPORT_OUTOF_HEIGHT;
+//    MCBlockIndex *pbi = chainActive[chainActive.Tip()->nHeight - nOutOfHeight];// assume that create new block after active chain's tip
+//    if (pbi != nullptr) {
+//        std::shared_ptr<MCBlock> pblock = std::make_shared<MCBlock>();
+//        MCBlock& block = *pblock;
+//        if (ReadBlockFromDisk(block, pbi, chainparams.GetConsensus())) {
+//            for (size_t i = 1; i < block.vtx.size(); i++) {
+//                const MCTransactionRef& tx = block.vtx[i];
+//                if (tx->IsReport()) {
+//                    this->addReportProofTx(tx, scriptPubKeyIn, pcoinsCache);
+//                }
+//            }
+//        }
+//    }
+//}

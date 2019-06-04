@@ -238,10 +238,10 @@ void Shutdown()
         pcoinsdbview = nullptr;
         delete pblocktree;
         pblocktree = nullptr;
-        delete g_pBranchDataMemCache;
-        g_pBranchDataMemCache = nullptr;
-        delete g_pBranchDb;
-        g_pBranchDb = nullptr;
+        //delete g_pBranchDataMemCache;
+        //g_pBranchDataMemCache = nullptr;
+        //delete g_pBranchDb;
+        //g_pBranchDb = nullptr;
     }
 #ifdef ENABLE_WALLET
     for (CWalletRef pwallet : vpwallets) {
@@ -1445,8 +1445,8 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                 delete pcoinsdbview;
                 delete pcoinscatcher;
                 delete pblocktree;
-                delete g_pBranchDataMemCache;
-                delete g_pBranchDb;
+                //delete g_pBranchDataMemCache;
+                //delete g_pBranchDb;
                 //BranchDb::DeleteDb();
 
                 pblocktree = new MCBlockTreeDB(nBlockTreeDBCache, false, fReset);
@@ -1522,24 +1522,24 @@ bool AppInitMain(boost::thread_group& threadGroup, MCScheduler& scheduler)
                     break;
                 }
 
-                if (Params().IsMainChain()) //only in main chain
-                {
-                    if (g_pBranchDb == nullptr) { // cache size calculations
-                        int64_t nTotalCache = (gArgs.GetArg("-dbcache", nDefaultDbCache) << 20);
-                        nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
-                        nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greater than nMaxDbcache
-                        int64_t nBlockTreeDBCache = nTotalCache / 8;
-                        nBlockTreeDBCache = std::min(nBlockTreeDBCache, (gArgs.GetBoolArg("-txindex", DEFAULT_TXINDEX) ? nMaxBlockDBAndTxIndexCache : nMaxBlockDBCache) << 20);
-                        nTotalCache -= nBlockTreeDBCache;
-                        int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
-                        nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20);                   // cap total coins db cache
-                        g_pBranchDb = new BranchDb(GetDataDir() / "branchchain", nCoinDBCache, false, false);
-                        g_pBranchDb->LoadData();
-                    }
-                    if (g_pBranchDataMemCache == nullptr){
-                        g_pBranchDataMemCache = new BranchCache(g_pBranchDb);
-                    }
-                }
+                //if (Params().IsMainChain()) //only in main chain
+                //{
+                //    if (g_pBranchDb == nullptr) { // cache size calculations
+                //        int64_t nTotalCache = (gArgs.GetArg("-dbcache", nDefaultDbCache) << 20);
+                //        nTotalCache = std::max(nTotalCache, nMinDbCache << 20); // total cache cannot be less than nMinDbCache
+                //        nTotalCache = std::min(nTotalCache, nMaxDbCache << 20); // total cache cannot be greater than nMaxDbcache
+                //        int64_t nBlockTreeDBCache = nTotalCache / 8;
+                //        nBlockTreeDBCache = std::min(nBlockTreeDBCache, (gArgs.GetBoolArg("-txindex", DEFAULT_TXINDEX) ? nMaxBlockDBAndTxIndexCache : nMaxBlockDBCache) << 20);
+                //        nTotalCache -= nBlockTreeDBCache;
+                //        int64_t nCoinDBCache = std::min(nTotalCache / 2, (nTotalCache / 4) + (1 << 23)); // use 25%-50% of the remainder for disk cache
+                //        nCoinDBCache = std::min(nCoinDBCache, nMaxCoinsDBCache << 20);                   // cap total coins db cache
+                //        g_pBranchDb = new BranchDb(GetDataDir() / "branchchain", nCoinDBCache, false, false);
+                //        g_pBranchDb->LoadData();
+                //    }
+                //    if (g_pBranchDataMemCache == nullptr){
+                //        g_pBranchDataMemCache = new BranchCache(g_pBranchDb);
+                //    }
+                //}
                 
                 bool is_coinsview_empty = fReset || fReindexChainState || pcoinsTip->GetBestBlock().IsNull();
                 if (!is_coinsview_empty) {

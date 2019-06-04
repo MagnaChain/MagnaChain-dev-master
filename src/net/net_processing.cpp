@@ -240,7 +240,7 @@ bool MarkBlockAsInFlight(NodeId nodeid, const uint256& hash, const MCBlockIndex*
     MarkBlockAsReceived(hash);
 
     std::list<QueuedBlock>::iterator it = state->vBlocksInFlight.insert(state->vBlocksInFlight.end(),
-            {hash, pindex, pindex != nullptr, std::unique_ptr<PartiallyDownloadedBlock>(pit ? new PartiallyDownloadedBlock(&mempool, g_pBranchDb) : nullptr)});
+            {hash, pindex, pindex != nullptr, std::unique_ptr<PartiallyDownloadedBlock>(pit ? new PartiallyDownloadedBlock(&mempool/*, g_pBranchDb*/) : nullptr)});
     state->nBlocksInFlight++;
     state->nBlocksInFlightValidHeaders += it->fValidatedHeaders;
     if (state->nBlocksInFlight == 1) {
@@ -560,11 +560,11 @@ bool AddOrphanTx(const MCTransactionRef& tx, NodeId peer, int nMissingInputs) EX
             mapOrphanTransactionsByPrev[txin.prevout].insert(ret.first);
         }
     }
-    if (nMissingInputs & eMissingInputTypes::eMissingBranchPreHeadTx){
-        if (tx->IsSyncBranchInfo()){
-            mapOrphanTxBranchPrevHeader[tx->pBranchBlockData->hashPrevBlock].insert(ret.first);
-        }
-    }
+    //if (nMissingInputs & eMissingInputTypes::eMissingBranchPreHeadTx){
+    //    if (tx->IsSyncBranchInfo()){
+    //        mapOrphanTxBranchPrevHeader[tx->pBranchBlockData->hashPrevBlock].insert(ret.first);
+    //    }
+    //}
 
     AddToCompactExtraTransactions(tx);
 
@@ -587,15 +587,15 @@ int static EraseOrphanTx(uint256 hash) EXCLUSIVE_LOCKS_REQUIRED(cs_main)
         if (itPrev->second.empty())
             mapOrphanTransactionsByPrev.erase(itPrev);
     }
-    if (it->second.tx->IsSyncBranchInfo()){
-        auto itPrevH = mapOrphanTxBranchPrevHeader.find(it->second.tx->pBranchBlockData->hashPrevBlock);
-        if (itPrevH != mapOrphanTxBranchPrevHeader.end()) {
-            itPrevH->second.erase(it);
-            if (itPrevH->second.empty()){
-                mapOrphanTxBranchPrevHeader.erase(itPrevH);
-            }
-        }
-    }
+    //if (it->second.tx->IsSyncBranchInfo()){
+    //    auto itPrevH = mapOrphanTxBranchPrevHeader.find(it->second.tx->pBranchBlockData->hashPrevBlock);
+    //    if (itPrevH != mapOrphanTxBranchPrevHeader.end()) {
+    //        itPrevH->second.erase(it);
+    //        if (itPrevH->second.empty()){
+    //            mapOrphanTxBranchPrevHeader.erase(itPrevH);
+    //        }
+    //    }
+    //}
     mapOrphanTransactions.erase(it);
     return 1;
 }
@@ -716,16 +716,16 @@ void PeerLogicValidation::BlockConnected(const std::shared_ptr<const MCBlock>& p
                 vOrphanErase.push_back(orphanHash);
             }
         }
-        if (ptx->IsSyncBranchInfo()){
-            auto itPrevH = mapOrphanTxBranchPrevHeader.find(ptx->pBranchBlockData->hashPrevBlock);
-            if (itPrevH != mapOrphanTxBranchPrevHeader.end()){
-                for (auto mi = itPrevH->second.begin(); mi != itPrevH->second.end(); ++mi) {
-                    const MCTransaction& orphanTx = *(*mi)->second.tx;
-                    const uint256& orphanHash = orphanTx.GetHash();
-                    vOrphanErase.push_back(orphanHash);
-                }
-            }
-        }
+        //if (ptx->IsSyncBranchInfo()){
+        //    auto itPrevH = mapOrphanTxBranchPrevHeader.find(ptx->pBranchBlockData->hashPrevBlock);
+        //    if (itPrevH != mapOrphanTxBranchPrevHeader.end()){
+        //        for (auto mi = itPrevH->second.begin(); mi != itPrevH->second.end(); ++mi) {
+        //            const MCTransaction& orphanTx = *(*mi)->second.tx;
+        //            const uint256& orphanHash = orphanTx.GetHash();
+        //            vOrphanErase.push_back(orphanHash);
+        //        }
+        //    }
+        //}
     }
 
     // Erase orphan transactions include or precluded by this block
@@ -2026,11 +2026,11 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
             for (unsigned int i = 0; i < tx.vout.size(); i++) {
                 vWorkQueue.emplace_back(inv.hash, i);
             }
-            if (tx.IsSyncBranchInfo()) {
-                MCBlockHeader blockheader;
-                tx.pBranchBlockData->GetBlockHeader(blockheader);
-                vWorkQueuePreHead.emplace_back(blockheader.GetHash());
-            }
+            //if (tx.IsSyncBranchInfo()) {
+            //    MCBlockHeader blockheader;
+            //    tx.pBranchBlockData->GetBlockHeader(blockheader);
+            //    vWorkQueuePreHead.emplace_back(blockheader.GetHash());
+            //}
 
             pfrom->nLastTXTime = GetTime();
 
@@ -2079,11 +2079,11 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                         for (unsigned int i = 0; i < orphanTx.vout.size(); i++) {
                             vWorkQueue.emplace_back(orphanHash, i);
                         }
-                        if (orphanTx.IsSyncBranchInfo()){
-                            MCBlockHeader blockheader;
-                            orphanTx.pBranchBlockData->GetBlockHeader(blockheader);
-                            vWorkQueuePreHead.emplace_back(blockheader.GetHash());
-                        }
+                        //if (orphanTx.IsSyncBranchInfo()){
+                        //    MCBlockHeader blockheader;
+                        //    orphanTx.pBranchBlockData->GetBlockHeader(blockheader);
+                        //    vWorkQueuePreHead.emplace_back(blockheader.GetHash());
+                        //}
                         vEraseQueue.push_back(orphanHash);
                     }
                     else if (!nMissingInputs2)
@@ -2299,7 +2299,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                 std::list<QueuedBlock>::iterator* queuedBlockIt = nullptr;
                 if (!MarkBlockAsInFlight(pfrom->GetId(), pindex->GetBlockHash(), pindex, &queuedBlockIt)) {
                     if (!(*queuedBlockIt)->partialBlock)
-                        (*queuedBlockIt)->partialBlock.reset(new PartiallyDownloadedBlock(&mempool, g_pBranchDb));
+                        (*queuedBlockIt)->partialBlock.reset(new PartiallyDownloadedBlock(&mempool/*, g_pBranchDb*/));
                     else {
                         // The block was already in flight using compact blocks from the same peer
                         LogPrint(BCLog::NET, "Peer sent us compact block we were already syncing!\n");
@@ -2343,7 +2343,7 @@ bool ProcessMessage(MCNode* pfrom, const std::string& strCommand, MCDataStream& 
                 // download from.
                 // Optimistically try to reconstruct anyway since we might be
                 // able to without any round trips.
-                PartiallyDownloadedBlock tempBlock(&mempool, g_pBranchDb);
+                PartiallyDownloadedBlock tempBlock(&mempool/*, g_pBranchDb*/);
                 ReadStatus status = tempBlock.InitData(cmpctblock, vExtraTxnForCompact);
                 if (status != READ_STATUS_OK) {
                     // TODO: don't ignore failures

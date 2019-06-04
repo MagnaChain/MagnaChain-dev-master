@@ -239,8 +239,8 @@ private:
     int UpdatePackagesForAdded(const MCTxMemPool::setEntries& alreadyAdded, indexed_modified_transaction_set &mapModifiedTx);
 
     //
-    void addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache);
-    void addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache);
+    //void addReportProofTx(const MCTransactionRef &ptxReport, const MCScript &minerpkey, const MCCoinsViewCache* pCoinsCache);
+    //void addReportProofTxs(const MCScript& scriptPubKeyIn, MCCoinsViewCache *pcoinsCache);
     bool UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUTXO& utxoMaker);
 };
 

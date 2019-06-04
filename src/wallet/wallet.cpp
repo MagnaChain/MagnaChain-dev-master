@@ -2826,8 +2826,8 @@ static bool MoveTransactionData(MCWalletTx& fromWtx, MCMutableTransaction& toTx)
     {
         toTx.sendToBranchid = fromWtx.sendToBranchid;
         toTx.sendToTxHexData = fromWtx.sendToTxHexData;
-        if (toTx.sendToBranchid == MCBaseChainParams::MAIN)
-            toTx.pPMT.reset(new MCSpvProof());
+        //if (toTx.sendToBranchid == MCBaseChainParams::MAIN)
+        //    toTx.pPMT.reset(new MCSpvProof());
     }
     else if (fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)//这种类型不是创建出来的，是包含在上面两个类型
     {
@@ -2840,33 +2840,33 @@ static bool MoveTransactionData(MCWalletTx& fromWtx, MCMutableTransaction& toTx)
     else if (fromWtx.nVersion == MCTransaction::REDEEM_MORTGAGE)
     {
         toTx.fromBranchId = fromWtx.fromBranchId;
-        toTx.pPMT.reset(new MCSpvProof(*fromWtx.pPMT));
+        //toTx.pPMT.reset(new MCSpvProof(*fromWtx.pPMT));
         toTx.fromTx = std::move(fromWtx.fromTx);
     }
-    else if (fromWtx.nVersion == MCTransaction::SYNC_BRANCH_INFO)
-    {
-        toTx.pBranchBlockData = std::move(fromWtx.pBranchBlockData);
-    }
-    else if (fromWtx.nVersion == MCTransaction::REPORT_CHEAT)
-    {
-        toTx.pPMT.reset(new MCSpvProof(*fromWtx.pPMT));
-        toTx.pReportData.reset(new ReportData(*fromWtx.pReportData));
-    }
-    else if (fromWtx.nVersion == MCTransaction::PROVE)
-    {
-        toTx.pProveData.reset(new ProveData(*fromWtx.pProveData));
-    }
-    else if (fromWtx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
-    {
-        toTx.reporttxid = fromWtx.reporttxid;
-        toTx.coinpreouthash = fromWtx.coinpreouthash;
-    }
-    else if (fromWtx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
-    {
-        toTx.reporttxid = fromWtx.reporttxid;
-        toTx.coinpreouthash = fromWtx.coinpreouthash;
-        toTx.provetxid = fromWtx.provetxid;
-    }
+    //else if (fromWtx.nVersion == MCTransaction::SYNC_BRANCH_INFO)
+    //{
+    //    toTx.pBranchBlockData = std::move(fromWtx.pBranchBlockData);
+    //}
+    //else if (fromWtx.nVersion == MCTransaction::REPORT_CHEAT)
+    //{
+    //    toTx.pPMT.reset(new MCSpvProof(*fromWtx.pPMT));
+    //    toTx.pReportData.reset(new ReportData(*fromWtx.pReportData));
+    //}
+    //else if (fromWtx.nVersion == MCTransaction::PROVE)
+    //{
+    //    toTx.pProveData.reset(new ProveData(*fromWtx.pProveData));
+    //}
+    //else if (fromWtx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
+    //{
+    //    toTx.reporttxid = fromWtx.reporttxid;
+    //    toTx.coinpreouthash = fromWtx.coinpreouthash;
+    //}
+    //else if (fromWtx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
+    //{
+    //    toTx.reporttxid = fromWtx.reporttxid;
+    //    toTx.coinpreouthash = fromWtx.coinpreouthash;
+    //    toTx.provetxid = fromWtx.provetxid;
+    //}
     return true;
 }
 
@@ -3244,10 +3244,10 @@ bool MCWallet::CreateTransaction(const std::vector<MCRecipient>& vecSend, MCWall
         int64_t txWeight = GetTransactionWeight(wtxNew);
         if (txWeight >= MAX_STANDARD_TX_WEIGHT)
         {
-            if (!txNew.IsProve()) {
+            //if (!txNew.IsProve()) {
                 strFailReason = strprintf("Transaction too large, weight is %lld", txWeight);
                 return false;
-            }
+            //}
         }
     }
 

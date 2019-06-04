@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(tx_valid)
             MCTransaction tx(deserialize, stream);
 
             MCValidationState state;
-            BOOST_REQUIRE_MESSAGE(CheckTransaction(tx, state, true, nullptr, nullptr, false, nullptr, pcoinsTip, nullptr), strTest);
+            BOOST_REQUIRE_MESSAGE(CheckTransaction(tx, state, true, nullptr, nullptr, false, /*nullptr,*/ pcoinsTip, nullptr), strTest);
             BOOST_REQUIRE(state.IsValid());
 
             PrecomputedTransactionData txdata(tx);
@@ -237,7 +237,7 @@ BOOST_AUTO_TEST_CASE(tx_invalid)
             MCTransaction tx(deserialize, stream);
 
             MCValidationState state;
-            fValid = CheckTransaction(tx, state, true, nullptr, nullptr, false, nullptr, pcoinsTip, nullptr) && state.IsValid();
+            fValid = CheckTransaction(tx, state, true, nullptr, nullptr, false, /*nullptr,*/ pcoinsTip, nullptr) && state.IsValid();
             if (tx.IsCoinBase())
             {
                 if (tx.vin[0].scriptSig.size() < 2 || tx.vin[0].scriptSig.size() > 100)// in magnachain, size check is check to 200,
@@ -290,11 +290,11 @@ BOOST_AUTO_TEST_CASE(basic_transaction_tests)
     MCMutableTransaction tx;
     stream >> tx;
     MCValidationState state;
-    BOOST_CHECK_MESSAGE(CheckTransaction(tx, state, true, nullptr, nullptr, false, nullptr, pcoinsTip, nullptr) && state.IsValid(), "Simple deserialized transaction should be valid.");
+    BOOST_CHECK_MESSAGE(CheckTransaction(tx, state, true, nullptr, nullptr, false, /*nullptr,*/ pcoinsTip, nullptr) && state.IsValid(), "Simple deserialized transaction should be valid.");
 
     // Check that duplicate txins fail
     tx.vin.push_back(tx.vin[0]);
-    BOOST_CHECK_MESSAGE(!CheckTransaction(tx, state, true, nullptr, nullptr, false, nullptr, pcoinsTip, nullptr) || !state.IsValid(), "Transaction with duplicate txins should be invalid.");
+    BOOST_CHECK_MESSAGE(!CheckTransaction(tx, state, true, nullptr, nullptr, false, /*nullptr,*/ pcoinsTip, nullptr) || !state.IsValid(), "Transaction with duplicate txins should be invalid.");
 }
 
 //

@@ -79,7 +79,7 @@ void MCTxMemPoolEntry::UpdateContract(const VMOut* vmOut)
 size_t MCTxMemPoolEntry::GetTxSize() const
 {
     int factor = 1;
-    if (tx->IsPregnantTx() || tx->IsBranchCreate() || tx->IsProve() || tx->IsReport())
+    if (tx->IsPregnantTx() || tx->IsBranchCreate() /*|| tx->IsProve() || tx->IsReport()*/)
         factor = 10;
     if (tx->IsBranchChainTransStep2())
         factor = 20;
@@ -1009,8 +1009,8 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempoo
                 mtx.vout.erase(mtx.vout.begin() + i);
             }
         }
-        if(!fFromMempool){
-            mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
+        if(!fFromMempool) {
+            //mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
         }
     }
 
@@ -1203,7 +1203,7 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
     LOCK(cs);
     std::vector<const MCTxMemPoolEntry*> entries;
     // remove all duplicate branch block header info tx.
-    std::set<uint256> setHeaderMixHash;// collect be mined branch block hash
+    //std::set<uint256> setHeaderMixHash;// collect be mined branch block hash
     bool bIsMainChain = Params().IsMainChain();
 
     for (const auto& tx : vtx)
@@ -1213,14 +1213,14 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
         indexed_transaction_set::iterator i = mapTx.find(hash);
         if (i != mapTx.end())
             entries.push_back(&*i);
-        if (bIsMainChain && tx->IsSyncBranchInfo()){//record
-            BranchBlockData blockData;
-            blockData.InitDataFromTx(*tx);
-            const uint256 blockHash = blockData.header.GetHash();
-            const uint256& branchHash = tx->pBranchBlockData->branchID;
-            uint256 mixhash = blockHash | branchHash;
-            setHeaderMixHash.insert(mixhash);
-        }
+        //if (bIsMainChain && tx->IsSyncBranchInfo()){//record
+        //    BranchBlockData blockData;
+        //    blockData.InitDataFromTx(*tx);
+        //    const uint256 blockHash = blockData.header.GetHash();
+        //    const uint256& branchHash = tx->pBranchBlockData->branchID;
+        //    uint256 mixhash = blockHash | branchHash;
+        //    setHeaderMixHash.insert(mixhash);
+        //}
     }
 
     // Before the txs in the new block have been removed from the mempool, update policy estimates
@@ -1228,27 +1228,27 @@ void MCTxMemPool::RemoveForBlock(const std::vector<MCTransactionRef>& vtx, unsig
     RemoveForVector(vtx, true, MemPoolRemovalReason::BLOCK);
 
     // remove all duplicate branch block header info tx.
-    if (bIsMainChain && !setHeaderMixHash.empty())
-    {
-        std::vector<MCTransactionRef> vRemove;
-        for (const auto& it : mapTx) {
-            const MCTransactionRef& ptx = it.GetPtrTx();
-            if (ptx->IsSyncBranchInfo()){
-                BranchBlockData blockData;
-                blockData.InitDataFromTx(*ptx);
-                const uint256 blockHash = blockData.header.GetHash();
-                const uint256& branchHash = ptx->pBranchBlockData->branchID;
-                uint256 mixhash = blockHash | branchHash;
-                if (setHeaderMixHash.count(mixhash)) {
-                    vRemove.push_back(ptx);
+    //if (bIsMainChain && !setHeaderMixHash.empty())
+    //{
+    //    std::vector<MCTransactionRef> vRemove;
+    //    for (const auto& it : mapTx) {
+    //        const MCTransactionRef& ptx = it.GetPtrTx();
+    //        if (ptx->IsSyncBranchInfo()){
+    //            BranchBlockData blockData;
+    //            blockData.InitDataFromTx(*ptx);
+    //            const uint256 blockHash = blockData.header.GetHash();
+    //            const uint256& branchHash = ptx->pBranchBlockData->branchID;
+    //            uint256 mixhash = blockHash | branchHash;
+    //            if (setHeaderMixHash.count(mixhash)) {
+    //                vRemove.push_back(ptx);
 
-                    uint256 txid = ptx->GetHash();
-                    LogPrintf("remove duplicate syncbranchheaderinfo tx from mempool %s\n", txid.GetHex());
-                }
-            }
-        }
-        RemoveForVector(vRemove, true, MemPoolRemovalReason::BLOCK);
-    }
+    //                uint256 txid = ptx->GetHash();
+    //                LogPrintf("remove duplicate syncbranchheaderinfo tx from mempool %s\n", txid.GetHex());
+    //            }
+    //        }
+    //    }
+    //    RemoveForVector(vRemove, true, MemPoolRemovalReason::BLOCK);
+    //}
 
     lastRollingFeeUpdate = GetTime();
     blockSinceLastRollingFeeBump = true;

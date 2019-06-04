@@ -358,18 +358,18 @@ public:
 	//uint64_t inAmount;
     std::string fromBranchId;
 
-    std::shared_ptr<const MCSpvProof> pPMT;
+    //std::shared_ptr<const MCSpvProof> pPMT;
     std::vector<unsigned char> fromTx;
     std::shared_ptr<ContractData> pContractData;
-    std::shared_ptr<const ReportData> pReportData;
-    std::shared_ptr<ProveData> pProveData;
+    //std::shared_ptr<const ReportData> pReportData;
+    //std::shared_ptr<ProveData> pProveData;
 
     bool isDataTransaction; // transaction can be fee only, no transfer
-    std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
+    //std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
 
-    uint256 reporttxid;
-    uint256 coinpreouthash;
-    uint256 provetxid;
+    //uint256 reporttxid;
+    //uint256 coinpreouthash;
+    //uint256 provetxid;
 
     MCWalletTx()
     {

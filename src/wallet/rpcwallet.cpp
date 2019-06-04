@@ -2153,7 +2153,7 @@ void ListTransactions(MCWallet* const pwallet, const MCWalletTx& wtx, const std:
 
     //is fee tx for other function.
     if (listSent.empty() && listReceived.empty() && wtx.tx->vout.size() == 1
-        && (wtx.tx->IsSmartContract() || wtx.tx->IsSyncBranchInfo()))
+        && (wtx.tx->IsSmartContract() /*|| wtx.tx->IsSyncBranchInfo()*/))
     {
         for (unsigned int i = 0; i < wtx.tx->vout.size(); ++i)
         {

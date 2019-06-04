@@ -121,7 +121,7 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
     branchTx.nLockTime = 0;
     branchTx.fromBranchId = strFromChain;
     //    branchTx.fromTx = ;//this value set later.
-    branchTx.pPMT.reset(new MCSpvProof()); //will reset later, 这里防止序列化时报错
+    //branchTx.pPMT.reset(new MCSpvProof()); //will reset later, 这里防止序列化时报错
 
     branchTx.vin.resize(1);// (set v[0] diff from MCTransaction::IsCoinBase)
     branchTx.vin[0].prevout.hash.SetNull();
@@ -693,10 +693,10 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
             mtxTrans2.vout[0].scriptPubKey = MCScript() << OP_MINE_BRANCH_COIN << ToByteVector(mtxTrans1.GetHash()) << coinheight << OP_2DROP << OP_DUP << OP_HASH160 << ToByteVector(keyid) << OP_EQUALVERIFY << OP_CHECKSIG;
         }
     }
-    if (mtxTrans2.fromBranchId != MCBaseChainParams::MAIN){
-        mtxTrans2.pPMT.reset(new MCSpvProof(*mtxTrans1.pPMT));
-        mtxTrans1.pPMT.reset(new MCSpvProof()); // clear pPMT from mtxTrans1
-    }
+    //if (mtxTrans2.fromBranchId != MCBaseChainParams::MAIN){
+    //    mtxTrans2.pPMT.reset(new MCSpvProof(*mtxTrans1.pPMT));
+    //    mtxTrans1.pPMT.reset(new MCSpvProof()); // clear pPMT from mtxTrans1
+    //}
     MCTransaction tx1(mtxTrans1);
     MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, mtxTrans2.fromTx, 0, tx1 };
     MCTransactionRef tx2 = MakeTransactionRef(std::move(mtxTrans2));
@@ -970,167 +970,169 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
     return ret;
 }
 
+
 // 侧链向主链提交区块头
-UniValue submitbranchblockinfo(const JSONRPCRequest& request)
-{
-    if (gArgs.GetBoolArg("-disablewallet", false))
-    {
-        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
-    }
-    MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
-    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
-        return NullUniValue;
-    }
-    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
-        throw std::runtime_error(
-                "submitbranchblockinfo \"CTransaction hex data\"\n"
-                "\nInclude branch block data to a transaction, then send to main chain\n"
-                "\nArguments:\n"
-                "1. \"transaction_of_branch_block_data\"             (string, required) The transaction data in dex string format.\n"
-                "\nReturns ok or fail.\n"
-                "\nResult:\n"
-                "\"ret\"                  (string) ok or fail\n"
-                "\nExamples:\n"
-                + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
-                + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
-                );
+//UniValue submitbranchblockinfo(const JSONRPCRequest& request)
+//{
+//    if (gArgs.GetBoolArg("-disablewallet", false))
+//    {
+//        throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
+//    }
+//    MCWallet* const pwallet = GetWalletForJSONRPCRequest(request);
+//    if (!EnsureWalletIsAvailable(pwallet, request.fHelp)) {
+//        return NullUniValue;
+//    }
+//    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+//        throw std::runtime_error(
+//                "submitbranchblockinfo \"CTransaction hex data\"\n"
+//                "\nInclude branch block data to a transaction, then send to main chain\n"
+//                "\nArguments:\n"
+//                "1. \"transaction_of_branch_block_data\"             (string, required) The transaction data in dex string format.\n"
+//                "\nReturns ok or fail.\n"
+//                "\nResult:\n"
+//                "\"ret\"                  (string) ok or fail\n"
+//                "\nExamples:\n"
+//                + HelpExampleCli("submitbranchblockinfo", "5754f9e...630db")
+//                + HelpExampleRpc("submitbranchblockinfo", "5754f9e...630db")
+//                );
+//
+//    if (!Params().IsMainChain())
+//        throw JSONRPCError(RPC_INVALID_PARAMS, "This rpc api can not be called in branch chain");
+//
+//    LOCK2(cs_main, pwallet->cs_wallet);
+//
+//    const std::string& strTx1HexData = request.params[0].get_str();
+//    MCMutableTransaction mtxTrans1;
+//    if (!DecodeHexTx(mtxTrans1, strTx1HexData))
+//    {
+//        throw JSONRPCError(RPC_WALLET_ERROR, "DecodeHexTx tx hex fail.\n");
+//    }
+//    if (!mtxTrans1.IsSyncBranchInfo())
+//        throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid transaction data");
+//
+//    ///////////
+//    MCCoinControl coin_control;
+//
+//    MCWalletTx wtx;
+//    wtx.nVersion = MCTransaction::SYNC_BRANCH_INFO;
+//    wtx.pBranchBlockData = std::move(mtxTrans1.pBranchBlockData);
+//    wtx.isDataTransaction = true;
+//
+//    bool fSubtractFeeFromAmount = false;
+//    EnsureWalletIsUnlocked(pwallet);
+//    if (pwallet->GetBroadcastTransactions() && !g_connman) {
+//        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
+//    }
+//
+//    MCAmount curBalance = pwallet->GetBalance();
+//    // Create and send the transaction
+//    MCReserveKey reservekey(pwallet);
+//    MCAmount nFeeRequired;
+//    std::string strError;
+//    std::vector<MCRecipient> vecSend;
+//    int nChangePosRet = -1;
+//    if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
+//        if (!fSubtractFeeFromAmount && nFeeRequired > curBalance)
+//            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
+//        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+//    }
+//    MCValidationState state;
+//    if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
+//        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
+//        throw JSONRPCError(RPC_WALLET_ERROR, strError);
+//    }
+//    ///////////
+//    UniValue ret(UniValue::VOBJ);
+//    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
+//    if (!state.GetRejectReason().empty())
+//    {
+//        ret.push_back(Pair("commit_reject_reason", state.GetRejectReason()));
+//    }
+//    return ret;
+//}
 
-    if (!Params().IsMainChain())
-        throw JSONRPCError(RPC_INVALID_PARAMS, "This rpc api can not be called in branch chain");
-
-    LOCK2(cs_main, pwallet->cs_wallet);
-
-    const std::string& strTx1HexData = request.params[0].get_str();
-    MCMutableTransaction mtxTrans1;
-    if (!DecodeHexTx(mtxTrans1, strTx1HexData))
-    {
-        throw JSONRPCError(RPC_WALLET_ERROR, "DecodeHexTx tx hex fail.\n");
-    }
-    if (!mtxTrans1.IsSyncBranchInfo())
-        throw JSONRPCError(RPC_INVALID_PARAMS, "Invalid transaction data");
-
-    ///////////
-    MCCoinControl coin_control;
-
-    MCWalletTx wtx;
-    wtx.nVersion = MCTransaction::SYNC_BRANCH_INFO;
-    wtx.pBranchBlockData = std::move(mtxTrans1.pBranchBlockData);
-    wtx.isDataTransaction = true;
-
-    bool fSubtractFeeFromAmount = false;
-    EnsureWalletIsUnlocked(pwallet);
-    if (pwallet->GetBroadcastTransactions() && !g_connman) {
-        throw JSONRPCError(RPC_CLIENT_P2P_DISABLED, "Error: Peer-to-peer functionality missing or disabled");
-    }
-
-    MCAmount curBalance = pwallet->GetBalance();
-    // Create and send the transaction
-    MCReserveKey reservekey(pwallet);
-    MCAmount nFeeRequired;
-    std::string strError;
-    std::vector<MCRecipient> vecSend;
-    int nChangePosRet = -1;
-    if (!pwallet->CreateTransaction(vecSend, wtx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control)) {
-        if (!fSubtractFeeFromAmount && nFeeRequired > curBalance)
-            strError = strprintf("Error: This transaction requires a transaction fee of at least %s", FormatMoney(nFeeRequired));
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-    }
-    MCValidationState state;
-    if (!pwallet->CommitTransaction(wtx, reservekey, g_connman.get(), state)) {
-        strError = strprintf("Error: The transaction(%s) was rejected! Reason given: %s", wtx.GetHash().ToString(), state.GetRejectReason());
-        throw JSONRPCError(RPC_WALLET_ERROR, strError);
-    }
-    ///////////
-    UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txid", wtx.GetHash().GetHex()));
-    if (!state.GetRejectReason().empty())
-    {
-        ret.push_back(Pair("commit_reject_reason", state.GetRejectReason()));
-    }
-    return ret;
-}
 
 // 赎回挖矿抵押
 
 //查询侧链有效头高度
-UniValue getbranchchainheight(const JSONRPCRequest& request)
-{
-    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
-        throw std::runtime_error(
-                "getbranchchainheight \"branchid\"\n"
-                "\nget branch chain top block height\n"
-                "\nArguments:\n"
-                "1. \"branchid\"             (string, required) The branch id.\n"
-                "\nReturns ok or fail.\n"
-                "\nResult:\n"
-                "{\n"
-                "  \"blockhash\" : xxx,           (string) Block hash\n"
-                "  \"height\"    : xxx,           (number) Block height\n"
-                "}\n"
-                "\nExamples:\n"
-                + HelpExampleCli("getbranchchainheight", "5754f9e...630db")
-                + HelpExampleRpc("getbranchchainheight", "5754f9e...630db")
-                );
-
-    if (!Params().IsMainChain())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in branch chain!\n");
-
-    LOCK(cs_main);
-    uint256 branchid = ParseHashV(request.params[0], "parameter 1");
-    if (!g_pBranchChainTxRecordsDb->IsBranchCreated(branchid))
-        throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
-
-    UniValue retObj(UniValue::VOBJ);
-    retObj.push_back(Pair("blockhash", g_pBranchDb->GetBranchTipHash(branchid).ToString()));
-    retObj.push_back(Pair("height", (uint64_t)g_pBranchDb->GetBranchHeight(branchid)));
-    return retObj;
-}
+//UniValue getbranchchainheight(const JSONRPCRequest& request)
+//{
+//    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+//        throw std::runtime_error(
+//                "getbranchchainheight \"branchid\"\n"
+//                "\nget branch chain top block height\n"
+//                "\nArguments:\n"
+//                "1. \"branchid\"             (string, required) The branch id.\n"
+//                "\nReturns ok or fail.\n"
+//                "\nResult:\n"
+//                "{\n"
+//                "  \"blockhash\" : xxx,           (string) Block hash\n"
+//                "  \"height\"    : xxx,           (number) Block height\n"
+//                "}\n"
+//                "\nExamples:\n"
+//                + HelpExampleCli("getbranchchainheight", "5754f9e...630db")
+//                + HelpExampleRpc("getbranchchainheight", "5754f9e...630db")
+//                );
+//
+//    if (!Params().IsMainChain())
+//        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in branch chain!\n");
+//
+//    LOCK(cs_main);
+//    uint256 branchid = ParseHashV(request.params[0], "parameter 1");
+//    if (!g_pBranchChainTxRecordsDb->IsBranchCreated(branchid))
+//        throw JSONRPCError(RPC_WALLET_ERROR, "Branch which you query did not created");
+//
+//    UniValue retObj(UniValue::VOBJ);
+//    retObj.push_back(Pair("blockhash", g_pBranchDb->GetBranchTipHash(branchid).ToString()));
+//    retObj.push_back(Pair("height", (uint64_t)g_pBranchDb->GetBranchHeight(branchid)));
+//    return retObj;
+//}
 
 //重发侧链头到主链
-UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
-{
-    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
-        throw std::runtime_error(
-                "resendbranchchainblockinfo \"height\"\n"
-                "\nResend branch chain block info by height\n"
-                "\nArguments:\n"
-                "1. \"height\"             (number, required) The block height.\n"
-                "\nReturns ok or fail.\n"
-                "\nResult:\n"
-                "\n"
-                "\nExamples:\n"
-                + HelpExampleCli("resendbranchchainblockinfo", "height")
-                + HelpExampleRpc("resendbranchchainblockinfo", "height")
-                );
-
-    if (Params().IsMainChain())
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
-
-    int64_t blockheight;
-    if (request.params[0].isNum())
-        blockheight = request.params[0].get_int64();
-    else{
-        if (!ParseInt64(request.params[0].get_str(), &blockheight))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Params[0] is a invalid number\n");
-    }
-
-    if (blockheight > chainActive.Height() || blockheight <= 0)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid block height\n");
-
-    LOCK(cs_main);
-    MCBlock block;
-    MCBlockIndex* pBlockIndex = chainActive[blockheight];
-    if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_MISC_ERROR, "Block not found on disk");
-
-    std::shared_ptr<const MCBlock> shared_pblock = std::make_shared<const MCBlock>(block);
-    std::string strErr;
-    if (!SendBranchBlockHeader(shared_pblock, &strErr, false))//TODO: is onlySendMy necessary to be a option by rpc parameter.
-    {
-        return "Fail:" + strErr;
-    }
-    return "OK";
-}
+//UniValue resendbranchchainblockinfo(const JSONRPCRequest& request)
+//{
+//    if (request.fHelp || request.params.size() < 1 || request.params.size() > 1)
+//        throw std::runtime_error(
+//                "resendbranchchainblockinfo \"height\"\n"
+//                "\nResend branch chain block info by height\n"
+//                "\nArguments:\n"
+//                "1. \"height\"             (number, required) The block height.\n"
+//                "\nReturns ok or fail.\n"
+//                "\nResult:\n"
+//                "\n"
+//                "\nExamples:\n"
+//                + HelpExampleCli("resendbranchchainblockinfo", "height")
+//                + HelpExampleRpc("resendbranchchainblockinfo", "height")
+//                );
+//
+//    if (Params().IsMainChain())
+//        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
+//
+//    int64_t blockheight;
+//    if (request.params[0].isNum())
+//        blockheight = request.params[0].get_int64();
+//    else{
+//        if (!ParseInt64(request.params[0].get_str(), &blockheight))
+//            throw JSONRPCError(RPC_INTERNAL_ERROR, "Params[0] is a invalid number\n");
+//    }
+//
+//    if (blockheight > chainActive.Height() || blockheight <= 0)
+//        throw JSONRPCError(RPC_INTERNAL_ERROR, "Invalid block height\n");
+//
+//    LOCK(cs_main);
+//    MCBlock block;
+//    MCBlockIndex* pBlockIndex = chainActive[blockheight];
+//    if (!ReadBlockFromDisk(block, pBlockIndex, Params().GetConsensus()))
+//        throw JSONRPCError(RPC_MISC_ERROR, "Block not found on disk");
+//
+//    std::shared_ptr<const MCBlock> shared_pblock = std::make_shared<const MCBlock>(block);
+//    std::string strErr;
+//    if (!SendBranchBlockHeader(shared_pblock, &strErr, false))//TODO: is onlySendMy necessary to be a option by rpc parameter.
+//    {
+//        return "Fail:" + strErr;
+//    }
+//    return "OK";
+//}
 
 //赎回挖矿币, 步骤
 // 1).侧链提起赎回请求.(侧链先销毁挖矿币,防止继续挖矿)
@@ -1325,7 +1327,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     //create transaction
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::REDEEM_MORTGAGE;
-    wtx.pPMT.reset(new MCSpvProof(spvProof));
+    //wtx.pPMT.reset(new MCSpvProof(spvProof));
     wtx.fromBranchId = frombranchid.ToString();        
     MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, wtx.fromTx, 0, statementmtx };
 
@@ -1433,7 +1435,7 @@ UniValue rebroadcastredeemtransaction(const JSONRPCRequest& request)
 
     return "ok";
 }
-
+/*
 //在支链发起举报某个交易，或者举报coinbase交易
 UniValue sendreporttomain(const JSONRPCRequest& request)
 {
@@ -1871,29 +1873,29 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_INTERNAL_ERROR, "Get transaction prove data failed");
     }
 
-    /*if (pProveTx->IsSmartContract()) {
-        ContractVM vm;
-        ContractContext contractContext;
-        if (!ExecuteBlock(&vm, &block, pBlockIndex->pprev, 0, targetTxIndex + 1, &contractContext))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
+    //if (pProveTx->IsSmartContract()) {
+    //    ContractVM vm;
+    //    ContractContext contractContext;
+    //    if (!ExecuteBlock(&vm, &block, pBlockIndex->pprev, 0, targetTxIndex + 1, &contractContext))
+    //        throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
-        // 先证明合约数据来源合法
-        mtx.pProveData->contractData->coins = block.prevContractData[targetTxIndex].coins;
-        mtx.pProveData->contractData->contractPrevData = std::move(vm.contractDataFrom);
+    //    // 先证明合约数据来源合法
+    //    mtx.pProveData->contractData->coins = block.prevContractData[targetTxIndex].coins;
+    //    mtx.pProveData->contractData->contractPrevData = std::move(vm.contractDataFrom);
 
-        std::vector<uint256> reportedPrevDataLeaves;
-        VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, reportedPrevDataLeaves);
-        std::vector<bool> reportedMatch(block.vtx.size(), false);
-        reportedMatch[targetTxIndex] = true;
-        mtx.pProveData->contractData->prevDataSPV = std::move(MCPartialMerkleTree(reportedPrevDataLeaves, reportedMatch));
-        
-        if (!ExecuteBlock(&vm, &block, pBlockIndex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
+    //    std::vector<uint256> reportedPrevDataLeaves;
+    //    VecTxMerkleLeavesWithPrevData(block.vtx, block.prevContractData, reportedPrevDataLeaves);
+    //    std::vector<bool> reportedMatch(block.vtx.size(), false);
+    //    reportedMatch[targetTxIndex] = true;
+    //    mtx.pProveData->contractData->prevDataSPV = std::move(MCPartialMerkleTree(reportedPrevDataLeaves, reportedMatch));
+    //    
+    //    if (!ExecuteBlock(&vm, &block, pBlockIndex->pprev, targetTxIndex + 1, block.vtx.size() - targetTxIndex - 1, &contractContext))
+    //        throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute contract fail");
 
-        std::vector<uint256> reportedDataLeaves;
-        VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, reportedDataLeaves);
-        mtx.pProveData->contractData->dataSPV = std::move(MCPartialMerkleTree(reportedDataLeaves, reportedMatch));
-    }*/
+    //    std::vector<uint256> reportedDataLeaves;
+    //    VecTxMerkleLeavesWithData(block.vtx, contractContext.txFinalData, reportedDataLeaves);
+    //    mtx.pProveData->contractData->dataSPV = std::move(MCPartialMerkleTree(reportedDataLeaves, reportedMatch));
+    //}
 
     MCRPCConfig branchrpccfg;
     if (g_branchChainMan->GetRpcConfig(MCBaseChainParams::MAIN, branchrpccfg) == false)
@@ -2328,6 +2330,7 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
 
     return ret;
 }
+*/
 
 //get step 2 txid by step 1 txid. 
 // for IsBranchChainTransStep2 IsRedeemMortgage transaction.
@@ -2375,28 +2378,28 @@ static const CRPCCommand commands[] =
     { "branchchain",        "rebroadcastchaintransaction",&rebroadcastchaintransaction,false,{"txid"} },
 
     { "branchchain",        "mortgageminebranch",        &mortgageminebranch,          true, {"branchid","amount", "address"}},
-    { "branchchain",        "submitbranchblockinfo",     &submitbranchblockinfo,       true, {"tx_hex_data"}},
-    { "branchchain",        "getbranchchainheight",      &getbranchchainheight,        false,{ "branchid" } },
-    { "branchchain",        "resendbranchchainblockinfo",&resendbranchchainblockinfo,  false,{ "height" } },
+    //{ "branchchain",        "submitbranchblockinfo",     &submitbranchblockinfo,       true, {"tx_hex_data"}},
+    //{ "branchchain",        "getbranchchainheight",      &getbranchchainheight,        false,{ "branchid" } },
+    //{ "branchchain",        "resendbranchchainblockinfo",&resendbranchchainblockinfo,  false,{ "height" } },
 
     { "branchchain",        "redeemmortgagecoinstatement",&redeemmortgagecoinstatement,false, {"txid", "voutindex"}},
     { "branchchain",        "redeemmortgagecoin",        &redeemmortgagecoin,          false,{ "txid", "voutindex" } },
     { "branchchain",        "rebroadcastredeemtransaction",&rebroadcastredeemtransaction, false,{ "txid" }, },
 
     // report and provre api
-    { "branchchain",        "sendreporttomain",          &sendreporttomain,            false, {"blockhash", "txid"}},
-    { "branchchain",        "reportcontractdata",          &reportcontractdata,        false,{ "reportedblockhash", "reportedtxid", "proveblockhash", "provetxid" } },
-    { "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
-    { "branchchain",        "reportbranchchainblockmerkle",&reportbranchchainblockmerkle, false, {"branchid","blockhash"},},
-    // prove relate
-    { "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
-    { "branchchain",        "sendmerkleprovetomain",     &sendmerkleprovetomain,       false, {"blockhash"}},
-    { "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},
+    //{ "branchchain",        "sendreporttomain",          &sendreporttomain,            false, {"blockhash", "txid"}},
+    //{ "branchchain",        "reportcontractdata",          &reportcontractdata,        false,{ "reportedblockhash", "reportedtxid", "proveblockhash", "provetxid" } },
+    //{ "branchchain",        "handlebranchreport",        &handlebranchreport,          true,  {"tx_hex_data"}},
+    //{ "branchchain",        "reportbranchchainblockmerkle",&reportbranchchainblockmerkle, false, {"branchid","blockhash"},},
+    //// prove relate
+    //{ "branchchain",        "sendprovetomain",           &sendprovetomain,             false, {"blockhash", "txid"}},
+    //{ "branchchain",        "sendmerkleprovetomain",     &sendmerkleprovetomain,       false, {"blockhash"}},
+    //{ "branchchain",        "handlebranchprove",         &handlebranchprove,           true,  {"tx_hex_data"}},
 
-    { "branchchain",        "lockmortgageminecoin",      &lockmortgageminecoin,        false, { "txid", "coinpreouthash"}},
-    { "branchchain",        "getreporttxdata",           &getreporttxdata,             false, { "txid" } },
-    { "branchchain",        "unlockmortgageminecoin",    &unlockmortgageminecoin,      false,{ "txid", "coinpreouthash", "provetxid" } }, 
-    { "branchchain",        "getprovetxdata",            &getprovetxdata,              false,{ "txid" } },
+    //{ "branchchain",        "lockmortgageminecoin",      &lockmortgageminecoin,        false, { "txid", "coinpreouthash"}},
+    //{ "branchchain",        "getreporttxdata",           &getreporttxdata,             false, { "txid" } },
+    //{ "branchchain",        "unlockmortgageminecoin",    &unlockmortgageminecoin,      false,{ "txid", "coinpreouthash", "provetxid" } }, 
+    //{ "branchchain",        "getprovetxdata",            &getprovetxdata,              false,{ "txid" } },
 
     { "branchchain",        "getvarietytxid",            &getvarietytxid,              false, { "txid"} },
 };

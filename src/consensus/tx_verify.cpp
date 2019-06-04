@@ -180,15 +180,15 @@ int64_t GetTransactionSigOpCost(const MCTransaction& tx, const MCCoinsViewCache&
 }
 
 bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fCheckDuplicateInputs, const MCBlock* pBlock, const MCBlockIndex* pBlockIndex, 
-    const bool fVerifingDB, BranchCache *pBranchCache, MCCoinsViewCache* pCoins, int* pNMissingInputs)
+    const bool fVerifingDB, /*BranchCache *pBranchCache,*/ MCCoinsViewCache* pCoins, int* pNMissingInputs)
 {
-    if (tx.IsSyncBranchInfo())
-    {
-        if (!Params().IsMainChain())
-            return state.DoS(100, false, REJECT_INVALID, "Branch chain can not accept branch head transaction");
-        if (!CheckBranchBlockInfoTx(tx, state, pBranchCache, pCoins, pNMissingInputs))
-            return false;
-    }
+    //if (tx.IsSyncBranchInfo())
+    //{
+    //    if (!Params().IsMainChain())
+    //        return state.DoS(100, false, REJECT_INVALID, "Branch chain can not accept branch head transaction");
+    //    if (!CheckBranchBlockInfoTx(tx, state, pBranchCache, pCoins, pNMissingInputs))
+    //        return false;
+    //}
     // Basic checks that don't depend on any context
     if (tx.vin.empty())
         return state.DoS(10, false, REJECT_INVALID, "bad-txns-vin-empty");
@@ -309,27 +309,27 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
     {
         MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pFromTx);
-        if (tx.fromBranchId != MCBaseChainParams::MAIN) {
+        //if (tx.fromBranchId != MCBaseChainParams::MAIN) {
             //spv check
-            uint256 frombranchid = uint256S(tx.fromBranchId);
-            if (!pBranchCache->HasBranchData(frombranchid))
-                return state.DoS(0, false, REJECT_INVALID, strprintf("CheckTransaction branchid error. %s", tx.fromBranchId));
-            BranchData branchdata = pBranchCache->GetBranchData(frombranchid);
+            //uint256 frombranchid = uint256S(tx.fromBranchId);
+            //if (!pBranchCache->HasBranchData(frombranchid))
+             //   return state.DoS(0, false, REJECT_INVALID, strprintf("CheckTransaction branchid error. %s", tx.fromBranchId));
+            //BranchData branchdata = pBranchCache->GetBranchData(frombranchid);
 
-            MCSpvProof spvProof(*tx.pPMT);
-            BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
-            if (pBlockData == nullptr)
-                return state.DoS(0, false, REJECT_INVALID, "Get transstep2 blockdata fail.");
-            if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pFromTx->GetHash()) < 0)
-                return state.DoS(0, false, REJECT_INVALID, "transstep2 checkSpvProof fail.");;
+            //MCSpvProof spvProof(*tx.pPMT);
+            //BranchBlockData* pBlockData = branchdata.GetBranchBlockData(spvProof.blockhash);
+            //if (pBlockData == nullptr)
+            //    return state.DoS(0, false, REJECT_INVALID, "Get transstep2 blockdata fail.");
+            //if (CheckSpvProof(pBlockData->header.hashMerkleRoot, spvProof.pmt, pFromTx->GetHash()) < 0)
+            //    return state.DoS(0, false, REJECT_INVALID, "transstep2 checkSpvProof fail.");;
 
-            // best chain check
-            if (!pBranchCache->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
-                return state.DoS(1, false, REJECT_INVALID, "Branch-tx-not in best chain");
-            int minedHeight = pBranchCache->GetBranchBlockMinedHeight(frombranchid, tx.pPMT->blockhash);
-            if (minedHeight < BRANCH_CHAIN_MATURITY)
-                return state.DoS(1, false, REJECT_INVALID, strprintf("branch-tx minedHeight %d is lessthan %d", minedHeight, BRANCH_CHAIN_MATURITY));
-        }
+            //// best chain check
+            //if (!pBranchCache->IsBlockInActiveChain(frombranchid, tx.pPMT->blockhash))
+            //    return state.DoS(1, false, REJECT_INVALID, "Branch-tx-not in best chain");
+            //int minedHeight = pBranchCache->GetBranchBlockMinedHeight(frombranchid, tx.pPMT->blockhash);
+            //if (minedHeight < BRANCH_CHAIN_MATURITY)
+            //    return state.DoS(1, false, REJECT_INVALID, strprintf("branch-tx minedHeight %d is lessthan %d", minedHeight, BRANCH_CHAIN_MATURITY));
+        //}
     }
     if (tx.IsBranchChainTransStep2())
     {
@@ -372,29 +372,28 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             }
         }
     }
-    if (tx.IsReport()){
-        if (!Params().IsMainChain())
-            return state.DoS(100, false, REJECT_INVALID, "Report tx must in main chain.");
-        if (!CheckReportCheatTx(tx, state, pBranchCache)){
-            return false;
-        }
-    }
-    if (tx.IsProve()){
-        if (!Params().IsMainChain())
-            return state.DoS(100, false, REJECT_INVALID, "Prove tx must in main chain.");
-        if (!CheckProveTx(tx, state, pBranchCache)){
-            return false;
-        }
-    }
-    if (tx.IsLockMortgageMineCoin()){
-        if (!CheckLockMortgageMineCoinTx(tx, state))
-            return false;
-    }
-    if (tx.IsUnLockMortgageMineCoin()) {
-        if (!CheckUnlockMortgageMineCoinTx(tx, state))
-            return false;
-    }
-
+    //if (tx.IsReport()){
+    //    if (!Params().IsMainChain())
+    //        return state.DoS(100, false, REJECT_INVALID, "Report tx must in main chain.");
+    //    if (!CheckReportCheatTx(tx, state, pBranchCache)){
+    //        return false;
+    //    }
+    //}
+    //if (tx.IsProve()){
+    //    if (!Params().IsMainChain())
+    //        return state.DoS(100, false, REJECT_INVALID, "Prove tx must in main chain.");
+    //    if (!CheckProveTx(tx, state, pBranchCache)){
+    //        return false;
+    //    }
+    //}
+    //if (tx.IsLockMortgageMineCoin()){
+    //    if (!CheckLockMortgageMineCoinTx(tx, state))
+    //        return false;
+    //}
+    //if (tx.IsUnLockMortgageMineCoin()) {
+    //    if (!CheckUnlockMortgageMineCoinTx(tx, state))
+    //        return false;
+    //}
 
     if (tx.IsCoinBase())
     {

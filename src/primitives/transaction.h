@@ -448,22 +448,21 @@ public:
 	static const int32_t TRANS_BRANCH_VERSION_S2 = 7;// 跨链交易的接收链方 
 
     static const int32_t MINE_BRANCH_MORTGAGE = 8; // 挖矿抵押,like TRANS_BRANCH_VERSION_S1
-    static const int32_t SYNC_BRANCH_INFO = 9;     // 同步侧链数据,给主链
-    static const int32_t REPORT_CHEAT = 10;        // 举报
-    static const int32_t PROVE = 11;               // 证明
-    static const int32_t REDEEM_MORTGAGE_STATEMENT = 12;     // 赎回挖矿抵押(在侧链声明阶段,把挖矿币销毁)
-    static const int32_t REDEEM_MORTGAGE = 13;               // 赎回挖矿抵押币(把主链上的抵押拿回来)
-
-    static const int32_t STAKE = 14; // mining stake transaction
-    static const int32_t REPORT_REWARD = 15; // 举报奖励
-    static const int32_t LOCK_MORTGAGE_MINE_COIN = 16; // 锁定挖矿币
-    static const int32_t UNLOCK_MORTGAGE_MINE_COIN = 17; // 解锁挖矿币
+    static const int32_t REDEEM_MORTGAGE_STATEMENT = 9;     // 赎回挖矿抵押(在侧链声明阶段,把挖矿币销毁)
+    static const int32_t REDEEM_MORTGAGE = 10;               // 赎回挖矿抵押币(把主链上的抵押拿回来)
+    static const int32_t STAKE = 11; // mining stake transaction
+    //static const int32_t SYNC_BRANCH_INFO = 12;     // 同步侧链数据,给主链
+    //static const int32_t REPORT_CHEAT = 13;        // 举报
+    //static const int32_t PROVE = 14;               // 证明
+    //static const int32_t REPORT_REWARD = 15; // 举报奖励
+    //static const int32_t LOCK_MORTGAGE_MINE_COIN = 16; // 锁定挖矿币
+    //static const int32_t UNLOCK_MORTGAGE_MINE_COIN = 17; // 解锁挖矿币
 
     // Changing the default transaction version requires a two step process: first
     // adapting relay policy by bumping MAX_STANDARD_VERSION, and then later date
     // bumping the default CURRENT_VERSION at which point both CURRENT_VERSION and
     // MAX_STANDARD_VERSION will be equal.
-    static const int32_t MAX_STANDARD_VERSION=17;
+    static const int32_t MAX_STANDARD_VERSION=11;
 
     // The local variables are made const to prevent unintended modification
     // without updating the cached hash value. However, MCTransaction is not
@@ -487,14 +486,14 @@ public:
 	const MCAmount inAmount;
 	
     const std::shared_ptr<const ContractData> pContractData;
-	const std::shared_ptr<const MCBranchBlockInfo> pBranchBlockData;
-    const std::shared_ptr<const MCSpvProof> pPMT;
-    const std::shared_ptr<const ReportData> pReportData;
-    const std::shared_ptr<const ProveData> pProveData;
+	//const std::shared_ptr<const MCBranchBlockInfo> pBranchBlockData;
+ //   const std::shared_ptr<const MCSpvProof> pPMT;
+ //   const std::shared_ptr<const ReportData> pReportData;
+ //   const std::shared_ptr<const ProveData> pProveData;
 
-    const uint256 reporttxid;// 从reported tx获取block coin，是否被证明等信息
-    const uint256 coinpreouthash; // coin preout hash
-    const uint256 provetxid; // 证明txid
+    //const uint256 reporttxid;// 从reported tx获取block coin，是否被证明等信息
+    //const uint256 coinpreouthash; // coin preout hash
+    //const uint256 provetxid; // 证明txid
 
 	bool IsExistVin(const MCTxIn &txIn) const {
 		auto it = find(vin.begin(), vin.end(), txIn);
@@ -572,10 +571,10 @@ public:
         return nVersion == CALL_CONTRACT_VERSION;
     }
 
-    bool IsSyncBranchInfo() const
-    {
-        return nVersion == SYNC_BRANCH_INFO;
-    }
+    //bool IsSyncBranchInfo() const
+    //{
+    //    return nVersion == SYNC_BRANCH_INFO;
+    //}
 
     //dose it have a child transaction in sendToTxHexData
     bool IsPregnantTx() const
@@ -612,34 +611,34 @@ public:
         return nVersion == REDEEM_MORTGAGE;
     }
 
-    bool IsReport() const
-    {
-        return nVersion == MCTransaction::REPORT_CHEAT;
-    }
+    //bool IsReport() const
+    //{
+    //    return nVersion == MCTransaction::REPORT_CHEAT;
+    //}
 
-    bool IsProve() const
-    {
-        return nVersion == MCTransaction::PROVE;
-    }
+    //bool IsProve() const
+    //{
+    //    return nVersion == MCTransaction::PROVE;
+    //}
 
     bool IsStake() const {
         return nVersion == STAKE;
     }
 
-    bool IsReportReward() const {
-        return nVersion == REPORT_REWARD;
-    }
+    //bool IsReportReward() const {
+    //    return nVersion == REPORT_REWARD;
+    //}
 
     bool IsDynamicTx() const {
         return (IsBranchChainTransStep2() && fromBranchId != MCBaseChainParams::MAIN);
     }
 
-    bool IsLockMortgageMineCoin() const {
-        return nVersion == LOCK_MORTGAGE_MINE_COIN;
-    }
-    bool IsUnLockMortgageMineCoin() const {
-        return nVersion == UNLOCK_MORTGAGE_MINE_COIN;
-    }
+    //bool IsLockMortgageMineCoin() const {
+    //    return nVersion == LOCK_MORTGAGE_MINE_COIN;
+    //}
+    //bool IsUnLockMortgageMineCoin() const {
+    //    return nVersion == UNLOCK_MORTGAGE_MINE_COIN;
+    //}
 
     friend bool operator==(const MCTransaction& a, const MCTransaction& b)
     {
@@ -685,14 +684,14 @@ struct MCMutableTransaction
 	MCAmount inAmount;
 
     std::shared_ptr<ContractData> pContractData;
-	std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
-    std::shared_ptr<MCSpvProof> pPMT;
-    std::shared_ptr<ReportData> pReportData;
-    std::shared_ptr<ProveData> pProveData;
+	//std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
+ //   std::shared_ptr<MCSpvProof> pPMT;
+ //   std::shared_ptr<ReportData> pReportData;
+ //   std::shared_ptr<ProveData> pProveData;
 
-    uint256 reporttxid;
-    uint256 coinpreouthash;
-    uint256 provetxid;
+ //   uint256 reporttxid;
+ //   uint256 coinpreouthash;
+ //   uint256 provetxid;
 
     MCMutableTransaction();
 	MCMutableTransaction(const MCMutableTransaction&);
@@ -761,32 +760,32 @@ struct MCMutableTransaction
         return nVersion == MCTransaction::REDEEM_MORTGAGE;
     }
 
-    bool IsSyncBranchInfo() const
-    {
-        return nVersion == MCTransaction::SYNC_BRANCH_INFO;
-    }
+    //bool IsSyncBranchInfo() const
+    //{
+    //    return nVersion == MCTransaction::SYNC_BRANCH_INFO;
+    //}
 
-    bool IsReport() const
-    {
-        return nVersion == MCTransaction::REPORT_CHEAT;
-    }
+    //bool IsReport() const
+    //{
+    //    return nVersion == MCTransaction::REPORT_CHEAT;
+    //}
 
-    bool IsProve() const
-    {
-        return nVersion == MCTransaction::PROVE;
-    }
+    //bool IsProve() const
+    //{
+    //    return nVersion == MCTransaction::PROVE;
+    //}
 
-    bool IsReportReward() const {
-        return nVersion == MCTransaction::REPORT_REWARD;
-    }
+    //bool IsReportReward() const {
+    //    return nVersion == MCTransaction::REPORT_REWARD;
+    //}
 
-    bool IsLockMortgageMineCoin() const {
-        return nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN;
-    }
+    //bool IsLockMortgageMineCoin() const {
+    //    return nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN;
+    //}
 
-    bool IsUnLockMortgageMineCoin() const {
-        return nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
-    }
+    //bool IsUnLockMortgageMineCoin() const {
+    //    return nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
+    //}
 
     friend bool operator==(const MCMutableTransaction& a, const MCMutableTransaction& b)
     {
@@ -870,56 +869,56 @@ inline void UnserializeTransaction(TxType& tx, Stream& s) {
     else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
         s >> tx.sendToBranchid;
         s >> tx.sendToTxHexData;
-        if (tx.sendToBranchid == "main") {
-            tx.pPMT.reset(new MCSpvProof());
-            s >> *tx.pPMT;
-        }
+        //if (tx.sendToBranchid == "main") {
+        //    tx.pPMT.reset(new MCSpvProof());
+        //    s >> *tx.pPMT;
+        //}
     }
     else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
         s >> tx.fromBranchId;
         s >> tx.fromTx;
         s >> tx.inAmount;
-        if (tx.fromBranchId != "main") {
-            tx.pPMT.reset(new MCSpvProof());
-            s >> *tx.pPMT;
-        }
+        //if (tx.fromBranchId != "main") {
+        //    tx.pPMT.reset(new MCSpvProof());
+        //    s >> *tx.pPMT;
+        //}
     }
     else if (tx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE) {
         s >> tx.sendToBranchid;
         s >> tx.sendToTxHexData;
     }
-    else if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
-        tx.pBranchBlockData.reset(new MCBranchBlockInfo);
-        s >> *tx.pBranchBlockData;
-    }
-    else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
-        tx.pReportData.reset(new ReportData);
-        s >> *tx.pReportData;
-        tx.pPMT.reset(new MCSpvProof());
-        s >> *tx.pPMT;
-    }
-    else if (tx.nVersion == MCTransaction::PROVE) {
-        tx.pProveData.reset(new ProveData);
-        s >> *tx.pProveData;
-    }
+    //else if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
+    //    tx.pBranchBlockData.reset(new MCBranchBlockInfo);
+    //    s >> *tx.pBranchBlockData;
+    //}
+    //else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
+    //    tx.pReportData.reset(new ReportData);
+    //    s >> *tx.pReportData;
+    //    tx.pPMT.reset(new MCSpvProof());
+    //    s >> *tx.pPMT;
+    //}
+    //else if (tx.nVersion == MCTransaction::PROVE) {
+    //    tx.pProveData.reset(new ProveData);
+    //    s >> *tx.pProveData;
+    //}
     else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         s >> tx.fromBranchId;
         s >> tx.fromTx;
-        tx.pPMT.reset(new MCSpvProof());
-        s >> *tx.pPMT;
+        //tx.pPMT.reset(new MCSpvProof());
+        //s >> *tx.pPMT;
     }
-    else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
-        s >> tx.reporttxid;
-    }
-    else if (tx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN) {
-        s >> tx.reporttxid;
-        s >> tx.coinpreouthash;
-    }
-    else if (tx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
-        s >> tx.reporttxid;
-        s >> tx.coinpreouthash;
-        s >> tx.provetxid;
-    }
+    //else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
+    //    s >> tx.reporttxid;
+    //}
+    //else if (tx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN) {
+    //    s >> tx.reporttxid;
+    //    s >> tx.coinpreouthash;
+    //}
+    //else if (tx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+    //    s >> tx.reporttxid;
+    //    s >> tx.coinpreouthash;
+    //    s >> tx.provetxid;
+    //}
 }
 
 template<typename Stream, typename TxType>
@@ -974,7 +973,7 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     }
     s << tx.nLockTime;
 
-    static std::shared_ptr<MCSpvProof> pPMTEmpty = std::make_shared<MCSpvProof>();
+    //static std::shared_ptr<MCSpvProof> pPMTEmpty = std::make_shared<MCSpvProof>();
     if (tx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || tx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         s << *tx.pContractData;
     }
@@ -985,61 +984,61 @@ inline void SerializeTransaction(const TxType& tx, Stream& s) {
     else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
         s << tx.sendToBranchid;
         s << tx.sendToTxHexData;
-        if (tx.sendToBranchid == "main") {
-            if (fIsSerGetHash)
-                s << *pPMTEmpty;
-            else
-                s << *tx.pPMT;
-        }
+        //if (tx.sendToBranchid == "main") {
+        //    if (fIsSerGetHash)
+        //        s << *pPMTEmpty;
+        //    else
+        //        s << *tx.pPMT;
+        //}
     }
     else if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
         s << tx.fromBranchId;
         s << tx.fromTx;
         s << tx.inAmount;
-        if (tx.fromBranchId != "main") {
-            if (fIsSerGetHash)
-                s << *pPMTEmpty;
-            else
-                s << *tx.pPMT;
-        }
+        //if (tx.fromBranchId != "main") {
+        //    if (fIsSerGetHash)
+        //        s << *pPMTEmpty;
+        //    else
+        //        s << *tx.pPMT;
+        //}
     }
     else if (tx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE) {
         s << tx.sendToBranchid;
         s << tx.sendToTxHexData;
     }
-    else if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
-        s << *tx.pBranchBlockData;
-    }
-    else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
-        s << *tx.pReportData;
-        if (fIsSerGetHash)
-            s << *pPMTEmpty;
-        else
-            s << *tx.pPMT;
-    }
-    else if (tx.nVersion == MCTransaction::PROVE) {
-        s << *tx.pProveData;
-    }
+    //else if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
+    //    s << *tx.pBranchBlockData;
+    //}
+    //else if (tx.nVersion == MCTransaction::REPORT_CHEAT) {
+    //    s << *tx.pReportData;
+    //    if (fIsSerGetHash)
+    //        s << *pPMTEmpty;
+    //    else
+    //        s << *tx.pPMT;
+    //}
+    //else if (tx.nVersion == MCTransaction::PROVE) {
+    //    s << *tx.pProveData;
+    //}
     else if (tx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         s << tx.fromBranchId;
         s << tx.fromTx;
-        if (fIsSerGetHash)
-            s << *pPMTEmpty;
-        else
-            s << *tx.pPMT;
+        //if (fIsSerGetHash)
+        //    s << *pPMTEmpty;
+        //else
+        //    s << *tx.pPMT;
     }
-    else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
-        s << tx.reporttxid;
-    }
-    else if (tx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN) {
-        s << tx.reporttxid;
-        s << tx.coinpreouthash;
-    }
-    else if (tx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
-        s << tx.reporttxid;
-        s << tx.coinpreouthash;
-        s << tx.provetxid;
-    }
+    //else if (tx.nVersion == MCTransaction::REPORT_REWARD) {
+    //    s << tx.reporttxid;
+    //}
+    //else if (tx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN) {
+    //    s << tx.reporttxid;
+    //    s << tx.coinpreouthash;
+    //}
+    //else if (tx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+    //    s << tx.reporttxid;
+    //    s << tx.coinpreouthash;
+    //    s << tx.provetxid;
+    //}
 }
 
 typedef std::shared_ptr<const MCTransaction> MCTransactionRef;
@@ -1050,7 +1049,7 @@ inline MCTransaction::MCTransaction()
     : nVersion(MCTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
     branchVSeeds(), branchSeedSpec6(), sendToBranchid(), sendToTxHexData(),
     fromBranchId(), fromTx(), inAmount(0), 
-    pContractData(), pBranchBlockData(), pPMT(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(), hash() {}
+    pContractData(), /*pBranchBlockData(), pPMT(), pReportData(), pProveData(), reporttxid(), coinpreouthash(), provetxid(),*/ hash() {}
 
 inline MCTransaction::MCTransaction(const MCMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
@@ -1058,11 +1057,11 @@ inline MCTransaction::MCTransaction(const MCMutableTransaction& tx)
     sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
     pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    /*pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
     pPMT(tx.pPMT == nullptr? nullptr: new MCSpvProof(*tx.pPMT)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)),
-    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid),*/ hash(ComputeHash()) {}
 
 inline MCTransaction::MCTransaction(MCMutableTransaction&& tx)
     : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
@@ -1070,11 +1069,11 @@ inline MCTransaction::MCTransaction(MCMutableTransaction&& tx)
     sendToBranchid(std::move(tx.sendToBranchid)), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(std::move(tx.fromBranchId)), fromTx(std::move(tx.fromTx)), inAmount(tx.inAmount),
     pContractData(std::move(tx.pContractData)),
-    pBranchBlockData(std::move(tx.pBranchBlockData)),
+    /*pBranchBlockData(std::move(tx.pBranchBlockData)),
     pPMT(std::move(tx.pPMT)),
     pReportData(std::move(tx.pReportData)),
     pProveData(std::move(tx.pProveData)),
-    reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)), hash(ComputeHash()) {}
+    reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)),*/ hash(ComputeHash()) {}
 
 // add copy constructor, 添加了不可复制成员变量pBranchBlockData后，默认复制构造函数被删除了
 inline MCTransaction::MCTransaction(const MCTransaction& tx)
@@ -1083,23 +1082,23 @@ inline MCTransaction::MCTransaction(const MCTransaction& tx)
     sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
     pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    /*pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
     pPMT(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)),
-    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid), hash(ComputeHash()) {}
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid),*/ hash(ComputeHash()) {}
 
 inline MCMutableTransaction::MCMutableTransaction(const MCMutableTransaction& tx)
     : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
     branchVSeeds(tx.branchVSeeds), branchSeedSpec6(tx.branchSeedSpec6),
     sendToBranchid(tx.sendToBranchid), sendToTxHexData(tx.sendToTxHexData),
     fromBranchId(tx.fromBranchId), fromTx(tx.fromTx), inAmount(tx.inAmount),
-    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
-    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData))//,
+    /*pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
     pPMT(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT)),
     pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
     pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)),
-    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid){}
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid)*/ {}
 
 inline MCMutableTransaction& MCMutableTransaction::operator=(const MCMutableTransaction& tx)
 {
@@ -1117,14 +1116,14 @@ inline MCMutableTransaction& MCMutableTransaction::operator=(const MCMutableTran
     fromBranchId = (tx.fromBranchId);
     fromTx = (tx.fromTx);
     inAmount = (tx.inAmount);
-    pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData));
-    pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
     pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
-    pReportData.reset(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData));
-    pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
-    reporttxid = tx.reporttxid;
-    coinpreouthash = tx.coinpreouthash;
-    provetxid = tx.provetxid;
+    //pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData));
+    //pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
+    //pReportData.reset(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData));
+    //pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
+    //reporttxid = tx.reporttxid;
+    //coinpreouthash = tx.coinpreouthash;
+    //provetxid = tx.provetxid;
     return *this;
 }
 

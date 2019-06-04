@@ -213,10 +213,10 @@ UniValue generateBlocks(MCWallet* keystoreIn, std::vector<MCOutput>& vecOutput, 
                     continue;
                 }
                 else {
-                    if (g_pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
-                        nTries++;
-                        continue;
-                    }
+                    //if (g_pBranchChainTxRecordsDb->IsMineCoinLock(coinpreouthash)) {//已经被锁
+                    //    nTries++;
+                    //    continue;
+                    //}
                     scriptPubKey = GetScriptForDestination(keyid);
                 }
             }

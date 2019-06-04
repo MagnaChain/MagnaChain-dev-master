@@ -47,7 +47,7 @@ class MCTxMemPoolEntry;
 class MCValidationState;
 class ContractVM;
 struct ChainTxData;
-class BranchCache;
+//class BranchCache;
 class ContractContext;
 class CoinAmountCache;
 
@@ -321,7 +321,7 @@ enum eMissingInputTypes
 {
     eOk = 0,
     eMissingInputs = 1 << 0,
-    eMissingBranchPreHeadTx = 1 << 1, 
+    //eMissingBranchPreHeadTx = 1 << 1, 
 };
 
 /** (try to) add transaction to memory pool
@@ -431,7 +431,7 @@ bool ReadBlockFromDisk(MCBlock& block, const MCBlockIndex* pindex, const Consens
 /** Functions for validating blocks and updating the block tree */
 
 /** Context-independent validity checks */
-bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, BranchCache* pBranchCache, 
+bool CheckBlock(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams, /*BranchCache* pBranchCache, */
     bool fCheckPOW, bool fCheckMerkleRoot, bool fVerifingDB, MCCoinsViewCache* pCoins);
 bool CheckBlockWork(const MCBlock& block, MCValidationState& state, const Consensus::Params& consensusParams);
 
@@ -524,9 +524,9 @@ bool LoadMempool();
 
 bool ReadTxDataByTxIndex(const uint256& hash, MCTransactionRef& txOut, uint256& hashBlock, bool& retflag);
 
-std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& setTxids);
+//std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& setTxids);
 //bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof);
 
-bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
-bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
+//bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
+//bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
 #endif // MAGNACHAIN_VALIDATION_H

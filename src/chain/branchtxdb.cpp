@@ -100,9 +100,9 @@ void BranchChainTxRecordsCache::AddToCache(const MCTransactionRef& ptx, const ui
     if (ptx->IsBranchChainTransStep2()) {
         AddBranchChainRecvTxRecord(ptx, blockhash);
     }
-    if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()){
-        UpdateLockMineCoin(ptx, true);
-    }
+    //if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()){
+    //    UpdateLockMineCoin(ptx, true);
+    //}
     if (ptx->IsBranchChainTransStep2() || ptx->IsRedeemMortgage())
     {
         MCTransactionRef pFromTx;
@@ -123,9 +123,9 @@ void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
     if (ptx->IsBranchChainTransStep2()) {
         DelBranchChainRecvTxRecord(ptx);
     }
-    if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()) {
-        UpdateLockMineCoin(ptx, false);
-    }
+    //if (ptx->IsLockMortgageMineCoin() || ptx->IsUnLockMortgageMineCoin()) {
+    //    UpdateLockMineCoin(ptx, false);
+    //}
     if (ptx->IsBranchChainTransStep2() || ptx->IsRedeemMortgage())
     {
         MCTransactionRef pFromTx;
@@ -186,57 +186,57 @@ void BranchChainTxRecordsCache::RemoveFromMempool(const MCTransaction& tx)
     }
 }
 
-void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect)
-{
-    if (fBlockConnect){
-        if (ptx->IsLockMortgageMineCoin()) { // 锁定
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
-            for (CoinReportInfo& info : vec)
-            {
-                if (info.reporttxid == ptx->reporttxid){
-                    info.flags = DbDataFlag::eADD;
-                    return;
-                }
-            }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
-        }
-        if (ptx->IsUnLockMortgageMineCoin()) { // 解锁
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
-            for (CoinReportInfo& info : vec)
-            {
-                if (info.reporttxid == ptx->reporttxid) {
-                    info.flags = DbDataFlag::eDELETE;
-                    return;
-                }
-            }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
-        }
-    }
-    else{// block disconnect
-        if (ptx->IsLockMortgageMineCoin()) {// 锁定回滚
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
-            for (CoinReportInfo& info : vec)
-            {
-                if (info.reporttxid == ptx->reporttxid) {
-                    info.flags = DbDataFlag::eDELETE;
-                    return;
-                }
-            }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
-        }
-        if (ptx->IsUnLockMortgageMineCoin()) {// 解锁回滚
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
-            for (CoinReportInfo& info : vec)
-            {
-                if (info.reporttxid == ptx->reporttxid) {
-                    info.flags = DbDataFlag::eADD;
-                    return;
-                }
-            }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
-        }
-    }
-}
+//void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, bool fBlockConnect)
+//{
+//    if (fBlockConnect) {
+//        if (ptx->IsLockMortgageMineCoin()) { // 锁定
+//            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+//            for (CoinReportInfo& info : vec)
+//            {
+//                if (info.reporttxid == ptx->reporttxid){
+//                    info.flags = DbDataFlag::eADD;
+//                    return;
+//                }
+//            }
+//            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
+//        }
+//        if (ptx->IsUnLockMortgageMineCoin()) { // 解锁
+//            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+//            for (CoinReportInfo& info : vec)
+//            {
+//                if (info.reporttxid == ptx->reporttxid) {
+//                    info.flags = DbDataFlag::eDELETE;
+//                    return;
+//                }
+//            }
+//            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
+//        }
+//    }
+//    else{// block disconnect
+//        if (ptx->IsLockMortgageMineCoin()) {// 锁定回滚
+//            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+//            for (CoinReportInfo& info : vec)
+//            {
+//                if (info.reporttxid == ptx->reporttxid) {
+//                    info.flags = DbDataFlag::eDELETE;
+//                    return;
+//                }
+//            }
+//            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
+//        }
+//        if (ptx->IsUnLockMortgageMineCoin()) {// 解锁回滚
+//            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+//            for (CoinReportInfo& info : vec)
+//            {
+//                if (info.reporttxid == ptx->reporttxid) {
+//                    info.flags = DbDataFlag::eADD;
+//                    return;
+//                }
+//            }
+//            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
+//        }
+//    }
+//}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
 BranchChainTxRecordsDb::BranchChainTxRecordsDb(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe)
@@ -351,44 +351,44 @@ void BranchChainTxRecordsDb::Flush(BranchChainTxRecordsCache& cache)
     LogPrint(BCLog::COINDB, "BranchChainTxRecordsDb 1, Writing final batch of %.2f MiB\n", batch.SizeEstimate() * (1.0 / 1048576.0));
     cache.m_mapRecvRecord.clear();
 
-    for (auto mit = cache.m_mapCoinBeReport.begin(); mit != cache.m_mapCoinBeReport.end(); mit++)
-    {
-        const uint256& coinprehash = mit->first;
-        const std::vector<CoinReportInfo>& vec = mit->second;
-        
-        MineCoinEntry key(coinprehash);
-        //merge with db
-        std::vector<CoinReportInfo> vecDb;
-        if (m_db.Read(key, vecDb)){
-            for (auto nv : vec){// cache data
-                bool found = false;
-                for (auto it = vecDb.begin(); it != vecDb.end(); it++) {
-                    if ((*it).reporttxid == nv.reporttxid){
-                        if (nv.flags == DbDataFlag::eDELETE){
-                            vecDb.erase(it); 
-                        }
-                        else if (nv.flags == DbDataFlag::eADD) {
-                            // duplicate add
-                        }
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found){
-                    if (nv.flags == DbDataFlag::eADD)
-                        vecDb.push_back(nv);
-                    //else if (nv.flags == DbDataFlag::eDELETE)
-                    // delete not exist ??
-                }
-            }
-        }
-        // write back to db
-        if (vecDb.size() > 0)
-            m_db.Write(key, vecDb);
-        else
-            m_db.Erase(key);
-    }
-    cache.m_mapCoinBeReport.clear();
+    //for (auto mit = cache.m_mapCoinBeReport.begin(); mit != cache.m_mapCoinBeReport.end(); mit++)
+    //{
+    //    const uint256& coinprehash = mit->first;
+    //    const std::vector<CoinReportInfo>& vec = mit->second;
+    //    
+    //    MineCoinEntry key(coinprehash);
+    //    //merge with db
+    //    std::vector<CoinReportInfo> vecDb;
+    //    if (m_db.Read(key, vecDb)){
+    //        for (auto nv : vec){// cache data
+    //            bool found = false;
+    //            for (auto it = vecDb.begin(); it != vecDb.end(); it++) {
+    //                if ((*it).reporttxid == nv.reporttxid){
+    //                    if (nv.flags == DbDataFlag::eDELETE){
+    //                        vecDb.erase(it); 
+    //                    }
+    //                    else if (nv.flags == DbDataFlag::eADD) {
+    //                        // duplicate add
+    //                    }
+    //                    found = true;
+    //                    break;
+    //                }
+    //            }
+    //            if (!found){
+    //                if (nv.flags == DbDataFlag::eADD)
+    //                    vecDb.push_back(nv);
+    //                //else if (nv.flags == DbDataFlag::eDELETE)
+    //                // delete not exist ??
+    //            }
+    //        }
+    //    }
+    //    // write back to db
+    //    if (vecDb.size() > 0)
+    //        m_db.Write(key, vecDb);
+    //    else
+    //        m_db.Erase(key);
+    //}
+    //cache.m_mapCoinBeReport.clear();
 
     for (auto mit = cache.m_mapTxidMapping.begin(); mit != cache.m_mapTxidMapping.end(); mit++)
     {
@@ -420,19 +420,19 @@ bool BranchChainTxRecordsDb::IsBranchCreated(const uint256 &branchid) const
     return false;
 }
 
-bool BranchChainTxRecordsDb::IsMineCoinLock(const uint256& coinhash) const
-{
-    MineCoinEntry key(coinhash);
-    //merge with db
-    std::vector<CoinReportInfo> vecDb;
-    if (m_db.Read(key, vecDb))
-    {
-        if (vecDb.size() > 0){
-            return true;
-        }
-    }
-    return false;
-}
+//bool BranchChainTxRecordsDb::IsMineCoinLock(const uint256& coinhash) const
+//{
+//    MineCoinEntry key(coinhash);
+//    //merge with db
+//    std::vector<CoinReportInfo> vecDb;
+//    if (m_db.Read(key, vecDb))
+//    {
+//        if (vecDb.size() > 0){
+//            return true;
+//        }
+//    }
+//    return false;
+//}
 
 uint256 BranchChainTxRecordsDb::GetBlockTxid(const uint256& txid)
 {

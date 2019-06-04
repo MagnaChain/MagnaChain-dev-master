@@ -184,15 +184,15 @@ void TxVersionToString(const int32_t nVersion, UniValue& entry)
     case MCTransaction::MINE_BRANCH_MORTGAGE:
         entry.pushKV("versionType", "mineBranchMortgage");
         break;
-    case MCTransaction::SYNC_BRANCH_INFO:
-        entry.pushKV("versionType", "syncBranchInfo");
-        break;
-    case MCTransaction::REPORT_CHEAT:
-        entry.pushKV("versionType", "reportCheat");
-        break;
-    case MCTransaction::PROVE:
-        entry.pushKV("versionType", "prove");
-        break;
+    //case MCTransaction::SYNC_BRANCH_INFO:
+    //    entry.pushKV("versionType", "syncBranchInfo");
+    //    break;
+    //case MCTransaction::REPORT_CHEAT:
+    //    entry.pushKV("versionType", "reportCheat");
+    //    break;
+    //case MCTransaction::PROVE:
+    //    entry.pushKV("versionType", "prove");
+    //    break;
     case MCTransaction::REDEEM_MORTGAGE_STATEMENT:
         entry.pushKV("versionType", "redeemMortgageStatement");
         break;
@@ -202,15 +202,15 @@ void TxVersionToString(const int32_t nVersion, UniValue& entry)
     case MCTransaction::STAKE:
         entry.pushKV("versionType", "stake");
         break;
-    case MCTransaction::REPORT_REWARD:
-        entry.pushKV("versionType", "reportReward");
-        break;
-    case MCTransaction::LOCK_MORTGAGE_MINE_COIN:
-        entry.pushKV("versionType", "lockMortgageMineCoin");
-        break;
-    case MCTransaction::UNLOCK_MORTGAGE_MINE_COIN:
-        entry.pushKV("versionType", "unlockMortgageMineCoin");
-        break;
+    //case MCTransaction::REPORT_REWARD:
+    //    entry.pushKV("versionType", "reportReward");
+    //    break;
+    //case MCTransaction::LOCK_MORTGAGE_MINE_COIN:
+    //    entry.pushKV("versionType", "lockMortgageMineCoin");
+    //    break;
+    //case MCTransaction::UNLOCK_MORTGAGE_MINE_COIN:
+    //    entry.pushKV("versionType", "unlockMortgageMineCoin");
+    //    break;
     default:
         break;
     }
@@ -313,13 +313,13 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         cds >> (pfromtx);
         entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
     }
-    if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
-        entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());
-        entry.pushKV("branchblockheight", tx.pBranchBlockData->blockHeight);
-        MCBlockHeader block;
-        tx.pBranchBlockData->GetBlockHeader(block);
-        entry.pushKV("branchblockhash", block.GetHash().GetHex());
-    }
+    //if (tx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
+    //    entry.pushKV("branchid", tx.pBranchBlockData->branchID.GetHex());
+    //    entry.pushKV("branchblockheight", tx.pBranchBlockData->blockHeight);
+    //    MCBlockHeader block;
+    //    tx.pBranchBlockData->GetBlockHeader(block);
+    //    entry.pushKV("branchblockhash", block.GetHash().GetHex());
+    //}
     if (tx.IsRedeemMortgage()) {
         entry.pushKV("fromBranchId", tx.fromBranchId);
         entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));

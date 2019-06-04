@@ -1082,40 +1082,40 @@ void TransactionExtraFields(S &s, const MCTransaction& txTo){
         ::Serialize(s, txTo.sendToBranchid);
         ::Serialize(s, txTo.sendToTxHexData);
     }
-    else if (txTo.nVersion == MCTransaction::SYNC_BRANCH_INFO)
-    {
-        ::Serialize(s, txTo.pBranchBlockData);
-    }
-    else if (txTo.nVersion == MCTransaction::REPORT_CHEAT)
-    {
-        ::Serialize(s, txTo.pReportData);
-        ::Serialize(s, txTo.pPMT);
-    }
-    else if (txTo.nVersion == MCTransaction::PROVE)
-    {
-        ::Serialize(s, txTo.pProveData);
-    }
+    //else if (txTo.nVersion == MCTransaction::SYNC_BRANCH_INFO)
+    //{
+    //    ::Serialize(s, txTo.pBranchBlockData);
+    //}
+    //else if (txTo.nVersion == MCTransaction::REPORT_CHEAT)
+    //{
+    //    ::Serialize(s, txTo.pReportData);
+    //    ::Serialize(s, txTo.pPMT);
+    //}
+    //else if (txTo.nVersion == MCTransaction::PROVE)
+    //{
+    //    ::Serialize(s, txTo.pProveData);
+    //}
     else if (txTo.nVersion == MCTransaction::REDEEM_MORTGAGE)
     {
         ::Serialize(s, txTo.fromBranchId);
         ::Serialize(s, txTo.fromTx);
-        ::Serialize(s, txTo.pPMT);
+        //::Serialize(s, txTo.pPMT);
     }
-    else if (txTo.nVersion == MCTransaction::REPORT_REWARD)
-    {
-        ::Serialize(s, txTo.reporttxid);
-    }
-    else if (txTo.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
-    {
-        ::Serialize(s, txTo.reporttxid);
-        ::Serialize(s, txTo.coinpreouthash);
-    }
-    else if (txTo.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
-    {
-        ::Serialize(s, txTo.reporttxid);
-        ::Serialize(s, txTo.coinpreouthash);
-        ::Serialize(s, txTo.provetxid);
-    }
+    //else if (txTo.nVersion == MCTransaction::REPORT_REWARD)
+    //{
+    //    ::Serialize(s, txTo.reporttxid);
+    //}
+    //else if (txTo.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
+    //{
+    //    ::Serialize(s, txTo.reporttxid);
+    //    ::Serialize(s, txTo.coinpreouthash);
+    //}
+    //else if (txTo.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
+    //{
+    //    ::Serialize(s, txTo.reporttxid);
+    //    ::Serialize(s, txTo.coinpreouthash);
+    //    ::Serialize(s, txTo.provetxid);
+    //}
 }
 
 /**

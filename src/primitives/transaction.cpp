@@ -76,58 +76,58 @@ MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
 	{
 		sendToBranchid = tx.sendToBranchid;
 		sendToTxHexData = tx.sendToTxHexData;
-        if (sendToBranchid == "main"){
-            pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
-        }
+        //if (sendToBranchid == "main"){
+        //    pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
+        //}
 	}
 	else if (nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
 	{
 		fromBranchId = tx.fromBranchId;
 		fromTx = tx.fromTx;
 		inAmount = tx.inAmount;
-        if (tx.fromBranchId != "main") {
-            pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
-        }
+        //if (tx.fromBranchId != "main") {
+        //    pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
+        //}
 	}
     else if (nVersion == MCTransaction::MINE_BRANCH_MORTGAGE)
     {
         sendToBranchid = tx.sendToBranchid;
         sendToTxHexData = tx.sendToTxHexData;
     }
-    else if (nVersion == MCTransaction::SYNC_BRANCH_INFO)
-    {
-        pBranchBlockData.reset((tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)));
-    }
-    else if (nVersion == MCTransaction::REPORT_CHEAT)
-    {
-        pReportData.reset(tx.pReportData == nullptr? nullptr: new ReportData(*tx.pReportData));
-        pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
-    }
-    else if (nVersion == MCTransaction::PROVE)
-    {
-        pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
-    }
+    //else if (nVersion == MCTransaction::SYNC_BRANCH_INFO)
+    //{
+    //    pBranchBlockData.reset((tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)));
+    //}
+    //else if (nVersion == MCTransaction::REPORT_CHEAT)
+    //{
+    //    pReportData.reset(tx.pReportData == nullptr? nullptr: new ReportData(*tx.pReportData));
+    //    pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
+    //}
+    //else if (nVersion == MCTransaction::PROVE)
+    //{
+    //    pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
+    //}
     else if (nVersion == MCTransaction::REDEEM_MORTGAGE)
     {
         fromBranchId = tx.fromBranchId;
         fromTx = tx.fromTx;
-        pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
+        //pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
     }
-    else if (nVersion == MCTransaction::REPORT_REWARD)
-    {
-        reporttxid = tx.reporttxid;
-    }
-    else if (nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
-    {
-        reporttxid = tx.reporttxid;
-        coinpreouthash = tx.coinpreouthash;
-    }
-    else if (nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
-    {
-        reporttxid = tx.reporttxid;
-        coinpreouthash = tx.coinpreouthash;
-        provetxid = tx.provetxid;
-    }
+    //else if (nVersion == MCTransaction::REPORT_REWARD)
+    //{
+    //    reporttxid = tx.reporttxid;
+    //}
+    //else if (nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
+    //{
+    //    reporttxid = tx.reporttxid;
+    //    coinpreouthash = tx.coinpreouthash;
+    //}
+    //else if (nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
+    //{
+    //    reporttxid = tx.reporttxid;
+    //    coinpreouthash = tx.coinpreouthash;
+    //    provetxid = tx.provetxid;
+    //}
 }
 
 uint256 MCMutableTransaction::GetHash() const

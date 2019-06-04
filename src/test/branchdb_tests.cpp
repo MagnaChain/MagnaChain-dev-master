@@ -2,7 +2,7 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+/*
 #include "chain/branchdb.h"
 #include "primitives/transaction.h"
 #include "coding/uint256.h"
@@ -546,3 +546,4 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+*/
