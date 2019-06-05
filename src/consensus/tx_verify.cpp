@@ -270,16 +270,16 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
         // IsMortgage 抵押币out,主侧链的数量、大小需要一致
         if (tx.IsMortgage())
         {
-            if (!Params().IsMainChain()){
+            if (!Params().IsMainChain()) {
                 return state.DoS(100, false, REJECT_INVALID, "Only main chain can mortgage.");
             }
-            if (tx.vout.size() > 3){
+            if (tx.vout.size() > 3) {
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage mine coin vout size invalid.");
             }
             uint256 branchHash;
             MCKeyID keyid;
             int64_t coinheight;
-            if (GetMortgageMineData(tx.vout[0].scriptPubKey, &branchHash, &keyid, &coinheight) == false){
+            if (GetMortgageMineData(tx.vout[0].scriptPubKey, &branchHash, &keyid, &coinheight) == false) {
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage mine coin vout script invalid.");
             }
             if (branchHash.GetHex() != tx.sendToBranchid){
@@ -287,7 +287,7 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             }
             if (coinheight < 0)
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage coin height invalid.");
-            if (mtxTrans2.vout.size() != 1 || !mtxTrans2.vout[0].scriptPubKey.empty()){
+            if (mtxTrans2.vout.size() != 1 || !mtxTrans2.vout[0].scriptPubKey.empty()) {
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage tx invalid trans2 vout");
             }
             if (GetMortgageMineOut(tx, false) != mtxTrans2.vout[0].nValue) {//GetMortgageCoinOut(mtxTrans2, false)
@@ -295,8 +295,7 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             }
         }
     }
-    if (tx.IsRedeemMortgageStatement())
-    {
+    if (tx.IsRedeemMortgageStatement()) {
         if(Params().IsMainChain())
             return state.DoS(100, false, REJECT_INVALID, "Redeem mortgage statement tx only in branch chain.");
     }
@@ -305,10 +304,10 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             return state.DoS(100, false, REJECT_INVALID, "Redeem mortgage tx only in main chain.");
     }
     MCTransactionRef pFromTx;
-    if (tx.IsBranchChainTransStep2() || tx.IsRedeemMortgage())
-    {
-        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
-        cds >> (pFromTx);
+    //if (tx.IsBranchChainTransStep2() || tx.IsRedeemMortgage())
+    //{
+    //    MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+    //    cds >> (pFromTx);
         //if (tx.fromBranchId != MCBaseChainParams::MAIN) {
             //spv check
             //uint256 frombranchid = uint256S(tx.fromBranchId);
@@ -330,32 +329,42 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             //if (minedHeight < BRANCH_CHAIN_MATURITY)
             //    return state.DoS(1, false, REJECT_INVALID, strprintf("branch-tx minedHeight %d is lessthan %d", minedHeight, BRANCH_CHAIN_MATURITY));
         //}
-    }
+    //}
     if (tx.IsBranchChainTransStep2())
     {
         MCAmount nOrginalOut = nValueOut;
-        if (tx.fromBranchId != MCBaseChainParams::MAIN){
+        if (tx.fromBranchId != MCBaseChainParams::MAIN) {
             nOrginalOut = 0;// recalc exclude branch tran recharge
-            for (const auto& txout : tx.vout){
-                if (!IsCoinBranchTranScript(txout.scriptPubKey)){
+            for (const auto& txout : tx.vout) {
+                if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
                     nOrginalOut += txout.nValue;
                 }
             }
         }
-        if (nOrginalOut >= tx.inAmount || !MoneyRange(tx.inAmount)){
+        if (nOrginalOut >= tx.inAmount || !MoneyRange(tx.inAmount)) {
             return state.DoS(100, false, REJECT_INVALID, "bad-amount-not-correct-t1-t2");
         }
         
+        // up lines commented the unserialize fromtx code, so here to do it.
+        if (pFromTx == nullptr) {
+            MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+            cds >> (pFromTx);
+        }
+        if (pFromTx == nullptr || (!pFromTx->IsBranchChainTransStep1() && !pFromTx->IsMortgage()))
+            return state.DoS(100, false, REJECT_INVALID, "From tx unserialize error.");
         //挖矿币产生输出判断
-        if (!Params().IsMainChain() && QuickGetBranchScriptType(tx.vout[0].scriptPubKey) == BST_MORTGAGE_COIN)
+        if (tx.IsMortgage())
         {
+            if (!(!Params().IsMainChain() && QuickGetBranchScriptType(tx.vout[0].scriptPubKey) == BST_MORTGAGE_COIN)) {
+                return state.DoS(100, false, REJECT_INVALID, "Invalid mortgage transaction condition!!");
+            }
             uint256 coinfromtxid;
             MCKeyID coinkeyid;
             if (GetMortgageCoinData(tx.vout[0].scriptPubKey, &coinfromtxid, &coinkeyid) == false)
             {
                 return state.DoS(100, false, REJECT_INVALID, "Invalid mortgage coin out");
             }
-            if (pFromTx == nullptr || coinfromtxid != pFromTx->GetHash())
+            if (coinfromtxid != pFromTx->GetHash())
             {
                 return state.DoS(100, false, REJECT_INVALID, "Invalid mortgage coin out,from txid");
             }

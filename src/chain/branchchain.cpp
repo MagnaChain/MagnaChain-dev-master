@@ -809,7 +809,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
 
     //-----------------------------------------------
     //rpc 侧链核对信息
-    if (fVerifingDB && gArgs.GetBoolArg("-uncheckbranchtxinverifydb", true)) {
+    if (fVerifingDB && gArgs.GetBoolArg("-uncheckbranchtxinverifydb", false)) {
         LogPrintf("\nJump check branch tx in Verifing DB. From tx txid %s\n", fromTxHash);
         return true;
     }

@@ -468,8 +468,7 @@ UniValue getbranchrpcconfig(const JSONRPCRequest& request)
  */ 
 UniValue sendtobranchchain(const JSONRPCRequest& request)
 {
-    if (gArgs.GetBoolArg("-disablewallet", false))
-    {
+    if (gArgs.GetBoolArg("-disablewallet", false)) {
         throw JSONRPCError(RPC_VERIFY_ERROR, "-disablewallet option can not use this rpc.");
     }
     MCWallet * const pwallet = GetWalletForJSONRPCRequest(request);
@@ -496,18 +495,15 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     LOCK2(cs_main, pwallet->cs_wallet);
 
     std::string strToBranchid = request.params[0].get_str();
-    if (Params().GetBranchId() == strToBranchid)
-    {
+    if (Params().GetBranchId() == strToBranchid) {
         throw JSONRPCError(RPC_WALLET_ERROR, "can not send to this chain.");
     }
 
     uint256 tobranchhash;
     // only allow branch-chain to main-chain, main-chain to branch-chain, not allow branch to branch
-    if (strToBranchid != MCBaseChainParams::MAIN)
-    {
+    if (strToBranchid != MCBaseChainParams::MAIN) {
         tobranchhash = ParseHashV(request.params[0], "parameter 1");
-        if (!Params().IsMainChain())
-        {
+        if (!Params().IsMainChain()) {
             throw JSONRPCError(RPC_WALLET_ERROR, "can not trans from branch-chain to branch-chain");
         }
 
@@ -529,10 +525,8 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
             throw JSONRPCError(RPC_VERIFY_ERROR, "Invalid branch transaction,not get enough confirmations");
         }
     }
-    else
-    {
-        if (Params().IsMainChain())
-        {
+    else {
+        if (Params().IsMainChain()) {
             throw JSONRPCError(RPC_WALLET_ERROR, "can not trans from main-chain to main-chain");
         }
     }
@@ -543,8 +537,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain str address");
 
     MCKeyID keyId;
-    if (!address.GetKeyID(keyId))
-    {
+    if (!address.GetKeyID(keyId)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid magnachain keyid");
     }
 
@@ -569,10 +562,10 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
     wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
 
     MCScript scriptPubKey;
-    if (strToBranchid != MCBaseChainParams::MAIN){
+    if (strToBranchid != MCBaseChainParams::MAIN) {
         scriptPubKey << OP_TRANS_BRANCH << ToByteVector(tobranchhash);
     }
-    else{
+    else {
         scriptPubKey << OP_RETURN << OP_TRANS_BRANCH;//burn the output, trans output to /dev/null 
     }
 
@@ -634,8 +627,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
 
     const std::string& strTx1HexData = request.params[0].get_str();
     MCMutableTransaction mtxTrans1;
-    if (!DecodeHexTx(mtxTrans1, strTx1HexData))
-    {
+    if (!DecodeHexTx(mtxTrans1, strTx1HexData)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "DecodeHexTx tx hex fail.\n");
     }
 
@@ -643,8 +635,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, "Transaction is not a valid chain trans step1");
 
     MCMutableTransaction mtxTrans2;
-    if (!DecodeHexTx(mtxTrans2, mtxTrans1.sendToTxHexData))
-    {
+    if (!DecodeHexTx(mtxTrans2, mtxTrans1.sendToTxHexData)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "sendToTxHexData is not a valid transaction data.");
     }
 
@@ -652,8 +643,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, "mtxTrans2 is not a branch chain for step2.");
 
     const std::string strToChainId = mtxTrans1.sendToBranchid;
-    if (strToChainId != Params().GetBranchId())
-    {
+    if (strToChainId != Params().GetBranchId()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Target branch id is not valid.");
     }
 
@@ -662,34 +652,26 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
 
     const std::string& strFromChain = mtxTrans2.fromBranchId;
     // only allow branch-chain to main-chain, main-chain to branch-chain, not allow branch to branch
-    if (strFromChain != MCBaseChainParams::MAIN)
-    {
-        if (mtxTrans1.IsMortgage())
-        {
+    if (strFromChain != MCBaseChainParams::MAIN) {
+        if (mtxTrans1.IsMortgage()) {
             throw JSONRPCError(RPC_WALLET_ERROR, "mortgage transaction must create in main chain");
         }
-        if (!Params().IsMainChain())
-        {
+        if (!Params().IsMainChain()) {
             throw JSONRPCError(RPC_WALLET_ERROR, "can not trans from branch-chain to branch-chain");
         }
     }
-    else
-    {
-        if (Params().IsMainChain())
-        {
+    else {
+        if (Params().IsMainChain()) {
             throw JSONRPCError(RPC_WALLET_ERROR, "can not trans from main-chain to main-chain");
         }
     }
 
-    std::string strFromtxid = mtxTrans1.GetHash().ToString();
     //set delay fields
-    if (mtxTrans1.IsMortgage())//change 将主链抵押币转成挖矿币
-    {
+    if (mtxTrans1.IsMortgage()) { //change 将主链抵押币转成挖矿币
         uint256 branchid;
         MCKeyID keyid;
         int64_t coinheight;
-        if (GetMortgageMineData(mtxTrans1.vout[0].scriptPubKey, &branchid, &keyid, &coinheight))
-        {
+        if (GetMortgageMineData(mtxTrans1.vout[0].scriptPubKey, &branchid, &keyid, &coinheight)) {
             mtxTrans2.vout[0].scriptPubKey = MCScript() << OP_MINE_BRANCH_COIN << ToByteVector(mtxTrans1.GetHash()) << coinheight << OP_2DROP << OP_DUP << OP_HASH160 << ToByteVector(keyid) << OP_EQUALVERIFY << OP_CHECKSIG;
         }
     }
@@ -713,10 +695,9 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     }
 
     //broadcast transaction
-    if (g_connman)
-    {
+    if (g_connman) {
         MCInv inv(MSG_TX, tx2->GetHash());
-        g_connman->ForEachNode([&inv](MCNode* pnode){
+        g_connman->ForEachNode([&inv](MCNode* pnode) {
                 pnode->PushInventory(inv);
             });
     }
@@ -767,7 +748,10 @@ UniValue getbranchchaintransaction(const JSONRPCRequest& request)
     ret.push_back(Pair("hex", EncodeHexTx(*tx, RPCSerializationFlags())));
 
     //block info
-    int confirmations = chainActive.Height() - pblockindex->nHeight + 1;
+    MCBlockIndex *pchainBlockIndex = chainActive[pblockindex->nHeight];
+    int confirmations = 0;
+    if (pchainBlockIndex != nullptr && pchainBlockIndex->GetBlockHash() == pblockindex->GetBlockHash()) // make sure block in best chain
+        confirmations = chainActive.Height() - pblockindex->nHeight + 1;
     ret.push_back(Pair("confirmations", confirmations));
 
     return ret;
