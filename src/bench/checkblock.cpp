@@ -43,7 +43,7 @@ static void DeserializeAndCheckBlockTest(benchmark::State& state)
     stream.write(&a, 1); // Prevent compaction
 
     const auto chainParams = CreateChainParams(MCBaseChainParams::MAIN);
-    BranchCache branhcache(nullptr);
+    //BranchCache branhcache(nullptr);
     MCCoinsViewCache coinsview(nullptr);
     while (state.KeepRunning()) {
         MCBlock block; // Note that CBlock caches its checked state, so we need to recreate it here
@@ -51,7 +51,7 @@ static void DeserializeAndCheckBlockTest(benchmark::State& state)
         assert(stream.Rewind(sizeof(block_bench::block413567)));
 
         MCValidationState validationState;
-        assert(CheckBlock(block, validationState, chainParams->GetConsensus(), &branhcache, true, true, false, &coinsview));
+        assert(CheckBlock(block, validationState, chainParams->GetConsensus(), /*&branhcache,*/ true, true, false, &coinsview));
     }
 }
 
