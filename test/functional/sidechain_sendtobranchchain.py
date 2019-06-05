@@ -151,8 +151,8 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         node.generate(2)
         self.sync_all()
         self.sidenodes[0].generate(1)
-        # 侧链的区块头是一个交易，侧转主的是一个交易，所以主链的内存池会有2个交易
-        assert len(node.getrawmempool()) == 2
+        # 新版只有侧转主的是一个交易，所以主链的内存池会有1个交易
+        assert_equal(len(node.getrawmempool()),1)
         total_fee = get_mempool_total_fee(node,only_version=[7])
         node.generate(2)
         self.sync_all()
@@ -216,7 +216,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all([self.sidenodes])
         self.sync_all()
         fee_from_main = get_mempool_total_fee(node)
-        assert_equal(len(node.getrawmempool()), len(done) + 1)
+        assert_equal(len(node.getrawmempool()), len(done))
         total_fee = get_mempool_total_fee(node,only_version=[7])
         print('total fee:',total_fee,fee_from_main)
         node.generate(3)
