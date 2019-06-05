@@ -106,7 +106,7 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         badhash = self.snode1.generate(7)[0]
         self.sync_all([self.sidenodes])
         self.sync_all()
-        assert_equal(24, len(self.node0.getrawmempool()))  # side chain gen block count
+        assert_equal(0, len(self.node0.getrawmempool()))  # side chain gen block header not sync to mainchain
         fees = 0
         txs = self.node0.getrawmempool(True)
         for txid in txs:
@@ -131,8 +131,9 @@ class RedeemMortgageTest(MagnaChainTestFramework):
             "origin_mortgage", origin_mortgage, "fees", fees)
         print(self.node0.getbalance() - balance - 4 * MINER_REWARD, origin_mortgage + fees)
         # 25 is for fee
-        assert self.node0.getbalance() - balance - 4 * MINER_REWARD > origin_mortgage and (
-                    self.node0.getbalance() - balance - 4 * MINER_REWARD < origin_mortgage + fees)
+        assert_equal(self.node0.getbalance() - balance - 4 * MINER_REWARD,origin_mortgage)
+        # assert self.node0.getbalance() - balance - 4 * MINER_REWARD > origin_mortgage and (
+        #             self.node0.getbalance() - balance - 4 * MINER_REWARD < origin_mortgage + fees)
 
         # try to invalidateblock some blocks and snode0 generate again
         self.snode0.invalidateblock(badhash)

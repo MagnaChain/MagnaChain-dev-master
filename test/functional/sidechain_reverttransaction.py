@@ -63,7 +63,7 @@ class RevertTransactionTest(MagnaChainTestFramework):
 
         self.test_getblockchaininfo()
         self.test_getallbranchinfo()
-        self.test_getbranchchainheight()
+        # self.test_getbranchchainheight()
         self.test_getbranchchaininfo()
         self.test_reverttransaction()
         
@@ -113,12 +113,12 @@ class RevertTransactionTest(MagnaChainTestFramework):
         assert_equal(0, len(self.node0.getrawmempool()))
         self.snode0.generate(1)
         txids = self.node0.getrawmempool()
-        assert_equal(2, len(txids))
+        assert_equal(1, len(txids))
         self.node0.generate(1)
         assert_equal(0, len(self.node0.getrawmempool()))
         self.node0.invalidateblock(self.node0.getbestblockhash())
         txids2 = self.node0.getrawmempool()
-        assert_equal(2, len(txids2))
+        assert_equal(1, len(txids2))
         assert_equal(txids, txids2)
         self.node0.generate(1)
         assert_equal(0, len(self.node0.getrawmempool()))

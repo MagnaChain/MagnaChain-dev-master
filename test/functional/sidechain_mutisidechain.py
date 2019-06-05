@@ -49,7 +49,7 @@ class MutiSideChainTest(MutiSideChainTestFramework):
             assert txid not in self.sidenodes[i].getrawmempool()
             node.generate(2)
             self.sidenodes[i].generate(1)
-            assert_equal(len(node.getrawmempool()), 2)
+            assert_equal(len(node.getrawmempool()), 1)
             total_fee = get_mempool_total_fee(node, only_version=[7])
             node.generate(2)
             print("total fee:", total_fee)
