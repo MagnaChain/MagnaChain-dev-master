@@ -31,7 +31,7 @@
 #include "utils/util.h"
 #include "ui/ui_interface.h"
 #include "utils/utilmoneystr.h"
-#include "smartcontract/smartcontract.h"
+#include "vm/contractvm.h"
 #include "rpc/branchchainrpc.h"
 
 #include <assert.h>

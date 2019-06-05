@@ -16,6 +16,7 @@
 #include "utils/utilstrencodings.h"
 #include "transaction/partialmerkletree.h"
 #include "chain/chainparamsbase.h"
+#include "vm/contract.h"
 
 static const int SERIALIZE_TRANSACTION_NO_WITNESS = 0x40000000;
 
@@ -274,52 +275,7 @@ public:
     }
 };
 
-// 执行智能合约时的上下文数据
-class ContractInfo
-{
-public:
-    uint256 blockHash;
-    int txIndex;
-    MCAmount coins;
-    std::string code;
-    std::string data;
-
-    ContractInfo() : txIndex(-1), coins(0)
-    {
-    }
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(blockHash);
-        READWRITE(txIndex);
-        READWRITE(coins);
-        READWRITE(code);
-        READWRITE(data);
-    }
-};
-
-class MCContractID;
-typedef std::map<MCContractID, ContractInfo> CONTRACT_DATA;
-
-class ReplaceContractData
-{
-public:
-    uint256 txHash;
-    CONTRACT_DATA contractData;
-    MCSpvProof spvProof;
-
-    ADD_SERIALIZE_METHODS;
-    template <typename Stream, typename Operation>
-    inline void SerializationOp(Stream& s, Operation ser_action)
-    {
-        READWRITE(txHash);
-        READWRITE(contractData);
-        READWRITE(spvProof);
-    }
-};
-
+class ReportedContractData;
 class ReportData
 {
 public:
@@ -328,7 +284,7 @@ public:
     uint256 reportedBranchId;
     uint256 reportedBlockHash;
     uint256 reportedTxHash;
-    std::shared_ptr<ReplaceContractData> replaceContractData;
+    std::shared_ptr<ReportedContractData> reportedContractData;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -340,8 +296,8 @@ public:
         READWRITE(reportedTxHash);
         if (reporttype == ReportType::REPORT_CONTRACT_DATA) {
             if (ser_action.ForRead())
-                replaceContractData.reset(new ReplaceContractData());
-            READWRITE(*replaceContractData);
+                reportedContractData.reset(new ReportedContractData());
+            READWRITE(*reportedContractData);
         }
     }
 };
@@ -349,7 +305,7 @@ public:
 class ContractProveData
 {
 public:
-    CONTRACT_DATA prevData;
+    MapContractContext prevData;
     MCPartialMerkleTree prevDataSPV;
     MCPartialMerkleTree dataSPV;
 

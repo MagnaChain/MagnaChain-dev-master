@@ -2,31 +2,24 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "consensus/tx_verify.h"
-
-#include "consensus/consensus.h"
-#include "primitives/transaction.h"
-#include "script/interpreter.h"
-#include "consensus/validation.h"
-
-// TODO remove the following dependencies
-#include "chain/chain.h"
-#include "transaction/coins.h"
-#include "utils/utilmoneystr.h"
- 
 #include "chain/branchchain.h"
-#include "chain/branchtxdb.h"
-#include "io/core_io.h"
-#include "chain/chainparams.h"
-#include "rpc/branchchainrpc.h"
-#include "utils/util.h"
-#include "utils/utilstrencodings.h"
-#include "transaction/txdb.h"
-#include "coding/base58.h"
-#include "smartcontract/smartcontract.h"
-
 #include "chain/branchdb.h"
+#include "chain/branchtxdb.h"
+#include "chain/chain.h"
+#include "chain/chainparams.h"
+#include "consensus/consensus.h"
+#include "consensus/tx_verify.h"
+#include "consensus/validation.h"
+#include "io/core_io.h"
+#include "primitives/transaction.h"
+#include "rpc/branchchainrpc.h"
+#include "script/interpreter.h"
+#include "transaction/coins.h"
+#include "transaction/txdb.h"
+#include "utils/util.h"
+#include "utils/utilmoneystr.h"
+#include "utils/utilstrencodings.h"
+#include "vm/contract.h"
 
 extern bool IsCoinBranchTranScript(const MCScript& script);
 

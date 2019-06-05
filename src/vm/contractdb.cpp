@@ -1,11 +1,11 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
+#include "chain/chainparams.h"
 #include "coding/base58.h"
 #include "consensus/consensus.h"
-#include "smartcontract/contractdb.h"
-#include "smartcontract/smartcontract.h"
 #include "validation/validation.h"
+#include "vm/contractdb.h"
 
 ContractDataDB* mpContractDb = nullptr;
 
@@ -24,23 +24,23 @@ bool ContractDataDB::WriteBatch(MCDBBatch& batch)
     return true;
 }
 
-bool ContractDataDB::WriteBlockContractInfoToDisk(const MCBlockIndex* pBlockIndex, const CONTRACT_DATA& data)
+bool ContractDataDB::WriteBlockContractContextToDisk(const MCBlockIndex* pBlockIndex, const MapContractContext& data)
 {
     assert(pBlockIndex != nullptr);
 
     MCDBBatch writeBatch(db);
     size_t maxBatchSize = (size_t)gArgs.GetArg("-dbbatchsize", nDefaultDbBatchSize);
     for (auto ci : data) {
-        DBContractInfo& contractInfo = contractData[ci.first];
-        if (contractInfo.code.empty())
-            contractInfo.code = ci.second.code;
+        DBContractContext& dbContext = contractData[ci.first];
+        if (dbContext.code.empty())
+            dbContext.code = ci.second.code;
         ci.second.blockHash = pBlockIndex->GetBlockHash();
 
         // 将区块插入对应的结点中
-        auto insertPoint = contractInfo.items.end();
-        for (auto it = contractInfo.items.begin(); it != contractInfo.items.end(); ++it) {
+        auto insertPoint = dbContext.items.end();
+        for (auto it = dbContext.items.begin(); it != dbContext.items.end(); ++it) {
             if (pBlockIndex->nHeight < it->blockHeight) {
-                insertPoint = contractInfo.items.insert(it, DBContractInfoByHeight());
+                insertPoint = dbContext.items.insert(it, DBContractContextByHeight());
                 insertPoint->blockHeight = pBlockIndex->nHeight;
                 break;
             } else if (pBlockIndex->nHeight == it->blockHeight) {
@@ -49,8 +49,8 @@ bool ContractDataDB::WriteBlockContractInfoToDisk(const MCBlockIndex* pBlockInde
             }
         }
 
-        if (insertPoint == contractInfo.items.end()) {
-            insertPoint = contractInfo.items.insert(insertPoint, DBContractInfoByHeight());
+        if (insertPoint == dbContext.items.end()) {
+            insertPoint = dbContext.items.insert(insertPoint, DBContractContextByHeight());
             insertPoint->blockHeight = pBlockIndex->nHeight;
         }
 
@@ -101,10 +101,10 @@ bool ContractDataDB::UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex)
     MCDBBatch writeBatch(db);
     const MCBlockIndex* newConfirmBlock = pBlockIndex->GetAncestor(confirmBlockHeight);
     for (auto& ci : contractData) {
-        auto& contractInfo = ci.second;
-        auto saveIt = contractInfo.items.end();
+        auto& dbContext = ci.second;
+        auto saveIt = dbContext.items.end();
 
-        for (auto heightIt = contractInfo.items.begin(); heightIt != contractInfo.items.end();) {
+        for (auto heightIt = dbContext.items.begin(); heightIt != dbContext.items.end();) {
             // 将小于确认区块以下的不属于该链的区块数据移除掉
             if (heightIt->blockHeight <= confirmBlockHeight) {
                 if (heightIt->vecBlockHash.size() == 0) {
@@ -143,7 +143,7 @@ bool ContractDataDB::UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex)
 
             if (heightIt->blockHeight < removeBlockHeight) {
                 // 保留当前即将移除块以下的最近一笔数据，防止程序退出时区块链保存信息不完整导致加载到错误数据
-                if (saveIt != contractInfo.items.end()) {
+                if (saveIt != dbContext.items.end()) {
                     // 移除存盘数据
                     assert(saveIt->vecBlockHash.size() == 1);
                     MCHashWriter keyBlockHash(SER_GETHASH, 0);
@@ -153,11 +153,11 @@ bool ContractDataDB::UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex)
                     MCHashWriter keyHeightHash(SER_GETHASH, 0);
                     keyHeightHash << ci.first << saveIt->blockHeight;
                     removeBatch.Erase(keyHeightHash.GetHash());
-                    contractInfo.items.erase(saveIt);
+                    dbContext.items.erase(saveIt);
                 }
                 saveIt = heightIt;
 
-                if (contractInfo.items.size() == 1) {
+                if (dbContext.items.size() == 1) {
                     removes.emplace_back(ci.first);
                 }
             }
@@ -192,7 +192,7 @@ bool ContractDataDB::UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex)
     return true;
 }
 
-void ContractDataDB::PruneContractInfo()
+void ContractDataDB::PruneContractContext()
 {
     if (removeBatch.SizeEstimate() > 0)
         WriteBatch(removeBatch);
@@ -202,16 +202,16 @@ void ContractDataDB::PruneContractInfo()
     removes.clear();
 }
 
-int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, const MCBlockIndex* prevBlockIndex)
+int ContractDataDB::GetContractContext(const MCContractID& contractId, ContractContext& context, const MCBlockIndex* prevBlockIndex)
 {
     // 检查是否在缓存中，不存在则尝试加载
     auto di = contractData.find(contractId);
     if (di == contractData.end()) {
-        DBContractInfo contractInfo;
-        if (!db.Read(contractId, contractInfo)) {
+        DBContractContext dbContext;
+        if (!db.Read(contractId, dbContext)) {
             return -1;
         } else {
-            contractData[contractId] = contractInfo;
+            contractData[contractId] = dbContext;
             di = contractData.find(contractId);
         }
     }
@@ -236,11 +236,11 @@ int ContractDataDB::GetContractInfo(const MCContractID& contractId, ContractInfo
                         db.Read(keyHash.GetHash(), it->vecBlockContractData[i]);
                     }
 
-                    contractInfo.txIndex = 0;
-                    contractInfo.code = di->second.code;
-                    contractInfo.blockHash = it->vecBlockHash[i];
-                    contractInfo.coins = it->vecBlockContractData[i].first;
-                    contractInfo.data = it->vecBlockContractData[i].second;
+                    context.txIndex = 0;
+                    context.code = di->second.code;
+                    context.blockHash = it->vecBlockHash[i];
+                    context.coins = it->vecBlockContractData[i].first;
+                    context.data = it->vecBlockContractData[i].second;
                     return it->blockHeight;
                 }
             }
