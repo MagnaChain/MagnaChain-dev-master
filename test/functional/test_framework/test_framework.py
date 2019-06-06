@@ -320,7 +320,7 @@ class MagnaChainTestFramework(object):
         for index, m in enumerate(self.mapped):
             if m:
                 logger("mortgage coins to sidenode{}".format(m[0]))
-                for j in range(10):
+                for j in range(20):
                     addr = self.sidenodes[m[0]].getnewaddress()
                     txid = self.nodes[index].mortgageminebranch(sidechain_id, 5000, addr)['txid']  # 抵押挖矿币
                 for i in range(5):

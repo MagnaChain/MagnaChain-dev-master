@@ -74,7 +74,7 @@ class RedeemMortgageTest(MagnaChainTestFramework):
 
         # 原来抵押的总额
         self.import_prikey()
-        origin_mortgage = 50000
+        origin_mortgage = 100000
         start_balance = self.snode0.getbalance()
         start_balance1 = self.snode1.getbalance()
         mortgage_txs = self.snode0.listmortgagecoins()
@@ -94,11 +94,11 @@ class RedeemMortgageTest(MagnaChainTestFramework):
         self.sync_all()  # TODO: make sure node1 have all branch header tx in mempool.(to be optimize)
         self.snode1.generate(10)
         self.sync_all([self.sidenodes])
-        for i in range(10):
+        for i in range(20):
             result = self.snode0.redeemmortgagecoinstatement(self.mortgage_coin())
             results.append(result['txid'])
             print("result:", result)
-            assert_equal(len(self.snode0.listmortgagecoins()), 10 - i - 1)
+            assert_equal(len(self.snode0.listmortgagecoins()), 20 - i - 1)
         assert_raises_rpc_error(-32603, 'no address with enough coins', self.snode0.generate, 1)
         self.sync_all([self.sidenodes]) # sync mempool to snode1
         besthash = self.snode1.getbestblockhash()
