@@ -104,7 +104,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         assert_equal(self.sidenodes[0].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 100.0000000)
         assert_equal(self.sidenodes[0].getbalance(),
-                     Decimal(side_balance + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.000000")))
+                     Decimal(side_balance + Decimal(100) + Decimal(txfee)).quantize(Decimal("0.00000000")))
         # make sure blocks are synced
         assert_equal(self.sidenodes[1].getbalance(), side_balance1)
         assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
@@ -132,7 +132,7 @@ class SendToBranchchainTest(MagnaChainTestFramework):
         self.sync_all([self.sidenodes])
         assert_equal(self.sidenodes[0].getbalanceof(saddr), 200.0000000)
         assert_equal(self.sidenodes[1].getbalanceof(saddr), 200.0000000)
-        assert_equal(self.sidenodes[0].getbalance(), Decimal(side_balance + Decimal(100)).quantize(Decimal("0.000000")))
+        assert_equal(self.sidenodes[0].getbalance(), Decimal(side_balance + Decimal(100)).quantize(Decimal("0.00000000")))
         assert_equal(self.sidenodes[1].getbalance(), side_balance1 + Decimal(txfee))
         assert_equal(self.sidenodes[0].getbestblockhash(), self.sidenodes[1].getbestblockhash())
 
