@@ -6,8 +6,7 @@
 #ifndef MAGNACHAIN_RPC_MINING_H
 #define MAGNACHAIN_RPC_MINING_H
 
-#include "script/script.h"
-
+class MCCoinsViewCache;
 class MCKeyStore;
 class MCOutput;
 class UniValue;

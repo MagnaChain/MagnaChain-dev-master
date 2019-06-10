@@ -20,10 +20,9 @@
 #include "policy/feerate.h"
 #include "primitives/transaction.h"
 #include "misc/random.h"
-#include "smartcontract/contractdb.h"
 #include "thread/sync.h"
 #include "transaction/txdb.h"
-#include "smartcontract/smartcontract.h"
+#include "vm/contractvm.h"
 
 #include "boost/multi_index/hashed_index.hpp"
 #include "boost/multi_index/ordered_index.hpp"

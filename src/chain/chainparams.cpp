@@ -16,7 +16,7 @@
 #include "chain/chainparamsseeds.h"
 #include "key/keystore.h"
 #include "consensus/tx_verify.h"
-#include "smartcontract/smartcontract.h"
+#include "vm/contractvm.h"
 
 SignatureCoinbaseTransactionPf SignatureCoinbaseTransactionPF = nullptr;
 

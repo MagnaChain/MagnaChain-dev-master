@@ -33,7 +33,7 @@
 #include "univalue.h"
 #include "utils/util.h"
 #include "consensus/merkle.h"
-#include "smartcontract/smartcontract.h"
+#include "vm/contractvm.h"
 
 #include <boost/foreach.hpp>
 #include <stdint.h>
@@ -1528,73 +1528,48 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not call this RPC in main chain!\n");
 
     uint256 reportedBlockHash = ParseHashV(request.params[0], "parameter 1");
-    if (mapBlockIndex.count(reportedBlockHash) == 0)
+    BlockMap::iterator blockIter = mapBlockIndex.find(reportedBlockHash);
+    if (blockIter == mapBlockIndex.end()) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
+    }
 
     MCBlock reportedBlock;
-    MCBlockIndex* pReportedBlockIndex = mapBlockIndex[reportedBlockHash];
-    if (!ReadBlockFromDisk(reportedBlock, pReportedBlockIndex, Params().GetConsensus()))
+    if (!ReadBlockFromDisk(reportedBlock, blockIter->second, Params().GetConsensus()))
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
 
-    int reportedTxIndex = -1;
-    uint256 reportedTxHash = ParseHashV(request.params[1], "parameter 2");
-    //check tx is a normal transaction
-    for (size_t i = 0; i < reportedBlock.vtx.size(); ++i) {
-        if (reportedBlock.vtx[i]->GetHash() == reportedTxHash) {
-            reportedTxIndex = i;
-            break;
+    BlockMap::iterator prevIter = mapBlockIndex.find(reportedBlock.hashPrevBlock);
+    if (prevIter == mapBlockIndex.end()) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't get prevBlockIndex");
         }
-    }
-    if (reportedTxIndex == -1)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't find transaction");
-
-    uint256 proveBlockHash = ParseHashV(request.params[2], "parameter 2");
-    if (mapBlockIndex.count(proveBlockHash) == 0)
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Block not found");
-
-    MCBlock proveBlock;
-    MCBlockIndex* pProveBlockIndex = mapBlockIndex[proveBlockHash];
-    if (!ReadBlockFromDisk(proveBlock, pProveBlockIndex, Params().GetConsensus()))
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
-
-    int proveTxIndex = -1;
-    uint256 proveTxHash = ParseHashV(request.params[3], "parameter 3");
-    //check tx is a normal transaction
-    for (size_t i = 0; i < proveBlock.vtx.size(); ++i) {
-        if (proveBlock.vtx[i]->GetHash() == proveTxHash) {
-            proveTxIndex = i;
-            break;
-        }
-    }
-    if (proveTxIndex == -1)
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't find transaction");
 
     ContractVM vm;
-    std::vector<VMOut> vmOuts(proveBlock.vtx.size());
-    if (!vm.ExecuteBlockContract(&proveBlock, pProveBlockIndex->pprev, 0, proveBlock.vtx.size(), &vmOuts)) {
-        throw JSONRPCError(RPC_INTERNAL_ERROR, "executive block contract fail");
+    std::vector<VMOut> vmOuts;
+    if (vm.ExecuteBlockContract(&reportedBlock, prevIter->second, 0, reportedBlock.vtx.size(), &vmOuts) >= 0) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute block contract failed");
     }
 
-    std::vector<bool> proveMatch(proveBlock.vtx.size(), false);
-    proveMatch[proveTxIndex] = true;
-    std::vector<uint256> proveLeaves;
-    BlockMerkleLeavesWithFinalData(&proveBlock, vmOuts, proveLeaves, nullptr);
 
-    std::set<uint256> setTxids;
-    setTxids.insert(reportedTxHash);
 
     MCMutableTransaction mtx;
     mtx.nVersion = MCTransaction::REPORT_CHEAT;
-    mtx.pPMT.reset(NewSpvProof(reportedBlock, setTxids));
+    //mtx.pPMT.reset(NewSpvProof(reportedBlock, setTxids));
     mtx.pReportData.reset(new ReportData());
     mtx.pReportData->reporttype = ReportType::REPORT_CONTRACT_DATA;
     mtx.pReportData->reportedBranchId = Params().GetBranchHash();
     mtx.pReportData->reportedBlockHash = reportedBlockHash;
-    mtx.pReportData->reportedTxHash = reportedTxHash;
-    mtx.pReportData->replaceContractData.reset(new ReplaceContractData());
-    mtx.pReportData->replaceContractData->txHash = proveTxHash;
-    mtx.pReportData->replaceContractData->contractData = vmOuts[proveTxIndex].txFinalData;
-    mtx.pReportData->replaceContractData->spvProof = std::move(MCSpvProof(proveLeaves, proveMatch, proveBlockHash));
+    //mtx.pReportData->reportedContractData.reset(new ReplaceContractData());
+
+    //mtx.pReportData->reportedContractData->prevData.resize(vmOuts.size());
+    //mtx.pReportData->reportedContractData->finalData.resize(vmOuts.size());
+    //for (int i = 0; i < vmOuts.size(); ++i) {
+    //    mtx.pReportData->reportedContractData->prevData[i] = std::move(vmOuts[i].txPrevData);
+    //    BlockMerkleLeavesWithFinalData(&reportedBlock, vmOuts, mtx.pReportData->replaceContractData->finalData, nullptr);
+    //}
+
+    //mtx.pReportData->replaceContractData->prevData = vmOuts
+    //mtx.pReportData->replaceContractData->txHash = proveTxHash;
+    //mtx.pReportData->replaceContractData->contractData = vmOuts[proveTxIndex].txFinalData;
+    //mtx.pReportData->replaceContractData->spvProof = std::move(MCSpvProof(proveLeaves, proveMatch, proveBlockHash));
 
     MCRPCConfig branchrpccfg;
     if (g_branchChainMan->GetRpcConfig(MCBaseChainParams::MAIN, branchrpccfg) == false) {

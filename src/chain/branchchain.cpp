@@ -38,7 +38,7 @@
 #include "io/core_io.h"
 #include "misc/timedata.h"
 #include "rpc/server.h"
-#include "smartcontract/smartcontract.h"
+#include "vm/contractvm.h"
 #include "transaction/txmempool.h"
 
 static const int DEFAULT_HTTP_CLIENT_TIMEOUT = 900;
@@ -1268,7 +1268,7 @@ bool CheckBranchDuplicateTx(const MCTransaction& tx, MCValidationState& state, B
 //
 //    ContractVM vm;
 //    for (auto item : pProveData->contractData->prevData) {
-//        vm.SetContractInfo(item.first, item.second);
+//        vm.SetContractContext(item.first, item.second);
 //    }
 //    vm.CommitData();
 //

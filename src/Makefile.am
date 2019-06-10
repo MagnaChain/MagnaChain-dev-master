@@ -186,8 +186,9 @@ MAGNACHAIN_CORE_H = \
   zmq/zmqconfig.h\
   zmq/zmqnotificationinterface.h \
   zmq/zmqpublishnotifier.h \
-  smartcontract/smartcontract.h \
-  smartcontract/contractdb.h
+  vm/contract.h \
+  vm/contractdb.h \
+  vm/contractvm.h
 
 
 obj/build.h: FORCE
@@ -239,8 +240,9 @@ libmagnachain_server_a_SOURCES = \
   validation/validation.cpp \
   validation/validationinterface.cpp \
   misc/versionbits.cpp \
-  smartcontract/smartcontract.cpp \
-  smartcontract/contractdb.cpp \
+  vm/contract.cpp \
+  vm/contractdb.cpp \
+  vm/contractvm.cpp \
   chain/branchchain.cpp \
   chain/branchdb.cpp \
   chain/branchtxdb.cpp \
@@ -367,6 +369,7 @@ libmagnachain_consensus_a_SOURCES = \
   misc/amount.h \
   coding/arith_uint256.cpp \
   coding/arith_uint256.h \
+  consensus/consensus.cpp \
   consensus/merkle.cpp \
   consensus/merkle.h \
   consensus/params.h \
@@ -609,7 +612,7 @@ CLEANFILES += primitives/*.gcda primitives/*.gcno
 CLEANFILES += qt/*.gcda qt/*.gcno
 CLEANFILES += script/*.gcda script/*.gcno
 CLEANFILES += secp256k1/*.gcda secp256k1/*.gcno
-CLEANFILES += smartcontract/*.gcda smartcontract/*.gcno
+CLEANFILES += vm/*.gcda vm/*.gcno
 CLEANFILES += support/*.gcda support/*.gcno
 CLEANFILES += test/*.gcda test/*.gcno
 CLEANFILES += thread/*.gcda thread/*.gcno

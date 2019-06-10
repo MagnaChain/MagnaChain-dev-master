@@ -12,7 +12,6 @@
 #include "consensus/consensus.h"
 #include "primitives/transaction.h"
 #include "primitives/block.h"
-#include "smartcontract/smartcontract.h"
 
 /** "reject" message codes */
 static const unsigned char REJECT_MALFORMED = 0x01;

@@ -362,19 +362,19 @@ void WritePMT(const MCTransactionRef tx)
     //sqlPMT += sql;
 }
 
-void WriteContractInfo(const std::string& txHash, const std::string& contractId, const ContractInfo& info)
+void WriteContractInfo(const std::string& txHash, const std::string& contractId, const ContractContext& context)
 {
     char sqlBase[] = "INSERT INTO `contractinfo`(`txhash`, `contractid`, `txindex`, `blockhash`, `code`, `data`) VALUES";
     if (sqlContractInfo.empty()) {
         sqlContractInfo = sqlBase;
     }
 
-    const std::string& blockHash = info.blockHash.ToString();
-    const std::string& code = HexStr(info.code.begin(), info.code.end());
-    const std::string& data = HexStr(info.data.begin(), info.data.end());
+    const std::string& blockHash = context.blockHash.ToString();
+    const std::string& code = HexStr(context.code.begin(), context.code.end());
+    const std::string& data = HexStr(context.data.begin(), context.data.end());
 
     std::string sql = strprintf("('%s', '%s', %d, '%s', '%s', '%s'),", 
-        txHash, contractId, info.txIndex, blockHash, code, data);
+        txHash, contractId, context.txIndex, blockHash, code, data);
     sqlContractInfo += sql;
 }
 

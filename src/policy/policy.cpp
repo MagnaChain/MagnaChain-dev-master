@@ -14,7 +14,6 @@
 #include "misc/tinyformat.h"
 #include "utils/util.h"
 #include "utils/utilstrencodings.h"
-#include "smartcontract/smartcontract.h"
 
 MCAmount GetDustThreshold(const MCTxOut& txout, const MCFeeRate& dustRelayFeeIn)
 {

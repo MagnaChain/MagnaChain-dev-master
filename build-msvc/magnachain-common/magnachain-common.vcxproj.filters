@@ -68,9 +68,6 @@
     <Filter Include="src\univalue\lib">
       <UniqueIdentifier>{1e74103a-7db6-4943-beb2-3f95f5fb7c28}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\smartcontract">
-      <UniqueIdentifier>{1add5529-bf39-4cd6-a785-3e49346de537}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\transaction">
       <UniqueIdentifier>{4684f385-fd00-421f-b518-9d12b81070fe}</UniqueIdentifier>
     </Filter>
@@ -115,6 +112,9 @@
     </Filter>
     <Filter Include="src\crypto\ctaes">
       <UniqueIdentifier>{5e51fd40-09d5-41e0-a5b5-0da089d280f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\vm">
+      <UniqueIdentifier>{def5e4d4-8a10-406f-95d3-05c24748093f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -391,9 +391,6 @@
     <ClCompile Include="..\..\src\zmq\zmqpublishnotifier.cpp">
       <Filter>src\zmq</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\smartcontract\contractdb.cpp">
-      <Filter>src\smartcontract</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\address\addrdb.cpp">
       <Filter>src\address</Filter>
     </ClCompile>
@@ -523,9 +520,6 @@
     <ClCompile Include="..\..\src\validation\validationinterface.cpp">
       <Filter>src\validation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\smartcontract\smartcontract.cpp">
-      <Filter>src\smartcontract</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\chain\branchchain.cpp">
       <Filter>src\chain</Filter>
     </ClCompile>
@@ -576,6 +570,15 @@
     </ClCompile>
     <ClCompile Include="..\..\src\consensus\consensus.cpp">
       <Filter>src\consensus</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vm\contractdb.cpp">
+      <Filter>src\vm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vm\contractvm.cpp">
+      <Filter>src\vm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vm\contract.cpp">
+      <Filter>src\vm</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -867,9 +870,6 @@
     <ClInclude Include="..\..\src\zmq\zmqpublishnotifier.h">
       <Filter>src\zmq</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\smartcontract\contractdb.h">
-      <Filter>src\smartcontract</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\address\addrdb.h">
       <Filter>src\address</Filter>
     </ClInclude>
@@ -1038,9 +1038,6 @@
     <ClInclude Include="..\..\src\validation\validationinterface.h">
       <Filter>src\validation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\smartcontract\smartcontract.h">
-      <Filter>src\smartcontract</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\chain\branchchain.h">
       <Filter>src\chain</Filter>
     </ClInclude>
@@ -1100,6 +1097,15 @@
     </ClInclude>
     <ClInclude Include="..\..\src\transaction\partialmerkletree.h">
       <Filter>src\transaction</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vm\contract.h">
+      <Filter>src\vm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vm\contractdb.h">
+      <Filter>src\vm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vm\contractvm.h">
+      <Filter>src\vm</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

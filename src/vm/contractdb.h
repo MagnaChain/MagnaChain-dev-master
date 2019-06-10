@@ -5,9 +5,10 @@
 #define CONTRACT_DB_H
 
 #include "transaction/txdb.h"
+#include "vm/contract.h"
 
 // 合约某高度存盘数据
-class DBContractInfoByHeight
+class DBContractContextByHeight
 {
 public:
     bool dirty = false;
@@ -23,11 +24,11 @@ public:
 };
 
 // 区块关联的智能合约存盘数据
-class DBContractInfo
+class DBContractContext
 {
 public:
     std::string code;
-    std::list<DBContractInfoByHeight> items;
+    std::list<DBContractContextByHeight> items;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -37,15 +38,13 @@ public:
     }
 };
 
-class MCContractID;
-
 class ContractDataDB
 {
 private:
     MCDBWrapper db;
     MCDBBatch removeBatch;
     std::vector<uint160> removes;
-    std::map<MCContractID, DBContractInfo> contractData;
+    std::map<MCContractID, DBContractContext> contractData;
 
 public:
     ContractDataDB() = delete;
@@ -53,12 +52,12 @@ public:
     ContractDataDB& operator=(const ContractDataDB&) = delete;
     ContractDataDB(const fs::path& path, size_t nCacheSize, bool fMemory, bool fWipe);
 
-    int GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo, const MCBlockIndex* currentPrevBlockIndex);
+    int GetContractContext(const MCContractID& contractId, ContractContext& context, const MCBlockIndex* currentPrevBlockIndex);
 
     bool WriteBatch(MCDBBatch& batch);
-    bool WriteBlockContractInfoToDisk(const MCBlockIndex* pBlockIndex, const CONTRACT_DATA& contractContext);
+    bool WriteBlockContractContextToDisk(const MCBlockIndex* pBlockIndex, const MapContractContext& contractContext);
     bool UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex);
-    void PruneContractInfo();
+    void PruneContractContext();
 };
 extern ContractDataDB* mpContractDb;
 

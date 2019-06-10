@@ -3,43 +3,39 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "misc/amount.h"
-#include "coding/base58.h"
 #include "chain/chain.h"
+#include "coding/base58.h"
 #include "consensus/validation.h"
-#include "io/core_io.h"
 #include "init.h"
+#include "io/core_io.h"
+#include "mining/mining.h"
+#include "misc/amount.h"
+#include "misc/timedata.h"
 #include "net/http/httpserver.h"
-#include "validation/validation.h"
 #include "net/net.h"
 #include "policy/feerate.h"
 #include "policy/fees.h"
 #include "policy/policy.h"
 #include "policy/rbf.h"
-#include "mining/mining.h"
 #include "rpc/server.h"
 #include "script/sign.h"
-#include "misc/timedata.h"
+#include "script/standard.h"
+#include "univalue.h"
 #include "utils/util.h"
 #include "utils/utilmoneystr.h"
+#include "validation/validation.h"
+#include "vm/contractdb.h"
+#include "vm/contractvm.h"
 #include "wallet/coincontrol.h"
 #include "wallet/feebumper.h"
 #include "wallet/wallet.h"
 #include "wallet/walletdb.h"
-#include "script/standard.h"
-#include "univalue.h"
-#include "smartcontract/smartcontract.h"
-#include "script/sign.h"
 
-#include <boost/foreach.hpp>
 #include <stdint.h>
-#include <vector>
-#include <sstream>
 #include <iostream>
-#include <boost/iostreams/filtering_streambuf.hpp>
-#include <boost/iostreams/copy.hpp>
-#include <boost/iostreams/filter/gzip.hpp>
+#include <sstream>
+#include <vector>
+#include <boost/foreach.hpp>
 
 static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 MCWallet *GetWalletForJSONRPCRequest(const JSONRPCRequest& request)
@@ -267,6 +263,117 @@ void SendMoney(MCWallet* const pwallet, const MCTxDestination* address, MCAmount
             throw JSONRPCError(RPC_WALLET_ERROR, strError);
         }
     }
+}
+
+std::string TrimCode(const std::string& rawCode)
+{
+    std::string line;
+    std::string codeOut;
+
+    size_t lineCount = 0;
+    size_t leftCount = 0;
+    size_t lastCodeOffset = 0;
+    while (true) {
+        size_t newCodeOffset = rawCode.find('\n', lastCodeOffset);
+        if (newCodeOffset == std::string::npos) {
+            if (lastCodeOffset >= rawCode.length())
+                break;
+            else
+                newCodeOffset = rawCode.length();
+        }
+        std::string line = rawCode.substr(lastCodeOffset, newCodeOffset - lastCodeOffset);
+        lineCount++;
+        lastCodeOffset = newCodeOffset + 1;
+
+        char symbol = 0;
+        size_t start = 0;
+        for (size_t pos = 0; pos < line.length(); ++pos) {
+            size_t len = line.length();
+            if (leftCount == 0 && (line[pos] == '\"' || line[pos] == '\'')) {
+                if (symbol == line[pos])
+                    symbol = 0;
+                else
+                    symbol = line[pos];
+            }
+            else if (symbol != 0 && line[pos] == '\\')
+                ++pos;
+            else if (symbol == 0 && line[pos] == '-' && pos + 1 < len && line[pos + 1] == '-') {
+                if (pos + 3 < len) {
+                    if (line[pos + 2] == '[' && line[pos + 3] == '[') {
+                        if (++leftCount == 1)
+                            start = pos;
+                        pos += 3;
+                    }
+                    else if (leftCount == 0)
+                        line = line.replace(pos, len - pos, "");
+                }
+                else if (leftCount == 0)
+                    line = line.replace(pos, len - pos, "");
+            }
+            else if (leftCount > 0 && line[pos] == ']' && pos + 1 < len && line[pos + 1] == ']') {
+                if (--leftCount == 0)
+                    line = line.replace(start, pos - start + 4, " ");
+                pos = start;
+            }
+        }
+
+        if (leftCount > 0)
+            line = line.replace(start, line.length() - start, "");
+
+        int i = 0;
+        for (; i < (int)line.length(); ++i) {
+            if (line[i] != ' ' && line[i] != '\t')
+                break;
+        }
+        int j = (int)line.length() - 1;
+        for (; j >= 0; --j) {
+            if (line[j] != ' ' && line[j] != '\t')
+                break;
+        }
+        if (j > i) {
+            char symbol2 = 0;
+            for (int k = i; k <= j;) {
+                if (line[k] == '\"' || line[k] == '\'') {
+                    if (symbol2 == line[k])
+                        symbol2 = 0;
+                    else
+                        symbol2 = line[k];
+                    codeOut += line[k];
+                    ++k;
+                    continue;
+                }
+                else if (symbol2 != 0 && line[k] == '\\') {
+                    codeOut += line[k];
+                    if (k + 1 <= j)
+                        codeOut += line[++k];
+                    ++k;
+                    continue;
+                }
+                if (symbol2 == 0) {
+                    if (line[k] != ';') {
+                        codeOut += line[k];
+                        if (line[k] == ' ' || line[k] == '\t') {
+                            for (k = k + 1; k <= j; ++k) {
+                                if (line[k] != ' ' && line[k] != '\t')
+                                    break;
+                            }
+                        }
+                        else
+                            ++k;
+                    }
+                    else
+                        ++k;
+                }
+                else {
+                    codeOut += line[k];
+                    ++k;
+                }
+            }
+        }
+        codeOut += "\n";
+    }
+
+    return codeOut;
 }
 
 bool PublishContract(MCWallet* pWallet, MCAmount payment, std::string& strVMCaller, const std::string& rawCode, VMOut* vmOut)
@@ -3489,11 +3596,11 @@ UniValue getbalanceof(const JSONRPCRequest& request)
     if (addr.IsContractID()) {
         MCContractID contractId;
         addr.GetContractID(contractId);
-        ContractInfo contractInfo;
-        if (mpContractDb->GetContractInfo(contractId, contractInfo, chainActive.Tip()) < 0) {
+        ContractContext context;
+        if (mpContractDb->GetContractContext(contractId, context, chainActive.Tip()) < 0) {
             return 0;
         }
-        return ValueFromAmount(contractInfo.coins);
+        return ValueFromAmount(context.coins);
     }
     else {
         MCAmount nValue = 0;

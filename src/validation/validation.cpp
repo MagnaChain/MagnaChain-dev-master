@@ -3,9 +3,6 @@
 // Copyright (c) 2016-2019 The MagnaChain Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
-#include "validation/validation.h"
-
 #include "chain//branchchain.h"
 #include "chain/branchdb.h"
 #include "chain/chain.h"
@@ -18,6 +15,7 @@
 #include "consensus/tx_verify.h"
 #include "consensus/validation.h"
 #include "init.h"
+#include "io/core_io.h"
 #include "io/fs.h"
 #include "misc/cuckoocache.h"
 #include "misc/pow.h"
@@ -32,12 +30,12 @@
 #include "policy/rbf.h"
 #include "primitives/block.h"
 #include "primitives/transaction.h"
+#include "rpc/branchchainrpc.h"
 #include "rpc/server.h"
 #include "script/script.h"
 #include "script/sigcache.h"
 #include "script/sign.h"
 #include "script/standard.h"
-#include "smartcontract/smartcontract.h"
 #include "transaction/merkleblock.h"
 #include "transaction/txdb.h"
 #include "transaction/txmempool.h"
@@ -48,15 +46,14 @@
 #include "utils/utilstrencodings.h"
 #include "validation/checkpoints.h"
 #include "validation/checkqueue.h"
+#include "validation/validation.h"
 #include "validation/validationinterface.h"
+#include "vm/contractdb.h"
+#include "vm/contractvm.h"
 #include "wallet/wallet.h"
-
-#include "io/core_io.h"
 
 #include <atomic>
 #include <sstream>
-
-#include "rpc/branchchainrpc.h"
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/thread.hpp>
@@ -2167,7 +2164,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
             return state.DoS(100, error("%s: Execute block contracts failed", __func__), REJECT_INVALID, "execute-block-contracts-failed");
         }
 
-        CONTRACT_DATA contractData;
+        MapContractContext contractData;
         if (!mvm.CheckCross(&block, contractData)) {
             return state.DoS(100, error("%s: Block contracts have cross", __func__), REJECT_INVALID, "block-contracts-have-cross");
         }
@@ -2182,7 +2179,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
         }
 
         // Write block ContractInfo to db
-        if (!mpContractDb->WriteBlockContractInfoToDisk(pindex, contractData)) {
+        if (!mpContractDb->WriteBlockContractContextToDisk(pindex, contractData)) {
             return error("out of disk space");
         }
         if (!mpContractDb->UpdateBlockContractToDisk(pindex)) {
@@ -2332,7 +2329,7 @@ bool static FlushStateToDisk(const MCChainParams& chainparams, MCValidationState
                 nLastFlush = nNow;
             }
 
-            mpContractDb->PruneContractInfo();
+            mpContractDb->PruneContractContext();
         }
         if (fDoFullFlush || ((mode == FLUSH_STATE_ALWAYS || mode == FLUSH_STATE_PERIODIC) && nNow > nLastSetChain + (int64_t)DATABASE_WRITE_INTERVAL * 1000000)) {
             // Update best block in wallet (so we can detect restored wallets).

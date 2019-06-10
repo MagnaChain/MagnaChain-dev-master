@@ -4,16 +4,15 @@
 #ifndef SMARTCONTRACT_H
 #define SMARTCONTRACT_H
 
+#include "coding/base58.h"
+#include "thread/sync.h"
+#include "univalue.h"
+#include "vm/contract.h"
+
 extern "C"
 {
 #include "lua/lstate.h"
 }
-
-#include "key/pubkey.h"
-#include "univalue.h"
-#include "coding/base58.h"
-#include "thread/sync.h"
-#include "utils/util.h"
 
 #include <boost/threadpool.hpp>
 
@@ -21,11 +20,8 @@ const int MAX_CONTRACT_FILE_LEN = 65536;
 const int MAX_CONTRACT_CALL = 15000;
 const int MAX_DATA_LEN = 1024 * 1024;
 
-class Coin;
-class MCWallet;
+class MCTxOut;
 class MCBlockIndex;
-class MagnaChainAddress;
-class MCCriticalSection;
 
 struct VMIn
 {
@@ -47,8 +43,8 @@ struct VMOut
 {
     UniValue ret;
     int32_t runningTimes = 0;
-    CONTRACT_DATA txPrevData;
-    CONTRACT_DATA txFinalData;
+    MapContractContext txPrevData;
+    MapContractContext txFinalData;
     std::vector<MCTxOut> recipients;
     std::map<MCContractID, MCAmount> contractCoinsOut;
 };
@@ -60,8 +56,8 @@ private:
     VMIn vmIn;
     VMOut* vmOut;
     bool isPublish;
-    CONTRACT_DATA data;
-    CONTRACT_DATA cache;
+    MapContractContext data;
+    MapContractContext cache;
     std::vector<MagnaChainAddress> contractAddrs;   // call contract stack
     std::queue<lua_State*> luaStates;   // cache for recycle
     std::map<MagnaChainAddress, lua_State*> usingLuaStates;
@@ -74,12 +70,12 @@ public:
     bool PublishContract(const MagnaChainAddress& contractAddr, const std::string& rawCode, bool decompress);
     bool CallContract(const MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args);
 
-    void SetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
-    bool GetContractInfo(const MCContractID& contractId, ContractInfo& contractInfo);
+    void SetContractContext(const MCContractID& contractId, ContractContext& context);
+    bool GetContractContext(const MCContractID& contractId, ContractContext& context);
 
     void CommitData();
     void ClearData(bool onlyCache);
-    const CONTRACT_DATA& GetAllData() const;
+    const MapContractContext& GetAllData() const;
 
     bool ExecuteContract(const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex, VMOut* vmOut);
     int ExecuteBlockContract(const MCBlock* pBlock, const MCBlockIndex* prevBlockIndex, int offset, int count, std::vector<VMOut>* vmOut);
@@ -98,34 +94,12 @@ private:
     MCAmount GetContractCoinOut(const MCContractID& contractId);
     MCAmount IncContractCoinsOut(const MCContractID& contractId, MCAmount delta);
 
-    void SetData(const MCContractID& contractId, const ContractInfo& contractInfo);
-    bool GetData(const MCContractID& contractId, ContractInfo& contractInfo);
+    void SetData(const MCContractID& contractId, const ContractContext& context);
+    bool GetData(const MCContractID& contractId, ContractContext& context);
 
     static int InternalCallContract(lua_State* L);
     static int SendCoins(lua_State* L);
 };
-
-bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
-MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
-
-//temp contract address for publish
-template<typename TxType>
-MCContractID GenerateContractAddressByTx(TxType& tx)
-{
-    MCHashWriter ss(SER_GETHASH, 0);
-    for (const MCTxIn& v : tx.vin) {
-        ss << v.prevout << v.nSequence << v.scriptWitness.ToString();
-    }
-    for (const MCTxOut& v : tx.vout) {
-        ss << v.nValue << v.scriptPubKey;
-    }
-
-    ss << tx.pContractData->codeOrFunc << tx.pContractData->sender;
-    return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
-}
-
-std::string TrimCode(const std::string& rawCode);
-int GetDeltaDataLen(const VMOut* vmOut);
 
 class MultiContractVM
 {
@@ -141,14 +115,14 @@ private:
 public:
     MultiContractVM();
     bool Execute(const MCBlock* pBlock, const MCBlockIndex* prevBlockIndex, std::vector<VMOut>* vmOut);
-    bool CheckCross(const MCBlock* pBlock, CONTRACT_DATA& finalData);
+    bool CheckCross(const MCBlock* pBlock, MapContractContext& finalData);
 
 private:
     void InitializeThread();
     void DoExecute(const MCBlock* pBlock, int offset, int count);
 };
 
-uint256 GetTxHashWithData(const uint256& txHash, const CONTRACT_DATA& contractData);
+int GetDeltaDataLen(const VMOut* vmOut);
 uint256 BlockMerkleLeavesWithPrevData(const MCBlock* pBlock, const std::vector<VMOut>& vmOuts, std::vector<uint256>& leaves, bool* mutated);
 uint256 BlockMerkleLeavesWithFinalData(const MCBlock* pBlock, const std::vector<VMOut>& vmOuts, std::vector<uint256>& leaves, bool* mutated);
 

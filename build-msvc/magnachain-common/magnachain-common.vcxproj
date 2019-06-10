@@ -721,8 +721,6 @@
     <ClCompile Include="..\..\src\script\sigcache.cpp" />
     <ClCompile Include="..\..\src\script\sign.cpp" />
     <ClCompile Include="..\..\src\script\standard.cpp" />
-    <ClCompile Include="..\..\src\smartcontract\contractdb.cpp" />
-    <ClCompile Include="..\..\src\smartcontract\smartcontract.cpp" />
     <ClCompile Include="..\..\src\support\cleanse.cpp" />
     <ClCompile Include="..\..\src\support\lockedpool.cpp" />
     <ClCompile Include="..\..\src\thread\scheduler.cpp" />
@@ -748,6 +746,9 @@
     <ClCompile Include="..\..\src\validation\checkpoints.cpp" />
     <ClCompile Include="..\..\src\validation\validation.cpp" />
     <ClCompile Include="..\..\src\validation\validationinterface.cpp" />
+    <ClCompile Include="..\..\src\vm\contract.cpp" />
+    <ClCompile Include="..\..\src\vm\contractdb.cpp" />
+    <ClCompile Include="..\..\src\vm\contractvm.cpp" />
     <ClCompile Include="..\..\src\wallet\crypter.cpp" />
     <ClCompile Include="..\..\src\wallet\db.cpp" />
     <ClCompile Include="..\..\src\wallet\feebumper.cpp" />
@@ -938,8 +939,6 @@
     <ClInclude Include="..\..\src\secp256k1\include\secp256k1.h" />
     <ClInclude Include="..\..\src\secp256k1\include\secp256k1_ecdh.h" />
     <ClInclude Include="..\..\src\secp256k1\include\secp256k1_recovery.h" />
-    <ClInclude Include="..\..\src\smartcontract\contractdb.h" />
-    <ClInclude Include="..\..\src\smartcontract\smartcontract.h" />
     <ClInclude Include="..\..\src\support\allocators\secure.h" />
     <ClInclude Include="..\..\src\support\allocators\zeroafterfree.h" />
     <ClInclude Include="..\..\src\support\cleanse.h" />
@@ -971,6 +970,9 @@
     <ClInclude Include="..\..\src\validation\checkqueue.h" />
     <ClInclude Include="..\..\src\validation\validation.h" />
     <ClInclude Include="..\..\src\validation\validationinterface.h" />
+    <ClInclude Include="..\..\src\vm\contract.h" />
+    <ClInclude Include="..\..\src\vm\contractdb.h" />
+    <ClInclude Include="..\..\src\vm\contractvm.h" />
     <ClInclude Include="..\..\src\wallet\coincontrol.h" />
     <ClInclude Include="..\..\src\wallet\crypter.h" />
     <ClInclude Include="..\..\src\wallet\db.h" />
