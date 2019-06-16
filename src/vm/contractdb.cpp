@@ -65,12 +65,16 @@ bool ContractDataDB::WriteBlockContractContextToDisk(const MCBlockIndex* pBlockI
         // 待存盘的合约数据
         insertPoint->dirty = true;
         insertPoint->vecBlockHash.push_back(ci.second.blockHash);
-        insertPoint->vecBlockContractData.emplace_back(ci.second.coins, ci.second.data);
+        insertPoint->vecBlockContractData.emplace_back();
+        DBContractData& dbContractData = insertPoint->vecBlockContractData.back();
+        dbContractData.coins = ci.second.coins;
+        dbContractData.data = ci.second.data;
+        dbContractData.txIndex = ci.second.txIndex;
 
         // 数据存盘
         MCHashWriter keyHash(SER_GETHASH, 0);
         keyHash << ci.first << ci.second.blockHash;
-        writeBatch.Write(keyHash.GetHash(), std::make_pair(ci.second.coins, ci.second.data));
+        writeBatch.Write(keyHash.GetHash(), dbContractData);
         if (writeBatch.SizeEstimate() > maxBatchSize) {
             if (!WriteBatch(writeBatch))
                 return false;
@@ -143,16 +147,17 @@ bool ContractDataDB::UpdateBlockContractToDisk(const MCBlockIndex* pBlockIndex)
 
             if (heightIt->blockHeight < removeBlockHeight) {
                 // 保留当前即将移除块以下的最近一笔数据，防止程序退出时区块链保存信息不完整导致加载到错误数据
+
                 if (saveIt != dbContext.items.end()) {
-                    // 移除存盘数据
-                    assert(saveIt->vecBlockHash.size() == 1);
+                    // remove save data in main chain
+                    /*assert(saveIt->vecBlockHash.size() == 1);
                     MCHashWriter keyBlockHash(SER_GETHASH, 0);
                     keyBlockHash << ci.first << *saveIt->vecBlockHash.begin();
                     removeBatch.Erase(keyBlockHash.GetHash());
 
                     MCHashWriter keyHeightHash(SER_GETHASH, 0);
                     keyHeightHash << ci.first << saveIt->blockHeight;
-                    removeBatch.Erase(keyHeightHash.GetHash());
+                    removeBatch.Erase(keyHeightHash.GetHash());*/
                     dbContext.items.erase(saveIt);
                 }
                 saveIt = heightIt;
@@ -230,17 +235,17 @@ int ContractDataDB::GetContractContext(const MCContractID& contractId, ContractC
             // find the contract info from the target block
             for (size_t i = 0; i < it->vecBlockHash.size(); ++i) {
                 if (it->vecBlockHash[i] == targetBlockIndex->GetBlockHash()) {
-                    if (it->vecBlockContractData[i].second.empty()) {
+                    if (it->vecBlockContractData[i].data.empty()) {
                         MCHashWriter keyHash(SER_GETHASH, 0);
                         keyHash << contractId << it->vecBlockHash[i];
                         db.Read(keyHash.GetHash(), it->vecBlockContractData[i]);
                     }
 
-                    context.txIndex = 0;
                     context.code = di->second.code;
                     context.blockHash = it->vecBlockHash[i];
-                    context.coins = it->vecBlockContractData[i].first;
-                    context.data = it->vecBlockContractData[i].second;
+                    context.coins = it->vecBlockContractData[i].coins;
+                    context.data = it->vecBlockContractData[i].data;
+                    context.txIndex = it->vecBlockContractData[i].txIndex;
                     return it->blockHeight;
                 }
             }

@@ -338,28 +338,10 @@ void WriteBranchBlockData(const MCTransactionRef tx)
     sqlBranchBlockData += sql;
 }
 
-void WritePMT(const MCTransactionRef tx)
+void WriteBranchTransactionData(const MCTransactionRef tx)
 {
-    const std::shared_ptr<const MCSpvProof> spvProof = tx->pPMT;
-    if (spvProof == nullptr) {
-        return;
-    }
-
-    const char sqlBase[] = "INSERT INTO `pmt`(`txhash`, `blockhash`, `pmt`) VALUES";
-    if (sqlPMT.empty()) {
-        sqlPMT = sqlBase;
-    }
-
-    MCDataStream pmtData(SER_DISK, CLIENT_VERSION);
-    spvProof->pmt.Serialize(pmtData);
-
-    const std::string& txHash = tx->GetHash().ToString();
-    const std::string& blockHash = spvProof->blockhash.ToString();
-    const std::string& pmt = HexStr(pmtData.begin(), pmtData.end());
-
-    std::string sql = strprintf("('%s', '%s', '%s'),", 
-        txHash, blockHash, pmt);
-    sqlPMT += sql;
+    const std::string& sendToBranchId = tx->pBranchTransactionData->branchId;
+    const std::string& sendToTxHexData = HexStr(tx->pBranchTransactionData->txData);
 }
 
 void WriteContractInfo(const std::string& txHash, const std::string& contractId, const ContractContext& context)
@@ -399,9 +381,10 @@ void WriteReportData(const MCTransactionRef tx)
     }*/
 
     const std::string& txHash = tx->GetHash().ToString();
-    const std::string& reportedbranchId = reportData->reportedBranchId.ToString();
-    const std::string& reportedBlockHash = reportData->reportedBlockHash.ToString();
-    const std::string& reportedTxHash = reportData->reportedTxHash.ToString();
+    const std::string& reportedbranchId = reportData->branchId.ToString();
+    const std::string& reportedBlockHash = reportData->blockHash.ToString();
+    const std::string& reportedTxHash = reportData->txHash.ToString();
+
     const std::string& contractReportedSpvProof = HexStr(contractReportedSpvProofData.begin(), contractReportedSpvProofData.end());
     //const std::string& proveTxHash = reportData->contractData->proveTxHash.ToString();
     const std::string& contractProveSpvProof = HexStr(contractProveSpvProofData.begin(), contractProveSpvProofData.end());
@@ -432,25 +415,21 @@ void WriteTransaction(const MCBlock& block)
         const std::string& txHash = tx->GetHash().ToString();
         const std::string& branchVSeeds = tx->branchVSeeds;
         const std::string& branchSeedSpec6 = tx->branchSeedSpec6;
-        const std::string& sendToBranchId = tx->sendToBranchid;
-        const std::string& sendToTxHexData = tx->sendToTxHexData;
-        const std::string& fromBranchId = tx->fromBranchId;
-        const std::string& fromTx = HexStr(tx->fromTx.begin(), tx->fromTx.end());
         const std::string reportTxid(tx->reporttxid.IsNull() ? std::string() : tx->reporttxid.ToString());
         const std::string coinPreoutHash(tx->coinpreouthash.IsNull() ? std::string() : tx->coinpreouthash.ToString());
         const std::string proveTxid(tx->provetxid.IsNull() ? std::string() : tx->provetxid.ToString());
         const uint32_t txSize = tx->GetTotalSize();
 
         std::string sql = strprintf("('%s', '%s', %u, %d, %u, '%s', '%s', '%s', '%s', '%s', '%s', %lld, '%s', '%s', '%s', %d),",
-            txHash, blockHash, i, tx->nVersion, tx->nLockTime, branchVSeeds, branchSeedSpec6, sendToBranchId, sendToTxHexData,
-            fromBranchId, fromTx, tx->inAmount, reportTxid, coinPreoutHash, proveTxid, txSize);
+            txHash, blockHash, i, tx->nVersion, tx->nLockTime, branchVSeeds, branchSeedSpec6, 
+            reportTxid, coinPreoutHash, proveTxid, txSize);
         sqlTransaction += sql;
 
         WriteTxIn(tx);
         WriteTxOut(tx);
         WriteContract(tx);
         WriteBranchBlockData(tx);
-        WritePMT(tx);
+        WriteBranchTransactionData(tx);
         WriteReportData(tx);
     }
 }

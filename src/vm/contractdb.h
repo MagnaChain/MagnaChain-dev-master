@@ -7,6 +7,22 @@
 #include "transaction/txdb.h"
 #include "vm/contract.h"
 
+class DBContractData
+{
+public:
+    MCAmount coins;
+    std::string data;
+    int txIndex;
+
+    ADD_SERIALIZE_METHODS;
+    template <typename Stream, typename Operation>
+    inline void SerializationOp(Stream& s, Operation ser_action) {
+        READWRITE(coins);
+        READWRITE(data);
+        READWRITE(txIndex);
+    }
+};
+
 // 合约某高度存盘数据
 class DBContractContextByHeight
 {
@@ -14,7 +30,7 @@ public:
     bool dirty = false;
     int32_t blockHeight;
     std::vector<uint256> vecBlockHash;
-    std::vector<std::pair<MCAmount, std::string>> vecBlockContractData;
+    std::vector<DBContractData> vecBlockContractData;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>

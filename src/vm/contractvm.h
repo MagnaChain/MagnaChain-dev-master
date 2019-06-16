@@ -26,14 +26,18 @@ class MCBlockIndex;
 struct VMIn
 {
     int txIndex;
+    int blockHeight;
     MCAmount payment;
+    int64_t lastBlockTime;
     MagnaChainAddress vmCaller;
     const MCBlockIndex* prevBlockIndex;
 
     void Copy(const VMIn& vmIn)
     {
         this->txIndex = vmIn.txIndex;
+        this->blockHeight = vmIn.blockHeight;
         this->payment = vmIn.payment;
+        this->lastBlockTime = vmIn.lastBlockTime;
         this->vmCaller = vmIn.vmCaller;
         this->prevBlockIndex = vmIn.prevBlockIndex;
     }
@@ -70,7 +74,7 @@ public:
     bool PublishContract(const MagnaChainAddress& contractAddr, const std::string& rawCode, bool decompress);
     bool CallContract(const MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args);
 
-    void SetContractContext(const MCContractID& contractId, ContractContext& context);
+    void SetContractContext(const MCContractID& contractId, ContractContext& context, bool init = false);
     bool GetContractContext(const MCContractID& contractId, ContractContext& context);
 
     void CommitData();
@@ -78,12 +82,11 @@ public:
     const MapContractContext& GetAllData() const;
 
     bool ExecuteContract(const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex, VMOut* vmOut);
+    bool ExecuteContract(const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex, int64_t blockTime, int blockHeight, VMOut* vmOut);
     int ExecuteBlockContract(const MCBlock* pBlock, const MCBlockIndex* prevBlockIndex, int offset, int count, std::vector<VMOut>* vmOut);
 
 private:
-    bool IsPublish() { return isPublish; }
     const MCContractID GetCurrentContractID();
-    void AddRecipient(MCAmount amount, const MCScript& scriptPubKey);
     bool CallContract(const MagnaChainAddress& contractAddr, const std::string& strFuncName, const UniValue& args, long& maxCallNum);
 
     lua_State* GetLuaState(const MagnaChainAddress& contractAddr, bool* exist);

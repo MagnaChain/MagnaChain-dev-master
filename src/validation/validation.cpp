@@ -1372,7 +1372,7 @@ void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo& tx
         return;
 
     // mark inputs spent
-    if (tx.IsBranchChainTransStep2() && (tx.fromBranchId == MCBaseChainParams::MAIN || ismempoolchecking)) {
+    if (tx.IsBranchChainTransStep2() && (tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN || ismempoolchecking)) {
         // no valid inputs
     } else if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
@@ -1390,6 +1390,12 @@ void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, int nHeight,
 {
     MCTxUndo txundo;
     UpdateCoins(tx, inputs, txundo, nHeight, false, ismempoolchecking);
+}
+
+MCBlockIndex* GetBlockIndex(const uint256& hash)
+{
+    auto iter = mapBlockIndex.find(hash);
+    return iter != mapBlockIndex.end() ? iter->second : nullptr;
 }
 
 bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey)
@@ -1426,9 +1432,9 @@ bool CheckBlockGroupSize(const MCBlock* pBlock)
 
 bool CScriptCheck::operator()()
 {
-    if (ptxTo->IsBranchChainTransStep2() && ptxTo->fromBranchId != MCBaseChainParams::MAIN) {
+    if (ptxTo->IsBranchChainTransStep2() && ptxTo->pBranchTransactionData->branchId != MCBaseChainParams::MAIN) {
         uint256 branchid;
-        branchid.SetHex(ptxTo->fromBranchId);
+        branchid.SetHex(ptxTo->pBranchTransactionData->branchId);
 
         return CheckTranBranchScript(branchid, scriptPubKey);
     }
@@ -1728,7 +1734,7 @@ static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex
         }
 
         // restore inputs
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN) {
+        if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN) {
             //OP : send to branch step2 no valid input
         } else if (isBranch2ndBlockTx) {
         } else if (i > 0) { // not coinbases
@@ -2010,7 +2016,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
 
         nInputs += tx.vin.size();
 
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN) {
+        if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN) {
             //OP: send to branch no valid input,some check
         } else if (isBranch2ndBlockTx) {
             std::vector<MCTransactionRef>::const_iterator itFound =
@@ -2059,8 +2065,8 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
                 REJECT_INVALID, "bad-blk-sigops");
 
         txdata.emplace_back(tx);
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN) {
-            nFees += tx.inAmount - tx.GetValueOut();
+        if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN) {
+            nFees += tx.pBranchTransactionData->inAmount - tx.GetValueOut();
         } else if (isBranch2ndBlockTx) { //no nFees
         } else if (!tx.IsCoinBase()) {
             nFees += view.GetValueIn(tx) - tx.GetValueOut();
@@ -4285,7 +4291,7 @@ static bool RollforwardBlock(const MCBlockIndex* pindex, MCCoinsViewCache& input
     }
 
     for (const MCTransactionRef& tx : block.vtx) {
-        if (!(tx->IsCoinBase() || (tx->IsBranchChainTransStep2() && tx->fromBranchId == MCBaseChainParams::MAIN))) {
+        if (!(tx->IsCoinBase() || (tx->IsBranchChainTransStep2() && tx->pBranchTransactionData->branchId == MCBaseChainParams::MAIN))) {
             for (const MCTxIn& txin : tx->vin) {
                 inputs.SpendCoin(txin.prevout);
             }
@@ -5090,7 +5096,7 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
             // Bring the best block into scope
             view.GetBestBlock();
 
-            nValueIn = tx.inAmount;
+            nValueIn = tx.pBranchTransactionData->inAmount;
 
             // we have all inputs cached now, so switch back to dummy, so we don't need to keep lock on mempool
             view.SetBackend(dummy);
@@ -5177,112 +5183,114 @@ std::string GetBranchTxProof(const MCBlock& block, const std::set<uint256>& setT
 //    return true;
 //}
 
-bool GetTxVinBlockData(const MCBlock& block, const MCTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData)
+int MakeProveDataItem(const MCBlockIndex* blockIndex, const uint256& txid, std::vector<ProveDataItem>& vProveData)
 {
-    if (ptx->IsCoinBase())
-        return false;
-
-    if (mapBlockIndex.count(block.GetHash()) == 0)
-        return false;
-
-    const MCBlockIndex* pindex = mapBlockIndex[block.GetHash()];
-    MCBlockUndo blockUndo;
-    MCDiskBlockPos pos = pindex->GetUndoPos();
-    if (pos.IsNull()) {
-        return false;
-    }
-    if (!UndoReadFromDisk(blockUndo, pos, pindex->pprev->GetBlockHash())) {
-        return false;
+    MCBlock block;
+    if (!ReadBlockFromDisk(block, blockIndex, Params().GetConsensus())) {
+        return -1;
     }
 
-    if (blockUndo.vtxundo.size() + 1 != block.vtx.size()) {
-        return false;
-    }
-
-    MCTxUndo txundo;
-    for (size_t i = 1; i < block.vtx.size(); i++) {
-        if (block.vtx[i]->GetHash() == ptx->GetHash()) {
-            txundo = blockUndo.vtxundo[i - 1];
+    int txIndex = -1;
+    for (int i = 0; i < block.vtx.size(); ++i) {
+        if (block.vtx[i]->GetHash() == txid) {
+            txIndex = i;
             break;
         }
     }
 
-    const MCChainParams& params = Params();
-    const Consensus::Params& consensusParams = params.GetConsensus();
-    for (size_t i = 0; i < ptx->vin.size(); i++) {
+    if (txIndex <= 0) {
+        return -1;
+    }
+
+    MCTransactionRef tx = block.vtx[txIndex];
+
+    vProveData.emplace_back();
+    ProveDataItem& pData = vProveData.back();
+    pData.blockHash = block.GetHash();
+    MakePartialMerkleTree(block, tx->GetHash(), pData.pmt);
+    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
+    return txIndex;
+}
+
+bool GetTxVinBlockData(const MCBlockIndex* blockIndex, const MCTransactionRef tx, int txIndex, std::vector<ProveDataItem>& vProveData)
+{
+    MCDiskBlockPos pos = blockIndex->GetUndoPos();
+    if (pos.IsNull()) {
+        return false;
+    }
+
+    MCBlockUndo blockUndo;
+    if (!UndoReadFromDisk(blockUndo, pos, blockIndex->pprev->GetBlockHash())) {
+        return false;
+    }
+
+    if (txIndex - 1 >= blockUndo.vtxundo.size()) {
+        return false;
+    }
+
+    MCTxUndo& txundo = blockUndo.vtxundo[txIndex - 1];
+    for (size_t i = 0; i < tx->vin.size(); i++) {
         const Coin& coin = txundo.vprevout[i];
         const MCBlockIndex* pinblockindex = chainActive[coin.nHeight];
-        MCBlock inblock;
-        if (ReadBlockFromDisk(inblock, pinblockindex, consensusParams)) {
-            MCTransactionRef tmpTx;
-            for (size_t j = 0; j < inblock.vtx.size(); j++) {
-                if (inblock.vtx[j]->GetHash() == ptx->vin[i].prevout.hash) {
-                    tmpTx = inblock.vtx[j];
-                    break;
-                }
-            }
-
-            std::set<uint256> setTxids;
-            setTxids.insert(tmpTx->GetHash());
-
-            std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(inblock, setTxids));
-
-            ProveDataItem pData;
-            MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tmpTx};
-            pData.pCSP = *pSpvPf;
-            pData.blockHash = block.GetHash();
-
-            vectProveData.emplace_back(pData);
-
-        } else {
+        if (MakeProveDataItem(pinblockindex, tx->vin[i].prevout.hash, vProveData) < 0) {
             return false;
         }
     }
+
     return true;
 }
 
-bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData)
+bool GetProveInfo(const MCTransactionRef reportTx, MCMutableTransaction& mtx)
 {
-    MCTransactionRef tx = block.vtx[txIndex];
+    MCBlockIndex* blockIndex = GetBlockIndex(reportTx->pReportData->blockHash);
+    if (blockIndex == nullptr) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not get block index");
+    }
+ 
+    int txIndex = MakeProveDataItem(blockIndex, reportTx->pReportData->blockHash, mtx.pProveData->vectProveData);
+    if (txIndex < 0) {
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Make reported tx prove data item fail");
+    }
 
-    std::set<uint256> setTxids;
-    setTxids.insert(tx->GetHash());
-
-    if (tx == nullptr)
-        return error("%s did not find tx in block.\n", __func__);
-
-    std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(block, setTxids));
-
-    ProveDataItem pData;
-    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
-    pData.pCSP = *pSpvPf;
-    pData.blockHash = block.GetHash();
-    pProveData->vectProveData.emplace_back(pData);
-
-    if (tx->IsCoinBase())
-        return false;
-
-    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
-    return success;
+    MCBlock block;
+    ReadBlockFromDisk(block, blockIndex, Params().GetConsensus());
+    return GetTxVinBlockData(blockIndex, block.vtx[txIndex], txIndex, mtx.pProveData->vectProveData);
 }
 
 //构建coinbase交易的证明
 //coinbase需要证明block的手续费是正确的，目前设计支链是不产生块奖励，只有收取手续费
 //为了计算手续费，得知道block所有交易的输入输出
-bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block)
+bool GetProveOfCoinbase(const MCTransactionRef& reportTx, MCMutableTransaction& mtx)
 {
+    if (reportTx->pReportData->reportType != ReportType::REPORT_COINBASE || reportTx->pReportData->reportType != ReportType::REPORT_MERKLETREE)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Report type not match");
+
+    MCBlockIndex* blockIndex = GetBlockIndex(reportTx->pReportData->blockHash);
+    if (blockIndex == nullptr)
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can not get block index");
+
+    MCBlock block;
+    if (!ReadBlockFromDisk(block, blockIndex, Params().GetConsensus()))
+        throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read block from disk");
+
     //write all block.vtx data to pProveData->vtxData
-    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pProveData->vtxData, 0, block.vtx};
+    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, mtx.pProveData->vtxData, 0, block.vtx};
 
     //create vtx transaction's prove data
     //exclude coinbase, stake transaction
     for (size_t i = 2; i < block.vtx.size(); i++) {
         const MCTransactionRef& ptx = block.vtx[i];
-        pProveData->vecBlockTxProve.emplace_back();
-        std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
-        if (!GetTxVinBlockData(block, ptx, vectProveData)) {
-            return false;
+        mtx.pProveData->vecBlockTxProve.emplace_back();
+        std::vector<ProveDataItem>& vectProveData = mtx.pProveData->vecBlockTxProve.back();
+        if (!GetTxVinBlockData(blockIndex, ptx, i, vectProveData)) {
+            throw JSONRPCError(RPC_INTERNAL_ERROR, "Get tx vin block data fail");
         }
     }
+
+    mtx.pProveData->blockHash = reportTx->pReportData->blockHash;
+    if (reportTx->pReportData->reportType == ReportType::REPORT_COINBASE) {
+        mtx.pProveData->txHash = reportTx->pReportData->txHash;
+    }
+
     return true;
 }

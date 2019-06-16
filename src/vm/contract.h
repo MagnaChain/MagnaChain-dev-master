@@ -40,7 +40,14 @@ class SimpleContractContext
 public:
     uint256 blockHash;
     int txIndex;
-    uint256 dataHash;
+    uint256 prevDataHash;
+    std::vector<uint256> prevDataHashes;
+    MCPartialMerkleTree prevDataPmt;
+    uint256 finalDataHash;
+
+    SimpleContractContext() : txIndex(-1)
+    {
+    }
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -48,7 +55,10 @@ public:
     {
         READWRITE(blockHash);
         READWRITE(txIndex);
-        READWRITE(dataHash);
+        READWRITE(prevDataHash);
+        READWRITE(prevDataHashes);
+        READWRITE(prevDataPmt);
+        READWRITE(finalDataHash);
     }
 };
 typedef std::map<MCContractID, SimpleContractContext> MapSimpleContractContext;
@@ -84,8 +94,10 @@ MCContractID GenerateContractAddressByTx(T& tx)
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
+uint256 GetContextHash(const ContractContext& context);
+uint256 GetContractContextHash(const MCContractID& contractId, const uint256& blockHash, int txIndex, const uint256& contextHash);
 bool GetSenderAddr(MCWallet* pWallet, const std::string& strSenderAddr, MagnaChainAddress& senderAddr);
 MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress& senderAddr, const std::string& code);
-uint256 GetTxHashWithData(const uint256& txHash, const MapContractContext& contractData);
+uint256 GetHashWithMapContractContext(const MapContractContext& contractData);
 
 #endif

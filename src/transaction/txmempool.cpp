@@ -994,7 +994,7 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempoo
 {
     MCMutableTransaction mtx(tx);
  
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN) {
+    if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId != MCBaseChainParams::MAIN) {
         //recover tx: remove UTXO
         //vin like func MakeBranchTransStep2Tx
         mtx.vin.clear();
@@ -1010,7 +1010,7 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempoo
             }
         }
         if(!fFromMempool){
-            mtx.pPMT.reset(new MCSpvProof());// transaction may be mined in diff blocks, so remove spv info
+            mtx.pBranchTransactionData->pmt.Clear();// transaction may be mined in diff blocks, so remove spv info
         }
     }
 
@@ -1023,7 +1023,7 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempoo
 uint256 MCTxMemPool::GetOriTxHash(const MCTransaction& tx, bool fFromMempool)
 {
     const uint256& txHash = tx.GetHash();
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN && !fFromMempool) {
+    if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId != MCBaseChainParams::MAIN && !fFromMempool) {
         auto it = mapFinalTx2OriTx2.find(txHash);
         if (it == mapFinalTx2OriTx2.end()) {
             uint256 oriTxHash = RevertTransaction(tx, fFromMempool).GetHash();

@@ -58,42 +58,24 @@ std::string MCTxOut::ToString() const
 }
 
 MCMutableTransaction::MCMutableTransaction()
-    : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0), inAmount(0)
+    : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0)
 {
 }
 
 MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
-    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), inAmount(tx.inAmount)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime)
 {
-	if (nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION)
+    if (nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
-	else if (nVersion == MCTransaction::CREATE_BRANCH_VERSION)
-	{
+    }
+	else if (nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
 		branchVSeeds = tx.branchVSeeds;
 		branchSeedSpec6 = tx.branchSeedSpec6;
 	}
-	else if (nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1)
-	{
-		sendToBranchid = tx.sendToBranchid;
-		sendToTxHexData = tx.sendToTxHexData;
-        if (sendToBranchid == "main"){
-            pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
-        }
+	else if (nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 || nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 ||
+        nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || nVersion == MCTransaction::REDEEM_MORTGAGE) {
+        pBranchTransactionData.reset(tx.pBranchTransactionData == nullptr ? nullptr : new BranchTransactionData(*tx.pBranchTransactionData));
 	}
-	else if (nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
-	{
-		fromBranchId = tx.fromBranchId;
-		fromTx = tx.fromTx;
-		inAmount = tx.inAmount;
-        if (tx.fromBranchId != "main") {
-            pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
-        }
-	}
-    else if (nVersion == MCTransaction::MINE_BRANCH_MORTGAGE)
-    {
-        sendToBranchid = tx.sendToBranchid;
-        sendToTxHexData = tx.sendToTxHexData;
-    }
     else if (nVersion == MCTransaction::SYNC_BRANCH_INFO)
     {
         pBranchBlockData.reset((tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)));
@@ -101,17 +83,10 @@ MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
     else if (nVersion == MCTransaction::REPORT_CHEAT)
     {
         pReportData.reset(tx.pReportData == nullptr? nullptr: new ReportData(*tx.pReportData));
-        pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
     }
     else if (nVersion == MCTransaction::PROVE)
     {
         pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
-    }
-    else if (nVersion == MCTransaction::REDEEM_MORTGAGE)
-    {
-        fromBranchId = tx.fromBranchId;
-        fromTx = tx.fromTx;
-        pPMT.reset(tx.pPMT == nullptr ? nullptr : new MCSpvProof(*tx.pPMT));
     }
     else if (nVersion == MCTransaction::REPORT_REWARD)
     {

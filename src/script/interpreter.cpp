@@ -1066,21 +1066,10 @@ void TransactionExtraFields(S &s, const MCTransaction& txTo){
         ::Serialize(s, txTo.branchVSeeds);
         ::Serialize(s, txTo.branchSeedSpec6);
     }
-    else if (txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1)
+    else if (txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 || txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 ||
+        txTo.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || txTo.nVersion == MCTransaction::REDEEM_MORTGAGE)
     {
-        ::Serialize(s, txTo.sendToBranchid);
-        ::Serialize(s, txTo.sendToTxHexData);
-    }
-    else if (txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)
-    {
-        ::Serialize(s, txTo.fromBranchId);
-        ::Serialize(s, txTo.fromTx);
-        ::Serialize(s, txTo.inAmount);
-    }
-    else if (txTo.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE)
-    {
-        ::Serialize(s, txTo.sendToBranchid);
-        ::Serialize(s, txTo.sendToTxHexData);
+        ::Serialize(s, txTo.pBranchTransactionData);
     }
     else if (txTo.nVersion == MCTransaction::SYNC_BRANCH_INFO)
     {
@@ -1089,17 +1078,10 @@ void TransactionExtraFields(S &s, const MCTransaction& txTo){
     else if (txTo.nVersion == MCTransaction::REPORT_CHEAT)
     {
         ::Serialize(s, txTo.pReportData);
-        ::Serialize(s, txTo.pPMT);
     }
     else if (txTo.nVersion == MCTransaction::PROVE)
     {
         ::Serialize(s, txTo.pProveData);
-    }
-    else if (txTo.nVersion == MCTransaction::REDEEM_MORTGAGE)
-    {
-        ::Serialize(s, txTo.fromBranchId);
-        ::Serialize(s, txTo.fromTx);
-        ::Serialize(s, txTo.pPMT);
     }
     else if (txTo.nVersion == MCTransaction::REPORT_REWARD)
     {

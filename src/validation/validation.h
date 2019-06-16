@@ -227,6 +227,8 @@ static const uint32_t DEFAULT_CHECKLEVEL = 3;
 // Setting the target to > than 550MB will make it likely we can respect the target.
 static const uint64_t MIN_DISK_SPACE_FOR_BLOCK_FILES = 550 * 1024 * 1024;
 
+MCBlockIndex* GetBlockIndex(const uint256& hash);
+
 bool CheckTranBranchScript(uint256 branchid, const MCScript& scriptPubKey);
 /** 
  * Process an incoming block. This only returns after the best known valid
@@ -527,6 +529,6 @@ bool ReadTxDataByTxIndex(const uint256& hash, MCTransactionRef& txOut, uint256& 
 std::string GetBranchTxProof(const MCBlock& block,  const std::set<uint256>& setTxids);
 //bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof);
 
-bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData);
-bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block);
+bool GetProveInfo(const MCTransactionRef reportTx, MCMutableTransaction& mtx);
+bool GetProveOfCoinbase(const MCTransactionRef& reportTx, MCMutableTransaction& mtx);
 #endif // MAGNACHAIN_VALIDATION_H

@@ -391,12 +391,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         //add report tx---------
         MCMutableTransaction mtx;
         mtx.nVersion = MCTransaction::REPORT_CHEAT;
-        mtx.pPMT = std::make_shared<MCSpvProof>();
         mtx.pReportData = std::make_shared<ReportData>();
-        mtx.pReportData->reporttype = ReportType::REPORT_TX;
-        mtx.pReportData->reportedBranchId = branchid;
-        mtx.pReportData->reportedBlockHash = expertBranchChain[expertBranchChain.size() - 3];
-        mtx.pReportData->reportedTxHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+        mtx.pReportData->reportType = ReportType::REPORT_TX;
+        mtx.pReportData->branchId = branchid;
+        mtx.pReportData->blockHash = expertBranchChain[expertBranchChain.size() - 3];
+        mtx.pReportData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
 
         pblockNew->vtx.push_back(MakeTransactionRef(mtx));
         //------------
@@ -415,12 +414,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         //add report tx---------
         MCMutableTransaction mtx;
         mtx.nVersion = MCTransaction::REPORT_CHEAT;
-        mtx.pPMT = std::make_shared<MCSpvProof>();
         mtx.pReportData = std::make_shared<ReportData>();
-        mtx.pReportData->reporttype = ReportType::REPORT_TX;
-        mtx.pReportData->reportedBranchId = branchid;
-        mtx.pReportData->reportedBlockHash = expertBranchChain[expertBranchChain.size() - 4];
-        mtx.pReportData->reportedTxHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+        mtx.pReportData->reportType = ReportType::REPORT_TX;
+        mtx.pReportData->branchId = branchid;
+        mtx.pReportData->blockHash = expertBranchChain[expertBranchChain.size() - 4];
+        mtx.pReportData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
 
         pblockNew->vtx.push_back(MakeTransactionRef(mtx));
         //------------
@@ -457,12 +455,11 @@ BOOST_AUTO_TEST_CASE(branchdb_flushreportprove)
         //add report tx---------
         MCMutableTransaction mtx;
         mtx.nVersion = MCTransaction::REPORT_CHEAT;
-        mtx.pPMT = std::make_shared<MCSpvProof>();
         mtx.pReportData = std::make_shared<ReportData>();
-        mtx.pReportData->reporttype = ReportType::REPORT_TX;
-        mtx.pReportData->reportedBranchId = branchid;
-        mtx.pReportData->reportedBlockHash = expertBranchChain[expertBranchChain.size() - 2];
-        mtx.pReportData->reportedTxHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
+        mtx.pReportData->reportType = ReportType::REPORT_TX;
+        mtx.pReportData->branchId = branchid;
+        mtx.pReportData->blockHash = expertBranchChain[expertBranchChain.size() - 2];
+        mtx.pReportData->txHash = uint256S("tx00000000000000000000000000000000000000000000000000000000000001");
 
         pblockNew->vtx.push_back(MakeTransactionRef(mtx));
         //------------

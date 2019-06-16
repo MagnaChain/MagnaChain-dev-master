@@ -5,6 +5,20 @@
 #include "wallet/wallet.h"
 #include "validation/validation.h"
 
+uint256 GetContextHash(const ContractContext& context)
+{
+    MCHashWriter ss(SER_GETHASH, 0);
+    ss << context.coins << context.code << context.data;
+    return ss.GetHash();
+}
+
+uint256 GetContractContextHash(const MCContractID& contractId, const uint256& blockHash, int txIndex, const uint256& contextHash)
+{
+    MCHashWriter ss(SER_GETHASH, 0);
+    ss << contractId << blockHash << txIndex << contextHash;
+    return ss.GetHash();
+}
+
 bool GetPubKey(const MCWallet* pWallet, const MagnaChainAddress& addr, MCPubKey& pubKey)
 {
     MCKeyID key;
@@ -91,9 +105,11 @@ MCContractID GenerateContractAddress(MCWallet* pWallet, const MagnaChainAddress&
     return MCContractID(Hash160(ParseHex(ss.GetHash().ToString())));
 }
 
-uint256 GetTxHashWithData(const uint256& txHash, const MapContractContext& contractData)
+uint256 GetHashWithMapContractContext(const MapContractContext& contractData)
 {
     MCHashWriter ss(SER_GETHASH, 0);
-    ss << txHash << contractData;
+    for (const auto& item : contractData) {
+        ss << GetContractContextHash(item.first, item.second.blockHash, item.second.txIndex, GetContextHash(item.second));
+    }
     return ss.GetHash();
 }

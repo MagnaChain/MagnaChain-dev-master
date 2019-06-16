@@ -394,7 +394,8 @@ bool PublishContract(MCWallet* pWallet, MCAmount payment, std::string& strVMCall
     MCContractID contractId = GenerateContractAddress(pWallet, vmCaller, trimRawCode);
     MagnaChainAddress contractAddr(contractId);
 
-    VMIn vmIn{ -1, payment, vmCaller, chainActive.Tip() };
+    MCBlockIndex* prevBlockIndex = chainActive.Tip();
+    VMIn vmIn{ -1, prevBlockIndex->nHeight + 1, payment, prevBlockIndex->GetBlockTime(), vmCaller, prevBlockIndex };
     bool success = mempool.PublishContract(&vmIn, vmOut, contractAddr, trimRawCode, false);
     if (success) {
         MCWalletTx wtx;
@@ -895,8 +896,8 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	
 	std::vector<unsigned char> data(ParseHex(request.params[2].get_str()));
 	MCPubKey senderPubKey(data.begin(), data.end());
-	MagnaChainAddress senderAddr(senderPubKey.GetID());
-	if (!senderAddr.IsValid())
+	MagnaChainAddress vmCaller(senderPubKey.GetID());
+	if (!vmCaller.IsValid())
 		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain sender address");
 
 	MCAmount payment = AmountFromValue(request.params[3]);
@@ -913,11 +914,12 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 	else
         changeAddr = fundAddr;
 
-    MCContractID contractId = GenerateContractAddress(nullptr, senderAddr, trimRawCode);
+    MCContractID contractId = GenerateContractAddress(nullptr, vmCaller, trimRawCode);
 	MagnaChainAddress contractAddr(contractId);
 
-    VMIn vmIn{ -1, payment, senderAddr, chainActive.Tip() };
     VMOut vmOut;
+    MCBlockIndex* prevBlockIndex = chainActive.Tip();
+    VMIn vmIn{ -1, prevBlockIndex->nHeight + 1, payment, prevBlockIndex->GetBlockTime(), vmCaller, prevBlockIndex };
     if (!mempool.PublishContract(&vmIn, &vmOut, contractAddr, trimRawCode, false))
         throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
 
@@ -1016,13 +1018,13 @@ UniValue callcontract(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid contract address");
 
     std::string strSenderAddr = request.params[3].get_str();
-    MagnaChainAddress senderAddr;
-    if (!GetSenderAddr(pwallet, strSenderAddr, senderAddr))
+    MagnaChainAddress vmCaller;
+    if (!GetSenderAddr(pwallet, strSenderAddr, vmCaller))
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address, which is not in this wallet.");
 
     MCKeyID senderKey;
     MCPubKey senderPubKey;
-    senderAddr.GetKeyID(senderKey);
+    vmCaller.GetKeyID(senderKey);
     if (!pwallet->GetPubKey(senderKey, senderPubKey))
         throw JSONRPCError(RPC_TYPE_ERROR, "Get sender public key fail");
 
@@ -1040,7 +1042,8 @@ UniValue callcontract(const JSONRPCRequest& request)
     }
 
     VMOut vmOut;
-    VMIn vmIn{ -1, payment, senderAddr, chainActive.Tip() };
+    MCBlockIndex* prevBlockIndex = chainActive.Tip();
+    VMIn vmIn{ -1, prevBlockIndex->nHeight + 1, payment, prevBlockIndex->GetBlockTime(), vmCaller, prevBlockIndex };
     if (!mempool.CallContract(&vmIn, &vmOut, contractAddr, strFuncName, args)) {
         throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());
     }
@@ -1119,8 +1122,8 @@ UniValue precallcontract(const JSONRPCRequest& request)
     std::vector<unsigned char> data(ParseHex(request.params[3].get_str()));
     MCPubKey senderPubKey(data.begin(), data.end());
     MCKeyID senderKey = senderPubKey.GetID();
-    MagnaChainAddress senderAddr(senderKey);
-    if (!senderAddr.IsValid()) {
+    MagnaChainAddress vmCaller(senderKey);
+    if (!vmCaller.IsValid()) {
         throw JSONRPCError(RPC_TYPE_ERROR, "Invalid sender address");
     }
 
@@ -1144,9 +1147,10 @@ UniValue precallcontract(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Too many args in lua function, max num is 8");
     }
 
-    VMIn vmIn{ -1, payment, senderAddr, chainActive.Tip() };
     VMOut vmOut;
     ContractVM vm;
+    MCBlockIndex* prevBlockIndex = chainActive.Tip();
+    VMIn vmIn{ -1, prevBlockIndex->nHeight + 1, payment, prevBlockIndex->GetBlockTime(), vmCaller, prevBlockIndex };
     vm.Initialize(&vmIn, &vmOut);
     if (!vm.CallContract(contractAddr, strFuncName, args)) {
         throw JSONRPCError(RPC_CONTRACT_ERROR, vmOut.ret[0].get_str());

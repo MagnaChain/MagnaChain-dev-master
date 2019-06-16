@@ -36,5 +36,5 @@ MCMerkleBlock::MCMerkleBlock(const MCBlock& block, MCBloomFilter* filter, const 
         vHashes.push_back(hash);
     }
 
-    txn = MCPartialMerkleTree(vHashes, vMatch);
+    txn.SetData(vHashes, vMatch);
 }

@@ -561,8 +561,8 @@ bool BranchDataProcesser::AddReportTxData(MCTransactionRef &tx, std::set<uint256
 {
     uint256 reportFlagHash = GetReportTxHashKey(*tx);
     //-----------
-    const uint256& rpBranchId = tx->pReportData->reportedBranchId;
-    const uint256& rpBlockId = tx->pReportData->reportedBlockHash;
+    const uint256& rpBranchId = tx->pReportData->branchId;
+    const uint256& rpBlockId = tx->pReportData->blockHash;
     if (mapBranchsData.count(rpBranchId)) {// ok, we must assert(mapBranchsData.count(rpBranchId));
         BranchData& branchdata = mapBranchsData[rpBranchId];
         if (branchdata.mapHeads.count(rpBlockId)) {
@@ -612,8 +612,8 @@ bool BranchDataProcesser::DelReportTxData(MCTransactionRef &tx, std::set<uint256
 {
     uint256 reportFlagHash = GetReportTxHashKey(*tx);
     //-----------
-    const uint256& rpBranchId = tx->pReportData->reportedBranchId;
-    const uint256& rpBlockId = tx->pReportData->reportedBlockHash;
+    const uint256& rpBranchId = tx->pReportData->branchId;
+    const uint256& rpBlockId = tx->pReportData->blockHash;
     if (mapBranchsData.count(rpBranchId)) {// ok, we must assert(mapBranchsData.count(rpBranchId));
         BranchData& branchdata = mapBranchsData[rpBranchId];
         if (branchdata.mapHeads.count(rpBlockId)) {
@@ -998,7 +998,7 @@ void BranchCache::DelBlockInfoTxData(MCTransactionRef &transaction, const uint25
 }
 bool BranchCache::AddReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch)
 {
-    const uint256& branchId = tx->pReportData->reportedBranchId;
+    const uint256& branchId = tx->pReportData->branchId;
     FetchDataFromSource(branchId);
 
     bool ret = BranchDataProcesser::AddReportTxData(tx, brokenChainBranch);
@@ -1014,7 +1014,7 @@ bool BranchCache::AddProveTxData(MCTransactionRef &tx, std::set<uint256> &broken
 }
 bool BranchCache::DelReportTxData(MCTransactionRef &tx, std::set<uint256> &brokenChainBranch, std::set<uint256> &modifyBranch)
 {
-    const uint256& branchId = tx->pReportData->reportedBranchId;
+    const uint256& branchId = tx->pReportData->branchId;
     FetchDataFromSource(branchId);
 
     bool ret = BranchDataProcesser::DelReportTxData(tx, brokenChainBranch, modifyBranch);

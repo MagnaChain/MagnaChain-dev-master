@@ -232,7 +232,7 @@ uint256 BlockMerkleLeavesWithPrevData(const MCBlock* pBlock, const std::vector<V
     assert(pBlock->vtx.size() == vmOuts.size());
     leaves.resize(pBlock->vtx.size());
     for (size_t i = 0; i < pBlock->vtx.size(); ++i) {
-        leaves[i] = GetTxHashWithData(pBlock->vtx[i]->GetHash(), vmOuts[i].txPrevData);
+        leaves[i] = GetHashWithMapContractContext(vmOuts[i].txPrevData);
     }
     return ComputeMerkleRoot(leaves, mutated);
 }
@@ -242,7 +242,7 @@ uint256 BlockMerkleLeavesWithFinalData(const MCBlock* pBlock, const std::vector<
     assert(pBlock->vtx.size() == vmOuts.size());
     leaves.resize(pBlock->vtx.size());
     for (size_t i = 0; i < pBlock->vtx.size(); ++i) {
-        leaves[i] = GetTxHashWithData(pBlock->vtx[i]->GetHash(), vmOuts[i].txFinalData);
+        leaves[i] = GetHashWithMapContractContext(vmOuts[i].txFinalData);
     }
     return ComputeMerkleRoot(leaves, mutated);
 }
@@ -428,7 +428,7 @@ int ContractVM::InternalCallContract(lua_State* L)
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
     }
 
-    if (vm->IsPublish()) {
+    if (vm->isPublish) {
         throw std::runtime_error(strprintf("%s => can't call callcontract when publishcontract", __FUNCTION__));
     }
 
@@ -499,7 +499,7 @@ int ContractVM::SendCoins(lua_State* L)
         throw std::runtime_error(strprintf("%s => smartLuaState == nullptr", __FUNCTION__));
     }
 
-    if (vm->IsPublish()) {
+    if (vm->isPublish) {
         throw std::runtime_error(strprintf("%s => can't call send when publishcontract", __FUNCTION__));
     }
 
@@ -534,7 +534,7 @@ int ContractVM::SendCoins(lua_State* L)
         throw std::runtime_error(strprintf("%s => Contract %s has not enough amount", __FUNCTION__, contractId.ToString().c_str()));
     }
     vm->IncContractCoinsOut(contractId, amount);
-    vm->AddRecipient(amount, GetScriptForDestination(dest.Get()));
+    vm->vmOut->recipients.emplace_back(amount, GetScriptForDestination(dest.Get()));
 
     lua_pushboolean(L, true);
     return 1;
@@ -550,11 +550,6 @@ const MCContractID ContractVM::GetCurrentContractID()
     const MagnaChainAddress& contractAddr = contractAddrs[contractAddrs.size() - 1];
     contractAddr.GetContractID(contractId);
     return contractId;
-}
-
-void ContractVM::AddRecipient(MCAmount amount, const MCScript& scriptPubKey)
-{
-    vmOut->recipients.emplace_back(amount, scriptPubKey);
 }
 
 bool ContractVM::PublishContract(const MagnaChainAddress& contractAddr, const std::string& rawCode, bool decompress)
@@ -806,25 +801,27 @@ void ContractVM::SetMsgField(lua_State* L, bool rollBackLast)
     lua_setfield(L, -2, "sender");
     lua_pushnumber(L, vmIn.payment);
     lua_setfield(L, -2, "payment");
-    lua_pushnumber(L, vmIn.prevBlockIndex->GetBlockTime());
+    lua_pushnumber(L, vmIn.lastBlockTime);
     lua_setfield(L, -2, "timestamp");
-    lua_pushnumber(L, vmIn.prevBlockIndex->nHeight + 1);
+    lua_pushnumber(L, vmIn.blockHeight);
     lua_setfield(L, -2, "blockheight");
     lua_settop(L, top);
 }
 
-void ContractVM::SetContractContext(const MCContractID& contractId, ContractContext& context)
+void ContractVM::SetContractContext(const MCContractID& contractId, ContractContext& context, bool init)
 {
-    context.txIndex = vmIn.txIndex;
+    if (!init) {
+        context.txIndex = vmIn.txIndex;
+        vmOut->txFinalData[contractId] = context;
+    }
     SetData(contractId, context);
-    vmOut->txFinalData[contractId] = context;
 }
 
 bool ContractVM::GetContractContext(const MCContractID& contractId, ContractContext& context)
 {
     // 直接从快照缓存中读取
     if (!GetData(contractId, context)) {
-        if (mpContractDb->GetContractContext(contractId, context, vmIn.prevBlockIndex) < 0) {
+        if (vmIn.prevBlockIndex == nullptr || mpContractDb->GetContractContext(contractId, context, vmIn.prevBlockIndex) < 0) {
             return false;
         }
     }
@@ -833,6 +830,8 @@ bool ContractVM::GetContractContext(const MCContractID& contractId, ContractCont
         vmOut->txPrevData[contractId] = context;
     }
 
+    context.blockHash.SetNull();
+    context.txIndex = -1;
     return true;
 }
 
@@ -909,6 +908,11 @@ bool ContractVM::GetData(const MCContractID& contractId, ContractContext& contex
 
 bool ContractVM::ExecuteContract(const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex, VMOut* vmOut)
 {
+    return ExecuteContract(tx, txIndex, prevBlockIndex, prevBlockIndex->GetBlockTime(), prevBlockIndex->nHeight + 1, vmOut);
+}
+
+bool ContractVM::ExecuteContract(const MCTransactionRef tx, int txIndex, const MCBlockIndex* prevBlockIndex, int64_t blockTime, int blockHeight, VMOut* vmOut)
+{
     if (!tx->IsSmartContract()) {
         return true;
     }
@@ -917,7 +921,7 @@ bool ContractVM::ExecuteContract(const MCTransactionRef tx, int txIndex, const M
     MCAmount payment = tx->pContractData->contractCoinsIn;
     MagnaChainAddress vmCaller(tx->pContractData->sender.GetID());
 
-    VMIn vmIn{ txIndex, payment, vmCaller, prevBlockIndex };
+    VMIn vmIn{ txIndex, blockHeight, payment, blockTime, vmCaller, prevBlockIndex };
     Initialize(&vmIn, vmOut);
 
     if (tx->nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION) {

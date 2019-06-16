@@ -73,8 +73,8 @@ UniValue CallRPC(MCRPCConfig& rpccfg, const std::string& strMethod, const UniVal
 
 void ProcessBlockBranchChain();
 
-MCSpvProof* NewSpvProof(const MCBlock &block, const std::set<uint256>& txids);
-int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uint256 &querytxhash);
+void MakePartialMerkleTree(const MCBlock& block, const uint256& txid, MCPartialMerkleTree& pmt);
+int CheckSpvProof(const uint256& merkleRoot, const MCPartialMerkleTree& pmt, const uint256 &querytxhash);
 bool CheckBranchTransaction(const MCTransaction& tx, MCValidationState &state, const bool fVerifingDB, const MCTransactionRef& pFromTx);
 
 MCAmount GetBranchChainCreateTxOut(const MCTransaction& tx);
@@ -102,7 +102,8 @@ bool CheckProveTx(const MCTransaction& tx, MCValidationState& state, BranchCache
 bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& state, MCBlockIndex* pindex, BranchCache *pBranchCache);
 bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
 bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& state);
-bool CheckProveContractData(const MCTransaction& tx, MCValidationState& state, BranchCache *pBranchCache);
+void GetProveOfContractData(const MCTransactionRef& reportedTx, MCMutableTransaction& proveTx);
+bool CheckReportContractData(const MCTransaction& tx, MCValidationState& state, BranchData& branchData);
 
 bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block, std::string *pStrErr = nullptr);
 #endif //  BRANCHCHAIN_H

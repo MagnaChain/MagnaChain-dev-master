@@ -605,7 +605,7 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
     int vOutSize = newTx.vout.size();
     std::vector<uint160> keys;
     if (chainparams.IsMainChain() && newTx.IsBranchChainTransStep2()) {
-        const std::string strFromChain = iter->GetSharedTx()->fromBranchId;
+        const std::string strFromChain = iter->GetSharedTx()->pBranchTransactionData->branchId;
         uint256 branchhash;
         branchhash.SetHex(strFromChain);
         uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
@@ -615,7 +615,7 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
 
         MCScript scriptSig = MCScript();
         newTx.vin.clear();
-        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
+        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.pBranchTransactionData->inAmount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
 
@@ -2077,8 +2077,8 @@ void BlockAssembler::addReportProofTx(const MCTransactionRef &ptxReport, const M
     // 检查ptxReport是否满足高度 REPORT_OUTOF_HEIGHT
 
     //get data from ptxReport
-    uint256 reportbranchid = ptxReport->pReportData->reportedBranchId;
-    uint256 reportblockhash = ptxReport->pReportData->reportedBlockHash;
+    uint256 reportbranchid = ptxReport->pReportData->branchId;
+    uint256 reportblockhash = ptxReport->pReportData->blockHash;
     if (!g_pBranchDb->HasBranchData(reportbranchid))
         return;
 
