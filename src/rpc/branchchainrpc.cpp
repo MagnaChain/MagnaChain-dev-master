@@ -1251,7 +1251,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 5 || request.params.size() > 5)
+    if (request.fHelp || request.params.size() < 6 || request.params.size() > 6)
         throw std::runtime_error(
                 "redeemmortgagecoin \"txid\" \"outindex\" \"statementtxid\"\n"
                 "\nRedeem mortgage coin by outpoint info(txid and vout index of coin)\n"
@@ -1292,8 +1292,10 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_REQUEST, "Parameter 'fromtx' invalid hex tx data.");
 
     uint256 frombranchid = ParseHashV(request.params[3], "parameter 3");
+
+    uint256 blockHash = ParseHashV(request.params[4], "parameter 4");
     MCPartialMerkleTree pmt;
-    DecodeHexSpv(pmt, request.params[4].get_str());
+    DecodeHexSpv(pmt, request.params[5].get_str());
 
     MCOutPoint outpoint(mortgagecoinhash, nvoutindex);
     const Coin& coin = pcoinsTip->AccessCoin(outpoint);
@@ -1319,6 +1321,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     wtx.nVersion = MCTransaction::REDEEM_MORTGAGE;
     wtx.pBranchTransactionData.reset(new BranchTransactionData());
     wtx.pBranchTransactionData->branchId = frombranchid.ToString();
+    wtx.pBranchTransactionData->blockHash = blockHash;
     wtx.pBranchTransactionData->pmt = pmt;
     
     MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, wtx.pBranchTransactionData->txData, 0, statementmtx };

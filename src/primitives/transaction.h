@@ -298,6 +298,7 @@ public:
     MapContractContext prevData;
     MCPartialMerkleTree prevDataPmt;
     MCPartialMerkleTree finalDataPmt;
+    std::vector<std::pair<std::vector<uint256>, MCPartialMerkleTree>> prevDataFromLastPmt;
 
     ADD_SERIALIZE_METHODS;
     template <typename Stream, typename Operation>
@@ -307,6 +308,7 @@ public:
         READWRITE(prevData);
         READWRITE(prevDataPmt);
         READWRITE(finalDataPmt);
+        READWRITE(prevDataFromLastPmt);
     }
 };
 

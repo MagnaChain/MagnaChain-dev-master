@@ -1027,6 +1027,7 @@ bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block
     params.push_back(UniValue(int(0)));
     params.push_back(EncodeHexTx(*tx));
     params.push_back(Params().GetBranchId());
+    params.push_back(block.GetHash().ToString());
     params.push_back(EncodeHexTx(pmt));
 
     //call rpc
@@ -1419,10 +1420,11 @@ bool CheckReportContractData(const MCTransaction& tx, MCValidationState& state, 
             if (!isPublish) {
                 // check prev data source in call contract
                 const uint256& prevDataHash = GetContractContextHash(item.first, uint256(), item.second.txIndex, item.second.prevDataHash);
-                if (std::find(item.second.prevDataHashes.begin(), item.second.prevDataHashes.end(), prevDataHash) == item.second.prevDataHashes.end()) {
-                    return state.DoS(0, false, REJECT_INVALID, "Can not find prev data hash");
-                }
+
                 if (!item.second.blockHash.IsNull()) {
+                    if (std::find(item.second.prevDataHashes.begin(), item.second.prevDataHashes.end(), prevDataHash) == item.second.prevDataHashes.end()) {
+                        return state.DoS(0, false, REJECT_INVALID, "Can not find prev data hash");
+                    }
                     const BranchBlockData* prevDataBlockData = branchData.GetBranchBlockData(item.second.blockHash);
                     if (prevDataBlockData == nullptr) {
                         return state.DoS(0, false, REJECT_INVALID, "Can not find prev data block data");
@@ -1476,8 +1478,7 @@ bool CheckReportContractData(const MCTransaction& tx, MCValidationState& state, 
         return true;
     }
 
-    //return state.DoS(0, false, REJECT_INVALID, "Nothing to report");
-    return true;
+    return state.DoS(0, false, REJECT_INVALID, "Nothing to report");
 }
 
 int GetDifferentTxIndex(const MCTransactionRef& reportedTx, const std::vector<VMOut>& vmOuts)
@@ -1587,6 +1588,39 @@ void GetProveOfContractData(const MCTransactionRef& reportTx, MCMutableTransacti
     mtx.pProveData->contractData->finalDataPmt.SetData(finalDataHashes, matches);
     MakePartialMerkleTree(block, tx->GetHash(), mtx.pProveData->contractData->pmt);
     MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, mtx.pProveData->contractData->txData, 0, *tx);
+
+    // fill with final data of the prev data from last transaction
+    for (const auto& item : mtx.pProveData->contractData->prevData) {
+        mtx.pProveData->contractData->prevDataFromLastPmt.emplace_back();
+        if (!item.second.blockHash.IsNull()) {
+            MCBlockIndex* prevDataBlockIndex = GetBlockIndex(item.second.blockHash);
+            if (prevDataBlockIndex == nullptr) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Get prev data block index failed");
+            }
+
+            MCBlock prevDataBlock;
+            if (!ReadBlockFromDisk(prevDataBlock, prevDataBlockIndex, Params().GetConsensus())) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Can't read prev data block from disk");
+            }
+
+            vm.ClearData(false);
+            std::vector<VMOut> prevDataVMOuts(prevDataBlock.vtx.size());
+            if (vm.ExecuteBlockContract(&prevDataBlock, prevDataBlockIndex->pprev, 0, prevDataBlock.vtx.size(), &prevDataVMOuts) >= 0) {
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Execute prev data block contract failed");
+            }
+
+            std::pair<std::vector<uint256>, MCPartialMerkleTree>& prevDataFromLast = mtx.pProveData->contractData->prevDataFromLastPmt.back();
+            for (const auto& prevItem : prevDataVMOuts[item.second.txIndex].txFinalData) {
+                const uint256& hash = GetContractContextHash(prevItem.first, prevItem.second.blockHash, prevItem.second.txIndex, GetContextHash(prevItem.second));
+                prevDataFromLast.first.emplace_back(hash);
+            }
+            std::vector<uint256> leaves;
+            const uint256& merkleRoot = BlockMerkleLeavesWithFinalData(&prevDataBlock, prevDataVMOuts, leaves, nullptr);
+            std::vector<bool> matches(prevDataBlock.vtx.size());
+            matches[item.second.txIndex] = true;
+            prevDataFromLast.second.SetData(leaves, matches);
+        }
+    }
 }
 
 bool CheckProveContractData(const MCTransaction& proveTx, MCValidationState& state, BranchData& branchData)
@@ -1625,6 +1659,7 @@ bool CheckProveContractData(const MCTransaction& proveTx, MCValidationState& sta
     MCMutableTransaction mtx;
     if (!DecodeTx(mtx, proveTx.pProveData->contractData->txData)) {
         return state.DoS(0, false, REJECT_INVALID, "Decode prove transaction fail");
+
     }
 
     MCTransactionRef tx = MakeTransactionRef(mtx);
@@ -1661,6 +1696,44 @@ bool CheckProveContractData(const MCTransaction& proveTx, MCValidationState& sta
     }
 
     // prove prev data
+    int index = 0;
+    for (const auto& item : proveTx.pProveData->contractData->prevData) {
+        const uint256& prevDataHash = GetContextHash(item.second);
+        const uint256& prevDataHashFull = GetContractContextHash(item.first, uint256(), item.second.txIndex, prevDataHash);
+
+        if (!item.second.blockHash.IsNull()) {
+            std::pair<std::vector<uint256>, MCPartialMerkleTree>& prevDataFromLast = proveTx.pProveData->contractData->prevDataFromLastPmt[index];
+            if (std::find(prevDataFromLast.first.begin(), prevDataFromLast.first.end(), prevDataHashFull) == prevDataFromLast.first.end()) {
+                return state.DoS(0, false, REJECT_INVALID, "Can not find prev data hash");
+            }
+            const BranchBlockData* prevDataBlockData = branchData.GetBranchBlockData(item.second.blockHash);
+            if (prevDataBlockData == nullptr) {
+                return state.DoS(0, false, REJECT_INVALID, "Can not find prev data block data");
+            }
+            MCHashWriter ss(SER_GETHASH, 0);
+            for (int j = 0; j < prevDataFromLast.first.size(); ++j) {
+                ss << prevDataFromLast.first[j];
+            }
+            if (CheckSpvProof(prevDataBlockData->header.hashMerkleRootWithData, prevDataFromLast.second, ss.GetHash()) != item.second.txIndex) {
+                return state.DoS(0, false, REJECT_INVALID, "Check prev data pmt fail");
+            }
+        }
+        else {
+            for (int j = index - 1; j >= 0; --j) {
+                const MapSimpleContractContext& subSimpleContext = reportTx->pReportData->contractData[j];
+                const auto subItem = subSimpleContext.find(item.first);
+                if (subItem != subSimpleContext.end()) {
+                    if (item.second.txIndex != j) {
+                        return state.DoS(0, false, REJECT_INVALID, "Prev data not match in local block");
+                    }
+                    if (prevDataHash != subItem->second.finalDataHash) {
+                        return state.DoS(0, false, REJECT_INVALID, "Prev data hash not match in local block");
+                    }
+                }
+            }
+        }
+        index++;
+    }
 
     bool findProve = false;
     const MapSimpleContractContext& simpleContext = reportTx->pReportData->contractData[txIndex];
