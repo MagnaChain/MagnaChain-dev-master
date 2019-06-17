@@ -1010,6 +1010,7 @@ MCMutableTransaction RevertTransaction(const MCTransaction& tx, bool fFromMempoo
             }
         }
         if(!fFromMempool){
+            mtx.pBranchTransactionData->blockHash.SetNull();
             mtx.pBranchTransactionData->pmt.Clear();// transaction may be mined in diff blocks, so remove spv info
         }
     }
