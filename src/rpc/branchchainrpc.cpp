@@ -192,8 +192,8 @@ UniValue createbranchchain(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::CREATE_BRANCH_VERSION;
-    wtx.branchVSeeds = strVSeeds;
-    wtx.branchSeedSpec6 = strSeedSpec6;
+    wtx.pBranchCreateData->branchVSeeds = strVSeeds;
+    wtx.pBranchCreateData->branchSeedSpec6 = strSeedSpec6;
 
     MCScript scriptPubKey;// create branch pubkey hash
     scriptPubKey << OP_CREATE_BRANCH << OP_DUP << OP_HASH160 << ToByteVector(mortgagekey) << OP_EQUALVERIFY << OP_CHECKSIG;
@@ -279,8 +279,8 @@ UniValue getbranchchaininfo(const JSONRPCRequest& request)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("txid", tx->GetHash().GetHex()));
-    obj.push_back(Pair("vseeds", tx->branchVSeeds));
-    obj.push_back(Pair("seedspec6", tx->branchSeedSpec6));
+    obj.push_back(Pair("vseeds", tx->pBranchCreateData->branchVSeeds));
+    obj.push_back(Pair("seedspec6", tx->pBranchCreateData->branchSeedSpec6));
     return obj;
 }
 
@@ -1994,8 +1994,8 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::LOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;//the txid of the report transaction that has included by main chain
-    wtx.coinpreouthash = coinprevouthash;//锁定目标币的txid
+    wtx.pReportProveData->reporttxid = reporttxid;//the txid of the report transaction that has included by main chain
+    wtx.pReportProveData->coinpreouthash = coinprevouthash;//锁定目标币的txid
     wtx.isDataTransaction = true;
 
     bool fSubtractFeeFromAmount = false;
@@ -2126,9 +2126,9 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
-    wtx.reporttxid = reporttxid;
-    wtx.coinpreouthash = coinprevouthash;
-    wtx.provetxid = provetxid;
+    wtx.pReportProveData->reporttxid = reporttxid;
+    wtx.pReportProveData->coinpreouthash = coinprevouthash;
+    wtx.pReportProveData->provetxid = provetxid;
     wtx.isDataTransaction = true;
 
     bool fSubtractFeeFromAmount = false;

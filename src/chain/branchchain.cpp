@@ -1831,7 +1831,7 @@ bool CheckReportRewardTransaction(const MCTransaction& tx, MCValidationState& st
     MCTransactionRef ptxReport;
     uint256 reporthashBlock;
     bool retflag;
-    ReadTxDataByTxIndex(tx.reporttxid, ptxReport, reporthashBlock, retflag);
+    ReadTxDataByTxIndex(tx.pReportProveData->reporttxid, ptxReport, reporthashBlock, retflag);
     if (ptxReport == nullptr)
         return false; // report tx not exist
 
@@ -1903,7 +1903,7 @@ bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& sta
 
     const std::string strMethod = "getreporttxdata";
     UniValue params(UniValue::VARR);
-    params.push_back(tx.reporttxid.ToString());
+    params.push_back(tx.pReportProveData->reporttxid.ToString());
 
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
 
@@ -1940,7 +1940,7 @@ bool CheckLockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& sta
     if (!SafeParseHashV(uvprevouthash, minecoinfromhash))
         return error("%s parse uvprevouthash fail\n", __func__);
 
-    if (tx.coinpreouthash != minecoinfromhash) {
+    if (tx.pReportProveData->coinpreouthash != minecoinfromhash) {
         return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
     }
 
@@ -1973,7 +1973,7 @@ bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& s
 
     const std::string strMethod = "getprovetxdata";
     UniValue params(UniValue::VARR);
-    params.push_back(tx.provetxid.ToString());
+    params.push_back(tx.pReportProveData->provetxid.ToString());
 
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
 
@@ -2013,7 +2013,7 @@ bool CheckUnlockMortgageMineCoinTx(const MCTransaction& tx, MCValidationState& s
     if (!SafeParseHashV(uvprevouthash, minecoinfromhash))
         return state.DoS(0, false, REJECT_INVALID, "CheckUnlockMortgageMineCoinTx parse minecoinfromhash fail");
 
-    if (tx.coinpreouthash != minecoinfromhash) {
+    if (tx.pReportProveData->coinpreouthash != minecoinfromhash) {
         return state.DoS(0, false, REJECT_INVALID, "lock-mine-coin-error!");
     }
 

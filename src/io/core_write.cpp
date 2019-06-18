@@ -284,8 +284,8 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         entry.pushKV("contractdata", contractdata);
     }
     if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
-        entry.pushKV("branchVSeeds", tx.branchVSeeds);
-        entry.pushKV("branchSeedSpec6", tx.branchSeedSpec6);
+        entry.pushKV("branchVSeeds", tx.pBranchCreateData->branchVSeeds);
+        entry.pushKV("branchSeedSpec6", tx.pBranchCreateData->branchSeedSpec6);
     }
     if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
         entry.pushKV("sendToBranchid", tx.pBranchTransactionData->branchId);

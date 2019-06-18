@@ -2813,42 +2813,28 @@ static bool MoveTransactionData(MCWalletTx& fromWtx, MCMutableTransaction& toTx)
 {
     if (fromWtx.nVersion > MCTransaction::CURRENT_VERSION)
         toTx.nVersion = fromWtx.nVersion;
-    if (fromWtx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || fromWtx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-    {
+    if (fromWtx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || fromWtx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         toTx.pContractData.reset(new ContractData(*fromWtx.pContractData));
     }
-    else if (fromWtx.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
-    {
-        toTx.branchVSeeds = fromWtx.branchVSeeds;
-        toTx.branchSeedSpec6 = fromWtx.branchSeedSpec6;
+    else if (fromWtx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
+        toTx.pBranchCreateData.reset(new BranchCreateData(*fromWtx.pBranchCreateData));
     }
     else if (fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 || fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 ||
-        fromWtx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || fromWtx.nVersion == MCTransaction::REDEEM_MORTGAGE)
-    {
+        fromWtx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || fromWtx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         toTx.pBranchTransactionData.reset(new BranchTransactionData(*fromWtx.pBranchTransactionData));
     }
-    else if (fromWtx.nVersion == MCTransaction::SYNC_BRANCH_INFO)
-    {
+    else if (fromWtx.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
         toTx.pBranchBlockData = std::move(fromWtx.pBranchBlockData);
     }
-    else if (fromWtx.nVersion == MCTransaction::REPORT_CHEAT)
-    {
+    else if (fromWtx.nVersion == MCTransaction::REPORT_CHEAT) {
         toTx.pReportData.reset(new ReportData(*fromWtx.pReportData));
     }
-    else if (fromWtx.nVersion == MCTransaction::PROVE)
-    {
+    else if (fromWtx.nVersion == MCTransaction::PROVE) {
         toTx.pProveData.reset(new ProveData(*fromWtx.pProveData));
     }
-    else if (fromWtx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
-    {
-        toTx.reporttxid = fromWtx.reporttxid;
-        toTx.coinpreouthash = fromWtx.coinpreouthash;
-    }
-    else if (fromWtx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
-    {
-        toTx.reporttxid = fromWtx.reporttxid;
-        toTx.coinpreouthash = fromWtx.coinpreouthash;
-        toTx.provetxid = fromWtx.provetxid;
+    else if (fromWtx.nVersion == MCTransaction::REPORT_REWARD || fromWtx.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN ||
+        fromWtx.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+        toTx.pReportProveData.reset(new ReportProveData(*fromWtx.pReportProveData));
     }
     return true;
 }

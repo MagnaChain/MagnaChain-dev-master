@@ -349,21 +349,15 @@ public:
 	// temp data for contract
 	int32_t nVersion = MCTransaction::CURRENT_VERSION;//special version
 
-	// temp data for branch
-	std::string branchVSeeds;
-	std::string branchSeedSpec6;
-
+    std::shared_ptr<BranchCreateData> pBranchCreateData;
     std::shared_ptr<ContractData> pContractData;
     std::shared_ptr<MCBranchBlockInfo> pBranchBlockData;
     std::shared_ptr<BranchTransactionData> pBranchTransactionData;
     std::shared_ptr<ReportData> pReportData;
     std::shared_ptr<ProveData> pProveData;
+    std::shared_ptr<ReportProveData> pReportProveData;
 
     bool isDataTransaction; // transaction can be fee only, no transfer
-
-    uint256 reporttxid;
-    uint256 coinpreouthash;
-    uint256 provetxid;
 
     MCWalletTx()
     {

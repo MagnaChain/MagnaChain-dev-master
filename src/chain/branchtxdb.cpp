@@ -45,8 +45,8 @@ void BranchChainTxRecordsCache::AddBranchChainTxRecord(const MCTransactionRef& t
     sendinfo.txnVersion = tx->nVersion;
     if (tx->IsBranchCreate()) {
         sendinfo.createchaininfo.txid = tx->GetHash();
-        sendinfo.createchaininfo.branchSeedSpec6 = tx->branchSeedSpec6;
-        sendinfo.createchaininfo.branchVSeeds = tx->branchVSeeds;
+        sendinfo.createchaininfo.branchSeedSpec6 = tx->pBranchCreateData->branchSeedSpec6;
+        sendinfo.createchaininfo.branchVSeeds = tx->pBranchCreateData->branchVSeeds;
         sendinfo.createchaininfo.blockhash = blockhash;
     }
     sendinfo.flags = DbDataFlag::eADD;
@@ -61,8 +61,8 @@ void BranchChainTxRecordsCache::DelBranchChainTxRecord(const MCTransactionRef& t
     BranchChainTxInfo& sendinfo = m_mapChainTxInfos[key];
     if (tx->IsBranchCreate()) {
         sendinfo.createchaininfo.txid = tx->GetHash();
-        sendinfo.createchaininfo.branchSeedSpec6 = tx->branchSeedSpec6;
-        sendinfo.createchaininfo.branchVSeeds = tx->branchVSeeds;
+        sendinfo.createchaininfo.branchSeedSpec6 = tx->pBranchCreateData->branchSeedSpec6;
+        sendinfo.createchaininfo.branchVSeeds = tx->pBranchCreateData->branchVSeeds;
     }
     sendinfo.flags = DbDataFlag::eDELETE;
 }
@@ -190,50 +190,50 @@ void BranchChainTxRecordsCache::UpdateLockMineCoin(const MCTransactionRef& ptx, 
 {
     if (fBlockConnect){
         if (ptx->IsLockMortgageMineCoin()) { // 锁定
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->pReportProveData->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
-                if (info.reporttxid == ptx->reporttxid){
+                if (info.reporttxid == ptx->pReportProveData->reporttxid){
                     info.flags = DbDataFlag::eADD;
                     return;
                 }
             }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
+            vec.push_back(CoinReportInfo(ptx->pReportProveData->reporttxid, DbDataFlag::eADD));
         }
         if (ptx->IsUnLockMortgageMineCoin()) { // 解锁
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->pReportProveData->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
-                if (info.reporttxid == ptx->reporttxid) {
+                if (info.reporttxid == ptx->pReportProveData->reporttxid) {
                     info.flags = DbDataFlag::eDELETE;
                     return;
                 }
             }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
+            vec.push_back(CoinReportInfo(ptx->pReportProveData->reporttxid, DbDataFlag::eDELETE));
         }
     }
     else{// block disconnect
         if (ptx->IsLockMortgageMineCoin()) {// 锁定回滚
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->pReportProveData->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
-                if (info.reporttxid == ptx->reporttxid) {
+                if (info.reporttxid == ptx->pReportProveData->reporttxid) {
                     info.flags = DbDataFlag::eDELETE;
                     return;
                 }
             }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eDELETE));
+            vec.push_back(CoinReportInfo(ptx->pReportProveData->reporttxid, DbDataFlag::eDELETE));
         }
         if (ptx->IsUnLockMortgageMineCoin()) {// 解锁回滚
-            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->coinpreouthash];
+            std::vector<CoinReportInfo>& vec = m_mapCoinBeReport[ptx->pReportProveData->coinpreouthash];
             for (CoinReportInfo& info : vec)
             {
-                if (info.reporttxid == ptx->reporttxid) {
+                if (info.reporttxid == ptx->pReportProveData->reporttxid) {
                     info.flags = DbDataFlag::eADD;
                     return;
                 }
             }
-            vec.push_back(CoinReportInfo(ptx->reporttxid, DbDataFlag::eADD));
+            vec.push_back(CoinReportInfo(ptx->pReportProveData->reporttxid, DbDataFlag::eADD));
         }
     }
 }

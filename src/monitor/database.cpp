@@ -401,9 +401,8 @@ void WriteTransaction(const MCBlock& block)
         return;
     }
 
-    const char sqlBase[] = "INSERT INTO `transaction`(`txhash`, `blockhash`, `blockindex`, `version`, `locktime`"
-            ", `branchvseeds`, `branchseedspec6`, `sendtobranchid`, `sendtotxhexdata`, `frombranchid`, `fromtx`"
-            ", `inamount`, `reporttxid`, `coinpreouthash`, `provetxid`, `txsize`) VALUES";
+    const char sqlBase[] = "INSERT INTO `transaction`"
+        "(`txhash`, `blockhash`, `blockindex`, `version`, `locktime`, `txsize`) VALUES";
     if (sqlTransaction.empty()) {
         sqlTransaction = sqlBase;
     }
@@ -413,16 +412,10 @@ void WriteTransaction(const MCBlock& block)
         MCTransactionRef tx = block.vtx[i];
 
         const std::string& txHash = tx->GetHash().ToString();
-        const std::string& branchVSeeds = tx->branchVSeeds;
-        const std::string& branchSeedSpec6 = tx->branchSeedSpec6;
-        const std::string reportTxid(tx->reporttxid.IsNull() ? std::string() : tx->reporttxid.ToString());
-        const std::string coinPreoutHash(tx->coinpreouthash.IsNull() ? std::string() : tx->coinpreouthash.ToString());
-        const std::string proveTxid(tx->provetxid.IsNull() ? std::string() : tx->provetxid.ToString());
         const uint32_t txSize = tx->GetTotalSize();
 
-        std::string sql = strprintf("('%s', '%s', %u, %d, %u, '%s', '%s', '%s', '%s', '%s', '%s', %lld, '%s', '%s', '%s', %d),",
-            txHash, blockHash, i, tx->nVersion, tx->nLockTime, branchVSeeds, branchSeedSpec6, 
-            reportTxid, coinPreoutHash, proveTxid, txSize);
+        std::string sql = strprintf("('%s', '%s', %u, %d, %u, %d),",
+            txHash, blockHash, i, tx->nVersion, tx->nLockTime, txSize);
         sqlTransaction += sql;
 
         WriteTxIn(tx);

@@ -2109,7 +2109,7 @@ void BlockAssembler::addReportProofTx(const MCTransactionRef &ptxReport, const M
     // 不用留手续费, 因为这个是矿工自己创建的交易
     MCMutableTransaction mtx;
     mtx.nVersion = MCTransaction::REPORT_REWARD;
-    mtx.reporttxid = ptxReport->GetHash();
+    mtx.pReportProveData->reporttxid = ptxReport->GetHash();
     
     mtx.vin.resize(1);
     mtx.vin[0].prevout = prevout;

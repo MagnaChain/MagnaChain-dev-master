@@ -68,40 +68,25 @@ MCMutableTransaction::MCMutableTransaction(const MCTransaction& tx)
     if (nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
     }
-	else if (nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
-		branchVSeeds = tx.branchVSeeds;
-		branchSeedSpec6 = tx.branchSeedSpec6;
+    else if (nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
+        pBranchCreateData.reset((tx.pBranchCreateData == nullptr ? nullptr : new BranchCreateData(*tx.pBranchCreateData)));
 	}
 	else if (nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 || nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 ||
         nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || nVersion == MCTransaction::REDEEM_MORTGAGE) {
         pBranchTransactionData.reset(tx.pBranchTransactionData == nullptr ? nullptr : new BranchTransactionData(*tx.pBranchTransactionData));
 	}
-    else if (nVersion == MCTransaction::SYNC_BRANCH_INFO)
-    {
+    else if (nVersion == MCTransaction::SYNC_BRANCH_INFO) {
         pBranchBlockData.reset((tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)));
     }
-    else if (nVersion == MCTransaction::REPORT_CHEAT)
-    {
+    else if (nVersion == MCTransaction::REPORT_CHEAT) {
         pReportData.reset(tx.pReportData == nullptr? nullptr: new ReportData(*tx.pReportData));
     }
-    else if (nVersion == MCTransaction::PROVE)
-    {
+    else if (nVersion == MCTransaction::PROVE) {
         pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
     }
-    else if (nVersion == MCTransaction::REPORT_REWARD)
-    {
-        reporttxid = tx.reporttxid;
-    }
-    else if (nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
-    {
-        reporttxid = tx.reporttxid;
-        coinpreouthash = tx.coinpreouthash;
-    }
-    else if (nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
-    {
-        reporttxid = tx.reporttxid;
-        coinpreouthash = tx.coinpreouthash;
-        provetxid = tx.provetxid;
+    else if (nVersion == MCTransaction::REPORT_REWARD || nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN ||
+        nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+        pReportProveData.reset(tx.pReportProveData == nullptr ? nullptr : new ReportProveData(*tx.pReportProveData));
     }
 }
 

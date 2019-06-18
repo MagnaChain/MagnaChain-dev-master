@@ -1052,8 +1052,7 @@ bool EvalScript(std::vector<std::vector<unsigned char> >& stack, const MCScript&
 namespace {
 template<typename S>
 void TransactionExtraFields(S &s, const MCTransaction& txTo){
-	if (txTo.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-    {
+	if (txTo.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || txTo.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         //TODO: check this
         ::Serialize(s, txTo.pContractData->address);
         ::Serialize(s, txTo.pContractData->sender);
@@ -1061,42 +1060,25 @@ void TransactionExtraFields(S &s, const MCTransaction& txTo){
         ::Serialize(s, txTo.pContractData->args);
         ::Serialize(s, txTo.pContractData->contractCoinsOut);
 	}
-    else if (txTo.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
-    {
-        ::Serialize(s, txTo.branchVSeeds);
-        ::Serialize(s, txTo.branchSeedSpec6);
+    else if (txTo.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
+        ::Serialize(s, txTo.pBranchCreateData);
     }
     else if (txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 || txTo.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 ||
-        txTo.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || txTo.nVersion == MCTransaction::REDEEM_MORTGAGE)
-    {
+        txTo.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || txTo.nVersion == MCTransaction::REDEEM_MORTGAGE) {
         ::Serialize(s, txTo.pBranchTransactionData);
     }
-    else if (txTo.nVersion == MCTransaction::SYNC_BRANCH_INFO)
-    {
+    else if (txTo.nVersion == MCTransaction::SYNC_BRANCH_INFO) {
         ::Serialize(s, txTo.pBranchBlockData);
     }
-    else if (txTo.nVersion == MCTransaction::REPORT_CHEAT)
-    {
+    else if (txTo.nVersion == MCTransaction::REPORT_CHEAT) {
         ::Serialize(s, txTo.pReportData);
     }
-    else if (txTo.nVersion == MCTransaction::PROVE)
-    {
+    else if (txTo.nVersion == MCTransaction::PROVE) {
         ::Serialize(s, txTo.pProveData);
     }
-    else if (txTo.nVersion == MCTransaction::REPORT_REWARD)
-    {
-        ::Serialize(s, txTo.reporttxid);
-    }
-    else if (txTo.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN)
-    {
-        ::Serialize(s, txTo.reporttxid);
-        ::Serialize(s, txTo.coinpreouthash);
-    }
-    else if (txTo.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN)
-    {
-        ::Serialize(s, txTo.reporttxid);
-        ::Serialize(s, txTo.coinpreouthash);
-        ::Serialize(s, txTo.provetxid);
+    else if (txTo.nVersion == MCTransaction::REPORT_REWARD || txTo.nVersion == MCTransaction::LOCK_MORTGAGE_MINE_COIN ||
+        txTo.nVersion == MCTransaction::UNLOCK_MORTGAGE_MINE_COIN) {
+        ::Serialize(s, txTo.pReportProveData);
     }
 }
 
