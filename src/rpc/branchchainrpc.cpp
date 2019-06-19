@@ -192,6 +192,7 @@ UniValue createbranchchain(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::CREATE_BRANCH_VERSION;
+    wtx.pBranchCreateData.reset(new BranchCreateData());
     wtx.pBranchCreateData->branchVSeeds = strVSeeds;
     wtx.pBranchCreateData->branchSeedSpec6 = strSeedSpec6;
 
@@ -1994,6 +1995,7 @@ UniValue lockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::LOCK_MORTGAGE_MINE_COIN;
+    wtx.pReportProveData.reset(new ReportProveData());
     wtx.pReportProveData->reporttxid = reporttxid;//the txid of the report transaction that has included by main chain
     wtx.pReportProveData->coinpreouthash = coinprevouthash;//锁定目标币的txid
     wtx.isDataTransaction = true;
@@ -2126,6 +2128,7 @@ UniValue unlockmortgageminecoin(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::UNLOCK_MORTGAGE_MINE_COIN;
+    wtx.pReportProveData.reset(new ReportProveData());
     wtx.pReportProveData->reporttxid = reporttxid;
     wtx.pReportProveData->coinpreouthash = coinprevouthash;
     wtx.pReportProveData->provetxid = provetxid;
