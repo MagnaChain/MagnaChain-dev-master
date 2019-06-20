@@ -10,6 +10,7 @@
 #include "io/streams.h"
 #include "misc/amount.h"
 #include "misc/version.h"
+#include "utils/utilstrencodings.h"
 
 #include <string>
 #include <vector>
