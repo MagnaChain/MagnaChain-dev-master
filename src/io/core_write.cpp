@@ -122,20 +122,6 @@ std::string ScriptToAsmStr(const MCScript& script, const bool fAttemptSighashDec
     return str;
 }
 
-std::string EncodeHexTx(const MCTransaction& tx, const int serializeFlags)
-{
-    MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
-    ssTx << tx;
-    return HexStr(ssTx.begin(), ssTx.end());
-}
-
-std::string EncodeHexSpvProof(const MCSpvProof& spv, const int serializeFlags)
-{
-    MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
-    ssTx << spv;
-    return HexStr(ssTx.begin(), ssTx.end());
-}
-
 void ScriptPubKeyToUniv(const MCScript& scriptPubKey,
                         UniValue& out, bool fIncludeHex)
 {
@@ -330,6 +316,6 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
     }
 
     if (include_hex) {
-        entry.pushKV("hex", EncodeHexTx(tx, serialize_flags)); // the hex-encoded transaction. used the name "hex" to be consistent with the verbose output of "getrawtransaction".
+        entry.pushKV("hex", EncodeHex(tx, serialize_flags)); // the hex-encoded transaction. used the name "hex" to be consistent with the verbose output of "getrawtransaction".
     }
 }

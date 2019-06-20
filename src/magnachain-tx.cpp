@@ -754,7 +754,7 @@ static void OutputTxHash(const MCTransaction& tx)
 
 static void OutputTxHex(const MCTransaction& tx)
 {
-    std::string strHex = EncodeHexTx(tx);
+    std::string strHex = EncodeHex(tx);
 
     fprintf(stdout, "%s\n", strHex.c_str());
 }

@@ -148,58 +148,6 @@ bool DecodeHexTx(MCMutableTransaction& tx, const std::string& strHexTx, bool fTr
     return DecodeTx(tx, txData, fTryNoWitness);
 }
 
-bool DecodeHexSpv(MCSpvProof& spv, const std::string& strHexSpv, bool fTryNoWitness)
-{
-    if (!IsHex(strHexSpv)) {
-        return false;
-    }
-
-    std::vector<unsigned char> txData(ParseHex(strHexSpv));
-
-    if (fTryNoWitness) {
-        MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-        try {
-            ssData >> spv;
-            if (ssData.eof()) {
-                return true;
-            }
-        }
-        catch (const std::exception&) {
-            // Fall through.
-        }
-    }
-
-    MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
-    try {
-        ssData >> spv;
-        if (!ssData.empty()) {
-            return false;
-        }
-    }
-    catch (const std::exception&) {
-        return false;
-    }
-
-    return true;
-}
-
-bool DecodeHexBlk(MCBlock& block, const std::string& strHexBlk)
-{
-    if (!IsHex(strHexBlk))
-        return false;
-
-    std::vector<unsigned char> blockData(ParseHex(strHexBlk));
-    MCDataStream ssBlock(blockData, SER_NETWORK, PROTOCOL_VERSION);
-    try {
-        ssBlock >> block;
-    }
-    catch (const std::exception&) {
-        return false;
-    }
-
-    return true;
-}
-
 uint256 ParseHashUV(const UniValue& v, const std::string& strName)
 {
     std::string strHex;

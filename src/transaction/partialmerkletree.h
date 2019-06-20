@@ -60,12 +60,10 @@ protected:
     /** txids and internal hashes */
     std::vector<uint256> vHash;
 
-    /** flag set when encountering invalid data */
-    bool fBad;
-
     /** helper function to efficiently calculate the number of nodes at given height in the merkle tree */
-    unsigned int CalcTreeWidth(int height) {
-        return (nTransactions+(1 << height)-1) >> height;
+    unsigned int CalcTreeWidth(int height) const
+    {
+        return (nTransactions + (1 << height) - 1) >> height;
     }
 
     /** calculate the hash of a node in the merkle tree (at leaf level: the txid's themselves) */
@@ -78,7 +76,8 @@ protected:
      * recursive function that traverses tree nodes, consuming the bits and hashes produced by TraverseAndBuild.
      * it returns the hash of the respective node and its respective index.
      */
-    uint256 TraverseAndExtract(int height, unsigned int pos, unsigned int &nBitsUsed, unsigned int &nHashUsed, std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex);
+    uint256 TraverseAndExtract(int height, unsigned int pos, unsigned int &nBitsUsed, 
+        unsigned int &nHashUsed, std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex) const;
 
 public:
 
@@ -96,7 +95,6 @@ public:
             us.vBits.resize(vBytes.size() * 8);
             for (unsigned int p = 0; p < us.vBits.size(); p++)
                 us.vBits[p] = (vBytes[p / 8] & (1 << (p % 8))) != 0;
-            us.fBad = false;
         } else {
             vBytes.resize((vBits.size()+7)/8);
             for (unsigned int p = 0; p < vBits.size(); p++)
@@ -105,17 +103,21 @@ public:
         }
     }
 
-    /** Construct a partial merkle tree from a list of transaction ids, and a mask that selects a subset of them */
+    MCPartialMerkleTree();
+
     MCPartialMerkleTree(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch);
 
-    MCPartialMerkleTree();
+    void Clear();
+
+    /** Construct a partial merkle tree from a list of transaction ids, and a mask that selects a subset of them */
+    void SetData(const std::vector<uint256> &vTxid, const std::vector<bool> &vMatch);
 
     /**
      * extract the matching txid's represented by this partial merkle tree
      * and their respective indices within the partial tree.
      * returns the merkle root, or 0 in case of failure
      */
-    uint256 ExtractMatches(std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex);
+    uint256 ExtractMatches(std::vector<uint256> &vMatch, std::vector<unsigned int> &vnIndex) const;
 };
 
 #endif // MAGNACHAIN_PARTIALMERKLETREE_H

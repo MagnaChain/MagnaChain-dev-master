@@ -773,7 +773,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
                 throw JSONRPCError(RPC_TYPE_ERROR, "Missing data String key for proposal");
 
             MCBlock block;
-            if (!DecodeHexBlk(block, dataval.get_str()))
+            if (!DecodeHex(block, dataval.get_str()))
                 throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
 
             uint256 hash = block.GetHash();
@@ -964,7 +964,7 @@ UniValue getblocktemplate(const JSONRPCRequest& request)
 
         UniValue entry(UniValue::VOBJ);
 
-        entry.push_back(Pair("data", EncodeHexTx(tx)));
+        entry.push_back(Pair("data", EncodeHex(tx)));
         entry.push_back(Pair("txid", txHash.GetHex()));
         entry.push_back(Pair("hash", tx.GetWitnessHash().GetHex()));
 
@@ -1129,7 +1129,7 @@ UniValue submitblock(const JSONRPCRequest& request)
 
     std::shared_ptr<MCBlock> blockptr = std::make_shared<MCBlock>();
     MCBlock& block = *blockptr;
-    if (!DecodeHexBlk(block, request.params[0].get_str())) {
+    if (!DecodeHex(block, request.params[0].get_str())) {
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block decode failed");
     }
 

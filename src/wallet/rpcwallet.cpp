@@ -931,7 +931,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut);
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
+    ret.push_back(Pair("txhex", EncodeHex(*wtx.tx, RPCSerializationFlags())));
     
     //for debug
     //UniValue objTx(UniValue::VOBJ);
@@ -1166,7 +1166,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
         wtx.pContractData->contractCoinsOut = std::move(vmOut.contractCoinsOut);
         SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut);
 
-        ret.push_back(Pair("txhex", EncodeHexTx(*wtx.tx, RPCSerializationFlags())));
+        ret.push_back(Pair("txhex", EncodeHex(*wtx.tx, RPCSerializationFlags())));
         UniValue coins(UniValue::VARR);
         for (MCTxIn txin : wtx.tx->vin) {
             const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
@@ -2742,7 +2742,7 @@ UniValue gettransaction(const JSONRPCRequest& request)
     ListTransactions(pwallet, wtx, "*", 0, false, details, filter);
     entry.push_back(Pair("details", details));
 
-    std::string strHex = EncodeHexTx(static_cast<MCTransaction>(wtx), RPCSerializationFlags());
+    std::string strHex = EncodeHex(static_cast<MCTransaction>(wtx), RPCSerializationFlags());
     entry.push_back(Pair("hex", strHex));
 
     return entry;
@@ -3793,7 +3793,7 @@ UniValue fundrawtransaction(const JSONRPCRequest& request)
     }
 
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("hex", EncodeHexTx(tx)));
+    result.push_back(Pair("hex", EncodeHex(tx)));
     result.push_back(Pair("changepos", changePosition));
     result.push_back(Pair("fee", ValueFromAmount(nFeeOut)));
 
@@ -4105,7 +4105,7 @@ UniValue premaketransaction(const JSONRPCRequest& request)
     SendFromToOther(wtxNew, fromaddress, toaddress, changeaddress, nAmount, nUserFee, nullptr);
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txhex", EncodeHexTx(*wtxNew.tx, RPCSerializationFlags())));
+    ret.push_back(Pair("txhex", EncodeHex(*wtxNew.tx, RPCSerializationFlags())));
     //return coins info
     UniValue uvalCoins(UniValue::VARR);
     for (MCTxIn txin : wtxNew.tx->vin)
@@ -4121,7 +4121,7 @@ UniValue premaketransaction(const JSONRPCRequest& request)
     }
     ret.push_back(Pair("coins", uvalCoins));
     // test
-    //	posttransaction(EncodeHexTx(tx, RPCSerializationFlags()));
+    //	posttransaction(EncodeHex(tx, RPCSerializationFlags()));
     return ret;
 }
 

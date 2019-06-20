@@ -748,7 +748,7 @@ UniValue getbranchchaintransaction(const JSONRPCRequest& request)
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txid", tx->GetHash().GetHex()));
-    ret.push_back(Pair("hex", EncodeHexTx(*tx, RPCSerializationFlags())));
+    ret.push_back(Pair("hex", EncodeHex(*tx, RPCSerializationFlags())));
 
     //block info
     MCBlockIndex *pchainBlockIndex = chainActive[pblockindex->nHeight];
@@ -1249,7 +1249,7 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 5 || request.params.size() > 5)
+    if (request.fHelp || request.params.size() < 6 || request.params.size() > 6)
         throw std::runtime_error(
                 "redeemmortgagecoin \"txid\" \"outindex\" \"statementtxid\"\n"
                 "\nRedeem mortgage coin by outpoint info(txid and vout index of coin)\n"
@@ -1289,9 +1289,13 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     if (!DecodeHexTx(statementmtx, strTxHexData))
         throw JSONRPCError(RPC_INVALID_REQUEST, "Parameter 'fromtx' invalid hex tx data.");
 
-    uint256 frombranchid = ParseHashV(request.params[3], "parameter 3");
-    MCSpvProof spvProof;
-    DecodeHexSpv(spvProof, request.params[4].get_str());
+    const uint256& frombranchid = ParseHashV(request.params[3], "parameter 3");
+    const uint256& blockHash = ParseHashV(request.params[4], "parameter 4"); 
+    
+    MCPartialMerkleTree pmt;
+    if (!DecodeHex(pmt, request.params[5].get_str())) {
+        throw JSONRPCError(RPC_INVALID_REQUEST, "Parameter 'pmt' invalid hex data.");
+    }
 
     MCOutPoint outpoint(mortgagecoinhash, nvoutindex);
     const Coin& coin = pcoinsTip->AccessCoin(outpoint);
@@ -1495,7 +1499,7 @@ UniValue sendreporttomain(const JSONRPCRequest& request)
     const std::string strMethod = "handlebranchreport";
     UniValue params(UniValue::VARR);
     MCTransactionRef txRef = MakeTransactionRef(std::move(mtx));
-    params.push_back(EncodeHexTx(*txRef, RPCSerializationFlags()));
+    params.push_back(EncodeHex(*txRef, RPCSerializationFlags()));
 
     MCMutableTransaction mtxTrans1;
     if (!DecodeHexTx(mtxTrans1, params[0].get_str()))
@@ -1584,7 +1588,7 @@ UniValue reportcontractdata(const JSONRPCRequest& request)
     const std::string strMethod = "handlebranchreport";
     UniValue params(UniValue::VARR);
     MCTransactionRef txRef = MakeTransactionRef(std::move(mtx));
-    params.push_back(EncodeHexTx(*txRef, RPCSerializationFlags()));
+    params.push_back(EncodeHex(*txRef, RPCSerializationFlags()));
 
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
     const UniValue& error = find_value(reply, "error");
@@ -1868,7 +1872,7 @@ UniValue sendprovetomain(const JSONRPCRequest& request)
     const std::string strMethod = "handlebranchprove";
     UniValue params(UniValue::VARR);
     MCTransactionRef txRef = MakeTransactionRef(std::move(mtx));
-    params.push_back(EncodeHexTx(*txRef, RPCSerializationFlags()));
+    params.push_back(EncodeHex(*txRef, RPCSerializationFlags()));
 
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
     const UniValue& error = find_value(reply, "error");
@@ -1931,7 +1935,7 @@ UniValue sendmerkleprovetomain(const JSONRPCRequest& request)
     const std::string strMethod = "handlebranchprove";
     UniValue params(UniValue::VARR);
     MCTransactionRef txRef = MakeTransactionRef(std::move(mtx));
-    params.push_back(EncodeHexTx(*txRef, RPCSerializationFlags()));
+    params.push_back(EncodeHex(*txRef, RPCSerializationFlags()));
 
     UniValue reply = CallRPC(branchrpccfg, strMethod, params);
     const UniValue& error = find_value(reply, "error");
@@ -2148,7 +2152,7 @@ UniValue getreporttxdata(const JSONRPCRequest& request)
     }
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txhex", EncodeHexTx(*ptxReport, RPCSerializationFlags())));
+    ret.push_back(Pair("txhex", EncodeHex(*ptxReport, RPCSerializationFlags())));
     ret.push_back(Pair("confirmations", confirmations));
     ret.push_back(Pair("preminecoinvouthash", prevouthash.GetHex()));
 
@@ -2288,7 +2292,7 @@ UniValue getprovetxdata(const JSONRPCRequest& request)
     }
 
     UniValue ret(UniValue::VOBJ);
-    ret.push_back(Pair("txhex", EncodeHexTx(*ptxProve, RPCSerializationFlags())));
+    ret.push_back(Pair("txhex", EncodeHex(*ptxProve, RPCSerializationFlags())));
     ret.push_back(Pair("confirmations", confirmations));
     ret.push_back(Pair("preminecoinvouthash", prevouthash.GetHex()));
 

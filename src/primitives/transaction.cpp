@@ -57,6 +57,88 @@ std::string MCTxOut::ToString() const
     return strprintf("MCTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
 }
 
+
+MCTransaction::MCTransaction()
+    : nVersion(MCTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0),
+    pContractData(), pBranchCreateData(), pBranchTransactionData(),
+    /*pBranchBlockData(), pReportData(), pProveData(),
+    reporttxid(), coinpreouthash(), provetxid(),*/
+    hash()
+{
+}
+
+MCTransaction::MCTransaction(const MCMutableTransaction& tx)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
+    pBranchCreateData(tx.pBranchCreateData == nullptr ? nullptr : new BranchCreateData(*tx.pBranchCreateData)),
+    pBranchTransactionData(tx.pBranchTransactionData == nullptr ? nullptr : new BranchTransactionData(*tx.pBranchTransactionData)),
+    /*pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
+    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)),
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid),*/
+    hash(ComputeHash())
+{
+}
+
+MCTransaction::MCTransaction(MCMutableTransaction&& tx)
+    : nVersion(tx.nVersion), vin(std::move(tx.vin)), vout(std::move(tx.vout)), nLockTime(tx.nLockTime),
+    pContractData(std::move(tx.pContractData)),
+    pBranchCreateData(std::move(tx.pBranchCreateData)),
+    pBranchTransactionData(std::move(tx.pBranchTransactionData)),
+    /*pBranchBlockData(std::move(tx.pBranchBlockData)),
+    pReportData(std::move(tx.pReportData)),
+    pProveData(std::move(tx.pProveData)),
+    reporttxid(std::move(tx.reporttxid)), coinpreouthash(std::move(tx.coinpreouthash)), provetxid(std::move(tx.provetxid)),*/
+    hash(ComputeHash())
+{
+}
+
+MCTransaction::MCTransaction(const MCTransaction& tx)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
+    pBranchCreateData(tx.pBranchCreateData == nullptr ? nullptr : new BranchCreateData(*tx.pBranchCreateData)),
+    pBranchTransactionData(tx.pBranchTransactionData == nullptr ? nullptr : new BranchTransactionData(*tx.pBranchTransactionData)),
+    /*pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
+    pProveData(tx.pProveData == nullptr?nullptr:new ProveData(*tx.pProveData)),
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid),*/
+    hash(ComputeHash())
+{
+}
+
+MCMutableTransaction::MCMutableTransaction(const MCMutableTransaction& tx)
+    : nVersion(tx.nVersion), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime),
+    pContractData(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData)),
+    pBranchCreateData(tx.pBranchCreateData == nullptr ? nullptr : new BranchCreateData(*tx.pBranchCreateData)),
+    pBranchTransactionData(tx.pBranchTransactionData == nullptr ? nullptr : new BranchTransactionData(*tx.pBranchTransactionData))/*,
+    pBranchBlockData(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData)),
+    pReportData(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData)),
+    pProveData(tx.pProveData==nullptr?nullptr:new ProveData(*tx.pProveData)),
+    reporttxid(tx.reporttxid), coinpreouthash(tx.coinpreouthash), provetxid(tx.provetxid)*/
+{
+}
+
+MCMutableTransaction& MCMutableTransaction::operator=(const MCMutableTransaction& tx)
+{
+    if (&tx == this)
+        return *this;
+
+    nVersion = (tx.nVersion);
+    vin = (tx.vin);
+    vout = (tx.vout);
+    nLockTime = (tx.nLockTime);
+    pContractData.reset(tx.pContractData == nullptr ? nullptr : new ContractData(*tx.pContractData));
+    pBranchCreateData.reset(tx.pBranchCreateData == nullptr ? nullptr : new BranchCreateData(*tx.pBranchCreateData));
+    pBranchTransactionData.reset(tx.pBranchTransactionData == nullptr ? nullptr : new BranchTransactionData(*tx.pBranchTransactionData));
+    //pBranchBlockData.reset(tx.pBranchBlockData == nullptr ? nullptr : new MCBranchBlockInfo(*tx.pBranchBlockData));
+    //pReportData.reset(tx.pReportData == nullptr ? nullptr : new ReportData(*tx.pReportData));
+    //pProveData.reset(tx.pProveData == nullptr ? nullptr : new ProveData(*tx.pProveData));
+    //reporttxid = tx.reporttxid;
+    //coinpreouthash = tx.coinpreouthash;
+    //provetxid = tx.provetxid;
+    return *this;
+}
+
 MCMutableTransaction::MCMutableTransaction()
     : nVersion(MCTransaction::CURRENT_VERSION), nLockTime(0)
 {
@@ -170,7 +252,7 @@ std::string MCTransaction::ToString() const
 	return str;
 }
 
-MCBranchBlockInfo::MCBranchBlockInfo()
+/*MCBranchBlockInfo::MCBranchBlockInfo()
 {
     SetNull();
 }
@@ -229,4 +311,4 @@ void MCBranchBlockInfo::SetBlockHeader(const MCBlockHeader& block)
     nNonce = block.nNonce;
     prevoutStake = block.prevoutStake;
     vchBlockSig = block.vchBlockSig;
-}
+}*/

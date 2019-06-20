@@ -73,7 +73,7 @@ UniValue CallRPC(MCRPCConfig& rpccfg, const std::string& strMethod, const UniVal
 
 void ProcessBlockBranchChain();
 
-MCSpvProof* NewSpvProof(const MCBlock &block, const std::set<uint256>& txids);
+void MakeBlockPartialMerkleTree(const MCBlock& block, const uint256& txid, MCPartialMerkleTree& pmt);
 int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uint256 &querytxhash);
 bool CheckBranchTransaction(const MCTransaction& tx, MCValidationState &state, const bool fVerifingDB, const MCTransactionRef& pFromTx);
 

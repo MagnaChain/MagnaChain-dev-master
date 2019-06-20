@@ -161,7 +161,7 @@ UniValue getrawtransaction(const JSONRPCRequest& request)
             ". Use gettransaction for wallet transactions.");
 
     if (!fVerbose)
-        return EncodeHexTx(*tx, RPCSerializationFlags());
+        return EncodeHex(*tx, RPCSerializationFlags());
 
     UniValue result(UniValue::VOBJ);
     TxToJSON(*tx, hashBlock, result);
@@ -203,7 +203,7 @@ UniValue getbytxdiskpos(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INTERNAL_ERROR, "Read transaction data fail");
 
     if (!fVerbose)
-        return EncodeHexTx(*tx, RPCSerializationFlags());
+        return EncodeHex(*tx, RPCSerializationFlags());
 
     UniValue result(UniValue::VOBJ);
     TxToJSON(*tx, hashBlock, result);
@@ -457,7 +457,7 @@ UniValue createrawtransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter combination: Sequence number(s) contradict replaceable option");
     }
 
-    return EncodeHexTx(rawTx);
+    return EncodeHex(rawTx);
 }
 
 UniValue decoderawtransaction(const JSONRPCRequest& request)
@@ -679,7 +679,7 @@ UniValue combinerawtransaction(const JSONRPCRequest& request)
         UpdateTransaction(mergedTx, i, sigdata);
     }
 
-    return EncodeHexTx(mergedTx);
+    return EncodeHex(mergedTx);
 }
 
 UniValue signrawtransaction(const JSONRPCRequest& request)
@@ -936,7 +936,7 @@ UniValue signrawtransaction(const JSONRPCRequest& request)
     }
 
     UniValue result(UniValue::VOBJ);
-    result.push_back(Pair("hex", EncodeHexTx(mtx)));
+    result.push_back(Pair("hex", EncodeHex(mtx)));
     result.push_back(Pair("complete", fComplete));
     if (!vErrors.empty()) {
         result.push_back(Pair("errors", vErrors));

@@ -5149,34 +5149,34 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
     return true;
 }
 
-//std::string GetBranchTxProof(const MCBlock& block, const std::set<uint256>& setTxids)
-//{
-//    MCDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-//    MCMerkleBlock mb(block, setTxids);
-//    ssMB << mb;
-//    std::string strHex = HexStr(ssMB.begin(), ssMB.end());
-//    return strHex;
-//}
+/*std::string GetBranchTxProof(const MCBlock& block, const std::set<uint256>& setTxids)
+{
+    MCDataStream ssMB(SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+    MCMerkleBlock mb(block, setTxids);
+    ssMB << mb;
+    std::string strHex = HexStr(ssMB.begin(), ssMB.end());
+    return strHex;
+}
 
 
-//bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof)
-//{
-//
-//    std::vector<unsigned char> txData(ParseHex(txProof));
-//    MCDataStream ssMB(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
-//    MCMerkleBlock merkleBlock;
-//    ssMB >> merkleBlock;
-//
-//    std::vector<uint256> vMatch;
-//    std::vector<unsigned int> vIndex;
-//    BranchData bData = g_pBranchDb->GetBranchData(branchHash);
-//    BranchBlockData bBlockData = bData.mapHeads[block.GetHash()];
-//    uint256 hashMerkleRoot = bBlockData.header.hashMerkleRoot;
-//
-//    if (merkleBlock.txn.ExtractMatches(vMatch, vIndex) != hashMerkleRoot)
-//        return false;
-//    return true;
-//}
+bool VerifyBranchTxProof(const uint256& branchHash, const MCBlock& block, const std::string& txProof)
+{
+
+    std::vector<unsigned char> txData(ParseHex(txProof));
+    MCDataStream ssMB(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
+    MCMerkleBlock merkleBlock;
+    ssMB >> merkleBlock;
+
+    std::vector<uint256> vMatch;
+    std::vector<unsigned int> vIndex;
+    BranchData bData = g_pBranchDb->GetBranchData(branchHash);
+    BranchBlockData bBlockData = bData.mapHeads[block.GetHash()];
+    uint256 hashMerkleRoot = bBlockData.header.hashMerkleRoot;
+
+    if (merkleBlock.txn.ExtractMatches(vMatch, vIndex) != hashMerkleRoot)
+        return false;
+    return true;
+}
 
 bool GetTxVinBlockData(const MCBlock& block, const MCTransactionRef& ptx, std::vector<ProveDataItem>& vectProveData)
 {
@@ -5223,18 +5223,11 @@ bool GetTxVinBlockData(const MCBlock& block, const MCTransactionRef& ptx, std::v
                 }
             }
 
-            std::set<uint256> setTxids;
-            setTxids.insert(tmpTx->GetHash());
-
-            std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(inblock, setTxids));
-
-            ProveDataItem pData;
-            MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tmpTx};
-            pData.pCSP = *pSpvPf;
+            vectProveData.emplace_back();
+            ProveDataItem& pData = vectProveData.back();
+            MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tmpTx);
+            MakeBlockPartialMerkleTree(inblock, tmpTx->GetHash(), pData.pmt);
             pData.blockHash = block.GetHash();
-
-            vectProveData.emplace_back(pData);
-
         } else {
             return false;
         }
@@ -5242,48 +5235,48 @@ bool GetTxVinBlockData(const MCBlock& block, const MCTransactionRef& ptx, std::v
     return true;
 }
 
-//bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData)
-//{
-//    MCTransactionRef tx = block.vtx[txIndex];
-//
-//    std::set<uint256> setTxids;
-//    setTxids.insert(tx->GetHash());
-//
-//    if (tx == nullptr)
-//        return error("%s did not find tx in block.\n", __func__);
-//
-//    std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(block, setTxids));
-//
-//    ProveDataItem pData;
-//    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
-//    pData.pCSP = *pSpvPf;
-//    pData.blockHash = block.GetHash();
-//    pProveData->vectProveData.emplace_back(pData);
-//
-//    if (tx->IsCoinBase())
-//        return false;
-//
-//    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
-//    return success;
-//}
+bool GetProveInfo(const MCBlock& block, int blockHeight, MCBlockIndex* pPrevBlockIndex, const int txIndex, std::shared_ptr<ProveData> pProveData)
+{
+    MCTransactionRef tx = block.vtx[txIndex];
 
-//构建coinbase交易的证明
-//coinbase需要证明block的手续费是正确的，目前设计支链是不产生块奖励，只有收取手续费
-//为了计算手续费，得知道block所有交易的输入输出
-//bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block)
-//{
-//    //write all block.vtx data to pProveData->vtxData
-//    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pProveData->vtxData, 0, block.vtx};
-//
-//    //create vtx transaction's prove data
-//    //exclude coinbase, stake transaction
-//    for (size_t i = 2; i < block.vtx.size(); i++) {
-//        const MCTransactionRef& ptx = block.vtx[i];
-//        pProveData->vecBlockTxProve.emplace_back();
-//        std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
-//        if (!GetTxVinBlockData(block, ptx, vectProveData)) {
-//            return false;
-//        }
-//    }
-//    return true;
-//}
+    std::set<uint256> setTxids;
+    setTxids.insert(tx->GetHash());
+
+    if (tx == nullptr)
+        return error("%s did not find tx in block.\n", __func__);
+
+    std::shared_ptr<MCSpvProof> pSpvPf(NewSpvProof(block, setTxids));
+
+    ProveDataItem pData;
+    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, pData.tx, 0, *tx);
+    pData.pCSP = *pSpvPf;
+    pData.blockHash = block.GetHash();
+    pProveData->vectProveData.emplace_back(pData);
+
+    if (tx->IsCoinBase())
+        return false;
+
+    bool success = GetTxVinBlockData(block, tx, pProveData->vectProveData);
+    return success;
+}
+
+构建coinbase交易的证明
+coinbase需要证明block的手续费是正确的，目前设计支链是不产生块奖励，只有收取手续费
+为了计算手续费，得知道block所有交易的输入输出
+bool GetProveOfCoinbase(std::shared_ptr<ProveData>& pProveData, MCBlock& block)
+{
+    //write all block.vtx data to pProveData->vtxData
+    MCVectorWriter cvw{SER_NETWORK, INIT_PROTO_VERSION, pProveData->vtxData, 0, block.vtx};
+
+    //create vtx transaction's prove data
+    //exclude coinbase, stake transaction
+    for (size_t i = 2; i < block.vtx.size(); i++) {
+        const MCTransactionRef& ptx = block.vtx[i];
+        pProveData->vecBlockTxProve.emplace_back();
+        std::vector<ProveDataItem>& vectProveData = pProveData->vecBlockTxProve.back();
+        if (!GetTxVinBlockData(block, ptx, vectProveData)) {
+            return false;
+        }
+    }
+    return true;
+}*/

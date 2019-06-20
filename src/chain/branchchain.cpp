@@ -619,24 +619,22 @@ MCAmount GetBranchChainOut(const MCTransaction& tx)
 }
 
 //copy from merkleblock.cpp
-MCSpvProof* NewSpvProof(const MCBlock& block, const std::set<uint256>& txids)
+void MakeBlockPartialMerkleTree(const MCBlock& block, const uint256& txid, MCPartialMerkleTree& pmt)
 {
     std::vector<bool> vMatch;
     std::vector<uint256> vHashes;
 
-    vMatch.reserve(block.vtx.size());
-    vHashes.reserve(block.vtx.size());
+    vMatch.resize(block.vtx.size());
+    vHashes.resize(block.vtx.size());
 
     for (unsigned int i = 0; i < block.vtx.size(); i++) {
         const uint256& hash = block.vtx[i]->GetHash();
-        if (txids.count(hash))
-            vMatch.push_back(true);
-        else
-            vMatch.push_back(false);
-        vHashes.push_back(hash);
+        if (hash == txid)
+            vMatch[i] = true;
+        vHashes[i] = hash;
     }
 
-    return new MCSpvProof(vHashes, vMatch, block.GetHash());
+    pmt.SetData(vHashes, vMatch);
 }
 
 int CheckSpvProof(const uint256& merkleRoot, MCPartialMerkleTree& pmt, const uint256& querytxhash)
@@ -679,9 +677,9 @@ bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock& block, std
         //mtx.pPMT.reset(NewSpvProof(block, txids));
 
         MCTransactionRef sendtx = MakeTransactionRef(mtx);
-        strTxHexData = EncodeHexTx(*sendtx, RPCSerializationFlags());
+        strTxHexData = EncodeHex(*sendtx, RPCSerializationFlags());
     } else {
-        strTxHexData = EncodeHexTx(*tx, RPCSerializationFlags());
+        strTxHexData = EncodeHex(*tx, RPCSerializationFlags());
     }
 
     // rpc to branch chain to create an branchtranstraction.
@@ -934,7 +932,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
 //    const std::string strMethod = "submitbranchblockinfo";
 //    UniValue params(UniValue::VARR);
 //    MCTransactionRef tx = MakeTransactionRef(std::move(mtx));
-//    params.push_back(EncodeHexTx(*tx, RPCSerializationFlags()));
+//    params.push_back(EncodeHex(*tx, RPCSerializationFlags()));
 //
 //    UniValue reply = CallRPC(branchrpccfg, strMethod, params);
 //
@@ -1021,17 +1019,17 @@ bool ReqMainChainRedeemMortgage(const MCTransactionRef& tx, const MCBlock& block
         }
     }
 
-    std::set<uint256> txids;
-    txids.emplace(tx->GetHash());
-    std::shared_ptr<MCSpvProof> spvProof(NewSpvProof(block, txids));
+    MCPartialMerkleTree pmt;
+    MakeBlockPartialMerkleTree(block, tx->GetHash(), pmt);
 
     const std::string strMethod = "redeemmortgagecoin";
     UniValue params(UniValue::VARR);
     params.push_back(coinfromtxid.ToString());
     params.push_back(UniValue(int(0)));
-    params.push_back(EncodeHexTx(*tx));
+    params.push_back(EncodeHex(*tx));
     params.push_back(Params().GetBranchId());
-    params.push_back(EncodeHexSpvProof(*spvProof));
+    params.push_back(block.GetHash().ToString());
+    params.push_back(EncodeHex(pmt));
 
     //call rpc
     MCRPCConfig branchrpccfg;

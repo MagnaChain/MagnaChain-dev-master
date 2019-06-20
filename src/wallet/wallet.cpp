@@ -2830,7 +2830,6 @@ static bool MoveTransactionData(MCWalletTx& fromWtx, MCMutableTransaction& toTx)
     //}
     //else if (fromWtx.nVersion == MCTransaction::REPORT_CHEAT)
     //{
-    //    toTx.pPMT.reset(new MCSpvProof(*fromWtx.pPMT));
     //    toTx.pReportData.reset(new ReportData(*fromWtx.pReportData));
     //}
     //else if (fromWtx.nVersion == MCTransaction::PROVE)
