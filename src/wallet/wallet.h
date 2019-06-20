@@ -349,18 +349,10 @@ public:
 	// temp data for contract
 	int32_t nVersion = MCTransaction::CURRENT_VERSION;//special version
 
-	// temp data for branch
-	std::string branchVSeeds;
-	std::string branchSeedSpec6;
-	//trans
-	std::string sendToBranchid;
-	std::string sendToTxHexData;
-	//uint64_t inAmount;
-    std::string fromBranchId;
-
     //std::shared_ptr<const MCSpvProof> pPMT;
-    std::vector<unsigned char> fromTx;
     std::shared_ptr<ContractData> pContractData;
+    std::shared_ptr<BranchCreateData> pBranchCreateData;
+    std::shared_ptr<BranchTransactionData> pBranchTransactionData;
     //std::shared_ptr<const ReportData> pReportData;
     //std::shared_ptr<ProveData> pProveData;
 

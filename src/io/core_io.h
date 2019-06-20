@@ -22,6 +22,7 @@ class MCSpvProof;
 // core_read.cpp
 MCScript ParseScript(const std::string& s);
 std::string ScriptToAsmStr(const MCScript& script, const bool fAttemptSighashDecode = false);
+bool DecodeTx(MCMutableTransaction& tx, const std::vector<unsigned char>& txData, bool fTryNoWitness = false);
 bool DecodeHexTx(MCMutableTransaction& tx, const std::string& strHexTx, bool fTryNoWitness = false);
 bool DecodeHexSpv(MCSpvProof& spv, const std::string& strHexSpv, bool fTryNoWitness = false);
 bool DecodeHexBlk(MCBlock&, const std::string& strHexBlk);

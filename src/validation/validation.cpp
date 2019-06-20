@@ -1372,7 +1372,7 @@ void UpdateCoins(const MCTransaction& tx, MCCoinsViewCache& inputs, MCTxUndo& tx
         return;
 
     // mark inputs spent
-    if (tx.IsBranchChainTransStep2() && (tx.fromBranchId == MCBaseChainParams::MAIN || ismempoolchecking)) {
+    if (tx.IsBranchChainTransStep2() && (tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN || ismempoolchecking)) {
         // no valid inputs
     } else if (!tx.IsCoinBase()) {
         txundo.vprevout.reserve(tx.vin.size());
@@ -1426,9 +1426,9 @@ bool CheckBlockGroupSize(const MCBlock* pBlock)
 
 bool CScriptCheck::operator()()
 {
-    if (ptxTo->IsBranchChainTransStep2() && ptxTo->fromBranchId != MCBaseChainParams::MAIN) {
+    if (ptxTo->IsBranchChainTransStep2() && ptxTo->pBranchTransactionData->branchId != MCBaseChainParams::MAIN) {
         uint256 branchid;
-        branchid.SetHex(ptxTo->fromBranchId);
+        branchid.SetHex(ptxTo->pBranchTransactionData->branchId);
 
         return CheckTranBranchScript(branchid, scriptPubKey);
         }
@@ -1728,7 +1728,7 @@ static DisconnectResult DisconnectBlock(const MCBlock& block, const MCBlockIndex
         }
 
         // restore inputs
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN) {
+        if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN) {
             //OP : send to branch step2 no valid input
         } else if (isBranch2ndBlockTx) {
         } else if (i > 0) { // not coinbases
@@ -2010,7 +2010,7 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
 
         nInputs += tx.vin.size();
 
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN) {
+        if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN) {
             //OP: send to branch no valid input,some check
         } else if (isBranch2ndBlockTx) {
             std::vector<MCTransactionRef>::const_iterator itFound =
@@ -2059,8 +2059,8 @@ static bool ConnectBlock(const MCBlock& block, MCValidationState& state, MCBlock
                 REJECT_INVALID, "bad-blk-sigops");
 
         txdata.emplace_back(tx);
-        if (tx.IsBranchChainTransStep2() && tx.fromBranchId == MCBaseChainParams::MAIN) {
-            nFees += tx.inAmount - tx.GetValueOut();
+        if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId == MCBaseChainParams::MAIN) {
+            nFees += tx.pBranchTransactionData->amount - tx.GetValueOut();
         } else if (isBranch2ndBlockTx) { //no nFees
         } else if (!tx.IsCoinBase()) {
             nFees += view.GetValueIn(tx) - tx.GetValueOut();
@@ -4286,7 +4286,7 @@ static bool RollforwardBlock(const MCBlockIndex* pindex, MCCoinsViewCache& input
     }
 
     for (const MCTransactionRef& tx : block.vtx) {
-        if (!(tx->IsCoinBase() || (tx->IsBranchChainTransStep2() && tx->fromBranchId == MCBaseChainParams::MAIN))) {
+        if (!(tx->IsCoinBase() || (tx->IsBranchChainTransStep2() && tx->pBranchTransactionData->branchId == MCBaseChainParams::MAIN))) {
             for (const MCTxIn& txin : tx->vin) {
                 inputs.SpendCoin(txin.prevout);
             }
@@ -5091,7 +5091,7 @@ bool AcceptChainTransStep2ToMemoryPool(const MCChainParams& chainparams, MCTxMem
             // Bring the best block into scope
             view.GetBestBlock();
 
-            nValueIn = tx.inAmount;
+            nValueIn = tx.pBranchTransactionData->amount;
 
             // we have all inputs cached now, so switch back to dummy, so we don't need to keep lock on mempool
             view.SetBackend(dummy);

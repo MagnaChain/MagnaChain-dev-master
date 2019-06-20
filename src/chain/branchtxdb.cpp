@@ -45,8 +45,8 @@ void BranchChainTxRecordsCache::AddBranchChainTxRecord(const MCTransactionRef& t
     sendinfo.txnVersion = tx->nVersion;
     if (tx->IsBranchCreate()) {
         sendinfo.createchaininfo.txid = tx->GetHash();
-        sendinfo.createchaininfo.branchSeedSpec6 = tx->branchSeedSpec6;
-        sendinfo.createchaininfo.branchVSeeds = tx->branchVSeeds;
+        sendinfo.createchaininfo.branchSeedSpec6 = tx->pBranchCreateData->branchSeedSpec6;
+        sendinfo.createchaininfo.branchVSeeds = tx->pBranchCreateData->branchVSeeds;
         sendinfo.createchaininfo.blockhash = blockhash;
     }
     sendinfo.flags = DbDataFlag::eADD;
@@ -61,8 +61,8 @@ void BranchChainTxRecordsCache::DelBranchChainTxRecord(const MCTransactionRef& t
     BranchChainTxInfo& sendinfo = m_mapChainTxInfos[key];
     if (tx->IsBranchCreate()) {
         sendinfo.createchaininfo.txid = tx->GetHash();
-        sendinfo.createchaininfo.branchSeedSpec6 = tx->branchSeedSpec6;
-        sendinfo.createchaininfo.branchVSeeds = tx->branchVSeeds;
+        sendinfo.createchaininfo.branchSeedSpec6 = tx->pBranchCreateData->branchSeedSpec6;
+        sendinfo.createchaininfo.branchVSeeds = tx->pBranchCreateData->branchVSeeds;
     }
     sendinfo.flags = DbDataFlag::eDELETE;
 }
@@ -106,7 +106,7 @@ void BranchChainTxRecordsCache::AddToCache(const MCTransactionRef& ptx, const ui
     if (ptx->IsBranchChainTransStep2() || ptx->IsRedeemMortgage())
     {
         MCTransactionRef pFromTx;
-        MCDataStream cds(ptx->fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        MCDataStream cds(ptx->pBranchTransactionData->txData, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pFromTx);
         CTxidMapping& kTxid = m_mapTxidMapping[pFromTx->GetHash()];
         kTxid.flags = DbDataFlag::eADD;
@@ -129,7 +129,7 @@ void BranchChainTxRecordsCache::RemoveFromCache(const MCTransactionRef& ptx)
     if (ptx->IsBranchChainTransStep2() || ptx->IsRedeemMortgage())
     {
         MCTransactionRef pFromTx;
-        MCDataStream cds(ptx->fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        MCDataStream cds(ptx->pBranchTransactionData->txData, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pFromTx);
         CTxidMapping& kTxid = m_mapTxidMapping[pFromTx->GetHash()];
         kTxid.flags = DbDataFlag::eDELETE;
@@ -180,7 +180,7 @@ void BranchChainTxRecordsCache::RemoveFromMempool(const MCTransaction& tx)
         }
     if (tx.IsBranchChainTransStep2() || tx.IsRedeemMortgage()) {
         MCTransactionRef pFromTx;
-        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        MCDataStream cds(tx.pBranchTransactionData->txData, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pFromTx);
         m_mapTxidMapping.erase(pFromTx->GetHash());
     }

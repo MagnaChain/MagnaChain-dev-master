@@ -646,7 +646,7 @@ void MCWallet::AddToSpends(const uint256& wtxid)
     MCWalletTx& thisTx = mapWallet[wtxid];
     if (thisTx.IsCoinBase()) // Coinbases don't spend anything!
         return;
-	if (thisTx.tx->IsBranchChainTransStep2() && thisTx.tx->fromBranchId == MCBaseChainParams::MAIN)
+	if (thisTx.tx->IsBranchChainTransStep2() && thisTx.tx->pBranchTransactionData->branchId == MCBaseChainParams::MAIN)
 		return;
 
     for (const MCTxIn& txin : thisTx.tx->vin)
@@ -1763,7 +1763,7 @@ MCAmount MCWalletTx::GetDebit(const isminefilter& filter) const
 {
     MCAmount debit = 0;
     if (tx->IsBranchChainTransStep2()) {
-        debit += tx->inAmount;// TODO: may be 
+        debit += tx->pBranchTransactionData->amount;// TODO: may be 
     }
     if (tx->vin.empty())
         return debit;
@@ -2811,37 +2811,18 @@ MCFeeRate GetDiscardRate(const MCBlockPolicyEstimator& estimator)
 
 static bool MoveTransactionData(MCWalletTx& fromWtx, MCMutableTransaction& toTx)
 {
-    if (fromWtx.nVersion > MCTransaction::CURRENT_VERSION)
+    if (fromWtx.nVersion > MCTransaction::CURRENT_VERSION) {
         toTx.nVersion = fromWtx.nVersion;
-    if (fromWtx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || fromWtx.nVersion == MCTransaction::CALL_CONTRACT_VERSION)
-    {
+    }
+    if (fromWtx.nVersion == MCTransaction::PUBLISH_CONTRACT_VERSION || fromWtx.nVersion == MCTransaction::CALL_CONTRACT_VERSION) {
         toTx.pContractData.reset(new ContractData(*fromWtx.pContractData));
     }
-    else if (fromWtx.nVersion == MCTransaction::CREATE_BRANCH_VERSION)
-    {
-        toTx.branchVSeeds = fromWtx.branchVSeeds;
-        toTx.branchSeedSpec6 = fromWtx.branchSeedSpec6;
+    else if (fromWtx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
+        toTx.pBranchCreateData.reset(new BranchCreateData(*fromWtx.pBranchCreateData));
     }
-    else if (fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1)
-    {
-        toTx.sendToBranchid = fromWtx.sendToBranchid;
-        toTx.sendToTxHexData = fromWtx.sendToTxHexData;
-        //if (toTx.sendToBranchid == MCBaseChainParams::MAIN)
-        //    toTx.pPMT.reset(new MCSpvProof());
-    }
-    else if (fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2)//这种类型不是创建出来的，是包含在上面两个类型
-    {
-    }
-    else if (fromWtx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE)
-    {
-        toTx.sendToBranchid = fromWtx.sendToBranchid;
-        toTx.sendToTxHexData = fromWtx.sendToTxHexData;
-    }
-    else if (fromWtx.nVersion == MCTransaction::REDEEM_MORTGAGE)
-    {
-        toTx.fromBranchId = fromWtx.fromBranchId;
-        //toTx.pPMT.reset(new MCSpvProof(*fromWtx.pPMT));
-        toTx.fromTx = std::move(fromWtx.fromTx);
+    else if (fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1 || fromWtx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2 ||
+        fromWtx.nVersion == MCTransaction::MINE_BRANCH_MORTGAGE || fromWtx.nVersion == MCTransaction::REDEEM_MORTGAGE) {
+        toTx.pBranchTransactionData.reset(new BranchTransactionData(*fromWtx.pBranchTransactionData));
     }
     //else if (fromWtx.nVersion == MCTransaction::SYNC_BRANCH_INFO)
     //{

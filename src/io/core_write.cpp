@@ -298,18 +298,18 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
         entry.pushKV("contractdata", contractdata);
     }
     if (tx.nVersion == MCTransaction::CREATE_BRANCH_VERSION) {
-        entry.pushKV("branchVSeeds", tx.branchVSeeds);
-        entry.pushKV("branchSeedSpec6", tx.branchSeedSpec6);
+        entry.pushKV("branchVSeeds", tx.pBranchCreateData->branchVSeeds);
+        entry.pushKV("branchSeedSpec6", tx.pBranchCreateData->branchSeedSpec6);
     }
     if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S1) {
-        entry.pushKV("sendToBranchid", tx.sendToBranchid);
-        entry.pushKV("sendToTxHexData", tx.sendToTxHexData);
+        entry.pushKV("sendToBranchid", tx.pBranchTransactionData->branchId);
+        entry.pushKV("sendToTxHexData", HexStr(tx.pBranchTransactionData->txData));
     }
     if (tx.nVersion == MCTransaction::TRANS_BRANCH_VERSION_S2) {
-        entry.pushKV("fromBranchId", tx.fromBranchId);
-        entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+        entry.pushKV("fromBranchId", tx.pBranchTransactionData->branchId);
+        entry.pushKV("inAmount", ValueFromAmount(tx.pBranchTransactionData->amount));
         MCTransactionRef pfromtx;
-        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        MCDataStream cds(tx.pBranchTransactionData->txData, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pfromtx);
         entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
     }
@@ -321,10 +321,10 @@ void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry
     //    entry.pushKV("branchblockhash", block.GetHash().GetHex());
     //}
     if (tx.IsRedeemMortgage()) {
-        entry.pushKV("fromBranchId", tx.fromBranchId);
-        entry.pushKV("inAmount", ValueFromAmount(tx.inAmount));
+        entry.pushKV("fromBranchId", tx.pBranchTransactionData->branchId);
+        entry.pushKV("inAmount", ValueFromAmount(tx.pBranchTransactionData->amount));
         MCTransactionRef pfromtx;
-        MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+        MCDataStream cds(tx.pBranchTransactionData->txData, SER_NETWORK, INIT_PROTO_VERSION);
         cds >> (pfromtx);
         entry.pushKV("fromTxid", pfromtx->GetHash().GetHex());
     }

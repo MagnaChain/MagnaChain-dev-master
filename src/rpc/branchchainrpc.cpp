@@ -119,7 +119,8 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
 
     branchTx.nVersion = MCTransaction::TRANS_BRANCH_VERSION_S2;
     branchTx.nLockTime = 0;
-    branchTx.fromBranchId = strFromChain;
+    branchTx.pBranchTransactionData.reset(new BranchTransactionData);
+    branchTx.pBranchTransactionData->branchId = strFromChain;
     //    branchTx.fromTx = ;//this value set later.
     //branchTx.pPMT.reset(new MCSpvProof()); //will reset later, 这里防止序列化时报错
 
@@ -134,8 +135,8 @@ bool MakeBranchTransStep2Tx(MCMutableTransaction& branchTx, const MCScript& scri
     unsigned int nBytes = GetVirtualTransactionSize(branchTx);
     FeeCalculation feeCalc;
     fee = MCWallet::GetMinimumFee(nBytes, coin_control, ::mempool, ::feeEstimator, &feeCalc);// step 2 will include step 1.
+    branchTx.pBranchTransactionData->amount = nAmount + fee;
 
-    branchTx.inAmount = nAmount + fee;
     return true;
 }
 
@@ -193,8 +194,9 @@ UniValue createbranchchain(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::CREATE_BRANCH_VERSION;
-    wtx.branchVSeeds = strVSeeds;
-    wtx.branchSeedSpec6 = strSeedSpec6;
+    wtx.pBranchCreateData.reset(new BranchCreateData);
+    wtx.pBranchCreateData->branchVSeeds = strVSeeds;
+    wtx.pBranchCreateData->branchSeedSpec6 = strSeedSpec6;
 
     MCScript scriptPubKey;// create branch pubkey hash
     scriptPubKey << OP_CREATE_BRANCH << OP_DUP << OP_HASH160 << ToByteVector(mortgagekey) << OP_EQUALVERIFY << OP_CHECKSIG;
@@ -280,8 +282,8 @@ UniValue getbranchchaininfo(const JSONRPCRequest& request)
 
     UniValue obj(UniValue::VOBJ);
     obj.push_back(Pair("txid", tx->GetHash().GetHex()));
-    obj.push_back(Pair("vseeds", tx->branchVSeeds));
-    obj.push_back(Pair("seedspec6", tx->branchSeedSpec6));
+    obj.push_back(Pair("vseeds", tx->pBranchCreateData->branchVSeeds));
+    obj.push_back(Pair("seedspec6", tx->pBranchCreateData->branchSeedSpec6));
     return obj;
 }
 
@@ -549,7 +551,8 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::TRANS_BRANCH_VERSION_S1;
-    wtx.sendToBranchid = strToBranchid;
+    wtx.pBranchTransactionData.reset(new BranchTransactionData);
+    wtx.pBranchTransactionData->branchId = strToBranchid;
 
     //make branch transaction output
     MCAmount fee2 = 0;
@@ -559,7 +562,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Make branch step2 tx error.");
     }
     MCTransactionRef branchStep2Tx = MakeTransactionRef(std::move(branchStep2MTx));
-    wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, wtx.pBranchTransactionData->txData, 0, *branchStep2Tx);
 
     MCScript scriptPubKey;
     if (strToBranchid != MCBaseChainParams::MAIN) {
@@ -635,22 +638,22 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_WALLET_ERROR, "Transaction is not a valid chain trans step1");
 
     MCMutableTransaction mtxTrans2;
-    if (!DecodeHexTx(mtxTrans2, mtxTrans1.sendToTxHexData)) {
+    if (!DecodeTx(mtxTrans2, mtxTrans1.pBranchTransactionData->txData)) {
         throw JSONRPCError(RPC_WALLET_ERROR, "sendToTxHexData is not a valid transaction data.");
     }
 
     if (mtxTrans2.IsBranchChainTransStep2() == false)
         throw JSONRPCError(RPC_WALLET_ERROR, "mtxTrans2 is not a branch chain for step2.");
 
-    const std::string strToChainId = mtxTrans1.sendToBranchid;
+    const std::string strToChainId = mtxTrans1.pBranchTransactionData->branchId;
     if (strToChainId != Params().GetBranchId()) {
         throw JSONRPCError(RPC_WALLET_ERROR, "Target branch id is not valid.");
     }
 
-    if (mtxTrans2.fromBranchId == Params().GetBranchId())
+    if (mtxTrans2.pBranchTransactionData->branchId == Params().GetBranchId())
         throw JSONRPCError(RPC_WALLET_ERROR, "From chain error,can not from this chain");
 
-    const std::string& strFromChain = mtxTrans2.fromBranchId;
+    const std::string& strFromChain = mtxTrans2.pBranchTransactionData->branchId;
     // only allow branch-chain to main-chain, main-chain to branch-chain, not allow branch to branch
     if (strFromChain != MCBaseChainParams::MAIN) {
         if (mtxTrans1.IsMortgage()) {
@@ -680,7 +683,7 @@ UniValue makebranchtransaction(const JSONRPCRequest& request)
     //    mtxTrans1.pPMT.reset(new MCSpvProof()); // clear pPMT from mtxTrans1
     //}
     MCTransaction tx1(mtxTrans1);
-    MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, mtxTrans2.fromTx, 0, tx1 };
+    MCVectorWriter{ SER_NETWORK, INIT_PROTO_VERSION, mtxTrans2.pBranchTransactionData->txData, 0, tx1 };
     MCTransactionRef tx2 = MakeTransactionRef(std::move(mtxTrans2));
 
     LOCK(cs_main);
@@ -895,7 +898,8 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
 
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::MINE_BRANCH_MORTGAGE;
-    wtx.sendToBranchid = strBranchid;
+    wtx.pBranchTransactionData.reset(new BranchTransactionData);
+    wtx.pBranchTransactionData->branchId = strBranchid;
 
     //make branch transaction output
     MCAmount fee2 = 0;
@@ -905,7 +909,7 @@ UniValue mortgageminebranch(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_TYPE_ERROR, "Make branch step2 tx error.");
     }
     MCTransactionRef branchStep2Tx = MakeTransactionRef(std::move(branchStep2MTx));
-    wtx.sendToTxHexData = EncodeHexTx(*branchStep2Tx, RPCSerializationFlags());
+    MCVectorWriter cvw(SER_NETWORK, INIT_PROTO_VERSION, wtx.pBranchTransactionData->txData, 0, *branchStep2Tx);
 
     //check balance
     MCAmount curBalance = pwallet->GetBalance();
@@ -1311,9 +1315,10 @@ UniValue redeemmortgagecoin(const JSONRPCRequest& request)
     //create transaction
     MCWalletTx wtx;
     wtx.nVersion = MCTransaction::REDEEM_MORTGAGE;
+    wtx.pBranchTransactionData.reset(new BranchTransactionData);
     //wtx.pPMT.reset(new MCSpvProof(spvProof));
-    wtx.fromBranchId = frombranchid.ToString();        
-    MCVectorWriter cvw{ SER_NETWORK, INIT_PROTO_VERSION, wtx.fromTx, 0, statementmtx };
+    wtx.pBranchTransactionData->branchId = frombranchid.ToString();
+    MCVectorWriter(SER_NETWORK, INIT_PROTO_VERSION, wtx.pBranchTransactionData->txData, 0, statementmtx);
 
     MCScript scriptPubKey = GetScriptForDestination(coinMortgageKeyId);
 

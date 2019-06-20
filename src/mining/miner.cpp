@@ -605,7 +605,7 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
     int vOutSize = newTx.vout.size();
     std::vector<uint160> keys;
     if (chainparams.IsMainChain() && newTx.IsBranchChainTransStep2()) {
-        const std::string strFromChain = iter->GetSharedTx()->fromBranchId;
+        const std::string strFromChain = iter->GetSharedTx()->pBranchTransactionData->branchId;
         uint256 branchhash;
         branchhash.SetHex(strFromChain);
         uint160 branchcoinaddress = Hash160(branchhash.begin(), branchhash.end());
@@ -615,7 +615,7 @@ bool BlockAssembler::UpdateIncompleteTx(MCTxMemPool::txiter iter, MakeBranchTxUT
 
         MCScript scriptSig = MCScript();
         newTx.vin.clear();
-        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.inAmount, scriptSig, scriptPubKey);
+        success = utxoMaker.MakeTxUTXO(newTx, branchcoinaddress, newTx.pBranchTransactionData->amount, scriptSig, scriptPubKey);
         keys.push_back(branchcoinaddress);
     }
 

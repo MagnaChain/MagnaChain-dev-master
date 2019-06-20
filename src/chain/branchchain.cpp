@@ -414,11 +414,11 @@ MCAmount GetBranchChainTransOut(const MCTransaction& branchTransStep1Tx)
         std::vector<unsigned char> vch;
         MCScript::const_iterator pc1 = txout.scriptPubKey.begin();
         if (txout.scriptPubKey.GetOp(pc1, opcode, vch)) {
-            if (branchTransStep1Tx.sendToBranchid != MCBaseChainParams::MAIN) {
+            if (branchTransStep1Tx.pBranchTransactionData->branchId != MCBaseChainParams::MAIN) {
                 if (opcode == OP_TRANS_BRANCH) {
                     if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)) {
                         uint256 branchhash(vch);
-                        if (branchhash.ToString() == branchTransStep1Tx.sendToBranchid) { //branch id check
+                        if (branchhash.ToString() == branchTransStep1Tx.pBranchTransactionData->branchId) { //branch id check
                             nAmount += txout.nValue;
                         }
                     }
@@ -453,7 +453,7 @@ MCAmount GetMortgageMineOut(const MCTransaction& tx, bool bWithBranchOut)
         if (bWithBranchOut && opcode == OP_TRANS_BRANCH) {
             if (txout.scriptPubKey.GetOp(pc1, opcode, vch) && vch.size() == sizeof(uint256)) {
                 uint256 branchhash(vch);
-                if (branchhash.ToString() == tx.sendToBranchid) {
+                if (branchhash.ToString() == tx.pBranchTransactionData->branchId) {
                     nAmount += txout.nValue;
                 }
             }
@@ -660,7 +660,7 @@ bool BranchChainTransStep2(const MCTransactionRef& tx, const MCBlock& block, std
     }
 
     //broadcast to target chain.
-    const std::string strToChainId = tx->sendToBranchid;
+    const std::string strToChainId = tx->pBranchTransactionData->branchId;
     if (strToChainId == Params().GetBranchId())
         return error_ex1(pStrErrorMsg, "%s: can not to this chain!", __func__);
 
@@ -740,7 +740,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     if (txBranchChainStep2.IsBranchChainTransStep2() == false)
         return state.DoS(100, false, REJECT_INVALID, "is not a IsBranchChainTransStep2");
 
-    const std::string& fromBranchId = txBranchChainStep2.fromBranchId;
+    const std::string& fromBranchId = txBranchChainStep2.pBranchTransactionData->branchId;
     std::string fromTxHash = pFromTx->GetHash().ToString();
     if (fromBranchId == Params().GetBranchId()) {
         std::string strErr = strprintf("%s ctFromChain eq ctToChain", __func__);
@@ -767,14 +767,14 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     }
 
     MCMutableTransaction mtxTrans2;
-    if (!DecodeHexTx(mtxTrans2, txTrans1.sendToTxHexData)) {
+    if (!DecodeTx(mtxTrans2, txTrans1.pBranchTransactionData->txData)) {
         return error("%s sendToTxHexData is not a valid transaction data.\n", __func__);
     }
 
     MCMutableTransaction mtxTrans2my = RevertTransaction(txBranchChainStep2, false);
     
     //Revert other fields exclude in txTrans1
-    mtxTrans2my.fromTx.clear();
+    mtxTrans2my.pBranchTransactionData->txData.clear();
     if (txTrans1.IsMortgage()) {
         mtxTrans2my.vout[0].scriptPubKey.clear();
     }
@@ -788,13 +788,13 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
     }
 
     MCAmount nAmount = GetBranchChainOut(txTrans1);
-    if (nAmount != txBranchChainStep2.inAmount || MoneyRange(txBranchChainStep2.inAmount) == false) {
+    if (nAmount != txBranchChainStep2.pBranchTransactionData->amount || MoneyRange(txBranchChainStep2.pBranchTransactionData->amount) == false) {
         std::string strErr = strprintf(" %s Invalid inAmount!\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }
     //
     MCAmount nOrginalOut = txBranchChainStep2.GetValueOut();
-    if (txBranchChainStep2.fromBranchId != MCBaseChainParams::MAIN) {
+    if (txBranchChainStep2.pBranchTransactionData->branchId != MCBaseChainParams::MAIN) {
         nOrginalOut = 0; // recalc exclude branch tran recharge
         for (const auto& txout : txBranchChainStep2.vout) {
             if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
@@ -802,7 +802,7 @@ bool CheckBranchTransaction(const MCTransaction& txBranchChainStep2, MCValidatio
             }
         }
     }
-    if (nOrginalOut > txBranchChainStep2.inAmount) {
+    if (nOrginalOut > txBranchChainStep2.pBranchTransactionData->amount) {
         std::string strErr = strprintf("%s GetValueOut larger than inAmount\n", __func__);
         return state.DoS(100, false, REJECT_INVALID, strErr);
     }

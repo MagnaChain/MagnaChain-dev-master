@@ -109,14 +109,8 @@ bool CheckTxScriptsSanity(const MCMutableTransaction& tx)
     return true;
 }
 
-bool DecodeHexTx(MCMutableTransaction& tx, const std::string& strHexTx, bool fTryNoWitness)
+bool DecodeTx(MCMutableTransaction& tx, const std::vector<unsigned char>& txData, bool fTryNoWitness)
 {
-    if (!IsHex(strHexTx)) {
-        return false;
-    }
-
-    std::vector<unsigned char> txData(ParseHex(strHexTx));
-
     if (fTryNoWitness) {
         MCDataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION | SERIALIZE_TRANSACTION_NO_WITNESS);
         try {
@@ -142,6 +136,16 @@ bool DecodeHexTx(MCMutableTransaction& tx, const std::string& strHexTx, bool fTr
     }
 
     return true;
+}
+
+bool DecodeHexTx(MCMutableTransaction& tx, const std::string& strHexTx, bool fTryNoWitness)
+{
+    if (!IsHex(strHexTx)) {
+        return false;
+    }
+
+    std::vector<unsigned char> txData(ParseHex(strHexTx));
+    return DecodeTx(tx, txData, fTryNoWitness);
 }
 
 bool DecodeHexSpv(MCSpvProof& spv, const std::string& strHexSpv, bool fTryNoWitness)

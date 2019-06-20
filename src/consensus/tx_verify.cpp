@@ -238,7 +238,7 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
     {
         MCAmount nTransChainOut = GetBranchChainOut(tx);
 		MCMutableTransaction mtxTrans2;
-		if (!DecodeHexTx(mtxTrans2, tx.sendToTxHexData))
+		if (!DecodeTx(mtxTrans2, tx.pBranchTransactionData->txData))
 		{
 			return state.DoS(100, false, REJECT_INVALID, "bad-chain-transaction-step1");
 		}
@@ -256,7 +256,7 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
 				return state.DoS(100, false, REJECT_INVALID, "bad-tx2-txout-total-out-of-range");
 		}
 
-        if (nAmountOut2 >= nTransChainOut || mtxTrans2.inAmount != nTransChainOut)
+        if (nAmountOut2 >= nTransChainOut || mtxTrans2.pBranchTransactionData->amount != nTransChainOut)
         {
             return state.DoS(100, false, REJECT_INVALID, "bad-amount-not-correct-t1-t2");
         }
@@ -275,7 +275,7 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
             if (GetMortgageMineData(tx.vout[0].scriptPubKey, &branchHash, &keyid, &coinheight) == false) {
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage mine coin vout script invalid.");
             }
-            if (branchHash.GetHex() != tx.sendToBranchid){
+            if (branchHash.GetHex() != tx.pBranchTransactionData->branchId){
                 return state.DoS(100, false, REJECT_INVALID, "Mortgage tx sendToBranchid and mortgage branchid not match.");
             }
             if (coinheight < 0)
@@ -326,7 +326,7 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
     if (tx.IsBranchChainTransStep2())
     {
         MCAmount nOrginalOut = nValueOut;
-        if (tx.fromBranchId != MCBaseChainParams::MAIN) {
+        if (tx.pBranchTransactionData->branchId != MCBaseChainParams::MAIN) {
             nOrginalOut = 0;// recalc exclude branch tran recharge
             for (const auto& txout : tx.vout) {
                 if (!IsCoinBranchTranScript(txout.scriptPubKey)) {
@@ -334,13 +334,13 @@ bool CheckTransaction(const MCTransaction& tx, MCValidationState &state, bool fC
                 }
             }
         }
-        if (nOrginalOut >= tx.inAmount || !MoneyRange(tx.inAmount)) {
+        if (nOrginalOut >= tx.pBranchTransactionData->amount || !MoneyRange(tx.pBranchTransactionData->amount)) {
             return state.DoS(100, false, REJECT_INVALID, "bad-amount-not-correct-t1-t2");
         }
         
         // up lines commented the unserialize fromtx code, so here to do it.
         if (pFromTx == nullptr) {
-            MCDataStream cds(tx.fromTx, SER_NETWORK, INIT_PROTO_VERSION);
+            MCDataStream cds(tx.pBranchTransactionData->txData, SER_NETWORK, INIT_PROTO_VERSION);
             cds >> (pFromTx);
         }
         if (pFromTx == nullptr || (!pFromTx->IsBranchChainTransStep1() && !pFromTx->IsMortgage()))
@@ -506,7 +506,7 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
         return state.DoS(100, false, REJECT_INVALID, "bad-txns-in-belowout", false,
             strprintf("value in (%s) < value out (%s)", FormatMoney(nValueIn), FormatMoney(tx.GetValueOut())));
 
-    if (tx.IsBranchChainTransStep2() && tx.fromBranchId != MCBaseChainParams::MAIN)
+    if (tx.IsBranchChainTransStep2() && tx.pBranchTransactionData->branchId != MCBaseChainParams::MAIN)
     {
         MCAmount nInValueBranch = 0;
         for (unsigned int i = 0; i < tx.vin.size(); i++) {
@@ -515,7 +515,7 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
             nInValueBranch += coin.out.nValue;
         }
         uint256 frombranchid;
-        frombranchid.SetHex(tx.fromBranchId);
+        frombranchid.SetHex(tx.pBranchTransactionData->branchId);
         MCAmount nOrginalOut = 0;
         MCAmount nBranchRecharge = 0;
         for (const auto& txout : tx.vout) {
@@ -529,7 +529,7 @@ bool Consensus::CheckTxInputs(const MCTransaction& tx, MCValidationState& state,
                 }
             }
         }
-        if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.inAmount) {
+        if (nBranchRecharge > nInValueBranch || nInValueBranch - nBranchRecharge != tx.pBranchTransactionData->amount) {
             return state.DoS(100, false, REJECT_INVALID, "Invalid branch nInValueBranch");
         }
     }
