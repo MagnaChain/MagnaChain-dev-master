@@ -6,7 +6,10 @@
 #ifndef MAGNACHAIN_CORE_IO_H
 #define MAGNACHAIN_CORE_IO_H
 
+#include "io/serialize.h"
+#include "io/streams.h"
 #include "misc/amount.h"
+#include "misc/version.h"
 
 #include <string>
 #include <vector>
@@ -50,9 +53,9 @@ std::string FormatScript(const MCScript& script);
 template<typename T>
 std::string EncodeHex(const T& obj, const int serializeFlags = 0)
 {
-    MCDataStream ssTx(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
-    ssTx << obj;
-    return HexStr(ssTx.begin(), ssTx.end());
+    MCDataStream ss(SER_NETWORK, PROTOCOL_VERSION | serializeFlags);
+    ss << obj;
+    return HexStr(ss.begin(), ss.end());
 }
 void ScriptPubKeyToUniv(const MCScript& scriptPubKey, UniValue& out, bool fIncludeHex);
 void TxToUniv(const MCTransaction& tx, const uint256& hashBlock, UniValue& entry, bool include_hex = true, int serialize_flags = 0);
