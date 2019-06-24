@@ -231,7 +231,7 @@ public:
         std::map<uint256, MCWalletTx>::iterator mi = wallet->mapWallet.find(rec->hash);
         if(mi != wallet->mapWallet.end())
         {
-            std::string strHex = EncodeHexTx(static_cast<MCTransaction>(mi->second));
+            std::string strHex = EncodeHex(static_cast<MCTransaction>(mi->second));
             return QString::fromStdString(strHex);
         }
         return QString();
