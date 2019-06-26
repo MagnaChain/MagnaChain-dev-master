@@ -25,6 +25,7 @@ Result (for verbosity = 0):
 "data"             (string) A string that is serialized, hex-encoded data for block 'hash'.  
   
 Result (for verbosity = 1):  
+```json  
 {  
   "hash" : "hash",     (string) the block hash (same as provided)  
   "confirmations" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain  
@@ -48,8 +49,10 @@ Result (for verbosity = 1):
   "previousblockhash" : "hash",  (string) The hash of the previous block  
   "nextblockhash" : "hash"       (string) The hash of the next block  
 }  
+```  
   
 Result (for verbosity = 2):  
+```json  
 {  
   ...,                     Same output as verbosity = 1.  
   "tx" : [               (array of Objects) The transactions in the format of the getrawtransaction RPC. Different from verbosity = 1 "tx" result.  
@@ -57,6 +60,7 @@ Result (for verbosity = 2):
   ],  
   ,...                     Same output as verbosity = 1.  
 }  
+```  
   
 Examples:  
 > magnachain-cli getblock "00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09"  
@@ -66,6 +70,7 @@ Examples:
 Returns an object containing various state info regarding blockchain processing.  
   
 Result:  
+```json  
 {  
   "chain": "xxxx",        (string) current network name as defined in BIP70 (main, test, regtest)  
   "branchid": "xxxx",     (string) if this chain is  a branchchain will show this fild  
@@ -104,6 +109,7 @@ Result:
      }  
   }  
 }  
+```  
   
 Examples:  
 > magnachain-cli getblockchaininfo   
@@ -144,6 +150,7 @@ Arguments:
 2. verbose           (boolean, optional, default=true) true for a json object, false for the hex encoded data  
   
 Result (for verbose = true):  
+```json  
 {  
   "hash" : "hash",     (string) the block hash (same as provided)  
   "confirmations" : n,   (numeric) The number of confirmations, or -1 if the block is not on the main chain  
@@ -160,6 +167,7 @@ Result (for verbose = true):
   "previousblockhash" : "hash",  (string) The hash of the previous block  
   "nextblockhash" : "hash",      (string) The hash of the next block  
 }  
+```  
   
 Result (for verbose=false):  
 "data"             (string) A string that is serialized, hex-encoded data for block 'hash'.  
@@ -172,6 +180,7 @@ Examples:
 Return information about all known tips in the block tree, including the main chain as well as orphaned branches.  
   
 Result:  
+```json  
 [  
   {  
     "height": xxxx,         (numeric) height of the chain tip  
@@ -186,6 +195,7 @@ Result:
     "status": "xxxx"        (string) status of the chain (active, valid-fork, valid-headers, headers-only, invalid)  
   }  
 ]  
+```  
 Possible values for status:  
 1.  "invalid"               This branch contains at least one invalid block  
 2.  "headers-only"          Not all blocks for this branch are available, but the headers are valid  
@@ -217,11 +227,13 @@ Arguments:
 2. "blockhash"  (string, optional) The hash of the block that ends the window.  
   
 Result:  
+```json  
 {  
   "time": xxxxx,        (numeric) The timestamp for the statistics in UNIX format.  
   "txcount": xxxxx,     (numeric) The total number of transactions in the chain up to that point.  
   "txrate": x.xx,       (numeric) The average rate of transactions per second in the window.  
 }  
+```  
   
 Examples:  
 > magnachain-cli getchaintxstats   
@@ -247,12 +259,15 @@ Arguments:
 2. verbose                  (boolean, optional, default=false) True for a json object, false for array of transaction ids  
   
 Result (for verbose=false):  
+```json  
 [                       (json array of strings)  
   "transactionid"           (string) The transaction id of an in-mempool ancestor transaction  
   ,...  
 ]  
+```  
   
 Result (for verbose=true):  
+```json  
 {                           (json object)  
   "transactionid" : {       (json object)  
     "size" : n,             (numeric) virtual transaction size as defined in BIP 141. This is different from actual serialized size for witness transactions as witness data is discounted.  
@@ -271,6 +286,7 @@ Result (for verbose=true):
        ... ]  
   }, ...  
 }  
+```  
   
 Examples:  
 > magnachain-cli getmempoolancestors "mytxid"  
@@ -285,12 +301,15 @@ Arguments:
 2. verbose                  (boolean, optional, default=false) True for a json object, false for array of transaction ids  
   
 Result (for verbose=false):  
+```json  
 [                       (json array of strings)  
   "transactionid"           (string) The transaction id of an in-mempool descendant transaction  
   ,...  
 ]  
+```  
   
 Result (for verbose=true):  
+```json  
 {                           (json object)  
   "transactionid" : {       (json object)  
     "size" : n,             (numeric) virtual transaction size as defined in BIP 141. This is different from actual serialized size for witness transactions as witness data is discounted.  
@@ -309,6 +328,7 @@ Result (for verbose=true):
        ... ]  
   }, ...  
 }  
+```  
   
 Examples:  
 > magnachain-cli getmempooldescendants "mytxid"  
@@ -322,6 +342,7 @@ Arguments:
 1. "txid"                   (string, required) The transaction id (must be in mempool)  
   
 Result:  
+```json  
 {                           (json object)  
     "size" : n,             (numeric) virtual transaction size as defined in BIP 141. This is different from actual serialized size for witness transactions as witness data is discounted.  
     "fee" : n,              (numeric) transaction fee in MGC  
@@ -338,6 +359,7 @@ Result:
         "transactionid",    (string) parent transaction id  
        ... ]  
 }  
+```  
   
 Examples:  
 > magnachain-cli getmempoolentry "mytxid"  
@@ -348,6 +370,7 @@ Examples:
 Returns details on the active state of the TX memory pool.  
   
 Result:  
+```json  
 {  
   "size": xxxxx,               (numeric) Current tx count  
   "bytes": xxxxx,              (numeric) Sum of all virtual transaction sizes as defined in BIP 141. Differs from actual serialized size because witness data is discounted  
@@ -355,6 +378,7 @@ Result:
   "maxmempool": xxxxx,         (numeric) Maximum memory usage for the mempool  
   "mempoolminfee": xxxxx       (numeric) Minimum feerate (MGC per KB) for tx to be accepted  
 }  
+```  
   
 Examples:  
 > magnachain-cli getmempoolinfo   
@@ -370,12 +394,15 @@ Arguments:
 1. verbose (boolean, optional, default=false) True for a json object, false for array of transaction ids  
   
 Result: (for verbose = false):  
+```json  
 [                     (json array of string)  
   "transactionid"     (string) The transaction id  
   ,...  
 ]  
+```  
   
 Result: (for verbose = true):  
+```json  
 {                           (json object)  
   "transactionid" : {       (json object)  
     "size" : n,             (numeric) virtual transaction size as defined in BIP 141. This is different from actual serialized size for witness transactions as witness data is discounted.  
@@ -394,6 +421,7 @@ Result: (for verbose = true):
        ... ]  
   }, ...  
 }  
+```  
   
 Examples:  
 > magnachain-cli getrawmempool true  
@@ -409,6 +437,7 @@ Arguments:
 3. "include_mempool"  (boolean, optional) Whether to include the mempool. Default: true.     Note that an unspent output that is spent in the mempool won't appear.  
   
 Result:  
+```json  
 {  
   "bestblock" : "hash",    (string) the block hash  
   "confirmations" : n,       (numeric) The number of confirmations  
@@ -425,6 +454,7 @@ Result:
   },  
   "coinbase" : true|false   (boolean) Coinbase or not  
 }  
+```  
   
 Examples:  
   
@@ -463,6 +493,7 @@ Returns statistics about the unspent transaction output set.
 Note this call may take some time.  
   
 Result:  
+```json  
 {  
   "height":n,     (numeric) The current block height (index)  
   "bestblock": "hex",   (string) the best block hash hex  
@@ -473,6 +504,7 @@ Result:
   "disk_size": n,         (numeric) The estimated size of the chainstate on disk  
   "total_amount": x.xxx          (numeric) The total amount  
 }  
+```  
   
 Examples:  
 > magnachain-cli gettxoutsetinfo   
@@ -569,10 +601,12 @@ Arguments:
 Returns the hash of the created branch chain.  
   
 Result:  
+```json  
 {  
   "txid" : xxxx,        (string) The txid  
   "branchid" : xxxx,    (string) The branch id  
 }  
+```  
   
 Examples:  
 > magnachain-cli createbranchchain vseeds.com 00:00:00:00:00:00:00:00:00:00:ff:ff:c0:a8:3b:80:8333 XD7SstxYNeBCUzLkVre3gP1ipUjJBGTxRB  
@@ -587,6 +621,7 @@ Arguments:
 Returns the hash of the created branch chain.  
   
 Result:  
+```json  
 [  
   {  
     "txid" : xxxxx,          (string) The txid  
@@ -597,6 +632,7 @@ Result:
   }  
 ...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli getallbranchinfo   
@@ -612,11 +648,13 @@ Arguments:
 Returns the hash of the created branch chain.  
   
 Result:  
+```json  
 {  
   "txid" : xxxxx,          (string) The txid  
   "vseeds" : xxxxx,        (string) The vseeds  
   "seedspec6" : xxxxx,     (string) The seedspec6  
 }  
+```  
   
 Examples:  
 > magnachain-cli getbranchchaininfo 93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e  
@@ -632,11 +670,13 @@ Arguments:
 Returns the hash of the created branch chain.  
   
 Result:  
+```json  
 {  
   "txid" : xxx,           (string) The txid  
   "hex" : xxx,            (string) The tx hex data  
   "confirmations" : n     (int) The confirmations  
 }  
+```  
   
 Examples:  
 > magnachain-cli getbranchchaintransaction 93ac2c05aebde2ff835f09cc3f8a4413942b0fbad9b0d7a44dde535b845d852e  
@@ -652,6 +692,7 @@ Arguments:
 Returns the hash of the created branch chain.  
   
 Result obj:  
+```json  
 {  
     "ip": ipaddress,  
     "port": ipaddress,  
@@ -660,6 +701,7 @@ Result obj:
     "wallet": "wallet",  
     "datadir": "datadir",  
 }  
+```  
   
 Examples:  
 > magnachain-cli getbranchrpcconfig 4bebbe9c21ab00ca6d899d6cfe6600dc4d7e2b7f0842beba95c44abeedb42ea2  
@@ -759,10 +801,12 @@ Arguments:
 Returns txid.  
   
 Result:  
+```json  
 {  
   "txid": xx,   (string) The new create transaction txid  
   "commit_transaction_reject_reason": xxx, (string) If has reject reason will contain this field  
 }  
+```  
   
 Examples:  
 > magnachain-cli redeemmortgagecoin 7de1dc8ae60b924ed68d9088b376e185cabfde330db625a6ec2234def965600a 0 5dc9b823827e883e7d16988f8810be93ae8bc682df054f9b044527c388a95a89  
@@ -779,10 +823,12 @@ Arguments:
 Returns txid.  
   
 Result:  
+```json  
 {  
   "txid": xx,   (string) The new create transaction txid  
   "commit_transaction_reject_reason": xxx, (string) If has reject reason will contain this field  
 }  
+```  
   
 Examples:  
 > magnachain-cli redeemmortgagecoinstatement 7de1dc8ae60b924ed68d9088b376e185cabfde330db625a6ec2234def965600a 0  
@@ -812,6 +858,7 @@ Examples:
 DEPRECATED. Returns an object containing various state info.  
   
 Result:  
+```json  
 {  
   "deprecation-warning": "..." (string) warning that the getinfo command is deprecated and will be removed in 0.16  
   "version": xxxxx,           (numeric) the server version  
@@ -831,6 +878,7 @@ Result:
   "relayfee": x.xxxx,         (numeric) minimum relay fee for transactions in MGC/kB  
   "errors": "..."             (string) any error messages  
 }  
+```  
   
 Examples:  
 > magnachain-cli getinfo   
@@ -844,6 +892,7 @@ Arguments:
   - "mallocinfo" returns an XML string describing low-level heap state (only available if compiled with glibc 2.10+).  
   
 Result (mode "stats"):  
+```json  
 {  
   "locked": {               (json object) Information about locked memory manager  
     "used": xxxxx,          (numeric) Number of bytes used  
@@ -854,6 +903,7 @@ Result (mode "stats"):
     "chunks_free": xxxxx,   (numeric) Number unused chunks  
   }  
 }  
+```  
   
 Result (mode "mallocinfo"):  
 "<malloc version="1">..."  
@@ -941,6 +991,7 @@ Generate 11 blocks to myaddress
   
 Returns a json object containing mining-related information.  
 Result:  
+```json  
 {  
   "blocks": nnn,             (numeric) The current block  
   "currentblockweight": nnn, (numeric) The last block weight  
@@ -951,6 +1002,7 @@ Result:
   "pooledtx": n              (numeric) The size of the mempool  
   "chain": "xxxx",           (string) current network name as defined in BIP70 (main, test, regtest)  
 }  
+```  
   
 Examples:  
 > magnachain-cli getmininginfo   
@@ -1031,11 +1083,13 @@ Arguments:
   
   
 Result:  
+```json  
 {  
   "ReservePubContractBlockDataSize" : ReservePubContractBlockDataSize  
   "ReserveCallContractBlockDataSize" : ReserveCallContractBlockDataSize  
   "ReserveBranchTxBlockDataSize" : ReserveBranchTxBlockDataSize  
 }  
+```  
   
 Results are returned for any horizon which tracks blocks up to the confirmation target.  
   
@@ -1091,6 +1145,7 @@ Arguments:
 1. "node"   (string, optional) If provided, return information about this specific node, otherwise all nodes are returned.  
   
 Result:  
+```json  
 [  
   {  
     "addednode" : "192.168.0.201",   (string) The node IP address or name (as provided to addnode)  
@@ -1104,6 +1159,7 @@ Result:
   }  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli getaddednodeinfo "192.168.0.201"  
@@ -1126,6 +1182,7 @@ Returns information about network traffic, including bytes in, bytes out,
 and current time.  
   
 Result:  
+```json  
 {  
   "totalbytesrecv": n,   (numeric) Total bytes received  
   "totalbytessent": n,   (numeric) Total bytes sent  
@@ -1140,6 +1197,7 @@ Result:
     "time_left_in_cycle": t                 (numeric) Seconds left in current time cycle  
   }  
 }  
+```  
   
 Examples:  
 > magnachain-cli getnettotals   
@@ -1149,6 +1207,7 @@ Examples:
 Returns an object containing various state info regarding P2P networking.  
   
 Result:  
+```json  
 {  
   "version": xxxxx,                      (numeric) the server version  
   "subversion": "/MagnaChain:x.x.x/",     (string) the server subversion string  
@@ -1180,6 +1239,7 @@ Result:
   ]  
   "warnings": "..."                    (string) any network warnings  
 }  
+```  
   
 Examples:  
 > magnachain-cli getnetworkinfo   
@@ -1190,6 +1250,7 @@ Examples:
 Returns data about each connected network node as a json array of objects.  
   
 Result:  
+```json  
 [  
   {  
     "id": n,                   (numeric) Peer index  
@@ -1231,6 +1292,7 @@ Result:
   }  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli getpeerinfo   
@@ -1340,6 +1402,7 @@ Arguments:
 1. "hexstring"      (string, required) The transaction hex string  
   
 Result:  
+```json  
 {  
   "txid" : "id",        (string) The transaction id  
   "hash" : "id",        (string) The transaction hash (differs from txid for witness transactions)  
@@ -1378,6 +1441,7 @@ Result:
      ,...  
   ],  
 }  
+```  
   
 Examples:  
 > magnachain-cli decoderawtransaction "hexstring"  
@@ -1391,6 +1455,7 @@ Arguments:
 1. "hexstring"     (string) the hex encoded script  
   
 Result:  
+```json  
 {  
   "asm":"asm",   (string) Script public key  
   "hex":"hex",   (string) hex encoded public key  
@@ -1402,6 +1467,7 @@ Result:
   ],  
   "p2sh","address" (string) address of P2SH script wrapping this redeem script (not returned if the script is already a P2SH).  
 }  
+```  
   
 Examples:  
 > magnachain-cli decodescript "hexstring"  
@@ -1446,11 +1512,13 @@ Arguments:
                          for backward compatibility: passing in a true instead of an object will result in {"includeWatching":true}  
   
 Result:  
+```json  
 {  
   "hex":       "value", (string)  The resulting raw transaction (hex-encoded string)  
   "fee":       n,         (numeric) Fee in MGC the resulting transaction pays  
   "changepos": n          (numeric) The position of the added change output, or -1  
 }  
+```  
   
 Examples:  
   
@@ -1489,6 +1557,7 @@ Result (if verbose is not set or set to false):
 "data"      (string) The serialized, hex-encoded data for 'txid'  
   
 Result (if verbose is set to true):  
+```json  
 {  
   "hex" : "data",       (string) The serialized, hex-encoded data for 'txid'  
   "txid" : "id",        (string) The transaction id (same as provided)  
@@ -1532,6 +1601,7 @@ Result (if verbose is set to true):
   "time" : ttt,             (numeric) The transaction time in seconds since epoch (Jan 1 1970 GMT)  
   "blocktime" : ttt         (numeric) The block time in seconds since epoch (Jan 1 1970 GMT)  
 }  
+```  
   
 Examples:  
 > magnachain-cli getrawtransaction "mytxid"  
@@ -1600,6 +1670,7 @@ Arguments:
        "SINGLE|ANYONECANPAY"  
   
 Result:  
+```json  
 {  
   "hex" : "value",           (string) The hex-encoded raw transaction with signature(s)  
   "complete" : true|false,   (boolean) If the transaction has a complete set of signatures  
@@ -1614,6 +1685,7 @@ Result:
     ,...  
   ]  
 }  
+```  
   
 Examples:  
 > magnachain-cli signrawtransaction "myhex"  
@@ -1658,10 +1730,12 @@ Arguments:
      ]  
   
 Result:  
+```json  
 {  
   "address":"multisigaddress",  (string) The value of the new multisig address.  
   "redeemScript":"script"       (string) The string value of the hex-encoded redemption script.  
 }  
+```  
   
 Examples:  
   
@@ -1712,11 +1786,13 @@ Arguments:
        "CONSERVATIVE"  
   
 Result:  
+```json  
 {  
   "feerate" : x.x,     (numeric, optional) estimate fee rate in MGC/kB  
   "errors": [ str... ] (json array of strings, optional) Errors encountered during processing  
   "blocks" : n         (numeric) block number where estimate was found  
 }  
+```  
   
 The request target will be clamped between 2 and the highest target  
 fee estimation is able to return based on how long it has been running.  
@@ -1756,6 +1832,7 @@ Arguments:
 1. "address"     (string, required) The MagnaChain address to validate  
   
 Result:  
+```json  
 {  
   "isvalid" : true|false,       (boolean) If the address is valid or not. If not, this is the only property returned.  
   "address" : "address", (string) The MagnaChain address validated  
@@ -1778,6 +1855,7 @@ Result:
   "hdkeypath" : "keypath"       (string, optional) The HD keypath if the key is HD and available  
   "hdmasterkeyid" : "<hash160>" (string, optional) The Hash160 of the HD master pubkey  
 }  
+```  
   
 Examples:  
 > magnachain-cli validateaddress "1PSSGeFHDnKNxiEyFrD1wcEaHr9hrQDDWc"  
@@ -1928,12 +2006,14 @@ Arguments:
    }  
   
 Result:  
+```json  
 {  
   "txid":    "value",   (string)  The id of the new transaction  
   "origfee":  n,         (numeric) Fee of the replaced transaction  
   "fee":      n,         (numeric) Fee of the new transaction  
   "errors":  [ str... ] (json array of strings) Errors encountered during processing (may be empty)  
 }  
+```  
   
 Examples:  
   
@@ -1996,9 +2076,11 @@ Arguments:
 1. "filename"    (string, required) The filename with path (either absolute or relative to magnachaind)  
   
 Result:  
+```json  
 {                           (json object)  
   "filename" : {        (string) The filename with full absolute path  
 }  
+```  
   
 Examples:  
 > magnachain-cli dumpwallet "test"  
@@ -2074,6 +2156,7 @@ Arguments:
 Returns the coins of the address  
   
 Result:  
+```json  
 [                   (array of json object)  
   {  
     "txhash" : xxx,            (string) The txid in hex  
@@ -2084,6 +2167,7 @@ Result:
   }  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli getaddresscoins XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj  
@@ -2097,10 +2181,12 @@ Arguments:
 1. "account"        (string, required) The account name.  
   
 Result:  
+```json  
 [                     (json array of string)  
   "address"         (string) a magnachain address associated with the given account  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli getaddressesbyaccount "tabby"  
@@ -2267,6 +2353,7 @@ Arguments:
 2. "include_watchonly"     (bool, optional, default=false) Whether to include watch-only addresses in balance calculation and details[]  
   
 Result:  
+```json  
 {  
   "amount" : x.xxx,        (numeric) The transaction amount in MGC  
   "fee": x.xxx,            (numeric) The amount of the fee in MGC. This is negative and only available for the   
@@ -2297,6 +2384,7 @@ Result:
   ],  
   "hex" : "data"         (string) Raw data for transaction  
 }  
+```  
   
 Examples:  
 > magnachain-cli gettransaction "1075db55d416d3ca199f55b6084e2115b9345e16c5cf302fc80e9d5fbf5d48d"  
@@ -2310,6 +2398,7 @@ Returns the server's total unconfirmed balance
 Returns an object containing various wallet state info.  
   
 Result:  
+```json  
 {  
   "walletname": xxxxx,             (string) the wallet name  
   "walletversion": xxxxx,          (numeric) the wallet version  
@@ -2324,6 +2413,7 @@ Result:
   "paytxfee": x.xxxx,              (numeric) the transaction fee configuration, set in MGC/kB  
   "hdmasterkeyid": "<hash160>"     (string) the Hash160 of the HD master pubkey  
 }  
+```  
   
 Examples:  
 > magnachain-cli getwalletinfo   
@@ -2488,10 +2578,12 @@ Arguments:
 2. include_watchonly   (bool, optional, default=false) Include balances in watch-only addresses (see 'importaddress')  
   
 Result:  
+```json  
 {                      (json object where keys are account names, and values are numeric balances  
   "account": x.xxx,  (numeric) The property name is the account name, and the value is the total balance for the account.  
   ...  
 }  
+```  
   
 Examples:  
   
@@ -2514,6 +2606,7 @@ made public by common use as inputs or as the resulting change
 in past transactions  
   
 Result:  
+```json  
 [  
   [  
     [  
@@ -2525,6 +2618,7 @@ Result:
   ]  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli listaddressgroupings   
@@ -2536,6 +2630,7 @@ Returns list of temporarily unspendable outputs.
 See the lockunspent call to lock and unlock transactions for spending.  
   
 Result:  
+```json  
 [  
   {  
     "txid" : "transactionid",     (string) The transaction id locked  
@@ -2543,6 +2638,7 @@ Result:
   }  
   ,...  
 ]  
+```  
   
 Examples:  
   
@@ -2586,6 +2682,7 @@ Arguments:
     }  
   
 Result  
+```json  
 [                   (array of json object)  
   {  
     "txid" : "txid",          (string) the transaction id   
@@ -2604,6 +2701,7 @@ Result
   }  
   ,...  
 ]  
+```  
   
 Examples  
 > magnachain-cli listmortgagecoins   
@@ -2622,6 +2720,7 @@ Arguments:
 3. include_watchonly (bool, optional, default=false) Whether to include watch-only addresses (see 'importaddress').  
   
 Result:  
+```json  
 [  
   {  
     "involvesWatchonly" : true,   (bool) Only returned if imported addresses were involved in transaction  
@@ -2632,6 +2731,7 @@ Result:
   }  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli listreceivedbyaccount   
@@ -2648,6 +2748,7 @@ Arguments:
 3. include_watchonly (bool, optional, default=false) Whether to include watch-only addresses (see 'importaddress').  
   
 Result:  
+```json  
 [  
   {  
     "involvesWatchonly" : true,        (bool) Only returned if imported addresses were involved in transaction  
@@ -2663,6 +2764,7 @@ Result:
   }  
   ,...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli listreceivedbyaddress   
@@ -2683,6 +2785,7 @@ Arguments:
                                                            (not guaranteed to work on pruned nodes)  
   
 Result:  
+```json  
 {  
   "transactions": [  
     "account":"accountname",       (string) DEPRECATED. The account name associated with the transaction. Will be "" for the default account.  
@@ -2713,6 +2816,7 @@ Result:
   ],  
   "lastblock": "lastblockhash"     (string) The hash of the block (target_confirmations-1) from the best block on the main chain. This is typically used to feed back into listsinceblock the next time you call it. So you would generally use a target_confirmations of say 6, so you will be continually re-notified of transactions until they've reached 6 confirmations plus any new ones  
 }  
+```  
   
 Examples:  
 > magnachain-cli listsinceblock   
@@ -2730,6 +2834,7 @@ Arguments:
 4. include_watchonly (bool, optional, default=false) Include transactions to watch-only addresses (see 'importaddress')  
   
 Result:  
+```json  
 [  
   {  
     "account":"accountname",       (string) DEPRECATED. The account name associated with the transaction.   
@@ -2771,6 +2876,7 @@ Result:
                                          'send' category of transactions.  
   }  
 ]  
+```  
   
 Examples:  
   
@@ -2808,6 +2914,7 @@ Arguments:
     }  
   
 Result  
+```json  
 [                   (array of json object)  
   {  
     "txid" : "txid",          (string) the transaction id   
@@ -2826,6 +2933,7 @@ Result
   }  
   ,...  
 ]  
+```  
   
 Examples  
 > magnachain-cli listunspent   
@@ -2839,10 +2947,12 @@ Returns a list of currently loaded wallets.
 For full information on the wallet, use "getwalletinfo"  
   
 Result:  
+```json  
 [                         (json array of strings)  
   "walletname"            (string) the wallet name  
    ...  
 ]  
+```  
   
 Examples:  
 > magnachain-cli listwallets   
@@ -2948,6 +3058,7 @@ Arguments:
 Returns transaction data   
   
 Result:  
+```json  
 {  
   "txhex" : xxx,            (string) The transaction hex data  
   "coins" :  
@@ -2960,6 +3071,7 @@ Result:
         },...  
       ]  
 }  
+```  
   
 Examples:  
 > magnachain-cli premaketransaction XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPX XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPi XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj 1 0.0005  
@@ -2979,9 +3091,11 @@ Arguments:
 Returns an obj  
   
 Result:  
+```json  
 {  
   "txhex" : xxx,            (string) The transaction hex data  
 }  
+```  
   
 Examples:  
 > magnachain-cli prepublishcode code XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPi XWzFXFXehphGkSHHebNo3NwR3wMBfTeiPj 1 0.0005  
