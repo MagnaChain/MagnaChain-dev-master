@@ -313,7 +313,7 @@ UniValue mineblanch2ndblock(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() > 0)
         throw std::runtime_error(
-            "mineBlanch2ndBlock \n"
+            "mineblanch2ndblock \n"
             "\nTry to mine the 2nd block for branch chain.\n"
             "\nArguments:\n"
             //"1. generate         (boolean, required) Set to true to turn on generation, off to turn off.\n"
@@ -1381,7 +1381,8 @@ UniValue updateminingreservetxsize(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() > 3)
         throw std::runtime_error(
-            "set/get tx reserve size for addPackageTxs.\n"
+            "updateminingreservetxsize pubcontractsize callcontractsize branchtxsize\n"
+            "\n set / get tx reserve size for addPackageTxs.\n"
             "\nArguments:\n"
             "1. pubcontractsize (numeric, optional) ReservePubContractBlockDataSize\n"
             "2. callcontractsize   (numeric, optional) ReserveCallContractBlockDataSize\n"

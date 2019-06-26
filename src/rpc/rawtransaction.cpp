@@ -171,7 +171,9 @@ UniValue getrawtransaction(const JSONRPCRequest& request)
 UniValue getbytxdiskpos(const JSONRPCRequest& request)
 {
     if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
-        throw std::runtime_error("get trransaction data by MCDiskTxPos, return value info see getrawtransaction API\n");
+        throw std::runtime_error(
+            "getbytxdiskpos \"txid\" ( verbose )\n"
+            "\n get trransaction data by MCDiskTxPos, return value info see getrawtransaction API\n");
 
     LOCK(cs_main);
 
