@@ -25,17 +25,14 @@ std::unique_ptr<sql::Connection> sqlConnection;
 std::unique_ptr<sql::Statement> sqlStatement;
 std::unique_ptr<sql::PreparedStatement> selectBlockStatement;
 
-std::string sqlTxIn;
-std::string sqlTxOutPubKey;
-std::string sqlTxOut;
-std::string sqlContract;
-std::string sqlBranchBlockData;
-std::string sqlPMT;
-std::string sqlContractPrevDataItem;
-std::string sqlContractInfo;
-std::string sqlReportData;
-std::string sqlTransaction;
 std::string sqlBlockHeader;
+std::string sqlTransaction;
+std::string sqlTxIn;
+std::string sqlTxOut;
+std::string sqlTxOutPubKey;
+std::string sqlContract;
+std::string sqlBranchCreate;
+std::string sqlBranchTransaction;
 
 std::shared_ptr<DatabaseBlock> GetDatabaseBlock(const uint256& hashBlock)
 {
@@ -90,10 +87,8 @@ void AddDatabaseBlock(const uint256& hashBlock, const uint256& hashPrevBlock, co
 const uint256 GetMaxHeightBlock()
 {
     char sql[] = "SELECT `blockhash` FROM `block` WHERE (`height`, `time`)"
-        "IN (SELECT `height`, MIN(`time`) FROM `block` WHERE `height` = (SELECT MAX(`height`) FROM `block` WHERE `regtest` = ? AND `branchid` = ?) GROUP BY `height`);";
+        "IN (SELECT `height`, MIN(`time`) FROM `block` WHERE `height` = (SELECT MAX(`height`) FROM `block`) GROUP BY `height`);";
     std::unique_ptr<sql::PreparedStatement> getMaxHeightBlockStatement(sqlConnection->prepareStatement(sql));
-    getMaxHeightBlockStatement->setBoolean(1, gArgs.GetBoolArg("-regtest", false));
-    getMaxHeightBlockStatement->setString(2, gArgs.GetArg("-branchid", ""));
     std::unique_ptr<sql::ResultSet> resultSet(getMaxHeightBlockStatement->executeQuery());
     if (resultSet == nullptr || !resultSet->next()) {
         return uint256();
@@ -156,7 +151,16 @@ bool DBInitialize()
         }
     }
 
-    std::string dbschema = gArgs.GetArg("-dbschema", "magnachain");
+    std::string defaultName("mgc");
+    if (Params().IsMainChain())
+        defaultName += "_main";
+    else
+        defaultName += "_" + Params().GetBranchId();
+    if (Params().IsRegtest())
+        defaultName += "_regtest";
+    if (Params().IsTestNet())
+        defaultName += "_testnet";
+    std::string dbschema = gArgs.GetArg("-dbschema", defaultName);
     sqlStatement->execute(std::string("CREATE DATABASE IF NOT EXISTS `") + dbschema + "`;");
     sqlConnection->setSchema(dbschema);
 
@@ -193,60 +197,34 @@ void WriteTxIn(const MCTransactionRef tx)
 
 bool WriteTxOutPubkey(const std::string& txHash, uint32_t index, const MCTxOut& txout)
 {
-    txnouttype typeRet;
-    std::vector<std::vector<unsigned char>> vSolutionsRet;
-    if (!Solver(txout.scriptPubKey, typeRet, vSolutionsRet)) {
+    txnouttype outType;
+    std::vector<std::vector<unsigned char>> solutions;
+    if (!Solver(txout.scriptPubKey, outType, solutions)) {
         LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
         return false;
     }
 
     const char sqlBase[] = "INSERT INTO `txoutpubkey`(`txhash`, `txindex`,`solution`,`solutiontype`) VALUES";
 
-    std::string sql;
-    MagnaChainAddress address;
-    if (typeRet == TX_MULTISIG) {
-        if (vSolutionsRet.size() == 0) {
-            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
-            return false;
-        }
-
-        if (sqlTxOutPubKey.empty()) {
+    if (solutions.size() > 0) {
+        if (sqlTxOutPubKey.empty())
             sqlTxOutPubKey = sqlBase;
-        }
 
-        for (const auto& pubkey : vSolutionsRet) {
-            address = MagnaChainAddress(MCPubKey(pubkey).GetID());
-
-            sql = strprintf("('%s', %u, '%s', %u),", 
-                txHash, index, address.ToString(), (uint32_t)typeRet);
+        std::string sql;
+        for (const auto& solution : solutions) {
+            MagnaChainAddress dest;
+            if (outType == txnouttype::TX_PUBKEY || outType == txnouttype::TX_MULTISIG)
+                dest = MagnaChainAddress(MCPubKey(solution).GetID());
+            else if (outType == txnouttype::TX_PUBKEYHASH)
+                dest = MagnaChainAddress(MCKeyID(uint160(solution)));
+            else if (outType == txnouttype::TX_SCRIPTHASH)
+                dest = MagnaChainAddress(MCScriptID(uint160(solution)));
+            else
+                LogPrintf("%s:%d %d\n", __FUNCTION__, __LINE__, (int)outType);
+            sql = strprintf("('%s', %u, '%s', %u),",
+                txHash, index, dest.ToString(), (uint32_t)outType);
             sqlTxOutPubKey += sql;
         }
-    }
-    else {
-        if (typeRet == TX_PUBKEY) {
-            address = MagnaChainAddress(MCPubKey(vSolutionsRet[0]).GetID());
-        }
-        else if (typeRet == TX_PUBKEYHASH) {
-            address = MagnaChainAddress(MCKeyID(uint160(vSolutionsRet[0])));
-        }
-        else if (typeRet == TX_SCRIPTHASH) {
-            address = MagnaChainAddress(MCScriptID(uint160(vSolutionsRet[0])));
-        }
-        else if (typeRet == TX_NULL_DATA) {
-            return true;
-        }
-        else {
-            LogPrintf("%s:%d\n", __FUNCTION__, __LINE__);
-            return false;
-        }
-
-        if (sqlTxOutPubKey.empty()) {
-            sqlTxOutPubKey = sqlBase;
-        }
-
-        sql = strprintf("('%s', %u, '%s', %u),", 
-            txHash, index, address.ToString(), (uint32_t)typeRet);
-        sqlTxOutPubKey += sql;
     }
 
     return true;
@@ -307,109 +285,43 @@ void WriteContract(const MCTransactionRef tx)
     sqlContract += sql;
 }
 
-void WriteBranchBlockData(const MCTransactionRef tx)
+void WriteBranchCreate(const MCTransactionRef tx)
 {
-    //const std::shared_ptr<const MCBranchBlockInfo> branchBlockData = tx->pBranchBlockData;
-    //if (branchBlockData == nullptr) {
-    //    return;
-    //}
-
-    //const char sqlBase[] = "INSERT INTO `branchblockdata`(`txhash`, `version`, `hashprevblock`, `hashmerkleroot`"
-    //        ", `hashmerklerootwithdata`, `hashmerklerootwithprevdata`, `time`, `bits`, `nonce`"
-    //        ", `prevoutstakehash`, `prevoutstakeindex`, `blocksig`, `branchid`, `blockheight`, `staketxdata`) VALUES";
-    //if (sqlBranchBlockData.empty()) {
-    //    sqlBranchBlockData = sqlBase;
-    //}
-
-    //const std::string& txHash = tx->GetHash().ToString();
-    //const std::string& hashPrevBlock = branchBlockData->hashPrevBlock.ToString();
-    //const std::string& hashMerkleRoot = branchBlockData->hashMerkleRoot.ToString();
-    //const std::string& hashMerkleRootWithData = branchBlockData->hashMerkleRootWithData.ToString();
-    //const std::string& hashMerkleRootWithPrevData = branchBlockData->hashMerkleRootWithPrevData.ToString();
-    //const std::string& hashPrevoutStake = branchBlockData->prevoutStake.hash.ToString();
-    //const std::string& blockSig = HexStr(branchBlockData->vchBlockSig);
-    //const std::string& branchId = branchBlockData->branchID.ToString();
-    //const std::string& stakeTxData = HexStr(branchBlockData->vchStakeTxData.begin(), branchBlockData->vchStakeTxData.end());
-
-    //std::string sql = strprintf("('%s', %d, '%s', '%s', '%s', '%s', %u, %u, %u, '%s', %u, '%s', '%s', %d, '%s'),",
-    //    txHash, branchBlockData->nVersion, hashPrevBlock, hashMerkleRoot, hashMerkleRootWithData, hashMerkleRootWithPrevData,
-    //    branchBlockData->nTime, branchBlockData->nBits, branchBlockData->nNonce, hashPrevoutStake, branchBlockData->prevoutStake.n,
-    //    blockSig, branchId, branchBlockData->blockHeight, stakeTxData);
-    //sqlBranchBlockData += sql;
-}
-
-void WritePMT(const MCTransactionRef tx)
-{
-    //const std::shared_ptr<const MCSpvProof> spvProof /*= tx->pPMT*/;
-    //if (spvProof == nullptr) {
-    //    return;
-    //}
-
-    //const char sqlBase[] = "INSERT INTO `pmt`(`txhash`, `blockhash`, `pmt`) VALUES";
-    //if (sqlPMT.empty()) {
-    //    sqlPMT = sqlBase;
-    //}
-
-    //MCDataStream pmtData(SER_DISK, CLIENT_VERSION);
-    //spvProof->pmt.Serialize(pmtData);
-
-    //const std::string& txHash = tx->GetHash().ToString();
-    //const std::string& blockHash = spvProof->blockhash.ToString();
-    //const std::string& pmt = HexStr(pmtData.begin(), pmtData.end());
-
-    //std::string sql = strprintf("('%s', '%s', '%s'),", 
-    //    txHash, blockHash, pmt);
-    //sqlPMT += sql;
-}
-
-void WriteContractInfo(const std::string& txHash, const std::string& contractId, const ContractContext& context)
-{
-    char sqlBase[] = "INSERT INTO `contractinfo`(`txhash`, `contractid`, `txindex`, `blockhash`, `code`, `data`) VALUES";
-    if (sqlContractInfo.empty()) {
-        sqlContractInfo = sqlBase;
+    const std::shared_ptr<const BranchCreateData> branchCreateData = tx->pBranchCreateData;
+    if (branchCreateData == nullptr) {
+        return;
     }
 
-    const std::string& blockHash = context.blockHash.ToString();
-    const std::string& code = HexStr(context.code.begin(), context.code.end());
-    const std::string& data = HexStr(context.data.begin(), context.data.end());
+    const char sqlBase[] = "INSERT INTO `branchcreate`(`txhash`, `branchVSeeds`, `branchSeedSpec6`) VALUES";
+    if (sqlBranchCreate.empty()) {
+        sqlBranchCreate = sqlBase;
+    }
 
-    std::string sql = strprintf("('%s', '%s', %d, '%s', '%s', '%s'),", 
-        txHash, contractId, context.txIndex, blockHash, code, data);
-    sqlContractInfo += sql;
+    const std::string& txHash = tx->GetHash().ToString();
+
+    std::string sql = strprintf("('%s', '%s', '%s'),",
+        txHash, branchCreateData->branchVSeeds, branchCreateData->branchSeedSpec6);
+    sqlBranchCreate += sql;
 }
 
-void WriteReportData(const MCTransactionRef tx)
+void WriteBranchTransaction(const MCTransactionRef tx)
 {
-    //const std::shared_ptr<const ReportData> reportData = tx->pReportData;
-    //if (reportData == nullptr) {
-    //    return;
-    //}
+    const std::shared_ptr<const BranchTransactionData> branchTransactionData = tx->pBranchTransactionData;
+    if (branchTransactionData == nullptr) {
+        return;
+    }
 
-    //const char sqlBase[] = "INSERT INTO `reportdata`(`txhash`, `reporttype`, `reportedbranchid`, `reportedblockhash`, "
-    //    "`reportedtxhash`, `contractcoins`, `contractreportedspvproof`, `contractprovetxhash`, `contractprovespvproof`) VALUES";
-    //if (sqlReportData.empty()) {
-    //    sqlReportData = sqlBase;
-    //}
+    const char sqlBase[] = "INSERT INTO `branchtransaction`(`txhash`, `amount`, `branchid`, `txdata`) VALUES";
+    if (sqlBranchTransaction.empty()) {
+        sqlBranchTransaction = sqlBase;
+    }
 
-    //MCDataStream contractReportedSpvProofData(SER_DISK, CLIENT_VERSION);
-    //MCDataStream contractProveSpvProofData(SER_DISK, CLIENT_VERSION);
-    ///*if (reportData->contractData != nullptr) {
-    //    reportData->contractData->reportedSpvProof.Serialize(contractReportedSpvProofData);
-    //    reportData->contractData->proveSpvProof.Serialize(contractProveSpvProofData);
-    //}*/
+    const std::string& txHash = tx->GetHash().ToString();
+    const std::string& txData = HexStr(branchTransactionData->txData);
 
-    //const std::string& txHash = tx->GetHash().ToString();
-    //const std::string& reportedbranchId = reportData->reportedBranchId.ToString();
-    //const std::string& reportedBlockHash = reportData->reportedBlockHash.ToString();
-    //const std::string& reportedTxHash = reportData->reportedTxHash.ToString();
-    //const std::string& contractReportedSpvProof = HexStr(contractReportedSpvProofData.begin(), contractReportedSpvProofData.end());
-    ////const std::string& proveTxHash = reportData->contractData->proveTxHash.ToString();
-    //const std::string& contractProveSpvProof = HexStr(contractProveSpvProofData.begin(), contractProveSpvProofData.end());
-
-    ///*std::string sql = strprintf("('%s', %d, '%s', '%s', '%s', %lld, '%s', '%s', '%s'),",
-    //    txHash, reportData->reporttype, reportedbranchId, reportedBlockHash, reportedTxHash,
-    //    reportData->contractData->reportedContractPrevData.coins, contractReportedSpvProof, proveTxHash, contractProveSpvProof);
-    //sqlReportData += sql;*/
+    std::string sql = strprintf("('%s', %lld, '%s', '%s'),",
+        txHash, branchTransactionData->amount, branchTransactionData->branchId, txData);
+    sqlBranchTransaction += sql;
 }
 
 void WriteTransaction(const MCBlock& block)
@@ -418,14 +330,15 @@ void WriteTransaction(const MCBlock& block)
         return;
     }
 
-    const char sqlBase[] = "INSERT INTO `transaction`(`txhash`, `blockhash`, `blockindex`, `version`, `locktime`, `txsize`) VALUES";
+    const char sqlBase[] = "INSERT INTO `transaction`"
+        "(`txhash`, `blockhash`, `blockindex`, `version`, `locktime`, `txsize`) VALUES";
     if (sqlTransaction.empty()) {
         sqlTransaction = sqlBase;
     }
 
     const std::string& blockHash = block.GetHash().ToString();
     for (uint32_t i = 0; i < block.vtx.size(); ++i) {
-        MCTransactionRef tx = block.vtx[i];
+        const MCTransactionRef tx = block.vtx[i];
 
         const std::string& txHash = tx->GetHash().ToString();
         const uint32_t txSize = tx->GetTotalSize();
@@ -437,16 +350,15 @@ void WriteTransaction(const MCBlock& block)
         WriteTxIn(tx);
         WriteTxOut(tx);
         WriteContract(tx);
-        WriteBranchBlockData(tx);
-        WritePMT(tx);
-        WriteReportData(tx);
+        WriteBranchCreate(tx);
+        WriteBranchTransaction(tx);
     }
 }
 
 void WriteBlockHeader(const MCBlock& block, const std::shared_ptr<DatabaseBlock> dbBlock, size_t sz)
 {
-    const char sqlBase[] = "INSERT INTO `block`(`blockhash`, `hashprevblock`, `hashskipblock`, `hashmerkleroot`, "
-        "`height`, `version`, `time`, `bits`, `nonce`, `regtest`, `branchid`, `blocksize`) VALUES";
+    const char sqlBase[] = "INSERT INTO `block`(`blockhash`, `blocksize`, `height`, `version`, "
+        "`hashprevblock`, `hashskipblock`, `hashmerkleroot`, `time`, `bits`, `nonce`) VALUES";
     if (sqlBlockHeader.empty()) {
         sqlBlockHeader = sqlBase;
     }
@@ -455,12 +367,10 @@ void WriteBlockHeader(const MCBlock& block, const std::shared_ptr<DatabaseBlock>
     const std::string& hashPrevBlock = block.hashPrevBlock.ToString();
     const std::string& hashSkipBlock = dbBlock->hashSkipBlock.ToString();
     const std::string& hashMerkleRoot = block.hashMerkleRoot.ToString();
-    const bool regtest = gArgs.GetBoolArg("-regtest", false);
-    const std::string& branchId = gArgs.GetArg("-branchid", "");
 
-    std::string sql = strprintf("('%s', '%s', '%s', '%s', %d, %d, %u, %u, %u, %d, '%s', %u),",
-        blockHash, hashPrevBlock, hashSkipBlock, hashMerkleRoot, dbBlock->height, block.nVersion, block.nTime,
-        block.nBits, block.nNonce, regtest, branchId, sz);
+    std::string sql = strprintf("('%s', %u, %d, %d, '%s', '%s', '%s', %u, %u, %u),",
+        blockHash, sz, dbBlock->height, block.nVersion, hashPrevBlock, hashSkipBlock, hashMerkleRoot,
+        block.nTime, block.nBits, block.nNonce);
     sqlBlockHeader += sql;
 }
 
@@ -484,11 +394,6 @@ void Clear()
     sqlTxOutPubKey.clear();
     sqlTxOut.clear();
     sqlContract.clear();
-    sqlBranchBlockData.clear();
-    sqlPMT.clear();
-    sqlContractPrevDataItem.clear();
-    sqlContractInfo.clear();
-    sqlReportData.clear();
     sqlTransaction.clear();
     sqlBlockHeader.clear();
 }
@@ -499,28 +404,24 @@ bool WriteBlockToDatabase(const MCBlock& block, const std::shared_ptr<DatabaseBl
         WriteBlockHeader(block, dbBlock, sz);
         WriteTransaction(block);
 
-        Commit(sqlTxIn);
-        Commit(sqlTxOutPubKey);
-        Commit(sqlTxOut);
-        Commit(sqlContract);
-        Commit(sqlBranchBlockData);
-        Commit(sqlPMT);
-        Commit(sqlContractPrevDataItem);
-        Commit(sqlContractInfo);
-        Commit(sqlReportData);
-        Commit(sqlTransaction);
         Commit(sqlBlockHeader);
+        Commit(sqlTransaction);
+        Commit(sqlTxIn);
+        Commit(sqlTxOut);
+        Commit(sqlTxOutPubKey);
+        Commit(sqlContract);
         sqlConnection->commit();
 
         AddDatabaseBlock(block.GetHash(), block.hashPrevBlock, dbBlock->hashSkipBlock, dbBlock->height);
         Clear();
     }
     catch (sql::SQLException e) {
-        Clear();
         if (e.getErrorCode() == 1062) {
+            Clear();
             return true;
         }
         LogPrintf("%s:%d => %d:%s(%s:%d)\n", __FUNCTION__, __LINE__, e.getErrorCode(), e.what(), block.GetHash().ToString(), dbBlock->height);
+        Clear();
         throw e;
     }
 

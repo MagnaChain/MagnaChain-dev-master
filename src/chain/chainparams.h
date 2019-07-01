@@ -94,6 +94,7 @@ public:
 	std::string GetBranchId(void) const { return strBranchId; }
     inline bool IsMainChain() const { return GetBranchId() == MCBaseChainParams::MAIN; }
     inline bool IsRegtest() const { return strNetworkID == MCBaseChainParams::REGTEST; }
+    inline bool IsTestNet() const { return strNetworkID == MCBaseChainParams::TESTNET; }
     const uint256& GetBranchHash()const { return branchhash; }
 
     void InitMainBase58Prefixes();

@@ -1,22 +1,20 @@
-#ifndef SQL_H
-#define SQL_H
+#ifndef MAGNACHAIN_SQL_H
+#define MAGNACHAIN_SQL_H
 
 const char* sqls[] = {
     "CREATE TABLE IF NOT EXISTS `block` ("
     "`blockhash` VARCHAR(64) NOT NULL"
+    ", `blocksize` INT UNSIGNED NOT NULL"
+    ", `height` INT NOT NULL"
+    ", `version` INT NOT NULL"
     ", `hashprevblock` VARCHAR(64) NOT NULL"
     ", `hashskipblock` VARCHAR(64) NOT NULL"
     ", `hashmerkleroot` VARCHAR(64) NOT NULL"
-    ", `height` INT NOT NULL"
-    ", `version` INT NOT NULL"
-    ", `time` INT NOT NULL"
-    ", `bits` INT NOT NULL"
-    ", `nonce` INT NOT NULL"
-    ", `regtest` BOOL NOT NULL"
-    ", `branchid` VARCHAR(64) NOT NULL"
-    ", `blocksize` INT UNSIGNED NOT NULL"
+    ", `time` INT UNSIGNED NOT NULL"
+    ", `bits` INT UNSIGNED NOT NULL"
+    ", `nonce` INT UNSIGNED NOT NULL"
     ", PRIMARY KEY(`blockhash`)"
-    ", INDEX(`hashprevblock`, `height`, `regtest`, `branchid`, `time`)"
+    ", INDEX(`hashprevblock`, `height`, `time`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `transaction` ("
@@ -24,8 +22,8 @@ const char* sqls[] = {
     ", `blockhash` VARCHAR(64) NOT NULL"
     ", `blockindex` INT NOT NULL"
     ", `version` INT NOT NULL"
-    ", `locktime` INT NOT NULL"
-    ", `txsize` INT NOT NULL"
+    ", `locktime` INT UNSIGNED NOT NULL"
+    ", `txsize` INT UNSIGNED NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
@@ -68,63 +66,19 @@ const char* sqls[] = {
     ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
-    "CREATE TABLE IF NOT EXISTS `branchblockdata` ("
+    "CREATE TABLE IF NOT EXISTS `branchcreate` ("
     "`txhash` VARCHAR(64) NOT NULL"
-    ", `version` INT NOT NULL"
-    ", `hashprevblock` VARCHAR(64) NOT NULL"
-    ", `hashmerkleroot` VARCHAR(64) NOT NULL"
-    ", `hashmerklerootwithdata` VARCHAR(64) NOT NULL"
-    ", `hashmerklerootwithprevdata` VARCHAR(64) NOT NULL"
-    ", `time` INT NOT NULL"
-    ", `bits` INT NOT NULL"
-    ", `nonce` INT NOT NULL"
-    ", `prevoutstakehash` VARCHAR(64) NOT NULL"
-    ", `prevoutstakeindex` INT NOT NULL"
-    ", `blocksig` VARCHAR(1024) NOT NULL"
-    ", `branchid` VARCHAR(64) NOT NULL"
-    ", `blockheight` INT NOT NULL"
-    ", `staketxdata` TEXT NOT NULL"
+    ", `branchVSeeds` VARCHAR(256) NOT NULL"
+    ", `branchSeedSpec6` VARCHAR(256) NOT NULL"
     ", PRIMARY KEY(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
-    "CREATE TABLE IF NOT EXISTS `pmt` ("
+    "CREATE TABLE IF NOT EXISTS `branchtransaction` ("
     "`txhash` VARCHAR(64) NOT NULL"
-    ", `blockhash` VARCHAR(64) NOT NULL"
-    ", `pmt` VARCHAR(64) NOT NULL"
+    ", `amount` VARCHAR(256) NOT NULL"
+    ", `branchid` VARCHAR(256) NOT NULL"
+    ", `txdata` VARCHAR(256) NOT NULL"
     ", PRIMARY KEY(`txhash`)"
-    ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
-
-    "CREATE TABLE IF NOT EXISTS `reportdata` ("
-    "`txhash` VARCHAR(64) NOT NULL"
-    ", `reporttype` INT NOT NULL"
-    ", `reportedbranchid` VARCHAR(64) NOT NULL"
-    ", `reportedblockhash` VARCHAR(64) NOT NULL"
-    ", `reportedtxhash` VARCHAR(64) NOT NULL"
-    ", `contractcoins` BIGINT NOT NULL"
-    ", `contractreportedspvproof` TEXT NOT NULL"
-    ", `contractprovetxhash` VARCHAR(64) NOT NULL"
-    ", `contractprovespvproof` TEXT NOT NULL"
-    ", PRIMARY KEY(`txhash`)"
-    ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
-
-    "CREATE TABLE IF NOT EXISTS `contractprevdataitem` ("
-    "`txhash` VARCHAR(64) NOT NULL"
-    ", `contractid` VARCHAR(64) NOT NULL"
-    ", `blockhash` VARCHAR(64) NOT NULL"
-    ", `txindex` VARCHAR(64) NOT NULL"
-    ", PRIMARY KEY(`txhash`, `contractid`)"
-    ", INDEX(`contractid`)"
-    ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
-
-    "CREATE TABLE IF NOT EXISTS `contractinfo` ("
-    "`txhash` VARCHAR(64) NOT NULL"
-    ", `contractid` VARCHAR(64) NOT NULL"
-    ", `txindex` INT NOT NULL"
-    ", `blockhash` VARCHAR(64) NOT NULL"
-    ", `code` TEXT NOT NULL"
-    ", `data` BLOB NOT NULL"
-    ", PRIMARY KEY(`txhash`, `contractid`)"
-    ", INDEX(`contractid`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 };
 
