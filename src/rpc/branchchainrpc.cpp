@@ -480,7 +480,7 @@ UniValue sendtobranchchain(const JSONRPCRequest& request)
 
     if (request.fHelp || request.params.size() < 3 || request.params.size() > 3)
         throw std::runtime_error(
-                "sendtobranchchain branchid address amount,main branchid address is \"main\". \n"
+                "sendtobranchchain branchid address amount\n"
                 "\n Send an amount to a branch chain's address.\n"
                 "\nArguments:\n"
                 "1. \"branchid\"             (string, required) Send to target chain's Branchid,if send to main chain, branchid is \"main\".\n"
