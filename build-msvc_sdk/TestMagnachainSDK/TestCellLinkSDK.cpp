@@ -39,7 +39,7 @@ int main()
 
     pCB->InitializeRPCInfo("94.191.82.80", "9102", "mgc-user", "mgc-pwd-2019");
 
-    float balance = pCB->GetBalance("XXUrA5NoD2L42atH8bdPN1UbrjsGVyR3Yw");
+    float balance = pCB->GetBalance("mZgWKLmHP4YL5XHcZbZ4oCVBZMM87ydesi");
 	
 	sprintf(chInput, "Balance: %f\r\n", balance);
 	OutputDebugStringA(chInput);
