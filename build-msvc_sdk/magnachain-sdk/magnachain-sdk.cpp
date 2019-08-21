@@ -432,7 +432,7 @@ bool IxMagnaChainBridge::Transfer(const char* pFromPirKeyWif, const char* pDestA
 
     //send to node
     MCTransaction tx(mtx);
-    std::string strTxHex = EncodeHexTx(tx, RPCSerializationFlags());
+    std::string strTxHex = EncodeHex(tx, RPCSerializationFlags());
     //----------------------------------------------
     // next rpc
     {

@@ -32,9 +32,6 @@
     <Filter Include="src\compat">
       <UniqueIdentifier>{72a237cb-8774-4058-8801-683fcce1b35e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\config">
-      <UniqueIdentifier>{01befa99-aa2e-4b6b-91ce-85ca42b1f2b9}</UniqueIdentifier>
-    </Filter>
     <Filter Include="src\leveldb">
       <UniqueIdentifier>{6a0e9903-174c-4e3a-874d-c7f0b8e05124}</UniqueIdentifier>
     </Filter>
@@ -70,12 +67,6 @@
     </Filter>
     <Filter Include="src\univalue\lib">
       <UniqueIdentifier>{1e74103a-7db6-4943-beb2-3f95f5fb7c28}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\lua\cjson">
-      <UniqueIdentifier>{32d577cb-ac29-4611-9815-3d0b84a561e4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="src\smartcontract">
-      <UniqueIdentifier>{1add5529-bf39-4cd6-a785-3e49346de537}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\transaction">
       <UniqueIdentifier>{4684f385-fd00-421f-b518-9d12b81070fe}</UniqueIdentifier>
@@ -122,9 +113,11 @@
     <Filter Include="src\crypto\ctaes">
       <UniqueIdentifier>{5e51fd40-09d5-41e0-a5b5-0da089d280f8}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\vm">
+      <UniqueIdentifier>{def5e4d4-8a10-406f-95d3-05c24748093f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="..\..\src\lua\lzio.c">
       <Filter>src\lua</Filter>
     </ClCompile>
@@ -398,21 +391,6 @@
     <ClCompile Include="..\..\src\zmq\zmqpublishnotifier.cpp">
       <Filter>src\zmq</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\fpconv.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\g_fmt.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\strbuf.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\smartcontract\contractdb.cpp">
-      <Filter>src\smartcontract</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\lua\cjson\lua_cjson.c">
-      <Filter>src\lua\cjson</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\address\addrdb.cpp">
       <Filter>src\address</Filter>
     </ClCompile>
@@ -542,9 +520,6 @@
     <ClCompile Include="..\..\src\validation\validationinterface.cpp">
       <Filter>src\validation</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\smartcontract\smartcontract.cpp">
-      <Filter>src\smartcontract</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\chain\branchchain.cpp">
       <Filter>src\chain</Filter>
     </ClCompile>
@@ -596,9 +571,17 @@
     <ClCompile Include="..\..\src\consensus\consensus.cpp">
       <Filter>src\consensus</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\vm\contractdb.cpp">
+      <Filter>src\vm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vm\contractvm.cpp">
+      <Filter>src\vm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vm\contract.cpp">
+      <Filter>src\vm</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stdafx.h" />
     <ClInclude Include="..\..\src\lua\lzio.h">
       <Filter>src\lua</Filter>
     </ClInclude>
@@ -887,18 +870,6 @@
     <ClInclude Include="..\..\src\zmq\zmqpublishnotifier.h">
       <Filter>src\zmq</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\lua\cjson\dtoa_config.h">
-      <Filter>src\lua\cjson</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\lua\cjson\fpconv.h">
-      <Filter>src\lua\cjson</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\lua\cjson\strbuf.h">
-      <Filter>src\lua\cjson</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\smartcontract\contractdb.h">
-      <Filter>src\smartcontract</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\address\addrdb.h">
       <Filter>src\address</Filter>
     </ClInclude>
@@ -1067,9 +1038,6 @@
     <ClInclude Include="..\..\src\validation\validationinterface.h">
       <Filter>src\validation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\smartcontract\smartcontract.h">
-      <Filter>src\smartcontract</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\chain\branchchain.h">
       <Filter>src\chain</Filter>
     </ClInclude>
@@ -1115,9 +1083,6 @@
     <ClInclude Include="..\..\src\misc\reverselock.h">
       <Filter>src\misc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\config\magnachain-config.h">
-      <Filter>src\config</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\crypto\ctaes\ctaes.h">
       <Filter>src\crypto\ctaes</Filter>
     </ClInclude>
@@ -1133,8 +1098,14 @@
     <ClInclude Include="..\..\src\transaction\partialmerkletree.h">
       <Filter>src\transaction</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
+    <ClInclude Include="..\..\src\vm\contract.h">
+      <Filter>src\vm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vm\contractdb.h">
+      <Filter>src\vm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vm\contractvm.h">
+      <Filter>src\vm</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
