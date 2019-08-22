@@ -38,6 +38,8 @@ const char* sqls[] = {
     ", `sequence` INT UNSIGNED NOT NULL"
     ", `scriptsig` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`)"
+    ", INDEX(`txhash`)"
+    ", INDEX(`txindex`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `txout` ("
@@ -46,6 +48,8 @@ const char* sqls[] = {
     ", `value` BIGINT NOT NULL"
     ", `scriptpubkey` VARCHAR(1024) NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`)"
+    ", INDEX(`txhash`)"
+    ", INDEX(`txindex`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
 	"CREATE TABLE IF NOT EXISTS `txoutpubkey` ("
@@ -55,6 +59,7 @@ const char* sqls[] = {
     ", `solutiontype` INT NOT NULL"
     ", PRIMARY KEY(`txhash`, `txindex`,`solution`)"
     ", INDEX(`solution`)"
+    ", INDEX(`txhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `contract` ("
