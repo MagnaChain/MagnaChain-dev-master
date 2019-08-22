@@ -14,7 +14,9 @@ const char* sqls[] = {
     ", `bits` INT UNSIGNED NOT NULL"
     ", `nonce` INT UNSIGNED NOT NULL"
     ", PRIMARY KEY(`blockhash`)"
-    ", INDEX(`hashprevblock`, `height`, `time`)"
+    ", INDEX(`hashprevblock`)"
+    ", INDEX(`height`)"
+    ", INDEX(`time`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `transaction` ("
@@ -25,6 +27,7 @@ const char* sqls[] = {
     ", `locktime` INT UNSIGNED NOT NULL"
     ", `txsize` INT UNSIGNED NOT NULL"
     ", PRIMARY KEY(`txhash`)"
+    ", INDEX(`blockhash`)"
     ") ENGINE=InnoDB DEFAULT CHARSET = utf8mb4;",
 
     "CREATE TABLE IF NOT EXISTS `txin` ("
