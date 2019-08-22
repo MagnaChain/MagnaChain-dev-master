@@ -3,13 +3,14 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2008
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-common", "magnachain-common\magnachain-common.vcxproj", "{5ABF25E3-3352-4342-B3D5-C4344CB36886}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "db_static", "..\db-4.8.30\build_windows\db_static.vcxproj", "{671539AA-D9A6-4B7B-8044-61B511D6F432}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-sdk", "magnachain-sdk\magnachain-sdk.vcxproj", "{A766D3BC-189D-40AB-B02D-4A3837E5C8C6}"
+	ProjectSection(ProjectDependencies) = postProject
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886} = {5ABF25E3-3352-4342-B3D5-C4344CB36886}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TestCellLinkSDK", "TestMagnachainSDK\TestCellLinkSDK.vcxproj", "{87BE668C-989F-437A-BE65-84E62865A84D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "magnachain-common", "magnachain-common\magnachain-common.vcxproj", "{5ABF25E3-3352-4342-B3D5-C4344CB36886}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -19,22 +20,6 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.ActiveCfg = Debug|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.Build.0 = Debug|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.ActiveCfg = Debug|Win32
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.Build.0 = Debug|Win32
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.ActiveCfg = Release|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.Build.0 = Release|x64
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.ActiveCfg = Release|Win32
-		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.Build.0 = Release|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x64.ActiveCfg = Debug|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x64.Build.0 = Debug|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x86.ActiveCfg = Debug|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Debug|x86.Build.0 = Debug|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x64.ActiveCfg = Release|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x64.Build.0 = Release|x64
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x86.ActiveCfg = Release|Win32
-		{671539AA-D9A6-4B7B-8044-61B511D6F432}.Release|x86.Build.0 = Release|Win32
 		{A766D3BC-189D-40AB-B02D-4A3837E5C8C6}.Debug|x64.ActiveCfg = Debug|x64
 		{A766D3BC-189D-40AB-B02D-4A3837E5C8C6}.Debug|x64.Build.0 = Debug|x64
 		{A766D3BC-189D-40AB-B02D-4A3837E5C8C6}.Debug|x86.ActiveCfg = Debug|Win32
@@ -51,6 +36,14 @@ Global
 		{87BE668C-989F-437A-BE65-84E62865A84D}.Release|x64.Build.0 = Release|x64
 		{87BE668C-989F-437A-BE65-84E62865A84D}.Release|x86.ActiveCfg = Release|Win32
 		{87BE668C-989F-437A-BE65-84E62865A84D}.Release|x86.Build.0 = Release|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.ActiveCfg = Debug|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x64.Build.0 = Debug|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.ActiveCfg = Debug|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Debug|x86.Build.0 = Debug|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.ActiveCfg = Release|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x64.Build.0 = Release|x64
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.ActiveCfg = Release|Win32
+		{5ABF25E3-3352-4342-B3D5-C4344CB36886}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

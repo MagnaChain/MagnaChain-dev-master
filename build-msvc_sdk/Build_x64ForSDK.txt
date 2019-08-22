@@ -1,8 +1,0 @@
-1、Build solution platforms in x86, arm to download packages from nuget.
-2、unzip packages_x64build.zip
-3、Move relate dir in packages_x64build to ./packages.Yes you may need to make a backup for later switch back to x86.
-
--------------------------
-source
-leveldb magnachain/src/leveldb
-
