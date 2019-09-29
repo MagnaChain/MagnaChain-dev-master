@@ -464,7 +464,6 @@ private:
     void trackPackageRemoved(const MCFeeRate& rate);
 
     int32_t nCreateBranchTxCount;
-
 public:
     static const int ROLLING_FEE_HALFLIFE = 60 * 60 * 12; // public only for testing
 
@@ -684,6 +683,7 @@ public:
     boost::signals2::signal<void(MCTransactionRef)> NotifyEntryAdded;
     boost::signals2::signal<void(MCTransactionRef, MemPoolRemovalReason)> NotifyEntryRemoved;
 
+    std::map<uint160, std::vector<MCOutPoint>> m_mapMemCoins;
 private:
     /** UpdateForDescendants is used by UpdateTransactionsFromBlock to update
      *  the descendants for a single transaction that has been added to the

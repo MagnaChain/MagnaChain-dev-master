@@ -642,6 +642,17 @@ bool MCTxMemPool::AddUnchecked(const uint256& hash, const MCTxMemPoolEntry &entr
     if (tx.IsBranchCreate()) {
         nCreateBranchTxCount++;
     }
+
+    //
+    for (size_t i=0; i < tx.vout.size(); i++) {
+        const MCTxOut& out = tx.vout[i];
+        MCTxDestination kDest;
+        if (ExtractDestination(out.scriptPubKey, kDest)) {
+            const uint160& key = GetUint160(kDest);
+            m_mapMemCoins[key].push_back(MCOutPoint(hash, i));
+        }
+    }
+    
     return true;
 }
 
@@ -692,8 +703,9 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
     NotifyEntryRemoved(it->GetSharedTx(), reason);
     g_pBranchTxRecordCache->RemoveFromMempool(*it->GetSharedTx());
 
-    const uint256 hash = it->GetTx().GetHash();
-    for (const MCTxIn& txin : it->GetTx().vin)
+    const MCTransaction& tx = it->GetTx();
+    const uint256 hash = tx.GetHash();
+    for (const MCTxIn& txin : tx.vin)
         mapNextTx.erase(txin.prevout);
 
     if (vTxHashes.size() > 1) {
@@ -711,7 +723,7 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
     cachedInnerUsage -= it->DynamicMemoryUsage();
     cachedInnerUsage -= memusage::DynamicUsage(mapLinks[it].parents) + memusage::DynamicUsage(mapLinks[it].children);
 
-    if (it->GetTx().IsBranchCreate()) {
+    if (tx.IsBranchCreate()) {
         nCreateBranchTxCount--;
     }
 
@@ -720,6 +732,28 @@ void MCTxMemPool::RemoveUnchecked(txiter it, MemPoolRemovalReason reason)
     nTransactionsUpdated++;
     if (minerPolicyEstimator) {
         minerPolicyEstimator->RemoveTx(hash, false);
+    }
+
+    //
+    for (size_t i = 0; i < tx.vout.size(); i++) {
+        const MCTxOut& out = tx.vout[i];
+        MCTxDestination kDest;
+        if (ExtractDestination(out.scriptPubKey, kDest)) {
+            const uint160& key = GetUint160(kDest);
+            if (m_mapMemCoins.count(key)) {
+                std::vector<MCOutPoint>& outpoints = m_mapMemCoins[key];
+                for (auto it = outpoints.begin(); it != outpoints.end(); ) {
+                    if (it->hash == hash) {
+                        it = outpoints.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+                if (outpoints.size() == 0) {
+                    m_mapMemCoins.erase(key);
+                }
+            }
+        }
     }
 }
 

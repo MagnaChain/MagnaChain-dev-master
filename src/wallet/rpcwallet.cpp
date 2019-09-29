@@ -131,13 +131,8 @@ std::string AccountFromValue(const UniValue& value)
     return strAccount;
 }
 
-void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, VMOut* vmOut)
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MCScript &toScript, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, VMOut* vmOut, std::map<MCOutPoint, Coin> *pmapCoins)
 {
-    //	if (fromaddress.Get().type() != typeid(MCKeyID))
-    //	{
-    //		throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
-    //	}
-
     MCKeyID kFromKeyId;
     if (!fromaddress.GetKeyID(kFromKeyId)) {
         throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid MagnaChain public key address");
@@ -146,7 +141,6 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
     CoinListPtr plist = pcoinListDb->GetList((const uint160&)kFromKeyId);
 
     std::set<MCOutPoint> setInOutPoints;
-    std::vector<Coin> vCoin;
     MCAmount nValue = 0;
     if (plist != nullptr) {
         BOOST_FOREACH(const MCOutPoint& outpoint, plist->coins) {
@@ -158,18 +152,56 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
                 continue;
             }
 
+            //Is used in mempool? don't consider MAX_BIP125_RBF_SEQUENCE situation
+            {
+                LOCK(mempool.cs);
+                auto itConflicting = mempool.mapNextTx.find(outpoint);
+                if (itConflicting != mempool.mapNextTx.end()) {
+                    continue;
+                }
+            }
+
             nValue += coin.out.nValue;
             setInOutPoints.insert(outpoint);
-            vCoin.push_back(coin);
-            // TODO 
-            //	if ((nUserFee > 0 && nValue >= nAmount + nUserFee)) {// include more fee to make sure later success
-            //		break;
-            //	}
+            if (pmapCoins != nullptr) {
+                (*pmapCoins)[outpoint] = coin;
+            }
+
+            if ((nUserFee > 0 && nValue >= nAmount + nUserFee + 1000*COIN)) {//TODO: smart contract maybe need more fee, so plus 1000 Coins
+                LogPrintf("%s query coin break\n", __func__);
+            	break;
+            }
         }
     }
 
-    if (nUserFee > 0 && nValue < nAmount + nUserFee)
+    //TODO: query mempool coins
     {
+        LOCK(mempool.cs);
+        uint160 kFromKey = (const uint160&)kFromKeyId;
+        if (mempool.m_mapMemCoins.count(kFromKey)) {
+            for (MCOutPoint& outpoint : mempool.m_mapMemCoins[kFromKey]) {
+                auto itConflicting = mempool.mapNextTx.find(outpoint);
+                if (itConflicting != mempool.mapNextTx.end()) {
+                    continue;
+                }
+                MCTxMemPool::txiter it = mempool.mapTx.find(outpoint.hash);
+                if (it != mempool.mapTx.end() && outpoint.n < it->GetTx().vout.size()) {
+                    const MCTxOut& out = it->GetTx().vout[outpoint.n];
+                    nValue += out.nValue;
+                    setInOutPoints.insert(outpoint);
+                    Coin coin;
+                    coin.fCoinBase = false;
+                    coin.out = out;
+                    coin.nHeight = MEMPOOL_HEIGHT;
+                    if (pmapCoins != nullptr) {
+                        (*pmapCoins)[outpoint] = coin;
+                    }
+                }
+            }
+        }
+    }
+
+    if (nUserFee > 0 && nValue < nAmount + nUserFee) {
         throw JSONRPCError(RPC_VERIFY_REJECTED, "Not enough spendable coin for send and fee");
     }
 
@@ -177,8 +209,7 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
     bool fSubtractFeeFromAmount = false;
 
     std::vector<MCRecipient> vecSend;
-    if (nAmount > 0)
-    {
+    if (nAmount > 0) {
         MCRecipient recip = { toScript, nAmount, fSubtractFeeFromAmount };
         vecSend.push_back(recip);
     }
@@ -192,17 +223,36 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
     for (MCOutPoint outpoint : setInOutPoints)
     {
         //coin_control.Select(outpoint);//select by MCWallet later ,AvailableCoins 有问题 
-        MCWalletTx wtxIn;
         MCTransactionRef txOutpoint;
         uint256 hash = outpoint.hash;
         uint256 hashBlock;
         if (GetTransaction(hash, txOutpoint, Params().GetConsensus(), hashBlock, true))
         {
+            MCWalletTx wtxIn;
             wtxIn.tx = txOutpoint;
             wtxIn.hashBlock = hashBlock;
             wtxIn.nIndex = 0;//just for cheat //wtxIn.SetMerkleBranch();
             wtxIn.BindWallet(&fakeWallet);
             fakeWallet.mapWallet.insert(std::make_pair(hash, wtxIn));
+            
+            //vin in mempool?
+            {
+                bool isinmempool = false;
+                { LOCK(mempool.cs); isinmempool = mempool.Exists(hash); }
+                if (isinmempool) { // use mempool coins?
+                    for (auto in : txOutpoint->vin) {
+                        MCTransactionRef ptxin;
+                        const uint256& inhash = in.prevout.hash;
+                        if (GetTransaction(inhash, ptxin, Params().GetConsensus(), hashBlock, true)) {
+                            MCWalletTx wtx;
+                            wtx.tx = ptxin;
+                            wtx.hashBlock = hashBlock;
+                            wtx.BindWallet(&fakeWallet);
+                            fakeWallet.mapWallet.insert(std::make_pair(inhash, wtx));
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -218,10 +268,10 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
 }
 
 //构造一个交易，从一个地址上的转币到另外一个地址，尚未签名 
-void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, VMOut* vmOut)
+void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, const MagnaChainAddress &toaddress, const MagnaChainAddress &changeaddress, const MCAmount nAmount, const MCAmount nUserFee, VMOut* vmOut, std::map<MCOutPoint, Coin> *pmapCoins)
 {
     MCScript scriptPubKey = GetScriptForDestination(toaddress.Get());
-    SendFromToOther(wtxNew, fromaddress, scriptPubKey, changeaddress, nAmount, nUserFee, vmOut);
+    SendFromToOther(wtxNew, fromaddress, scriptPubKey, changeaddress, nAmount, nUserFee, vmOut, pmapCoins);
 }
 
 void SendMoney(MCWallet* const pwallet, const MCTxDestination* address, MCAmount nValue, bool fSubtractFeeFromAmount, MCWalletTx& wtxNew, const MCCoinControl& coin_control, VMOut* vmOut, bool commit = true, bool sign = true)
@@ -928,7 +978,9 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     wtx.pContractData->sender = senderPubKey;
     wtx.pContractData->address = contractId;
     wtx.pContractData->contractCoinsIn = payment;
-    SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut);
+
+    std::map<MCOutPoint, Coin> mapCoins;
+    SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut, &mapCoins);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txhex", EncodeHex(*wtx.tx, RPCSerializationFlags())));
@@ -965,7 +1017,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
 
     UniValue uvalCoins(UniValue::VARR);
     for (MCTxIn txin : wtx.tx->vin) {
-        const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
+        const Coin& coin = mapCoins[txin.prevout];
         UniValue uvalCoin((UniValue::VOBJ));
         uvalCoin.push_back(Pair("txhash", txin.prevout.hash.GetHex()));
         uvalCoin.push_back(Pair("outn", int(txin.prevout.n)));
@@ -1164,7 +1216,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
         wtx.pContractData->address = contractID;
         wtx.pContractData->contractCoinsIn = payment;
         wtx.pContractData->contractCoinsOut = std::move(vmOut.contractCoinsOut);
-        SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut);
+        SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut, nullptr);
 
         ret.push_back(Pair("txhex", EncodeHex(*wtx.tx, RPCSerializationFlags())));
         UniValue coins(UniValue::VARR);
@@ -4102,7 +4154,7 @@ UniValue premaketransaction(const JSONRPCRequest& request)
 
     MCWalletTx wtxNew;
     ///////////////////////////////////////////////////////
-    SendFromToOther(wtxNew, fromaddress, toaddress, changeaddress, nAmount, nUserFee, nullptr);
+    SendFromToOther(wtxNew, fromaddress, toaddress, changeaddress, nAmount, nUserFee, nullptr, nullptr);
 
     UniValue ret(UniValue::VOBJ);
     ret.push_back(Pair("txhex", EncodeHex(*wtxNew.tx, RPCSerializationFlags())));
