@@ -1017,7 +1017,7 @@ UniValue prepublishcode(const JSONRPCRequest& request)
     //}
 
     UniValue uvalCoins(UniValue::VARR);
-    for (MCTxIn txin : wtx.tx->vin) {
+    for (const MCTxIn& txin : wtx.tx->vin) {
         const Coin& coin = mapCoins[txin.prevout];
         UniValue uvalCoin((UniValue::VOBJ));
         uvalCoin.push_back(Pair("txhash", txin.prevout.hash.GetHex()));
@@ -1223,7 +1223,7 @@ UniValue precallcontract(const JSONRPCRequest& request)
 
         ret.push_back(Pair("txhex", EncodeHex(*wtx.tx, RPCSerializationFlags())));
         UniValue coins(UniValue::VARR);
-        for (MCTxIn txin : wtx.tx->vin) {
+        for (const MCTxIn& txin : wtx.tx->vin) {
             const Coin& coin = mapCoins[txin.prevout];
 
             UniValue uvalCoin((UniValue::VOBJ));
