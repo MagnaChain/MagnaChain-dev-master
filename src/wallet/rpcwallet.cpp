@@ -249,6 +249,7 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
                             wtx.hashBlock = hashBlock;
                             wtx.BindWallet(&fakeWallet);
                             fakeWallet.mapWallet.insert(std::make_pair(inhash, wtx));
+                            fakeWallet.AddToSpends(inhash);
                         }
                     }
                 }

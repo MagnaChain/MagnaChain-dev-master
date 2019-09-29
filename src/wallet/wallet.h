@@ -750,6 +750,7 @@ private:
 
     std::unique_ptr<MCWalletDBWrapper> dbw;
 
+    friend class MCFakeWallet;
 protected:
 	bool fFastMode;
 	bool fFakeWallet;
@@ -1291,6 +1292,10 @@ public:
 		}
 		return result;
 	}
+
+    void AddToSpends(const uint256& wtxid) {
+        MCWallet::AddToSpends(wtxid);
+    }
 };
 
 class MCCoinsViewCache;
