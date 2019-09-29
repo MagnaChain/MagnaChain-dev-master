@@ -1217,12 +1217,14 @@ UniValue precallcontract(const JSONRPCRequest& request)
         wtx.pContractData->address = contractID;
         wtx.pContractData->contractCoinsIn = payment;
         wtx.pContractData->contractCoinsOut = std::move(vmOut.contractCoinsOut);
-        SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut, nullptr);
+
+        std::map<MCOutPoint, Coin> mapCoins;
+        SendFromToOther(wtx, fundAddr, MCTxDestination(), changeAddr, 0, 0, &vmOut, &mapCoins);
 
         ret.push_back(Pair("txhex", EncodeHex(*wtx.tx, RPCSerializationFlags())));
         UniValue coins(UniValue::VARR);
         for (MCTxIn txin : wtx.tx->vin) {
-            const Coin& coin = pcoinsTip->AccessCoin(txin.prevout);
+            const Coin& coin = mapCoins[txin.prevout];
 
             UniValue uvalCoin((UniValue::VOBJ));
             uvalCoin.push_back(Pair("txhash", txin.prevout.hash.GetHex()));
