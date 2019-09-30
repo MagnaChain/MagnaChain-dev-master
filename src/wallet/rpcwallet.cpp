@@ -165,6 +165,7 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
             setInOutPoints.insert(outpoint);
             if (pmapCoins != nullptr) {
                 (*pmapCoins)[outpoint] = coin;
+                //LogPrintf("1 hash %s n %d nValue %d\n", outpoint.hash.GetHex(), outpoint.n, (*pmapCoins)[outpoint].out.nValue);
             }
 
             if ((nUserFee > 0 && nValue >= nAmount + nUserFee + 1000*COIN)) {//TODO: smart contract maybe need more fee, so plus 1000 Coins
@@ -195,6 +196,7 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
                     coin.nHeight = MEMPOOL_HEIGHT;
                     if (pmapCoins != nullptr) {
                         (*pmapCoins)[outpoint] = coin;
+                        //LogPrintf("2 hash %s n %d nValue %d\n", outpoint.hash.GetHex(), outpoint.n, (*pmapCoins)[outpoint].out.nValue);
                     }
                 }
             }
@@ -235,6 +237,14 @@ void SendFromToOther(MCWalletTx &wtxNew, const MagnaChainAddress &fromaddress, c
             wtxIn.BindWallet(&fakeWallet);
             fakeWallet.mapWallet.insert(std::make_pair(hash, wtxIn));
             
+            //TODO: txOutpoint has some spend coins
+            for (size_t i = 0; i < txOutpoint->vout.size(); i++) {
+                MCOutPoint op = MCOutPoint(hash, i);
+                if (setInOutPoints.count(op) == 0) {
+                    fakeWallet.AddToSpends(op, hash);
+                }
+            }
+
             //vin in mempool?
             {
                 bool isinmempool = false;

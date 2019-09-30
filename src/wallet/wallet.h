@@ -1296,6 +1296,9 @@ public:
     void AddToSpends(const uint256& wtxid) {
         MCWallet::AddToSpends(wtxid);
     }
+    void AddToSpends(const MCOutPoint& outpoint, const uint256& wtxid) {
+        MCWallet::AddToSpends(outpoint, wtxid);
+    }
 };
 
 class MCCoinsViewCache;
